@@ -1,0 +1,60 @@
+2019-02-13 07:16:55,503 INFO     input command: pbs_benchpress -t TestQstatFormats.test_qstat_json_valid_job_longint_env -o ptl_output.txt
+2019-02-13 07:16:55,503 INFO     param: None
+2019-02-13 07:16:55,503 INFO     ptl version: 19.0.0
+2019-02-13 07:16:55,507 INFO     platform: Linux centos7 3.10.0-957.5.1.el7.x86_64 #1 SMP Fri Feb 1 14:54:57 UTC 2019 x86_64 x86_64
+2019-02-13 07:16:55,507 INFO     python version: 2.7.5
+2019-02-13 07:16:55,508 INFO     user: root
+2019-02-13 07:16:55,508 INFO     --------------------------------------------------------------------------------
+2019-02-13 07:16:55,508 INFO     Cleaning up temporary files
+2019-02-13 07:16:55,508 INFO     Cleaning up /var/tmp dir
+2019-02-13 07:16:55,543 INFO     Cleaning up /tmp dir
+2019-02-13 07:16:55,568 INFO     for test test_resv_jobend minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,597 INFO     for test test_cgroup_periodic_update_check_values minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,598 INFO     for test test_cgroup_offline_node minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,598 INFO     for test test_cgroup_reserve_mem minimum-testcase-timeout updated to 600 from 500
+2019-02-13 07:16:55,598 INFO     for test test_cgroup_cpuset_exclude_cpu minimum-testcase-timeout updated to 600 from 500
+2019-02-13 07:16:55,637 INFO     for test test_preempt_STF minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,675 INFO     for test test_hook_debug_no_crash minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,744 INFO     for test test_moved_job_history minimum-testcase-timeout updated to 600 from 500
+2019-02-13 07:16:55,756 INFO     for test test_basic minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,756 INFO     for test test_multi_bucket minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_multi_bucket2 minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_not_run minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_calendaring1 minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_calendaring2 minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_calendaring3 minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_buckets_and_non minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_multi_vnode_resv minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_bucket_sort minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_psets minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_psets_calendaring minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_place_group minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_psets_spanning minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_psets_queue minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_free minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_queue_nodes minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,757 INFO     for test test_booleans minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,758 INFO     for test test_last_pset_can_never_run minimum-testcase-timeout updated to 600 from 450
+2019-02-13 07:16:55,775 INFO     for test test_release_nodes2 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,775 INFO     for test test_release_nodes3 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,775 INFO     for test test_release_nodes3_extra minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,775 INFO     for test test_release_nodes_cmd_plus_stageout minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,775 INFO     for test test_release_multi_jobs minimum-testcase-timeout updated to 600 from 500
+2019-02-13 07:16:55,775 INFO     for test test_release_reservations minimum-testcase-timeout updated to 600 from 500
+2019-02-13 07:16:55,935 INFO     for test test_t1 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t2 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t3 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t4 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t5 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t9 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,935 INFO     for test test_t21 minimum-testcase-timeout updated to 600 from 400
+2019-02-13 07:16:55,952 INFO     for test test_server_down_case_2 minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,953 INFO     for test test_end_advance_resv minimum-testcase-timeout updated to 600 from 240
+2019-02-13 07:16:55,953 INFO     for test test_end_advance_resv_with_jobs minimum-testcase-timeout updated to 600 from 240
+2019-02-13 07:16:55,953 INFO     for test test_delete_resv_occurrence minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,953 INFO     for test test_end_resv_occurrences minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,953 INFO     for test test_delete_resv_occurrence_with_jobs minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,953 INFO     for test test_end_resv_occurrences_with_jobs minimum-testcase-timeout updated to 600 from 300
+2019-02-13 07:16:55,954 INFO     for test test_scheduler_down_case_1 minimum-testcase-timeout updated to 600 from 240
+2019-02-13 07:16:55,985 INFO     for test test_sister_mom_crash minimum-testcase-timeout updated to 600 from 240
+2019-02-13 07:16:56,057 ERROR    unknown testcase(s): TestQstatFormats.test_qstat_json_valid_job_longint_env
