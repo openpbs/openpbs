@@ -6,7 +6,7 @@
 #  embedded interpreter and any external modules
 # 
 #
-# Copyright (C) 1994-2018 Altair Engineering, Inc.
+# Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
