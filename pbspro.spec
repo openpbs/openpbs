@@ -104,8 +104,8 @@ BuildRequires: libedit-devel
 BuildRequires: libical-devel
 BuildRequires: ncurses-devel
 BuildRequires: perl
-BuildRequires: postgresql-devel
-BuildRequires: postgresql-contrib
+BuildRequires: postgresql-devel >= 9.1
+BuildRequires: postgresql-contrib >= 9.1
 BuildRequires: python-devel >= 2.6
 BuildRequires: python-devel < 3.0
 BuildRequires: tcl-devel
@@ -150,8 +150,8 @@ Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
 Requires: expat
-Requires: postgresql-server
-Requires: postgresql-contrib
+Requires: postgresql-server >= 9.1
+Requires: postgresql-contrib >= 9.1
 Requires: python >= 2.6
 Requires: python < 3.0
 Requires: tcl
