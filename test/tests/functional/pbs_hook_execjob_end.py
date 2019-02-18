@@ -257,3 +257,79 @@ class TestPbsExecjobEnd(TestFunctional):
                           interval=2)
             msg = "Got expected log_msg on host:%s" % host
             self.logger.info(msg)
+
+    def test_execjob_end_reject_request(self):
+        """
+        Test to make sure hook job reject message should appear in mom log
+        in case sister mom went down before executing execjob_end hook
+        """
+
+        if len(self.moms) != 2:
+            self.skip_test(reason="need 2 mom hosts: -p moms=<m1>:<m2>")
+        self.momA = self.moms.values()[0]
+        self.momB = self.moms.values()[1]
+
+        # Create hook
+        hook_name = "execjob_end_logmsg7"
+        self.server.create_import_hook(hook_name, self.attr, self.hook_body)
+
+        # Submit a multi-node job
+        a = {'Resource_List.select':
+             '1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
+             (self.momA.shortname, self.momB.shortname)}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(30)
+        jid = self.server.submit(j)
+
+        # Verify job spawn on sisterm mom
+        self.momB.log_match("Job;%s;JOIN_JOB as node" % jid, n=100,
+                            max_attempts=10, interval=2)
+
+        # When the job run approx 5 sec, bring sister mom down
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid, offset=5)
+        msg = 'mom is not down'
+        self.assertTrue(self.momB.stop(), msg)
+
+        # Verify momB is down and job is running
+        a = {'state': (MATCH_RE, "down")}
+        self.server.expect(
+            NODE, a, id=self.momB.shortname)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+
+        # Wait for job to be in E state
+        time.sleep(15)
+        hook_execution_time = int(time.time())
+        self.server.expect(JOB, {'job_state': "E"}, id=jid, offset=10)
+
+        # Following message should be logged on momA after job delete request
+        # received
+        msg = "%s;Unable to send delete job request to one or more" % jid
+        msg += " sisters"
+
+        self.momA.log_match(msg, interval=2, starttime=hook_execution_time)
+
+        # Following message should be logged on momA while execjob_end hook is
+        # in sleep
+        self.momA.log_match("Job;%s;executed execjob_end hook" % jid,
+                            starttime=hook_execution_time, max_attempts=10,
+                            interval=2)
+
+        self.momA.log_match("Job;%s;execjob_end hook ended" % jid,
+                            starttime=hook_execution_time, max_attempts=10,
+                            interval=2)
+
+        # Verify  reject reply code 15059 for hook job logged in mother
+        # superior(momA)
+        self.momA.log_match("Req;req_reject;Reject reply code=15059,",
+                            starttime=hook_execution_time, max_attempts=10,
+                            interval=2)
+
+        # Start pbs on MomA
+        self.server.pi.restart(hostname=self.server.hostname)
+        # Verify mother superior is not down
+        self.assertTrue(self.momA.isUp())
+
+        # Start pbs on MomB
+        self.momB.start()
+        # Verify sister mom is not down
+        self.assertTrue(self.momB.isUp())
