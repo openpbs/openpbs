@@ -1102,7 +1102,7 @@ is_request(int stream, int version)
 							log_err(errno, __func__, MALLOC_ERR_MSG);
 							goto err;
 					}
-					memset(phook_output->reject_errcode, 0, sizeof(int));
+					*(phook_output->reject_errcode) = 0;
 
 					if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 						PBS_MOM_SERVICE_NAME, mom_host,
