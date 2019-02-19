@@ -5374,53 +5374,58 @@ pbs_tmrsh %s hostname
 
         self.server.expect(JOB, {'job_state=R': 3}, extend='t')
 
+        idx_values = {}
+        sub_jobs = {}
         for idx in range(1, 4):
             sjid = create_subjob_id(jid, idx)
             if idx == 1:
-                iexec_host_esc = self.jobA_iexec_host1_esc
-                iexec_vnode = self.jobA_iexec_vnode1
-                iexec_vnode_esc = self.jobA_iexec_vnode1_esc
-                exec_host = self.jobA_exec_host1
-                exec_host_esc = self.jobA_exec_host1_esc
-                exec_vnode = self.jobA_exec_vnode1
-                exec_vnode_esc = self.jobA_exec_vnode1_esc
-                vnode_list = [self.nAv0, self.nB, self.nC,
-                              self.nD, self.nE]
+                d = {'iexec_host_esc': self.jobA_iexec_host1_esc,
+                     'iexec_vnode': self.jobA_iexec_vnode1,
+                     'iexec_vnode_esc': self.jobA_iexec_vnode1_esc,
+                     'exec_host': self.jobA_exec_host1,
+                     'exec_host_esc': self.jobA_exec_host1_esc,
+                     'exec_vnode': self.jobA_exec_vnode1,
+                     'exec_vnode_esc': self.jobA_exec_vnode1_esc,
+                     'vnode_list': [self.nAv0, self.nB, self.nC,
+                                    self.nD, self.nE]}
             elif idx == 2:
-                iexec_host_esc = self.jobA_iexec_host2_esc
-                iexec_vnode = self.jobA_iexec_vnode2
-                iexec_vnode_esc = self.jobA_iexec_vnode2_esc
-                exec_host = self.jobA_exec_host2
-                exec_host_esc = self.jobA_exec_host2_esc
-                exec_vnode = self.jobA_exec_vnode2
-                exec_vnode_esc = self.jobA_exec_vnode2_esc
-                vnode_list = [self.nAv1, self.nBv0, self.nC,
-                              self.nD, self.nEv0]
+                d = {'iexec_host_esc': self.jobA_iexec_host2_esc,
+                     'iexec_vnode': self.jobA_iexec_vnode2,
+                     'iexec_vnode_esc': self.jobA_iexec_vnode2_esc,
+                     'exec_host': self.jobA_exec_host2,
+                     'exec_host_esc': self.jobA_exec_host2_esc,
+                     'exec_vnode': self.jobA_exec_vnode2,
+                     'exec_vnode_esc': self.jobA_exec_vnode2_esc,
+                     'vnode_list': [self.nAv1, self.nBv0, self.nC,
+                                    self.nD, self.nEv0]}
             elif idx == 3:
-                iexec_host_esc = self.jobA_iexec_host3_esc
-                iexec_vnode = self.jobA_iexec_vnode3
-                iexec_vnode_esc = self.jobA_iexec_vnode3_esc
-                exec_host = self.jobA_exec_host3
-                exec_host_esc = self.jobA_exec_host3_esc
-                exec_vnode = self.jobA_exec_vnode3
-                exec_vnode_esc = self.jobA_exec_vnode3_esc
-                vnode_list = [self.nAv2, self.nBv1, self.nC,
-                              self.nD, self.nE]
-
+                d = {'iexec_host_esc': self.jobA_iexec_host3_esc,
+                     'iexec_vnode': self.jobA_iexec_vnode3,
+                     'iexec_vnode_esc': self.jobA_iexec_vnode3_esc,
+                     'exec_host': self.jobA_exec_host3,
+                     'exec_host_esc': self.jobA_exec_host3_esc,
+                     'exec_vnode': self.jobA_exec_vnode3,
+                     'exec_vnode_esc': self.jobA_exec_vnode3_esc,
+                     'vnode_list': [self.nAv2, self.nBv1, self.nC,
+                                    self.nD, self.nE]}
+            idx_values[idx] = d
+            sub_jobs[idx] = sjid
             self.server.expect(JOB, {'job_state': 'R',
                                      'substate': 41,
                                      'tolerate_node_failures': 'job_start',
                                      'Resource_List.mem': '3gb',
                                      'Resource_List.ncpus': 3,
                                      'Resource_List.nodect': 3,
-                                     'exec_host': exec_host,
-                                     'exec_vnode': exec_vnode,
+                                     'exec_host': d['exec_host'],
+                                     'exec_vnode': d['exec_vnode'],
                                      'Resource_List.select': self.jobA_select,
                                      'Resource_List.site': self.jobA_oselect,
                                      'Resource_List.place': self.jobA_place,
                                      'schedselect': self.jobA_schedselect},
                                id=sjid, attrop=PTL_AND)
 
+        for idx in range(1, 4):
+            sjid = sub_jobs[idx]
             # Verify mom_logs
             sjid_esc = sjid.replace(
                 "[", "\[").replace("]", "\]").replace("(", "\(").replace(
@@ -5433,7 +5438,7 @@ pbs_tmrsh %s hostname
                     sjid_esc, self.hostC) + "is tolerant of node failures",
                 regexp=True, n=10)
 
-            for vn in vnode_list:
+            for vn in idx_values[idx]['vnode_list']:
                 self.momA.log_match("Job;%s;prolo: found vnode_list[%s]" % (
                                     sjid, vn), n=10)
 
@@ -5445,20 +5450,24 @@ pbs_tmrsh %s hostname
             # Check result of pbs.event().job.release_nodes(keep_select)
             # call
             self.momA.log_match("Job;%s;prolo: job.exec_vnode=%s" % (
-                sjid, exec_vnode), n=10)
+                sjid, idx_values[idx]['exec_vnode']), n=10)
             self.momA.log_match("Job;%s;prolo: job.schedselect=%s" % (
                 sjid, self.jobA_schedselect), n=10)
             self.momA.log_match("Job;%s;pruned from exec_vnode=%s" % (
-                sjid, iexec_vnode), n=10)
+                sjid, idx_values[idx]['iexec_vnode']), n=10)
             self.momA.log_match("Job;%s;pruned to exec_vnode=%s" % (
-                sjid, exec_vnode), n=10)
+                sjid, idx_values[idx]['exec_vnode']), n=10)
+
             # Check accounting_logs
-            self.match_accounting_log('S', sjid_esc, iexec_host_esc,
-                                      iexec_vnode_esc, "5gb", 5, 5,
+            self.match_accounting_log('S', sjid_esc,
+                                      idx_values[idx]['iexec_host_esc'],
+                                      idx_values[idx]['iexec_vnode_esc'],
+                                      "5gb", 5, 5,
                                       self.jobA_place,
                                       self.jobA_isel_esc)
-            self.match_accounting_log('s', sjid_esc, exec_host_esc,
-                                      exec_vnode_esc,
+            self.match_accounting_log('s', sjid_esc,
+                                      idx_values[idx]['exec_host_esc'],
+                                      idx_values[idx]['exec_vnode_esc'],
                                       "3gb", 3, 3,
                                       self.jobA_place,
                                       self.jobA_sel_esc)
