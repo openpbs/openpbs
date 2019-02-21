@@ -1444,6 +1444,7 @@ class PBSTestSuite(unittest.TestCase):
         if 'skip-teardown' in self.conf:
             return
         self.log_enter_teardown()
+        self.server.cleanup_jobs(runas=ROOT_USER)
         self.stop_proc_monitor()
         self.log_end_teardown()
 

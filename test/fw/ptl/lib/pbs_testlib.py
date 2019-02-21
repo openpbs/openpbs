@@ -8360,7 +8360,27 @@ class Server(PBSService):
             delete_xt += 'deletehist'
             select_xt = 'x'
         job_ids = self.select(extend=select_xt)
-        if len(job_ids) > 0:
+
+        # Make sure the current user is a manager. Some tests might have
+        # unset the mangers attribute. Ignore 'Duplicate entry in the list'
+        # error if the current user was already a manager
+        current_user = pwd.getpwuid(os.getuid())[0]
+        a = {ATTR_managers: (INCR, current_user + '@*')}
+        try:
+            self.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        except PbsManagerError:
+            pass
+
+        # Turn off scheduling so jobs don't start when trying to
+        # delete. Restore the orignial scheduling state
+        # once jobs are deleted.
+        sched_state = self.status(SERVER, {'scheduling'})[0]['scheduling']
+        self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        num_jobs = len(job_ids)
+        if num_jobs >= 100:
+            self._cleanup_large_num_jobs(job_ids, runas=runas)
+
+        if num_jobs > 0 and num_jobs < 100:
             try:
                 self.deljob(id=job_ids, extend=delete_xt, runas=runas,
                             wait=True)
@@ -8369,6 +8389,9 @@ class Server(PBSService):
         rv = self.expect(JOB, {'job_state': 0}, count=True, op=SET)
         if not rv:
             return self.cleanup_jobs(extend=extend, runas=runas)
+
+        self.manager(MGR_CMD_SET, SERVER,
+                     {'scheduling': sched_state})
         return rv
 
     def cleanup_reservations(self, extend=None, runas=None):
@@ -8398,6 +8421,28 @@ class Server(PBSService):
         rv = self.cleanup_jobs(extend)
         self.cleanup_reservations()
         return rv
+
+    def _cleanup_large_num_jobs(self, job_ids=None, runas=None):
+        """
+        Helper function to cleanup large number of jobs.
+        Job processes are killed manually. Jobs are then deleted
+        using qdel -Wforce
+        """
+        status_list = self.status(JOB,
+                                  attrib=[{'job_state': 'R'}, ATTR_session])
+
+        for s in status_list:
+            if 'session_id' in s:
+                sess_id = s[ATTR_session]
+                self.logger.info('Killing pid [%s]' % sess_id)
+                cmd = 'kill -9 ' + sess_id
+                self.du.run_cmd(self.hostname, cmd, sudo=True,
+                                runas=runas)
+        # Delete jobs from server, if any
+        try:
+            self.delete(id=job_ids, extend='force', wait=True, runas=runas)
+        except PbsDeleteError:
+            pass
 
     def update_attributes(self, obj_type, bs):
         """
