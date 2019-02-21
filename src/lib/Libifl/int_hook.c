@@ -132,7 +132,7 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
  *
  * @return int
  * @retval	0 for success
- * @retval	-2 for success, no hookfile
+ * @retval	-2 for success, no hookfile or empty hookfile
  * @retval	non-zero otherwise.
  */
 int
@@ -141,7 +141,7 @@ PBSD_copyhookfile(int c, char *hook_filepath, int rpp, char **msgid)
 	int i;
 	int fd;
 	int cc;
-	int rc;
+	int rc = -2;
 	char s_buf[SCRIPT_CHUNK_Z];
 	char	*p;
 	char	hook_file[MAXPATHLEN+1];

@@ -5507,8 +5507,10 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	 * through the work task list of the job and delete them using
 	 * delete_task().
 	 */
-	while ((pwt = (struct work_task *)GET_NEXT(pjob->ji_svrtask)) != NULL)
+	while ((pwt = (struct work_task *)GET_NEXT(pjob->ji_svrtask)) != NULL) {
+		free(pwt->wt_event2);	/* wt_event2 either has additional data (like msgid) or NULL */
 		delete_task(pwt);
+	}
 
 }
 
