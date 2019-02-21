@@ -1100,6 +1100,7 @@ is_request(int stream, int version)
 					if ((phook_output->reject_errcode =
 						(int *)malloc(sizeof(int))) == NULL) {
 							log_err(errno, __func__, MALLOC_ERR_MSG);
+							free(phook_output);
 							goto err;
 					}
 					*(phook_output->reject_errcode) = 0;

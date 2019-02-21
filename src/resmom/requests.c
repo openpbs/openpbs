@@ -625,9 +625,10 @@ req_deletejob(struct batch_request *preq)
 	if ((hook_output->reject_errcode =
 		(int *)malloc(sizeof(int))) == NULL) {
 			log_err(errno, __func__, MALLOC_ERR_MSG);
+			free(hook_output);
 			return;
 	}
-	memset(hook_output->reject_errcode, 0, sizeof(int));
+	*(hook_output->reject_errcode) = 0;
 
 	if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 		PBS_MOM_SERVICE_NAME, mom_host, hook_input,
