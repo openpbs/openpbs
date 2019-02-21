@@ -11006,13 +11006,6 @@ mom_topology(void)
 			char	valbuf[1024];
 			char	*memstr = physmem(NULL);
 
-			if  (vnl_alloc(&vnlp) == NULL) {
-				log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
-				vnl_free(vtp);
-				free(lbuf);
-				goto bad;
-			}
-
 			sprintf(attrbuf, "%s.%s", ATTR_rescavail, "mem");
 			sprintf(valbuf, "%s", memstr != NULL ? memstr : "0");
 			if ((ret = vn_addvnr(vtp, mom_short_name, attrbuf,
