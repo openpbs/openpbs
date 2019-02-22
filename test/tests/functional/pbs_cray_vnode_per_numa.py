@@ -47,6 +47,7 @@ class TestVnodePerNumaNode(TestFunctional):
     Test that the information is correctly being compressed into one vnode
     using the default setting (equivalent to FALSE).
     """
+
     def setUp(self):
         if not self.du.get_platform().startswith('cray'):
             self.skipTest("Test suite only meant to run on a Cray")
@@ -159,27 +160,35 @@ class TestVnodePerNumaNode(TestFunctional):
 
         # Compare the pbsnodes output when vnode_per_numa_node was unset
         # versus when vnode_per_numa_node was set to False.
+        # List of resources to be ignored while comparing.
+        ignr_rsc = ['license', 'last_state_change_time']
+        len_vnodes_combined1 = len(vnodes_combined1)
+        len_vnodes_combined = len(vnodes_combined)
+        n = 0
+        if len_vnodes_combined == len_vnodes_combined1:
+            self.logger.info(
+                "pbsnodes outputs are equal in length")
+            for vdict in vnodes_combined:
+                for key in vdict:
+                    if key in ignr_rsc:
+                        continue
+                    if key in vnodes_combined1[n]:
+                        if vdict[key] != vnodes_combined1[n][key]:
+                            self.fail("ERROR vnode %s has "
+                                      "differing element." % key)
+                    else:
+                        self.fail("ERROR vnode %s has "
+                                  "differing element." % key)
+                n += 1
 
-        if (len(vnodes_combined) == len(vnodes_combined1)):
-            self.logger.info(
-                "pbsnodes outputs are equal in length.")
-            for n in vnodes_combined:
-                if n not in vnodes_combined1:
-                    self.logger.error(
-                        "ERROR vnode %s has differing element." % n['id'])
-                    self.assertTrue(False)
-            self.logger.info(
-                "pbsnodes outputs are the same.")
         else:
-            self.logger.error(
-                "ERROR pbsnodes outputs differ in length.")
-            self.assertTrue(False)
+            self.fail("ERROR pbsnodes outputs differ in length.")
 
     def restartPBS(self):
         try:
             svcs = PBSInitServices()
             svcs.restart()
-        except PbsInitServicesError, e:
+        except PbsInitServicesError as e:
             self.logger.error("PBS restart failed: \n" + e.msg)
             self.assertTrue(e.rv)
 
