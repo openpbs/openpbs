@@ -118,6 +118,12 @@ handle_np_conn(char *pipename, char *jobid, int num_nodes)
 	(void)memset(rs_cmd.hostname, '\0', sizeof(rs_cmd.hostname));
 	(void)memset(rs_cmd.pipename_append, '\0', sizeof(rs_cmd.pipename_append));
 
+	(void)InitializeSecurityDescriptor(&SecDesc, SECURITY_DESCRIPTOR_REVISION);
+	(void)SetSecurityDescriptorDacl(&SecDesc, TRUE, NULL, TRUE);
+	SecAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
+	SecAttrib.lpSecurityDescriptor = &SecDesc;;
+	SecAttrib.bInheritHandle = TRUE;
+	
 	hPipe = CreateNamedPipe(
 		pipename,
 		PIPE_ACCESS_DUPLEX,
@@ -140,12 +146,7 @@ handle_np_conn(char *pipename, char *jobid, int num_nodes)
 	}
 
 	for (i = 0; i < num_nodes && hPipe != NULL; i++) {
-		(void)InitializeSecurityDescriptor(&SecDesc, SECURITY_DESCRIPTOR_REVISION);
-		(void)SetSecurityDescriptorDacl(&SecDesc, TRUE, NULL, TRUE);
-		SecAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
-		SecAttrib.lpSecurityDescriptor = &SecDesc;;
-		SecAttrib.bInheritHandle = TRUE;
-
+		
 		(void)do_ConnectNamedPipe(hPipe, NULL);
 		if (!ReadFile(hPipe, hostname, PBS_MAXHOSTNAME, &dwRead, NULL) ||
 			dwRead == 0) {
