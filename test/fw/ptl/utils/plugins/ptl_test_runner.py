@@ -767,6 +767,9 @@ class PTLTestRunner(Plugin):
             for f in ftd:
                 du.rm(path=f, sudo=True, recursive=True, force=True,
                       level=logging.DEBUG)
+        for f in du.tmpfilelist:
+            du.rm(path=f, sudo=True, force=True, level=logging.DEBUG)
+        del du.tmpfilelist[:]
         tmpdir = tempfile.gettempdir()
         os.chdir(tmpdir)
         tmppath = os.path.join(tmpdir, 'dejagnutemp%s' % os.getpid())

@@ -118,6 +118,7 @@ class DshUtils(object):
     rsh_cmd = DFLT_RSH_CMD
     sudo_cmd = DFLT_SUDO_CMD
     copy_cmd = DFLT_COPY_CMD
+    tmpfilelist = []
 
     def __init__(self):
 
@@ -1920,7 +1921,9 @@ class DshUtils(object):
                           preserve_permission=False, level=level)
             # remove original temp file
             os.unlink(tmpfile)
+            self.tmpfilelist.append(tmpfile2)
             return tmpfile2
+        self.tmpfilelist.append(tmpfile)
         return tmpfile
 
     def mkdtemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
