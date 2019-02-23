@@ -690,7 +690,7 @@ class HookUtils(object):
             }
             self.hook_events[pbs.EXECJOB_ABORT] = {
                 'name': 'execjob_abort',
-                'handler': self._execjob_abort_handler
+                'handler': self._execjob_end_handler
             }
             self.hook_events[pbs.MOM_EVENTS] = {
                 'name': 'mom_events',
@@ -815,33 +815,6 @@ class HookUtils(object):
     def _execjob_end_handler(self, event, cgroup, jobutil):
         """
         Handler for execjob_end events.
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        # delete this jobid from cgroup_jobs in case hook events before me
-        # failed to do that
-        cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
-        # The cgroup is usually deleted in the execjob_epilogue event
-        # There are certain corner cases where epilogue can fail or skip
-        # Delete files again here to make sure we catch those
-        # cgroup.delete() does nothing if files are already deleted
-        cgroup.delete(event.job.id)
-        # Remove the assigned_resources and job_env files.
-        filelist = []
-        filelist.append(os.path.join(cgroup.hook_storage_dir, event.job.id))
-        filelist.append(cgroup.host_job_env_filename % event.job.id)
-        for filename in filelist:
-            try:
-                os.remove(filename)
-            except OSError:
-                pbs.logmsg(pbs.EVENT_DEBUG4, 'File: %s not found' % (filename))
-            except Exception:
-                pbs.logmsg(pbs.EVENT_DEBUG4,
-                           'Error removing file: %s' % (filename))
-        return True
-
-    def _execjob_abort_handler(self, event, cgroup, jobutil):
-        """
-        Handler for execjob_abort events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         # delete this jobid from cgroup_jobs in case hook events before me
