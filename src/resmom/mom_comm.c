@@ -1946,9 +1946,7 @@ addr_to_hostname(struct sockaddr_in *ap)
 void
 job_start_error(job *pjob, int code, char *nodename, char *cmd)
 {
-#ifndef WIN32
 	void    exec_bail(job *pjob, int code, char *txt);
-#endif
 
 	if ((pjob == NULL) || (nodename == NULL) || (cmd == NULL))
 		return;
@@ -1984,18 +1982,12 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
 	if (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_EXITING)
 		return;
 
-#ifdef WIN32
-	pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
-	pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_RETRY;
-	exiting_tasks = 1;
-#else
 	if (code == PBSE_HOOK_REJECT_DELETEJOB)
 		exec_bail(pjob, JOB_EXEC_FAILHOOK_DELETE, NULL);
 	else if (code == PBSE_HOOK_REJECT_RERUNJOB)
 		exec_bail(pjob, JOB_EXEC_FAILHOOK_RERUN, NULL);
 	else
 		exec_bail(pjob, JOB_EXEC_RETRY, NULL);
-#endif
 }
 
 /**
@@ -3321,6 +3313,15 @@ im_request(int stream, int version)
 					mom_deljob(pjob);
 					goto done;
 			}
+
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &hook_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+
 			DBPRT(("%s: JOIN_JOB %s node %d\n", __func__, jobid, pjob->ji_nodeid))
 
 			/*
@@ -3329,6 +3330,7 @@ im_request(int stream, int version)
 			if (job_join_extra != NULL) {
 				errcode = job_join_extra(pjob, np);
 				if (errcode != 0) {
+					(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 					mom_deljob(pjob);
 					SEND_ERR(errcode)
 					goto done;
@@ -3337,18 +3339,12 @@ im_request(int stream, int version)
 
 #if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
 			if (new_cpuset(pjob) < 0) {
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
 				SEND_ERR(PBSE_SYSTEM)
 				goto done;
 			}
 #endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-#if	MOM_BGL
-			if (verify_job_bgl_partition(pjob, NULL) != 0) {
-				mom_deljob(pjob);
-				SEND_ERR(PBSE_SYSTEM)
-				goto done;
-			}
-#endif	/* MOM_BGL */
 
 			(void)job_save(pjob, SAVEJOB_FULL);
 			(void)strcpy(namebuf, path_jobs);	/* job directory path */
@@ -3359,6 +3355,7 @@ im_request(int stream, int version)
 			(void)strcat(namebuf, JOB_TASKDIR_SUFFIX);
 
 			if (mkdir(namebuf, 0700) == -1) {
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
 				SEND_ERR(PBSE_SYSTEM)
 				goto done;
@@ -3367,6 +3364,7 @@ im_request(int stream, int version)
 			/* the following must appear before check_pwd() since the */
 			/* latter tries to read cred info */
 			if (mom_create_cred(pjob, info, len, FALSE, stream) == -1) {
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
 				SEND_ERR(PBSE_SYSTEM)
 				goto done;
@@ -3375,6 +3373,7 @@ im_request(int stream, int version)
 			if (check_pwd(pjob) == NULL) {
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
 					pjob->ji_qs.ji_jobid, log_buffer);
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
 				SEND_ERR(PBSE_BADUSER)
 				goto done;
@@ -3384,6 +3383,7 @@ im_request(int stream, int version)
 
 #ifndef WIN32
 			if (mom_create_cred(pjob, info, len, FALSE, stream) == -1) {
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
 				SEND_ERR(PBSE_SYSTEM)
 				goto done;
@@ -3403,6 +3403,7 @@ im_request(int stream, int version)
 					sprintf(log_buffer, "unable to create the job directory %s",
 						jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 					log_err(errno, __func__, log_buffer);
+					(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 					mom_deljob(pjob);
 					SEND_ERR(PBSE_SYSTEM)
 					goto done;
@@ -3435,6 +3436,7 @@ im_request(int stream, int version)
 				if (e != 0) {
 					sprintf(log_buffer, "unable to create the job directory %s", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 					log_err(errno, __func__, log_buffer);
+					(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 					mom_deljob(pjob);
 					SEND_ERR(PBSE_SYSTEM)
 					goto done;
@@ -3489,6 +3491,7 @@ im_request(int stream, int version)
 
 join_err:
 			log_err(errno, __func__, "rpp_write");
+			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 			rpp_close(stream);
 			mom_deljob(pjob);
 			goto fini;
@@ -4360,9 +4363,17 @@ join_err:
 			if (pjob->ji_qs.ji_svrflags &
 				(JOB_SVFLG_CHKPT|JOB_SVFLG_ChkptMig)) {
 				kill_job(pjob, SIGKILL);	/* is this right? */
-			}
-			else
+			} else {
+				mom_hook_input_init(&hook_input);
+				hook_input.pjob = pjob;
+
+				mom_hook_output_init(&hook_output);
+				hook_output.reject_errcode = &hook_errcode;
+				hook_output.last_phook = &last_phook;
+				hook_output.fail_action = &hook_fail_action;
+				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
 				mom_deljob(pjob);
+			}
 			break;
 
 		case	IM_REQUEUE:

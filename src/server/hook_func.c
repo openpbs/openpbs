@@ -222,6 +222,7 @@ extern pbs_list_head svr_exechost_startup_hooks;
 extern pbs_list_head svr_execjob_launch_hooks;
 extern pbs_list_head svr_execjob_attach_hooks;
 extern pbs_list_head svr_execjob_resize_hooks;
+extern pbs_list_head svr_execjob_abort_hooks;
 extern	time_t	time_now;
 extern 	struct python_interpreter_data  svr_interp_data;
 extern	pbs_list_head task_list_event;
@@ -6702,6 +6703,13 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 		add_pending_mom_hook_action((mominfo_t *)minfo,
 			phook->hook_name, action);
 		phook = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
+	}
+
+	phook = (hook *)GET_NEXT(svr_execjob_abort_hooks);
+	while (phook) {
+		add_pending_mom_hook_action((mominfo_t *)minfo,
+			phook->hook_name, action);
+		phook = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
 	}
 
 }

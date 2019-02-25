@@ -154,6 +154,7 @@ pbs_list_head	svr_exechost_periodic_hooks;
 pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
 pbs_list_head	svr_execjob_resize_hooks;
+pbs_list_head	svr_execjob_abort_hooks;
 
 char 		*path_hooks;
 char 		*path_hooks_workdir;
@@ -2963,6 +2964,7 @@ main(int argc, char *argv[], char *envp[])
 			case HOOK_EVENT_EXECJOB_END:
 			case HOOK_EVENT_EXECJOB_PRETERM:
 			case HOOK_EVENT_EXECJOB_RESIZE:
+			case HOOK_EVENT_EXECJOB_ABORT:
 
 				if ((svrattrl_e=find_svrattrl_list_entry(&event_job,
 					"id", NULL)) != NULL) {
@@ -3344,6 +3346,7 @@ main(int argc, char *argv[], char *envp[])
 			case HOOK_EVENT_EXECJOB_END:
 			case HOOK_EVENT_EXECJOB_PRETERM:
 			case HOOK_EVENT_EXECJOB_LAUNCH:
+			case HOOK_EVENT_EXECJOB_ABORT:
 
 				if (pbs_python_event_get_accept_flag() == FALSE) {
 

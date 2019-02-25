@@ -1293,12 +1293,32 @@ exec_bail(job *pjob, int code, char *txt)
 {
 	int	nodes;
 	task	*ptask = (task *)GET_NEXT(pjob->ji_tasks);
+	mom_hook_input_t	hook_input;
+	mom_hook_output_t	hook_output;
+	int			hook_errcode = 0;
+	hook			*last_phook = NULL;
+	unsigned int		hook_fail_action = 0;
+	char			hook_msg[HOOK_MSG_SIZE+1];
 
 	/* log message passed in if one was */
 	if (txt != NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			pjob->ji_qs.ji_jobid, txt);
 	}
+
+	mom_hook_input_init(&hook_input);
+	hook_input.pjob = pjob;
+
+	mom_hook_output_init(&hook_output);
+	hook_output.reject_errcode = &hook_errcode;
+	hook_output.last_phook = &last_phook;
+	hook_output.fail_action = &hook_fail_action;
+
+	(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT,
+				PBS_MOM_SERVICE_NAME, mom_host,
+				&hook_input, &hook_output, hook_msg,
+				sizeof(hook_msg), 1);
+
 
 	nodes = send_sisters(pjob, IM_ABORT_JOB, NULL);
 	if (nodes != pjob->ji_numnodes-1) {

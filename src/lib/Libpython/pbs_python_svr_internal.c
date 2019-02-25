@@ -5697,6 +5697,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		(hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) || \
 		(hook_event == HOOK_EVENT_EXECJOB_EPILOGUE) || \
 		(hook_event == HOOK_EVENT_EXECJOB_END) || \
+		(hook_event == HOOK_EVENT_EXECJOB_ABORT) || \
 		(hook_event == HOOK_EVENT_EXECJOB_PRETERM) ) {
 		struct rq_queuejob *rqj = req_params->rq_job;
 
@@ -6322,6 +6323,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 		case HOOK_EVENT_EXECJOB_EPILOGUE:
 		case HOOK_EVENT_EXECJOB_PRETERM:
 		case HOOK_EVENT_EXECJOB_END:
+		case HOOK_EVENT_EXECJOB_ABORT:
 
 			py_job = _pbs_python_event_get_param(PY_EVENT_PARAM_JOB);
 			if (!py_job) {
@@ -7559,6 +7561,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 		case HOOK_EVENT_EXECJOB_PROLOGUE:
 		case HOOK_EVENT_EXECJOB_EPILOGUE:
 		case HOOK_EVENT_EXECJOB_END:
+		case HOOK_EVENT_EXECJOB_ABORT:
 		case HOOK_EVENT_EXECJOB_PRETERM:
 			if (!PyObject_IsInstance(py_owner,
 				pbs_python_types_table[PP_JOB_IDX].t_class) &&
