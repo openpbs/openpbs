@@ -48,6 +48,8 @@ This hook services the following events:
 - execjob_end
 - execjob_epilogue
 - execjob_launch
+- execjob_resize
+- execjob_abort
 """
 
 # NOTES:
@@ -685,6 +687,10 @@ class HookUtils(object):
             self.hook_events[pbs.EXECJOB_RESIZE] = {
                 'name': 'execjob_resize',
                 'handler': self._execjob_resize_handler
+            }
+            self.hook_events[pbs.EXECJOB_ABORT] = {
+                'name': 'execjob_abort',
+                'handler': self._execjob_end_handler
             }
             self.hook_events[pbs.MOM_EVENTS] = {
                 'name': 'mom_events',
