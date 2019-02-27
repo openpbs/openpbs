@@ -3385,7 +3385,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
 	 */
-	rc = assign_resv_resc(presv, newxc);
+	rc = assign_resv_resc(presv, newxc, FALSE);
 	free(newxc);
 
 	if (rc != PBSE_NONE) {

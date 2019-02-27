@@ -7111,6 +7111,25 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
+                        if ((pnode->nd_state & (INUSE_DOWN | INUSE_STALE)) && (svr_init == FALSE)) {
+
+				if(objtype == JOB_OBJECT) {
+                                   free(phowl);
+                                   free(execvncopy);
+                                   return (PBSE_BAD_NODE_STATE);
+				} 
+				else {
+					if(presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
+						free(phowl);
+                	                	free(execvncopy);
+                        	      		return (PBSE_BAD_NODE_STATE);
+					}
+					else {
+						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+						set_resv_retry(presv, time_now+10);
+					}
+				}
+                        }
 
 			if (pjob != NULL) { /* only for jobs do we warn if a mom */
 				/* hook has not been sent */
@@ -8391,7 +8410,7 @@ set_old_subUniverse(resc_resv	*presv)
 		return;
 	}
 	/* set the nodes on the reservation */
-	rc = assign_resv_resc(presv, sp);
+	rc = assign_resv_resc(presv, sp, TRUE);
 	if (rc != PBSE_NONE) {
 		sprintf(log_buffer,
 			"problem assigning resource to reservation %d", rc);

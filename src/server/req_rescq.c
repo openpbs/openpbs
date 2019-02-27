@@ -242,17 +242,20 @@ cnvrt_timer_init()
  * @retval	non-zero	: error code if problem occurs
  */
 int
-assign_resv_resc(resc_resv *presv, char *vnodes)
+assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 {
 	int		  ret;
 	char     *node_str = NULL;
 	char		 *host_str = NULL;	/* used only as arg to set_nodes */
 	char * host_str2 = NULL;
+	struct work_task *pwt;
+	extern void resv_retry_handler(struct work_task *ptask);
+
 	if ((vnodes == NULL) || (*vnodes == '\0'))
 		return (PBSE_BADNODESPEC);
 
 	ret = set_nodes((void *)presv, presv->ri_qs.ri_type, vnodes,
-		&node_str, &host_str, &host_str2, 0, FALSE);
+		&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
 		/*update resc_resv object's RESV_ATR_resv_nodes attribute*/
@@ -268,6 +271,18 @@ assign_resv_resc(resc_resv *presv, char *vnodes)
 
 		presv->ri_modified = 1;
 	}
+	else if (ret == PBSE_BAD_NODE_STATE) {
+           /* Set a work task to initiate a scheduling cycle when the time to check
+            * for alternate nodes to assign the reservation comes
+            */
+           if ((pwt = set_task(WORK_Timed, time_now+10, resv_retry_handler, presv)) != NULL) {
+           /* set things so that the reservation going away will result in
+            * any "yet to be processed" work tasks also going away
+            */
+ 	          append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+           }
+	}
+
 
 	return (ret);
 }
@@ -583,7 +598,7 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (is_being_altered)
 		free_resvNodes(presv);
-	rc = assign_resv_resc(presv, next_execvnode);
+	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
 	if (rc != PBSE_NONE) {
 		free(next_execvnode);
