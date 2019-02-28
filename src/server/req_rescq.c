@@ -234,8 +234,9 @@ cnvrt_timer_init()
  * 		added to its list of resvinfo structures and that structure
  * 		points to the reservation.
  *
- * @parm[in,out]	presv	-	reservation structure
- * @parm[in]	vnodes	-	original vnode list from scheduler/operator
+ * @parm[in,out]	presv	 -	reservation structure
+ * @parm[in]		vnodes	 -	original vnode list from scheduler/operator
+ * @parm[in]    	svr_init -	parameter to track whether the server is in init start mode
  *
  * @return	int
  * @return	0 : no problems detected in the process

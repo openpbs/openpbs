@@ -7113,20 +7113,18 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 
                         if ((pnode->nd_state & (INUSE_DOWN | INUSE_STALE)) && (svr_init == FALSE)) {
 
-				if(objtype == JOB_OBJECT) {
+				if (objtype == JOB_OBJECT) {
                                    free(phowl);
                                    free(execvncopy);
                                    return (PBSE_BAD_NODE_STATE);
-				} 
-				else {
+				} else {
 					if(presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
 						free(phowl);
                 	                	free(execvncopy);
                         	      		return (PBSE_BAD_NODE_STATE);
-					}
-					else {
+					} else {
 						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
-						set_resv_retry(presv, time_now+10);
+						set_resv_retry(presv, time_now + 10);
 					}
 				}
                         }
