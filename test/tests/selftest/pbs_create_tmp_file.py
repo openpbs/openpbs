@@ -39,6 +39,7 @@ from tests.selftest import *
 from stat import *
 from pwd import getpwuid
 
+
 class TestPBStempfile(TestSelf):
     """
     Test suite to test create_temp_file functionality in PBS
@@ -54,15 +55,15 @@ class TestPBStempfile(TestSelf):
         self.assertTrue(name.startswith('PtlPbs'))
         self.assertTrue(f.startswith('/tmp'))
         mode = str(oct(os.stat(f)[ST_MODE])[-3:])
-        self.assertEqual(mode,'644')
-    
+        self.assertEqual(mode, '644')
+
     def test_tmp_file_owner(self):
         """
         Test that temp file is created as specified owner
         """
         file_user = getpwuid(os.getuid()).pw_name
         f = self.du.create_temp_file(asuser=file_user)
-        
+
         user = getpwuid(os.stat(f).st_uid).pw_name
         self.assertEqual(file_user, user)
 
@@ -86,7 +87,8 @@ class TestPBStempfile(TestSelf):
 
     def test_tmp_file_with_perm_in_directory(self):
         """
-        Test temp file is created with certain permissions
+        Test temp file is created with certain permissions and inside
+        a specified directory
         """
         mode = 0755
         home = os.path.expanduser('~')
@@ -98,7 +100,8 @@ class TestPBStempfile(TestSelf):
 
     def test_tmp_file_with_perm_in_directory_as_user(self):
         """
-        Test temp file is created with certain permissions
+        Test temp file is created with certain permissions and inside
+        a specified directory as a specific user
         """
         mode = 0755
         dirname = '/tmp'

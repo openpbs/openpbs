@@ -525,7 +525,7 @@ get_script_name(char *input) {
 
 	/* If control is here then it would mean that "tok" must have only file path */
 	memset (&sbuf, 0, sizeof(struct stat));
-	ret_fs = stat(tok, &sbuf);
+	stat(tok, &sbuf);
 	if (S_ISREG(sbuf.st_mode))
 		return tok;
 

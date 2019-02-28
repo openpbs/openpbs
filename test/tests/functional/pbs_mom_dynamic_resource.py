@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestMomDynRes(TestFunctional):
 
-    filenames = []
+    dirnames = []
 
     def create_mom_resources(self, resc_name, resc_type, resc_flag,
                              script_body):
@@ -55,8 +55,7 @@ class TestMomDynRes(TestFunctional):
                                         validate=True)
         self.scheduler.add_resource(resc_name_svr)
 
-        ln = len(resc_name)
-        for i in range(ln):
+        for i in range(len(resc_name)):
             attr = {"type": resc_type[i], "flag": resc_flag[i]}
             self.server.manager(MGR_CMD_CREATE, RSC, attr,
                                 id=resc_name[i], expect=True)
@@ -65,7 +64,6 @@ class TestMomDynRes(TestFunctional):
                                                  prefix="mom_resc",
                                                  suffix=".scr")
             fp_list.append(dest_file)
-            self.filenames.append(dest_file)
         return fp_list
 
     def check_access_log(self, fp, exist=True):
@@ -328,8 +326,8 @@ class TestMomDynRes(TestFunctional):
         resc_flag = ["nh"]
         script_body = ["/bin/echo 3"]
 
-        filename = self.create_mom_resources(resc_name, resc_type,
-                                             resc_flag, script_body)
+        self.create_mom_resources(resc_name, resc_type,
+                                  resc_flag, script_body)
         # Submit a job that requests mom dynamic resource
         attr = {"Resource_List." + resc_name[0]: '2'}
         j = Job(TEST_USER, attrs=attr)
@@ -342,7 +340,6 @@ class TestMomDynRes(TestFunctional):
         change_res = "/bin/echo 1"
         src_file = self.mom.add_mom_dyn_res(resc_name[0],
                                             script_body=change_res)
-        self.filenames.append(src_file)
 
         self.server.rerunjob(jobid=jid)
 
@@ -365,27 +362,25 @@ class TestMomDynRes(TestFunctional):
         home_dir = os.path.expanduser("~")
         fp = self.mom.add_mom_dyn_res("foo", script_body=scr_body,
                                       dirname=home_dir)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
 
         self.scheduler.set_sched_config({'mom_resources': 'foo'},
                                         validate=True)
         self.scheduler.add_resource('foo')
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         if os.getuid() != 0:
                 self.check_access_log(fp, exist=True)
         else:
@@ -399,24 +394,23 @@ class TestMomDynRes(TestFunctional):
         fp = self.mom.add_mom_dyn_res("foo", script_body=scr_body,
                                       dirname=dir_temp)
 
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
-        self.filenames.append(dir_temp)
+        # Add to dirnames for cleanup
+        self.dirnames.append(dir_temp)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp)
 
         # Create dynamic resource script in PBS_HOME directory and check
@@ -426,26 +420,24 @@ class TestMomDynRes(TestFunctional):
 
         # give write permission to group and others
         fp = self.mom.add_mom_dyn_res("foo", script_body=scr_body, perm=0766)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp, exist=False)
 
     def tearDown(self):
         # removing all files creating in test
-        if len(self.filenames) != 0:
-            self.du.rm(path=self.filenames, sudo=True, force=True,
+        if len(self.dirnames) != 0:
+            self.du.rm(path=self.dirnames, sudo=True, force=True,
                        recursive=True)
-            self.filenames[:] = []
+            self.dirnames[:] = []
         TestFunctional.tearDown(self)
