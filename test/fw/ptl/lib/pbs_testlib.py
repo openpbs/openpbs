@@ -3485,6 +3485,7 @@ class PBSService(PBSObject):
         self.pbs_env = {}
         self._is_local = True
         self.launcher = None
+        self.dyn_created_files = []
 
         PBSObject.__init__(self, name, attrs, defaults)
 
@@ -4307,6 +4308,15 @@ class PBSService(PBSObject):
     def __repr__(self):
         return (self.__class__.__name__ + '/' + self.pbs_conf_file + '@' +
                 self.hostname)
+
+    def cleanup_files(self):
+        """
+        This function removes any files created by server/comm/mom/scheduler
+        objects
+        """
+        for dyn_files in self.dyn_created_files:
+            self.du.rm(path=dyn_files, sudo=True, force=True)
+        self.dyn_created_files = []
 
 
 class Comm(PBSService):
@@ -11063,7 +11073,7 @@ class Scheduler(PBSService):
 
     def add_server_dyn_res(self, custom_resource, script_body=None,
                            res_file=None, apply=True, validate=True,
-                           dirname=None, host=None, perm=0744,
+                           dirname=None, host=None, perm=0700,
                            prefix='PtlPbsSvrDynRes', suffix='.scr'):
         """
         Add a server dynamic resource script or file to the scheduler
@@ -11093,21 +11103,19 @@ class Scheduler(PBSService):
         :type suffix: str
         """
         if res_file is not None:
-            f = open(file)
-            script_body = f.readlines()
-            f.close()
-            self.du.chmod(self.hostname, path=res_file, mode=perm, sudo=True)
+            with open(res_file) as f:
+                script_body = f.readlines()
+                self.du.chmod(self.hostname, path=res_file, mode=perm,
+                              sudo=True)
         else:
-            conf_file = self.du.get_pbs_conf_file(hostname=host)
-            config = self.du.parse_pbs_config(file=conf_file, hostname=host)
-            pbs_home_dir = config['PBS_HOME']
             if dirname is None:
-                dirname = pbs_home_dir
+                dirname = self.pbs_conf['PBS_HOME']
             res_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
                                                 body=script_body,
                                                 asuser="root",
                                                 dirname=dirname, hostname=host,
                                                 mode=perm)
+            self.dyn_created_files.append(res_file)
 
         self.server_dyn_res.append(res_file)
         self.logger.info(self.logprefix + "adding server dyn res " + res_file)
@@ -13472,7 +13480,7 @@ class MoM(PBSService):
         pass
 
     def add_mom_dyn_res(self, custom_resource, script_body=None,
-                        res_file=None, dirname=None, host=None, perm=0744,
+                        res_file=None, dirname=None, host=None, perm=0700,
                         prefix='PtlPbsMomDynRes', suffix='.scr'):
         """
         Add a mom dynamic resource script or file to the mom
@@ -13481,7 +13489,7 @@ class MoM(PBSService):
         :param custom_resource: The name of the custom resource to
                                 define
         :type custom_resource: str
-        :param script_body: The body of the mom  dynamic resource
+        :param script_body: The body of the mom dynamic resource
         :param res_file: Alternatively to passing the script body, use
                      the file instead
         :type res_file: str or None
@@ -13497,21 +13505,19 @@ class MoM(PBSService):
         :type suffix: str
         """
         if res_file is not None:
-            f = open(file)
-            script_body = f.readlines()
-            f.close()
-            self.du.chmod(self.hostname, path=res_file, mode=perm, sudo=True)
+            with open(res_file) as f:
+                script_body = f.readlines()
+                self.du.chmod(self.hostname, path=res_file, mode=perm,
+                              sudo=True)
         else:
             if dirname is None:
-                conf_file = self.du.get_pbs_conf_file(hostname=host)
-                config = self.du.parse_pbs_config(file=conf_file,
-                                                  hostname=host)
-                dirname = config['PBS_HOME']
+                dirname = self.pbs_conf['PBS_HOME']
             res_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
                                                 body=script_body,
                                                 asuser="root",
                                                 dirname=dirname, hostname=host,
                                                 mode=perm)
+            self.dyn_created_files.append(res_file)
 
         self.logger.info(self.logprefix + "adding mom dyn res " + res_file)
         self.logger.info("-" * 30)

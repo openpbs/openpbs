@@ -740,13 +740,13 @@ parse_config(char *fname)
 								tok++;
 
 							if (tok != NULL && tok[0] == '!') {
-								int err;
 								tok++;
 								tmp2 = string_dup(tok);
 								filename = get_script_name(tok);
 								if (filename == NULL)
 									error = 1;
 								else {
+									int err;
 #ifdef  WIN32
 									err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
 #else

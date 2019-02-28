@@ -41,7 +41,7 @@ from ptl.lib.pbs_ifl_mock import *
 
 class TestServerDynRes(TestFunctional):
 
-    filenames = []
+    dirnames = []
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -70,38 +70,31 @@ class TestServerDynRes(TestFunctional):
     def setup_dyn_res(self, resname, restype, script_body):
         """
         Helper function to setup server dynamic resources
+        returns a list of dynamic resource scripts created by the function
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         val = []
+        scripts = []
         attr = {}
-        ln = len(resname)
-        for i in range(ln):
+        for i in range(len(resname)):
             attr["type"] = restype[i]
             self.server.manager(MGR_CMD_CREATE, RSC, attr, id=resname[i],
                                 expect=True)
             # Add resource to sched_config's 'resources' line
             self.scheduler.add_resource(resname[i])
-
-            # To create multiple server dynamic resources in sched_config
-            # from PTL, a list containing "resource !<script>" should be
-            # supplied as value to the key 'server_dyn_res' when calling
-            # set_sched_config().
-            # But this workaround works only if sched_config already has a
-            # server_dyn_res entry.
-            # HACK: So adding a single resource first and then the list.
-            # There wouldn't be any duplicate entries though.
             dest_file = self.scheduler.add_server_dyn_res(resname[i],
                                                           script_body[i],
                                                           prefix="svr_resc",
                                                           suffix=".scr")
             val.append('"' + resname[i] + ' ' + '!' + dest_file + '"')
-            self.filenames.append(dest_file)
+            scripts.append(dest_file)
         a = {'server_dyn_res': val}
         self.scheduler.set_sched_config(a)
 
         # The server dynamic resource script gets executed for every
         # scheduling cycle
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        return scripts
 
     def test_invalid_script_out(self):
         """
@@ -114,7 +107,7 @@ class TestServerDynRes(TestFunctional):
         script_body = ["echo abc"]
 
         # Add it as a server_dyn_res that returns a string output
-        self.setup_dyn_res(resname, restype, script_body)
+        filenames = self.setup_dyn_res(resname, restype, script_body)
 
         # Submit a job
         j = Job(TEST_USER)
@@ -127,7 +120,7 @@ class TestServerDynRes(TestFunctional):
 
         # Also check that "<script> returned bad output"
         # is in the logs
-        self.scheduler.log_match("%s returned bad output" % self.filenames[0])
+        self.scheduler.log_match("%s returned bad output" % filenames[0])
 
         # The scheduler uses 0 as the available amount of the dynamic resource
         # if the server_dyn_res script output is bad
@@ -407,11 +400,6 @@ class TestServerDynRes(TestFunctional):
         job run is correctly considered
         """
 
-        # This test must run as root because it modifies a root owned
-        # file
-        if os.getuid() != 0:
-            self.skipTest("Test must run as root")
-
         # Create a resource of type size
         resname = ["foobar"]
         restype = ["size"]
@@ -419,7 +407,7 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         resval = ["echo 100gb"]
 
-        self.setup_dyn_res(resname, restype, resval)
+        filenames = self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
@@ -431,7 +419,7 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid)
 
         # Change script during job run
-        cmd = ["echo", "\"echo 50gb\"", " > ", self.filenames[0]]
+        cmd = ["echo", "\"echo 50gb\"", " > ", filenames[0]]
         self.du.run_cmd(cmd=cmd, runas=ROOT_USER, as_script=True)
 
         # Rerun job
@@ -456,7 +444,7 @@ class TestServerDynRes(TestFunctional):
         # Script returns invalid value for resource type 'size'
         resval = ["echo two gb"]
 
-        self.setup_dyn_res(resname, restype, resval)
+        filenames = self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foobar': '2gb'}
@@ -465,7 +453,7 @@ class TestServerDynRes(TestFunctional):
 
         # Also check that "<script> returned bad output"
         # is in the logs
-        self.scheduler.log_match("%s returned bad output" % self.filenames[0])
+        self.scheduler.log_match("%s returned bad output" % filenames[0])
 
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
@@ -487,7 +475,7 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         resval = ["echo abc"]
 
-        self.setup_dyn_res(resname, restype, resval)
+        filenames = self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foo': '1.2'}
@@ -496,7 +484,7 @@ class TestServerDynRes(TestFunctional):
 
         # Also check that "<script> returned bad output"
         # is in the logs
-        self.scheduler.log_match("%s returned bad output" % self.filenames[0])
+        self.scheduler.log_match("%s returned bad output" % filenames[0])
 
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
@@ -518,7 +506,7 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         resval = ["echo yes"]
 
-        self.setup_dyn_res(resname, restype, resval)
+        filenames = self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foo': '"true"'}
@@ -527,7 +515,7 @@ class TestServerDynRes(TestFunctional):
 
         # Also check that "<script> returned bad output"
         # is in the logs
-        self.scheduler.log_match("%s returned bad output" % self.filenames[0])
+        self.scheduler.log_match("%s returned bad output" % filenames[0])
 
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
@@ -551,23 +539,21 @@ class TestServerDynRes(TestFunctional):
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=home_dir,
                                                validate=False)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         if os.getuid() != 0:
                 self.check_access_log(fp, exist=True)
         else:
@@ -582,24 +568,23 @@ class TestServerDynRes(TestFunctional):
                                                dirname=dir_temp,
                                                validate=False)
 
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
-        self.filenames.append(dir_temp)
+        # Add to dirnames for cleanup
+        self.dirnames.append(dir_temp)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp)
 
         # Create dynamic resource script in PBS_HOME directory and check
@@ -608,26 +593,25 @@ class TestServerDynRes(TestFunctional):
         # PBS_HOME as root
         fp = self.scheduler.add_server_dyn_res("foo", scr_body, perm=0766,
                                                validate=False)
-        self.filenames.append(fp)
 
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True, runas=ROOT_USER)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp, exist=False)
 
     def tearDown(self):
         # removing all files creating in test
-        if len(self.filenames) != 0:
-            self.du.rm(path=self.filenames, sudo=True, force=True,
+        if len(self.dirnames) != 0:
+            self.du.rm(path=self.dirnames, sudo=True, force=True,
                        recursive=True)
-            self.filenames[:] = []
+            self.dirnames[:] = []
         TestFunctional.tearDown(self)

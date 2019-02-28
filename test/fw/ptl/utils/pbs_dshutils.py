@@ -1876,7 +1876,7 @@ class DshUtils(object):
         :type body: str or None
         :param level: logging level, defaults to INFOCLI2
         :type level: int
-        :param mode: mode to use while creating directories
+        :param mode: mode to use while creating files
                      (must be octal like 0777)
         """
         home_dir = os.path.expanduser("~")
@@ -1903,7 +1903,7 @@ class DshUtils(object):
             if dirname:
                 dest_file = os.path.join(dirname, tmpfile.split(os.sep)[-1])
             else:
-                dest_file = os.path.join(os.sep, 'home', str(asuser),
+                dest_file = os.path.join(os.path.expanduser("~" + str(asuser)),
                                          tmpfile.split(os.sep)[-1])
         elif dirname:
             # create the file in specified directory
@@ -1911,7 +1911,8 @@ class DshUtils(object):
         else:
             # Neither user is provided nor directory, create the file in
             # tmp directory
-            dest_file = os.path.join(os.sep, 'tmp', tmpfile.split(os.sep)[-1])
+            temp_dir = self.get_tempdir(hostname)
+            dest_file = os.path.join(temp_dir, tmpfile.split(os.sep)[-1])
         # copy file in any of the following conditions:
         # 1 - If asuser is set and it is not the current user
         # 2 - If destination file path is not same as temporary file path
