@@ -3217,7 +3217,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		po = get_preemption_order(pjob, sinfo);
 		if (po != NULL) {
 			if (po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
-				pjob->job->resreleased = create_res_released_array(npolicy,pjob);
+				pjob->job->resreleased = create_res_released_array(npolicy, pjob);
 				pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
 			}
 		}
@@ -4825,7 +4825,7 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 	if (policy->rel_on_susp != NULL) {
 		for (i = 0; nspec_arr[i] != NULL; i++) {
 			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
-				if (req->type.is_consumable == 1 && resdef_exists_in_array(policy->rel_on_susp, req->def) ==  0)
+				if (req->type.is_consumable == 1 && resdef_exists_in_array(policy->rel_on_susp, req->def) == 0)
 					req->amount = 0;
 			}
 		}

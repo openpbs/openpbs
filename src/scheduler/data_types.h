@@ -331,7 +331,7 @@ struct server_info
 	/* the number of running jobs in each preempt level
 	 * all jobs in preempt_count[NUM_PPRIO] are unknown preempt status's
 	 */
-	int preempt_count[NUM_PPRIO+1];
+	int preempt_count[NUM_PPRIO + 1];
 
 	counts *group_counts;		/* group resource and running counts */
 	counts *project_counts;		/* project resource and running counts */

@@ -2011,14 +2011,14 @@ create_server_arrays(server_info *sinfo)
 
 	if ((job_arr = (resource_resv **)
 		malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1))) ==NULL) {
-		log_err(errno, "create_server_arrays", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
 	if ((all_arr = (resource_resv **) malloc(sizeof(resource_resv *) *
 		(sinfo->sc.total + sinfo->num_resvs + 1))) == NULL) {
 		free(job_arr);
-		log_err(errno, "create_server_arrays", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
@@ -2044,7 +2044,7 @@ create_server_arrays(server_info *sinfo)
 #ifdef NAS /* localmod 054 */
 	if (i != sinfo->sc.total) {
 		sprintf(log_buffer, "Expected %d jobs, but found %d", sinfo->sc.total, i);
-		log_err(-1, "create_server_arrays", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		sinfo->sc.total = i;
 	}
 #endif /* localmod 054 */
@@ -2057,7 +2057,7 @@ create_server_arrays(server_info *sinfo)
 #ifdef NAS /* localmod 054 */
 		if (j != sinfo->num_resvs) {
 			sprintf(log_buffer, "Expected %d resv, but found %d", sinfo->num_resvs, j);
-			log_err(-1, "create_server_arrays", log_buffer);
+			log_err(-1, __func__, log_buffer);
 			if (j > sinfo->num_resvs) {
 				abort();
 			}
@@ -2088,7 +2088,7 @@ create_server_arrays(server_info *sinfo)
 int
 check_run_job(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job !=NULL)
+	if (job->is_job && job->job != NULL)
 		return job->job->is_running;
 
 	return 0;
@@ -2107,7 +2107,7 @@ check_run_job(resource_resv *job, void *arg)
 int
 check_exit_job(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job !=NULL)
+	if (job->is_job && job->job != NULL)
 		return job->job->is_exiting;
 
 	return 0;
@@ -2127,7 +2127,7 @@ check_exit_job(resource_resv *job, void *arg)
 int
 check_run_resv(resource_resv *resv, void *arg)
 {
-	if (resv->is_resv && resv->resv !=NULL)
+	if (resv->is_resv && resv->resv != NULL)
 		return resv->resv->resv_state == RESV_RUNNING;
 
 	return 0;
@@ -2147,7 +2147,7 @@ check_run_resv(resource_resv *resv, void *arg)
 int
 check_susp_job(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job !=NULL)
+	if (job->is_job && job->job != NULL)
 		return job->job->is_suspended;
 
 	return 0;
@@ -2167,7 +2167,7 @@ check_susp_job(resource_resv *job, void *arg)
 int
 check_job_not_in_reservation(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job != NULL && job->job->resv== NULL)
+	if (job->is_job && job->job != NULL && job->job->resv == NULL)
 		return 1;
 
 	return 0;
@@ -3353,14 +3353,14 @@ read_formula(void)
 	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
 	if ((fp = fopen(pathbuf, "r")) == NULL) {
 		schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO,
-			"read_formula",
+			__func__,
 			"Can not open file to read job_sort_formula.  "
 			"Please reset formula with qmgr.");
 		return NULL;
 	}
 
 	if ((form = malloc(bufsize + 1)) == NULL) {
-		log_err(errno, "read_formula", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		fclose(fp);
 		return NULL;
 	}
@@ -3375,7 +3375,7 @@ read_formula(void)
 		if (len > bufsize) {
 			tmp = realloc(form, len*2 + 1);
 			if (tmp == NULL) {
-				log_err(errno, "read_formula", MEM_ERR_MSG);
+				log_err(errno, __func__, MEM_ERR_MSG);
 				free(form);
 				fclose(fp);
 				return NULL;
@@ -3874,15 +3874,20 @@ int
 create_resource_assn_for_node(node_info *ninfo)
 {
 	schd_resource *r;
+	schd_resource *ncpus_res = NULL;
 	int i;
 
 	if(ninfo == NULL)
 		return 0;
 
 	for (r = ninfo->res; r != NULL; r = r->next)
-		if(r->type.is_consumable)
+		if(r->type.is_consumable) {
 			r->assigned = 0;
+			if (r->def == getallres(RES_NCPUS))
+				ncpus_res = r;
+		}
 
+	/* First off, add resource from running jobs (that aren't in resvs) */
 	if (ninfo->job_arr != NULL) {
 		for (i = 0; ninfo->job_arr[i] != NULL; i++) {
 			/* ignore jobs in reservations.  The resources will be accounted for with the reservation itself.  */
@@ -3899,6 +3904,7 @@ create_resource_assn_for_node(node_info *ninfo)
 		}
 	}
 
+	/* Next up, account for running reservations.  Running reservations consume all resources on the node when they start.  */
 	if (ninfo->run_resvs_arr != NULL) {
 		for (i = 0; ninfo->run_resvs_arr[i] != NULL; i++) {
 			if (ninfo->run_resvs_arr[i]->nspec_arr != NULL) {
@@ -3911,6 +3917,40 @@ create_resource_assn_for_node(node_info *ninfo)
 			}
 		}
 	}
+
+	/* Lastly if restrict_res_to_release_on_suspend is set, suspended jobs may not have released all their resources
+	 * This is tricky since a suspended job knows what resources they released.
+	 * We need to know what they didn't release to account for in the nodes resources_assigned
+	 */
+	if (ninfo->num_susp_jobs > 0) {
+		int i, j;
+		server_info *sinfo = ninfo->server;
+		for (i = 0; sinfo->jobs[i] != NULL; i++) {
+			if (sinfo->jobs[i]->job->is_suspended) {
+				nspec *ens;
+				ens = find_nspec(sinfo->jobs[i]->nspec_arr, ninfo);
+				if (ens != NULL) {
+					nspec *rns;
+					rns = find_nspec(sinfo->jobs[i]->job->resreleased, ninfo);
+					if (rns != NULL) {
+						resource_req *cur_req;
+						for (cur_req = ens->resreq; cur_req != NULL; cur_req = cur_req->next) {
+							if (cur_req->type.is_consumable)
+								if (find_resource_req(rns->resreq, cur_req->def) == NULL) {
+									schd_resource *nres;
+									nres = find_resource(ninfo->res, cur_req->def);
+									if (nres != NULL)
+										nres->assigned += cur_req->amount;
+								}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (ncpus_res != NULL && ncpus_res->assigned < ncpus_res->avail)
+		set_node_info_state(ninfo, ND_free);
 
 	return 1;
 }
