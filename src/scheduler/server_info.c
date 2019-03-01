@@ -3923,7 +3923,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	 * We need to know what they didn't release to account for in the nodes resources_assigned
 	 */
 	if (ninfo->num_susp_jobs > 0) {
-		int i, j;
+		int i;
 		server_info *sinfo = ninfo->server;
 		for (i = 0; sinfo->jobs[i] != NULL; i++) {
 			if (sinfo->jobs[i]->job->is_suspended) {
