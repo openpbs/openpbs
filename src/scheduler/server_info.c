@@ -3921,12 +3921,13 @@ create_resource_assn_for_node(node_info *ninfo)
 	/* Lastly if restrict_res_to_release_on_suspend is set, suspended jobs may not have released all their resources
 	 * This is tricky since a suspended job knows what resources they released.
 	 * We need to know what they didn't release to account for in the nodes resources_assigned
+	 * Also, we only need to deal with suspended jobs outside of reservations since resources for reservations were handled above.
 	 */
 	if (ninfo->num_susp_jobs > 0) {
 		int i;
 		server_info *sinfo = ninfo->server;
 		for (i = 0; sinfo->jobs[i] != NULL; i++) {
-			if (sinfo->jobs[i]->job->is_suspended) {
+			if (sinfo->jobs[i]->job->is_suspended && sinfo->jobs[i]->job->resv == NULL) {
 				nspec *ens;
 				ens = find_nspec(sinfo->jobs[i]->nspec_arr, ninfo);
 				if (ens != NULL) {
