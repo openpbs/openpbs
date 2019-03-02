@@ -539,14 +539,11 @@ for jk in e.job_list.keys():
         self.assertTrue(rv)
 
         a = {'resources_available.ncpus': '2'}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.hostA,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.hostA)
 
-        self.server.manager(MGR_CMD_SET, NODE, a, self.hostB,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.hostB)
 
-        self.server.manager(MGR_CMD_SET, NODE, a, self.hostC,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.hostC)
 
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}

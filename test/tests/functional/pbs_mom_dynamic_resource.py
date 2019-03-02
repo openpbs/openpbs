@@ -57,8 +57,7 @@ class TestMomDynRes(TestFunctional):
 
         for i, name in enumerate(resc_name):
             attr = {"type": resc_type[i], "flag": resc_flag[i]}
-            self.server.manager(MGR_CMD_CREATE, RSC, attr,
-                                id=name, expect=True)
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id=name)
 
             dest_file = self.mom.add_mom_dyn_res(name, script_body[i],
                                                  prefix="mom_resc",
@@ -355,8 +354,7 @@ class TestMomDynRes(TestFunctional):
         """
 
         attr = {"type": "long", "flag": "h"}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr,
-                            id="foo", expect=True)
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id="foo")
         scr_body = ['echo "10"', 'exit 0']
         home_dir = os.path.expanduser("~")
         fp = self.mom.add_mom_dyn_res("foo", script_body=scr_body,

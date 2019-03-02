@@ -71,11 +71,9 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         else:
             self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'job_requeue_timeout': 175}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'job_requeue_timeout': 175})
 
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'log_events': 4095}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
     def test_small_job_file(self):
         """

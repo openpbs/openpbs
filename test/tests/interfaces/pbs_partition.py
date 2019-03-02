@@ -81,21 +81,14 @@ class TestPartition(TestInterfaces):
                         'started': start,
                         'partition': partition}
                 self.server.manager(MGR_CMD_CREATE,
-                                    QUEUE, attr,
-                                    id=name, expect=True, runas=user)
+                                    QUEUE, attr, id=name, runas=user)
             elif mgr_cmd == MGR_CMD_SET:
                 attr = {'partition': partition}
-                self.server.manager(
-                    MGR_CMD_SET,
-                    QUEUE,
-                    attr,
-                    id=name,
-                    expect=True,
+                self.server.manager(MGR_CMD_SET, QUEUE, attr, id=name,
                     runas=user)
             elif mgr_cmd == MGR_CMD_UNSET:
                 self.server.manager(MGR_CMD_UNSET, QUEUE,
-                                    "partition", id=name, expect=True,
-                                    runas=user)
+                                    "partition", id=name, runas=user)
             else:
                 msg = ("Error: partition_attr function takes only "
                        "MGR_CMD_[CREATE/SET/UNSET] value for mgr_cmd when "
@@ -107,11 +100,10 @@ class TestPartition(TestInterfaces):
             attr = {'partition': partition}
             if mgr_cmd == MGR_CMD_SET:
                 self.server.manager(MGR_CMD_SET, NODE, attr,
-                                    id=name, expect=True, runas=user)
+                                    id=name, runas=user)
             elif mgr_cmd == MGR_CMD_UNSET:
                 self.server.manager(MGR_CMD_UNSET, NODE,
-                                    "partition", id=name, expect=True,
-                                    runas=user)
+                                    "partition", id=name, runas=user)
             else:
                 msg = ("Error: partition_attr function takes only "
                        "MGR_CMD_SET/MGR_CMD_UNSET value for mgr_cmd when "
@@ -256,8 +248,7 @@ class TestPartition(TestInterfaces):
             partition="P2")
         self.partition_attr(mgr_cmd=MGR_CMD_UNSET, obj_name="NODE")
         self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': "Q2"}, id=self.server.shortname,
-                            expect=True)
+                            'queue': "Q2"}, id=self.server.shortname)
         self.partition_attr(obj_name="NODE", partition="P2")
 
     def test_mismatch_of_partition_on_node_and_queue(self):

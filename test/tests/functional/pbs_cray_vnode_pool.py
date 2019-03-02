@@ -249,7 +249,7 @@ class TestVnodePool(TestFunctional):
         attr_2 = {'vnode_pool': '2'}
         try:
             self.server.manager(
-                MGR_CMD_SET, NODE, id=self.hostA, attrib=attr_2, expect=False)
+                MGR_CMD_SET, NODE, id=self.hostA, attrib=attr_2)
         except PbsManagerError as e:
             self.assertTrue("Invalid request" in e.msg[0])
 
@@ -269,7 +269,7 @@ class TestVnodePool(TestFunctional):
         attr_2 = {'vnode_pool': '2'}
         try:
             self.server.manager(MGR_CMD_SET, NODE, id=self.hostB,
-                                attrib=attr_2, expect=False)
+                                attrib=attr_2)
         except PbsManagerError as e:
             self.assertTrue("Invalid request" in e.msg[0])
 
@@ -277,6 +277,6 @@ class TestVnodePool(TestFunctional):
                               max_attempts=5, starttime=start_time)
         try:
             self.server.manager(MGR_CMD_UNSET, NODE, id=self.hostB,
-                                attrib='vnode_pool', expect=False)
+                                attrib='vnode_pool')
         except PbsManagerError as e:
             self.assertTrue("Illegal value for node vnode_pool" in e.msg[0])

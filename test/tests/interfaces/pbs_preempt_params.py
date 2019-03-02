@@ -98,8 +98,7 @@ class TestPreemptParamsQmgr(TestInterfaces):
                             runas=ROOT_USER)
 
         a = {param: 150}
-        self.server.manager(MGR_CMD_LIST, SCHED, a,
-                            expect=True, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)
 
     def test_set_unset_preempt_prio(self):
         """
@@ -128,16 +127,14 @@ class TestPreemptParamsQmgr(TestInterfaces):
 
         p = 'starving_jobs, normal_jobs, starving_jobs+fairshare,fairshare'
         a = {param: p}
-        self.server.manager(MGR_CMD_LIST, SCHED, a,
-                            expect=True, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)
 
         self.server.manager(MGR_CMD_UNSET, SCHED, param,
                             runas=ROOT_USER)
 
         p = 'express_queue, normal_jobs'
         a = {param: p}
-        self.server.manager(MGR_CMD_LIST, SCHED, a,
-                            expect=True, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)
 
     def test_set_unset_preempt_order(self):
         """
@@ -174,8 +171,7 @@ class TestPreemptParamsQmgr(TestInterfaces):
 
         self.server.manager(MGR_CMD_UNSET, SCHED, param, runas=ROOT_USER)
 
-        self.server.manager(MGR_CMD_LIST, SCHED, a,
-                            expect=True, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)
 
     def test_set_unset_preempt_sort(self):
         """
@@ -199,5 +195,4 @@ class TestPreemptParamsQmgr(TestInterfaces):
         self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
 
         self.server.manager(MGR_CMD_UNSET, SCHED, param, runas=ROOT_USER)
-        self.server.manager(MGR_CMD_LIST, SCHED, a,
-                            expect=False, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)

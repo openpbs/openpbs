@@ -59,8 +59,7 @@ class TestHookUnsetRes(TestFunctional):
         rv = self.server.create_import_hook(
             hook_name, a, hook_body, overwrite=True)
         self.assertTrue(rv)
-        self.server.manager(MGR_CMD_SET, SERVER, {
-                            'log_events': 2047}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, { 'log_events': 2047})
         j = Job(TEST_USER, attrs={
                 'Resource_List.select': '1:ncpus=1', ATTR_h: None})
         jid = self.server.submit(j)

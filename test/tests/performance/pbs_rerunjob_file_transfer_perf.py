@@ -62,11 +62,9 @@ class JobRerunFileTransferPerf(TestPerformance):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'log_events': 4095}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'job_requeue_timeout': 1000}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'job_requeue_timeout': 1000})
 
     @timeout(600)
     def test_huge_job_file(self):

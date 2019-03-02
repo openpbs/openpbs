@@ -699,7 +699,7 @@ sleep 300
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         # Configure the scheduler to schedule using vmem
         a = {'resources': 'ncpus,mem,vmem,host,vnode,ngpus,nmics'}
         self.scheduler.set_sched_config(a)

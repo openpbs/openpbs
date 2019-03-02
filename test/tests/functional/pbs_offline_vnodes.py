@@ -82,8 +82,7 @@ class TestOfflineVnode(TestFunctional):
 
     def create_multi_vnodes(self, num_moms, num_vnode=3):
         if num_moms != len(self.moms):
-            self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
-                                expect=True)
+            self.server.manager(MGR_CMD_DELETE, NODE, id="@default")
         if self.is_cray is True:
             if num_moms == 1 and len(self.moms) != 1:
                 self.server.manager(MGR_CMD_CREATE, NODE,
@@ -132,8 +131,7 @@ class TestOfflineVnode(TestFunctional):
 
         # Restore original node setup for future test cases.
         self.server.cleanup_jobs(extend='force')
-        self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
-                            expect=True)
+        self.server.manager(MGR_CMD_DELETE, NODE, id="@default")
         for m in self.moms.values():
             self.server.manager(MGR_CMD_CREATE, NODE,
                                 id=m.shortname)

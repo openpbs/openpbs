@@ -57,11 +57,10 @@ class TestSchedSubjobBadstate(TestFunctional):
         self.mom.signal('-KILL')
 
         attr = {'state': 'free', 'resources_available.ncpus': '2'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname)
 
         attr = {'scheduling': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, attr, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
 
         j1 = Job(TEST_USER)
         j1.set_attributes({'Resource_List.ncpus': '2', ATTR_J: '1-3'})
@@ -70,7 +69,7 @@ class TestSchedSubjobBadstate(TestFunctional):
         now = time.time()
 
         attr = {'scheduling': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, attr, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
 
         self.scheduler.log_match("Leaving Scheduling Cycle",
                                  starttime=now,

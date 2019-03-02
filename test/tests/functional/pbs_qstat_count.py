@@ -44,8 +44,7 @@ class TestqstatStateCount(TestFunctional):
         TestFunctional.setUp(self)
         # set ncpus to a known value, 2 here
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            self.mom.shortname, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
     def submit_waiting_job(self, timedelta):
         """
@@ -164,8 +163,7 @@ class TestqstatStateCount(TestFunctional):
                 'queue_type': 'Execution',
                 'enabled': 'True',
                 'started': 'True'}
-            self.server.manager(MGR_CMD_CREATE, QUEUE,
-                                a, que, expect=True)
+            self.server.manager(MGR_CMD_CREATE, QUEUE, a, que)
 
         q1_attr = {ATTR_queue: 'workq1'}
         q2_attr = {ATTR_queue: 'workq2'}
@@ -199,8 +197,7 @@ class TestqstatStateCount(TestFunctional):
                 'queue_type': 'Execution',
                 'enabled': 'True',
                 'started': 'True'}
-            self.server.manager(MGR_CMD_CREATE, QUEUE,
-                                a, que, expect=True)
+            self.server.manager(MGR_CMD_CREATE, QUEUE, a, que)
 
         q1_attr = {ATTR_queue: 'workq1'}
         q2_attr = {ATTR_queue: 'workq2'}

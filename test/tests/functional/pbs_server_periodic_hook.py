@@ -307,7 +307,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
             msg = "Able to set freq to zero"
             self.assertTrue(False, msg)
         attrs = {'enabled': "False", 'event': "periodic", 'freq': '120'}
-        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name, expect=True)
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         attrs = {'freq': "-1"}
         match_str1 = "set_hook_freq: freq value '-1'"
         match_str1 += " of a hook must be > 0"
@@ -402,7 +402,5 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         else:
             msg = "Able to create hook as other user"
             self.assertTrue(False, msg)
-        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name,
-                            expect=True)
-        self.server.manager(MGR_CMD_LIST, HOOK, {'freq': '120'}, hook_name,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+        self.server.manager(MGR_CMD_LIST, HOOK, {'freq': '120'}, hook_name)

@@ -758,7 +758,7 @@ class TestAdminSuspend(TestFunctional):
 
         # set preempt_order to R
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'},
-                            expect=True, runas=ROOT_USER)
+                            runas=ROOT_USER)
 
         # submit a job
         j = Job(TEST_USER)

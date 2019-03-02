@@ -58,9 +58,7 @@ class TestPBSSnapshot(TestFunctional):
         # Create a custom resource called 'ngpus'
         # This will help us test parts of PBSSnapUtils which handle resources
         attr = {"type": "long", "flag": "nh"}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr,
-                            id="ngpus", expect=True,
-                            sudo=True)
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id="ngpus", sudo=True)
 
         # Check whether pbs_snapshot is accessible
         try:
@@ -114,7 +112,7 @@ class TestPBSSnapshot(TestFunctional):
             self.scheds[sched_id].create_scheduler()
             self.scheds[sched_id].start()
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id=sched_id, expect=True)
+                            {'scheduling': 'True'}, id=sched_id)
 
     def setup_queues_nodes(self, num_partitions):
         """
@@ -147,7 +145,7 @@ class TestPBSSnapshot(TestFunctional):
             id_n = "vnode[" + str(i) + "]"
             nodes.append(id_n)
             a = {"partition": partition_id}
-            self.server.manager(MGR_CMD_SET, NODE, a, id=id_n, expect=True)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=id_n)
 
         return (queues, nodes)
 

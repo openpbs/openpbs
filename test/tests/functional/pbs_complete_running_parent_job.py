@@ -53,7 +53,7 @@ class Test_complete_running_parent_job(TestFunctional):
         TestFunctional.setUp(self)
 
         self.server.manager(MGR_CMD_SET, SERVER, {
-                            'eligible_time_enable': True}, expect=True)
+                            'eligible_time_enable': True})
 
     def test_parent_job_S_accounting_record(self):
         """

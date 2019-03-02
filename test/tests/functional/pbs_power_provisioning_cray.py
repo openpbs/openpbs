@@ -470,9 +470,9 @@ e.accept()
         nodes = self.server.status(NODE)
         host = nodes[0]['id']
         self.server.manager(MGR_CMD_SET, NODE, {'poweroff_eligible': 'True'},
-                            expect=True, id=host)
+                            id=host)
         self.server.manager(MGR_CMD_SET, NODE, {'poweroff_eligible': 'False'},
-                            expect=True, id=host)
+                            id=host)
 
     def test_last_state_change_time(self):
         """
@@ -935,7 +935,7 @@ e.accept()
         self.setup_power_ramp_rate()
         self.scheduler.set_sched_config({'strict_ordering': 'True ALL'})
         self.server.manager(MGR_CMD_SET, NODE, {'poweroff_eligible': 'False'},
-                            expect=True, id=self.names[0])
+                            id=self.names[0])
         a = {"power_ramp_rate_enable": True, 'node_idle_limit': '30'}
         self.modify_hook_config(attrs=a, hook_id='PBS_power')
         a = {'freq': 60}

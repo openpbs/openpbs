@@ -283,8 +283,7 @@ class TestPbsReliableJobStartup(TestFunctional):
         a = {'resources_available.ncpus': 2,
              'resources_available.mem': '2gb'}
         # set natural vnode of hostC
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC)
 
         # set node momD
         # This one has no vnode definition.
@@ -295,8 +294,7 @@ class TestPbsReliableJobStartup(TestFunctional):
         a = {'resources_available.ncpus': 5,
              'resources_available.mem': '5gb'}
         # set natural vnode of hostD
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostD,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostD)
 
         # set node momE
         self.hostE = self.momE.shortname
@@ -1198,7 +1196,7 @@ if e.job.in_ms_mom():
         TestFunctional.tearDown(self)
         # Delete managers and operators if added
         attrib = ['operators', 'managers']
-        self.server.manager(MGR_CMD_UNSET, SERVER, attrib, expect=True)
+        self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
 
     @timeout(400)
     def test_t1(self):

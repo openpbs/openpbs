@@ -324,8 +324,7 @@ class TestPbsNodeRampDown(TestFunctional):
         a = {'resources_available.ncpus': 2,
              'resources_available.mem': '2gb'}
         # set natural vnode of hostC
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostC)
 
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
         self.server.expect(VNODE, {'state=free': 11}, op=EQ, count=True,
@@ -599,7 +598,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         TestFunctional.tearDown(self)
         # Delete managers and operators if added
         attrib = ['operators', 'managers']
-        self.server.manager(MGR_CMD_UNSET, SERVER, attrib, expect=True)
+        self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
 
     def test_release_nodes_on_stageout_true(self):
         """
@@ -1870,8 +1869,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # Set hostC node to be of cray type
         a = {'resources_available.vntype': 'cray_login'}
         # set natural vnode of hostC
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.n7,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.n7)
 
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
@@ -1975,8 +1973,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # Set hostB to be of cpuset type
         a = {'resources_available.arch': 'linux_cpuset'}
         # set natural vnode of hostC
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.n7,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.n7)
 
         # Run pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,

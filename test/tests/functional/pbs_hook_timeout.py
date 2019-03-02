@@ -80,8 +80,7 @@ class TestHookTimeout(TestFunctional):
         Test when the server doesn't receive an ACK from a mom for
         sending hooks he resends them
         """
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         timeout_max_attempt = 7
 
         # Make momB unresponsive

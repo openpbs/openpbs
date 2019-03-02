@@ -71,10 +71,10 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, 'workq2')
 
         a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=2]"}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
 
         a = {'max_run_res.mem': "[u:" + str(TEST_USER) + "=1500mb]"}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'Resource_List.select': '1:ncpus=3:mem=90mb',
              'Resource_List.walltime': 9999}
@@ -89,7 +89,7 @@ exit 0
             self.server.submit(j)
 
         sched_off = {'scheduling': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, sched_off, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, sched_off)
 
         a = {'Resource_List.select': '1:ncpus=3',
              'Resource_List.walltime': 9999}
@@ -104,7 +104,7 @@ exit 0
             self.server.submit(j)
 
         sched_on = {'scheduling': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, sched_on, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, sched_on)
 
         self.server.expect(JOB, {'job_state=R': 1590},
                            offset=15, interval=20)
@@ -150,8 +150,7 @@ exit 0
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
         a = {'preempt_prio': p}
-        self.server.manager(MGR_CMD_SET, SCHED, a, expect=True,
-                            runas=ROOT_USER)
+        self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
 
         self.create_workload_and_preempt()
 
@@ -168,8 +167,7 @@ exit 0
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
         a = {'preempt_prio': p}
-        self.server.manager(MGR_CMD_SET, SCHED, a, expect=True,
-                            runas=ROOT_USER)
+        self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
 
         self.create_workload_and_preempt()
 
@@ -211,7 +209,7 @@ exit 0
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
         self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            expect=False, runas=ROOT_USER)
+                            runas=ROOT_USER)
 
         jid = self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
@@ -300,7 +298,7 @@ exit 0
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
         self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            expect=True, runas=ROOT_USER)
+                            runas=ROOT_USER)
 
         jid = self.server.submit(j)
         jid2 = self.server.submit(j2)
@@ -374,7 +372,7 @@ exit 0
         # Add foo to the resources scheduler checks for
         self.scheduler.add_resource('foo')
         self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            expect=True, runas=ROOT_USER)
+                            runas=ROOT_USER)
 
         a = {ATTR_l + '.select': '1:ncpus=1', ATTR_l + '.foo': 25}
         j = Job(TEST_USER, attrs=a)

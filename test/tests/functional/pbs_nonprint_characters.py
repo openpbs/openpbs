@@ -948,7 +948,7 @@ e.env["LAUNCH_NONPRINT"] = "CD"
             self.assertTrue(rv)
             hk_name_esc = "h%sd" % self.npcat[ch]
             self.check_print_list_hook(hk_name, hk_name_esc)
-            self.server.manager(MGR_CMD_DELETE, HOOK, id=hk_name, expect=True)
+            self.server.manager(MGR_CMD_DELETE, HOOK, id=hk_name)
 
     def test_terminal_control_in_rsubH(self):
         """

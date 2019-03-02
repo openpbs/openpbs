@@ -60,7 +60,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         j1 = Job(TEST_USER)
         a = {'Resource_List.select': '1:ncpus=2',
@@ -102,7 +102,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         self.assertTrue(rv)
         a = {'backfill_depth': 2}
         self.server.manager(
-            MGR_CMD_SET, QUEUE, a, id='workq', expect=True)
+            MGR_CMD_SET, QUEUE, a, id='workq')
         a = {
             'queue_type': 'execution',
             'started': 't',
@@ -116,17 +116,10 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
             'backfill_depth': 0}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
         a = {'backfill_depth': 0}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 5}
-        self.server.manager(
-            MGR_CMD_SET,
-            NODE,
-            a,
-            self.mom.shortname,
-            expect=True)
-        self.server.manager(
-            MGR_CMD_SET, SERVER, {
-                'scheduling': 'False'}, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.server.manager( MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'workq'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
@@ -141,9 +134,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
         j5id = self.server.submit(j)
-        self.server.manager(
-            MGR_CMD_SET, SERVER, {
-                'scheduling': 'True'}, expect=True)
+        self.server.manager( MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB,
                            {'job_state': 'R'},
                            id=j1id,

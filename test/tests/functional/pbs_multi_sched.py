@@ -54,7 +54,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].create_scheduler()
         self.scheds['sc1'].start()
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1", expect=True)
+                            {'scheduling': 'True'}, id="sc1")
         self.scheds['sc1'].set_sched_config({'log_filter': 2048})
 
     def setup_sc2(self):
@@ -71,7 +71,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc2'].create_scheduler(dir_path)
         self.scheds['sc2'].start(dir_path)
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc2", expect=True)
+                            {'scheduling': 'True'}, id="sc2")
 
     def setup_sc3(self):
         a = {'partition': 'P3',
@@ -82,7 +82,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc3'].create_scheduler()
         self.scheds['sc3'].start()
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc3", expect=True)
+                            {'scheduling': 'True'}, id="sc3")
 
     def setup_queues_nodes(self):
         a = {'queue_type': 'execution',
@@ -93,19 +93,19 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq4')
         p1 = {'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq1', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq1')
         p2 = {'partition': 'P2'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p2, id='wq2', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, p2, id='wq2')
         p3 = {'partition': 'P3'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p3, id='wq3', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, p3, id='wq3')
         p4 = {'partition': 'P4'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p4, id='wq4', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, p4, id='wq4')
         a = {'resources_available.ncpus': 2}
         self.server.create_vnodes('vnode', a, 5, self.mom)
-        self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]', expect=True)
-        self.server.manager(MGR_CMD_SET, NODE, p2, id='vnode[1]', expect=True)
-        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[2]', expect=True)
-        self.server.manager(MGR_CMD_SET, NODE, p4, id='vnode[3]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]')
+        self.server.manager(MGR_CMD_SET, NODE, p2, id='vnode[1]')
+        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[2]')
+        self.server.manager(MGR_CMD_SET, NODE, p4, id='vnode[3]')
 
     def common_setup(self):
         self.setup_sc1()
@@ -220,7 +220,7 @@ class TestMultipleSchedulers(TestFunctional):
                             {'Scheduling': 'True'}, id="sc5")
         self.server.expect(SCHED, {'state': 'idle'}, id='sc5', max_attempts=10)
         a = {'resources_available.ncpus': 100}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc5")
         for _ in xrange(500):
@@ -275,13 +275,12 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'partition': (DECR, 'P4')}, id="sc1")
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
-                            id="sc1", expect=True)
+                            id="sc1")
         log_msg = "Scheduler does not contain a partition"
         self.scheds['sc1'].log_match(log_msg, max_attempts=10,
                                      starttime=self.server.ctime)
         # Blocked by PP-1202 will revisit once its fixed
-        # self.server.manager(MGR_CMD_UNSET, SCHED, 'partition',
-        #                    id="sc2", expect=True)
+        # self.server.manager(MGR_CMD_UNSET, SCHED, 'partition', id="sc2")
 
     def test_job_queue_partition(self):
         """
@@ -447,7 +446,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, RSC, a, id='gpus')
         self.scheds['sc3'].add_resource("gpus")
         a = {'resources_available.gpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='@default', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='@default')
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:gpus=2',
                                    'Resource_List.walltime': 60})
@@ -886,10 +885,10 @@ class TestMultipleSchedulers(TestFunctional):
              'started': 'True',
              'enabled': 'True',
              'partition': 'P1'}
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1', expect=True)
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
         a = {'partition': 'P1', 'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a,
-                            id=self.mom.shortname, expect=True)
+                            id=self.mom.shortname)
 
         self.scheds['sc1'].add_to_resource_group(TEST_USER,
                                                  11, 'root', 10)
@@ -1412,7 +1411,7 @@ class TestMultipleSchedulers(TestFunctional):
              'sched_log': os.path.join(dir_path, 'sched_logs_sc2'),
              'sched_host': self.server.hostname,
              'sched_port': '15051'}
-        self.server.manager(MGR_CMD_LIST, SCHED, a, id="sc2", expect=True)
+        self.server.manager(MGR_CMD_LIST, SCHED, a, id="sc2")
 
         self.server.manager(MGR_CMD_LIST, SCHED, id="sc3")
 
@@ -1462,16 +1461,15 @@ class TestMultipleSchedulers(TestFunctional):
              'started': 'True',
              'enabled': 'True'}
         a.update(p3)
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1', expect=True)
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
         a = {'resources_available.ncpus': 2}
         self.server.create_vnodes('vnode', a, 2, self.mom)
-        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[0]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[0]')
         # Set job_sort_formula on the server
         self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': 'ncpus'})
         # Set job_sort_formula_threshold on the multisched
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'job_sort_formula_threshold': '2'},
-                            id="sc3", expect=True)
+                            {'job_sort_formula_threshold': '2'}, id="sc3")
         # Submit job to multisched
         j1_attrs = {ATTR_queue: 'wq1', 'Resource_List.ncpus': '1'}
         J1 = Job(TEST_USER, j1_attrs)
@@ -1790,9 +1788,9 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_sc3()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduler_iteration': 1},
-                            id="sc3", expect=True)
+                            id="sc3")
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
-                            id="sc3", expect=True)
+                            id="sc3")
 
         self.logger.info('The sleep is 15 seconds which will trigger required '
                          'number of scheduling cycles that are needed to '
@@ -1829,8 +1827,7 @@ class TestMultipleSchedulers(TestFunctional):
 
         self.du.mkdir(path=new_sched_log, sudo=True)
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'sched_log': new_sched_log},
-                            id="sc3", expect=True)
+                            {'sched_log': new_sched_log}, id="sc3")
 
         a = {'sched_log': new_sched_log}
         self.server.expect(SCHED, a, id='sc3', max_attempts=10)
@@ -1864,7 +1861,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.du.run_copy(src=dflt_sched_priv, dest=new_sched_priv,
                          recursive=True, sudo=True)
         self.server.manager(MGR_CMD_SET, SCHED, {'sched_priv': new_sched_priv},
-                            id="sc3", expect=True)
+                            id="sc3")
 
         a = {'sched_priv': new_sched_priv}
         self.server.expect(SCHED, a, id='sc3', max_attempts=10)
@@ -1923,7 +1920,7 @@ class TestMultipleSchedulers(TestFunctional):
         # queue associated to it. Expectation is in this case scheduler won't
         # crash
         a = {ATTR_queue: 'wq1'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]', expect="True")
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]')
 
         self.scheds['sc1'].terminate()
 
@@ -1970,20 +1967,20 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_sc1()
         self.setup_queues_nodes()
         a = {'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='@default', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='@default')
         a = {'node_sort_key': '"ncpus HIGH " ALL'}
         self.scheds['sc1'].set_sched_config(a)
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]')
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[1]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[1]')
         a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
         a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]')
         # Offlining the node as we do not need for the test
         a = {'state': 'offline'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[4]', expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[4]')
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl',
              ATTR_queue: 'wq1'}
@@ -2013,7 +2010,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         for name in self.scheds:
             self.server.manager(MGR_CMD_SET, SCHED,
-                                {'scheduling': 'False'}, id=name, expect=True)
+                                {'scheduling': 'False'}, id=name)
         a = {ATTR_queue: 'wq1',
              'Resource_List.select': '1:ncpus=2',
              'Resource_List.walltime': 60}
@@ -2021,7 +2018,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.submit(j)
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id='sc1', expect=True)
+                            {'scheduling': 'True'}, id='sc1')
         self.server.log_match("processing priority socket", starttime=t)
         a = {ATTR_queue: 'wq2',
              'Resource_List.select': '1:ncpus=2',
@@ -2030,5 +2027,5 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.submit(j)
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id='sc2', expect=True)
+                            {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)

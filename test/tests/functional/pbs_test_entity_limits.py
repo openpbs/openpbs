@@ -56,8 +56,7 @@ class TestEntityLimits(TestFunctional):
         TestFunctional.setUp(self)
 
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
     def common_limit_test(self, server, entstr, job_attr={}, queued=False,
                           exp_err=''):
