@@ -294,6 +294,12 @@ char * get_mem_info(void);
  */
 void convert_duration_to_str(time_t duration, char* buf, int bufsize);
 
+/**
+ * deduce the preemption ordering to be used for a job
+ */
+struct preempt_ordering *
+get_preemption_order(struct preempt_ordering *porder, double req, double used);
+
 #ifdef  __cplusplus
 }
 #endif
