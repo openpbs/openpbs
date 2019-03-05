@@ -455,7 +455,7 @@ class PBSTestSuite(unittest.TestCase):
     comm = None
     servers = None
     schedulers = {}
-    scheds = None
+    scheds = {}
     moms = None
     comms = None
 
