@@ -1481,6 +1481,7 @@ show_nonprint_chars(char *str)
  *  get_preemption_order - deduce the preemption ordering to be used for a job
  *
  *  @param[in]	porder - static value of preempt order from the sched object
+ *  						this array is assumed to be of size PREEMPT_ORDER_MAX
  *  @param[in]	req - amount of requested time for the job
  *  @param[in]	used - amount of used time by the job
  *

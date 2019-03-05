@@ -2726,7 +2726,7 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
 	resource_req *used; /* the amount of the walltime/cput used */
 
 	if (pjob == NULL || pjob->job == NULL || !pjob->job->is_running
-			|| pjob->ninfo_arr == NULL || rtime == NULL || utime == NULL)
+			|| rtime == NULL || utime == NULL)
 		return 1;
 
 	req = find_resource_req(pjob->resreq, getallres(RES_SOFT_WALLTIME));
@@ -2758,17 +2758,17 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
  * @return	: struct preempt_ordering.  array containing preemption order
  *
  */
-struct preempt_ordering *schd_get_preempt_order(resource_resv *pjob, server_info *sinfo)
+struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv, server_info *sinfo)
 {
 	struct preempt_ordering *po = NULL;
 	double req = -1.0;
 	double used = -1.0;
 
-	if (get_job_req_used_time(pjob, &req, &used) != 0)
+	if (get_job_req_used_time(resresv, &req, &used) != 0)
 		return NULL;
 
 	if (req == -1 || used == -1) {
-		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
+		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
 				"No walltime/cput to determine percent of time left - will use first preempt order");
 	}
 
