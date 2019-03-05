@@ -293,6 +293,8 @@ cd build
 %install
 cd build
 %make_install
+mandir=$(find %{buildroot} -type d -name man)
+[ -d "$mandir" ] && find $mandir -type f -exec gzip -9 -n {} \;
 
 %post %{pbs_server}
 ldconfig %{_libdir}
@@ -505,7 +507,6 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %doc README
 %license LICENSE
-
 
 %files %{pbs_client}
 %defattr(-,root,root, -)

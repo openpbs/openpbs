@@ -293,8 +293,11 @@ cd build
 %install
 cd build
 %make_install
+mandir=$(find %{buildroot} -type d -name man)
+[ -d "$mandir" ] && find $mandir -type f -exec gzip -9 -n {} \;
 
 %post %{pbs_server}
+ldconfig %{_libdir}
 # do not run pbs_postinstall when the CLE is greater than or equal to 6
 imps=0
 cle_release_version=0
@@ -311,6 +314,7 @@ else
 fi
 
 %post %{pbs_execution}
+ldconfig %{_libdir}
 # do not run pbs_postinstall when the CLE is greater than or equal to 6
 imps=0
 cle_release_version=0
@@ -327,6 +331,7 @@ else
 fi
 
 %post %{pbs_client}
+ldconfig %{_libdir}
 # do not run pbs_postinstall when the CLE is greater than or equal to 6
 imps=0
 cle_release_version=0
@@ -404,6 +409,7 @@ fi
 %postun %{pbs_server}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
+	ldconfig %{_libdir}
 	echo
 	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
 	echo
@@ -412,6 +418,7 @@ fi
 %postun %{pbs_execution}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
+	ldconfig %{_libdir}
 	echo
 	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
 	echo
@@ -420,6 +427,7 @@ fi
 %postun %{pbs_client}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
+	ldconfig %{_libdir}
 	echo
 	echo "NOTE: /etc/pbs.conf must be deleted manually"
 	echo
@@ -447,6 +455,7 @@ fi
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
+%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -457,6 +466,8 @@ fi
 %endif
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
+%doc README
+%license LICENSE
 
 %files %{pbs_execution}
 %defattr(-,root,root, -)
@@ -464,6 +475,7 @@ fi
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
+%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -493,12 +505,15 @@ fi
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
+%doc README
+%license LICENSE
 
 %files %{pbs_client}
 %defattr(-,root,root, -)
 %dir %{pbs_prefix}
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
+%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -537,6 +552,8 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
+%doc README
+%license LICENSE
 
 %if %{with ptl}
 %files %{pbs_ptl}
