@@ -830,6 +830,12 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		return;
 	}
 
+	if ((pjob->ji_qs.ji_state == JOB_STATE_HELD) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_HELD)) {
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			pjob->ji_qs.ji_jobid, "Leaving job in held state");
+		return;
+	}
+
 	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) {
 		static char ndreque[] = "Job requeued, execution node %s down";
 
@@ -2720,8 +2726,9 @@ discard_job(job *pjob, char *txt, int noack)
 		/* must be already discarding */
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			pjob->ji_qs.ji_jobid,
-			"in discard_job and has ji_discard");
-		return;
+			"cancel previous discard_job tracking for new discard_job request");
+		free(pjob->ji_discard);
+		pjob->ji_discard = NULL;
 	}
 
 	/* first count up number of vnodes in exec_vnode to size the	*/
