@@ -6759,11 +6759,20 @@ build_execvnode(job *pjob, char *nds)
 	}
 
        /* 
-        * if the number of nodes defined above in ndarray is not equal
-        * to the number of nodes identified, then skip the below loop
+        * if the number of nodes defined ndarray is not equal
+        * to the number of nodes identified by parse_plus_spec, then there's a 
+        * invalid vnode specification on the qrun
         */
 
-	if (rc || i != nnodes)
+	if (i != nnodes) {
+		while (i != nnodes) {
+                	if ((*(ndarray+i) = strdup(nds)) == NULL)
+                        	rc = errno;
+			++i;
+		}
+        }
+
+	if (rc)
 		goto done;
 
 	/* now loop breaking up the select spec into separate chunks */
