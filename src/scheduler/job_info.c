@@ -2743,6 +2743,9 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
 	if (req != NULL && used != NULL) {
 		*rtime = (double) req->amount;
 		*utime = (double) used->amount;
+	} else {
+		*rtime = -1.0;
+		*utime = -1.0;
 	}
 
 	return 0;
@@ -2758,7 +2761,7 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
  * @return	: struct preempt_ordering.  array containing preemption order
  *
  */
-struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv, server_info *sinfo)
+struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv)
 {
 	struct preempt_ordering *po = NULL;
 	double req = -1.0;
@@ -2767,10 +2770,9 @@ struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv, server_i
 	if (get_job_req_used_time(resresv, &req, &used) != 0)
 		return NULL;
 
-	if (req == -1 || used == -1) {
+	if (req == -1.0 || used == -1.0)
 		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
 				"No walltime/cput to determine percent of time left - will use first preempt order");
-	}
 
 	po = get_preemption_order(conf.preempt_order, req, used);
 
@@ -3221,7 +3223,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
 			"Simulation: preempting job");
 
-		po = schd_get_preempt_order(pjob, sinfo);
+		po = schd_get_preempt_order(pjob);
 		if (po != NULL) {
 			if (po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
 				pjob->job->resreleased = create_res_released_array(npolicy,pjob);
@@ -3477,7 +3479,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 
 		if (good) {
 			/* get the preemption order to be used for this job */
-			po = schd_get_preempt_order(rjobs[i], rjobs[i]->server);
+			po = schd_get_preempt_order(rjobs[i]);
 
 			/* check whether chosen order is enabled for this job */
 			for (j = 0; j < PREEMPT_METHOD_HIGH; j++) {
