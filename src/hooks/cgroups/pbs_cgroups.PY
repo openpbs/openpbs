@@ -4235,12 +4235,18 @@ class CgroupUtils(object):
                 pbs.logmsg(pbs.EVENT_SYSTEM, '%s: Permission denied: %s' %
                            (caller_name(), filename))
             elif exc.errno == errno.EBUSY:
-                raise CgroupBusyError('Limit rejected')
+                raise CgroupBusyError('Limit %s rejected: %s' %
+                                      (value, filename))
             elif exc.errno == errno.ENOSPC:
-                raise CgroupLimitError('Limit too small')
+                raise CgroupLimitError('Limit %s too small: %s' %
+                                       (value, filename))
             elif exc.errno == errno.EINVAL:
-                raise CgroupLimitError('Invalid limit value: %s' % (value))
+                raise CgroupLimitError('Invalid limit value: %s, file: %s' %
+                                       (value, filename))
             else:
+                pbs.logmsg(pbs.EVENT_SYSTEM,
+                           '%s: Uncaught exception writing %s to %s' %
+                           (value, filename))
                 raise
 
     def _get_mem_failcnt(self, jobid):
