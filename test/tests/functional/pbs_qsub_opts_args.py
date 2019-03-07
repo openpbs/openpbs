@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+import os
 
 
 class TestQsubOptionsArguments(TestFunctional):
@@ -53,11 +54,25 @@ class TestQsubOptionsArguments(TestFunctional):
         self.qsub_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
 
+    def test_qsub_with_script_with_long_TMPDIR(self):
+        """
+        submit a job with a script and with long path in TMPDIR
+        """
+        longpath = '%s/aaaaaaaaaa/bbbbbbbbbb/cccccccccc/eeeeeeeeee/\
+ffffffffff/gggggggggg/hhhhhhhhhh/iiiiiiiiii/jj/afdj/hlppoo/jkloiytupoo/\
+bhtiusabsdlg' % (os.environ['HOME'])
+        os.environ['TMPDIR'] = longpath
+        if not os.path.exists(longpath):
+            os.makedirs(longpath)
+        cmd = [self.qsub_cmd, self.fn]
+        rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        self.assertEquals(rv['rc'], 0, 'qsub failed')
+
     def test_qsub_with_script_executable(self):
         """
         submit a job with a script and executable
         """
-        cmd = [self.qsub_cmd, self.fn, '--',  '/bin/sleep 10']
+        cmd = [self.qsub_cmd, self.fn, '--', '/bin/sleep 10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         failed = rv['rc'] == 2 and rv['err'][0].split(' ')[0] == 'usage:'
         self.assertTrue(failed, 'qsub should have failed, but did not fail')

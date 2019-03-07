@@ -227,7 +227,8 @@ static char script_tmp[MAXPATHLEN + 1] = {'\0'}; /* name of script file copy */
 #ifdef WIN32
 static char fl[(2 * MAXPATHLEN) + 1] = {'\0'}; /* the filename used as the pipe name */
 #else
-static char fl[sizeof(((struct sockaddr_un *)0)->sun_path)] = {'\0'}; /* the filename used as the pipe name */
+#define MAXPIPENAME sizeof(((struct sockaddr_un *)0)->sun_path)
+static char fl[MAXPIPENAME] = {'\0'}; /* the filename used as the pipe name */
 #endif
 #define BUFSIZE 1024 /* windows default pipe buffer size */
 #define PIPE_TIMEOUT 0 /* default windows pipe timeout */
@@ -5241,8 +5242,10 @@ get_comm_filename(char *fname)
 {
 	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
 	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
+	int count = 0;
 
-	sprintf(fname, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
+
+	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
 		tmpdir,
 		((server_out == NULL || server_out[0] == 0) ?
 		"default" : server_out),
@@ -5252,6 +5255,19 @@ get_comm_filename(char *fname)
 		(env_svr == NULL)?"":env_svr,
 		(env_port == NULL)?"":env_port
 		);
+
+	if (count >= MAXPIPENAME) {
+		snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
+		TMP_DIR,
+		((server_out == NULL || server_out[0] == 0) ?
+		"default" : server_out),
+		(unsigned long int)getuid(),
+		cred_name,
+		get_conf_path(),
+		(env_svr == NULL)?"":env_svr,
+		(env_port == NULL)?"":env_port
+		);
+	}
 }
 
 /**
