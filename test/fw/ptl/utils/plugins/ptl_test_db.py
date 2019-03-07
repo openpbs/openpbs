@@ -43,6 +43,7 @@ import logging
 import platform
 import traceback
 import time
+import datetime
 import json
 import ptl.utils.pbs_logutils as lu
 from ptl.lib.pbs_testlib import PbsTypeDuration
@@ -1710,6 +1711,7 @@ class PTLTestDb(Plugin):
             return {}
         testdata = {}
         data = {}
+        cur_time = datetime.datetime.now()
         if (hasattr(_test, 'server') and
                 (getattr(_test, 'server', None) is not None)):
             testdata['pbs_version'] = _test.server.attributes['pbs_version']
@@ -1725,8 +1727,8 @@ class PTLTestDb(Plugin):
         testdata['module'] = _test.__module__
         testdata['testcase'] = getattr(_test, '_testMethodName', '<unknown>')
         testdata['testdoc'] = getattr(_test, '_testMethodDoc', '<unknown>')
-        testdata['start_time'] = getattr(test, 'start_time', 0)
-        testdata['end_time'] = getattr(test, 'end_time', 0)
+        testdata['start_time'] = getattr(test, 'start_time', cur_time)
+        testdata['end_time'] = getattr(test, 'end_time', cur_time)
         testdata['duration'] = getattr(test, 'duration', 0)
         testdata['tags'] = getattr(_test, TAGKEY, [])
         measurements_dic = getattr(_test, 'measurements', {})

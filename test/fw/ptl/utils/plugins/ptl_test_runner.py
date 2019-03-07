@@ -58,6 +58,7 @@ from nose.suite import ContextSuite
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.pbs_testsuite import TIMEOUT_KEY
 from ptl.utils.pbs_testsuite import REQUIREMENTS_KEY
+from ptl.utils.pbs_testsuite import MINIMUM_TESTCASE_TIMEOUT
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
 from ptl.lib.pbs_testlib import PBSInitServices
@@ -553,12 +554,17 @@ class PTLTestRunner(Plugin):
         try:
             method = getattr(test.test, getattr(test.test, '_testMethodName'))
             return getattr(method, TIMEOUT_KEY)
-        except:
+        except AttributeError:
+            testcase_timeout = MINIMUM_TESTCASE_TIMEOUT
             if hasattr(test, 'test'):
-                __conf = getattr(test.test, 'conf')
-            else:
-                __conf = getattr(test.context, 'conf')
-            return __conf['default_testcase_timeout']
+                if hasattr(test.test, 'conf'):
+                    __conf = getattr(test.test, 'conf')
+                    testcase_timeout = __conf['default_testcase_timeout']
+            elif hasattr(test, 'context'):
+                if hasattr(test.context, 'conf'):
+                    __conf = getattr(test.context, 'conf')
+                    testcase_timeout = __conf['default_testcase_timeout']
+            return testcase_timeout
 
     def __set_test_end_data(self, test, err=None):
         if not hasattr(test, 'start_time'):
