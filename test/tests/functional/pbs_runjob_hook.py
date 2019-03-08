@@ -110,8 +110,8 @@ e.job.Resource_List['site'] = 'site_value'
             sid = j1.create_subjob_id(jid, i)
             m = "'runjob_hook' hook set job's Resource_List.site = site_value"
             self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
-            m = "Resource_List.site=site_value"
-            self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
+            m = 'E;' + re.escape(sid) + ';.*Resource_List.site=site_value'
+            self.server.accounting_match(m, regexp=True)
 
     def test_normal_job_index(self):
         """
