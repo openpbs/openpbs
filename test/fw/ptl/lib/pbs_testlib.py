@@ -8052,7 +8052,7 @@ class Server(PBSService):
         if c:
             self._disconnect(c)
 
-    def expect(self, obj_type, attrib=None, id=None, op=EQ, attrop=PTL_OR,
+    def expect(self, obj_type, attrib=None, id=None, op=EQ, attrop=PTL_AND,
                attempt=0, max_attempts=None, interval=None, count=None,
                extend=None, offset=0, runas=None, level=logging.INFO,
                msg=None):
