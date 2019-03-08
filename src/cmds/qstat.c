@@ -1520,14 +1520,11 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		strcpy(trn, "0");
 		strcpy(ext, "0");
 		type = "not defined";
+		prev_resc_name = NULL;
 		if (full) {
 			if(output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Queue: %s%s", p->name, delimiter);
 			else if (output_format == FORMAT_JSON) {
-				if (prev_resc_name != NULL)
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL)
-							== NULL)
-						return 1;
 				if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, p->name, NULL)
 						== NULL)
 					return 1;
@@ -1546,6 +1543,10 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 							== NULL)
 						return 1;
 			}
+			/* end the resource node, if it exists */
+			if (output_format == FORMAT_JSON && prev_resc_name != NULL)
+				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					return 1;
 		} else {
 			if (p->name != NULL) {
 				l = strlen(p->name);

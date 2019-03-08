@@ -1,4 +1,4 @@
-# coding: utf - 8
+# coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -579,3 +579,28 @@ class TestQstatFormats(TestFunctional):
             json.loads(qstat_out)
         except ValueError:
             self.assertTrue(False)
+
+    def test_qstat_json_valid_multiple_queues(self):
+        """
+        Test json output of qstat -f is in valid format when multiple jobs are
+        queried and make sure that all attributes are displayed in qstat are
+        present in the output
+        """
+        a = {'queue_type': 'Execution', 'resources_max.walltime': '10:00:00'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq3')
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq4')
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + ' -Q -f -F json'
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            qs = json.loads(qstat_out)
+        except ValueError:
+            self.assertTrue(False, "Invalid JSON, failed to load")
+
+        self.assertIn('Queue', qs)
+        self.assertIn('workq', qs['Queue'])
+        self.assertIn('workq2', qs['Queue'])
+        self.assertIn('workq3', qs['Queue'])
+        self.assertIn('workq4', qs['Queue'])
