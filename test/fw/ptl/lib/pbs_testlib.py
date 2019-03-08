@@ -5031,7 +5031,8 @@ class Server(PBSService):
 
     def revert_to_defaults(self, reverthooks=True, revertqueues=True,
                            revertresources=True, delhooks=True,
-                           delqueues=True, delscheds=True, server_stat=None):
+                           delqueues=True, delscheds=True, delnodes=True,
+                           server_stat=None):
         """
         reset server attributes back to out of box defaults.
 
@@ -5060,6 +5061,8 @@ class Server(PBSService):
                           The sched_priv and sched_logs directories will be
                           deleted.
         :type delscheds: bool
+        :param delnodes: If True all vnodes are deleted
+        :type delnodes: bool
         :returns: True upon success and False if an error is
                   encountered.
         :raises: PbsStatusError or PbsManagerError
@@ -5141,6 +5144,12 @@ class Server(PBSService):
                                recursive=True, force=True)
                     self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
+        if delnodes:
+            try:
+                self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+            except PbsManagerError as e:
+                if "Unknown node" not in e.msg[0]:
+                    raise
         if reverthooks:
             if self.platform == 'cray' or self.platform == 'craysim':
                 if self.du.cmp(self.hostname, self.dflt_mpp_hook,
