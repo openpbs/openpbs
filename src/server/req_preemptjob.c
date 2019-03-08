@@ -245,7 +245,7 @@ reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
  * @retval	1 for error
  */
 static int
-get_job_req_used_time(job *pjob, double *rtime, double *utime)
+get_job_req_used_time(job *pjob, int *rtime, int *utime)
 {
 	double req = 0;
 	double used = 0;
@@ -282,8 +282,8 @@ get_job_req_used_time(job *pjob, double *rtime, double *utime)
 struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched)
 {
 	struct preempt_ordering *po = NULL;
-	double req = -1;
-	double used = -1;
+	int req = -1;
+	int used = -1;
 
 	if (get_job_req_used_time(pjob, &req, &used) != 0)
 		return NULL;

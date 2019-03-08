@@ -2720,7 +2720,7 @@ preempt_job_set_filter(resource_resv *job, void *arg)
  * @retval	1 for error
  */
 static int
-get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
+get_job_req_used_time(resource_resv *pjob, int *rtime, int *utime)
 {
 	resource_req *req; /* the jobs requested soft_walltime/walltime/cput */
 	resource_req *used; /* the amount of the walltime/cput used */
@@ -2741,11 +2741,11 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
 		used = find_resource_req(pjob->job->resused, getallres(RES_WALLTIME));
 
 	if (req != NULL && used != NULL) {
-		*rtime = (double) req->amount;
-		*utime = (double) used->amount;
+		*rtime = req->amount;
+		*utime = used->amount;
 	} else {
-		*rtime = -1.0;
-		*utime = -1.0;
+		*rtime = -1;
+		*utime = -1;
 	}
 
 	return 0;
@@ -2764,13 +2764,13 @@ get_job_req_used_time(resource_resv *pjob, double *rtime, double *utime)
 struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv)
 {
 	struct preempt_ordering *po = NULL;
-	double req = -1.0;
-	double used = -1.0;
+	int req = -1;
+	int used = -1;
 
 	if (get_job_req_used_time(resresv, &req, &used) != 0)
 		return NULL;
 
-	if (req == -1.0 || used == -1.0)
+	if (req == -1 || used == -1)
 		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
 				"No walltime/cput to determine percent of time left - will use first preempt order");
 
