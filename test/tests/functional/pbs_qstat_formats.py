@@ -519,7 +519,6 @@ class TestQstatFormats(TestFunctional):
         self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq3')
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq4')
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + ' -Q -f -F json'
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
@@ -531,8 +530,9 @@ class TestQstatFormats(TestFunctional):
 
         self.assertIn('Queue', qs)
         self.assertIn('workq2', qs['Queue'])
+        self.assertIn('resources_max', qs['Queue']['workq2'])
         self.assertIn('workq3', qs['Queue'])
-        self.assertIn('workq4', qs['Queue'])
+        self.assertIn('resources_max', qs['Queue']['workq3'])
 
     def test_qstat_json_valid_job_special_env(self):
         """
