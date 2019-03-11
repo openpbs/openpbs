@@ -3860,7 +3860,8 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		return (2);
 	}
 
-	free(php);
+	if (hook_event != HOOK_EVENT_EXECHOST_PERIODIC)
+		free(php);
 	return (1);
 }
 
