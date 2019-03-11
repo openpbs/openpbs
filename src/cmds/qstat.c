@@ -1525,8 +1525,7 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 			if(output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Queue: %s%s", p->name, delimiter);
 			else if (output_format == FORMAT_JSON) {
-				if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, p->name, NULL)
-						== NULL)
+				if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_NOVALUE, p->name, NULL) == NULL)
 					return 1;
 			}
 			a = p->attribs;
@@ -1536,17 +1535,20 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 							alt_opt & ALT_DISPLAY_w);
 				}
 				a = a->next;
-				if ((a || output_format == FORMAT_DEFAULT))
+				if (a)
 					printf("%s", delimiter);
-				else if (output_format == FORMAT_JSON)
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL)
-							== NULL)
-						return 1;
 			}
-			/* end the resource node, if it exists */
-			if (output_format == FORMAT_JSON && prev_resc_name != NULL)
+			if (output_format == FORMAT_DEFAULT) {
+				printf("%s", delimiter);
+			}
+			else if (output_format == FORMAT_JSON) {
+				/* end the resource node, if it exists */
+				if (prev_resc_name != NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+						return 1;
 				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
 					return 1;
+			}
 		} else {
 			if (p->name != NULL) {
 				l = strlen(p->name);
