@@ -3148,6 +3148,7 @@ post_run_hook(struct work_task *ptask)
 	}
 
 	if (php->hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
+		free(php);
 		post_periodic_hook(ptask);
 		return 1;
 	}
@@ -3520,7 +3521,7 @@ void reply_hook_bg(job *pjob)
 	return;
 
 	fini:
-		/*free(php->hook_output->reject_errcode);*/
+		free(php->hook_output->reject_errcode);
 		free(php->hook_output);
 		free(php->hook_input);
 		free(php);
@@ -3697,6 +3698,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				phook_next = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
 				break;
 			default:
+				free (php);
 				return (-1); /*  should not get here */
 		}
 
@@ -3809,6 +3811,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 					*reject_errcode = PBSE_HOOKERROR;
 				}
 				record_job_last_hook_executed(hook_event, phook->hook_name, pjob, hook_outfile);
+				free (php);
 				return (0);
 				/* -3 return from pbs_python == 2^8-3, but run_hook() */
 				/* itself could return "-3" if it catches the alarm()   */
@@ -3832,6 +3835,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 					*reject_errcode = PBSE_HOOKERROR;
 				}
 				record_job_last_hook_executed(hook_event, phook->hook_name, pjob, hook_outfile);
+				free (php);
 				return (0);
 			default:
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -3839,6 +3843,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 					phook->hook_name);
 				log_event(log_type, log_class,
 					LOG_ERR, log_id, log_buffer);
+				free (php);
 				return (-1); /* should not happen */
 		}
 
@@ -3853,13 +3858,19 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 
 		task.wt_parm1 = (void *)phook;
 		task.wt_parm2 = (void *)php;
-		if ((rc = post_run_hook(&task)) != 1)
+		if ((rc = post_run_hook(&task)) != 1) {
 			/* if a hook is not accepted do not proceed further*/
+			free(php);
 			return rc;
+		}
 	}
-	if (num_run == 0)
+	if (num_run == 0) {
+		free(php);
 		return (2);
+	}
 
+	if (hook_event != HOOK_EVENT_EXECHOST_PERIODIC)
+		free(php);
 	return (1);
 }
 
