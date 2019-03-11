@@ -516,7 +516,6 @@ class TestQstatFormats(TestFunctional):
         we query multiple queues
         """
         a = {'queue_type': 'Execution', 'resources_max.walltime': '10:00:00'}
-        self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq3')
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
@@ -529,6 +528,7 @@ class TestQstatFormats(TestFunctional):
             self.assertTrue(False, "Invalid JSON, failed to load")
 
         self.assertIn('Queue', qs)
+        self.assertIn('workq', qs['Queue'])
         self.assertIn('workq2', qs['Queue'])
         self.assertIn('resources_max', qs['Queue']['workq2'])
         self.assertIn('workq3', qs['Queue'])
