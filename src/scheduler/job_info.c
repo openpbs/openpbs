@@ -2709,7 +2709,51 @@ preempt_job_set_filter(resource_resv *job, void *arg)
 
 /**
  * @brief
- *  	get_preemption_order - deduce the preemption ordering to be used for a job
+ *  get_job_req_used_time - get a running job's req and used time for preemption
+ *
+ * @param[in]	pjob - the job in question
+ * @param[out]	rtime - return pointer to the requested time
+ * @param[out]	utime - return pointer to the used time
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for error
+ */
+static int
+get_job_req_used_time(resource_resv *pjob, int *rtime, int *utime)
+{
+	resource_req *req; /* the jobs requested soft_walltime/walltime/cput */
+	resource_req *used; /* the amount of the walltime/cput used */
+
+	if (pjob == NULL || pjob->job == NULL || !pjob->job->is_running
+			|| rtime == NULL || utime == NULL)
+		return 1;
+
+	req = find_resource_req(pjob->resreq, getallres(RES_SOFT_WALLTIME));
+
+	if (req == NULL)
+		req = find_resource_req(pjob->resreq, getallres(RES_WALLTIME));
+
+	if (req == NULL) {
+		req = find_resource_req(pjob->resreq, getallres(RES_CPUT));
+		used = find_resource_req(pjob->job->resused, getallres(RES_CPUT));
+	} else
+		used = find_resource_req(pjob->job->resused, getallres(RES_WALLTIME));
+
+	if (req != NULL && used != NULL) {
+		*rtime = req->amount;
+		*utime = used->amount;
+	} else {
+		*rtime = -1;
+		*utime = -1;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief
+ *  schd_get_preempt_order - deduce the preemption ordering to be used for a job
  *
  * @param[in]	pjob	-	the job to preempt
  * @param[in]	sinfo	-	Pointer to server info structure.
@@ -2717,56 +2761,21 @@ preempt_job_set_filter(resource_resv *job, void *arg)
  * @return	: struct preempt_ordering.  array containing preemption order
  *
  */
-struct preempt_ordering *get_preemption_order(resource_resv *pjob,
-	server_info *sinfo)
+struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv)
 {
-	/* the order to preempt jobs in */
-	struct preempt_ordering *po = &conf.preempt_order[0];
-	int i;
+	struct preempt_ordering *po = NULL;
+	int req = -1;
+	int used = -1;
 
-	if (pjob == NULL || pjob->job == NULL)
-		return 0;
+	if (get_job_req_used_time(resresv, &req, &used) != 0)
+		return NULL;
 
-	/* continue validity checks */
-	if (!pjob->job->is_running || pjob->ninfo_arr == NULL)
-		return 0;
+	if (req == -1 || used == -1)
+		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
+				"No walltime/cput to determine percent of time left - will use first preempt order");
 
-	/* check if we have more then one range... no need to choose if not */
-	if (conf.preempt_order[1].high_range != 0) {
-		resource_req *req;		/* the jobs requested soft_walltime/walltime/cput */
-		resource_req *used;		/* the amount of the walltime/cput used */
+	po = get_preemption_order(conf.preempt_order, req, used);
 
-		req = find_resource_req(pjob->resreq, getallres(RES_SOFT_WALLTIME));
-
-		if(req == NULL)
-			req = find_resource_req(pjob->resreq, getallres(RES_WALLTIME));
-
-		if (req == NULL) {
-			req = find_resource_req(pjob->resreq, getallres(RES_CPUT));
-			used = find_resource_req(pjob->job->resused, getallres(RES_CPUT));
-		}
-		else
-			used = find_resource_req(pjob->job->resused, getallres(RES_WALLTIME));
-
-		if (req == NULL || used == NULL) {
-			schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
-				"No walltime/cput to determine percent of time left - will use first "
-				"preempt order");
-		}
-		else {
-			float percent_left;
-			percent_left = (int)(100 - (used->amount / req->amount) * 100);
-			/* if a job has exceeded its soft_walltime, percent_left will be less than 0 */
-			if (percent_left < 0)
-				percent_left = 1;
-
-			for (i = 0; i < PREEMPT_ORDER_MAX; i++) {
-				if (percent_left <= conf.preempt_order[i].high_range &&
-					percent_left >= conf.preempt_order[i].low_range)
-					po = &conf.preempt_order[i];
-			}
-		}
-	}
 	return po;
 }
 
@@ -3214,7 +3223,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
 			"Simulation: preempting job");
 
-		po = get_preemption_order(pjob, sinfo);
+		po = schd_get_preempt_order(pjob);
 		if (po != NULL) {
 			if (po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
 				pjob->job->resreleased = create_res_released_array(npolicy, pjob);
@@ -3470,7 +3479,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 
 		if (good) {
 			/* get the preemption order to be used for this job */
-			po = get_preemption_order(rjobs[i], rjobs[i]->server);
+			po = schd_get_preempt_order(rjobs[i]);
 
 			/* check whether chosen order is enabled for this job */
 			for (j = 0; j < PREEMPT_METHOD_HIGH; j++) {

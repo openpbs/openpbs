@@ -70,9 +70,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <libpbs.h>
 #include <limits.h>
 #include <pbs_ifl.h>
 #include <pbs_internal.h>
+#include <pbs_sched.h>
+#include <pbs_share.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -1471,4 +1474,49 @@ show_nonprint_chars(char *str)
 #else
 	return (str);
 #endif
+}
+
+/**
+ * @brief
+ *  get_preemption_order - deduce the preemption ordering to be used for a job
+ *
+ *  @param[in]	porder - static value of preempt order from the sched object
+ *  						this array is assumed to be of size PREEMPT_ORDER_MAX
+ *  @param[in]	req - amount of requested time for the job
+ *  @param[in]	used - amount of used time by the job
+ *
+ *  @return	struct preempt_ordering *
+ *  @retval	preempt ordering for the job
+ *  @retval	NULL if error
+ */
+struct preempt_ordering *
+get_preemption_order(struct preempt_ordering *porder, int req, int used)
+{
+	int i;
+	int percent_left = 0;
+	struct preempt_ordering *po = NULL;
+
+	if (porder == NULL)
+		return NULL;
+
+	po = &porder[0];
+	if (req < 0 || used < 0)
+		return po;
+
+	/* check if we have more then one range... no need to choose if not */
+	if (porder[1].high_range != 0) {
+		percent_left = 100 - (used / req) * 100;
+		if (percent_left < 0)
+			percent_left = 1;
+
+		for (i = 0; i < PREEMPT_ORDER_MAX; i++) {
+			if (percent_left <= porder[i].high_range
+					&& percent_left >= porder[i].low_range) {
+				po = &porder[i];
+				break;
+			}
+		}
+	}
+
+	return po;
 }

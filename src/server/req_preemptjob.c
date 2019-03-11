@@ -64,7 +64,7 @@
 
 extern void post_signal_req(struct work_task *);
 int shutdown_preempt_chkpt(job *pjob, struct batch_request *nest);
-struct preempt_ordering *get_preemption_order(job *pjob, pbs_sched *psched);
+struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched);
 
 /* Global Data Items: */
 
@@ -100,7 +100,7 @@ req_preemptjobs(struct batch_request *preq)
 		ppj = &(preq->rq_ind.rq_preempt.ppj_list[i]);
 		pjob = find_job(ppj->job_id);
 
-		pjob->preempt_order = get_preemption_order(pjob, psched);
+		pjob->preempt_order = svr_get_preempt_order(pjob, psched);
 		pjob->preempt_order_index = 0;
 		switch((int)pjob->preempt_order[0].order[j]) {
 			case PREEMPT_METHOD_SUSPEND:
@@ -234,7 +234,44 @@ reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
 
 /**
  * @brief
- *  	get_preemption_order - deduce the preemption ordering to be used for a job
+ *  get_job_req_used_time - get a running job's req and used time for preemption
+ *
+ * @param[in]	pjob - the job in question
+ * @param[out]	rtime - return pointer to the requested time
+ * @param[out]	utime - return pointer to the used time
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for error
+ */
+static int
+get_job_req_used_time(job *pjob, int *rtime, int *utime)
+{
+	double req = 0;
+	double used = 0;
+
+	if (pjob == NULL || rtime == NULL || utime == NULL)
+		return 1;
+
+	req = get_softwall(pjob);
+	if (req == -1)
+		req = get_wall(pjob);
+
+	if (req == -1) {
+		req = get_cput(pjob);
+		used = get_used_cput(pjob);
+	} else
+		used = get_used_wall(pjob);
+
+	*rtime = req;
+	*utime = used;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *  	svr_get_preempt_order - deduce the preemption ordering to be used for a job
  *
  * @param[in]	pjob	-	the job to preempt
  * @param[in]	psched	-	Pointer to the sched object.
@@ -242,50 +279,22 @@ reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
  * @return	: struct preempt_ordering.  array containing preemption order
  *
  */
-struct preempt_ordering *get_preemption_order(job *pjob,
-	pbs_sched *psched)
+struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched)
 {
-	/* the order to preempt jobs in */
-	struct preempt_ordering *po = &psched->preempt_order[0];
+	struct preempt_ordering *po = NULL;
+	int req = -1;
+	int used = -1;
 
-	if (pjob == NULL)
+	if (get_job_req_used_time(pjob, &req, &used) != 0)
 		return NULL;
 
-	/* check if we have more then one range... no need to choose if not */
-	if (psched->preempt_order[1].high_range != 0) {
-		double req = 0;
-		double used = 0;
-
-		req = get_softwall(pjob);
-		if (req == -1)
-			req = get_wall(pjob);
-
-		if (req == -1) {
-			req = get_cput(pjob);
-			used = get_used_cput(pjob);
-		} else
-			used = get_used_wall(pjob);
-
-		if (used == -1 || req == -1) {
-			snprintf(log_buffer, sizeof(log_buffer), "No walltime/cput to determine percent of time left - will use first preempt_order");
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-		} else {
-
-			int i;
-			int percent_left = 0;
-			percent_left = (int)(100 - (used / req) * 100);
-
-			if (percent_left < 0)
-				percent_left = 1;
-
-			for (i = 0; i < PREEMPT_ORDER_MAX; i++) {
-				if (percent_left <= psched->preempt_order[i].high_range &&
-					percent_left >= psched->preempt_order[i].low_range) {
-					po = &psched->preempt_order[i];
-					break;
-				}
-			}
-		}
+	if (used == -1 || req == -1) {
+		snprintf(log_buffer, sizeof(log_buffer),
+				"No walltime/cput to determine percent of time left - will use first preempt_order");
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 	}
+
+	po = get_preemption_order(psched->preempt_order, req, used);
+
 	return po;
 }
