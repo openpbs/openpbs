@@ -45,46 +45,21 @@ class TestPbsnodesOutputTrimmed(TestFunctional):
     This test suite tests pbsnodes executable with -l
     and makes sure that the node names are not trimmed.
     """
-    temp_list = []
-    is_host_file_changed = False
-
-    @classmethod
-    def hostname_resolves(self, hostname):
-        try:
-            socket.gethostbyname(hostname)
-            return 1
-        except socket.error:
-            return 0
 
     def test_pbsnodes_output(self):
         """
-        This method adds a new entry to /etc/hosts and creates
-        a mom with name more than 20 characters, then makes the
-        node offline and checks the pbsnodes -l output and
+        This method creates a new vnode with name more than
+        20 characters, and checks the pbsnodes output and
         makes sure it is not trimmed
         """
-        with open("/etc/hosts", "r")as fd:
-            self.temp_list = fd.readlines()
+        self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         pbsnodes = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 "bin", "pbsnodes")
         hname = "long123456789012345678901234567890.pbspro.com"
-        ret = self.hostname_resolves(hname)
-        if ret == 0:
-            with open("/etc/hosts", "a") as fd:
-                tmpentry = '127.0.0.1' + " " + hname + " " + hname
-                fd.write(tmpentry)
-                fd.write("\n")
-            self.is_host_file_changed = True
-        self.server.manager(MGR_CMD_DELETE, NODE, None, '')
-        self.server.manager(MGR_CMD_CREATE, NODE,
-                            {'resources_available.ncpus': '1'}, hname)
-        command = pbsnodes + " -l"
+        a = {'resources_available.ncpus': 4}
+        rc = self.server.create_vnodes(hname, a, 1, self.mom)
+        command = pbsnodes + " -s " + self.server.hostname + \
+            ' -v ' + hname + "[0]"
         rc = self.du.run_cmd(cmd=command, sudo=True)
-        res = rc['out']
-        self.assertEqual(res[0].split(" ")[0], hname)
+        self.assertEqual(rc['out'][0], hname + '[0]')
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
-
-    def tearDown(self):
-        if self.is_host_file_changed:
-            with open("/etc/hosts", "w") as fd:
-                fd.writelines(self.temp_list)
