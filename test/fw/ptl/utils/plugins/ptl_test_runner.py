@@ -652,6 +652,7 @@ class PTLTestRunner(Plugin):
             if not ts_requirements:
                 return None
         eff_tc_req = get_effective_reqs(ts_requirements, tc_requirements)
+        setattr(test.test, 'requirements', eff_tc_req)
         for key in ['servers', 'moms', 'comms', 'clients']:
             param_count['num_' + key] = len(param_dic[key])
         for pk in param_count:

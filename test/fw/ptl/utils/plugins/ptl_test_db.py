@@ -50,6 +50,7 @@ from ptl.lib.pbs_testlib import PbsTypeDuration
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.plugins.ptl_report_json import PTLJsonData
+from ptl.utils.pbs_testsuite import default_requirements
 
 # Following dance require because PTLTestDb().process_output() from this file
 # is used in pbs_loganalyzer script which is shipped with PBS package
@@ -1731,6 +1732,8 @@ class PTLTestDb(Plugin):
         testdata['end_time'] = getattr(test, 'end_time', cur_time)
         testdata['duration'] = getattr(test, 'duration', 0)
         testdata['tags'] = getattr(_test, TAGKEY, [])
+        testdata['requirements'] = getattr(_test, 'requirements',
+                                           default_requirements)
         measurements_dic = getattr(_test, 'measurements', {})
         if measurements_dic:
             testdata['measurements'] = measurements_dic
