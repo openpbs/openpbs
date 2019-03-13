@@ -64,20 +64,20 @@ class TestCalendaring(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED, a)
 
         res_req = {'Resource_List.select': '1:ncpus=1',
-                   'Resource_List.walltime': 10,
+                   'Resource_List.walltime': 30,
                    'array_indices_submitted': '1-6'}
         j1 = Job(TEST_USER, attrs=res_req)
-        j1.set_sleep_time(10)
+        j1.set_sleep_time(30)
         jid1 = self.server.submit(j1)
         j1_sub1 = j1.create_subjob_id(jid1, 1)
         j1_sub2 = j1.create_subjob_id(jid1, 2)
 
         res_req = {'Resource_List.select': '1:ncpus=1',
-                   'Resource_List.walltime': 10}
+                   'Resource_List.walltime': 30}
         j2 = Job(TEST_USER, attrs=res_req)
         jid2 = self.server.submit(j2)
 
-        self.server.expect(JOB, {'job_state': 'X'}, j1_sub1)
+        self.server.expect(JOB, {'job_state': 'X'}, j1_sub1, interval=1)
         self.server.expect(JOB, {'job_state': 'R'}, j1_sub2)
         self.server.expect(JOB, {'job_state': 'Q'}, jid2)
         job1 = self.server.status(JOB, id=jid1)
@@ -97,7 +97,43 @@ class TestCalendaring(TestFunctional):
         # since only one subjob of array parent can become topjob
         # second job must start 10 seconds after that because
         # walltime of array job is 10 seconds.
-        self.assertEqual(est_epoch2, est_epoch1 + 10)
+        self.assertEqual(est_epoch2, est_epoch1 + 30)
         # Also make sure that since second subjob from array is running
         # Third subjob should set estimated.start_time in future.
         self.assertGreater(est_epoch1, time_now)
+
+    def test_topjob_start_time_of_subjob(self):
+        """
+        In this test we test that the subjob which gets added to the
+        calendar as top job and it has estimated start time correctly set when
+        opt_backfill_fuzzy is turned off.
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'backfill_depth': '2'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        # Turn opt_backfill_fuzzy off because we want to check if the job can
+        # run after performing every end event in calendaring code instead
+        # of rounding it off to next time boundary (default it 60 seconds)
+        a = {'opt_backfill_fuzzy': 'off'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 20,
+                   'array_indices_submitted': '1-6'}
+        j = Job(TEST_USER, attrs=res_req)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        j1_sub1 = j.create_subjob_id(jid, 1)
+        j1_sub2 = j.create_subjob_id(jid, 2)
+
+        self.server.expect(JOB, {'job_state': 'X'}, j1_sub1, interval=1)
+        self.server.expect(JOB, {'job_state': 'R'}, j1_sub2)
+        job_arr = self.server.status(JOB, id=jid)
+
+        # check estimated start time is set on job array
+        self.assertIn('estimated.start_time', job_arr[0])
+        errmsg = jid + ";Error in calculation of start time of top job"
+        self.scheduler.log_match(errmsg, existence=False, max_attempts=10)

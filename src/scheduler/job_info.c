@@ -3987,17 +3987,16 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 				/* add_resresv_to_array calls realloc, so we need to treat this call
 				 * as a call to realloc.  Put it into a temp variable to check for NULL
 				 */
-				tmparr = add_resresv_to_array(sinfo->jobs, rresv);
+				tmparr = add_resresv_to_array(sinfo->jobs, rresv, NO_FLAGS);
 				if (tmparr != NULL) {
 					sinfo->jobs = tmparr;
 					sinfo->sc.queued++;
 					sinfo->sc.total++;
 
-					tmparr = add_resresv_to_array(sinfo->all_resresv, rresv);
+					tmparr = add_resresv_to_array(sinfo->all_resresv, rresv, SET_RESRESV_INDEX);
 					if (tmparr != NULL) {
 						sinfo->all_resresv = tmparr;
-
-						tmparr = add_resresv_to_array(qinfo->jobs, rresv);
+						tmparr = add_resresv_to_array(qinfo->jobs, rresv, NO_FLAGS);
 						if (tmparr != NULL) {
 							qinfo->jobs = tmparr;
 							qinfo->sc.queued++;

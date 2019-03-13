@@ -1469,6 +1469,8 @@ remove_resresv_from_array(resource_resv **resresv_arr,
  *
  * @param[in]	resresv_arr	-	job array to add job to
  * @param[in]	resresv	-	job to add to array
+ * @param[in]	flags -
+ *			    SET_RESRESV_INDEX - set resresv_ind of the job/resv
  *
  * @return	array (changed from realloc)
  * @retval	NULL	: on error
@@ -1476,7 +1478,7 @@ remove_resresv_from_array(resource_resv **resresv_arr,
  */
 resource_resv **
 add_resresv_to_array(resource_resv **resresv_arr,
-	resource_resv *resresv)
+	resource_resv *resresv, int flags)
 {
 	int size;
 	resource_resv **new_arr;
@@ -1490,6 +1492,8 @@ add_resresv_to_array(resource_resv **resresv_arr,
 			return NULL;
 		new_arr[0] = resresv;
 		new_arr[1] = NULL;
+		if (flags & SET_RESRESV_INDEX)
+		    resresv->resresv_ind = 0;
 		return new_arr;
 	}
 
@@ -1501,6 +1505,8 @@ add_resresv_to_array(resource_resv **resresv_arr,
 	if (new_arr != NULL) {
 		new_arr[size] = resresv;
 		new_arr[size+1] = NULL;
+		if (flags & SET_RESRESV_INDEX)
+		    resresv->resresv_ind = size;
 	}
 	else {
 		log_err(errno, "add_resresv_to_array", MEM_ERR_MSG);
