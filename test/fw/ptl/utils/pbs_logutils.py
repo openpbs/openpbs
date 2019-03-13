@@ -236,6 +236,9 @@ class PBSLogUtils(object):
         if dt is None:
             return None
 
+        offset = 0
+        if time.daylight:
+            offset = 3600
         micro = False
         if fmt is None:
             if '.' in dt:
@@ -250,7 +253,7 @@ class PBSLogUtils(object):
             # Get timedelta object of epoch time
             t -= epoch_datetime
             # get epoch time from timedelta object
-            tm = t.total_seconds()
+            tm = t.total_seconds() - offset
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
