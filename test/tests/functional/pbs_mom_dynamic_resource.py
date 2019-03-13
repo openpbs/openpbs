@@ -124,7 +124,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
         # Submit a job that requests different mom dynamic resource
         # not return from script
@@ -168,7 +168,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
     def test_res_string_correct_value(self):
         """
@@ -189,7 +189,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
     def test_res_float_value(self):
         """
@@ -224,7 +224,7 @@ class TestMomDynRes(TestFunctional):
         # The job should run
         self.server.expect(JOB, {'job_state': 'R',
                            'Resource_List.'+resc_name[0]: '2'},
-                           id=jid, attrop=PTL_AND)
+                           id=jid, attrop=PTL_AND, interval=1)
 
     def test_multiple_res_valid_value(self):
         """
@@ -247,7 +247,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
         # Submit a job that requests more value
         # than available for both mom resources.
@@ -307,7 +307,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
         # Check for the expected error message throwing by PBS
         try:
@@ -334,7 +334,7 @@ class TestMomDynRes(TestFunctional):
         jid = self.server.submit(j)
 
         # The job should run
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, interval=1, id=jid)
 
         # Change script during job run
         change_res = "/bin/echo 1"
