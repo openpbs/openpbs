@@ -419,6 +419,8 @@ class TestQstatFormats(TestFunctional):
         jid = self.server.submit(j)
         jid2 = self.server.submit(j)
         jid3 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid2)
         self.server.expect(JOB, {'job_state': "R"}, id=jid3)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + ' -fp -F json '
