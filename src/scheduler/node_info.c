@@ -244,6 +244,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	if (nidx == 0) {
 		snprintf(log_buffer, sizeof(log_buffer), "No nodes found in partitions serviced by scheduler");
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+		pbs_statfree(nodes);
 		free(ninfo_arr);
 		return NULL;
 	}
