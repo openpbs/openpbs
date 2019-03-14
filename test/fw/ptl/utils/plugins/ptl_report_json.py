@@ -37,6 +37,7 @@
 
 import re
 from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_testsuite import default_requirements
 
 
 class PTLJsonData(object):
@@ -118,7 +119,8 @@ class PTLJsonData(object):
             'end_time': str(data['end_time']),
             'measurements': []
         }
-        tcshort['requirements'] = data['requirements']
+        tcshort['requirements'] = getattr(data, 'requirements',
+                                          default_requirements)
         if 'measurements' in data:
             tcshort['results']['measurements'] = data['measurements']
         data_json['testsuites'][tsname]['testcases'][tcname] = tcshort

@@ -70,7 +70,16 @@ class TestJSONReport(TestSelf):
             'suitedoc': '\n    This test suite contains smoke tests of PBS\n',
             'tags': ['smoke'],
             'file': 'tests/pbs_smoketest.py',
-            'module': 'tests.pbs_smoketest'
+            'module': 'tests.pbs_smoketest',
+            'requirements': {
+                "num_moms": 1,
+                "no_comm_on_mom": True,
+                "no_comm_on_server": False,
+                "num_servers": 1,
+                "no_mom_on_server": False,
+                "num_comms": 1,
+                "num_clients": 1
+             }
         }
         verify_data = {
             'test_keys': ["command", "user", "product_version", "run_id",
@@ -118,6 +127,10 @@ class TestJSONReport(TestSelf):
             for t in jdata['testsuites'][s]:
                 for u in jdata['testsuites'][s]['testcases']:
                     for r in verify_data['test_cases_info']:
+                        if r == 'requirements':
+                            if (jdata['testsuites'][s]['testcases'][u][r] !=
+                                    test_data[r]):
+                                faulty_values.append(r)
                         if r not in jdata['testsuites'][s]['testcases'][u]:
                             faulty_fields.append(r)
         for s in jdata['testsuites']:
