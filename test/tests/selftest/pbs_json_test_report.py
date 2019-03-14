@@ -79,7 +79,7 @@ class TestJSONReport(TestSelf):
                 "no_mom_on_server": False,
                 "num_comms": 1,
                 "num_clients": 1
-             }
+            }
         }
         verify_data = {
             'test_keys': ["command", "user", "product_version", "run_id",
