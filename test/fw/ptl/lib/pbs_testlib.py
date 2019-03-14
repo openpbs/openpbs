@@ -12718,12 +12718,12 @@ class MoM(PBSService):
         self.version = None
         self._is_cpuset_mom = None
 
-    def isUp(self):
+    def isUp(self, max_attempts=20):
         """
         Check for PBS mom up
         """
         # Poll for few seconds to see if mom is up and node is free
-        for _ in range(20):
+        for _ in range(max_attempts):
             rv = super(MoM, self)._isUp(self)
             if rv:
                 break
