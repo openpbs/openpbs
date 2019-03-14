@@ -1334,7 +1334,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 					printf("%s", delimiter);
 			}
 			if (output_format == FORMAT_DEFAULT)
-					printf("%s", delimiter);
+				printf("%s", delimiter);
 			else if (output_format == FORMAT_JSON) {
 				if (prev_resc_name != NULL)
 					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)

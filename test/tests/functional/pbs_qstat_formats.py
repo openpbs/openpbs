@@ -411,7 +411,7 @@ class TestQstatFormats(TestFunctional):
 
     def test_qstat_json_valid_multiple_jobs_p(self):
         """
-        Test json output of qstat -f is in valid format when array jobs are
+        Test json output of qstat -f is in valid format when multiple jobs are
         queried and make sure that attributes are displayed with `p` option
         """
         j = Job(TEST_USER)
