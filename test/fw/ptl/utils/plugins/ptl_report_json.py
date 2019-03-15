@@ -37,7 +37,6 @@
 
 import re
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.pbs_testsuite import default_requirements
 
 
 class PTLJsonData(object):
