@@ -38,7 +38,7 @@
 import re
 import time
 import sys
-import datetime
+from datetime import tzinfo, timedelta, datetime
 import logging
 import traceback
 import math
@@ -209,7 +209,7 @@ PARSER_OK_STOP = 1
 PARSER_ERROR_CONTINUE = 2
 PARSER_ERROR_STOP = 3
 
-epoch_datetime = datetime.datetime.fromtimestamp(0)
+epoch_datetime = datetime.fromtimestamp(0)
 
 
 class PBSLogUtils(object):
@@ -225,7 +225,9 @@ class PBSLogUtils(object):
     def convert_date_time(cls, dt=None, fmt=None):
         """
         convert a date time string of the form given by fmt into
-        number of seconds since epoch (with possible microseconds)
+        number of seconds since epoch (with possible microseconds).
+        it considers the current system's timezone to convert
+        the datetime to epoch time
 
         :param dt: the datetime string to convert
         :type dt: str or None
@@ -236,6 +238,12 @@ class PBSLogUtils(object):
         if dt is None:
             return None
 
+        stdoffset = timedelta(seconds=-time.timezone)
+        if time.daylight:
+            dstoffset = timedelta(seconds=-time.altzone)
+        else:
+            dstoffset = stdoffset
+        offsetdiff = dstoffset - stdoffset
         micro = False
         if fmt is None:
             if '.' in dt:
@@ -246,11 +254,11 @@ class PBSLogUtils(object):
 
         try:
             # Get datetime object
-            t = datetime.datetime.strptime(dt, fmt)
+            t = datetime.strptime(dt, fmt)
             # Get timedelta object of epoch time
             t -= epoch_datetime
             # get epoch time from timedelta object
-            tm = t.total_seconds()
+            tm = t.total_seconds() - offsetdiff.total_seconds()
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
@@ -456,7 +464,7 @@ class PBSLogUtils(object):
     @staticmethod
     def _duration(val=None):
         if val is not None:
-            return str(datetime.timedelta(seconds=int(val)))
+            return str(timedelta(seconds=int(val)))
 
     @staticmethod
     def get_day(tm=None):
