@@ -118,7 +118,7 @@ class PTLJsonData(object):
             'end_time': str(data['end_time']),
             'measurements': []
         }
-        tcshort['requirements'] = {}
+        tcshort['requirements'] = data['requirements']
         if 'measurements' in data:
             tcshort['results']['measurements'] = data['measurements']
         data_json['testsuites'][tsname]['testcases'][tcname] = tcshort

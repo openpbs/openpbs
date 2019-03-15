@@ -89,3 +89,19 @@ class TestRequirementsDecorator(TestSelf):
         due to no_mom_on_server flag
         """
         self.server.expect(SERVER, {'server_state': 'Active'})
+
+    @requirements(num_servers=1, num_comms=1, no_comm_on_mom=True)
+    def test_skip_no_comm_on_mom(self):
+        """
+        Test to verify test skip when requirements are not satisfied
+        due to no_comm_on_mom flag set true
+        """
+        self.server.expect(SERVER, {'server_state': 'Active'})
+
+    @requirements(num_comms=2, num_moms=2, no_comm_on_server=True)
+    def test_skip_no_comm_on_server(self):
+        """
+        Test to verify test skip when requirements are not satisfied
+        due to no_comm_on_server flag set true
+        """
+        self.server.expect(SERVER, {'server_state': 'Active'})
