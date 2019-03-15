@@ -226,7 +226,8 @@ class PBSLogUtils(object):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch (with possible microseconds).
-        it considers the current system's timezone to convert the datetime to epoch time
+        it considers the current system's timezone to convert 
+        the datetime to epoch time
 
         :param dt: the datetime string to convert
         :type dt: str or None
@@ -237,9 +238,9 @@ class PBSLogUtils(object):
         if dt is None:
             return None
 
-        offset = timedelta(seconds = -time.timezone)
+        offset = timedelta(seconds=-time.timezone)
         if time.daylight:
-            offset = timedelta(seconds = -time.altzone) - offset
+            offset = timedelta(seconds=-time.altzone) - offset
         micro = False
         if fmt is None:
             if '.' in dt:
