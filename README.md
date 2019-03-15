@@ -1,5 +1,7 @@
 ### PBS Professional Open Source Project -- "Golden" Source Repository
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/1c37e6ffddf343d2ac6451f5069f777a)](https://app.codacy.com/app/PBSPro/pbspro?utm_source=github.com&utm_medium=referral&utm_content=PBSPro/pbspro&utm_campaign=Badge_Grade_Dashboard)
+
 If you are new to this project, please start at http://www.pbspro.org
 
 ### What is PBS Professional?
