@@ -412,7 +412,10 @@ class TestQstatFormats(TestFunctional):
     def test_qstat_json_valid_multiple_jobs_p(self):
         """
         Test json output of qstat -f is in valid format when multiple jobs are
-        queried and make sure that attributes are displayed with `p` option
+        queried and make sure that attributes are displayed with `p` option.
+        When -p is passed, then only the Resource_List is requested. An
+        attribute with type resource list has to be the last attribute
+        in order to hit the bug.
         """
         j = Job(TEST_USER)
         j.set_sleep_time(100)
