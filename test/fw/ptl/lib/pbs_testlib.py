@@ -3480,7 +3480,6 @@ class PBSService(PBSObject):
         self.logutils = None
         self.logfile = None
         self.acctlogfile = None
-        self.pid = None
         self.pbs_conf = {}
         self.pbs_env = {}
         self._is_local = True
@@ -3697,10 +3696,7 @@ class PBSService(PBSObject):
         pid = None
 
         if inst is not None:
-            if inst.pid is not None:
-                pid = inst.pid
-            else:
-                pid = self._get_pid(inst)
+            pid = self._get_pid(inst)
 
         if procname is not None:
             pi = self.pu.get_proc_info(self.hostname, procname)
@@ -3749,25 +3745,24 @@ class PBSService(PBSObject):
             path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
         rv = self.du.cat(self.hostname, path, sudo=True, logerr=False)
         if ((rv['rc'] == 0) and (len(rv['out']) > 0)):
-            self.pid = rv['out'][0].strip()
+            pid = rv['out'][0].strip()
         else:
-            self.pid = None
-        return self.pid
+            pid = None
+        return pid
 
-    def _update_pid(self, inst):
+    def _validate_pid(self, inst):
         """
-        update pid of given inst
-
+        Get pid and validate
         :param inst: inst to update pid
         :type inst: object
         """
         for i in range(30):
             live_pids = self._all_instance_pids(inst)
-            inst.pid = self._get_pid(inst)
-            if live_pids is not None and inst.pid in live_pids:
-                return
+            pid = self._get_pid(inst)
+            if live_pids is not None and pid in live_pids:
+                return pid
             time.sleep(1)
-        inst.pid = None
+        return None
 
     def _start(self, inst=None, args=None, cmd_map=None, launcher=None):
         """
@@ -3849,8 +3844,8 @@ class PBSService(PBSObject):
         ret_msg = True
         if ret['err']:
             ret_msg = ret['err']
-        self._update_pid(inst)
-        if inst.pid is None:
+        pid = self._validate_pid(inst)
+        if pid is None:
             raise PbsServiceError(rv=False, rc=-1, msg="Could not find PID")
         return ret_msg
 
@@ -3871,7 +3866,6 @@ class PBSService(PBSObject):
             time.sleep(1)
             num_seconds += 1
             chk_pid = self._all_instance_pids(inst)
-        inst.pid = None
         return True
 
     def initialise_service(self):
@@ -4416,7 +4410,10 @@ class Comm(PBSService):
         else:
             try:
                 rv = self.pi.start_comm()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -4435,7 +4432,6 @@ class Comm(PBSService):
         else:
             try:
                 self.pi.stop_comm()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -4927,7 +4923,10 @@ class Server(PBSService):
         else:
             try:
                 rv = self.pi.start_server()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():
@@ -4949,7 +4948,6 @@ class Server(PBSService):
         else:
             try:
                 self.pi.stop_server()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg,
                                       post=self._disconnect, conn=self._conn,
@@ -10691,7 +10689,10 @@ class Scheduler(PBSService):
         else:
             try:
                 rv = self.pi.start_sched()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -10710,7 +10711,6 @@ class Scheduler(PBSService):
         else:
             try:
                 self.pi.stop_sched()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -12741,7 +12741,10 @@ class MoM(PBSService):
         else:
             try:
                 rv = self.pi.start_mom()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -12760,7 +12763,6 @@ class MoM(PBSService):
         else:
             try:
                 self.pi.stop_mom()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
