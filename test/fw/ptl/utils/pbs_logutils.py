@@ -226,7 +226,7 @@ class PBSLogUtils(object):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch (with possible microseconds).
-        it considers the current system's timezone to convert 
+        it considers the current system's timezone to convert
         the datetime to epoch time
 
         :param dt: the datetime string to convert
