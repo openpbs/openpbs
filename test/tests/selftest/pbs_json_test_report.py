@@ -99,13 +99,25 @@ class TestJSONReport(TestSelf):
         }
         field_values = {
             'machine_info_name': test_data['machinfo'].keys()[0],
-            'testresult_status': test_data['status']
+            'testresult_status': test_data['status'],
+            'requirements': {
+                "num_moms": 1,
+                "no_comm_on_mom": True,
+                "no_comm_on_server": False,
+                "num_servers": 1,
+                "no_mom_on_server": False,
+                "num_comms": 1,
+                "num_clients": 1
+            }
         }
         faulty_fields = []
         faulty_values = []
         test_cmd = "pbs_benchpress -t SmokeTest.test_submit_job"
         jsontest = PTLJsonData(command=test_cmd)
         jdata = jsontest.get_json(data=test_data, prev_data=None)
+        tsname = test_data['suite']
+        tcname = test_data['testcase']
+        vdata = jdata['testsuites'][tsname]['testcases'][tcname]
         for k in verify_data['test_keys']:
             if k not in jdata:
                 faulty_fields.append(k)
@@ -127,10 +139,6 @@ class TestJSONReport(TestSelf):
             for t in jdata['testsuites'][s]:
                 for u in jdata['testsuites'][s]['testcases']:
                     for r in verify_data['test_cases_info']:
-                        if r == 'requirements':
-                            if (jdata['testsuites'][s]['testcases'][u][r] !=
-                                    test_data[r]):
-                                faulty_values.append(r)
                         if r not in jdata['testsuites'][s]['testcases'][u]:
                             faulty_fields.append(r)
         for s in jdata['testsuites']:
@@ -144,11 +152,11 @@ class TestJSONReport(TestSelf):
                 if jdata['machine_info'].keys()[0] != v:
                     faulty_values.append(k)
             if k == 'testresult_status':
-                tsname = test_data['suite']
-                tcname = test_data['testcase']
-                vdata = jdata['testsuites'][tsname]['testcases'][tcname]
                 if vdata['results']['status'] != v:
                     faulty_values.append(k)
+            if k == 'requirements':
+                if vdata['requirements'] != v:
+                    faulty_values.append(r)
         if (faulty_fields or faulty_values):
             raise AssertionError("Faulty fields or values",
                                  (faulty_fields, faulty_values))
