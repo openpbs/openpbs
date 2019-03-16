@@ -165,7 +165,12 @@ class TestPBSTestSuite(TestSelf):
         # Send SIGSEGV to pbs_mom
         self.assertTrue(self.mom.isUp())
         self.mom.signal("-SEGV")
-        self.assertFalse(self.mom.isUp())
+        for _ in range(20):
+            ret = self.mom.isUp(max_attempts=1)
+            if not ret:
+                break
+            time.sleep(1)
+        self.assertFalse(ret, "Mom was expected to go down but it didn't")
 
         # Confirm that no core file was generated
         mom_priv_filenames = self.du.listdir(self.server.hostname,
@@ -188,7 +193,12 @@ class TestPBSTestSuite(TestSelf):
         # Send another SIGSEGV to pbs_mom
         self.assertTrue(self.mom.isUp())
         self.mom.signal("-SEGV")
-        self.assertFalse(self.mom.isUp())
+        for _ in range(20):
+            ret = self.mom.isUp(max_attempts=1)
+            if not ret:
+                break
+            time.sleep(1)
+        self.assertFalse(ret, "Mom was expected to go down but it didn't")
 
         # Confirm that a core file was generated this time
         mom_priv_filenames = self.du.listdir(self.server.hostname,
