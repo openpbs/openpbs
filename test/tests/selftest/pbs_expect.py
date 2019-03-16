@@ -58,6 +58,7 @@ class TestExpect(TestSelf):
         # Set other attributes normally
         a = {'enabled': 'True', 'started': 'True', 'priority': 150}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq')
+        self.server.expect(QUEUE, a, id='expressq')
 
     def test_unsupported_operator(self):
         """

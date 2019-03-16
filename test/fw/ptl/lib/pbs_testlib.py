@@ -6460,7 +6460,6 @@ class Server(PBSService):
                        i.e. silent mode
         :type logerr: bool
         :raises: PbsManagerError
-                - PbsManagerError if qmgr/pbs_manager() failed
         """
 
         if isinstance(id, str):
