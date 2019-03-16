@@ -266,3 +266,37 @@ class TestPbsExecutePrologue(TestFunctional):
         self.exec_mom2 = self.moms[mom2]
         self.exec_mom1.log_match("Job;%s;executed prologue hook" % jid)
         self.exec_mom2.log_match("Job;%s;executed prologue hook" % jid)
+
+    def test_prologue_exception_sisters(self):
+        """
+        Test requeueing jobs due to a prologue hook with an exception
+        when executed by sister moms only.
+        Jobs should all start, fail (due to prologue hook error),
+        requeue, and rerun several times before eventually getting held
+        due to too many failed attempts.
+        """
+        hook_name = "prologue_exception"
+        hook_body = ("import pbs\n"
+                     "e = pbs.event()\n"
+                     "if not e.job.in_ms_mom():\n"
+                     "    raise NameError\n")
+
+        attr = {'event': 'execjob_prologue',
+                'enabled': 'True'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+
+        attr = {'Resource_List.select': '3:ncpus=1',
+                'Resource_List.place': 'scatter:excl',
+                'Resource_List.walltime': 30}
+
+        num_jobs = 3
+        job_list = []
+        for _ in range(num_jobs):
+            j = Job(TEST_USER, attrs=attr)
+            jid = self.server.submit(j)
+            job_list.append(jid)
+
+        held_cmt = "job held, too many failed attempts to run"
+        criteria = {'job_state': 'H', 'comment': held_cmt}
+        for jid in job_list:
+            self.server.expect(JOB, criteria, attrop=PTL_AND, id=jid)
