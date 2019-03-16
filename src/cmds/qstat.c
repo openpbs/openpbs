@@ -1264,6 +1264,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 		state = NULL;
 		location = NULL;
 		hpcbp_executable = NULL;
+		prev_resc_name = NULL;
 		if (full) {
 			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
 				printf("Job Id: %s%s", p->name, delimiter);
@@ -1329,17 +1330,17 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 					}
 				}
 				a = a->next;
-				if ((a || output_format == FORMAT_DEFAULT))
+				if (a)
 					printf("%s", delimiter);
-				else if (output_format == FORMAT_JSON) {
-					if (prev_resc_name != NULL)
-						if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL,
-								NULL) == NULL)
-							return 1;
-					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL)
-							== NULL)
+			}
+			if (output_format == FORMAT_DEFAULT)
+				printf("%s", delimiter);
+			else if (output_format == FORMAT_JSON) {
+				if (prev_resc_name != NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
 						return 1;
-				}
+				if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
+					return 1;
 			}
 		} else {
 			if (p->name != NULL) {

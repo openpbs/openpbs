@@ -409,6 +409,39 @@ class TestQstatFormats(TestFunctional):
         except ValueError:
             self.assertTrue(False)
 
+    def test_qstat_json_valid_multiple_jobs_p(self):
+        """
+        Test json output of qstat -f is in valid format when multiple jobs are
+        queried and make sure that attributes are displayed with `p` option.
+        When -p is passed, then only the Resource_List is requested. An
+        attribute with type resource list has to be the last attribute
+        in order to hit the bug.
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(100)
+        jid = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        jid3 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid2)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid3)
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + ' -fp -F json '
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = '\n'.join(ret['out'])
+        try:
+            js = json.loads(qstat_out)
+        except ValueError:
+            self.assertTrue(False, 'JSON failed to load.')
+
+        self.assertIn('Jobs', js)
+        self.assertIn(jid, js['Jobs'])
+        self.assertIn('Resource_List', js['Jobs'][jid])
+        self.assertIn(jid2, js['Jobs'])
+        self.assertIn('Resource_List', js['Jobs'][jid2])
+        self.assertIn(jid3, js['Jobs'])
+        self.assertIn('Resource_List', js['Jobs'][jid3])
+
     def test_qstat_json_valid_user(self):
         """
         Test json output of qstat -f is in valid format when queried as
