@@ -266,7 +266,7 @@ exit 0
             self.assertTrue('Unauthorized Request' in e.msg[0])
 
         # Unset as Admin user
-        self.server.manager(MGR_CMD_UNSET, SERVER, 'max_job_sequence_id', 
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'max_job_sequence_id',
                             runas=ROOT_USER)
         self.server.log_match('svr_max_job_sequence_id reverting back '
                               'to default val 9999999',
@@ -398,7 +398,7 @@ exit 0
                 jobs with the same id's are still running
         """
         seq_id = {ATTR_max_job_sequence_id: 99999999}
-        self.server.manager( MGR_CMD_SET, SERVER, seq_id, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_SET, SERVER, seq_id, runas=ROOT_USER)
         self.set_svr_sv_jobidnumber(0)
         self.submit_job(sleep=1000, job_id='0')
         self.submit_job(sleep=1000, lower=1, upper=2, job_id='1[]')

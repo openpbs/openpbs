@@ -114,7 +114,7 @@ e.reject()
 
         # Set hostB ncpus to 12
         a = {'resources_available.ncpus': '12'}
-        self.server.manager( MGR_CMD_SET, NODE, a, id=self.hostB)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostB)
 
         # Setup provisioning hook.
         a = {'event': 'provision', 'enabled': 'True', 'alarm': '300'}

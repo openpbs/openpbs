@@ -119,7 +119,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 5}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        self.server.manager( MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'workq'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
@@ -134,7 +134,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
         j5id = self.server.submit(j)
-        self.server.manager( MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB,
                            {'job_state': 'R'},
                            id=j1id,

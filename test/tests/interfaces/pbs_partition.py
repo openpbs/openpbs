@@ -84,8 +84,8 @@ class TestPartition(TestInterfaces):
                                     QUEUE, attr, id=name, runas=user)
             elif mgr_cmd == MGR_CMD_SET:
                 attr = {'partition': partition}
-                self.server.manager(MGR_CMD_SET, QUEUE, attr, id=name,
-                    runas=user)
+                self.server.manager(MGR_CMD_SET, QUEUE,
+                                    attr, id=name, runas=user)
             elif mgr_cmd == MGR_CMD_UNSET:
                 self.server.manager(MGR_CMD_UNSET, QUEUE,
                                     "partition", id=name, runas=user)

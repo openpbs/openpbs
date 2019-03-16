@@ -77,7 +77,7 @@ class Test_acl_host_moms(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'acl_hosts': self.hostB})
-        self.server.manager(MGR_CMD_SET, SERVER, { 'acl_host_enable': True})
+        self.server.manager(MGR_CMD_SET, SERVER, {'acl_host_enable': True})
 
         self.pbsnodes_cmd = os.path.join(self.server.pbs_conf[
             'PBS_EXEC'], 'bin', 'pbsnodes') + ' -av'
@@ -92,7 +92,7 @@ class Test_acl_host_moms(TestFunctional):
         """
 
         self.server.manager(MGR_CMD_SET, SERVER, {
-                            'acl_host_moms_enable': True}) 
+                            'acl_host_moms_enable': True})
         ret = self.du.run_cmd(self.remote_host, cmd=self.pbsnodes_cmd)
         self.assertEqual(ret['rc'], 0)
 
