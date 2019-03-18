@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsrun 8B "13 October 2017" Local "PBS Professional"
+.TH pbsrun 8B "5 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbsrun
 \- general-purpose wrapper script for mpirun
@@ -133,8 +133,6 @@ MVAPICH1's mpirun (
 as of 14.2.1)
 .br
 MVAPICH2's mpiexec
-.br
-IBM's poe
 .RE
 
 .SH OPTIONS
@@ -948,146 +946,6 @@ To unwrap MVAPICH2's mpiexec script:
 .RE
 .RE
 .RE
-
-
-
-
------------------------------------------------------------
-.br
-.B IBM's poe: pbsrun.poe
-.br
------------------------------------------------------------
-
-SYNTAX
-.RS 5
-
-.B pbsrun.poe <options> <executable> <arg1> 
-.B <arg2> ... <argn>
-
-This is the PBS wrapper script to IBM's poe, allowing LAPI or MPI
-programs to use InfiniBand or the HPS in US mode.
-
-If executed inside a PBS job, this allows for PBS to track all resources and 
-MPI ranks.
-PBS can perform accounting and have complete job control.
-
-If executed outside of a PBS job, it behaves exactly as if standard
-.B poe
-was used.
-
-The script will use the -euilib {ip | us} option and the MP_EUILIB environment
-variable to indicate use of US mode, to maintain compatibility with standard poe.
-.RE
-
-OPTIONS AND ENVIRONMENT VARIABLES
-.br
-.RS 5
-Users submitting jobs whose programs use poe can set environment
-variables instead of using options to poe. The equivalent environment
-variable is listed with its poe option. If executed inside a PBS job
-script, all
-.B pbsrun.poe
-options and environment variables except the following are passed on 
-to poe:
-
-.IP "-devtype, MP_DEVTYPE" 5
-If InfiniBand is not specified in either the option or the environment
-variable, the InfiniBand interconnect is not used for the program.
-
-.IP "-euidevice, MP_EUIDEVICE" 5
-Ignored by PBS.
-
-.IP "-euilib {ip|us}, MP_EUILIB"
-If the command line option
-.I -euilib
-is set, it will take precedence over the 
-.I MP_EUILIB
-environment variable.
-If set to "us", the program uses User Space mode.
-If set to any other value, that value is passed to IBM poe.
-
-.IP "-hostfile, -hfile, MP_HOSTFILE" 5
-Ignored. If this is specified, PBS prints the following:
-.br
-.RS
-.IP "" 3
-"pbsrun.poe: Warning, -hostfile value replaced by PBS"
-.LP
-or
-.IP "" 3
-"pbsrun.poe: Warning -hfile value replaced by PBS"
-.LP
-.br
-If this environment variable is set when a poe job is submitted,
-PBS prints the following error message:
-.br
-.IP "" 3
-"pbsrun.poe: Warning MP_HOSTFILE value replaced by PBS"
-.LP
-.RE
-
-.IP "-instances, MP_INSTANCES" 5
-The option and the environment variable are treated differently:
-.RS 5
-.IP "-instances" 5
-If the option is set, PBS prints a warning:
-.RS
-.IP "" 3
-"pbsrun.poe: Warning, -instances cmd line option removed by PBS"
-.LP
-.RE
-
-.IP "MP_INSTANCES" 5
-If the environment variable is set, PBS uses it to calculate
-the number of network windows for the job.
-The maximum value allowed can be requested by using
-the string "max" for the environment variable.
-If the environment variable is set to a value greater than
-the maximum allowed value, it is replaced with the maximum
-allowed value.
-The default maximum value is 4.
-.RE
-
-.IP "-procs, MP_PROCS" 5
-This option or environment variable should be set to the
-total number of mpiprocs requested by the job when using
-US mode.
-.br
-If neither this option nor the MP_PROCS environment
-variable is set, PBS uses the number of entries in
-$PBS_NODEFILE.
-.br
-If this option is set to N, and the job is submitted with a total
-of M mpiprocs:
-.RS
-.IP "If N >=M:" 3
-The value N is passed to IBM poe.
-.IP "If N < M and US mode is not being used:" 3
-The value N is passed to poe.
-.br
-.IP "If N < M and US mode is being used:" 3 
-US mode is turned off and a warning is printed:
-.RS
-.IP "" 3
-"pbsrun.poe: Warning, user mode disabled due to MP_PROCS setting"
-.LP
-.RE
-.RE
-.RE
-
-WRAP/UNWRAP
-.RS 5
-To wrap IBM's poe:
-.RS 4
-.B # pbsrun_wrap <path to actual poe> pbsrun.poe
-.RE
-To unwrap the IBM poe mpirun script:
-.RS 4
-.B # pbsrun_unwrap pbsrun.poe
-.RE
-.RE
-.RE
-
 
 
 .SH REQUIREMENTS

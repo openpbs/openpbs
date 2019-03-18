@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_tclapi 3B "29 August 2011" Local "PBS Professional"
+.TH pbs_tclapi 3B "6 March 2019" Local "PBS Professional"
 .SH NAME
 pbs_tclapi \- PBS TCL Application Programming Interface 
 .SH DESCRIPTION
@@ -277,32 +277,7 @@ and
 .I down
 in that order.
 .LP
-.IP "pbsrescreserve resource_id resource_list" 6
-.B Deprecated. 
-Make (or extend) a reservation for the resources specified by
-.I resource_list
-which will be given as a list of strings.  The parameter
-.I resource_id
-is a number which provides a unique identifier for a reservation
-being tracked by the server.  If
-.I resource_id
-is given as "0", a new reservation is created.  In this case,
-a new identifier is generated and returned by the function.
-If an old identifier is used, that same number will be returned.
-The Tcl variable "pbs_errno" will be set to indicate the success
-or failure of the reservation.
-.LP
-.IP "pbsrescrelease resource_id" 6
-.B Deprecated. 
-The reservation specified by
-.I resource_id
-is released.
-.LP
-The two following commands are not normally used by the scheduler.
-They are included here because there could be a need for a scheduler
-to contact a server other than the one which it normally communicates
-with.  Also, these commands are used by the Tcl tools.
-.LP
+
 .IP "pbsconnect ?server?" 6
 Make a connection to the named server or the default server if
 a parameter is not given.

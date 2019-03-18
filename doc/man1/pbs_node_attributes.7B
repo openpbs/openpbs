@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_node_attributes 7B "23 April 2018" Local "PBS Professional"
+.TH pbs_node_attributes 7B "4 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_node_attributes 
 \- attributes of PBS vnodes
@@ -128,7 +128,36 @@ Python type:
 .I int
 .br
 
+.IP last_state_change_time 8
+Records the most recent time that this node changed state.              
+.br
+Format: 
+.RS 11
+Timestamp
+.br
+Printed by qstat in human-readable Date format.  
+.br
+Output in hooks as seconds since epoch.
+.RE
+.IP
+
+.IP last_used_time 8
+Records the most recent time that this node finished being used for a
+job or reservation.  Set at creation or reboot time.  Updated when
+node is released early from a running job.  Reset when node is ramped
+up.
+.br
+Format: 
+.RS 11
+Timestamp
+.br
+Printed by qstat in human-readable Date format.  
+.br
+Output in hooks as seconds since epoch.
+.RE
+
 .IP license 8
+.br
 Indicates whether this vnode is socket-licensed.
 .br
 Readable by all; set by PBS.
@@ -180,48 +209,6 @@ Python type:
 .I str
 .br
 Default: No default 
-
-.IP max_group_run 8
-The maximum number of jobs owned by any users in a single group
-allowed to run on this vnode at one time.
-.br
-Readable by all; settable by Operator and Manager.
-.br
-Format: 
-.I Integer
-.br
-Python type: 
-.I int
-.br
-Default: No default
-
-.IP max_running
-The maximum number of jobs allowed to run on this vnode
-at any given time.  
-.br
-Readable by all; settable by Operator and Manager.
-.br
-Format: 
-.I Integer
-.br
-Python type: 
-.I int
-.br
-Default: No default
-
-.IP max_user_run 8
-The maximum number of jobs owned by a single user allowed to 
-run on this vnode at one time.  
-.br
-Readable by all; settable by Operator and Manager.
-.br
-Format: 
-.I Integer
-.br
-Python type: 
-.I int
-.br
-Default: No default
 
 .IP Mom
 Hostname of host on which MoM daemon runs.  
@@ -286,21 +273,14 @@ Format:
 Valid values:
 .RS
 .IP PBS 3
-Normal vnode; not Globus
+Normal vnode
 .br
 Python type: 
 .I pbs.ND_PBS
-.IP globus 3
-A Globus vnode (this functionality has been removed). Globus can still
-send jobs to PBS, but PBS no longer supports sending jobs to Globus.
-.br
-Python type: 
-.I pbs.ND_GLOBUS
-.RE
-.IP
 .br
 Default: 
 .I PBS
+.RE
 
 .IP partition 8
 Name of partition to which this vnode is assigned.  A vnode can be
@@ -380,6 +360,30 @@ Python type:
 .br
 Default: 
 .I 15002
+
+.IP poweroff_eligible 8
+Enables powering this vnode up and down by PBS.
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I Boolean
+.br
+Python type:
+.I bool
+.br
+Values:
+.RS 11
+.IP True
+PBS can power this vnode on and off.
+.IP False
+PBS cannot power this vnode on and off.
+.RE
+.IP
+Default: 
+.I False
+
+
 
 .IP power_provisioning 8
 Enables use of power profiles by this vnode.

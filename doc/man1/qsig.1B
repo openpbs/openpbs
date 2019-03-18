@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qsig 1B "26 December 2017" Local "PBS Professional"
+.TH qsig 1B "4 March 2019" Local "PBS Professional"
 .SH NAME
 .B qsig 
 \- signal a PBS batch job
@@ -105,14 +105,12 @@ The job is in the process of provisioning
 You attempt to use 
 .I admin-resume 
 on a job that was 
-.I suspend
-ed
+.I suspended
 .IP -
 You attempt to use 
 .I resume 
 on a job that was 
-.I admin-suspend
-ed
+.I admin-suspended
 .LP
 
 .B Required Privilege

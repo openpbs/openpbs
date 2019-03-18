@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qselect 1B "11 January 2018" Local "PBS Professional"
+.TH qselect 1B "5 March 2019" Local "PBS Professional"
 .SH NAME
 .B qselect 
 - select specified PBS jobs
@@ -479,11 +479,6 @@ valid at any host.
 
 .IP "-x" 8
 Selects finished and moved jobs in addition to queued and running jobs.
-
-.IP "-X" 8
-Selects completed or deleted subjobs (subjobs in 
-.I X 
-state).
 
 .IP "--version" 8
 The 

@@ -636,7 +636,16 @@ attribute to
 .I mail events.  
 The 
 .I mail events
-argument can be either "n" or any combination of "a", "b", and "e".
+argument can be one of the following:
+.RS 11
+The single character "n"
+.br
+Any combination of "a", "b", and "e", with optional "j"
+.RE
+.IP
+The following table lists the sub-options to the 
+.I -m 
+option:
 .RS
 .IP n 5
 No mail is sent
@@ -646,10 +655,25 @@ Mail is sent when the job is aborted by the batch system
 Mail is sent when the job begins execution
 .IP e 5
 Mail is sent when the job terminates
+.IP j 5
+Mail is sent for subjobs.  Must be combined with one or more of the
+.I a
+, 
+.I b
+, or 
+.I e 
+sub-options
 .RE
 .IP
+Can be used with job arrays but not subjobs.
+.br
 Format: 
 .I String
+.br
+Syntax: 
+.I n | [j](one or more of a, b, e)
+.br
+Example: -m ja
 .br
 Default: 
 .I "a"  

@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_server_attributes 7B "6 June 2018" Local "PBS Professional"
+.TH pbs_server_attributes 7B "21 February 2019" Local "PBS Professional"
 .SH NAME
 pbs_server_attributes 
 \- PBS server attributes
@@ -1317,7 +1317,7 @@ To unset
 \ \ \ Qmgr> unset server pbs_license_linger_time
 .br
 Default: 
-.I 31536000 seconds (1 year)
+.I 3600 seconds
 
 .IP pbs_license_max 8
 Maximum number of licenses to be checked out at any time, i.e maximum
@@ -1387,9 +1387,9 @@ Python type:
 Default: No default
 
 .IP power_provisioning 8
-Enables use of power profiles via PBS.
+Shows use of power profiles via PBS.
 .br
-Readable by all; settable by Manager.
+Readable by all; set by PBS.
 .br
 Format:
 .I Boolean
@@ -1541,57 +1541,6 @@ is any built-in or custom resource
 .IP
 Default: No default
 
-.IP require_cred 8
-Specifies the Kerberos credential authentication method required.  
-All jobs submitted without the specified credential will be rejected.  
-See
-.I require_cred_enable.  
-Depends on optional Kerberos and DCE support.
-Not supported under Windows.
-.br
-Readable by all; settable by Manager.
-.br
-Format: 
-.I String 
-.br
-Python type: 
-.I str
-.br
-Valid values:
-.I krb5 
-or 
-.I dce 
-.br
-Default: 
-.I Unset
-
-.IP require_cred_enable 8
-Specifies whether the server is to use the Kerberos credential
-authentication method given in the 
-.I require_cred 
-server attribute.
-Depends on optional Kerberos and DCE support.  Not supported under
-Windows.
-.br
-Readable by all; settable by Manager.
-.br
-Format: 
-.I Boolean
-.br
-Python type:
-.I bool
-.br
-Behavior:
-.RS
-.IP True 3
-Use the Kerberos authentication method specified.
-.IP False 3
-No Kerberos credential authentication used.
-.RE
-.IP
-Default: 
-.I False
-
 .IP reserve_retry_cutoff 8
 The time period before the reservation start time during which 
 PBS does not attempt to reconfirm a degraded reservation.
@@ -1731,7 +1680,7 @@ where
 is any built-in or custom resource
 .RE
 .IP 
-Default: resources_default.ncpus=1
+Default: No limit
 
 .IP resources_max 8 
 The maximum amount of each resource that can be requested by any
@@ -1918,7 +1867,7 @@ Python type:
 .I bool
 .br
 Default: 
-.I True
+.I False
 if never set via 
 .I pbs_server 
 command

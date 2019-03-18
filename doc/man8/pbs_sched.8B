@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_sched 8B "16 April 2018" Local "PBS Professional"
+.TH pbs_sched 8B "17 December 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_sched 
 \- run a PBS scheduler
@@ -192,6 +192,10 @@ Any line starting with a hashmark, "#", is a comment, and is ignored.
 .B Configuration Parameters
 .br
 .IP "backfill " 13
+.B Deprecated.  
+Use the 
+.I backfill_depth 
+queue/server attribute instead.  
 Toggle that controls whether PBS uses backfilling.  
 If this is set to True, this scheduler attempts to schedule
 smaller jobs around higher-priority jobs when using

@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_job_attributes 7B "17 April 2018" Local "PBS Professional"
+.TH pbs_job_attributes 7B "22 June 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_job_attributes 
 \- attributes of PBS jobs
@@ -1095,6 +1095,8 @@ Valid values: Combination of
 .I a, b, 
 and
 .I e, 
+with optional 
+.I j, 
 or 
 .I n
 by itself.
@@ -1105,6 +1107,12 @@ Mail is sent when job is aborted
 Mail is sent at beginning of job
 .IP e 3
 Mail is sent when job ends
+.IP j 3
+Mail is sent for subjobs.  Must be combined with one or more of
+.I a, b, 
+and 
+.I e
+options.
 .IP n 3
 No mail is sent.  Cannot be combined with other options.
 .RE

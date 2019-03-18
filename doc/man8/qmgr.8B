@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qmgr 8B "16 April 2018" Local "PBS Professional"
+.TH qmgr 8B "4 March 2019" Local "PBS Professional"
 .nf
 .SH NAME
 .B qmgr 
@@ -62,7 +62,7 @@ help <help option>
 
 .SH DESCRIPTION
 The PBS manager command, 
-qmgr, 
+.B qmgr, 
 provides a command-line interface to parts of PBS.  The 
 .B qmgr 
 command is used to create or delete queues,
@@ -89,7 +89,9 @@ starts a session and presents you with its command line prompt.  The
 command then reads directives etc. from standard input; see 
 "Directive Syntax", below.  You can edit the command
 line; see "Reusing and Editing the qmgr Command
-Line", below.  For a qmgr prompt, type: 
+Line", below.  
+
+For a qmgr prompt, type: 
 .br
 .B \ \ \ qmgr <return> 
 .br
@@ -247,22 +249,35 @@ Syntax for operating on servers, schedulers, queues, vnodes:
 Syntax for operating on resources:
 .nf
 .RS 3
-.I <command> <resource name> [<resource name> ...] [type = <type>],[,flag = <flag(s)>]
+.I <command> <resource name> [<resource name> ...] [type = <type>][,flag = <flag(s)>]
 .RE
 .fi
 For information about resources, see 
 .I pbs_resources.7B.
 
-.B Hook Directives
+.B Hook-only Directives
 .br
-Syntax for operating on hooks:
+The directives here apply only to hooks.  Other directives apply to all objects such as 
+queues, resources, hooks, etc. 
+
+Syntax for importing and exporting site-defined hooks:
 .nf
 .RS 3
 .I import hook <hook name> application/x-python <content-encoding> (<input file> | -) 
-
-.I import hook <hook name> application/x-config <content-encoding> (<input file> | -)  
-
+.br
 .I export hook <hook name> <content-type> <content-encoding> [<output file>]
+.fi
+.RE
+Syntax for importing site-defined hook configuration file:
+.nf
+.RS 3
+.I import hook <hook name> application/x-config <content-encoding> (<input file> | -)  
+.fi
+.RE
+Syntax for importing built-in hook configuration file:
+.nf
+.RS 3
+.I import pbshook <hook name> application/x-config <content-encoding> (<input file> | -)  
 .fi
 .RE
 
@@ -942,7 +957,7 @@ h           Indicates a host-level resource. Used alone, means that the
             requested inside of a select statement.
 
             Example: for a Boolean resource named "green":
-.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ green type=boolean, flag=h
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ green type=boolean,flag=h
 -----------------------------------------------------------------------
 nh          The amount is consumable at the host level, for all vnodes 
             assigned to the job. Must be consumable or time-based. 
@@ -996,7 +1011,7 @@ or commas.
 
 To set the flag(s) of the named resource to the specified flag(s):
 .RS 3
-.I set resource <resource name> flag = <flag(s)>
+.I set resource <resource name> flag=<flag(s)>
 
 For example:
 .br
@@ -1005,7 +1020,7 @@ For example:
 
 To set both type and flag(s):
 .RS 3
-.I set resource <resource name> type=<type>, flag = <flag(s)> 
+.I set resource <resource name> type=<type>,flag=<flag(s)> 
 
 Sets the type and flag(s) of the named resource to the specified type
 and flag(s).  For example:
@@ -1289,14 +1304,14 @@ default value of 30 seconds:
 
 .B Importing Hooks
 .br
-For importing the contents of a hook.  Cannot be used with built-in
+For importing the contents of a site-defined hook.  Cannot be used with built-in
 hooks.
 
 To import a hook, you import the contents of a hook script into the
 hook.  You must specify a filename that is locally accessible to qmgr
 and the PBS server.
 
-Format for importing a hook:
+Format for importing a site-defined hook:
 .RS 3
 .I import hook <hook name> application/x-python <content encoding> {<input file> | -} 
 .RE
@@ -1379,16 +1394,23 @@ ASCII hook script called "master_provision.py" located in /root/data/:
 .B Qmgr: import hook Provision_Hook application/x-python default /root/data/master_provision.py
 .RE
 
-.B Importing Hook Configuration Files
+.B Importing and Exporting Hook Configuration Files
 .br
-For importing the contents of a hook configuration file.  To import a
+.B Importing Configuration Files
+.br
+For importing the contents of a site-defined or built-in hook configuration file.  To import a
 hook configuration file, you import the contents of a file to a hook.
 You must specify a filename that is locally accessible to qmgr and the
 PBS server.
 
-Format for importing a hook configuration file:
+Format for importing a site-defined hook configuration file:
 .RS 3
 .I import hook <hook name> application/x-config <content encoding> {<config file>|-}
+.RE
+
+Format for importing a built-in hook configuration file:
+.RS 3
+.I import pbshook <hook name> application/x-config <content encoding> {<config file>|-}
 .RE
 
 This uses the contents of 
@@ -1431,6 +1453,20 @@ contains spaces as are used in Windows filenames, input file must be quoted.
 
 There is no restriction on the size of the hook configuration file.
 
+.B Exporting Configuration Files
+.br
+
+Format for exporting a site-defined hook configuration file:
+.RS 3
+.I export hook <hook name> application/x-config default {<config file>|-}
+.RE
+
+Format for exporting a built-in hook configuration file:
+.RS 3
+.I export pbshook <hook name> application/x-config default {<config file>|-}
+.RE
+
+
 .B Hook Configuration File Format
 .br
 PBS supports several file formats for configuration files.  The format
@@ -1460,7 +1496,7 @@ Example: To import a configuration file in .json format:
 
 .B Exporting Hooks
 .br
-For exporting the contents of a hook.  Cannot be used with built-in
+For exporting the contents of a site-defined hook.  Cannot be used with built-in
 hooks.
 
 Format for exporting a hook: 
