@@ -258,13 +258,13 @@ start_dataservice() {
 			if [ -n "$NASMODE" ] ; then
 				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
 			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
+				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} setsid ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
 			fi
 		else
 			if [ -n "$NASMODE" ] ; then
 				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
 			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
+				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} setsid ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
 			fi
 		fi
 		ret=$?
