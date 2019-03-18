@@ -576,6 +576,13 @@ enum bucket_flags {
 	NO_PRINT_BUCKETS
 };
 
+enum sort_info_type {
+	PRIME_SORT,
+	NON_PRIME_SORT,
+	PRIME_NODE_SORT,
+	NON_PRIME_NODE_SORT
+};
+
 #ifdef	__cplusplus
 }
 #endif

@@ -344,8 +344,11 @@ parse_config(char *fname)
 					} else
 						error = 1;
 				}
-				else if (!strcmp(config_name, PARSE_FAIRSHARE_RES))
+				else if (!strcmp(config_name, PARSE_FAIRSHARE_RES)) {
+					if (conf.fairshare_res != NULL)
+						free(conf.fairshare_res);
 					conf.fairshare_res = string_dup(config_value);
+				}
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_ENT)) {
 					if (strcmp(config_value, ATTR_euser) &&
 						strcmp(config_value, ATTR_egroup) &&
@@ -356,6 +359,8 @@ parse_config(char *fname)
 						sprintf(errbuf, "%s %s is erroneous (or deprecated).",
 							PARSE_FAIRSHARE_ENT, config_value);
 					}
+					if (conf.fairshare_ent != NULL)
+						free(conf.fairshare_ent);
 					conf.fairshare_ent = string_dup(config_value);
 				}
 				else if (!strcmp(config_name, PARSE_NODE_GROUP_KEY)) {
@@ -438,64 +443,6 @@ parse_config(char *fname)
 								conf.non_prime_smp_dist = (enum smp_cluster_dist) smp_cluster_info[i].value;
 						}
 				}
-				else if (!strcmp(config_name, PARSE_SORT_BY)) {
-					obsolete[0] = config_name;
-					obsolete[1] = PARSE_JOB_SORT_KEY;
-
-					error = 1;
-					for (i = 0; sort_convert[i].config_name != NULL; i++) {
-						if (!strcmp(config_value, sort_convert[i].config_name)) {
-							error = 0;
-							if (prime == PRIME || prime == ALL) {
-								conf.prime_sort[0].res_name = sort_convert[i].res_name;
-								conf.prime_sort[0].order = sort_convert[i].order;
-								pkey_num++;
-							}
-							if (prime == NON_PRIME || prime == ALL) {
-								conf.non_prime_sort[0].res_name = sort_convert[i].res_name;
-								conf.non_prime_sort[0].order = sort_convert[i].order;
-								npkey_num++;
-							}
-						}
-					}
-					/* no_sort converts to not having any job_sort_key lines at all
-					 * but is not an erro
-					 */
-					if (!strcmp(config_value, "no_sort"))
-						error = 0;
-				}
-				else if (!strcmp(config_name, PARSE_KEY)) {
-					obsolete[0] = config_name;
-					obsolete[1] = PARSE_JOB_SORT_KEY;
-					error = 1;
-					for (i = 0; i < MAX_SORTS && sort_convert[i].config_name != NULL; i++) {
-						if (!strcmp(config_value, sort_convert[i].config_name)) {
-							error = 0;
-							if (((prime == PRIME||prime == ALL) && pkey_num <= MAX_SORTS) ||
-								((prime == NON_PRIME||prime == ALL) && npkey_num <= MAX_SORTS)
-								) {
-								if (prime == PRIME || prime == ALL) {
-									conf.prime_sort[pkey_num].res_name = sort_convert[i].res_name;
-									conf.prime_sort[pkey_num].order = sort_convert[i].order;
-									pkey_num++;
-								}
-								if (prime == NON_PRIME || prime == ALL) {
-									conf.non_prime_sort[npkey_num].res_name =
-										sort_convert[i].res_name;
-									conf.non_prime_sort[npkey_num].order =
-										sort_convert[i].order;
-									npkey_num++;
-								}
-							}
-							else {
-								sprintf(logbuf, "Too many keys for %s , ignoring %s.",
-									prime == PRIME ? "prime" : "non-prime", config_value);
-								schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-									fname, logbuf);
-							}
-						}
-					}
-				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_PRIO)) {
 					obsolete[0] = PARSE_PREEMPT_PRIO;
 					obsolete[1] = "nothing - set via qmgr";
@@ -545,6 +492,7 @@ parse_config(char *fname)
 							error = 1;
 
 						if (!error) {
+							int dup_res_name = 0;
 							if (!strcmp(sort_res_name, SORT_PRIORITY)) {
 								obsolete[0] = SORT_PRIORITY " in " PARSE_JOB_SORT_KEY;
 								obsolete[1] = SORT_JOB_PRIORITY;
@@ -553,12 +501,20 @@ parse_config(char *fname)
 							}
 							if (prime == PRIME || prime == ALL) {
 								conf.prime_sort[pkey_num].res_name = sort_res_name;
+								/* set the flag to indicate that we should dup the memory for sort_res_name
+								 * if we are going to use it again.
+								 */
+								dup_res_name = 1;
 								conf.prime_sort[pkey_num].order = sort_ord;
 								pkey_num++;
 							}
 
 							if (prime == NON_PRIME || prime == ALL) {
-								conf.non_prime_sort[npkey_num].res_name = sort_res_name;
+								if (dup_res_name)
+									conf.non_prime_sort[npkey_num].res_name = string_dup(sort_res_name);
+								else
+									conf.non_prime_sort[npkey_num].res_name = sort_res_name;
+
 								conf.non_prime_sort[npkey_num].order = sort_ord;
 								npkey_num++;
 							}
@@ -619,8 +575,13 @@ parse_config(char *fname)
 						}
 
 						if (!error) {
+							int dup_res_name = 0;
 							if (prime == PRIME || prime == ALL) {
 								conf.prime_node_sort[node_pkey_num].res_name = sort_res_name;
+								/* set the flag to indicate that we should dup the memory for sort_res_name
+								 * if we are going to use it again.
+								 */
+								dup_res_name = 1;
 								conf.prime_node_sort[node_pkey_num].order = sort_ord;
 								conf.prime_node_sort[node_pkey_num].res_type = sort_type;
 								if (sort_type == RF_UNUSED || sort_type == RF_ASSN)
@@ -629,7 +590,11 @@ parse_config(char *fname)
 							}
 
 							if (prime == NON_PRIME || prime == ALL) {
-								conf.non_prime_node_sort[node_npkey_num].res_name = sort_res_name;
+								if (dup_res_name)
+									conf.non_prime_node_sort[node_npkey_num].res_name = string_dup(sort_res_name);
+								else
+									conf.non_prime_node_sort[node_npkey_num].res_name = sort_res_name;
+
 								conf.non_prime_node_sort[node_npkey_num].order = sort_ord;
 								conf.non_prime_node_sort[node_npkey_num].res_type = sort_type;
 								if (sort_type == RF_UNUSED || sort_type == RF_ASSN)
@@ -714,12 +679,12 @@ parse_config(char *fname)
 					obsolete[1] = PARSE_NODE_SORT_KEY;
 
 					if (prime == PRIME || prime == ALL) {
-						conf.prime_node_sort[node_pkey_num].res_name = SORT_PRIORITY;
+						conf.prime_node_sort[node_pkey_num].res_name = string_dup(SORT_PRIORITY);
 						conf.prime_node_sort[node_pkey_num].order = DESC;
 						node_pkey_num++;
 					}
 					if (prime == NON_PRIME || prime == ALL) {
-						conf.non_prime_node_sort[node_npkey_num].res_name = SORT_PRIORITY;
+						conf.non_prime_node_sort[node_npkey_num].res_name = string_dup(SORT_PRIORITY);
 						conf.non_prime_node_sort[node_npkey_num].order = DESC;
 						node_npkey_num++;
 					}
@@ -936,6 +901,26 @@ int
 init_config()
 {
 	static char *ignore[] = { "mpiprocs", "ompthreads", NULL };
+
+	free_fairshare_head(conf.fairshare);
+	free_sort_info(PRIME_SORT);
+	free_sort_info(NON_PRIME_SORT);
+	free_sort_info(PRIME_NODE_SORT);
+	free_sort_info(NON_PRIME_NODE_SORT);
+
+	if (conf.fairshare_res != NULL) {
+		free(conf.fairshare_res);
+		conf.fairshare_res = NULL;
+	}
+	if (conf.fairshare_ent != NULL) {
+		free(conf.fairshare_ent);
+		conf.fairshare_ent = NULL;
+	}
+	if (conf.res_to_check != NULL)
+		free_string_array(conf.res_to_check);
+	if (conf.dyn_res_to_get != NULL)
+		free_string_array(conf.dyn_res_to_get);
+
 	/* default everyone OFF */
 	memset(&conf, 0, sizeof(struct config));
 	memset(&cstat, 0, sizeof(struct status));
@@ -977,8 +962,13 @@ init_config()
 
 	conf.decay_time = 86400;	/* default decay time period is 24 hours */
 	conf.sync_time = 86400;
-	conf.fairshare_res = "cput";
-	conf.fairshare_ent = "euser";
+
+	if ((conf.fairshare_res = string_dup("cput")) == NULL)
+		return 0;
+
+	if ((conf.fairshare_ent = string_dup("euser")) == NULL)
+		return 0;
+
 	conf.enforce_no_shares = 1;
 	conf.fairshare_decay_factor = .5;
 
@@ -1151,3 +1141,43 @@ preempt_cmp(const void *p1, const void *p2)
 	}
 }
 
+/**
+ * @brief
+ *	       Frees the memory for the corresponding sort_info structure variable given.
+ *
+ * @param[in]	si_type	- type of sort_info structure
+ *
+ * @return void
+ *
+ */
+void
+free_sort_info(enum sort_info_type si_type)
+{
+	struct sort_info *so_info;
+
+	switch (si_type) {
+		case PRIME_SORT:
+			so_info = conf.prime_sort;
+			break;
+		case NON_PRIME_SORT:
+			so_info = conf.non_prime_sort;
+			break;
+		case PRIME_NODE_SORT:
+			so_info = conf.prime_node_sort;
+			break;
+		case NON_PRIME_NODE_SORT:
+			so_info = conf.non_prime_node_sort;
+			break;
+		default:
+			return;
+	}
+
+	if (so_info != NULL) {
+		int i;
+		for (i = 0; i < MAX_SORTS; i++) {
+			if (so_info[i].res_name != NULL)
+				free(so_info[i].res_name);
+		}
+		free(so_info);
+	}
+}
