@@ -1071,6 +1071,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				set_schd_error_arg(err, SPECMSG, "Job would conflict with starving job");
 				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
+			else if (policy->backfill && policy->strict_ordering && qinfo->backfill_depth == 0) {
+				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
+				update_jobs_cant_run(sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+			}
 		}
 
 		time(&cur_time);
