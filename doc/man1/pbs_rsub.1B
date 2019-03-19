@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rsub 1B "19 February 2018" Local "PBS Professional"
+.TH pbs_rsub 1B "4 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_rsub 
 \- create a PBS advance or standing reservation 
@@ -674,12 +674,27 @@ is a unique integer.  The associated queue's name is the prefix,
 .IP "Datetime format"
 .I "[[[[CC]YY]MM]DD]hhmm[.SS]"
 
-.IP "Reservation name"
-String up to 236 characters in length. It must consist of printable,
-non-white space characters with the first character alphabetic.  The
-first character must be alphabetic, numeric, plus sign, dash or minus,
-or underscor.  The name must not contain special characters.
+.IP "Duration format"
+A period of time, expressed either as 
+.RS 11
+.I    An integer whose units are seconds
+.RE
+.IP 
+or 
+.RS 11
+.I [[hours:]minutes:]seconds[.milliseconds]
+.br
+in the form
+.br
+.I [[HH:]MM:]SS[.milliseconds]
+.RE
+.IP
+Milliseconds are rounded to the nearest second.
 
+.IP "Reservation name format"
+String up to 230 characters in length. It must consist of printable,
+non-white space characters.  It can contain alphabetic and numeric
+characters, and plus sign, dash or minus, underscore, and dot or period.
 
 .SH SEE ALSO
 The

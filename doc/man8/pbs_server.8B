@@ -211,7 +211,7 @@ and jobs, and initialize configuration files to the default values.
 The default scheduler is idled (
 .I scheduling 
 is set to 
-.I True
+.I False
 ).  Any multischeds are deleted.
 
 .IP hot 7

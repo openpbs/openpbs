@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs.conf 8B "19 February 2018" Local "PBS Professional"
+.TH pbs.conf 8B "4 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbs.conf
 - PBS configuration parameters
@@ -109,9 +109,6 @@ Location of endpoint's
 .I pbs_comm 
 daemon(s).
 
-.IP PBS_LICENSE_FILE_LOCATION       
-Location of license server. 
-
 .IP PBS_LOCALLOG    
 Enables logging to local PBS log files.
 
@@ -121,18 +118,8 @@ to users specified in a job or reservation's Mail_Users attribute.
 Optional.  Must be a fully qualified domain name.  Cannot contain a
 colon (":").  
 
-.IP PBS_MANAGER_GLOBUS_SERVICE_PORT 
-Globus can still send jobs to PBS, but PBS no longer supports sending
-jobs to Globus.  Port on which Globus MoM listens.  Globus MoM is no longer
-available.
-
 .IP PBS_MANAGER_SERVICE_PORT        
 Port on which MoM listens.  Default: 15003
-
-.IP PBS_MOM_GLOBUS_SERVICE_PORT     
-Globus can still send jobs to PBS, but PBS no longer supports sending
-jobs to Globus.  Port on which Globus MoM listens.  Globus MoM is no longer
-available.
 
 .IP PBS_MOM_HOME    
 Location of MoM working directories.

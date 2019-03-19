@@ -18,7 +18,7 @@
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
-.\" Commercial License Information:
+.\" Commercial License Information:  
 .\"
 .\" For a copy of the commercial license terms and conditions,
 .\" go to: (http://www.pbspro.com/UserArea/agreement.html)
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_mom 8B "8 November 2017" Local "PBS Professional"
+.TH pbs_mom 8B "12 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_mom 
 - run the PBS job monitoring and execution daemon
@@ -665,11 +665,7 @@ Runs
 in place of SIGTERM or SIGKILL when MoM terminates a job.
 .RE
 
-.SH Initialization Values
-Initialization value directives have names beginning with a
-dollar sign ("$").
-See 
-.B The PBS Professional Administrator's Guide.
+.SH MoM Parameters
 
 .IP "$alps_client <path>" 5
 Cray only.  MoM runs this command to get the ALPS inventory.  Must 
@@ -678,6 +674,18 @@ be full path to command.
 Format: path to command
 .br
 Default: None
+
+.IP "alps_release_jitter <maximum jitter>" 5
+Cray only.  PBS sends requests to ALPS to release a finished job at
+intervals specified by the sum of 
+.I $alps_release_wait_time 
+and a randomly generated value between zero and 
+.I maximum jitter, 
+in seconds.
+.br
+Format: Float
+.br
+Default: 0.12 seconds
 
 .IP "$alps_release_timeout <timeout>" 5
 Cray only.  Specifies the amount of time that PBS tries to release an
@@ -690,9 +698,21 @@ available ALPS resources.
 We recommend that the value for this parameter be greater than the value for 
 .I suspectbegin.
 .br
-Format: Seconds, specified as positive integer.
+Format: Seconds, specified as positive integer
 .br
 Default: 600 (10 minutes)
+
+.IP "$alps_release_wait_time <wait time>" 5
+Cray only.  PBS sends requests to ALPS to release a finished job at
+intervals specified by the sum of 
+.I wait time 
+and a randomly generated value between zero and the maximum specified in 
+.I $alps_release_jitter,
+in seconds.
+.br
+Format: Float
+.br
+Default: 0.4 seconds
 
 .IP "$checkpoint_path <path>" 5
 MoM passes this path to checkpoint and restart scripts.
@@ -702,6 +722,7 @@ Overrides default.  Overridden by
 option and by 
 .I PBS_CHECKPOINT_PATH 
 environment variable.
+
 .IP "$clienthost <hostname>" 5
 .I hostname 
 is added to the list of hosts which are allowed
@@ -736,6 +757,36 @@ as "clienthosts" make up a "sisterhood" of machines.  Any one of the
 sisterhood will accept connections from within the
 sisterhood.  The sisterhood must all use the same port number.
 
+.IP "cpuset_create_flags <flags>" 5
+Lists the flags for when MoM does a 
+.B cpusetCreate(3)
+for each job.  
+.I flags 
+is an or-ed list of flags.  Flags for an HPE SGI machine 
+with supported versions of HPE MPI:
+.RS 8
+CPUSET_CPU_EXCLUSIVE 
+.br
+0
+.br
+Default: 0
+.RE
+.IP
+
+.IP "cpuset_destroy_delay <delay>" 5
+MoM waits up to 
+.I delay 
+seconds before destroying a cpuset of a
+just-completed job, but not longer than necessary.  This give s the
+operating system more time to clean up leftover processes after they
+have been killed.  Example:
+.br
+   cpuset_destroy_delay 10
+.br
+Format: Integer
+.br
+Default for HPE SGI systems: 0 
+
 .IP "$cpuset_error_action <action>" 5
 When using a cpuset-enabled MoM, specifies the action taken when 
 a cpuset creation error occurs.  Can take one of the following values:
@@ -754,7 +805,6 @@ Allowable values: "continue", "offline"
 .br
 Default: "offline"
 .RE
-
 
 .IP "$cputmult <factor>" 5
 This sets a 
@@ -776,6 +826,7 @@ to a value between 1.0 and 0.0.  For example:
 $cputmult 0.75
 .RE
 .IP
+
 .IP "$dce_refresh_delta <delta>" 5
 Defines the number of seconds between successive refreshings of a job's
 DCE login context.
@@ -831,11 +882,9 @@ to produce actual
 limit.  Default: 1.025.  Float.
 .RE
 
-
 .IP "$enforce cpuburst" 5
 MoM will enforce the ncpus limit when CPU burst usage exceeds
 the job's limit.
-
 .RS
 .IP "$enforce delta_percent_over <percentage>" 5
 Modifies 
@@ -865,6 +914,7 @@ for smoothing burst usage when average is decreasing.  Default: 0.4.
 Float.
 .RE
 .RE
+
 .IP "$ideal_load <load>" 5
 Defines the 
 .I load 
@@ -904,6 +954,36 @@ Administrators group.
 .IP "Example:" 5
 $jobdir_root /scratch/foo
 .RE
+
+.IP "$job_launch_delay" 5
+When the primary MoM gets a job whose 
+.I tolerate_node_failures 
+attribute is set to 
+.I all 
+or 
+.I job_start, 
+the primary MoM can wait to start the job (running the job script or
+executable) for up to a configured number of seconds.  During this
+time, execjob_prologue hooks can finish and the primary MoM can check
+for communication problems with sister MoMs.  You configure the number
+of seconds for the primary MoM to wait for hooks via the
+.I job_launch_delay 
+configuration parameter in MoM's config file:
+.br
+   $job_launch_delay <number of seconds to wait>
+.br
+Default: the sum of the values of the alarm attributes of any enabled
+execjob_prologue hooks. If there are no enabled execjob_prologue
+hooks, the default value is 30 seconds.  For example, if there are two
+enabled execjob_prologue hooks, one with alarm = 30 and one with alarm
+= 60, the default value of MoM's 
+.I job_launch_delay
+is 90 seconds.
+
+After all the execjob_prologue hooks have finished, or MoM has waited
+for the value of the 
+.I job_launch_delay parameter, 
+she starts the job.
 
 .IP "$kbd_idle <idle wait> <min use> <poll interval>" 5
 Declares that the vnode will be used for batch jobs during periods when
@@ -1008,6 +1088,32 @@ $max_load 3.5
 .RE
 .IP
 
+.IP "$max_poll_downtime" 5
+When mother superior detects that a sister mom has lost connectivity (e.g. MoM went down or the network is having problems) it waits 
+.I downtime 
+seconds for the sister to reconnect before it gives up and kills the job.
+.br
+Format: 
+.I Integer
+.br
+Default: 
+.I Five minutes
+
+.IP "memreserved <megabytes>" 5
+.B Deprecated.  
+The amount of per-vnode memory reserved for system overhead. 
+This much memory is deducted from the value of 
+.I resources_available.mem
+for each vnode managed by this MoM.
+.br
+Example:
+.RS 9
+memreserved 16
+.RE
+.IP
+Default: 0MB
+.br
+
 .IP "$min_check_poll <seconds>" 5
 Minimum time between polling cycles, in seconds.  Must be 
 greater than zero and less than
@@ -1019,6 +1125,20 @@ Format: Integer.
 Minimum value: 1 second
 .br
 Default value: 10 seconds
+
+.IP "pbs_accounting_workload_mgmt <value>" 5
+Controls whether CSA accounting is enabled.  Name does not start with
+dollar sign.  If set to 
+.I 1, on, 
+or 
+.I true, 
+CSA accounting is enabled.  If set to
+.I 0, off, 
+or 
+.I false,
+accounting is disabled.  Cray only.  Requires CLE 5.2.
+.br
+Default: "true"; enabled
 
 .IP "$prologalarm <timeout>" 5
 Defines the maximum number of seconds the prologue and epilogue
@@ -1096,7 +1216,7 @@ Format: Boolean
 .br
 Default: False
 
-.IP "$restrict_user_exceptions <user_list>" 5
+.IP "$restrict_user_exceptions <user list>" 5
 Comma-separated list of users who are exempt from access
 restrictions applied by 
 .I $restrict_user.
@@ -1120,8 +1240,12 @@ exists for
 PBS looks in /etc/login.defs, if it exists, for the 
 .I value. 
 Otherwise the default is used.
-
-Integer.  Default: 999
+.br
+Format: 
+.I Integer
+.br
+Default: 
+.I 999
 
 .IP "$restricted <hostname>" 5
 The 
@@ -1139,6 +1263,39 @@ $restricted      *.xyz.com
 Queries from the hosts in the restricted list are only allowed 
 access to information internal to this host, such as load
 average, memory available, etc.  They may not run shell commands.
+
+.IP "$sister_join_job_alarm" 5
+
+When the primary MoM gets a job whose 
+.I tolerate_node_failures 
+attribute is set to 
+.I all 
+or 
+.I job_start, 
+the primary MoM can wait to start the job
+for up to a configured number of seconds if the sister MoMs do not
+immediately acknowledge joining the job.  This gives the sister MoMs
+more time to join the job.  You configure the number of seconds for
+the primary MoM to wait for sister MoMs via the 
+.I sister_join_job_alarm
+configuration parameter in MoM's config file:
+.br
+   $sister_join_job_alarm <number of seconds to wait>
+.br
+Default: the sum of the values of the 
+.I alarm 
+attributes of any enabled
+execjob_begin hooks. If there are no enabled execjob_ begin hooks, the
+default value is 30 seconds.  For example, if there are two enabled
+execjob_begin hooks, one with alarm = 30 and one with alarm = 20, the
+default value of MoM's 
+.I sister_join_job_alarm 
+is 50 seconds.
+
+After all the sister MoMs have joined the job, or MoM has waited for
+the value of the 
+.I $sister_join_job_alarm 
+parameter, she starts the job.
 
 .IP "$suspendsig <suspend signal> [resume signal]" 5
 Alternate signal 
@@ -1235,65 +1392,6 @@ $wallmult 1.5
 
 .RE
 
-.B Cray-only Initialization Values
-.br
-.IP "pbs_accounting_workload_mgmt <value>" 5
-Controls whether CSA accounting is enabled.  Name does not start
-with dollar sign.  If set to "1", "on", or "true", 
-CSA accounting is enabled.  If set to "0", "off", or 
-"false", accounting is disabled.  Default: "true"; enabled.
-.RE
-
-.B HPE SGI-only Initialization Values
-.br
-.IP "cpuset_create_flags <flags>" 5
-Lists the flags for when MoM does a cpusetCreate(3) for each job. 
-.I flags
-is an or-ed list of flags.  
-The flags are:
-.RS
-
-.IP "HPE SGI formerly known as ICE, with Performance Software - Message Passing Interface" 5
-CPUSET_CPU_EXCLUSIVE
-.br
-0
-.br
-Default: 0
-.LP
-.RE
-
-.IP "cpuset_destroy_delay <delay>" 5
-MoM waits up to
-.I delay
-seconds before destroying a cpuset of
-a just-completed job, but not longer than necessary. 
-This gives the operating system more time to clean up leftover processes
-after they have been killed.
-
-Example:
-.RS 9
-cpuset_destroy_delay 10
-.RE
-
-.IP
-Default for HPE SGI machines: 0
-.br
-Format: Integer
-
-.IP "memreserved <megabytes>" 5
-.B Deprecated.  
-The amount of per-vnode memory reserved for system overhead. 
-This much memory is deducted from the value of 
-.I resources_available.mem
-for each vnode managed by this MoM.
-.br
-Example:
-.RS 9
-memreserved 16
-.RE
-.IP
-Default: 0MB.  
-.br
 
 .RE
 .B Static Resources

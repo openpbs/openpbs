@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsnodes 8B "11 January 2018" Local "PBS Professional"
+.TH pbsnodes 8B "4 March 2019" Local "PBS Professional"
 .SH NAME
 
 .B pbsnodes 
@@ -69,6 +69,14 @@ attribute, or to output vnode information.  The
 .B pbsnodes 
 command obtains host information by sending a request to the PBS server.
 .LP
+
+.B Using pbsnodes
+.br
+To list all vnodes:
+.br
+   pbsnodes -av
+.br   
+
 To print the status of the specified host or hosts, run 
 .B pbsnodes
 with no options (except the 
@@ -85,7 +93,7 @@ marked FREE.
 
 To offline a single vnode in a multi-vnoded system, use: 
 .RS 5
-qmgr: set node <vnode name> state=offline
+qmgr -c "set node <vnode name> state=offline"
 .RE
 
 .SH OUTPUT
@@ -103,18 +111,21 @@ with the
 .B \-o 
 or
 .B \-r
-options.
-Operator or Manager privilege is required to view custom resources
-which have been created to be invisible to users, and to see some output
-such as PBS version.
+options, to view custom resources which have been created to be
+invisible to users, and to see some output such as PBS version.
 
 .SH OPTIONS
 .IP "(no options)" 8
 If neither options nor a host list is given, the 
 .B pbsnodes
 command prints usage syntax.
+
 .IP "-a" 8
 Lists all hosts and all their attributes (available and used.)
+
+When used with the 
+.I -v
+option, lists all vnodes.
 
 When listing a host with multiple vnodes:
 
@@ -180,10 +191,8 @@ jobs        any   List of job IDs on vnode
 .br
 Note that 
 .I nmics 
-and 
-.I ngpus
-are custom resources that must be created by the administrator if you 
-want them displayed here.
+is a custom resource that must be created by the administrator if you 
+want it displayed here.
 
 Each subjob is treated as a unique job.
 
@@ -202,22 +211,15 @@ different from being marked DOWN.  A host that is marked OFFLINE
 continues to execute the jobs already on it, but is removed from
 the scheduling pool (no more jobs are scheduled on it.)  
 
-Offlines ALL vnodes on a Cray.
-
-For non-Cray hosts with multiple vnodes, pbsnodes operates on a host and all of
+For hosts with multiple vnodes, pbsnodes operates on a host and all of
 its vnodes, where the hostname is resources_available.host, which is
 the name of the natural vnode.  
 
-To offline all vnodes on a non-Cray multi-vnoded machine:
+To offline all vnodes on a multi-vnoded machine:
 .br
 .B \ \ \ pbsnodes -o <name of natural vnode>
 
-For Cray hosts with multiple vnodes, note that login nodes share a name
-with compute nodes, so if you use this option on a Cray, you will 
-offline ALL of your compute nodes.
-
-To offline a single vnode on a Cray or another 
-multi-vnoded system, use: 
+To offline a single vnode on a multi-vnoded system, use: 
 .br
 .B \ \ \ qmgr -c "set node <vnode name> state=offline"
 
@@ -240,13 +242,13 @@ host        15    Hostname
 queue       10    Value of vnode's queue attribute
 ncpus        7    Number of CPUs at vnode
 nmics        7    Number of MICs at vnode
-mem         12    Vnode memory
+mem          8    Vnode memory
 ngpus        7    Number of GPUs at vnode
 comment     any   Vnode comment
 .fi
 
 Note that 
-.I nmics, ngpus, 
+.I nmics 
 and 
 .I OS
 are custom resources that must be created by the administrator
@@ -262,6 +264,10 @@ With no arguments, prints one entry for each vnode in the PBS complex.
 .br
 With one or more vnodes specified, prints on entry for each specified
 vnode.
+.br
+When used with 
+.I -a,
+lists all vnodes.
 
 .IP "--version" 8
 The 

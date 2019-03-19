@@ -33,21 +33,30 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_snapshot 8B "26 April 2018" Local "PBS Professional"
+.TH pbs_snapshot 8B "4 March 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_snapshot
 - Linux only.  Capture PBS data to be used for diagnostics
 .SH SYNOPSIS
+.B pbs_snapshot
+-h, --help
+.br
 .B pbs_snapshot 
--o <output directory path> [-H <server host>] 
+-o <output directory path> 
 .RS 12
-[-l <log level>] [--accounting-logs=<number of days>] 
-[--additional-hosts=<hostname list>] 
+[--accounting-logs=<number of days>] 
 .br
-[--daemon-logs=<number of days>] [--map=<file path>]
-[--obfuscate] 
+[--additional-hosts=<hostname list>]
+.br
+[--daemon-logs=<number of days>] 
+[-H <server host>]
+.br
+[-l <log level>] 
+[--map=<file path>]
+[--obfuscate]
+.br
+[--with-sudo]
 .RE
-.br
 .B pbs_snapshot
 --version
 .SH DESCRIPTION
@@ -56,44 +65,52 @@ You use
 .B pbs_snapshot 
 to capture PBS data for diagnostics.  This tool is written in Python
 and uses PTL libraries, including PBSSnapUtils, to extract the data.
-You can optionally anonymize the PBS data.
+You can optionally anonymize the PBS data.  The 
+.B pbs_snapshot 
+command captures data from all multischeds.  The
+command detects which daemon or daemons are running on the host where
+it is collecting information, and captures daemon and system data
+accordingly.  If no PBS daemons are running, the command collects
+system information.  The output tarball contains information about the
+host designated via the 
+.I -H 
+option, or if that is not specified, the
+local host.  If you specify additional hosts, the command creates a
+tarball for each additional host and includes it as a sub-tarball in
+the output.
 
 .B Required Privilege
 .br
-To run 
-.B pbs_snapshot
-, you must be root on Linux or Admin on Windows.
+The 
+.B pbs_snapshot 
+command allows you to use the 
+.B sudo 
+infrastructure
+provided by the PTL framework to capture root-owned information via
+.I --with-sudo.  
+All other information is collected as a normal user.  If
+you need to run 
+.B pbs_snapshot 
+as a non-prvileged user, and without
+using the PTL 
+.I --with-sudo 
+infrastructure, you must be root if you want
+root-owned information to be collected.
+
+.B Restrictions
+.br
+The 
+.B pbs_snapshot 
+command is not available on Windows.
 
 .SH OPTIONS
-.IP "-H <server host>" 5
-Specifies server hostname.  By default, 
-.B pbs_snapshot 
-uses the value of the 
-.I PBS_SERVER 
-parameter in pbs.conf.  When you use this option, 
-.B pbs_snapshot 
-uses 
-.I server host 
-instead.
-
-.IP "-l <log level>" 5
-Specifies level at which 
-.B pbs_snapshot
-writes its log.  The log file is 
-pbs_snapshot.log, in the output directory path specified using the 
-.I -o <output directory path> 
-option.
-
-Valid values, from most comprehensive to least: DEBUG2, DEBUG,
-INFOCLI2, INFOCLI, INFO, WARNING, ERROR, FATAL
-.br
-Default: INFOCLI2
-
 .IP "--accounting-logs=<number of days>" 5
 Specifies number of days of accounting logs to be collected; this
 count includes the current day.
 .br
-Value of number of days must be >=0:
+Value of 
+.I number of days 
+must be >=0:
 .br
    If number of days is 0, no logs are captured.
 .br
@@ -108,51 +125,77 @@ collects 30 days of accounting logs
 .IP "--additional-hosts=<hostname list>" 5
 Specifies that 
 .B pbs_snapshot
-should gather data from the specified list of non-server hosts.  
-.B pbs_snapshot
-always gathers data from the server host.  
-.br
-The command collects the following information from the specified hosts:
-.br 
-   MoM and comm logs, for the number of days of logs being 
-.br
-   captured, specified via the 
+should gather data from the specified list of additional hosts.  
+Launches the 
+.B pbs_snapshot 
+command on each specified host, creates a
+tarball there named 
+.I <hostname>_snapshot.tgz, 
+and includes it as a sub-tarball in the output for the main output.  If you use the
+.I --with-sudo 
+option, each launched copy uses that option as well.
+
+The command does not query the server when it runs at a non-server host.  
+
+The command collects a full snapshot, including the following information:
+.RS 8
+Daemon logs, for the number of days of logs being captured, specified
+via the 
 .I --daemon-logs=<number of days> 
+option
 .br
-   option
+The PBS_HOME/<daemon>_priv directory
 .br
-   The PBS_HOME/mom_priv directory
+Accounting logs if server daemon runs on host
 .br
-   System information
-.br
+System information
+.RE
+.IP
 Format for 
 .I hostname list 
 is a comma-separated list of one or more hostnames: 
 .br
 .I <hostname>[, <hostname> ...]
-.br
-This option can greatly bloat the size of the snapshot, and cause 
-.B pbs_snapshot
-to take a long time copying what may be large amounts of data over the network.
 
 .IP "--daemon-logs=<number of days>" 5
 Specifies number of days of daemon logs to be collected; this count
-includes the current day.  All daemon logs are captured on the server host,
-and if you specify
-.I --additional-hosts=<hostname list>, 
-MoM logs are captured on those hosts as well.  
+includes the current day. 
 .br
-Value of number of days must be >=0:
+Value of 
+.I number of days 
+must be >=0:
+.RS 8
+If number of days is 0, no logs are captured.
 .br
-   If number of days is 0, no logs are captured.
-.br
-   If number of days is 1, only the logs for the current day 
-.br
-   are captured.
-.br
+If number of days is 1, only the logs for the current day are captured.
+.RE
+.IP
 Default: 
 .B pbs_snapshot
 collects 5 days of daemon logs
+
+.IP "-h, --help" 5
+Prints usage and exits.
+
+.IP "-H <hostname>" 5
+Specifies hostname for host whose retrieved data is to be at the top
+level in the output tarball.  If not specified, 
+.B pbs_snapshot 
+puts data for the local host at the top level in the output tarball.
+
+.IP "-l <log level>" 5
+Specifies level at which 
+.B pbs_snapshot
+writes its log.  The log file is 
+pbs_snapshot.log, in the output directory path specified using the 
+.I -o <output directory path> 
+option.
+
+Valid values, from most comprehensive to least: DEBUG2, DEBUG,
+INFOCLI2, INFOCLI, INFO, WARNING, ERROR, FATAL
+.br
+Default: INFOCLI2
+
 
 .IP "--map=<file path>" 5
 Specifies path for file containing obfuscation map, which is a
@@ -192,8 +235,22 @@ Job_Name, jobdir, Submit_arguments, Shell_Path_List
 .IP "--version" 5
 The 
 .B pbs_snapshot
-command returns its PBS version information and exits.
-This option can only be used alone.
+command prints its PBS version information and exits.
+Can only be used alone.
+
+.IP "--with-sudo" 5
+Uses the PTL 
+.B sudo 
+infrastructure in order capture root-owned
+information via 
+.B sudo.  
+(Information not owned by root is captured
+using normal privilege, not root privilege.)  With this option, you do
+not need to prefix your 
+.B pbs_snapshot 
+command with 
+.B sudo, 
+and you do not need root privilege.
 
 .SH Arguments to pbs_snapshot
 .IP "-o <output directory path>" 5
@@ -226,8 +283,16 @@ writes "/temp/snapshot_<timestamp>.tgz".
 .br
 The 
 .B pbs_snapshot
-command writes its output as a tarball.  The tarball contains the
-following directory structure and files:
+command writes 
+the output for the local host and each specified remote host as a
+tarball.  Tarballs for remote hosts are included in the main tarball.
+
+The command captures JSON output from 
+.B qstat-f -F json 
+and 
+.B pbsnodes -av -F json.  
+.br
+The main tarball contains the following directory structure, files, and tarballs:
         
 Directory  Directory
 .br
@@ -288,6 +353,8 @@ job/
 .br
 \ \ \ \ \ \ \ \ \ \ \ qstat_f.out          Output of qstat -f
 .br
+\ \ \ \ \ \ \ \ \ \ \ qstat_f_F_json.out   Output of qstat -f -F json
+.br
 \ \ \ \ \ \ \ \ \ \ \ qstat_t.out          Output of qstat -t
 .br
 \ \ \ \ \ \ \ \ \ \ \ qstat_tf.out         Output of qstat -tf
@@ -301,6 +368,7 @@ job/
 \ \ \ \ \ \ \ \ \ \ \ qstat_fx_F_dsv.out   Output of qstat -fx -F dsv
 .br
 \ \ \ \ \ \ \ \ \ \ \ qstat_f_F_dsv.out    Output of qstat -f -F dsv
+.br
 node/           
 .br
 \ \ \ \ \ \ \ \ \ \ \ pbsnodes_va.out      Output of pbsnodes -va
@@ -315,9 +383,11 @@ node/
 .br
 \ \ \ \ \ \ \ \ \ \ \ pbsnodes_aS.out      Output of pbsnodes -aS
 .br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_aFdsv.out   Output of pbsnodes -aFdsv
+\ \ \ \ \ \ \ \ \ \ \ pbsnodes_aFdsv.out   Output of pbsnodes -aF dsv
 .br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avFdsv.out  Output of pbsnodes -avFdsv
+\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avFdsv.out  Output of pbsnodes -avF dsv
+.br
+\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avFjson.out Output of pbsnodes -avF json
 .br
 \ \ \ \ \ \ \ \ \ \ \ qmgr_pn_default.out  Output of qmgr print node @default
 .br
@@ -532,6 +602,10 @@ ctime                           Contains the time in seconds since
 pbs_snapshot.log                Log messages written by 
 .B pbs_snapshot
     
+.br
+<remote hostname>.tgz           Tarball of output from running the 
+.br
+                                pbs_snapshot command at a remote host
 
 .SH Examples
 .IP "pbs_snapshot -o /tmp" 5

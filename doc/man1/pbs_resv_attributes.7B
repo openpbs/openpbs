@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_resv_attributes 7B "20 April 2018" Local "PBS Professional"
+.TH pbs_resv_attributes 7B "15 January 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_resv_attributes 
 \- attributes of PBS advance and standing reservations
@@ -131,7 +131,7 @@ Format:
 .br
 Syntax:
 .RS 11
-.I [+|-]<username>[<hostname>.<domain>] [, [+|-]<username>[<hostname>.<domain>] ...]
+.I [+|-]<username>[@<hostname>.<domain>] [, [+|-]<username>[@<hostname>.<domain>] ...]
 .br
 where '-' means "deny" and '+' means "allow". 
 .br
