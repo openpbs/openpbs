@@ -169,7 +169,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         Test if scheduler tries to run a job when strict ordering is enabled
         and backfill_depth is set to 0 on the queue
         """
-        a = {'resources_available.ncpus': 1}
+        a = {'resources_available.ncpus': 2}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
 
         rv = self.scheduler.set_sched_config(
@@ -187,12 +187,14 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1'}
         j1 = Job(TEST_USER)
         j1.set_attributes(a)
-        self.server.submit(j1)
+        jid1 = self.server.submit(j1)
 
+        a = {'Resource_List.select': '1:ncpus=2'}
         j2 = Job(TEST_USER)
         j2.set_attributes(a)
-        self.server.submit(j2)
+        jid2 = self.server.submit(j2)
 
+        a = {'Resource_List.select': '1:ncpus=1'}
         j3 = Job(TEST_USER)
         j3.set_attributes(a)
         jid3 = self.server.submit(j3)
@@ -203,6 +205,42 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         job_comment = "Not Running: Job would break strict sorted order"
         self.server.expect(JOB, {'comment': job_comment}, id=jid3, offset=2,
                            max_attempts=2, interval=2)
+
+        # Now try the same scenario with backfilling set to one and check
+        # that first and third job runs but second gets calendared.
+        # since we want thrid job to backfill around second, we need to make
+        # sure that walltime of third job is less than the walltime of first
+        # job
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.deljob([jid1, jid2, jid3])
+
+        a = {'backfill_depth': 1}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id="workq")
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': '100'}
+        j4 = Job(TEST_USER)
+        j4.set_attributes(a)
+        jid4 = self.server.submit(j4)
+
+        a = {'Resource_List.select': '1:ncpus=2'}
+        j5 = Job(TEST_USER)
+        j5.set_attributes(a)
+        jid5 = self.server.submit(j5)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': '50'}
+        j6 = Job(TEST_USER)
+        j6.set_attributes(a)
+        jid6 = self.server.submit(j6)
+
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid6)
+        self.scheduler.log_match(jid5 + ";Job is a top job")
 
     def test_zero_backfill_depth_on_one_queue(self):
         """
