@@ -498,7 +498,7 @@ job_recov_fs(char *filename)
 			return NULL;
 		}
 	} else {
-		/* If current version, JSVERSION_80, read into place */
+		/* If current version, JSVERSION_80 and JSVERSION_18, read into place */
 		if (read(fds, (char *)&pj->ji_extended,
 			sizeof(union jobextend)) !=
 			sizeof(union jobextend)) {

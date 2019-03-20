@@ -496,9 +496,10 @@ struct jbdscrd {
 
 #define	JSVERSION_514	514
 #define	JSVERSION_80	800
-#define	JSVERSION	800
-#define ji_taskid  ji_extended.ji_ext.ji_taskidx
-#define ji_nodeid  ji_extended.ji_ext.ji_nodeidx
+#define	JSVERSION_18	800
+#define	JSVERSION	900
+#define	ji_taskid	ji_extended.ji_ext.ji_taskidx
+#define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
 
 struct job {
 
