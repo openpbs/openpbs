@@ -2852,13 +2852,12 @@ job_no_args:
 						any_failed = pbs_errno;
 					}
 				} else {
-				    /* check the server attribute max_job_sequence_id value */
-					check_seqid_len = check_max_job_sequence_id("qstat");
-					if (check_seqid_len == 1) {
-						how_opt |= ALT_DISPLAY_INCR_WIDTH; /* increase column width*/
-					} else if(check_seqid_len == -1) {
-						fprintf(stderr, "qstat: Unable to fetch the width format\n");
-						exit(1);
+					/* check the server attribute max_job_sequence_id value */
+					if (p_server != NULL) {
+						check_seqid_len = check_max_job_sequence_id(p_server);
+						if (check_seqid_len == 1) {
+							how_opt |= ALT_DISPLAY_INCR_WIDTH; /* increase column width*/
+						}
 					}
 
 #ifdef NAS /* localmod 071 */
