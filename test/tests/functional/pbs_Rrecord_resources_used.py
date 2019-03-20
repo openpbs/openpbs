@@ -77,12 +77,9 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
         a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            id=self.hostA, expect=True)
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            id=self.hostB, expect=True)
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostB)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
     def common(self, is_nonrerunnable, restart_mom):
 
@@ -180,8 +177,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.accounting_match(
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         if restart_mom == 's':
             # Start mom without any  option
@@ -280,8 +276,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid3s1)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.expect(JOB, {ATTR_substate: '42'}, jid1)
         self.server.expect(JOB, {ATTR_substate: '42'}, jid2)
@@ -299,8 +294,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=2', id=jid2,
             regexp=True)
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
     def test_Rrecord_with_multiple_reruns(self):
         """

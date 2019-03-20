@@ -57,7 +57,8 @@ class TestExpect(TestSelf):
         # Set the Priority attribute on the queue but provide 'p' lowercase
         # Set other attributes normally
         a = {'enabled': 'True', 'started': 'True', 'priority': 150}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq', expect=True)
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq')
+        self.server.expect(QUEUE, a, id='expressq')
 
     def test_unsupported_operator(self):
         """

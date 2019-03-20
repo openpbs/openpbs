@@ -197,7 +197,7 @@ class TestReservations(TestFunctional):
         """
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
-                            expect=True, sudo=True)
+                            sudo=True)
 
         now = int(time.time())
         a = {'Resource_List.select': "1:ncpus=2",

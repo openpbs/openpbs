@@ -74,8 +74,7 @@ if e.type == pbs.RESV_END:
         attrs = {'event': 'resv_end'}
         self.server.create_hook(self.hook_name, attrs)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
     def submit_resv(self, offset, duration, select='1:ncpus=1', rrule=''):
         """
@@ -536,7 +535,7 @@ if e.type == pbs.RESV_END:
 
         node_attrs = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, node_attrs,
-                            id=self.mom.shortname, expect=True)
+                            id=self.mom.shortname)
         offset = 10
         duration = 10
         rid = self.submit_resv(offset, duration)

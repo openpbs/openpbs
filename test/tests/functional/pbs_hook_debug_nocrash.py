@@ -129,8 +129,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "hook %s executed" % (e.hook_name,))
             overwrite=True)
         self.assertTrue(rv)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         for i in range(1000):
             j = Job(TEST_USER)

@@ -46,8 +46,7 @@ class TestPreemption(TestFunctional):
         TestFunctional.setUp(self)
 
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         # create express queue
         a = {'queue_type': 'execution',
@@ -73,8 +72,7 @@ class TestPreemption(TestFunctional):
 
         # set preempt order
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'preempt_order': preempt_order},
-                            expect=True, runas=ROOT_USER)
+                            {'preempt_order': preempt_order}, runas=ROOT_USER)
 
         attrs = {ATTR_l + '.select': '1:ncpus=1'}
 

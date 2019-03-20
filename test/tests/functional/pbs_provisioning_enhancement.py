@@ -108,14 +108,13 @@ e.reject()
              'resources_available.ncpus': '2',
              'resources_available.aoe': 'App1,osimage1'}
         self.server.manager(
-            MGR_CMD_SET, NODE, a, id=self.hostA, expect=True)
+            MGR_CMD_SET, NODE, a, id=self.hostA)
         self.server.manager(MGR_CMD_UNSET, NODE, id=self.hostA,
-                            attrib='current_aoe', expect=True)
+                            attrib='current_aoe')
 
         # Set hostB ncpus to 12
         a = {'resources_available.ncpus': '12'}
-        self.server.manager(
-            MGR_CMD_SET, NODE, a, id=self.hostB, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostB)
 
         # Setup provisioning hook.
         a = {'event': 'provision', 'enabled': 'True', 'alarm': '300'}
@@ -123,8 +122,7 @@ e.reject()
             'fake_prov_hook', a, self.fake_prov_hook, overwrite=True)
         self.assertTrue(rv)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
     def test_app_provisioning(self):
         """
@@ -371,7 +369,7 @@ e.reject()
         self.assertTrue(rv)
         # Set current aoe to App1
         self.server.manager(MGR_CMD_SET, NODE, id=self.hostA,
-                            attrib={'current_aoe': 'App1'}, expect=True)
+                            attrib={'current_aoe': 'App1'})
 
         # Turn on scheduling
         self.server.manager(MGR_CMD_SET,
@@ -405,7 +403,7 @@ e.reject()
 
         # Set current aoe to osimage1
         self.server.manager(MGR_CMD_SET, NODE, id=self.hostA,
-                            attrib={'current_aoe': 'osimage1'}, expect=True)
+                            attrib={'current_aoe': 'osimage1'})
 
         # submit one job that will run on local node
         a = {'Resource_List.select': '1:ncpus=10'}

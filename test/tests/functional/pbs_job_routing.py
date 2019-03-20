@@ -55,11 +55,9 @@ class TestJobRouting(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
         a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            id=self.hostA, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
 
     def test_t1(self):
         """
@@ -141,8 +139,7 @@ class TestJobRouting(TestFunctional):
 
         # Start scheduling cycle. This will move all 3 subjobs to R state.
         # And parent job state to B state.
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'})
 
         self.server.expect(JOB, {ATTR_state + '=R': 3}, count=True,
                            id=jid, extend='t')
@@ -158,8 +155,7 @@ class TestJobRouting(TestFunctional):
         self.momA = self.moms.values()[0]
         self.hostA = self.momA.shortname
         a = {'state': 'offline'}
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            id=self.hostA, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
 
         # Rerun Third job, job will move to Q state.
         self.server.rerunjob(subjobs[3]['id'])

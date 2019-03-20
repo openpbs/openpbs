@@ -137,9 +137,9 @@ class TestMomWalltime(TestFunctional):
         # Make sure the sched cycle is completed before reading
         # the walltime
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'}, expect=True)
+                            {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'}, expect=True)
+                            {'scheduling': 'False'})
 
         jstat = self.server.status(JOB, id=jid1,
                                    attrib=['resources_used.walltime'])

@@ -71,7 +71,7 @@ class TestSoftWalltime(TestFunctional):
         self.server.manager(
             MGR_CMD_UNSET, SERVER, 'Resources_default.soft_walltime')
         # Delete operators if added
-        self.server.manager(MGR_CMD_UNSET, SERVER, 'operators', expect=True)
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'operators')
 
     def stat_job(self, job):
         """
@@ -680,8 +680,7 @@ e.accept()
         to calculate percent done and also if the soft_walltime is exceeded,
         the percent done should remain at 100%
         """
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'preempt_order': '"R 10 S"'}, expect=True,
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': '"R 10 S"'},
                             runas=ROOT_USER)
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)

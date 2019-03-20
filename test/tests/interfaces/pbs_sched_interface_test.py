@@ -139,12 +139,9 @@ class TestSchedulerInterface(TestInterfaces):
                 self.assertTrue(
                     'qmgr: Error (15007) returned from server' in e.msg[1])
 
-        self.server.manager(MGR_CMD_SET,
-                            SCHED,
+        self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_cycle_length': 12000},
-                            id="TestCommonSched",
-                            runas=ROOT_USER,
-                            expect=True)
+                            id="TestCommonSched", runas=ROOT_USER)
 
     def test_delete_default_sched(self):
         """
@@ -164,11 +161,8 @@ class TestSchedulerInterface(TestInterfaces):
         Set and unset an attribute of a scheduler object .
         """
         # Set an attribute of a scheduler object.
-        self.server.manager(MGR_CMD_SET,
-                            SCHED,
-                            {'sched_cycle_length': 1234},
-                            id="TestCommonSched",
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_cycle_length': 1234}, id="TestCommonSched")
 
         # Unset an attribute of a scheduler object.
         self.server.manager(MGR_CMD_UNSET,

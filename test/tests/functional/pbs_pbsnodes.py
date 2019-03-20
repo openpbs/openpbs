@@ -60,8 +60,7 @@ class TestPbsnodes(TestFunctional):
         Common setUp for tests test_pbsnodes_as_user and test_pbsnodes_as_root
         """
         TestFunctional.setUp(self)
-        self.server.manager(MGR_CMD_DELETE, NODE, id="",
-                            sudo=True, expect=True)
+        self.server.manager(MGR_CMD_DELETE, NODE, id="", sudo=True)
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.shortname)
         self.server.expect(NODE, {'state': 'free'})
 

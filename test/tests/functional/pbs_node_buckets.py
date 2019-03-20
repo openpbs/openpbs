@@ -444,7 +444,7 @@ class TestNodeBuckets(TestFunctional):
         self.mom.add_config(c)
 
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'},
-                            expect=True, runas=ROOT_USER)
+                            runas=ROOT_USER)
         attrs = {'Resource_List.select': '1430:ncpus=1:color=orange',
                  'Resource_List.place': 'scatter:excl'}
         j_c1 = Job(TEST_USER, attrs)
@@ -570,7 +570,7 @@ class TestNodeBuckets(TestFunctional):
         """
         a = {'node_group_key': 'shape', 'node_group_enable': 'True',
              'scheduling': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         chunk = '1430:ncpus=1'
         a = {'Resource_List.select': chunk,

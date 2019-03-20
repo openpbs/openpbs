@@ -682,6 +682,6 @@ class TestJobArray(TestFunctional):
                             {'scheduling': 'True'})
         # ensure the sched cycle is finished
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'}, expect=True)
+                            {'scheduling': 'False'})
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')

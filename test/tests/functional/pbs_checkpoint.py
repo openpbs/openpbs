@@ -136,7 +136,7 @@ exit 0
         in express queue which preempts a running job in the default queue.
         """
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'},
-                            expect=True, runas=ROOT_USER)
+                            runas=ROOT_USER)
         a = {'queue_type': 'execution',
              'started': 'True',
              'enabled': 'True',

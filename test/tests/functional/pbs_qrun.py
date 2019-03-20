@@ -46,8 +46,7 @@ class TestQrun(TestFunctional):
         TestFunctional.setUp(self)
         # set ncpus to a known value, 2 here
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a,
-                            self.mom.shortname, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         self.pbs_exec = self.server.pbs_conf['PBS_EXEC']
         self.qrun = os.path.join(self.pbs_exec, 'bin', 'qrun')
 
@@ -117,8 +116,7 @@ class TestQrun(TestFunctional):
         self.logger.info("Submitted 500 jobs with different walltime")
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'scheduling': 'False'}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         time.sleep(1)
         now = int(time.time())
         pid = os.fork()

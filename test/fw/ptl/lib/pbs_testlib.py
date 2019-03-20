@@ -5106,7 +5106,7 @@ class Server(PBSService):
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             if len(hooks) > 0:
-                self.manager(MGR_CMD_DELETE, HOOK, id=hooks, expect=True)
+                self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
         if delqueues:
             revertqueues = False
             queues = self.status(QUEUE, level=logging.DEBUG)
@@ -5120,11 +5120,11 @@ class Server(PBSService):
                                          node['id'])
                 except:
                     pass
-                self.manager(MGR_CMD_DELETE, QUEUE, id=queues, expect=True)
+                self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
             a = {ATTR_qtype: 'Execution',
                  ATTR_enable: 'True',
                  ATTR_start: 'True'}
-            self.manager(MGR_CMD_CREATE, QUEUE, a, id='workq', expect=True)
+            self.manager(MGR_CMD_CREATE, QUEUE, a, id='workq')
             setdict.update({ATTR_dfltque: 'workq'})
         if delscheds:
             self.manager(MGR_CMD_LIST, SCHED)
@@ -5152,8 +5152,7 @@ class Server(PBSService):
             hooks = [h['id'] for h in hooks]
             a = {ATTR_enable: 'false'}
             if len(hooks) > 0:
-                self.manager(MGR_CMD_SET, MGR_OBJ_HOOK, a, hooks,
-                             expect=True)
+                self.manager(MGR_CMD_SET, MGR_OBJ_HOOK, a, hooks)
         if revertqueues:
             self.status(QUEUE, level=logging.DEBUG)
             queues = []
@@ -5166,10 +5165,10 @@ class Server(PBSService):
                 qobj.revert_to_defaults()
                 queues.append(qname)
                 a = {ATTR_enable: 'false'}
-                self.manager(MGR_CMD_SET, QUEUE, a, id=queues, expect=True)
+                self.manager(MGR_CMD_SET, QUEUE, a, id=queues)
             a = {ATTR_enable: 'True', ATTR_start: 'True'}
             self.manager(MGR_CMD_SET, MGR_OBJ_QUEUE, a,
-                         id=server_stat[ATTR_dfltque], expect=True)
+                         id=server_stat[ATTR_dfltque])
         if len(setdict) > 0:
             self.manager(MGR_CMD_SET, MGR_OBJ_SERVER, setdict)
         if revertresources:
@@ -5179,7 +5178,7 @@ class Server(PBSService):
             except:
                 rescs = []
             if len(rescs) > 0:
-                self.manager(MGR_CMD_DELETE, RSC, id=rescs, expect=True)
+                self.manager(MGR_CMD_DELETE, RSC, id=rescs)
         return True
 
     def save_configuration(self, outfile, mode='a'):
@@ -6425,8 +6424,7 @@ class Server(PBSService):
         return bs
 
     def manager(self, cmd, obj_type, attrib=None, id=None, extend=None,
-                expect=False, max_attempts=None, level=logging.INFO,
-                sudo=None, runas=None, logerr=True):
+                level=logging.INFO, sudo=None, runas=None, logerr=True):
         """
         issue a management command to the server, e.g to set an
         attribute
@@ -6447,13 +6445,6 @@ class Server(PBSService):
         :param extend: Optional extension to the IFL call. see
                        pbs_ifl.h
         :type extend: str or None
-        :param expect: If set to True, query the server expecting
-                       the value to be\ accurately reflected.
-                       Defaults to False
-        :type expect: bool
-        :param max_attempts: Sets a maximum number of attempts to
-                             call expect with.
-        :type max_attempts: int
         :param level: logging level
         :param sudo: If True, run the manager command as super user.
                      Defaults to None. Some attribute settings
@@ -6469,21 +6460,7 @@ class Server(PBSService):
                        i.e. silent mode
         :type logerr: bool
         :raises: PbsManagerError
-        :returns: On success:
-                - if expect is False, return code of qmgr/pbs_manager
-                - if expect is True, 0 for success
-        :raises: On Error/Failure:
-                - PbsManagerError if qmgr/pbs_manager() failed
-                - PtlExpectError if expect() failed
         """
-
-        # Currently, expect() doesn't validate the values being set for
-        # create operations.
-        # For unset operations, expect does not handle attributes that are
-        # reset to default after unset.
-        # So, only call expect automatically for set and delete operations.
-        if cmd in (MGR_CMD_SET, MGR_CMD_DELETE):
-            expect = True
 
         if isinstance(id, str):
             oid = id.split(',')
@@ -6676,44 +6653,15 @@ class Server(PBSService):
         if c is not None:
             self._disconnect(c)
 
-        if expect:
-            offset = None
-            attrop = PTL_OR
-            if obj_type in (NODE, HOST):
-                obj_type = VNODE
-            if obj_type in (VNODE, QUEUE):
-                offset = 0.5
-            if cmd in PBS_CMD_TO_OP:
-                op = PBS_CMD_TO_OP[cmd]
-            else:
-                op = EQ
-
-            # If scheduling is set to false then check for
-            # state to be idle
-            if attrib and isinstance(attrib,
-                                     dict) and 'scheduling' in attrib.keys():
-                if str(attrib['scheduling']) in PTL_FALSE:
-                    if obj_type == MGR_OBJ_SERVER:
-                        state_val = 'Idle'
-                        state_attr = ATTR_status
-                    else:   # SCHED object
-                        state_val = 'idle'
-                        state_attr = 'state'
-                    attrib[state_attr] = state_val
-                    attrop = PTL_AND
-
-            if oid is None:
-                self.expect(obj_type, attrib, op=op,
-                            max_attempts=max_attempts,
-                            attrop=attrop, offset=offset)
-
-            else:
-                for i in oid:
-                    self.expect(obj_type, attrib, i, op=op,
-                                max_attempts=max_attempts,
-                                attrop=attrop, offset=offset)
-            rc = 0  # If we've reached here then expect passed, so return 0
-
+        if cmd == MGR_CMD_SET and 'scheduling' in attrib:
+            if attrib['scheduling'] in PTL_FALSE:
+                if obj_type == SERVER:
+                    sname = 'default'
+                else:
+                    sname = id
+                # Default max cycle length is 1200 seconds (20m)
+                self.expect(SCHED, {'state': 'scheduling'}, op=NE, id=sname,
+                            interval=1, max_attempts=1200)
         return rc
 
     def sigjob(self, jobid=None, signal=None, extend=None, runas=None,
@@ -9493,7 +9441,7 @@ class Server(PBSService):
             self.logger.error('hook named ' + name + ' exists')
             return False
 
-        self.manager(MGR_CMD_SET, HOOK, attrs, id=name, expect=True)
+        self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
     def import_hook(self, name, body):

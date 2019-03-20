@@ -147,10 +147,8 @@ e.job.Resource_List['site'] = 'site_value'
         msg = "Not Running: PBS Error: runjob hook rejected the job"
         self.server.expect(JOB, {'job_state': 'Q', 'comment': msg}, id=jid)
         a = {'enabled': 'false'}
-        self.server.manager(MGR_CMD_SET, HOOK, a, id=hook_name,
-                            expect=True, sudo=True)
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, HOOK, a, id=hook_name, sudo=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'B'}, id=jid)
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')

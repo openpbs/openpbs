@@ -60,8 +60,7 @@ else:
 """
         a = {'event': 'queuejob', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, a, hook_body)
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
-                            expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         j = Job(TEST_USER)
         self.server.submit(j)
         msg = "Error evaluating Python script, "

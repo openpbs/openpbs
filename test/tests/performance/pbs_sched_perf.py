@@ -46,8 +46,7 @@ class TestSchedPerf(TestPerformance):
     def setUp(self):
         TestPerformance.setUp(self)
         self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'string', 'flag': 'h'}, id='color',
-                            expect=True)
+                            {'type': 'string', 'flag': 'h'}, id='color')
         self.colors = \
             ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
@@ -76,7 +75,7 @@ class TestSchedPerf(TestPerformance):
         jids = []
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'}, expect=True)
+                            {'scheduling': 'False'})
 
         for i in range(num):
             job_wt = wt_start + (i * step)
@@ -97,7 +96,7 @@ class TestSchedPerf(TestPerformance):
                             {'scheduling': 'True'})
         self.server.expect(SERVER, {'server_state': 'Scheduling'})
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'}, expect=True)
+                            {'scheduling': 'False'})
 
         # 600 * 2sec = 20m which is the max cycle length
         self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE,
@@ -122,7 +121,7 @@ class TestSchedPerf(TestPerformance):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_yellow)
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'}, expect=True)
+                            {'scheduling': 'False'})
 
         # Shared jobs use standard code path
         a = {'Resource_List.select':

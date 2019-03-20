@@ -71,8 +71,7 @@ class TestJobRequeueTimeoutErrorMsg(TestFunctional):
         else:
             self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'job_requeue_timeout': 1}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'job_requeue_timeout': 1})
 
     def test_error_message(self):
         j = Job(TEST_USER, attrs={ATTR_N: 'job_requeue_timeout'})

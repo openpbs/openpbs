@@ -63,7 +63,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -100,7 +100,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -133,7 +133,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -152,7 +152,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Change restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         rc = 0
         try:
@@ -181,7 +181,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -212,7 +212,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 8,
                     ATTR_rescavail + '.mem': '1024mb'}
@@ -255,7 +255,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -290,7 +290,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,mem'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -326,7 +326,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,mem'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -358,7 +358,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,mem'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 8,
                     ATTR_rescavail + '.mem': '1024mb'}
@@ -401,7 +401,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Set restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -947,8 +947,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'preempt_order': preempt_method},
-                            expect=True, runas=ROOT_USER)
+                            {'preempt_order': preempt_method}, runas=ROOT_USER)
 
         # Set 1gb mem available on the node
         a = {ATTR_rescavail + '.ncpus': "2"}

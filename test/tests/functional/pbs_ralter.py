@@ -70,8 +70,7 @@ class TestPbsResvAlter(TestFunctional):
         self.server.create_vnodes('vnode', a, num=2, mom=self.mom,
                                   usenatvnode=True)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {
-            'log_events': 4095}, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
     def submit_and_confirm_reservation(self, offset, duration, standing=False,
                                        select="1:ncpus=4",
