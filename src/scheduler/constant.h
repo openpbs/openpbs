@@ -328,6 +328,7 @@ enum misc_constants
 	NO_FLAGS = 0,
 	IGNORE_DISABLED_EVENTS = 1,
 	FORCE,
+	SET_RESRESV_INDEX = 4,
 	ALL_MASK = 0xffffffff
 };
 

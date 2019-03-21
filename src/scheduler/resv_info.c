@@ -1092,7 +1092,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						add_event(sinfo->calendar, te_end);
 
 						if (j > 0) {
-							tmp_resresv = add_resresv_to_array(sinfo->resvs, nresv_copy);
+							tmp_resresv = add_resresv_to_array(sinfo->resvs, nresv_copy, NO_FLAGS);
 							if (tmp_resresv == NULL)
 								break;
 							sinfo->resvs = tmp_resresv;
@@ -1352,7 +1352,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				/* add it to the simulated universe of reservations.
 				 * Also add it to the reservation list (resvs) to be garbage collected
 				 */
-				tmp_resresv = add_resresv_to_array(nsinfo->resvs, nresv);
+				tmp_resresv = add_resresv_to_array(nsinfo->resvs, nresv, NO_FLAGS);
 				if (tmp_resresv == NULL) {
 					free_resource_resv(nresv);
 					rconf = RESV_CONFIRM_FAIL;
@@ -1360,7 +1360,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 				nsinfo->resvs = tmp_resresv;
 
-				tmp_resresv = add_resresv_to_array(nsinfo->all_resresv, nresv);
+				tmp_resresv = add_resresv_to_array(nsinfo->all_resresv, nresv, SET_RESRESV_INDEX);
 				if (tmp_resresv == NULL) {
 					free_resource_resv(nresv);
 					rconf = RESV_CONFIRM_FAIL;
