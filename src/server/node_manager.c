@@ -6758,27 +6758,20 @@ build_execvnode(job *pjob, char *nds)
 		pc = parse_plus_spec(NULL, &rc);
 	}
 
+	*outbuf = '\0';
+
        /* 
         * if the number of nodes defined ndarray is not equal
         * to the number of nodes identified by parse_plus_spec, then there's a 
         * invalid vnode specification on the qrun
         */
 
-	if (i != nnodes) {
-		while (i != nnodes) {
-                	if ((*(ndarray+i) = strdup(nds)) == NULL)
-                        	rc = errno;
-			++i;
-		}
-        }
-
-	if (rc)
+	if (rc || i != nnodes)
 		goto done;
 
 	/* now loop breaking up the select spec into separate chunks */
 	/* and determining how many times each chunk is to be used   */
 
-	*outbuf = '\0';
 	i  = 0;
 	pc = parse_plus_spec(selspec, &rc);
 	while (pc) {
@@ -7037,6 +7030,9 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 		}
 		if (execvnod == NULL)
 			return PBSE_BADNODESPEC;
+
+		if (!strlen(execvnod))
+                        return PBSE_UNKNODE;
 
 		/* are we to allocate the nodes "excl" ? */
 		prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
