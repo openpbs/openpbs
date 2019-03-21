@@ -53,11 +53,9 @@ class TestSyslog(TestSelf):
         """
         if hostname is None:
             hostname = self.server.hostname
-        a = {
-             'PBS_SYSLOG': syslog_facility,
+        a = {'PBS_SYSLOG': syslog_facility,
              'PBS_SYSLOGSEVR': syslog_severity,
-             'PBS_LOCALLOG': local_log
-            }
+             'PBS_LOCALLOG': local_log}
         self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
         PBSInitServices().restart()
         self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
