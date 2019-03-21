@@ -3909,7 +3909,7 @@ class PBSService(PBSObject):
                        Defaults to False.
         :type str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
-                  ``Scheduler``, ``MoM or tracejob``
+                  ``Scheduler``, ``MoM`` or ``tracejob``
         """
         logval = None
         lines = []
@@ -4049,7 +4049,7 @@ class PBSService(PBSObject):
                         given msg, else check for non-existence of
                         given msg.
         :type existence: bool
-	:param syslog: If True, checks for syslog messages.
+        :param syslog: If True, checks for syslog messages.
                        Defaults to False.
         :type str
 
@@ -4133,7 +4133,6 @@ class PBSService(PBSObject):
                   existence=True):
         """
         Match given ``msg`` in given ``n`` lines of logs
-    
         :param msg: log message to match, can be regex also when
                     ``regexp`` is True
         :type msg: str
@@ -4427,37 +4426,40 @@ class PBSService(PBSObject):
         self.dyn_created_files = []
 
     def _get_log_type(self, hostname=None):
-        """       
+        """
         This function will return which log files to read
-                  
+
         :param hostname: name of host from where to get log messages
         :return: int or None
         """
         if hostname is None:
             hostname = socket.gethostname()
-        pbs_locallog = self.du.parse_pbs_config(hostname=hostname).get("PBS_LOCALLOG")
-        pbs_syslog = self.du.parse_pbs_config(hostname=hostname).get("PBS_SYSLOG")
-                   
+        pbs_locallog = self.du.parse_pbs_config(hostname=hostname).get(
+                       "PBS_LOCALLOG")
+        pbs_syslog = self.du.parse_pbs_config(hostname=hostname).get(
+                        "PBS_SYSLOG")
+
         if pbs_syslog is None:
-            pbs_syslog = 0 
-                  
+            pbs_syslog = 0
+
         if pbs_locallog is None:
-            pbs_locallog = 1 
-                     
+            pbs_locallog = 1
+
         # file_to_check=1 for syslog, file_to_check=2 for local,
         # file_to_check=3 for both
-                         
+
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 0:
             raise ValueError('logging should be present in atleast one file')
-        
+
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 1:
             return 2
-        
+
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 0:
             return 1
-                             
+
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 1:
             return 3
+
 
 class Comm(PBSService):
 
@@ -4588,6 +4590,7 @@ class Comm(PBSService):
             if not self.stop():
                 return False
         return self.start()
+
 
 class Server(PBSService):
 

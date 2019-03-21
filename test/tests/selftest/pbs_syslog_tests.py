@@ -38,14 +38,14 @@
 from tests.selftest import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
+
 class TestSyslog(TestSelf):
     """
     Test pbs syslog logging
     """
-
     du = DshUtils()
     lu = PBSLogUtils()
-    print("I am in test syslog")
+
     def setup_syslog(self, hostname=None, local_log=1,
                      syslog_facility=1, syslog_severity=9):
         """
@@ -53,9 +53,11 @@ class TestSyslog(TestSelf):
         """
         if hostname is None:
             hostname = self.server.hostname
-        a = {'PBS_SYSLOG': syslog_facility,
-            'PBS_SYSLOGSEVR': syslog_severity,
-            'PBS_LOCALLOG': local_log}
+        a = {
+             'PBS_SYSLOG': syslog_facility,
+             'PBS_SYSLOGSEVR': syslog_severity,
+             'PBS_LOCALLOG': local_log
+            }
         self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
         PBSInitServices().restart()
         self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
@@ -109,20 +111,24 @@ class TestSyslog(TestSelf):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        self.setup_syslog(hostname=self.hostA, local_log=0, syslog_facility=1, syslog_severity=7)
-        self.setup_syslog(hostname=self.hostB, local_log=0, syslog_facility=1, syslog_severity=7)
-        
+        self.setup_syslog(hostname=self.hostA, local_log=0, syslog_facility=1,
+                          syslog_severity=7)
+        self.setup_syslog(hostname=self.hostB, local_log=0, syslog_facility=1,
+                          syslog_severity=7)
+
         self.momB.restart()
         self.momA.restart()
 
-        attr = {'Resource_List.select': '1:ncpus=1:host=%s' % self.momA.shortname}
+        attr = {'Resource_List.select': '1:ncpus=1:host=%s'
+                % self.momA.shortname}
         j1 = Job(TEST_USER, attrs=attr)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         msg_str = "Job;" + jid1 + ";Started"
         self.momA.log_match(msg_str, n=200)
 
-        attr = {'Resource_List.select': '1:ncpus=1:host=%s' % self.momB.shortname}
+        attr = {'Resource_List.select': '1:ncpus=1:host=%s'
+                % self.momB.shortname}
         j2 = Job(TEST_USER, attrs=attr)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
