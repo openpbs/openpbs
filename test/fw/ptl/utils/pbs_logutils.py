@@ -221,12 +221,8 @@ class PBSLogUtils(object):
     du = DshUtils()
 
     @classmethod
-<<<<<<< HEAD
-    def convert_date_time(cls, dt=None, fmt=None):
-=======
-    def convert_date_time(cls, datetime=None, fmt="%m/%d/%Y %H:%M:%S",
-                          syslog=False):
->>>>>>> c79f8b6d... syslog framework changes
+
+    def convert_date_time(cls, dt=None, fmt=None, syslog=False):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch (with possible microseconds).
@@ -244,41 +240,35 @@ class PBSLogUtils(object):
         if dt is None:
             return None
 
-<<<<<<< HEAD
         stdoffset = timedelta(seconds=-time.timezone)
         if time.daylight:
             dstoffset = timedelta(seconds=-time.altzone)
         else:
             dstoffset = stdoffset
-        offsetdiff = dstoffset - stdoffset
+        offsetdiff = dstoffset - stdoffset  
         micro = False
         if fmt is None:
             if '.' in dt:
                 micro = True
                 fmt = "%m/%d/%Y %H:%M:%S.%f"
+            elif syslog: 
+                fmt = "%b %d %H:%M:%S"
             else:
                 fmt = "%m/%d/%Y %H:%M:%S"
 
         try:
             # Get datetime object
             t = datetime.strptime(dt, fmt)
+	    
+	    if syslog:
+                current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
+                t_edit = list(t)
+                t_edit[0] = int(current_t[:4])
+                t = time.struct_time(tuple(t_edit))
             # Get timedelta object of epoch time
             t -= epoch_datetime
             # get epoch time from timedelta object
             tm = t.total_seconds() - offsetdiff.total_seconds()
-=======
-        if syslog:
-            fmt = "%b %d %H:%M:%S"
-
-        try:
-            t = time.strptime(datetime, fmt)
-            if syslog:
-                current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
-                split_current_t = current_t.split(',')
-                t_edit = list(t)
-                t_edit[0] = int(split_current_t[0])
-                t = time.struct_time(tuple(t_edit))
->>>>>>> c79f8b6d... syslog framework changes
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
@@ -382,23 +372,22 @@ class PBSLogUtils(object):
                        Defaults to False.
         :type str
         """
-        if syslog:
-            date_length = 15
-        else:
-            date_length = 19
-
         linecount = 0
         ret = []
         if lines:
             for l in lines:
+                if syslog:
+                    dt_str = l[:15]
+                else:
+                    dt_str = l.split(';', 1)[0]
                 if starttime is not None:
-                    # l[:date_length] captures the log record time
-                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
+                    # dt_str captures the log record time
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
-                    # l[:date_length] captures the log record time
-                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
+                    # dt_str captures the log record time
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
@@ -408,7 +397,7 @@ class PBSLogUtils(object):
                         ret.append(m)
                     else:
                         return m
-
+                linecount += 1
         if len(ret) > 0:
             return ret
         return None
@@ -666,7 +655,7 @@ class PBSLogUtils(object):
                     if daemon_str in l:
                         lines.append(l)
 
-            lines.sort(key=lambda x: datetime.datetime.strptime(
+            lines.sort(key=lambda x: datetime.strptime(
                 x[:15], "%b %d %H:%M:%S"))
         except:
             self.logger.error('error in getting syslog log_lines ')

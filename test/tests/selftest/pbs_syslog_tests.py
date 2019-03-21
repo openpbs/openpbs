@@ -36,20 +36,24 @@
 # trademark licensing policies.
 
 from tests.selftest import *
-
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 class TestSyslog(TestSelf):
     """
     Test pbs syslog logging
     """
 
-    def setup_syslog(self, hostname=None, local_log=None,
-                     syslog_facility=None, syslog_severity=None):
+    du = DshUtils()
+    lu = PBSLogUtils()
+    print("I am in test syslog")
+    def setup_syslog(self, hostname=None, local_log=1,
+                     syslog_facility=1, syslog_severity=9):
         """
         Setup syslog in pbs.conf
         """
-        a = {
-            'PBS_SYSLOG': syslog_facility,
+        if hostname is None:
+            hostname = self.server.hostname
+        a = {'PBS_SYSLOG': syslog_facility,
             'PBS_SYSLOGSEVR': syslog_severity,
             'PBS_LOCALLOG': local_log}
         self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
@@ -60,7 +64,6 @@ class TestSyslog(TestSelf):
         """
         Basic test to check if logging via syslog works
         Each individaul daemon is logged seperately
-        :return:
         """
         self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
         a = {'Resource_List.ncpus': 1}
@@ -74,10 +77,9 @@ class TestSyslog(TestSelf):
         """
         Test that that PBS logs messages via syslog
         according to the set priority
-        :return:
         """
         self.t = int(time.time())
-        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=6)
+        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=5)
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
@@ -94,12 +96,11 @@ class TestSyslog(TestSelf):
         msg_str = "Job;" + jid2 + ";Considering job to run"
         self.scheduler.log_match(msg_str, n=500, max_attempts=10)
 
-    def test_muti_host_syslog_match(self):
+    def test_multi_host_syslog_match(self):
         """
         Test that syslog matching works on a multihost system
-        :return:
         """
-        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
+
         if len(self.moms) != 2:
             self.skip_test(reason="need 2 mom hosts: -p moms=<m1>:<m2>")
 
@@ -108,13 +109,25 @@ class TestSyslog(TestSelf):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        attr = {'Resource_List.select': '2:ncpus=1'}
-        j = Job(TEST_USER, attrs=attr)
-        jid1 = self.server.submit(j)
+        self.setup_syslog(hostname=self.hostA, local_log=0, syslog_facility=1, syslog_severity=7)
+        self.setup_syslog(hostname=self.hostB, local_log=0, syslog_facility=1, syslog_severity=7)
+        
+        self.momB.restart()
+        self.momA.restart()
+
+        attr = {'Resource_List.select': '1:ncpus=1:host=%s' % self.momA.shortname}
+        j1 = Job(TEST_USER, attrs=attr)
+        jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        msg_str = "Job; " + jid1 + ";Started"
-        self.momA.log_match(msg_str, starttime=self.t, n=200)
-        self.momB.log_match(msg_str, starttime=self.t, n=200)
+        msg_str = "Job;" + jid1 + ";Started"
+        self.momA.log_match(msg_str, n=200)
+
+        attr = {'Resource_List.select': '1:ncpus=1:host=%s' % self.momB.shortname}
+        j2 = Job(TEST_USER, attrs=attr)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        msg_str = "Job;" + jid2 + ";Started"
+        self.momB.log_match(msg_str, n=200)
 
     def test_local_and_syslog_match(self):
         """
@@ -125,22 +138,5 @@ class TestSyslog(TestSelf):
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
-        # self.server.log_match(jid2,
-        #                      max_attempts=1)
         msg_str = "Job;" + jid1 + ";Job Queued at request of "
-        self.server.log_match(msg_str,
-                              max_attempts=1, starttime=self.t, n=200)
-
-    def tearDown(self):
-        confs = self.du.parse_pbs_config()
-        print("confs is: " + str(confs))
-        if 'PBS_SYSLOG' in confs:
-            del confs['PBS_SYSLOG']
-        if 'PBS_SYSLOGSEVR' in confs:
-            del confs['PBS_SYSLOGSEVR']
-        if 'PBS_LOCALLOG' in confs:
-            del confs['PBS_LOCALLOG']
-
-        self.du.set_pbs_config(confs=confs, append=False)
-        PBSInitServices().restart()
-        PBSTestSuite.tearDown(self)
+        self.server.log_match(msg_str, n=300)
