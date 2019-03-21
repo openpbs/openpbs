@@ -56,6 +56,7 @@
 /* prototypes */
 char *convert_resv_state(char *pcode, int long_str);
 void handle_resv(char *resv_id, char *server, int how);
+static int check_width;
 
 /**
  * @brief 
@@ -328,7 +329,6 @@ handle_resv(char *resv_id, char *server, int how)
 	char *errmsg;
 	/* for dynamic pbs_rstat width */
 	struct batch_status *server_attrs;
-	int check_seqid_len;
 
 	pbs_sd = cnt2server(server);
 
@@ -339,14 +339,18 @@ handle_resv(char *resv_id, char *server, int how)
 		exit(pbs_errno);
 	}
 	/* check the server attribute max_job_sequence_id value */
-	server_attrs = pbs_statserver(pbs_sd, NULL, NULL);
-	if (server_attrs != NULL) {
-		check_seqid_len = check_max_job_sequence_id(server_attrs);
-		if (check_seqid_len == 1) {
-			how |= DISP_INCR_WIDTH; /* increased column width*/
+	if (check_width == 0) {
+		server_attrs = pbs_statserver(pbs_sd, NULL, NULL);
+		if (server_attrs != NULL) {
+			int check_seqid_len;
+			check_seqid_len = check_max_job_sequence_id(server_attrs);
+			if (check_seqid_len == 1) {
+				how |= DISP_INCR_WIDTH; /* increased column width*/
+			}
+			pbs_statfree(server_attrs);
+			server_attrs = NULL;
+			check_width = 1;
 		}
-		pbs_statfree(server_attrs);
-		server_attrs = NULL;
 	}
 
 	bstat = pbs_statresv(pbs_sd, resv_id, NULL, NULL);
