@@ -233,7 +233,7 @@ the PBS Professional user commands.
 
 %package %{pbs_devel}
 Summary: PBS Professional Development Package
-Group: System Environment/Base
+Group: Development/System
 
 %description %{pbs_devel}
 PBS Professional® is a fast, powerful workload manager and
