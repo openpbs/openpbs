@@ -487,8 +487,6 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib/*.a
 %exclude %{pbs_prefix}/include/*
-%exclude %{pbs_prefix}/lib/*.so*
-%exclude %{pbs_prefix}/lib/pkgconfig/pbs.pc
 %doc README
 %license LICENSE
 
@@ -529,9 +527,7 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib/*.a
-%exclude %{pbs_prefix}/lib/*.so*
 %exclude %{pbs_prefix}/include/*
-%exclude %{pbs_prefix}/lib/pkgconfig/pbs.pc
 %doc README
 %license LICENSE
 
@@ -580,18 +576,14 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
 %exclude %{pbs_prefix}/lib/*.a
-%exclude %{pbs_prefix}/lib/*.so*
 %exclude %{pbs_prefix}/include/*
-%exclude %{pbs_prefix}/lib/pkgconfig/pbs.pc
 %doc README
 %license LICENSE
 
 %files %{pbs_devel}
 %defattr(-,root,root, -)
 %{pbs_prefix}/lib/*.a
-%{pbs_prefix}/lib/*.so*
 %{pbs_prefix}/include/*
-%{pbs_prefix}/lib/pkgconfig/pbs.pc
 %doc README
 %license LICENSE
 
