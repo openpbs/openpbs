@@ -4434,10 +4434,10 @@ class PBSService(PBSObject):
         """
         if hostname is None:
             hostname = socket.gethostname()
-        pbs_locallog = self.du.parse_pbs_config(hostname=hostname).
-                       get("PBS_LOCALLOG")
-        pbs_syslog = self.du.parse_pbs_config(hostname=hostname)
-                     .get("PBS_SYSLOG")
+        pbs_locallog = self.du.parse_pbs_config(
+                       hostname=hostname).get("PBS_LOCALLOG")
+        pbs_syslog = self.du.parse_pbs_config(
+                     hostname=hostname).get("PBS_SYSLOG")
 
         if pbs_syslog is None:
             pbs_syslog = 0
