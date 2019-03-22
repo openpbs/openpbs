@@ -6761,9 +6761,9 @@ build_execvnode(job *pjob, char *nds)
 	*outbuf = '\0';
 
        /* 
-        * if the number of nodes defined ndarray is not equal
-        * to the number of nodes identified by parse_plus_spec, then there's a 
-        * invalid vnode specification on the qrun
+        * if the number of nodes identified for ndarray (nnodes) are not equal
+        * to the number of nodes identified by parse_plus_spec, then
+        * the vnode specification is invalid.
         */
 
 	if (rc || i != nnodes)
