@@ -268,3 +268,22 @@ class TestPBSTestSuite(TestSelf):
         # Confirm that the variable was set again
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
         self.assertIn("PBS_CORE_LIMIT", pbs_conf_val)
+
+    def test_revert_moms_default_conf(self):
+        """
+        Test if PBSTestSuite.revert_moms() reverts the mom configuration
+        setting to defaults
+        """
+        c1 = self.mom.parse_config()
+        # Save a copy of default config to check it was reverted
+        # correctly later
+        c2 = c1.copy()
+
+        a = {'$prologalarm': '280'}
+        self.mom.add_config(a)
+        c1.update(a)
+        self.assertEqual(self.mom.parse_config(), c1)
+        self.mom.revert_to_defaults()
+
+        # Make sure the default config is back
+        self.assertEqual(self.mom.parse_config(), c2)
