@@ -494,9 +494,7 @@ struct jbdscrd {
  * are maintained in the struct attrlist as discussed above.
  */
 
-#define	JSVERSION_514	514
-#define	JSVERSION_80	800
-#define	JSVERSION_18	800
+#define	JSVERSION_18	800 /* In this macro 18 denotes the PBSPro version >= 13.x or <= 18.x */
 #define	JSVERSION	900
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
@@ -720,21 +718,6 @@ struct job {
 
 typedef struct job job;
 
-/* union from recovering old, 5.1.4 <= old < 8.0, jobextend area */
-/* see server/job_recov.c */
-union jobextend_514 {
-	char fill[256];	/* fill to keep same size */
-	struct {
-#if defined(__sgi)
-		jid_t	ji_jid;
-		ash_t	ji_ash;
-#else
-		char	ji_4jid[8];
-		char	ji_4ash[8];
-#endif 	/* sgi */
-		int	   ji_credtype;
-	} ji_ext;
-};
 
 #ifdef	PBS_MOM
 /*
