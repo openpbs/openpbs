@@ -5989,6 +5989,9 @@ class Server(PBSService):
             else:
                 runas = None
 
+            if isinstance(obj, Reservation) and obj.hosts:
+                runcmd += ['--hosts'] + obj.hosts
+
             if _interactive_job:
                 ijid = self.submit_interactive_job(obj, runcmd)
                 try:
@@ -13894,14 +13897,26 @@ class Reservation(ResourceResv):
 
     :param attrs: Reservation attributes
     :type attrs: Dictionary
+    :param hosts: List of hosts for maintenance
+    :type hosts: List
     """
 
     dflt_attributes = {}
 
-    def __init__(self, username=None, attrs={}):
+    def __init__(self, username=None, attrs=None, hosts=None):
         self.server = {}
         self.script = None
-        self.attributes = attrs
+
+        if attrs:
+            self.attributes = attrs
+        else:
+            self.attributes = {}
+
+        if hosts:
+            self.hosts = hosts
+        else:
+            self.hosts = []
+
         if username is None:
             userinfo = pwd.getpwuid(os.getuid())
             self.username = userinfo[0]
@@ -13910,14 +13925,16 @@ class Reservation(ResourceResv):
 
         # These are not in dflt_attributes because of the conversion to CLI
         # options is done strictly
-        if ATTR_resv_start not in attrs:
-            attrs[ATTR_resv_start] = str(int(time.time()) + 36 * 3600)
+        if ATTR_resv_start not in self.attributes:
+            self.attributes[ATTR_resv_start] = str(int(time.time()) +
+                                                   36 * 3600)
 
-        if ATTR_resv_end not in attrs:
-            if ATTR_resv_duration not in attrs:
-                attrs[ATTR_resv_end] = str(int(time.time()) + 72 * 3600)
+        if ATTR_resv_end not in self.attributes:
+            if ATTR_resv_duration not in self.attributes:
+                self.attributes[ATTR_resv_end] = str(int(time.time()) +
+                                                     72 * 3600)
 
-        PBSObject.__init__(self, None, attrs, self.dflt_attributes)
+        PBSObject.__init__(self, None, self.attributes, self.dflt_attributes)
         self.set_attributes()
 
     def set_variable_list(self, user, workdir=None):

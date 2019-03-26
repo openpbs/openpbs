@@ -104,7 +104,7 @@ parse_jobid(char *job_id, char **arg_seq_number, char **arg_parent_server, char 
 	while (isspace(*c)) c++;
 
 	/* skip past initial char if reservation */
-	if (*c == PBS_RESV_ID_CHAR || *c == PBS_STDNG_RESV_ID_CHAR) {
+	if (*c == PBS_RESV_ID_CHAR || *c == PBS_STDNG_RESV_ID_CHAR || *c == PBS_MNTNC_RESV_ID_CHAR) {
 		is_resv = 1;
 		seq_number[s_pos++] = *c;
 		c++;

@@ -8379,6 +8379,7 @@ set_old_subUniverse(resc_resv	*presv)
 
 	if (presv->ri_qs.ri_state != RESV_CONFIRMED &&
 		presv->ri_qs.ri_substate != RESV_DEGRADED &&
+		presv->ri_qs.ri_substate != RESV_IN_CONFLICT &&
 		presv->ri_qs.ri_state != RESV_RUNNING)
 		return;
 
@@ -8430,7 +8431,7 @@ set_old_subUniverse(resc_resv	*presv)
 	 * In other words, we assume the reservation is confirmed again until
 	 * proven wrong.
 	 */
-	if (presv->ri_qs.ri_substate == RESV_DEGRADED &&
+	if ((presv->ri_qs.ri_substate == RESV_DEGRADED || presv->ri_qs.ri_substate == RESV_IN_CONFLICT) &&
 		presv->ri_qs.ri_state != RESV_RUNNING) {
 		(void) resv_setResvState(presv, RESV_CONFIRMED, RESV_CONFIRMED);
 

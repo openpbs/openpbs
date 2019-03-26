@@ -7437,6 +7437,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "RESV_DELETING_JOBS",SWIG_From_int((int)(RESV_DELETING_JOBS)));
   SWIG_Python_SetConstant(d, "RESV_DEGRADED",SWIG_From_int((int)(RESV_DEGRADED)));
   SWIG_Python_SetConstant(d, "RESV_BEING_ALTERED",SWIG_From_int((int)(RESV_BEING_ALTERED)));
+  SWIG_Python_SetConstant(d, "RESV_IN_CONFLICT",SWIG_From_int((int)(RESV_IN_CONFLICT)));
 #if PY_VERSION_HEX >= 0x03000000
   return m;
 #else
