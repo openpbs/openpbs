@@ -210,15 +210,15 @@ check_job_file(int fd)
 			fprintf(stderr, "Couldn't set the file position to zero.\n");
 			goto check_job_file_exit;
 	}
-	memset(&old_jobfix_pre19, 0, sizeof(old_jobfix_pre19));
-	length = read(fd, (char *)&old_jobfix_pre19, sizeof(old_jobfix_pre19));
+	memset(&old_jobfix_pre19.ji_jsversion, 0, sizeof(old_jobfix_pre19.ji_jsversion));
+	length = read(fd, (char *)&old_jobfix_pre19.ji_jsversion, sizeof(old_jobfix_pre19.ji_jsversion));
 	if (length < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n",
 				errno ? strerror(errno) : "No error");
 		goto check_job_file_exit;
 	}
 	if (old_jobfix_pre19.ji_jsversion == JSVERSION_18) {
-		/* for all type of jobfix structures, from 13 to 18 PBS versions */
+		/* for all type of jobfix structures, from 13.x to 18.x PBS versions */
 		ret_version = 18;
 		goto check_job_file_exit;
 	} else if (old_jobfix_pre19.ji_jsversion == JSVERSION) {
@@ -275,10 +275,6 @@ upgrade_job_file(int fd)
 		fprintf(stderr, "Format not recognized, not enough fixed data.\n");
 		return 1;
 	}
-	if (old_jobfix_pre19.ji_jsversion != JSVERSION_18) {
-		fprintf(stderr, "Job format version not recognized.\n");
-		return 1;
-	}
 
 	/* Copy the data to the new jobfix structure */
 	memset(&new_job, 0, sizeof(new_job));
@@ -293,6 +289,7 @@ upgrade_job_file(int fd)
 			"%s", old_jobfix_pre19.ji_destin);
 	new_job.ji_qs.ji_un_type = old_jobfix_pre19.ji_un_type;
 	memcpy(&new_job.ji_qs.ji_un, &old_jobfix_pre19.ji_un, sizeof(new_job.ji_qs.ji_un));
+
 	/* Open a temporary file to stage data */
 	tmp = tmpfile();
 	if (!tmp) {
@@ -631,7 +628,7 @@ main(int argc, char *argv[])
 	/* Upgrade the job file */
 	ret = upgrade_job_file(fd);
 	if (ret != 0) {
-		fprintf(stderr, "Upgrade failed\n");
+		fprintf(stderr, "Failed to upgrade the job file:%s\n", jobfile);
 		return 1;
 	}
 
@@ -661,7 +658,7 @@ main(int argc, char *argv[])
 		strcpy(task_start, dirent->d_name);
 		ret = upgrade_task_file(namebuf);
 		if (ret != 0) {
-			fprintf(stderr, "Upgrade task failed\n");
+			fprintf(stderr, "Failed to upgrade the task file:%s\n",jobfile);
 			return 1;
 		}
 	}
