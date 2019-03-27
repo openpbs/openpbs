@@ -12907,6 +12907,8 @@ class MoM(PBSService):
                     return False
                 self.delete_vnodes()
             if cmp(self.config, self.dflt_config) != 0:
+                # Clear older mom configuration. Apply default.
+                self.config = {}
                 self.apply_config(self.dflt_config, hup=False, restart=False)
             if restart:
                 self.restart()
