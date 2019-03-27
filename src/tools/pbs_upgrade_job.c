@@ -200,6 +200,7 @@ check_job_file(int fd)
 	int ret_version = -1;
 	int length = -1;
 	jobfix_PRE19 old_jobfix_pre19;
+	errno = 0;
 
 	/* Save our current position so we can comeback to it */
 	pos_saved = lseek(fd, 0, SEEK_CUR);
@@ -207,10 +208,11 @@ check_job_file(int fd)
 	/*---------- For PBSPro >=13.x or <=18.x versions jobfix structure ---------- */
 	pos_new = lseek(fd, pos_saved, SEEK_SET);
 	if (pos_new != 0) {
-			fprintf(stderr, "Couldn't set the file position to zero.\n");
+			fprintf(stderr, "Couldn't set the file position to zero [%s]\n",
+					errno ? strerror(errno) : "No error");
 			goto check_job_file_exit;
 	}
-	memset(&old_jobfix_pre19.ji_jsversion, 0, sizeof(old_jobfix_pre19.ji_jsversion));
+	old_jobfix_pre19.ji_jsversion = 0;
 	length = read(fd, (char *)&old_jobfix_pre19.ji_jsversion, sizeof(old_jobfix_pre19.ji_jsversion));
 	if (length < 0) {
 		fprintf(stderr, "Failed to read input file [%s]\n",
@@ -226,14 +228,16 @@ check_job_file(int fd)
 		ret_version = 19;
 		goto check_job_file_exit;
 	} else {
-		fprintf(stderr, "Job structure version (JSVERSION) not recognized, found=%d.\n",old_jobfix_pre19.ji_jsversion);
+		fprintf(stderr, "Job structure version (JSVERSION) not recognized, found=%d.\n",
+				old_jobfix_pre19.ji_jsversion);
 		goto check_job_file_exit;
 	}
 
 check_job_file_exit:
 	pos_new = lseek(fd, pos_saved, SEEK_SET);
 	if (pos_new != 0) {
-			fprintf(stderr, "Couldn't set the file position back to zero.\n");
+			fprintf(stderr, "Couldn't set the file position back to zero [%s]\n",
+					errno ? strerror(errno) : "No error");
 			goto check_job_file_exit;
 		}
 	return ret_version;

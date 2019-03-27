@@ -433,10 +433,12 @@ job_recov_fs(char *filename)
 
 	/* read in extended save area depending on JSVERSION */
 
-	errno = -1;
+	errno = 0;
 	DBPRT(("Job save version %d\n", pj->ji_qs.ji_jsversion))
 	if (pj->ji_qs.ji_jsversion >= JSVERSION_18) {
-		/* If current JSVERSION(900), JSVERSION_18(800), read into place */
+		/* since there is no change in jobextend structure for JSVERSION(1900) and JSVERSION_18(800),
+		 * read the current structure.
+		 */
 		if (read(fds, (char *)&pj->ji_extended,
 			sizeof(union jobextend)) !=
 			sizeof(union jobextend)) {

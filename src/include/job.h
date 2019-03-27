@@ -494,8 +494,9 @@ struct jbdscrd {
  * are maintained in the struct attrlist as discussed above.
  */
 
-#define	JSVERSION_18	800 /* In this macro 18 denotes the PBSPro version >= 13.x or <= 18.x */
-#define	JSVERSION	900
+
+#define	JSVERSION_18	800	/* 18 denotes the PBSPro version and it covers the job structure from >= 13.x to <= 18.x */
+#define	JSVERSION	1900	/* 1900 denotes the 19.x.x version */
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
 
