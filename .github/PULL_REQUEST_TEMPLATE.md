@@ -14,4 +14,4 @@
 * *Please attach your test log output from running the test you added (or from existing tests that cover your changes)*
 
 #### Optional Considerations
-***You can find a list of other stuff to consider here: [Pull Request Considerations](https://pbspro.atlassian.net/wiki/spaces/DG/pages/1187348483/Pull+Request+Considerations)***
+* *You can find a list of other stuff to consider here: [Pull Request Considerations](https://pbspro.atlassian.net/wiki/spaces/DG/pages/1187348483/Pull+Request+Considerations)***
