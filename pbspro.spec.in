@@ -452,7 +452,6 @@ fi
 %postun %{pbs_devel}
 ldconfig %{_libdir}
 
-
 %posttrans %{pbs_server}
 # The %preun section of 14.x unconditially removes /etc/init.d/pbs
 # because it does not check whether the package is being removed
