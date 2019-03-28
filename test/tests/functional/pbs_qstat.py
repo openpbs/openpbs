@@ -79,3 +79,26 @@ class TestQstat(TestFunctional):
                 sj_escaped + r'\s+\S+\s+\S+\s+(--\s+[RQ]|100\s+X)\s+\S+',
                 qstat_out)
             self.assertIsNotNone(match, 'Job output does not match')
+
+    def test_qstat_qselect(self):
+        """
+        Test to check that qstat can handle more than 150 jobs query at a time
+        without any connection issues.
+        """
+        self.server.restart()
+        j = Job(TEST_USER)
+        for i in range(150):
+            self.server.submit(j)
+        ret_msg = 'Too many open connections.'
+        qselect_cmd = ' `' + \
+            os.path.join(
+                self.server.client_conf['PBS_EXEC'],
+                'bin',
+                'qselect') + '`'
+        qstat_cmd = os.path.join(
+            self.server.client_conf['PBS_EXEC'], 'bin', 'qstat')
+        final_cmd = qstat_cmd + qselect_cmd
+        ret = self.du.run_cmd(self.server.hostname, final_cmd,
+                              as_script=True)
+        if ret['rc'] != 0:
+            self.assertFalse(ret['err'][0], ret_msg)
