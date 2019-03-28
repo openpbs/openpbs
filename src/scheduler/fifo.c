@@ -1899,7 +1899,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		 * Note: We only ever look from now into the future
 		 */
 		nexte = get_next_event(sinfo->calendar);
-		if (find_timed_event(nexte, topjob->name, TIMED_NOEVENT, 0) != NULL)
+		if (find_timed_event(nexte, IGNORE_DISABLED_EVENTS, topjob->name, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)

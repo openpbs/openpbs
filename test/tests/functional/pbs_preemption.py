@@ -55,6 +55,24 @@ class TestPreemption(TestFunctional):
              'Priority': 200}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
+    def submit_jobs(self):
+        """
+        Function to submit two normal job and one high priority job
+        """
+        j1 = Job(TEST_USER)
+        jid1 = self.server.submit(j1)
+        time.sleep(1)
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
+        j3 = Job(TEST_USER)
+        j3.set_attributes({ATTR_q: 'expressq'})
+        jid3 = self.server.submit(j3)
+
+        return jid1, jid2, jid3
+
     def submit_and_preempt_jobs(self, preempt_order='R'):
         """
         This function will set the prempt order, submit jobs,
@@ -149,3 +167,30 @@ exit 0
                              attrib={'Resource_List.preempt_targets': 'None'})
         self.server.expect(JOB, id=jid,
                            attrib={'Resource_List.preempt_targets': 'None'})
+
+    def test_preempt_sort_when_set(self):
+        """
+        This test is for preempt_sort when it is set to min_time_since_start
+        """
+        a = {ATTR_rescavail + '.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {'preempt_sort': 'min_time_since_start'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        jid1, jid2, jid3 = self.submit_jobs()
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+
+    def test_preempt_sort_when_unset(self):
+        """
+        This test is for preempt_sort when it is unset
+        """
+        a = {ATTR_rescavail + '.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort')
+        jid1, jid2, jid3 = self.submit_jobs()
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
