@@ -10,8 +10,8 @@
 #### Link to Design
 * *If there is an external design, link to it **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)***
 
-#### Testing logs/output
+#### Testing Logs or Output
 * *Please attach your test log output from running the test you added (or from existing tests that cover your changes)*
 
 #### Optional Considerations
-__***You can find a list of other stuff to consider here [Pull Request Considerations](https://pbspro.atlassian.net/wiki/spaces/DG/pages/1187348483/Pull+Request+Considerations).***
+***You can find a list of other stuff to consider here: [Pull Request Considerations](https://pbspro.atlassian.net/wiki/spaces/DG/pages/1187348483/Pull+Request+Considerations)***
