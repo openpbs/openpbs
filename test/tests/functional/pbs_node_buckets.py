@@ -614,7 +614,9 @@ class TestNodeBuckets(TestFunctional):
         Test that jobs in the calendar fit within a placement set
         """
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
-        self.server.manager(MGR_CMD_SET, SERVER, {'backfill_depth': 5})
+        svr_attr = {'node_group_key': 'shape', 'node_group_enable': 'True',
+                    'backfill_depth': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, svr_attr)
 
         chunk1 = '10010:ncpus=1'
         a = {'Resource_List.select': chunk1,
@@ -623,11 +625,9 @@ class TestNodeBuckets(TestFunctional):
 
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
+
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1, n=10000)
-
-        svr_attr = {'node_group_key': 'shape', 'node_group_enable': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, svr_attr)
 
         chunk2 = '1430:ncpus=1'
         a['Resource_List.select'] = chunk2
@@ -695,6 +695,10 @@ class TestNodeBuckets(TestFunctional):
         Request more nodes than available in one placement set and see
         the job span or not depending on the value of do_not_span_psets
         """
+        # Turn off scheduling to be sure there is no cycle running when
+        # configurations are changed
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'node_group_key': 'shape', 'node_group_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
@@ -708,6 +712,11 @@ class TestNodeBuckets(TestFunctional):
 
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
+
+        # Trigger a scheduling cycle
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
         a = {'job_state': 'Q', 'comment':
              (MATCH_RE, 'can\'t fit in the largest placement set, '
               'and can\'t span psets')}
