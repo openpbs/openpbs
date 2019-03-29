@@ -29,7 +29,7 @@ To dive in deeper and learn more about the project and what the community is up 
 
 * [Contributor’s portal](https://pbspro.atlassian.net/wiki) -- includes roadmaps, processes, how to articles, coding standards, release notes, etc  (Uses Confluence)
 * [Source code](https://github.com/PBSPro/pbspro) -- includes full source code and test framework (Uses Github)
-* [Issue tracking system](https://pbspro.atlassian.net)  -- includes bugs and feature requests and status  (Uses JIRA)
+* [Issue tracking system](https://github.com/PBSPro/pbspro/issues) -- includes bugs and feature requests and status (Uses Github).  Previously, we used [JIRA](https://pbspro.atlassian.net), which contains older issues.
 
 PBS Professional is also integrated in the OpenHPC software stack. The mission of OpenHPC is to provide an integrated collection of HPC-centric components to provide full-featured HPC software stacks. OpenHPC is a Linux Foundation Collaborative Project.  Learn more at:
 
