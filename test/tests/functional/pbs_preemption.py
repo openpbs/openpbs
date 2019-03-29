@@ -126,3 +126,26 @@ exit 0
         marked as "Job will never run"
         """
         self.submit_and_preempt_jobs(preempt_order='R')
+
+    def test_qalter_preempt_targets_to_none(self):
+        """
+        Test that a job requesting preempt targets set to two different queues
+        can be altered to set preempt_targets as NONE
+        """
+
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'})
+        # submit a job in expressq with preempt targets set to workq, workq2
+        a = {'Resource_List.preempt_targets': 'queue=workq,queue=workq2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        self.server.alterjob(jobid=jid,
+                             attrib={'Resource_List.preempt_targets': 'None'})
+        self.server.expect(JOB, id=jid,
+                           attrib={'Resource_List.preempt_targets': 'None'})
