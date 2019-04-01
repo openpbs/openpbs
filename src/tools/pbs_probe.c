@@ -845,12 +845,12 @@ static MPUG	include_mpugs[] = {
 	/*
 	 * infrastructure data associated with PBS_EXEC/include
 	 */
-	{1, 2, 0,   drwxrxrx,    tgwow, &dflt_pbs_ug, exec[2], NULL},
-	{1, 2, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[0], NULL }, /* pbs_error.h */
-	{1, 2, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[1], NULL }, /* pbs_ifl.h */
-	{1, 2, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[2], NULL }, /* rm.h */
-	{1, 2, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[3], NULL }, /* tm.h */
-	{1, 2, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[4], NULL } }; /* tm_.h */
+	{1, 1, 0,   drwxrxrx,    tgwow, &dflt_pbs_ug, exec[2], NULL},
+	{1, 1, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[0], NULL }, /* pbs_error.h */
+	{1, 1, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[1], NULL }, /* pbs_ifl.h */
+	{1, 1, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[2], NULL }, /* rm.h */
+	{1, 1, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[3], NULL }, /* tm.h */
+	{1, 1, 0,     frgror,   sgswxowx, &dflt_pbs_ug, exinc[4], NULL } }; /* tm_.h */
 
 
 static MPUG	lib_mpugs[] = {
@@ -858,14 +858,14 @@ static MPUG	lib_mpugs[] = {
 	 * infrastructure data associated with PBS_EXEC/lib
 	 */
 	{1, 0, 0, drwxrxrx,    tgwow, &dflt_pbs_ug, exec[3],    NULL},
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 0], NULL }, /* libattr.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 0], NULL }, /* libattr.a */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 1], NULL }, /* libcmds.a */
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 2], NULL }, /* liblog.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 2], NULL }, /* liblog.a */
 
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 3], NULL }, /* libnet.a */
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 4], NULL }, /* libpbs.a */
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 5], NULL }, /* libsite.a */
-	{1, 2, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 6], NULL }, /* pbs_sched.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 3], NULL }, /* libnet.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 4], NULL }, /* libpbs.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 5], NULL }, /* libsite.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 6], NULL }, /* pbs_sched.a */
 	{1, 2, 0,   drwxrxrx,    tgwow, &dflt_pbs_ug, exlib[ 7], NULL }, /* pm */
 	{1, 0, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 8], NULL }, /* PBS.pm */
 	{1, 2, 0,   drwxrxrx,    tgwow, &dflt_pbs_ug, exlib[ 9], NULL}, /* MPI */
