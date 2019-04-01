@@ -8,7 +8,7 @@
 * *Say how you fixed the problem.  Please describe your code changes in detail for reviewers*
 
 #### Link to Design
-* *If there is an external design, link to it **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)***
+* *If there is a design, link to it **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)***
 
 #### Testing Logs or Output
 * *Please attach your test log output from running the test you added (or from existing tests that cover your changes)*
