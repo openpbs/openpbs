@@ -1580,24 +1580,28 @@ class NodeConfig(object):
                         pbs.logmsg(pbs.EVENT_DEBUG4,
                                    'Mapping hyperthreads to cores')
                         cores = cpuinfo['cpu'].keys()
-                        threads = []
+                        threads = set()
                         # CPUs with matching core IDs are hyperthreads
                         # sharing the same physical core. Loop through
                         # the cores to construct a list of threads.
                         for xid in cores:
                             xcore = cpuinfo['cpu'][xid]
                             for yid in cores:
-                                ycore = cpuinfo['cpu'][yid]
-                                if xid >= yid:
+                                if xid == yid:
+                                    cpuinfo['cpu'][xid]['threads'].append(xid)
                                     continue
+                                elif xid > yid:
+                                    continue
+                                ycore = cpuinfo['cpu'][yid]
                                 if xcore['physical id'] != \
                                         ycore['physical id']:
                                     continue
                                 if xcore['core id'] == ycore['core id']:
                                     cpuinfo['cpu'][xid]['threads'].append(yid)
-                                    threads.append(yid)
+                                    cpuinfo['cpu'][yid]['threads'].append(xid)
+                                    threads.add(yid)
                         pbs.logmsg(pbs.EVENT_DEBUG4, 'HT cores: %s' % threads)
-                        cpuinfo['hyperthreads'] = threads
+                        cpuinfo['hyperthreads'] = sorted(threads)
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Hyperthreading check failed' %
                        caller_name())
@@ -3276,8 +3280,8 @@ class CgroupUtils(object):
                     jobcount[sock] = 0
                 for job in self.assigned_resources:
                     jobresc = self.assigned_resources[job]
-                    if 'cpuset.mems' in jobresc:
-                        for sock in jobresc['cpuset.mems']:
+                    if 'cpuset' in jobresc and 'mems' in jobresc['cpuset']:
+                        for sock in jobresc['cpuset']['mems']:
                             jobcount[sock] += 1
                 sorted_jobcounts = sorted(jobcount.items(),
                                           key=operator.itemgetter(1))
