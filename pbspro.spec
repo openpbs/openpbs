@@ -487,7 +487,7 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib/*.a
 %exclude %{pbs_prefix}/include/*
-%doc README
+%doc README.md
 %license LICENSE
 
 %files %{pbs_execution}
@@ -528,7 +528,7 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib/*.a
 %exclude %{pbs_prefix}/include/*
-%doc README
+%doc README.md
 %license LICENSE
 
 %files %{pbs_client}
@@ -577,14 +577,14 @@ fi
 %exclude %{_unitdir}/pbs.service
 %exclude %{pbs_prefix}/lib/*.a
 %exclude %{pbs_prefix}/include/*
-%doc README
+%doc README.md
 %license LICENSE
 
 %files %{pbs_devel}
 %defattr(-,root,root, -)
 %{pbs_prefix}/lib/*.a
 %{pbs_prefix}/include/*
-%doc README
+%doc README.md
 %license LICENSE
 
 %if %{with ptl}
