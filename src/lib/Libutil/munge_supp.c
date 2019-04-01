@@ -252,7 +252,7 @@ pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz)
 	if (*p == '1')
 		*fromsvr = 1; /* connection was from a server */
 
-	p = strtok(recv_payload + 2, ":");
+	p = strtok(p + 2, ":");
 
 	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0)) /* inline with current pbs_iff we compare with username only */
 		rc = 0;
