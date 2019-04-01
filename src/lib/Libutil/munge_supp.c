@@ -217,7 +217,6 @@ pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz)
 	struct passwd *pwent = NULL;
 	struct group *grp = NULL;
 	void *recv_payload = NULL;
-	char user_credential[PBS_MAXUSER + PBS_MAXGRPN + 1] = { "\0" };
 	int munge_err = 0;
 	char *p;
 	int rc = -1;
@@ -247,16 +246,15 @@ pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz)
 		snprintf(ebuf, ebufsz, "Failed to obtain group-info for gid=%d", gid);
 		goto err;
 	}
-	snprintf(user_credential, PBS_MAXUSER + PBS_MAXGRPN, "%s:%s", pwent->pw_name, grp->gr_name);
 
 	/* parse the recv_payload past the first two characters */
 	p = (char *) recv_payload;
 	if (*p == '1')
 		*fromsvr = 1; /* connection was from a server */
 
-	p = recv_payload + 2;
+	p = strtok(recv_payload + 2, ":");
 
-	if (strcmp(user_credential, p) == 0)
+	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0)) /* inline with current pbs_iff we compare with username only */
 		rc = 0;
 	else
 		snprintf(ebuf, ebufsz, "User credentials do not match");
