@@ -45,6 +45,11 @@ import platform
 
 
 class Inventory(object):
+    """
+    This class is used to parse the inventory details
+    and hold the device information
+    """
+
     def reset(self):
         self.nsockets = 0
         self.nnodes = 0
@@ -55,8 +60,11 @@ class Inventory(object):
     def __init__(self):
         self.reset()
 
-    def reportsockets_win(self, f):
-        temp = f.read().split(',')
+    def reportsockets_win(self, topo_file):
+        """
+        counting devices by parsing topo_file
+        """
+        temp = topo_file.read().split(',')
         for item in temp:
             if item.find('sockets:') != -1:
                 self.nsockets = int(item[8:])  # len('sockets:') = 8
@@ -67,16 +75,29 @@ class Inventory(object):
                 self.ndevices += int(item[5:])  # len('mics:') = 5
 
     def latest_hwloc(self, hwlocVersion):
+        """
+        socket tag is different on versions above 1.11
+        turning hwloclatest flag on if the version is above 1.11
+        """
         hwlocVersion = hwlocVersion.split('.')
         major = int(hwlocVersion[0])
         minor = int(hwlocVersion[1]) if len(hwlocVersion) > 1 else 0
         if ((major == 1) and (minor >= 11)) or (major > 1):
             self.hwloclatest = 1
 
+    def calculate(self):
+        """
+        Returns the number of licenses required based on specific formula
+        """
+        return(int(math.ceil(self.ndevices / 4.0)))
+
     def reportsockets(self, dirs, files, options):
         """
         Look for and report the number of socket/node licenses
         required by the cluster. Uses expat to parse the XML.
+        dirs - directory to look for topology files.
+        files - files for which inventory needs to be parsed
+        options - node / socket.
         """
 
         if files is None:
@@ -87,14 +108,14 @@ class Inventory(object):
                     return
             except (IOError, OSError) as err:
                 (e, strerror) = err.args
-                print "%s:  %s (%s)" % (dirs, strerror, e)
+                print("%s:  %s (%s)" % (dirs, strerror, e))
                 return
         else:
             compute_socket_nodelist = False
         try:
             maxwidth = max(map(len, files))
-        except StandardError, e:
-            print 'max/map failed: %s' % e
+        except StandardError as e:
+            print('max/map failed: %s' % e)
             return
 
         try:
@@ -108,39 +129,40 @@ class Inventory(object):
             pathname = os.sep.join((dirs, name))
             self.reset()
             try:
-                with open(pathname, "r") as f:
+                with open(pathname, "r") as topo_file:
 
                     if platform.system() == "Windows":
-                        self.reportsockets_win(f)
+                        self.reportsockets_win(topo_file)
                     elif ExpatParser:
                         try:
                             p = xml.parsers.expat.ParserCreate()
                             p.StartElementHandler = socketXMLstart
-                            p.ParseFile(f)
+                            p.ParseFile(topo_file)
                         except ExpatError as e:
-                            print "%s:  parsing error at line %d, column %d" \
-                                % (name, e.lineno, e.offset)
+                            print("%s:  parsing error at line %d, column %d"
+                                  % (name, e.lineno, e.offset))
                     else:
-                        self.countsockets(f)
+                        self.countsockets(topo_file)
 
                     if options.sockets:
-                        print "%-*s%d" % (maxwidth + 1, name, self.nsockets)
+                        print("%-*s%d" % (maxwidth + 1, name, self.nsockets))
                     else:
-                        self.nnodes += int(math.ceil(self.ndevices / 4.0))
-                        print "%-*s%d" % (maxwidth + 1, name, inventory.nnodes)
+                        self.nnodes += self.calculate()
+                        print("%-*s%d" % (maxwidth + 1, name,
+                              inventory.nnodes))
 
             except IOError as err:
                 (e, strerror) = err.args
                 if e == errno.ENOENT:
                     if not compute_socket_nodelist:
-                        print "no socket information available for node %s" \
-                            % name
+                        print("no socket information available for node %s"
+                              % name)
                     continue
                 else:
-                    print "%s:  %s (%s)" % (pathname, strerror, e)
+                    print("%s:  %s (%s)" % (pathname, strerror, e))
                     raise
 
-    def countsockets(self, f):
+    def countsockets(self, topo_file):
         """
         Used when an import of the xml.parsers.expat module fails.
         This version makes use of regex expressions.
@@ -157,7 +179,7 @@ class Inventory(object):
         craygpupattern = r'<\s*Accelerator\s+.*type="GPU"'
         hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+'
 
-        for line in f:
+        for line in topo_file:
             if re.search(craypattern, line):
                 start_index = line.find('protocol="') + len('protocol="')
                 self.CrayVersion = line[start_index:
@@ -171,7 +193,7 @@ class Inventory(object):
 
             if self.CrayVersion != "0.0":
                 if re.search(craynodepattern, line):
-                    self.nnodes += int(math.ceil(self.ndevices / 4.0))
+                    self.nnodes += self.calculate()
                     self.ndevices = 0
                     if float(self.CrayVersion) <= 1.2:
                         self.nsockets += 2
@@ -192,6 +214,9 @@ class Inventory(object):
 
 
 def socketXMLstart(name, attrs):
+    """
+    StartElementHandler for expat parser
+    """
     global inventory
 
     if name == "BasilResponse":
@@ -202,7 +227,7 @@ def socketXMLstart(name, attrs):
         return
     if inventory.CrayVersion != "0.0":
         if name == "Node":
-            inventory.nnodes += int(math.ceil(inventory.ndevices / 4.0))
+            inventory.nnodes += inventory.calculate()
             inventory.ndevices = 0
             if float(inventory.CrayVersion) <= 1.2:
                 inventory.nsockets += 2
@@ -244,7 +269,7 @@ if __name__ == "__main__":
         topology_dir = os.sep.join((os.environ["PBS_HOME"], "server_priv",
                                     "topology"))
     except KeyError:
-        print "PBS_HOME must be present in the caller's environment"
+        print("PBS_HOME must be present in the caller's environment")
         sys.exit(1)
     if not (options.sockets or options.license):
         sys.exit(1)

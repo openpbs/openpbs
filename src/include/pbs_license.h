@@ -49,6 +49,8 @@ extern "C" {
 #define ND_LIC_TYPE_float 	'f'
 #define ND_LIC_TYPE_unlic	'u'
 #define ND_LIC_TYPE_cloud	'c'
+#define ND_LIC_locked_str	"l"
+#define ND_LIC_cloud_str	"c"
 
 struct license_block {
 	int  lb_trial;		/* non_zero if trial license */
