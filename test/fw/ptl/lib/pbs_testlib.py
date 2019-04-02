@@ -9453,7 +9453,7 @@ class Server(PBSService):
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
-    def import_hook(self, name, body):
+    def import_hook(self, name, body, level=logging.INFO):
         """
         Helper function to import hook body into hook by name.
         The hook must have been created prior to calling this
@@ -9493,12 +9493,13 @@ class Server(PBSService):
         os.remove(rfile)
         if not self._is_local:
             self.du.rm(self.hostname, rfile)
-
-        self.logger.info('server ' + self.shortname +
-                         ': imported hook body\n---\n' + body + '---')
+        self.logger.log(level, 'server ' + self.shortname +
+                        ': imported hook body\n---\n' +
+                        body + '---')
         return True
 
-    def create_import_hook(self, name, attrs=None, body=None, overwrite=True):
+    def create_import_hook(self, name, attrs=None, body=None, overwrite=True,
+                           level=logging.INFO):
         """
         Helper function to create a hook, import content into it,
         set the event and enable it.
@@ -9542,7 +9543,7 @@ class Server(PBSService):
 
         # In 12.0 A MoM hook must be enabled and the event set prior to
         # importing, otherwise the MoM does not get the hook content
-        ret = self.import_hook(name, body)
+        ret = self.import_hook(name, body, level)
 
         # In case of mom hooks, make sure that the hook related files
         # are successfully copied to the MoM
