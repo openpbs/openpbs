@@ -258,6 +258,7 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_statrsc.c \
 	../Libifl/pbsD_modify_resv.c \
 	../Libifl/pbsD_Preempt_Jobs.c \
+	../Libifl/ifl_impl.c \
 	../Libifl/ifl_pointers.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \
