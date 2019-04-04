@@ -60,3 +60,28 @@ class ManagersOperators(TestSelf):
         self.logger.info("Calling test setUp:")
         TestSelf.setUp(self)
         self.server.expect(SERVER, attrib=attr)
+
+    def test_managers_unset_teardown(self):
+        """
+        Additional managers users, except current user should get unset
+        after tearDown run
+        """
+        runas = ROOT_USER
+        current_usr = pwd.getpwuid(os.getuid())[0]
+        attr = {ATTR_managers: current_usr + '@*'}
+        self.server.expect(SERVER, attrib=attr)
+        mgr_user1 = str(TEST_USER)
+        mgr_user2 = str(TEST_USER1)
+        a = {ATTR_managers: (INCR, mgr_user1 + '@*,' + mgr_user2 + '@*')}
+        self.server.manager(MGR_CMD_SET, SERVER, a, runas=runas)
+        a = {ATTR_operators: str(OPER_USER) + '@*'}
+        self.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        self.logger.info("Calling test tearDown:")
+        TestSelf.tearDown(self)
+        self.server.expect(SERVER, attrib=attr)
+        try:
+            self.server.expect(SERVER, attrib=a, max_attempts=5)
+        except PtlExpectError:
+            pass
+        else:
+            self.fail("Error in unsetting operators attribute")

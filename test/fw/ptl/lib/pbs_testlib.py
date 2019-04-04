@@ -8328,6 +8328,11 @@ class Server(PBSService):
             select_xt = 'x'
         job_ids = self.select(extend=select_xt)
 
+        revert_server_attribs = ['managers', 'operators']
+
+        for attrib in revert_server_attribs:
+            self.manager(MGR_CMD_UNSET, SERVER, attrib, sudo=True)
+
         # Make sure the current user is a manager. Some tests might have
         # unset the mangers attribute. Ignore 'Duplicate entry in the list'
         # error if the current user was already a manager
