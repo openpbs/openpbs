@@ -1087,6 +1087,8 @@ class PBSAnonymizer(object):
             # accounting log format is
             # %Y/%m/%d %H:%M:%S;<Key>;<Id>;<key1=val1> <key2=val2> ...
             curr = data.split(";", 3)
+            if curr is None or len(curr) < 4:
+                continue
             if curr[1] in ("A", "L"):
                 anon_data.append(data.strip())
                 continue
@@ -1095,6 +1097,11 @@ class PBSAnonymizer(object):
             skip_record = False
             # Split the attribute list into key value pairs
             kvl_list = map(lambda n: n.split("=", 1), buf)
+            if kvl_list is None:
+                self.num_bad_acct_records += 1
+                self.logger.debug("Bad accounting record found:\n" +
+                                  data)
+                continue
             for kvl in kvl_list:
                 try:
                     k, v = kvl
