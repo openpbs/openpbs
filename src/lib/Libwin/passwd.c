@@ -1928,7 +1928,7 @@ getdefgrpname(char *user)
 		NetApiBufferFree(groups);
 
 		strcpy(c_data_[0], group);
-		cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
+		cache_data(__func__, user, (char *)c_data_, 1, GNLEN+1);
 
 		return (group);
 	}
@@ -1939,7 +1939,7 @@ getdefgrpname(char *user)
 		NetApiBufferFree(groups);
 
 		strcpy(c_data_[0], group);
-		cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
+		cache_data(__func__, user, (char *)c_data_, 1, GNLEN+1);
 
 		return (group);
 	}
@@ -1947,7 +1947,7 @@ getdefgrpname(char *user)
 	(void)free(group);
 
 	strcpy(c_data_[0], "Everyone");
-	cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
+	cache_data(__func__, user, (char *)c_data_, 1, GNLEN+1);
 
 	return (strdup("Everyone"));
 }
@@ -2302,7 +2302,7 @@ getgids(char *user, SID *grp[], DWORD rids[])
 		NetApiBufferFree(groups);
 		groups = NULL;
 	}
-	cache_data(__func__, user, (char *)c_data_, j, GNLEN);
+	cache_data(__func__, user, (char *)c_data_, j, GNLEN+1);
 
 	return (j);
 }
