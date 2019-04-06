@@ -856,7 +856,8 @@ if %s e.job.in_ms_mom():
         for _ in range(5):
             try:
                 self.server.create_import_hook(self.hook_name, a, script,
-                                               overwrite=True)
+                                               overwrite=True,
+                                               level=logging.DEBUG)
             except Exception:
                 time.sleep(2)
             else:
