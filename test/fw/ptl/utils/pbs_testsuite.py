@@ -1473,6 +1473,7 @@ class PBSTestSuite(unittest.TestCase):
 
         for server in self.servers.values():
             server.cleanup_files()
+            server.revert_server_attribs()
 
         for mom in self.moms.values():
             mom.cleanup_files()

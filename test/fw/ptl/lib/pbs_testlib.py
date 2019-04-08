@@ -8328,11 +8328,6 @@ class Server(PBSService):
             select_xt = 'x'
         job_ids = self.select(extend=select_xt)
 
-        revert_server_attribs = ['managers', 'operators']
-
-        for attrib in revert_server_attribs:
-            self.manager(MGR_CMD_UNSET, SERVER, attrib, sudo=True)
-
         # Make sure the current user is a manager. Some tests might have
         # unset the mangers attribute. Ignore 'Duplicate entry in the list'
         # error if the current user was already a manager
@@ -11163,6 +11158,20 @@ class Scheduler(PBSService):
         self.fairshare_tree = None
         self.resource_group = None
         return self.isUp()
+
+    def revert_server_attribs(self):
+        """
+        Method to unset only server attributes during tearDown
+        """
+        unset_list = ['managers', 'operators']
+        self.manager(MGR_CMD_UNSET, SERVER, unset_list, sudo=True)
+
+        current_user = pwd.getpwuid(os.getuid())[0]
+        a = {ATTR_managers: (INCR, current_user + '@*')}
+        try:
+            self.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        except PbsManagerError:
+            pass
 
     def create_scheduler(self, sched_home=None):
         """

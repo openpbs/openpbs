@@ -61,10 +61,10 @@ class ManagersOperators(TestSelf):
         TestSelf.setUp(self)
         self.server.expect(SERVER, attrib=attr)
 
-    def test_managers_unset_teardown(self):
+    def test_managers_operators_unset_teardown(self):
         """
-        Additional managers users, except current user should get unset
-        after tearDown run
+        Additional managers users except current user and operators
+        should get unset after tearDown run
         """
         runas = ROOT_USER
         current_usr = pwd.getpwuid(os.getuid())[0]
@@ -79,9 +79,4 @@ class ManagersOperators(TestSelf):
         self.logger.info("Calling test tearDown:")
         TestSelf.tearDown(self)
         self.server.expect(SERVER, attrib=attr)
-        try:
-            self.server.expect(SERVER, attrib=a, max_attempts=5)
-        except PtlExpectError:
-            pass
-        else:
-            self.fail("Error in unsetting operators attribute")
+        self.server.expect(SERVER, 'operators', max_attempts=5, op=UNSET)
