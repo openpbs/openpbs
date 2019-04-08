@@ -255,7 +255,7 @@ Summary: PBS Test Lab for testing PBS Professional
 Group: System Environment/Base
 Requires: python-nose
 Requires: python-beautifulsoup
-%if 0%{?rhel} 
+%if 0%{?rhel}
 Requires: pexpect
 %else
 Requires: python-pexpect
@@ -356,8 +356,6 @@ fi
 if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %post %{pbs_devel}
