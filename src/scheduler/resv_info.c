@@ -1180,13 +1180,13 @@ disable_reservation_occurrence(timed_event *events,
 {
 	timed_event *te;
 
-	te = find_timed_event(events, resv->name, TIMED_RUN_EVENT, resv->start);
+	te = find_timed_event(events, 0, resv->name, TIMED_RUN_EVENT, resv->start);
 	if (te != NULL)
 		set_timed_event_disabled(te, 1);
 	else
 		return 0;
 
-	te = find_timed_event(events, resv->name, TIMED_END_EVENT, resv->end);
+	te = find_timed_event(events, 0, resv->name, TIMED_END_EVENT, resv->end);
 	if (te != NULL)
 		set_timed_event_disabled(te, 1);
 	else

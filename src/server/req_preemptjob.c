@@ -180,6 +180,7 @@ reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
 		/* successful preemption */
 		long old_hold;
 		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_val.at_long = time(0);
+		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		switch (aux) {
 			case 1:
 				strcpy(preempt_jobs_list[index].order, "S");
