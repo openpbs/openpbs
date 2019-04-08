@@ -472,6 +472,15 @@ check_hostname() {
 	return 1
 }
 
+backupdir() {
+	if [ -d "$1" -a -d "$2" ]; then
+		backupdir="$(basename $1).pre.${PBS_VERSION}"
+		echo "*** Backing up $1 to ${2}/${backupdir}"
+		echo "*** ${2}/${backupdir} may need to be manually removed if you do not wish to downgrade PBSPro."
+		cp -pr --no-preserve=timestamps "$1" "${2}/${backupdir}" 2>&1
+	fi
+}
+
 #
 # Start of the pbs_habitat script
 #
@@ -656,6 +665,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 		else
 			#Remove old dataservice directory
 			if [ `echo "${old_inst_dir}"| grep "pgsql.old"` ]; then
+				backupdir "$old_inst_dir" "$PBS_HOME"
 				err=`rm -rf "${old_inst_dir}"`
 				if [ $? -ne 0 ]; then
 					echo "$err"
@@ -825,6 +835,9 @@ fi
 # This will prevent updating PBS_HOME if this same version is re-installed
 #
 echo "${pbs_version}" >"$PBS_HOME/pbs_version"
+
+# Copy pgsql directory to PBS_HOME (as pgsql.old) for it's future upgrade
+[ ! -d "${PBS_HOME}/pgsql.old" -a -d "${PBS_EXEC}/pgsql" -a -d "${PBS_HOME}" ] && cp -pr --no-preserve=timestamps "${PBS_EXEC}/pgsql" "${PBS_HOME}/pgsql.old" 2>&1
 
 echo "*** End of ${0}"
 exit 0
