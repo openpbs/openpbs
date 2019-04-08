@@ -5071,7 +5071,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
         ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
         ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
-        ignore_attrs += [ATTR_pbs_license_info,  ATTR_power_provisioning]
+        ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
         unsetlist = []
         setdict = {}
         skip_site_hooks = ['pbs_cgroups']
@@ -6523,8 +6523,13 @@ class Server(PBSService):
                                 op = '='
                             # handle string arrays as double quotes if
                             # not already set:
-                            if isinstance(v, str) and ',' in v and v[0] != '"':
-                                v = '"' + v + '"'
+                            if isinstance(v, str):
+                                if ',' in v and v[0] != '"':
+                                    v = '"' + v + '"'
+                                elif any((c in v) for c in set(", \n'")):
+                                    v = '"%s"' % v
+                                elif '"' in v:
+                                    v = "'%s'" % v
                             kvpairs += [str(k) + op + str(v)]
                         if kvpairs:
                             execcmd += [",".join(kvpairs)]

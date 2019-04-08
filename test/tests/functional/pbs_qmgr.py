@@ -159,3 +159,27 @@ class TestQmgr(TestFunctional):
             self.logger.info("looking for error, %s" % msg)
             self.assertTrue(msg in e.msg[0])
         self.server.expect(NODE, 'queue', op=UNSET, id=self.mom.shortname)
+
+    def test_string_quoting(self):
+        """
+        Test to verify that if a string attribute has spaces, the value
+        is quoted when printed
+        """
+        a = {'default_qsub_arguments': '-V -lplace=scatter'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        qmgr_cmd = \
+            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qmgr') + \
+            " -c '%s'"
+        qmgr_cmd_print = qmgr_cmd % ('p s @default default_qsub_arguments')
+        ret = self.du.run_cmd(self.server.hostname,
+                              cmd=qmgr_cmd_print, as_script=True)
+        self.assertEqual(ret['rc'], 0)
+        for line in ret['out']:
+            if 'server' not in line:
+                continue
+            if '#' in line:
+                continue
+            qmgr_cmd_check = qmgr_cmd % (line)
+            ret_s = self.du.run_cmd(
+                self.server.hostname, cmd=qmgr_cmd_check, as_script=True)
+            self.assertEqual(ret_s['rc'], 0)
