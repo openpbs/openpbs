@@ -225,11 +225,10 @@ class PBSSnapUtils(object):
     This makes sure that we do necessay cleanup before destroying objects
     """
 
-    def __init__(self, out_dir, primary_host=None, acct_logs=None,
-                 daemon_logs=None, map_file=None, anonymize=None,
-                 create_tar=False, log_path=None, with_sudo=False):
+    def __init__(self, out_dir, acct_logs=None, daemon_logs=None,
+                 map_file=None, anonymize=None, create_tar=False,
+                 log_path=None, with_sudo=False):
         self.out_dir = out_dir
-        self.primary_host = primary_host
         self.acct_logs = acct_logs
         self.srvc_logs = daemon_logs
         self.map_file = map_file
@@ -240,11 +239,10 @@ class PBSSnapUtils(object):
         self.utils_obj = None
 
     def __enter__(self):
-        self.utils_obj = _PBSSnapUtils(self.out_dir, self.primary_host,
-                                       self.acct_logs, self.srvc_logs,
-                                       self.map_file, self.anonymize,
-                                       self.create_tar, self.log_path,
-                                       self.with_sudo)
+        self.utils_obj = _PBSSnapUtils(self.out_dir, self.acct_logs,
+                                       self.srvc_logs, self.map_file,
+                                       self.anonymize, self.create_tar,
+                                       self.log_path, self.with_sudo)
         return self.utils_obj
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -260,16 +258,14 @@ class _PBSSnapUtils(object):
     PBS snapshot utilities
     """
 
-    def __init__(self, out_dir, primary_host=None, acct_logs=None,
-                 daemon_logs=None, map_file=None, anonymize=False,
-                 create_tar=False, log_path=None, with_sudo=False):
+    def __init__(self, out_dir, acct_logs=None, daemon_logs=None,
+                 map_file=None, anonymize=False, create_tar=False,
+                 log_path=None, with_sudo=False):
         """
         Initialize a PBSSnapUtils object with the arguments specified
 
         :param out_dir: path to the directory where snapshot will be created
         :type out_dir: str
-        :param primary_host: Name of the primary host to capture
-        :type primary_host: str or None
         :param acct_logs: number of accounting logs to capture
         :type acct_logs: int or None
         :param daemon_logs: number of daemon logs to capture
@@ -341,11 +337,8 @@ class _PBSSnapUtils(object):
 
         self.mapfile = map_file
 
-        if primary_host is None:
-            primary_host = socket.gethostname()
-
         # Check which of the PBS daemons' information is available
-        self.server = Server(primary_host)
+        self.server = Server()
         self.scheduler = None
         daemon_status = self.server.pi.status()
         if len(daemon_status) > 0 and daemon_status['rc'] == 0 and \
@@ -369,9 +362,6 @@ class _PBSSnapUtils(object):
         # Store paths to PBS_HOME and PBS_EXEC
         self.pbs_home = self.server.pbs_conf["PBS_HOME"]
         self.pbs_exec = self.server.pbs_conf["PBS_EXEC"]
-
-        # Add self.primary_host to the list of hosts
-        self.primary_host = self.server.hostname
 
         # If output needs to be a tarball, create the tarfile name
         # tarfile name = <output directory name>.tgz
@@ -756,10 +746,9 @@ quit()
         start_time = end_time - ((num_days_logs - 1) * 24 * 60 * 60)
 
         # Get the list of log file names to capture
-        pbs_logfiles = self.log_utils.get_log_files(self.primary_host,
-                                                    path=pbs_logdir,
-                                                    start=start_time,
-                                                    end=end_time, sudo=sudo)
+        pbs_logfiles = self.log_utils.get_log_files(self.server.hostname,
+                                                    pbs_logdir, start_time,
+                                                    end_time, sudo)
         if len(pbs_logfiles) == 0:
             self.logger.debug(pbs_logdir + "not found/accessible")
             return
@@ -1410,7 +1399,7 @@ quit()
         pbs_cmds = [PBS_PROBE_OUT, PBS_HOSTN_OUT]
         sudo = False
 
-        host_platform = self.du.get_platform(self.primary_host)
+        host_platform = self.du.get_platform()
         win_platform = False
         if host_platform.startswith("win"):
             win_platform = True
@@ -1430,7 +1419,7 @@ quit()
             if key in pbs_cmds:
                 cmd_full = os.path.join(self.pbs_exec, cmd_list_cpy[0])
             else:
-                cmd_full = self.du.which(self.primary_host, cmd_list_cpy[0])
+                cmd_full = self.du.which(exe=cmd_list_cpy[0])
             # du.which() returns the name of the command passed if
             # it can't find the command
             if cmd_full is cmd_list_cpy[0]:
@@ -1440,7 +1429,7 @@ quit()
             # Handle special commands
             if "pbs_hostn" in cmd_list_cpy[0]:
                 # Append hostname to the command list
-                cmd_list_cpy.append(self.primary_host)
+                cmd_list_cpy.append(self.server.hostname)
             if key in as_script_cmds:
                 as_script = True
                 if key in sudo_cmds and self.with_sudo:
@@ -1471,7 +1460,7 @@ quit()
         self.logger.info("capturing OS information")
         snap_ospath = os.path.join(self.snapdir, OS_PATH)
         with open(snap_ospath, "w") as osfd:
-            osinfo = self.du.get_os_info(self.primary_host)
+            osinfo = self.du.get_os_info()
             osfd.write(osinfo)
         if self.create_tar:
             self.__add_to_archive(snap_ospath)

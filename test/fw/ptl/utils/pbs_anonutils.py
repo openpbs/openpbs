@@ -984,6 +984,10 @@ class PBSAnonymizer(object):
 
         :returns: a str object containing filename of the anonymized file
         """
+        if not os.path.isfile(filename):
+            self.logger.debug("%s not found, nothing to anonymize" % filename)
+            return filename
+
         fn = self.du.create_temp_file()
 
         with open(filename) as f, open(fn, "w") as nf:

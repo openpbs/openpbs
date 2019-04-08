@@ -150,7 +150,8 @@ class TestPBSSnapshot(TestFunctional):
         return (queues, nodes)
 
     def take_snapshot(self, acct_logs=None, daemon_logs=None,
-                      obfuscate=None, with_sudo=True, hosts=None):
+                      obfuscate=None, with_sudo=True, hosts=None,
+                      primary_host=None):
         """
         Take a snapshot using pbs_snapshot command
 
@@ -164,6 +165,8 @@ class TestPBSSnapshot(TestFunctional):
         :type with_sudo: bool
         :param hosts: list of additional hosts to capture information from
         :type list
+        :param primary_host: hostname of the primary host to capture (-H)
+        :type primary_host: str
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
         """
@@ -186,8 +189,10 @@ class TestPBSSnapshot(TestFunctional):
         if hosts is not None:
             hosts_str = ",".join(hosts)
             snap_cmd.append("--additional-hosts=" + hosts_str)
+        if primary_host is not None:
+            snap_cmd.append("-H " + primary_host)
 
-        ret = self.du.run_cmd(cmd=snap_cmd, logerr=False)
+        ret = self.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
         self.assertEquals(ret['rc'], 0)
 
         # Get the name of the tarball that was created
@@ -200,7 +205,7 @@ class TestPBSSnapshot(TestFunctional):
 
         # Check that the output tarball was created
         self.assertTrue(os.path.isfile(output_tar),
-                        "%s not found" % (output_tar))
+                        "Error capturing snapshot:\n" + str(ret))
 
         # Unwrap the tarball
         tar = tarfile.open(output_tar)
@@ -737,6 +742,61 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         self.assertTrue(os.path.isfile(jsonpath))
         with open(jsonpath, "r") as fd:
             json.load(fd)
+
+    def test_remote_primary_mom(self):
+        """
+        Test that pbs_snapshot -H works correctly to capture a remote primary
+        MoM host
+        """
+        # Skip test if there's no remote mom host available
+        if len(self.moms) == 0 or \
+                self.du.is_localhost((self.moms.values()[0]).shortname):
+            self.skipTest("test requires a remote mom host as input, "
+                          "use -p moms=<mom host>")
+
+        mom_host = (self.moms.values()[0]).shortname
+
+        _, snap_dir = self.take_snapshot(primary_host=mom_host)
+
+        # Verify that mom_priv was captured
+        momprivpath = os.path.join(snap_dir, "mom_priv")
+        self.assertTrue(os.path.isdir(momprivpath))
+
+    def test_remote_primary_multinode(self):
+        """
+        Test that pbs_snapshot -H works with --additional-hosts to capture
+        """
+        # Skip test if number of moms is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires atleast two moms as input, "
+                          "use -p moms=<mom 1>:<mom 2>")
+
+        mom1 = self.moms.values()[0]
+        mom2 = self.moms.values()[1]
+
+        host1 = mom1.shortname
+        host2 = mom2.shortname
+
+        _, snap_dir = self.take_snapshot(hosts=[host2], primary_host=host1)
+
+        # Verify that the primary host's mom_priv was captured
+        momprivpath = os.path.join(snap_dir, "mom_priv")
+        self.assertTrue(os.path.isdir(momprivpath))
+
+        # The other host was captured as an additional host,
+        # so there should be a snapshot tar for it inside the main snapshot
+        host2_outtar = os.path.join(snap_dir, host2 + "_snapshot.tgz")
+        self.assertTrue(os.path.isfile(host2_outtar))
+
+        # Verify that mom_priv was captured, we can do this by just checking
+        # for mom_priv/config file
+        tar = tarfile.open(host2_outtar)
+        host2_snapname = tar.getnames()[0].split(os.sep, 1)[0]
+        try:
+            config_path = os.path.join(host2_snapname, "mom_priv", "config")
+            tar.getmember(config_path)
+        except KeyError:
+            self.fail("mom_priv/config not found in %s's snapshot" % host2)
 
     @classmethod
     def tearDownClass(self):
