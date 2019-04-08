@@ -1038,7 +1038,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 		if ((flags & RETURN_ALL_ERR)) {
 			can_fit = 0;
 			for (; err->next != NULL; err = err->next)
-			;
+				;
 			err->next = new_schd_error();
 			prev_err = err;
 			err = err->next;
@@ -1065,7 +1065,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 			if ((flags & RETURN_ALL_ERR)) {
 				can_fit = 0;
 				for (; err->next != NULL; err = err->next)
-				;
+					;
 				err->next = new_schd_error();
 				prev_err = err;
 				err = err->next;
