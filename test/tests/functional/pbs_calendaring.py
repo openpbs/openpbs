@@ -137,3 +137,45 @@ class TestCalendaring(TestFunctional):
         self.assertIn('estimated.start_time', job_arr[0])
         errmsg = jid + ";Error in calculation of start time of top job"
         self.scheduler.log_match(errmsg, existence=False, max_attempts=10)
+
+    def test_topjob_fail(self):
+        """
+        Test that when we fail to add a job to the calendar it doesn't 
+        take up a topjob slot.  The server's backfill_depth is 1 by default,
+        so we just need to submit a job that can never run and a job that can.
+        The can never run job will fail to be added to the calendar and the
+        second job will be.
+        """
+        attrs = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', attrib=attrs, num=2,
+                                  mom=self.mom, sharednode=False)
+
+        self.scheduler.set_sched_config({'strict_ordering': 'True ALL'})
+
+        # Submit job to eat up all the resources
+        attrs = {'Resource_List.select': '2:ncpus=1',
+                 'Resource_List.walltime': '1:00:00'}
+        j1 = Job(TEST_USER, attrs)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # submit job that can never run.
+        attrs['Resource_List.select'] = '1:ncpus=2'
+        j2 = Job(TEST_USER, attrs)
+        jid2 = self.server.submit(j2)
+
+        # submit a job that can run, but just not now
+        attrs['Resource_List.select'] = '1:ncpus=1'
+        j3 = Job(TEST_USER, attrs)
+        jid3 = self.server.submit(j3)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        msg = jid2 + ';Error in calculation of start time of top job'
+        self.scheduler.log_match(msg)
+
+        msg = jid3 + ';Job is a top job and will run at'
+        self.scheduler.log_match(msg)
