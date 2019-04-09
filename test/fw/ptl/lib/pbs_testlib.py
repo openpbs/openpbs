@@ -5190,6 +5190,20 @@ class Server(PBSService):
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
         return True
 
+    def revert_server_teardown(self):
+        """
+        Method to unset only server attributes during tearDown
+        """
+        unset_list = ['managers', 'operators']
+        self.manager(MGR_CMD_UNSET, SERVER, unset_list, sudo=True)
+
+        current_user = pwd.getpwuid(os.getuid())[0]
+        a = {ATTR_managers: (INCR, current_user + '@*')}
+        try:
+            self.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        except PbsManagerError:
+            pass
+
     def save_configuration(self, outfile, mode='a'):
         """
         Save a server configuration, this includes:
@@ -11158,20 +11172,6 @@ class Scheduler(PBSService):
         self.fairshare_tree = None
         self.resource_group = None
         return self.isUp()
-
-    def revert_server_attribs(self):
-        """
-        Method to unset only server attributes during tearDown
-        """
-        unset_list = ['managers', 'operators']
-        self.manager(MGR_CMD_UNSET, SERVER, unset_list, sudo=True)
-
-        current_user = pwd.getpwuid(os.getuid())[0]
-        a = {ATTR_managers: (INCR, current_user + '@*')}
-        try:
-            self.manager(MGR_CMD_SET, SERVER, a, sudo=True)
-        except PbsManagerError:
-            pass
 
     def create_scheduler(self, sched_home=None):
         """
