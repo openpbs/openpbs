@@ -4800,6 +4800,7 @@ void create_res_released(status *policy, resource_resv *pjob)
 		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 	}
 	selectspec = create_select_from_nspec(pjob->job->resreleased);
+	free_selspec(pjob->execselect);
 	pjob->execselect = parse_selspec(selectspec);
 	free(selectspec);
 	return;
