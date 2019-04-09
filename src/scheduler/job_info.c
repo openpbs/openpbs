@@ -2862,7 +2862,6 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 		if ((preempt_jobs_reply = pbs_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
 			free_string_array(preempt_jobs_list);
-			free(preempt_jobs_list);
 			free(preempted_list);
 			free(fail_list);
 			return -1;
@@ -2870,9 +2869,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 		for (i = 0; i < no_of_jobs; i++) {
 			job = find_resource_resv(sinfo->running_jobs, preempt_jobs_reply[i].job_id);
-			if (preempt_jobs_reply[i].order[0] == '0')
+			if (preempt_jobs_reply[i].order[0] == '0') {
+				done = 0;
 				fail_list[fail_count++] = job->rank;
-			else {
+			} else {
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
 					/* Set resources_released and execselect on the job */
