@@ -140,7 +140,7 @@ class TestCalendaring(TestFunctional):
 
     def test_topjob_fail(self):
         """
-        Test that when we fail to add a job to the calendar it doesn't 
+        Test that when we fail to add a job to the calendar it doesn't
         take up a topjob slot.  The server's backfill_depth is 1 by default,
         so we just need to submit a job that can never run and a job that can.
         The can never run job will fail to be added to the calendar and the
