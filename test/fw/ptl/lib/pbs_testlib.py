@@ -5074,6 +5074,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_pbs_license_info,  ATTR_power_provisioning]
         unsetlist = []
         setdict = {}
+        skip_site_hooks = ['pbs_cgroups']
         self.logger.info(self.logprefix +
                          'reverting configuration to defaults')
         self.cleanup_jobs_and_reservations()
@@ -5108,6 +5109,9 @@ class Server(PBSService):
                 reverthooks = False
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
+            for h in skip_site_hooks:
+                if h in hooks:
+                    hooks.remove(h)
             if len(hooks) > 0:
                 self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
         if delqueues:
