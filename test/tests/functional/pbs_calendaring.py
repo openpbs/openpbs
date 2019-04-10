@@ -146,6 +146,12 @@ class TestCalendaring(TestFunctional):
         The can never run job will fail to be added to the calendar and the
         second job will be.
         """
+
+        # We need two nodes to create the situation where a job can never run.
+        # We need to create this situation in such a way that the scheduler
+        # doesn't detect it.  If the scheduler detects that a job can't run,
+        # it won't try and add it to the calendar.  To do this, we ask for
+        # 1 node with 2 cpus.  There are 2 nodes with 1 cpu each.
         attrs = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', attrib=attrs, num=2,
                                   mom=self.mom, sharednode=False)
