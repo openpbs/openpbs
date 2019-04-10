@@ -205,10 +205,10 @@ exit 0
         abort_script = """#!/bin/bash
 exit 3
 """
-        self.abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=self.abort_file, mode=0755)
-        self.du.chown(path=self.abort_file, uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file}
         self.mom.add_config(c)
 
         # submit two jobs to regular queue
@@ -241,10 +241,10 @@ exit 3
 kill -9 $1
 exit 0
 """
-        self.abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=self.abort_file, mode=0755)
-        self.du.chown(path=self.abort_file, uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file + ' %sid'}
         self.mom.add_config(c)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
