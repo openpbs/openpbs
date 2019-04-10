@@ -1364,13 +1364,13 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, node_attr, self.mom.shortname)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job_attr = {'Resource_List.select': '1:ncpus=1:foo1=20',
-                    'Resource_List.walltime': 4}
+                    'Resource_List.walltime': 10}
         J1 = Job(TEST_USER2, attrs=job_attr)
-        J1.set_sleep_time(4)
+        J1.set_sleep_time(10)
         J2 = Job(TEST_USER3, attrs=job_attr)
-        J2.set_sleep_time(4)
+        J2.set_sleep_time(10)
         J3 = Job(TEST_USER1, attrs=job_attr)
-        J3.set_sleep_time(4)
+        J3.set_sleep_time(10)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
@@ -1414,11 +1414,11 @@ class SmokeTest(PBSTestSuite):
         # Check the scheduler usage file whether it's updating or not
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         J1 = Job(TEST_USER4, attrs=job_attr)
-        J1.set_sleep_time(4)
+        J1.set_sleep_time(10)
         J2 = Job(TEST_USER2, attrs=job_attr)
-        J2.set_sleep_time(4)
+        J2.set_sleep_time(10)
         J3 = Job(TEST_USER1, attrs=job_attr)
-        J3.set_sleep_time(4)
+        J3.set_sleep_time(10)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
