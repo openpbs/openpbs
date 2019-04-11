@@ -194,6 +194,7 @@ JID = 'job_id'
 JRR = 'job_run_rate'
 JSR = 'job_submit_rate'
 JER = 'job_end_rate'
+JTR = 'job_throughput'
 NJQ = 'num_jobs_queued'
 NJR = 'num_jobs_run'
 NJE = 'num_jobs_ended'
@@ -1038,6 +1039,9 @@ class PBSServerLog(PBSLogAnalyzer):
         self.info[NUR] = self.logutils.get_rate(self.nodeup)
         self.info[JRR] = self.logutils.get_rate(self.jobsrun)
         self.info[JER] = self.logutils.get_rate(self.jobsend)
+        if len(self.server_job_end) > 0:
+            tjr = self.jobsend[-1] - self.enquejob[0]
+            self.info[JTR] = str(len(self.server_job_end) / tjr) + '/s'
         if len(self.wait_time) > 0:
             wt = sorted(self.wait_time)
             wta = float(sum(self.wait_time)) / len(self.wait_time)
