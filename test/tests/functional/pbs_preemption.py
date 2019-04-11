@@ -194,3 +194,60 @@ exit 0
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+
+    def test_preempt_retry(self):
+        """
+        Test to make sure that preemption is retried if it fails.
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        abort_script = """#!/bin/bash
+exit 3
+"""
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file}
+        self.mom.add_config(c)
+
+        # submit two jobs to regular queue
+        j1 = Job(TEST_USER)
+        jid1 = self.server.submit(j1)
+
+        time.sleep(2)
+
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        # set preempt order
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # submit a job to high priority queue
+        a = {ATTR_q: 'expressq'}
+        j3 = Job(TEST_USER, a)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+        self.mom.log_match(jid2 + ";checkpoint failed:")
+        self.mom.log_match(jid1 + ";checkpoint failed:")
+
+        abort_script = """#!/bin/bash
+kill -9 $1
+exit 0
+"""
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file + ' %sid'}
+        self.mom.add_config(c)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)

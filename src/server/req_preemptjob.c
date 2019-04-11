@@ -86,7 +86,6 @@ void
 req_preemptjobs(struct batch_request *preq)
 {
 	int			i = 0;
-	int			j = 0;
 	int			count = 0;
 	job			*pjob = NULL;
 	preempt_job_info	*ppj = NULL;
@@ -102,7 +101,7 @@ req_preemptjobs(struct batch_request *preq)
 
 		pjob->preempt_order = svr_get_preempt_order(pjob, psched);
 		pjob->preempt_order_index = 0;
-		switch((int)pjob->preempt_order[0].order[j]) {
+		switch((int)pjob->preempt_order[0].order[0]) {
 			case PREEMPT_METHOD_SUSPEND:
 				issue_signal(pjob, SIG_SUSPEND, post_signal_req, pjob, preq);
 				break;
@@ -173,6 +172,8 @@ reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
 				/* preemption failed */
 				preply->brp_code = 1;
 				strcpy(preempt_jobs_list[index].order, "000");
+				sprintf(preempt_jobs_list[index].job_id, "%s", pjob->ji_qs.ji_jobid);
+				index++;
 				break;
 		}
 		pjob->preempt_order_index++;
