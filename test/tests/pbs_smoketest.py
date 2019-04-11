@@ -1394,6 +1394,7 @@ class SmokeTest(PBSTestSuite):
         msg += j2id + " is deleted"
         self.logger.info(msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.delete(j1id)
 
