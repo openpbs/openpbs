@@ -2054,14 +2054,9 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			bjob->name, log_buf);
 	} else if (start_time == 0) {
-		/* In the case where start_time = 0, we don't want mark the job as
-		 * can_never_run because there are transient cases (like node state)
-		 * that we don't handle in our simulation that can fix themselves in
-		 * real life.  Reconsider this decision once the simulation is more
-		 * robust
-		 */
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
+		return 0;
 	}
 	free_server(nsinfo, 1);
 	
