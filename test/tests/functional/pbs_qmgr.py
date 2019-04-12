@@ -170,13 +170,11 @@ class TestQmgr(TestFunctional):
         qmgr_cmd = \
             os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qmgr') + \
             " -c '%s'"
-        qmgr_cmd_print = qmgr_cmd % ('p s @default default_qsub_arguments')
+        qmgr_cmd_print = qmgr_cmd % ('p s default_qsub_arguments')
         ret = self.du.run_cmd(self.server.hostname,
                               cmd=qmgr_cmd_print, as_script=True)
         self.assertEqual(ret['rc'], 0)
         for line in ret['out']:
-            if 'server' not in line:
-                continue
             if '#' in line:
                 continue
             qmgr_cmd_check = qmgr_cmd % (line)
