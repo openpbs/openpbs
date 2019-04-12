@@ -6526,10 +6526,11 @@ class Server(PBSService):
                             if isinstance(v, str):
                                 if ',' in v and v[0] != '"':
                                     v = '"' + v + '"'
-                                elif any((c in v) for c in set(", \n'")):
-                                    v = '"%s"' % v
-                                elif '"' in v:
-                                    v = "'%s'" % v
+                                elif any((c in v) for c in set(', \'\n"')):
+                                    if '"' in v:
+                                        v = "%s'" % v
+                                    else:
+                                        v = '"%s"' % v
                             kvpairs += [str(k) + op + str(v)]
                         if kvpairs:
                             execcmd += [",".join(kvpairs)]
