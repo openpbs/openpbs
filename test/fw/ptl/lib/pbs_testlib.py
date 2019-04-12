@@ -6528,7 +6528,7 @@ class Server(PBSService):
                                     v = '"' + v + '"'
                                 elif any((c in v) for c in set(', \'\n"')):
                                     if '"' in v:
-                                        v = "%s'" % v
+                                        v = "'%s'" % v
                                     else:
                                         v = '"%s"' % v
                             kvpairs += [str(k) + op + str(v)]
