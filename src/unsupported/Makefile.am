@@ -62,6 +62,7 @@ dist_unsupported_DATA = \
 	pbs_rescquery.3B \
 	run_pelog_shell.ini \
 	cray_readme \
+	ReliableJobStartup.py \
 	pbs_output.py
 
 pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
