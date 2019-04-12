@@ -8334,21 +8334,15 @@ class Server(PBSService):
             select_xt = 'x'
         job_ids = self.select(extend=select_xt)
 
-        # Make sure the current user is a manager. Some tests might have
-        # unset the mangers attribute. Ignore 'Duplicate entry in the list'
-        # error if the current user was already a manager
-        current_user = pwd.getpwuid(os.getuid())[0]
-        a = {ATTR_managers: (INCR, current_user + '@*')}
-        try:
-            self.manager(MGR_CMD_SET, SERVER, a, sudo=True)
-        except PbsManagerError:
-            pass
-
         # Turn off scheduling so jobs don't start when trying to
         # delete. Restore the orignial scheduling state
         # once jobs are deleted.
         sched_state = self.status(SERVER, {'scheduling'})[0]['scheduling']
-        self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # runas is required here because some tests remove current user
+        # from managers list
+        self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
+                     runas='root')
         num_jobs = len(job_ids)
         if num_jobs >= 100:
             self._cleanup_large_num_jobs(job_ids, runas=runas)
@@ -8364,7 +8358,7 @@ class Server(PBSService):
             return self.cleanup_jobs(extend=extend, runas=runas)
 
         self.manager(MGR_CMD_SET, SERVER,
-                     {'scheduling': sched_state})
+                     {'scheduling': sched_state}, runas='root')
         return rv
 
     def cleanup_reservations(self, extend=None, runas=None):
