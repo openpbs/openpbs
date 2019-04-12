@@ -640,6 +640,39 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 
 /**
  * @brief
+ *	Duplicates pointer to hooks parameters.
+ *
+ * @param[in]   php - structure for duplication
+ *
+ * @return new_php	for success
+ * @return NULL		for error
+ *
+ */
+mom_process_hooks_params_t
+*duplicate_php(mom_process_hooks_params_t *php) {
+	mom_process_hooks_params_t *new_php;
+
+	if ((new_php = (mom_process_hooks_params_t *)malloc(
+		sizeof(mom_process_hooks_params_t))) == NULL) {
+		log_err(errno, __func__, MALLOC_ERR_MSG);
+		return NULL;
+	}
+
+	new_php->hook_event = php->hook_event;
+	new_php->req_user = php->req_user;
+	new_php->req_host = php->req_host;
+	new_php->hook_msg = php->hook_msg;
+	new_php->msg_len = php->msg_len;
+	new_php->update_svr = php->update_svr;
+	new_php->hook_input = php->hook_input;
+	new_php->hook_output = php->hook_output;
+	new_php->parent_wait = php->parent_wait;
+
+	return new_php;
+}
+
+/**
+ * @brief
  *	Runs the hook 'phook' in a child process in response to 'event_type'
  *	with input parameter 'hook_input'.
  *
@@ -3849,9 +3882,12 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 
 		num_run++;
 
-		if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC)
+		if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 			/* hook backgrounded */
+			if ((php = duplicate_php(php)) == NULL)
+				return (-1);
 			continue;
+		}
 
 		if (php->parent_wait == 0)
 			return (HOOK_RUNNING_IN_BACKGROUND); 
@@ -3869,8 +3905,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		return (2);
 	}
 
-	if (hook_event != HOOK_EVENT_EXECHOST_PERIODIC)
-		free(php);
+	free(php);
 	return (1);
 }
 
