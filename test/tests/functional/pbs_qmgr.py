@@ -160,24 +160,42 @@ class TestQmgr(TestFunctional):
             self.assertTrue(msg in e.msg[0])
         self.server.expect(NODE, 'queue', op=UNSET, id=self.mom.shortname)
 
-    def test_string_quoting(self):
+    def set_and_test_comment(self, comment):
         """
-        Test to verify that if a string attribute has spaces, the value
-        is quoted when printed
+        Set the node's comment, then print it and re-import it
         """
-        a = {'default_qsub_arguments': '-V -lplace=scatter'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-        qmgr_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qmgr') + \
-            " -c '%s'"
-        qmgr_cmd_print = qmgr_cmd % ('p s default_qsub_arguments')
+        a = {'comment': comment}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.hostname)
+        qmgr_path = \
+            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')
+        qmgr_cmd_print = qmgr_path + \
+            (' -c "p n %s comment"' % self.mom.hostname)
         ret = self.du.run_cmd(self.server.hostname,
                               cmd=qmgr_cmd_print, as_script=True)
         self.assertEqual(ret['rc'], 0)
+        fn = self.du.create_temp_file()
         for line in ret['out']:
             if '#' in line:
                 continue
-            qmgr_cmd_check = qmgr_cmd % (line)
-            ret_s = self.du.run_cmd(
-                self.server.hostname, cmd=qmgr_cmd_check, as_script=True)
+            if 'create node' in line:
+                continue
+            with open(fn, 'w') as f:
+                f.write(line)
+            qmgr_cmd_set = qmgr_path + ' < ' + fn
+            ret_s = self.du.run_cmd(self.server.hostname,
+                                    cmd=qmgr_cmd_set, as_script=True)
             self.assertEqual(ret_s['rc'], 0)
+
+    def test_string_single_quoting(self):
+        """
+        Test to verify that if a string attribute has a double quote,
+        the value is single-quoted correctly
+        """
+        self.set_and_test_comment('This is "my" node.')
+
+    def test_string_double_quoting(self):
+        """
+        Test to verify that if a string attribute has a quote, the value
+        is double-quoted correctly
+        """
+        self.set_and_test_comment("This node isn't good.")
