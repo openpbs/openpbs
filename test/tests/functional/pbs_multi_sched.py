@@ -1925,11 +1925,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].terminate()
 
         self.scheds['sc1'].start()
-        # Ideally the following statement is not requried. start() method
-        # itself should take care of updating the PID in its cache. I have
-        # created a new bug to fix in this framework. For the time being
-        # the following statement is required as a work around.
-        self.scheds['sc1']._update_pid(self.scheds['sc1'])
 
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=1'})
