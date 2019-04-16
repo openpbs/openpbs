@@ -2189,7 +2189,14 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 								}
 							}
 							if((attrdef_l != NULL) && (attrdef_l[i].at_type == ATR_TYPE_STR)) {
-								printf(" = %s\n", show_nonprint_chars(c));
+								if (strpbrk(c, "\"' ,") != NULL) {
+									if (strchr(c, (int)'"'))
+										q = '\'';
+									else
+										q = '"';
+									printf(" = %c%s%c\n", q, show_nonprint_chars(c), q);
+								} else
+									printf(" = %s\n", show_nonprint_chars(c));
 								break;
 							}
 							else {
