@@ -63,6 +63,7 @@
 %define pbs_client client
 %define pbs_execution execution
 %define pbs_server server
+%define pbs_devel devel
 %define pbs_dist %{pbs_name}-%{pbs_version}.tar.gz
 
 %if !%{defined _unitdir}
@@ -229,6 +230,18 @@ HPC clusters, clouds and supercomputers.
 This package is intended for a client host and provides
 the PBS Professional user commands.
 
+
+%package %{pbs_devel}
+Summary: PBS Professional Development Package
+Group: Development/System
+
+%description %{pbs_devel}
+PBS Professional® is a fast, powerful workload manager and
+job scheduler designed to improve productivity, optimize
+utilization & efficiency, and simplify administration for
+HPC clusters, clouds and supercomputers.
+
+
 %if %{with ptl}
 
 %define pbs_ptl ptl
@@ -242,7 +255,7 @@ Summary: PBS Test Lab for testing PBS Professional
 Group: System Environment/Base
 Requires: python-nose
 Requires: python-beautifulsoup
-%if 0%{?rhel} 
+%if 0%{?rhel}
 Requires: pexpect
 %else
 Requires: python-pexpect
@@ -343,9 +356,10 @@ fi
 if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
+
+%post %{pbs_devel}
+ldconfig %{_libdir}
 
 %preun %{pbs_server}
 if [ "$1" != "1" ]; then
@@ -433,6 +447,9 @@ if [ "$1" != "1" ]; then
 	echo
 fi
 
+%postun %{pbs_devel}
+ldconfig %{_libdir}
+
 %posttrans %{pbs_server}
 # The %preun section of 14.x unconditially removes /etc/init.d/pbs
 # because it does not check whether the package is being removed
@@ -466,7 +483,9 @@ fi
 %endif
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%doc README
+%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/include/*
+%doc README.md
 %license LICENSE
 
 %files %{pbs_execution}
@@ -505,7 +524,9 @@ fi
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%doc README
+%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/include/*
+%doc README.md
 %license LICENSE
 
 %files %{pbs_client}
@@ -552,7 +573,16 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
-%doc README
+%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/include/*
+%doc README.md
+%license LICENSE
+
+%files %{pbs_devel}
+%defattr(-,root,root, -)
+%{pbs_prefix}/lib/*.a
+%{pbs_prefix}/include/*
+%doc README.md
 %license LICENSE
 
 %if %{with ptl}
@@ -565,6 +595,8 @@ fi
 %endif
 
 %changelog
+* Wed Mar 20 2019 Minghui Liu <mliu@altair.com> - 1.27
+- Add pbspro-devel package
 * Thu Dec 13 2018 Michael Karo <mike0042@gmail.com> - 1.26
 - Remove pbspro-rpmlintrc from source list
 - Updates to conditional build of pbspro-ptl package

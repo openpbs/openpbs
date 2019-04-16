@@ -56,6 +56,7 @@
 /* prototypes */
 char *convert_resv_state(char *pcode, int long_str);
 void handle_resv(char *resv_id, char *server, int how);
+static int check_width;
 
 /**
  * @brief 
@@ -235,8 +236,6 @@ main(int argc, char *argv[])
 	char *resv_id;		/* reservation ID from the command line */
 	char resv_id_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
-	int check_seqid_len; /* for dynamic pbs_rstat width*/
-
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -275,15 +274,6 @@ main(int argc, char *argv[])
 
 	if (CS_client_init() != CS_SUCCESS) {
 		fprintf(stderr, "pbs_rstat: unable to initialize security library.\n");
-		exit(1);
-	}
-
-    /* check the server attribute max_job_sequence_id value */
-	check_seqid_len = check_max_job_sequence_id("pbs_rstat");
-	if (check_seqid_len == 1) {
-		how |= DISP_INCR_WIDTH; /* increase column width*/
-	} else if (check_seqid_len == -1) {
-		fprintf(stderr, "pbs_rstat: Unable to fetch the width format\n");
 		exit(1);
 	}
 
@@ -337,6 +327,8 @@ handle_resv(char *resv_id, char *server, int how)
 	int pbs_sd;
 	struct batch_status *bstat;
 	char *errmsg;
+	/* for dynamic pbs_rstat width */
+	struct batch_status *server_attrs;
 
 	pbs_sd = cnt2server(server);
 
@@ -346,7 +338,20 @@ handle_resv(char *resv_id, char *server, int how)
 		CS_close_app();
 		exit(pbs_errno);
 	}
-
+	/* check the server attribute max_job_sequence_id value */
+	if (check_width == 0) {
+		server_attrs = pbs_statserver(pbs_sd, NULL, NULL);
+		if (server_attrs != NULL) {
+			int check_seqid_len;
+			check_seqid_len = check_max_job_sequence_id(server_attrs);
+			if (check_seqid_len == 1) {
+				how |= DISP_INCR_WIDTH; /* increased column width*/
+			}
+			pbs_statfree(server_attrs);
+			server_attrs = NULL;
+			check_width = 1;
+		}
+	}
 
 	bstat = pbs_statresv(pbs_sd, resv_id, NULL, NULL);
 

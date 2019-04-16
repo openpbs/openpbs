@@ -477,11 +477,11 @@ class PBSTestSuite(unittest.TestCase):
             return
         self.log_enter_setup()
         self.init_proc_mon()
-        self.revert_pbsconf()
         self.revert_servers()
+        self.revert_moms()
         self.revert_comms()
         self.revert_schedulers()
-        self.revert_moms()
+        self.revert_pbsconf()
         self.log_end_setup()
         self.measurements = []
 

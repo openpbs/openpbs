@@ -43,10 +43,16 @@ How to install PBS Pro using the configure script.
     zypper install expat libedit postgresql-server postgresql-contrib python \
       sendmail sudo tcl tk libical1
 
-  For Debian systems you should run the following command as root:
+  For Debian (jessie) systems you should run the following command as root:
 
     apt-get install expat libedit2 postgresql python postgresql-contrib sendmail-bin \
       sudo tcl tk libical1a
+
+  For Debian (stretch) systems you should run the following command as root:
+
+    apt-get install expat libedit2 postgresql python postgresql-contrib sendmail-bin \
+      sudo tcl tk libical2
+
 
 3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
   tarball, and cd to the package directory.

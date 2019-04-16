@@ -1071,6 +1071,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				set_schd_error_arg(err, SPECMSG, "Job would conflict with starving job");
 				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
+			else if (policy->backfill && policy->strict_ordering && qinfo->backfill_depth == 0) {
+				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
+				update_jobs_cant_run(sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+			}
 		}
 
 		time(&cur_time);
@@ -1895,7 +1899,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		 * Note: We only ever look from now into the future
 		 */
 		nexte = get_next_event(sinfo->calendar);
-		if (find_timed_event(nexte, topjob->name, TIMED_NOEVENT, 0) != NULL)
+		if (find_timed_event(nexte, IGNORE_DISABLED_EVENTS, topjob->name, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)
@@ -2050,14 +2054,9 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			bjob->name, log_buf);
 	} else if (start_time == 0) {
-		/* In the case where start_time = 0, we don't want mark the job as
-		 * can_never_run because there are transient cases (like node state)
-		 * that we don't handle in our simulation that can fix themselves in
-		 * real life.  Reconsider this decision once the simulation is more
-		 * robust
-		 */
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
+		return 0;
 	}
 	free_server(nsinfo, 1);
 	

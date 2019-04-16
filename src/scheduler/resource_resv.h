@@ -188,7 +188,7 @@ remove_resresv_from_array(resource_resv **resresv_arr,
  */
 resource_resv **
 add_resresv_to_array(resource_resv **resresv_arr,
-	resource_resv *resresv);
+	resource_resv *resresv, int flags);
 
 /*
  *      copy_resresv_array - copy an array of resource_resvs by name.

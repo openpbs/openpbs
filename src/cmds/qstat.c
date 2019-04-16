@@ -2190,7 +2190,6 @@ main(int argc, char **argv, char **envp) /* qstat */
 	int wide=0;
 	int format = 0;
 	time_t timenow;
-	int check_seqid_len; /* for dynamic qstat width */
 
 #if TCL_QSTAT
 	char option[3];
@@ -2785,6 +2784,15 @@ job_no_args:
 					p_server = NULL;
 				}
 
+				/* check the server attribute max_job_sequence_id value */
+				if (p_server != NULL) {
+					int check_seqid_len; /* for dynamic qstat width */
+					check_seqid_len = check_max_job_sequence_id(p_server);
+					if (check_seqid_len == 1) {
+						how_opt |= ALT_DISPLAY_INCR_WIDTH; /* increase column width */
+					}
+				}
+
 				if ((stat_single_job == 1) || (new_atropl == 0)) {
 					if (E_opt == 1)
 						p_status = pbs_statjob(connect, query_job_list, display_attribs, extend);
@@ -2852,14 +2860,6 @@ job_no_args:
 						any_failed = pbs_errno;
 					}
 				} else {
-				    /* check the server attribute max_job_sequence_id value */
-					check_seqid_len = check_max_job_sequence_id("qstat");
-					if (check_seqid_len == 1) {
-						how_opt |= ALT_DISPLAY_INCR_WIDTH; /* increase column width*/
-					} else if(check_seqid_len == -1) {
-						fprintf(stderr, "qstat: Unable to fetch the width format\n");
-						exit(1);
-					}
 
 #ifdef NAS /* localmod 071 */
 					if (p_server) {

@@ -184,8 +184,13 @@ utf8_to_sql_ascii() {
 		fi
 	fi
 
-	locale=`${PGSQL_INST_DIR}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "SHOW LC_COLLATE"`
-	if [ ! -z ${locale} -a ${locale} != "C" ]; then
+	locale_collate=`${PGSQL_INST_DIR}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "SHOW LC_COLLATE"`
+	if [ ! -z ${locale_collate} -a ${locale_collate} != "C" ]; then
+		change_locale=1
+	fi
+
+	locale_ctype=`${PGSQL_INST_DIR}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "SHOW LC_CTYPE"`
+	if [ ! -z ${locale_ctype} -a ${locale_ctype} != "C" ]; then
 		change_locale=1
 	fi
 

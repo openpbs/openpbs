@@ -417,14 +417,16 @@ class TestQstatFormats(TestFunctional):
         attribute with type resource list has to be the last attribute
         in order to hit the bug.
         """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER)
         j.set_sleep_time(100)
         jid = self.server.submit(j)
         jid2 = self.server.submit(j)
         jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': "R"}, id=jid)
-        self.server.expect(JOB, {'job_state': "R"}, id=jid2)
-        self.server.expect(JOB, {'job_state': "R"}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + ' -fp -F json '
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)

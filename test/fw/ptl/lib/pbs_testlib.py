@@ -3480,7 +3480,6 @@ class PBSService(PBSObject):
         self.logutils = None
         self.logfile = None
         self.acctlogfile = None
-        self.pid = None
         self.pbs_conf = {}
         self.pbs_env = {}
         self._is_local = True
@@ -3697,10 +3696,7 @@ class PBSService(PBSObject):
         pid = None
 
         if inst is not None:
-            if inst.pid is not None:
-                pid = inst.pid
-            else:
-                pid = self._get_pid(inst)
+            pid = self._get_pid(inst)
 
         if procname is not None:
             pi = self.pu.get_proc_info(self.hostname, procname)
@@ -3749,25 +3745,24 @@ class PBSService(PBSObject):
             path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
         rv = self.du.cat(self.hostname, path, sudo=True, logerr=False)
         if ((rv['rc'] == 0) and (len(rv['out']) > 0)):
-            self.pid = rv['out'][0].strip()
+            pid = rv['out'][0].strip()
         else:
-            self.pid = None
-        return self.pid
+            pid = None
+        return pid
 
-    def _update_pid(self, inst):
+    def _validate_pid(self, inst):
         """
-        update pid of given inst
-
+        Get pid and validate
         :param inst: inst to update pid
         :type inst: object
         """
         for i in range(30):
             live_pids = self._all_instance_pids(inst)
-            inst.pid = self._get_pid(inst)
-            if live_pids is not None and inst.pid in live_pids:
-                return
+            pid = self._get_pid(inst)
+            if live_pids is not None and pid in live_pids:
+                return pid
             time.sleep(1)
-        inst.pid = None
+        return None
 
     def _start(self, inst=None, args=None, cmd_map=None, launcher=None):
         """
@@ -3849,8 +3844,8 @@ class PBSService(PBSObject):
         ret_msg = True
         if ret['err']:
             ret_msg = ret['err']
-        self._update_pid(inst)
-        if inst.pid is None:
+        pid = self._validate_pid(inst)
+        if pid is None:
             raise PbsServiceError(rv=False, rc=-1, msg="Could not find PID")
         return ret_msg
 
@@ -3871,7 +3866,6 @@ class PBSService(PBSObject):
             time.sleep(1)
             num_seconds += 1
             chk_pid = self._all_instance_pids(inst)
-        inst.pid = None
         return True
 
     def initialise_service(self):
@@ -4558,7 +4552,10 @@ class Comm(PBSService):
         else:
             try:
                 rv = self.pi.start_comm()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -4577,7 +4574,6 @@ class Comm(PBSService):
         else:
             try:
                 self.pi.stop_comm()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -5007,7 +5003,10 @@ class Server(PBSService):
         else:
             try:
                 rv = self.pi.start_server()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():
@@ -5029,7 +5028,6 @@ class Server(PBSService):
         else:
             try:
                 self.pi.stop_server()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg,
                                       post=self._disconnect, conn=self._conn,
@@ -5049,7 +5047,8 @@ class Server(PBSService):
 
     def revert_to_defaults(self, reverthooks=True, revertqueues=True,
                            revertresources=True, delhooks=True,
-                           delqueues=True, delscheds=True, server_stat=None):
+                           delqueues=True, delscheds=True, delnodes=True,
+                           server_stat=None):
         """
         reset server attributes back to out of box defaults.
 
@@ -5078,6 +5077,8 @@ class Server(PBSService):
                           The sched_priv and sched_logs directories will be
                           deleted.
         :type delscheds: bool
+        :param delnodes: If True all vnodes are deleted
+        :type delnodes: bool
         :returns: True upon success and False if an error is
                   encountered.
         :raises: PbsStatusError or PbsManagerError
@@ -5089,6 +5090,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_pbs_license_info,  ATTR_power_provisioning]
         unsetlist = []
         setdict = {}
+        skip_site_hooks = ['pbs_cgroups']
         self.logger.info(self.logprefix +
                          'reverting configuration to defaults')
         self.cleanup_jobs_and_reservations()
@@ -5123,6 +5125,9 @@ class Server(PBSService):
                 reverthooks = False
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
+            for h in skip_site_hooks:
+                if h in hooks:
+                    hooks.remove(h)
             if len(hooks) > 0:
                 self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
         if delqueues:
@@ -5159,6 +5164,12 @@ class Server(PBSService):
                                recursive=True, force=True)
                     self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
+        if delnodes:
+            try:
+                self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+            except PbsManagerError as e:
+                if "Unknown node" not in e.msg[0]:
+                    raise
         if reverthooks:
             if self.platform == 'cray' or self.platform == 'craysim':
                 if self.du.cmp(self.hostname, self.dflt_mpp_hook,
@@ -6670,7 +6681,6 @@ class Server(PBSService):
 
         if c is not None:
             self._disconnect(c)
-
         if cmd == MGR_CMD_SET and 'scheduling' in attrib:
             if attrib['scheduling'] in PTL_FALSE:
                 if obj_type == SERVER:
@@ -8021,7 +8031,7 @@ class Server(PBSService):
     def expect(self, obj_type, attrib=None, id=None, op=EQ, attrop=PTL_AND,
                attempt=0, max_attempts=None, interval=None, count=None,
                extend=None, offset=0, runas=None, level=logging.INFO,
-               msg=None):
+               msg=None, trigger_sched_cycle=True):
         """
         expect an attribute to match a given value as per an
         operation.
@@ -8061,6 +8071,9 @@ class Server(PBSService):
                     message will be used while raising
                     PtlExpectError.
         :type msg: str or None
+        :param trigger_sched_cycle: True by default can be set to False if
+                          kicksched_action is not supposed to be called
+        :type trigger_sched_cycle: Boolean
 
         :returns: True if attributes are as expected
 
@@ -8296,15 +8309,15 @@ class Server(PBSService):
                 time.sleep(interval)
 
                 # run custom actions defined for this object type
-                if self.actions:
+                if trigger_sched_cycle and self.actions:
                     for act_obj in self.actions.get_actions_by_type(obj_type):
                         if act_obj.enabled:
                             act_obj.action(self, obj_type, attrib, id, op,
                                            attrop)
-
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
-                                   extend, level=level, msg=" ".join(msg))
+                                   extend, level=level, msg=" ".join(msg),
+                                   trigger_sched_cycle=False)
 
         self.logger.log(level, prefix + " ".join(msg) + ' ...  OK')
         return True
@@ -9462,7 +9475,7 @@ class Server(PBSService):
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
-    def import_hook(self, name, body):
+    def import_hook(self, name, body, level=logging.INFO):
         """
         Helper function to import hook body into hook by name.
         The hook must have been created prior to calling this
@@ -9502,12 +9515,13 @@ class Server(PBSService):
         os.remove(rfile)
         if not self._is_local:
             self.du.rm(self.hostname, rfile)
-
-        self.logger.info('server ' + self.shortname +
-                         ': imported hook body\n---\n' + body + '---')
+        self.logger.log(level, 'server ' + self.shortname +
+                        ': imported hook body\n---\n' +
+                        body + '---')
         return True
 
-    def create_import_hook(self, name, attrs=None, body=None, overwrite=True):
+    def create_import_hook(self, name, attrs=None, body=None, overwrite=True,
+                           level=logging.INFO):
         """
         Helper function to create a hook, import content into it,
         set the event and enable it.
@@ -9551,7 +9565,7 @@ class Server(PBSService):
 
         # In 12.0 A MoM hook must be enabled and the event set prior to
         # importing, otherwise the MoM does not get the hook content
-        ret = self.import_hook(name, body)
+        ret = self.import_hook(name, body, level)
 
         # In case of mom hooks, make sure that the hook related files
         # are successfully copied to the MoM
@@ -10693,7 +10707,10 @@ class Scheduler(PBSService):
         else:
             try:
                 rv = self.pi.start_sched()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -10712,7 +10729,6 @@ class Scheduler(PBSService):
         else:
             try:
                 self.pi.stop_sched()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -12681,7 +12697,10 @@ class MoM(PBSService):
         else:
             try:
                 rv = self.pi.start_mom()
-                self._update_pid(self)
+                pid = self._validate_pid(self)
+                if pid is None:
+                    raise PbsServiceError(rv=False, rc=-1,
+                                          msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -12700,7 +12719,6 @@ class MoM(PBSService):
         else:
             try:
                 self.pi.stop_mom()
-                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -12792,6 +12810,8 @@ class MoM(PBSService):
                     return False
                 self.delete_vnodes()
             if cmp(self.config, self.dflt_config) != 0:
+                # Clear older mom configuration. Apply default.
+                self.config = {}
                 self.apply_config(self.dflt_config, hup=False, restart=False)
             if restart:
                 self.restart()

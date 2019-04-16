@@ -55,6 +55,24 @@ class TestPreemption(TestFunctional):
              'Priority': 200}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
+    def submit_jobs(self):
+        """
+        Function to submit two normal job and one high priority job
+        """
+        j1 = Job(TEST_USER)
+        jid1 = self.server.submit(j1)
+        time.sleep(1)
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
+        j3 = Job(TEST_USER)
+        j3.set_attributes({ATTR_q: 'expressq'})
+        jid3 = self.server.submit(j3)
+
+        return jid1, jid2, jid3
+
     def submit_and_preempt_jobs(self, preempt_order='R'):
         """
         This function will set the prempt order, submit jobs,
@@ -126,3 +144,110 @@ exit 0
         marked as "Job will never run"
         """
         self.submit_and_preempt_jobs(preempt_order='R')
+
+    def test_qalter_preempt_targets_to_none(self):
+        """
+        Test that a job requesting preempt targets set to two different queues
+        can be altered to set preempt_targets as NONE
+        """
+
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'})
+        # submit a job in expressq with preempt targets set to workq, workq2
+        a = {'Resource_List.preempt_targets': 'queue=workq,queue=workq2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        self.server.alterjob(jobid=jid,
+                             attrib={'Resource_List.preempt_targets': 'None'})
+        self.server.expect(JOB, id=jid,
+                           attrib={'Resource_List.preempt_targets': 'None'})
+
+    def test_preempt_sort_when_set(self):
+        """
+        This test is for preempt_sort when it is set to min_time_since_start
+        """
+        a = {ATTR_rescavail + '.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {'preempt_sort': 'min_time_since_start'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        jid1, jid2, jid3 = self.submit_jobs()
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+
+    def test_preempt_sort_when_unset(self):
+        """
+        This test is for preempt_sort when it is unset
+        """
+        a = {ATTR_rescavail + '.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort')
+        jid1, jid2, jid3 = self.submit_jobs()
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+
+    def test_preempt_retry(self):
+        """
+        Test to make sure that preemption is retried if it fails.
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        abort_script = """#!/bin/bash
+exit 3
+"""
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file}
+        self.mom.add_config(c)
+
+        # submit two jobs to regular queue
+        j1 = Job(TEST_USER)
+        jid1 = self.server.submit(j1)
+
+        time.sleep(2)
+
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        # set preempt order
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # submit a job to high priority queue
+        a = {ATTR_q: 'expressq'}
+        j3 = Job(TEST_USER, a)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+        self.mom.log_match(jid2 + ";checkpoint failed:")
+        self.mom.log_match(jid1 + ";checkpoint failed:")
+
+        abort_script = """#!/bin/bash
+kill -9 $1
+exit 0
+"""
+        abort_file = self.du.create_temp_file(body=abort_script)
+        self.du.chmod(path=abort_file, mode=0755)
+        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort 30 !' + abort_file + ' %sid'}
+        self.mom.add_config(c)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)

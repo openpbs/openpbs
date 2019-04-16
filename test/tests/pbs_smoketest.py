@@ -508,6 +508,8 @@ class SmokeTest(PBSTestSuite):
         """
         Test to submit job with job script
         """
+        a = {ATTR_rescavail + '.ncpus': '2'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
         j.create_script('sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
@@ -522,7 +524,7 @@ class SmokeTest(PBSTestSuite):
             self.assertNotIn('illegal -N value', e.msg[0],
                              'qsub: Not accepted "." in job name')
         else:
-            self.server.expect(JOB, {'job_state': (MATCH_RE, '[RQ]')}, id=jid)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
             self.logger.info('Job submitted successfully: ' + jid)
 
     @skipOnCpuSet

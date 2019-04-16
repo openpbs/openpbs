@@ -457,6 +457,79 @@ class TestPBSSnapshot(TestFunctional):
             self.assertFalse(str(TEST_USER1) in all_content)
             self.assertFalse(str(TSTGRP0) in all_content)
 
+    def test_obfuscate_acct_bad(self):
+        """
+        Test that pbs_snapshot --obfuscate can work with bad accounting records
+        """
+        if os.getuid() != 0:
+            self.skipTest("Test need to run as root")
+
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
+
+        # Delete all existing accounting logs
+        acct_logpath = os.path.join(self.server.pbs_conf["PBS_HOME"],
+                                    "server_priv", "accounting")
+        self.du.rm(path=os.path.join(acct_logpath, "*"), force=True,
+                   as_script=True)
+        ret = os.listdir(acct_logpath)
+        self.assertEqual(len(ret), 0)
+        self.server.pi.restart()
+
+        # Make sure that the restart generated a new accounting log
+        # Let's submit a job to generate a new accounting log
+        j = Job(TEST_USER)
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+
+        # Check that the accounting E record was generated
+        self.server.accounting_match(";E;%s;" % jid)
+
+        # Now, Add some garbage data to the accounting file
+        ret = os.listdir(acct_logpath)
+        self.assertGreater(len(ret), 0)
+        acct_filename = ret[0]
+        filepath = os.path.join(acct_logpath, acct_filename)
+        with open(filepath, "a+") as fd:
+            fd.write("!@#$%^")
+
+        # Now, take a snapshot with --obfuscate
+        (_, snap_dir) = self.take_snapshot(obfuscate=True, with_sudo=False)
+
+        # Make sure that the accounting log was captured with the job record
+        snapacctdir = os.path.join(snap_dir, "server_priv", "accounting")
+        self.assertTrue(os.path.isdir(snapacctdir))
+        snapacctpath = os.path.join(snapacctdir, acct_filename)
+        self.assertTrue(os.path.isfile(snapacctpath))
+        with open(snapacctpath, "r") as fd:
+            content = fd.read()
+            self.assertIn(";E;%s;" % jid, content)
+
+        # Now, modify the job record itself to add some garbage to it
+        file_contents = []
+        contents_out = []
+        with open(filepath, "r") as fd:
+            file_contents = fd.readlines()
+        for line in file_contents:
+            if ";E;%s;" % jid in line:
+                line = line[:-1] + " !@#$^\n"
+            contents_out.append(line)
+        with open(filepath, "w") as fd:
+            fd.writelines(contents_out)
+
+        # Capture another snapshot with --obfuscate
+        (_, snap_dir) = self.take_snapshot(obfuscate=True, with_sudo=False)
+
+        # Make sure that the accounting log was captured
+        # This time, the job record should not be captured as it had garbage
+        snapacctdir = os.path.join(snap_dir, "server_priv", "accounting")
+        self.assertTrue(os.path.isdir(snapacctdir))
+        snapacctpath = os.path.join(snapacctdir, acct_filename)
+        self.assertTrue(os.path.isfile(snapacctpath))
+        with open(snapacctpath, "r") as fd:
+            content = fd.read()
+            self.assertNotIn(";E;%s;" % jid, content)
+
     def test_multisched_support(self):
         """
         Test that pbs_snapshot can capture details of all schedulers

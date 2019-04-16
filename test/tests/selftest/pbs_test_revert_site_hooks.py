@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -34,45 +34,20 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-unsupporteddir = ${exec_prefix}/unsupported
-
-unsupported_PROGRAMS = pbs_rmget
-
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat
+from tests.selftest import *
 
 
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini \
-	cray_readme \
-	ReliableJobStartup.py \
-	pbs_output.py
+class TestRevertSiteHook(TestSelf):
+    """
+    Test suite to verify default site hooks exist after
+    revert_to_defaults() is called
+    """
 
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@libz_lib@
-pbs_rmget_SOURCES = pbs_rmget.c
+    def test_verify_cgroups_hook_exists_after_setup(self):
+        """
+        Test if cgroups hook exists after revert_to_defaults() is called
+        """
+        hooks = [h['id'] for h in self.server.status(HOOK)]
+        if 'pbs_cgroups' not in hooks:
+            self.fail("Default cgroups hook doesn't exist")

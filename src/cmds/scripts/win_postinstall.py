@@ -413,14 +413,14 @@ def register_and_start_services(username, password):
                      username, password)
         __svc_helper(os.path.join(pbs_sbin, 'pbs_server.exe'),
                      username, password)
-        rshd_path = os.path.join(pbs_sbin, 'pbs_rshd.exe')
-        if os.path.isfile(rshd_path):
-            __svc_helper(rshd_path, username, password)
         set_svr_defaults()
     if installtype in ('server', 'comm'):
         __svc_helper(os.path.join(pbs_sbin, 'pbs_comm.exe'),
                      username, password)
     if installtype in ('server', 'execution'):
+        rshd_path = os.path.join(pbs_sbin, 'pbs_rshd.exe')
+        if os.path.isfile(rshd_path):
+            __svc_helper(rshd_path, username, password)
         __svc_helper(os.path.join(pbs_sbin, 'pbs_mom.exe'), username, password)
 
 
@@ -433,7 +433,7 @@ def usage():
     _msg += ['    -p|--passwd=<password>\t- ']
     _msg += ['specify PBS Service/database user\'s password\n']
     _msg += ['    -t|--type=<type>\t\t- specify PBS installation type \n']
-    _msg += ['\t\t\t\t  (server\execution\client\comm)\n']
+    _msg += ['\t\t\t\t  (server/execution/client/comm)\n']
     _msg += ['    -s|--server=<server>\t- ']
     _msg += ['specify PBS Server value\n']
     _msg += ['    -h|--help\t\t\t- print help message\n']

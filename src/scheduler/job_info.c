@@ -2862,7 +2862,6 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 		if ((preempt_jobs_reply = pbs_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
 			free_string_array(preempt_jobs_list);
-			free(preempt_jobs_list);
 			free(preempted_list);
 			free(fail_list);
 			return -1;
@@ -2870,9 +2869,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 
 		for (i = 0; i < no_of_jobs; i++) {
 			job = find_resource_resv(sinfo->running_jobs, preempt_jobs_reply[i].job_id);
-			if (preempt_jobs_reply[i].order[0] == '0')
+			if (preempt_jobs_reply[i].order[0] == '0') {
+				done = 0;
 				fail_list[fail_count++] = job->rank;
-			else {
+			} else {
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
 					/* Set resources_released and execselect on the job */
@@ -3234,7 +3234,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
 		if ( nsinfo->calendar != NULL ) {
-			te = find_timed_event(nsinfo->calendar->events, pjob->name, TIMED_END_EVENT, 0);
+			te = find_timed_event(nsinfo->calendar->events, 0, pjob->name, TIMED_END_EVENT, 0);
 			if (te != NULL) {
 				if (delete_event(nsinfo, te, DE_NO_FLAGS) == 0)
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name, "Failed to delete end event for job.");
@@ -3987,17 +3987,16 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 				/* add_resresv_to_array calls realloc, so we need to treat this call
 				 * as a call to realloc.  Put it into a temp variable to check for NULL
 				 */
-				tmparr = add_resresv_to_array(sinfo->jobs, rresv);
+				tmparr = add_resresv_to_array(sinfo->jobs, rresv, NO_FLAGS);
 				if (tmparr != NULL) {
 					sinfo->jobs = tmparr;
 					sinfo->sc.queued++;
 					sinfo->sc.total++;
 
-					tmparr = add_resresv_to_array(sinfo->all_resresv, rresv);
+					tmparr = add_resresv_to_array(sinfo->all_resresv, rresv, SET_RESRESV_INDEX);
 					if (tmparr != NULL) {
 						sinfo->all_resresv = tmparr;
-
-						tmparr = add_resresv_to_array(qinfo->jobs, rresv);
+						tmparr = add_resresv_to_array(qinfo->jobs, rresv, NO_FLAGS);
 						if (tmparr != NULL) {
 							qinfo->jobs = tmparr;
 							qinfo->sc.queued++;
@@ -4801,6 +4800,7 @@ void create_res_released(status *policy, resource_resv *pjob)
 		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 	}
 	selectspec = create_select_from_nspec(pjob->job->resreleased);
+	free_selspec(pjob->execselect);
 	pjob->execselect = parse_selspec(selectspec);
 	free(selectspec);
 	return;

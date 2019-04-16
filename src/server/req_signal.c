@@ -167,6 +167,7 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
+		return;
 
 	} else if (jt == IS_ARRAY_ArrayJob) {
 
