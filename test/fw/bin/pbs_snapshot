@@ -101,9 +101,9 @@ Usage: pbs_snapshot -o <path to output tar file> [OPTION]
     print msg
 
 
-def childsnap_thread(logger, host):
+def remotesnap_thread(logger, host):
     """
-    Thread routine for each child snapshot being run on a remote host
+    Routine to capture snapshot from a remote host
 
     :param logger - Logging object
     :type logger - logging.Logger
@@ -184,6 +184,7 @@ if __name__ == '__main__':
     anonymize = False
     log_file = "pbs_snapshot.log"
     with_sudo = False
+    du = DshUtils()
 
     PtlConfig()
 
@@ -267,36 +268,55 @@ if __name__ == '__main__':
             map_file = os.path.join(out_abspath, "obfuscate.map")
 
     if additional_hosts is not None:
-        du = DshUtils()
+        # Capture snapshot of remote hosts in addition to the main host
 
-        # Run child pbs_snapshot commands on those hosts
         hostnames = additional_hosts.split(",")
-        childsnap_threads = {}
+        remotesnap_threads = {}
         for host in hostnames:
-            thread = Thread(target=childsnap_thread, args=(
+            thread = Thread(target=remotesnap_thread, args=(
                 ptl_logger, host))
             thread.start()
-            childsnap_threads[host] = thread
+            remotesnap_threads[host] = thread
 
-        # Capture snapshot on the main host in the meantime
-        with PBSSnapUtils(out_dir, primary_host=primary_host,
-                          acct_logs=acct_logs,
-                          daemon_logs=daemon_logs, map_file=map_file,
-                          anonymize=anonymize, create_tar=False,
-                          log_path=log_path,
-                          with_sudo=with_sudo) as snap_utils:
-            main_snap = snap_utils.capture_all()
+        # Capture snapshot of the main host in the meantime
+        thread_p = None
+        if not du.is_localhost(primary_host):
+            # The main host is remote
+            thread_p = Thread(target=remotesnap_thread,
+                              args=(ptl_logger, primary_host))
+            thread_p.start()
+        else:
+            # Capture a local snapshot
+            with PBSSnapUtils(out_dir, acct_logs=acct_logs,
+                              daemon_logs=daemon_logs, map_file=map_file,
+                              anonymize=anonymize, create_tar=False,
+                              log_path=log_path,
+                              with_sudo=with_sudo) as snap_utils:
+                main_snap = snap_utils.capture_all()
+
+        if thread_p is not None:
+            # Let's get the main host's snapshot first
+            thread_p.join()
+
+            # We need to copy additional hosts' snapshosts in
+            # the main snapshot, so un-tar the snapshot
+            p_snappath = os.path.join(out_dir, primary_host + "_snapshot.tgz")
+            tar = tarfile.open(p_snappath)
+            main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+            main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
+            tar.extractall(path=out_dir)
+            tar.close()
+            # Delete the tar file
+            du.rm(path=p_snappath, force=True)
 
         # Let's reconcile the child snapshots
-        for host, thread in childsnap_threads.iteritems():
+        for host, thread in remotesnap_threads.iteritems():
             thread.join()
             host_snappath = os.path.join(out_dir, host + "_snapshot.tgz")
             if os.path.isfile(host_snappath):
                 # Move the tar file to the main snapshot
                 du.run_copy(src=host_snappath, dest=main_snap)
-
-                # Remove the tar file
-                du.rm(host_snappath, force=True)
+                du.rm(path=host_snappath, force=True)
 
         # Finally, create a tar of the whole snapshot
         outtar = main_snap + ".tgz"
@@ -305,10 +325,24 @@ if __name__ == '__main__':
 
         # Delete the snapshot directory itself
         du.rm(path=main_snap, recursive=True, force=True)
+    elif not du.is_localhost(primary_host):
+        # Capture snapshot of a remote host
+        remotesnap_thread(ptl_logger, primary_host)
+        p_snappath = os.path.join(out_dir, primary_host + "_snapshot.tgz")
+        tar = tarfile.open(p_snappath)
+        main_snap = tar.getnames()[0].split(os.sep, 1)[0]
+        main_snap = os.path.join(os.path.abspath(out_dir), main_snap)
+        tar.close()
+        outtar = main_snap + ".tgz"
+
+        # remotesnap_thread named the tar as <hostname>_snapshot.tgz
+        # rename it to the timestamp name of the original snapshot
+        du.run_copy(src=p_snappath, dest=outtar)
+        du.rm(path=p_snappath, force=True)
     else:
-        # No additional hosts to capture
-        with PBSSnapUtils(out_dir, primary_host=primary_host,
-                          acct_logs=acct_logs,
+        # Capture snapshot of the local host
+
+        with PBSSnapUtils(out_dir, acct_logs=acct_logs,
                           daemon_logs=daemon_logs, map_file=map_file,
                           anonymize=anonymize, create_tar=True,
                           log_path=log_path,
