@@ -1975,8 +1975,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 					create_node_array_from_nspec(bjob->nspec_arr);
 				selectspec = create_select_from_nspec(bjob->nspec_arr);
 				if (selectspec != NULL) {
-					if (bjob->execselect)
-						free_selspec(bjob->execselect);
+					free_selspec(bjob->execselect);
 					bjob->execselect = parse_selspec(selectspec);
 					free(selectspec);
 				}
