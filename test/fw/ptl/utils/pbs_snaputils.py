@@ -42,7 +42,6 @@ import logging
 import socket
 import random
 import shutil
-import re
 import pprint
 import shlex
 
@@ -259,6 +258,7 @@ class ObfuscateSnapshot(object):
             delete_line = False
             val_obf = None
             val_del = None
+            key_obf = None
             for line in fdin:
                 # Check if this is a line extension for an attr being deleted
                 if line[0] == "\t":
@@ -348,22 +348,23 @@ class ObfuscateSnapshot(object):
         fout = self.du.create_temp_file()
 
         with open(file_path, "r") as fd, open(fout, "w") as fdout:
-            for line in fd:
+            for record in fd:
                 # accounting log format is
                 # %Y/%m/%d %H:%M:%S;<Key>;<Id>;<key1=val1> <key2=val2> ...
-                curr = line.split(";", 3)
-                if curr is None or len(curr) < 4:
+                record_list = record.split(";", 3)
+                if record_list is None or len(record_list) < 4:
                     continue
-                if curr[1] in ("A", "L"):
-                    fdout.write(line)
+                if record_list[1] in ("A", "L"):
+                    fdout.write(record)
                     continue
-                buf = shlex.split(curr[3].strip())
+                content_list = shlex.split(record_list[3].strip())
 
                 skip_record = False
-                kvl_list = map(lambda n: n.split("=", 1), buf)
+                kvl_list = [kv.split("=", 1) for kv in content_list]
                 if kvl_list is None:
                     self.num_bad_acct_records += 1
-                    self.logger.debug("Bad accounting record found:\n" + line)
+                    self.logger.debug("Bad accounting record found:\n" +
+                                      record)
                     continue
                 for kvl in kvl_list:
                     try:
@@ -371,7 +372,7 @@ class ObfuscateSnapshot(object):
                     except ValueError:
                         self.num_bad_acct_records += 1
                         self.logger.debug("Bad accounting record found:\n" +
-                                          line)
+                                          record)
                         skip_record = True
                         break
 
@@ -391,9 +392,9 @@ class ObfuscateSnapshot(object):
                         kvl[1] = "@".join(obf)
 
                 if not skip_record:
-                    line = ";".join(curr[:3]) + ";" + \
+                    record = ";".join(record_list[:3]) + ";" + \
                         " ".join(["=".join(n) for n in kvl_list])
-                    fdout.write(line + "\n")
+                    fdout.write(record + "\n")
 
         shutil.move(fout, file_path)
 
@@ -478,13 +479,13 @@ class ObfuscateSnapshot(object):
         comm_logs = os.path.join(snap_dir, COMM_LOGS_PATH)
         db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
         sched_logs = []
-        for dir in os.listdir(snap_dir):
-            if str(dir).startswith(DFLT_SCHED_LOGS_PATH):
-                dirpath = os.path.join(snap_dir, str(dir))
+        for dirname in os.listdir(snap_dir):
+            if str(dirname).startswith(DFLT_SCHED_LOGS_PATH):
+                dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
         dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs] + sched_logs
-        for dir in dirs_to_del:
-            self.du.rm(path=dir, recursive=True, force=True)
+        for dirpath in dirs_to_del:
+            self.du.rm(path=dirpath, recursive=True, force=True)
 
         # Now, go through the obfuscation map and replace all other instances
         # of the sensitive values in the snapshot with their obfuscated values

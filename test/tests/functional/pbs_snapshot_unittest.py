@@ -854,7 +854,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
 
         # Submit a reservation with Authorized_Users & Authorized_Groups set
         a = {ATTR_auth_u: TEST_USER, ATTR_auth_g: TSTGRP0}
-        r = Reservation(TEST_USER, a)
+        Reservation(TEST_USER, a)
         real_values[ATTR_auth_u] = [TEST_USER]
         real_values[ATTR_auth_g] = [TSTGRP0]
         real_values[ATTR_resv_owner] = [TEST_USER, self.server.hostname]
@@ -869,7 +869,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
              ATTR_l + ".walltime": "00:01:00", ATTR_S: "/bin/bash"}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1000)
-        j1 = self.server.submit(j)
+        self.server.submit(j)
 
         # Add job's attributes to the list
         # TEST_USER belongs to group TESTGRP0
