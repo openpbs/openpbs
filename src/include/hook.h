@@ -384,6 +384,8 @@ extern void cleanup_hooks_workdir(struct work_task *);
 extern void catch_hook_alarm(ALARM_HANDLER_ARG);
 extern int set_alarm(int sec, void (*)(void));
 
+extern void hook_perf_stat_start(char *label, char *action, int);
+extern void hook_perf_stat_stop(char *label, char *action, int);
 #ifdef	__cplusplus
 }
 #endif

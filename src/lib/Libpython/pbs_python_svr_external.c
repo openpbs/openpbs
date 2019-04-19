@@ -69,11 +69,11 @@ extern void _pbs_python_set_mode(int mode);
 extern int _pbs_python_event_mark_readonly(void);
 
 extern int _pbs_python_event_set(unsigned int hook_event, char *req_user,
-	char *req_host, hook_input_param_t *req_params);
+	char *req_host, hook_input_param_t *req_params, char *perf_label);
 
 extern void _pbs_python_event_unset(void);
 
-extern int _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params);
+extern int _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params, char *perf_label, char *perf_action);
 
 extern int _pbs_python_event_set_attrval(char *name, char *value);
 
@@ -220,6 +220,7 @@ pbs_python_event_mark_readonly(void)
  * @param[in]	req_user - who requested the hook event
  * @param[in]	req_host - where the request came from
  * @param[in]	req_params - array of input parameters
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
  *
  * @return int
  * @retval 0	- success
@@ -228,16 +229,18 @@ pbs_python_event_mark_readonly(void)
  */
 int
 pbs_python_event_set(unsigned int hook_event, char *req_user,
-	char *req_host, hook_input_param_t *req_params) {
+	char *req_host, hook_input_param_t *req_params,
+	char *perf_label)
+{
 #ifdef PYTHON
 	int rc;
-	rc = _pbs_python_event_set(hook_event, req_user, req_host, req_params);
+	rc = _pbs_python_event_set(hook_event, req_user, req_host, req_params, perf_label);
 
 	if (rc == -2) { /* _pbs_python_event_set got interrupted, retry */
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			"_pbs_python_event_set", "retrying call");
 		rc = _pbs_python_event_set(hook_event, req_user, req_host,
-			req_params);
+			req_params, perf_label);
 	}
 	return (rc);
 #else
@@ -270,17 +273,28 @@ pbs_python_event_unset(void)
  *
  * @param[in]	hook_event - the event represented
  * @param[in]	req_params - array of input parameters
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ * @param[in]	perf_action - passed on to hook_perf_stat* call.
  *
  * @return int
  * @retval 0	- success
  * @retval -1	- error
  *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_end() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 int
-pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params) {
+pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params, char *perf_label, char *perf_action)
+{
 
 #ifdef PYTHON
-	return (_pbs_python_event_to_request(hook_event, req_params));
+	return (_pbs_python_event_to_request(hook_event, req_params, perf_label, perf_action));
 #else
 	return (0);
 #endif
