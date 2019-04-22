@@ -1397,7 +1397,6 @@ quit()
         sudo_cmds = [PBS_PROBE_OUT, LSOF_PBS_OUT, DMESG_OUT]
         as_script_cmds = [PROCESS_INFO, LSOF_PBS_OUT]
         pbs_cmds = [PBS_PROBE_OUT, PBS_HOSTN_OUT]
-        sudo = False
 
         host_platform = self.du.get_platform()
         win_platform = False
@@ -1406,6 +1405,7 @@ quit()
 
         # Capture information that's dependent on commands
         for (key, values) in self.sys_info.iteritems():
+            sudo = False
             (path, cmd_list) = values
             if cmd_list is None:
                 continue
