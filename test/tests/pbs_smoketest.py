@@ -1363,14 +1363,10 @@ class SmokeTest(PBSTestSuite):
                      'resources_available.foo1': 5000}
         self.server.manager(MGR_CMD_SET, NODE, node_attr, self.mom.shortname)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        job_attr = {'Resource_List.select': '1:ncpus=1:foo1=20',
-                    'Resource_List.walltime': 4}
+        job_attr = {'Resource_List.select': '1:ncpus=1:foo1=20'}
         J1 = Job(TEST_USER2, attrs=job_attr)
-        J1.set_sleep_time(4)
         J2 = Job(TEST_USER3, attrs=job_attr)
-        J2.set_sleep_time(4)
         J3 = Job(TEST_USER1, attrs=job_attr)
-        J3.set_sleep_time(4)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
@@ -1381,21 +1377,26 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
+        # While nothing has changed, we must run another cycle for the
+        # scheduler to take note of the fairshare usage.
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+        self.server.delete(j3id)
         msg = "Checking the job state of " + j2id + ", runs after "
-        msg += j3id + " completes"
+        msg += j3id + " is deleted"
         self.logger.info(msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+        self.server.delete(j2id)
         msg = "Checking the job state of " + j1id + ", runs after "
-        msg += j2id + " completes"
+        msg += j2id + " is deleted"
         self.logger.info(msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.log_match(j1id + ";Exit_status")
+
+        self.server.delete(j1id)
 
         # query fairshare and check usage
         fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
@@ -1414,16 +1415,12 @@ class SmokeTest(PBSTestSuite):
         # Check the scheduler usage file whether it's updating or not
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         J1 = Job(TEST_USER4, attrs=job_attr)
-        J1.set_sleep_time(4)
         J2 = Job(TEST_USER2, attrs=job_attr)
-        J2.set_sleep_time(4)
         J3 = Job(TEST_USER1, attrs=job_attr)
-        J3.set_sleep_time(4)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
 
         self.logger.info("Checking the job state of " + j1id)
         self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
@@ -1431,19 +1428,20 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'Q'}, id=j3id)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+        self.server.delete(j1id)
         msg = "Checking the job state of " + j3id + ", runs after "
-        msg += j1id + " completes"
+        msg += j1id + " is deleted"
         self.logger.info(msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+        self.server.delete(j3id)
         msg = "Checking the job state of " + j2id + ", runs after "
-        msg += j1id + " completes"
+        msg += j3id + " is deleted"
         self.logger.info(msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.log_match(j2id + ";Exit_status")
 
         # query fairshare and check usage
         fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
