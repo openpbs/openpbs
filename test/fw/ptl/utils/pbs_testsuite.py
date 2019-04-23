@@ -989,6 +989,7 @@ class PBSTestSuite(unittest.TestCase):
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
                 comm.pbs_conf = new_pbsconf
                 comm.pi.initd(comm.hostname, "restart", daemon="comm")
+                comm.isUp()
 
     def _revert_pbsconf_mom(self, primary_server, vals_to_set):
         """
@@ -1062,6 +1063,7 @@ class PBSTestSuite(unittest.TestCase):
                                        append=False)
                 mom.pbs_conf = new_pbsconf
                 mom.pi.initd(mom.hostname, "restart", daemon="mom")
+                mom.isUp()
 
     def _revert_pbsconf_server(self, vals_to_set):
         """
@@ -1169,6 +1171,7 @@ class PBSTestSuite(unittest.TestCase):
                         # start/stop the particular daemon
                         server.pi.initd(server.hostname, initcmd[1],
                                         daemon=initcmd[0])
+                server.isUP()
 
     def revert_pbsconf(self):
         """
