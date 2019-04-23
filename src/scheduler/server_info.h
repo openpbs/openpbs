@@ -125,7 +125,7 @@ schd_resource *create_resource(char *name, char *value, enum resource_fields fie
 /*
  *	free_server - free a list of server_info structs
  */
-void free_server(server_info *sinfo, int free_queues_too);
+void free_server(server_info *sinfo);
 
 /*
  *      update_server_on_run - update server_info strucutre when a job is run

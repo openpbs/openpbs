@@ -3157,7 +3157,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			sprintf(log_buf, "Limited running jobs used for preemption from %d to 0: No jobs to preempt",
 				nsinfo->sc.running);
 			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name, log_buf);
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			free_schd_error_list(full_err);
 			free(pjobs);
 			free(prjobs);
@@ -3188,7 +3188,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	err = dup_schd_error(full_err);	/* only first element */
 	if(err == NULL) {
 		free_schd_error_list(full_err);
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		free(pjobs);
 		free(prjobs);
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -3199,7 +3199,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	if (rjobs_subset == NULL) {
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name, "Found no preemptable candidates");
 		free_schd_error_list(full_err);
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		free(pjobs);
 		free(prjobs);
 		return NULL;
@@ -3211,7 +3211,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		if (indexfound == ERR_IN_SELECT) {
 			/* System error occurred, no need to proceed */
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			free(pjobs);
 			free(prjobs);
 			free_schd_error_list(full_err);
@@ -3265,7 +3265,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				nj = queue_subjob(nhjob, nsinfo, nhjob->job->queue);
 
 				if (nj == NULL) {
-					free_server(nsinfo, 1);
+					free_server(nsinfo);
 					free(pjobs);
 					free(prjobs);
 					free_schd_error_list(full_err);
@@ -3305,7 +3305,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			if (rjobs_subset == NULL) {
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name, "Found no preemptable candidates");
 				free_schd_error_list(full_err);
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				free(pjobs);
 				free(prjobs);
 				free_schd_error(err);
@@ -3349,7 +3349,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if (rc > 0) {
 		if ((pjobs_list = calloc((j + 1), sizeof(int))) == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			free(pjobs);
 			free(prjobs);
 			free_schd_error_list(full_err);
@@ -3390,7 +3390,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			*no_of_jobs = i;
 	}
 
-	free_server(nsinfo, 1);
+	free_server(nsinfo);
 	free(pjobs);
 	free(prjobs);
 	free_schd_error_list(full_err);
