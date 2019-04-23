@@ -954,7 +954,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					sinfo->resvs[i]->name,
 					"Error determining if reservation can be confirmed: "
 					"Resource not found.");
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				return -1;
 			}
 
@@ -993,7 +993,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 							sinfo->resvs[i]->name,
 							"Error unrolling standing reservation.");
-						free_server(nsinfo, 1);
+						free_server(nsinfo);
 						return -1;
 					}
 				}
@@ -1004,7 +1004,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					 */
 					occr_execvnodes_arr = malloc(sizeof(char *));
 					if (occr_execvnodes_arr == NULL) {
-						free_server(nsinfo, 1);
+						free_server(nsinfo);
 						log_err(errno, "check_new_reservations", MEM_ERR_MSG);
 						return -1;
 					}
@@ -1152,7 +1152,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			occr_execvnodes_arr = NULL;
 
 			/* Clean up simulated server info */
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 		}
 		/* Something went wrong with reservation confirmation, retry later */
 		if (pbsrc == RESV_CONFIRM_RETRY)

@@ -1148,7 +1148,7 @@ end_cycle_tasks(server_info *sinfo)
 	 */
 	if (sinfo != NULL) {
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 1);	/* free server and queues and jobs */
+		free_server(sinfo);	/* free server and queues and jobs */
 	}
 
 	/* close any open connections to peers */
@@ -1906,7 +1906,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		return 0;
 
 	if ((njob = find_resource_resv_by_indrank(nsinfo->jobs, topjob->rank, topjob->resresv_ind)) == NULL) {
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		return 0;
 	}
 
@@ -1933,7 +1933,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		if (topjob->job->is_array) {
 			tjob = queue_subjob(topjob, sinfo, topjob->job->queue);
 			if (tjob == NULL) {
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				return 0;
 			}
 
@@ -1942,7 +1942,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			if (njob == NULL) {
 				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 					"Can't find new subjob in simulated universe");
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				return 0;
 			}
 			/* The subjob is just for the calendar, not for running */
@@ -1980,11 +1980,11 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 					free(selectspec);
 				}
 			} else {
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				return 0;
 			}
 		} else {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return 0;
 		}
 
@@ -1998,14 +1998,14 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 
 		te_start = create_event(TIMED_RUN_EVENT, bjob->start, bjob, NULL, NULL);
 		if (te_start == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return 0;
 		}
 		add_event(sinfo->calendar, te_start);
 
 		te_end = create_event(TIMED_END_EVENT, bjob->end, bjob, NULL, NULL);
 		if (te_end == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return 0;
 		}
 		add_event(sinfo->calendar, te_end);
@@ -2057,10 +2057,10 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	} else if (start_time == 0) {
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		return 0;
 	}
-	free_server(nsinfo, 1);
+	free_server(nsinfo);
 	
 	return 1;
 }

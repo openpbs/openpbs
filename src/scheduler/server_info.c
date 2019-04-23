@@ -222,7 +222,7 @@ query_server(status *pol, int pbs_sd)
 	if( query_server_dyn_res(sinfo) == -1 ) {
 		pbs_statfree(server);
 		sinfo -> fairshare = NULL;
-		free_server( sinfo, 0 );
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -239,7 +239,7 @@ query_server(status *pol, int pbs_sd)
 		pbs_statfree(server);
 		pbs_statfree(all_sched);
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 0);
+		free_server(sinfo);
 		return NULL;
 	}
 	query_sched_obj(policy, sched, sinfo);
@@ -250,7 +250,7 @@ query_server(status *pol, int pbs_sd)
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 0);
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -267,7 +267,7 @@ query_server(status *pol, int pbs_sd)
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 0);
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -280,7 +280,7 @@ query_server(status *pol, int pbs_sd)
 	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 1);
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -321,7 +321,7 @@ query_server(status *pol, int pbs_sd)
 			ret_val = add_queue_to_list(&sinfo->queue_list, sinfo->queues[i]);
 			if (ret_val == 0) {
 				sinfo->fairshare = NULL;
-				free_server(sinfo, 1);
+				free_server(sinfo);
 				return NULL;
 			}
 		}
@@ -332,13 +332,13 @@ query_server(status *pol, int pbs_sd)
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 1);
+		free_server(sinfo);
 		return NULL;
 	}
 #ifdef NAS /* localmod 050 */
 	/* Give site a chance to tweak values before jobs are sorted */
 	if (site_tidy_server(sinfo) == 0) {
-		free_server(sinfo, 1);
+		free_server(sinfo);
 		return NULL;
 	}
 #endif /* localmod 050 */
@@ -364,7 +364,7 @@ query_server(status *pol, int pbs_sd)
 		sinfo->sc.total, check_exit_job, NULL, 0);
 	if (sinfo->running_jobs == NULL || sinfo->exiting_jobs ==NULL) {
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 1);
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -429,7 +429,7 @@ query_server(status *pol, int pbs_sd)
 	sinfo->unordered_nodes = malloc((sinfo->num_nodes+1) * sizeof(node_info*));
 	if(sinfo->unordered_nodes == NULL) {
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 1);
+		free_server(sinfo);
 		return NULL;
 	}
 
@@ -1631,25 +1631,21 @@ add_resource_bool(schd_resource *r1, schd_resource *r2)
  * @brief
  * 		free_server - free a server_info and possibly its queues also
  *
- * @param[in]	sinfo 			- 	server_info list head
- * @param[in]	free_queues_too - 	flag to free the queues attached
- *									to server also
+ * @param[in]	sinfo -	server_info list head
  *
  * @return	void
  *
  * @par MT-Safe:	no
  */
 void
-free_server(server_info *sinfo, int free_objs_too)
+free_server(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return;
 
-	if (free_objs_too) {
-		free_queues(sinfo->queues, 1);
-		free_nodes(sinfo->nodes);
-		free_resource_resv_array(sinfo->resvs);
-	}
+	free_queues(sinfo->queues);
+	free_nodes(sinfo->nodes);
+	free_resource_resv_array(sinfo->resvs);
 
 #ifdef NAS /* localmod 053 */
 	site_restore_users();
@@ -2238,7 +2234,7 @@ dup_server_info(server_info *osinfo)
 	if (osinfo->fairshare != NULL) {
 		nsinfo->fairshare = dup_fairshare_head(osinfo->fairshare);
 		if (nsinfo->fairshare == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return NULL;
 		}
 	}
@@ -2313,7 +2309,7 @@ dup_server_info(server_info *osinfo)
 	/* duplicate the queues */
 	nsinfo->num_queues = osinfo->num_queues;
 	if ((nsinfo->queues = dup_queues(osinfo->queues, nsinfo)) == NULL) {
-		free_server(nsinfo, 0);
+		free_server(nsinfo);
 		return NULL;
 	}
 
@@ -2324,7 +2320,7 @@ dup_server_info(server_info *osinfo)
 			ret_val = add_queue_to_list(&nsinfo->queue_list, nsinfo->queues[i]);
 			if (ret_val == 0) {
 				nsinfo->fairshare = NULL;
-				free_server(nsinfo, 1);
+				free_server(nsinfo);
 				return NULL;
 			}
 		}
@@ -2335,7 +2331,7 @@ dup_server_info(server_info *osinfo)
 	/* sets nsinfo -> jobs and nsinfo -> all_resresv */
 #ifdef NAS /* localmod 054 */
 	if (create_server_arrays(nsinfo) == 0) {
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		return NULL;
 	}
 #else
@@ -2349,7 +2345,7 @@ dup_server_info(server_info *osinfo)
 	 * appropriately be freed in free_event_list */
 	nsinfo->calendar = dup_event_list(osinfo->calendar, nsinfo);
 	if (nsinfo->calendar == NULL) {
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		return NULL;
 	}
 
@@ -2372,7 +2368,7 @@ dup_server_info(server_info *osinfo)
 
 #ifdef NAS /* localmod 034 */
 	if (!site_dup_shares(osinfo, nsinfo)) {
-		free_server(nsinfo, 1);
+		free_server(nsinfo);
 		return NULL;
 	}
 #endif /* localmod 034 */
@@ -2390,7 +2386,7 @@ dup_server_info(server_info *osinfo)
 	if (osinfo->nodepart != NULL) {
 		nsinfo->nodepart = dup_node_partition_array(osinfo->nodepart, nsinfo);
 		if (nsinfo->nodepart == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return NULL;
 		}
 	}
@@ -2399,7 +2395,7 @@ dup_server_info(server_info *osinfo)
 		int j, k;
 		nsinfo->hostsets = dup_node_partition_array(osinfo->hostsets, nsinfo);
 		if (nsinfo->hostsets == NULL) {
-			free_server(nsinfo, 1);
+			free_server(nsinfo);
 			return NULL;
 		}
 		/* reattach nodes to their host sets*/

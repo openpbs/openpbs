@@ -66,7 +66,7 @@ queue_info *new_queue_info(int limallocflag);
 /*
  *      free_queues - frees the memory for an array
  */
-void free_queues(queue_info **qinfo, char free_jobs_too);
+void free_queues(queue_info **qinfo);
 
 /*
  *      update_queue_on_run - update the information kept in a qinfo structure
