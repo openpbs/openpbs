@@ -280,7 +280,7 @@ query_server(status *pol, int pbs_sd)
 	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
-		free_server(sinfo, 0);
+		free_server(sinfo, 1);
 		return NULL;
 	}
 

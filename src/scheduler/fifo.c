@@ -2057,6 +2057,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	} else if (start_time == 0) {
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
+		free_server(nsinfo, 1);
 		return 0;
 	}
 	free_server(nsinfo, 1);
