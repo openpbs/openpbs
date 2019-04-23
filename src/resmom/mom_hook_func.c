@@ -649,7 +649,8 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
  *
  */
 mom_process_hooks_params_t
-*duplicate_php(mom_process_hooks_params_t *php) {
+*duplicate_php(mom_process_hooks_params_t *php)
+{
 	mom_process_hooks_params_t *new_php;
 
 	if ((new_php = (mom_process_hooks_params_t *)malloc(
