@@ -621,3 +621,60 @@ class TestQstatFormats(TestFunctional):
             json.loads(qstat_out)
         except ValueError:
             self.assertTrue(False)
+
+    def run_namelength_test(self, options=''):
+        """
+        Changes the server name, sets a long job and queue name,
+        and ensures they're truncated correctly.
+        """
+        self.server.stop()
+        self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
+
+        conf = self.du.parse_pbs_config(self.server.hostname)
+        self.du.set_pbs_config(
+            self.server.hostname,
+            confs={'PBS_SERVER_HOST_NAME': conf['PBS_SERVER'],
+                   'PBS_SERVER': 'supersuperduperlongservername30'})
+
+        self.server.start()
+        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
+        a = {'queue_type': 'Execution', 'enabled': 'True',
+             'started': 'True'}
+        qname = 'queuename15char'
+        jname = 'jobname16charxxx'
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=qname)
+        a = {ATTR_queue: qname, ATTR_name: jname}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                 'qstat') + ' ' + options + ' ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
+        qstat_out = '\n'.join(ret['out'])
+        jid_trunc = jid[:30]
+        jname_trunc = jname[:15]
+        self.assertIn(jid_trunc, qstat_out)
+        self.assertIn(qname, qstat_out)
+        self.assertIn(jname_trunc, qstat_out)
+        self.assertNotIn(jid, qstat_out)
+        self.assertNotIn(jname, qstat_out)
+
+    def test_qstat_wide(self):
+        """
+        Test if qstat -w correctly prints in wide format
+        This tests the normal display function
+        """
+        self.run_namelength_test('-w')
+
+    def test_qstat_rwt(self):
+        """
+        Test if qstat -rwt correctly prints in wide format.
+        This tests the alternate display function
+        """
+        self.run_namelength_test('-rwt')
+
+    def test_qstat_answ(self):
+        """
+        Test if qstat -rwt correctly prints in wide format.
+        This tests the alternate display function
+        """
+        self.run_namelength_test('-answ')
