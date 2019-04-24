@@ -284,6 +284,9 @@ class ProcMonitor(threading.Thread):
         self.frequency = value
 
     def get_system_stats(self, nw_protocols=['TCP']):
+        """
+        Run system monitoring
+        """
         cmd = 'sar -rSub -n %s 1 1' % ','.join(nw_protocols)
         rv = self.du.run_cmd(cmd=cmd, as_script=True)
         op = rv['out'][2:]
