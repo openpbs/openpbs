@@ -1168,15 +1168,39 @@ class PBSTestSuite(unittest.TestCase):
                 if restart_pbs:
                     # Restart all
                     server.pi.restart(server.hostname)
-                    if not server.isUp():
-                        self.fail("Server is not up")
-                    if not self.mom.isUp():
-                        self.fail("Mom is not up")
-                    if not self.scheduler.isUp():
-                        self.fail("Scheduler is not up")
-                    if not self.comm.isUp():
-                        self.fail("comm is not up")
-
+                    rv = server.isUp()
+                    if not rv:
+                        self.logger.error('Server '
+                                          + comm.hostname
+                                          + ' is down')
+                        msg = 'Failed to restart server '
+                        msg += server.hostname
+                        self.assertTrue(rv, msg)
+                    if new_pbsconf["PBS_START_MOM"] == "1":
+                        rv = server.moms.values()[0].isUp()
+                        if not rv:
+                            self.logger.error('mom '
+                                              + server.moms.values()[0]
+                                              + ' is down')
+                            msg = 'Failed to restart mom '
+                            msg += server.moms.values()[0]
+                            self.assertTrue(rv, msg)
+                    rv = server.schedulers['default'].isUp()
+                    if not rv:
+                        self.logger.error('Scheduler is down')
+                        msg = 'Failed to restart scheduler '
+                        msg += server.scheduler.hostname
+                        self.assertTrue(rv, msg)
+                    if self.du.is_localhost(server.hostname):
+                        if new_pbsconf["PBS_START_COMM"] == "1":
+                            rv = self.comm.isUp()
+                            if not rv:
+                                self.logger.error('comm '
+                                                  + self.comm.hostname
+                                                  + ' is down')
+                                msg = 'Failed to restart comm '
+                                msg += self.comm.hostname
+                                self.assertTrue(rv, msg)
                 else:
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
@@ -1184,17 +1208,40 @@ class PBSTestSuite(unittest.TestCase):
                                         daemon=initcmd[0])
                         if initcmd[1] == "start":
                             if initcmd[0] == "server":
-                                if not server.isUp():
-                                    self.fail("Server is not up")
-                            if initcmd[1] == "sched":
-                                if not self.sched.isUp():
-                                    self.fail("Scheduler is not up")
+                                rv = server.isUp()
+                                if not rv:
+                                    self.logger.error('Server '
+                                                      + comm.hostname
+                                                      + ' is down')
+                                    msg = 'Failed to restart server '
+                                    msg += server.hostname
+                                    self.assertTrue(rv, msg)
+                            if initcmd[0] == "sched":
+                                rv = server.schedulers['default'].isUp()
+                                if not rv:
+                                    self.logger.error('Scheduler is down')
+                                    msg = 'Failed to restart scheduler '
+                                    msg += server.scheduler.hostname
+                                    self.assertTrue(rv, msg)
                             if initcmd[0] == "mom":
-                                if not self.mom.isUp():
-                                    self.fail("Mom is not up")
+                                rv = server.moms.values()[0].isUp()
+                                if not rv:
+                                        self.logger.error('mom '
+                                                          + server.mom.hostname
+                                                          + ' is down')
+                                        msg = 'Failed to restart mom '
+                                        msg += server.mom.hostname
+                                        self.assertTrue(rv, msg)
                             if initcmd[0] == "comm":
-                                if not self.comm.isUp():
-                                    self.fail("comm is not running")
+                                if self.du.is_localhost(server.hostname):
+                                    rv = self.comm.isUp()
+                                    if not rv:
+                                        self.logger.error('comm '
+                                                          + comm.hostname
+                                                          + ' is down')
+                                        msg = 'Failed to restart comm '
+                                        msg += comm.hostname
+                                        self.assertTrue(rv, msg)
 
     def revert_pbsconf(self):
         """

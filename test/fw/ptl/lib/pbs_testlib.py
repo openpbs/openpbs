@@ -4373,7 +4373,12 @@ class Comm(PBSService):
         """
         Check for comm up
         """
-        return super(Comm, self)._isUp(self)
+        for _ in range(10):
+            rv = super(Comm, self)._isUp(self)
+            if rv:
+                break
+            time.sleep(1)
+        return rv
 
     def signal(self, sig):
         """
@@ -10642,7 +10647,12 @@ class Scheduler(PBSService):
         """
         Check for PBS scheduler up
         """
-        return super(Scheduler, self)._isUp(self)
+        for _ in range(10):
+            rv = super(Scheduler, self)._isUp(self)
+            if rv:
+                break
+            time.sleep(1)
+        return rv
 
     def signal(self, sig):
         """
