@@ -8337,12 +8337,15 @@ class Server(PBSService):
         # Turn off scheduling so jobs don't start when trying to
         # delete. Restore the orignial scheduling state
         # once jobs are deleted.
-        sched_state = self.status(SERVER, {'scheduling'})[0]['scheduling']
-
-        # runas is required here because some tests remove current user
-        # from managers list
-        self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
-                     runas='root')
+        sched_state = {}
+        for sc in self.schedulers:
+            sched_state[sc] = self.status(
+                SCHED, {'scheduling'},
+                id=self.schedulers[sc].sc_name)[0]['scheduling']
+            # runas is required here because some tests remove current user
+            # from managers list
+            self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                         id=self.schedulers[sc].sc_name, runas='root')
         num_jobs = len(job_ids)
         if num_jobs >= 100:
             self._cleanup_large_num_jobs(job_ids, runas=runas)
@@ -8357,8 +8360,12 @@ class Server(PBSService):
         if not rv:
             return self.cleanup_jobs(extend=extend, runas=runas)
 
-        self.manager(MGR_CMD_SET, SERVER,
-                     {'scheduling': sched_state}, runas='root')
+        # restore 'scheduling' state
+        for sc in self.schedulers:
+            self.manager(MGR_CMD_SET, SCHED,
+                         {'scheduling': sched_state[sc]},
+                         id=self.schedulers[sc].sc_name,
+                         runas='root')
         return rv
 
     def cleanup_reservations(self, extend=None, runas=None):
