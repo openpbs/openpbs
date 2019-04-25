@@ -796,8 +796,12 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 						convert_duration_to_str(duration, timebuf, 128);
 						update_job_attr(pbs_sd, resresv, ATTR_estimated, "soft_walltime", timebuf, NULL, UPDATE_NOW);
 					}
-				} else /* Job has exceeded its walltime.  It'll soon be killed and be put into the exiting state */
-					duration += EXITING_TIME;
+				} else 
+					/* Job has exceeded its walltime.  It'll soon be killed and be put into the exiting state.
+					 * Change the duration of the job to match the current situation and assume it will end in
+					 * now + EXITING_TIME
+					 */
+					duration =  server_time - start + EXITING_TIME;
 				end = start + duration;
 			}
 			resresv->start = start;
