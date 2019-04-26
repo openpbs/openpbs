@@ -194,7 +194,6 @@ JID = 'job_id'
 JRR = 'job_run_rate'
 JSR = 'job_submit_rate'
 JER = 'job_end_rate'
-JTR = 'job_throughput'
 NJQ = 'num_jobs_queued'
 NJR = 'num_jobs_run'
 NJE = 'num_jobs_ended'
@@ -227,9 +226,7 @@ class PBSLogUtils(object):
     def convert_date_time(cls, dt=None, fmt=None, syslog=False):
         """
         convert a date time string of the form given by fmt into
-        number of seconds since epoch (with possible microseconds).
-        it considers the current system's timezone to convert
-        the datetime to epoch time
+        number of seconds since epoch (with possible microseconds)
 
         :param dt: the datetime string to convert
         :type dt: str or None
@@ -248,24 +245,22 @@ class PBSLogUtils(object):
         else:
             dstoffset = stdoffset
         offsetdiff = dstoffset - stdoffset
+
         micro = False
         if fmt is None:
             if '.' in dt:
                 micro = True
                 fmt = "%m/%d/%Y %H:%M:%S.%f"
-            elif syslog:
-                fmt = "%b %d %H:%M:%S"
             else:
                 fmt = "%m/%d/%Y %H:%M:%S"
 
         try:
             # Get datetime object
-            t = datetime.strptime(dt, fmt)
             if syslog:
-                current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
-                t_edit = list(t)
-                t_edit[0] = int(current_t[:4])
-                t = time.struct_time(tuple(t_edit))
+                t = self.convert_syslog_time(dt=dt)
+            else:
+                t = datetime.strptime(dt, fmt)
+
             # Get timedelta object of epoch time
             t -= epoch_datetime
             # get epoch time from timedelta object
@@ -278,6 +273,31 @@ class PBSLogUtils(object):
             return tm
         else:
             return int(tm)
+
+    def get_syslog_date_str(self, logline=None):
+        if logline is None:
+            return None
+
+        if "T" in logline:
+            return logline[:19]
+        else:
+            return logline[:15]
+
+    def convert_syslog_time(self, dt=None):
+        if dt is None:
+            return None
+
+        if 'T' in dt:
+            dt_str = dt[:10] + " " + dt[12:19]
+            t = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            return t
+        else:
+            t = datetime.datetime.strptime(dt, "%b %d %H:%M:%S")
+            current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
+            t_edit = list(t)
+            t_edit[0] = int(current_t[:4])
+            t = time.struct_time(tuple(t_edit))
+            return t
 
     def get_num_lines(self, log, hostname=None, sudo=False):
         """
@@ -369,26 +389,30 @@ class PBSLogUtils(object):
                           specified time
         :param endtime: If set ignore matches that occur after
                         specified time
-         :param syslog: If True, checks for syslog format of date.
+        :param syslog: If True, checks for syslog format of date.
                        Defaults to False.
-        :type str
+        :type bool
         """
         linecount = 0
         ret = []
         if lines:
             for l in lines:
                 if syslog:
-                    dt_str = l[:15]
+                    if starttime is not None:
+                        starttime = int(starttime)
+                    if endtime is not None:
+                        endtime = int(endtime)
+                    dt_str = self.get_syslog_date_str(logline=l)
                 else:
                     dt_str = l.split(';', 1)[0]
                 if starttime is not None:
                     # dt_str captures the log record time
-                    tm = self.convert_date_time(dt_str)
+                    tm = self.convert_date_time(dt_str, syslog=syslog)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
                     # dt_str captures the log record time
-                    tm = self.convert_date_time(dt_str)
+                    tm = self.convert_date_time(dt_str, syslog=syslog)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
@@ -588,10 +612,10 @@ class PBSLogUtils(object):
         :type hostname: str
         :param n: the number of lines to match
         :type n: int
-        :param logval: The entity requested, an instance of a
-                        Scheduler, Server or MoM object, or the
-                        string 'tracejob' for tracejob
-        :type logval: str or object
+        :param logval: The string of daemon requested,
+                       sched_logs, server_logs or mom_logs
+                       or comm_logs
+        :type logval: str
         :returns Last ``<n>`` lines of logfile for ``Server``,
                   ``Scheduler``, ``MoM`` or ``tracejob``
         """
@@ -604,14 +628,15 @@ class PBSLogUtils(object):
             raise PbsConfigError(rc=1, rv=None,
                                  msg="Currently only rsyslog is supported")
 
-        severity = self.du.parse_pbs_config().get("PBS_SYSLOGSEVR")
+        pbs_config_data = self.du.parse_pbs_config(hostname=hostname)
+        severity = pbs_config_data.get("PBS_SYSLOGSEVR")
 
         if severity is None:
             raise PbsConfigError(rc=1, rv=None,
                                  msg="Syslog is requested and "
-                                     "PBS_SYSLOGSVR not set in pbs.conf")
+                                     "PBS_SYSLOGSEVR not set in pbs.conf")
 
-        facility = self.du.parse_pbs_config().get("PBS_SYSLOG")
+        facility = pbs_config_data.get("PBS_SYSLOG")
 
         list_of_syslog_files = self._get_rsyslog_files(hostname=hostname,
                                                        severity=severity,
@@ -632,13 +657,12 @@ class PBSLogUtils(object):
         elif logval is 'comm_logs':
             daemon_str = 'pbs_comm'
         else:
-            daemon_str = None
+            raise ValueError('Unindentified daemon string')
 
         for x in list_of_syslog_files:
-            run_cmd = [self.du.which(hostname, 'cat',
-                       level=logging.INFOCLI2), x, " | tail -", str(n)]
-            l_sys = self.du.run_cmd(hosts=hostname, cmd=run_cmd, sudo=True,
-                                    level=logging.DEBUG2)['out']
+            f = FileUtils(x, FILE_TAIL)
+            l_sys = f.tail(n=n)
+
             for l in l_sys:
                 if daemon_str in l:
                     lines.append(l)
@@ -654,6 +678,8 @@ class PBSLogUtils(object):
         :type severity: int
         :param facility: syslog facilty in pbs.conf
         :type facility: int
+        :param hostname: the on which syslog files reside
+        :type hostname: str
         :return: list of priorites list[]
         """
         facility = int(facility)
@@ -1203,9 +1229,6 @@ class PBSServerLog(PBSLogAnalyzer):
         self.info[NUR] = self.logutils.get_rate(self.nodeup)
         self.info[JRR] = self.logutils.get_rate(self.jobsrun)
         self.info[JER] = self.logutils.get_rate(self.jobsend)
-        if len(self.server_job_end) > 0:
-            tjr = self.jobsend[-1] - self.enquejob[0]
-            self.info[JTR] = str(len(self.server_job_end) / tjr) + '/s'
         if len(self.wait_time) > 0:
             wt = sorted(self.wait_time)
             wta = float(sum(self.wait_time)) / len(self.wait_time)

@@ -35,8 +35,8 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from tests.selftest import *
 from ptl.utils.pbs_logutils import PBSLogUtils
+from tests.selftest import *
 
 
 class TestSyslog(TestSelf):
@@ -46,8 +46,33 @@ class TestSyslog(TestSelf):
     du = DshUtils()
     lu = PBSLogUtils()
 
-    def setup_syslog(self, hostname=None, local_log=1,
-                     syslog_facility=1, syslog_severity=9):
+    severity = {
+                "emerg": 0,
+                "alert": 1,
+                "crit": 2,
+                "err": 3,
+                "warning": 4,
+                "notice": 5,
+                "info": 6,
+                "debug": 7
+               }
+
+    facility = {
+                "No_SYLOG": 0,
+                "LOG_DAEMON": 1,
+                "LOG_LOCAL0": 2,
+                "LOG_LOCAL1": 3,
+                "LOG_LOCAL2": 4,
+                "LOG_LOCAL3": 5,
+                "LOG_LOCAL4": 6,
+                "LOG_LOCAL5": 7,
+                "LOG_LOCAL6": 8,
+                "LOG_LOCAL7": 9
+               }
+
+    def setup_syslog(self, hostname=None, local_log=0,
+                     syslog_facility=facility["LOG_DAEMON"],
+                     syslog_severity=severity["debug"]):
         """
         Setup syslog in pbs.conf
         """
@@ -65,7 +90,8 @@ class TestSyslog(TestSelf):
         Basic test to check if logging via syslog works
         Each individaul daemon is logged seperately
         """
-        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
+        self.setup_syslog(syslog_facility=self.facility["LOG_DAEMON"],
+                          syslog_severity=self.severity["debug"])
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
@@ -79,17 +105,18 @@ class TestSyslog(TestSelf):
         according to the set priority
         """
         self.t = int(time.time())
-        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=5)
+        self.setup_syslog(syslog_facility=self.facility["LOG_DAEMON"],
+                          syslog_severity=self.severity["notice"])
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         msg_str = "Job;" + jid1 + ";Considering job to run"
-        with self.assertRaises(PtlLogMatchError):
-            self.scheduler.log_match(
-                msg_str, n=500, max_attempts=10, starttime=self.t)
+        self.scheduler.log_match(msg_str, n=500, max_attempts=10,
+                                 starttime=self.t, existence=False)
         self.server.deljob(jid1, wait=True)
-        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
+        self.setup_syslog(syslog_facility=self.facility["LOG_DAEMON"],
+                          syslog_severity=self.severity["debug"])
         J2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(J2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
@@ -109,10 +136,12 @@ class TestSyslog(TestSelf):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        self.setup_syslog(hostname=self.hostA, local_log=0, syslog_facility=1,
-                          syslog_severity=7)
-        self.setup_syslog(hostname=self.hostB, local_log=0, syslog_facility=1,
-                          syslog_severity=7)
+        self.setup_syslog(hostname=self.hostA,
+                          syslog_facility=self.facility["LOG_LOCAL7"],
+                          syslog_severity=self.severity["debug"])
+        self.setup_syslog(hostname=self.hostB,
+                          syslog_facility=self.facility["LOG_LOCAL7"],
+                          syslog_severity=self.severity["debug"])
 
         self.momB.restart()
         self.momA.restart()
@@ -137,8 +166,9 @@ class TestSyslog(TestSelf):
         """
         Test that local logging and sylog logging can work simultaneously
         """
-        self.setup_syslog(local_log=1, syslog_facility=9, syslog_severity=7)
-        self.t = int(time.time())
+        self.setup_syslog(local_log=1,
+                          syslog_facility=self.facility["LOG_LOCAL7"],
+                          syslog_severity=self.severity["debug"])
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)

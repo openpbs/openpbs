@@ -3477,7 +3477,12 @@ class PBSService(PBSObject):
         self.shortname = self.hostname.split('.')[0]
         self.platform = self.du.get_platform()
 
-        self.logutils = None
+        try:
+            from ptl.utils.pbs_logutils import PBSLogUtils
+        except:
+            _msg = 'error loading ptl.utils.pbs_logutils'
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+        self.logutils = PBSLogUtils()
         self.logfile = None
         self.acctlogfile = None
         self.pbs_conf = {}
@@ -3914,9 +3919,6 @@ class PBSService(PBSObject):
         if starttime is None:
             starttime = self.ctime
 
-        if self.logutils is None:
-            self.logutils = PBSLogUtils()
-
         try:
             if syslog:
                 logval = self._instance_to_logpath(logtype)
@@ -4061,14 +4063,7 @@ class PBSService(PBSObject):
         .. note:: The matching line number is relative to the record
                   number, not the absolute line number in the file.
         """
-        try:
-            from ptl.utils.pbs_logutils import PBSLogUtils
-        except:
-            _msg = 'error loading ptl.utils.pbs_logutils'
-            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
-        if self.logutils is None:
-            self.logutils = PBSLogUtils()
         if max_attempts is None:
             max_attempts = 60
         if interval is None:
@@ -4146,8 +4141,6 @@ class PBSService(PBSObject):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -4155,7 +4148,7 @@ class PBSService(PBSObject):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float or str
         :param endtime: If set ignore matches that occur after
                         specified time
         :type endtime: int
@@ -4181,35 +4174,33 @@ class PBSService(PBSObject):
                   number, not the absolute line number in the file.
         """
 
-        syslog_value = self._get_log_type(hostname=self.hostname)
+        pbs_log_type = self._get_log_type(hostname=self.hostname)
 
-        if syslog_value == 1:
+        if pbs_log_type == "check_only_syslog":
             return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                    max_attempts, interval, starttime,
                                    endtime, level=level, existence=existence,
                                    syslog=True)
-        elif syslog_value == 2:
+        elif pbs_log_type == "check_only_locallog":
             return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                    max_attempts, interval, starttime,
                                    endtime, level=level, existence=existence,
                                    syslog=False)
-        elif syslog_value == 3:
-            syslog_return = self._log_match(self, msg, id, n, tail, allmatch,
-                                            regexp, max_attempts,
-                                            interval, starttime, endtime,
-                                            level=level, existence=existence,
-                                            syslog=True)
-            if syslog_return:
-                self.logger.log(level, "Reading local logs")
-                return self._log_match(self, msg, id, n, tail, allmatch,
-                                       regexp, max_attempts, interval,
-                                       starttime, endtime, level=level,
-                                       existence=existence, syslog=False)
-            else:
-                return syslog_return
+        elif pbs_log_type == "check_both":
+            self._log_match(self, msg, id, n, tail, allmatch,
+                            regexp, max_attempts,
+                            interval, starttime, endtime,
+                            level=level, existence=existence,
+                            syslog=True)
+
+            self.logger.log(level, "Reading local logs")
+            return self._log_match(self, msg, id, n, tail, allmatch,
+                                   regexp, max_attempts, interval,
+                                   starttime, endtime, level=level,
+                                   existence=existence, syslog=False)
         else:
             _msg = "Log File to check is not set"
-            PtlLogMatchError(rc=1, rv=False, msg=_msg)
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
                          allmatch=False, regexp=False, max_attempts=None,
@@ -4424,35 +4415,39 @@ class PBSService(PBSObject):
         This function will return which log files to read
 
         :param hostname: name of host from where to get log messages
-        :return: int or None
+        :type hostname: str or None
+        :return: str or None
+        :raises PtlLogMatchError:
+                When the correct config for logging is not
+                found in pbs.conf
         """
         if hostname is None:
             hostname = socket.gethostname()
-        pbs_locallog = self.du.parse_pbs_config(
-                       hostname=hostname).get("PBS_LOCALLOG")
-        pbs_syslog = self.du.parse_pbs_config(
-                     hostname=hostname).get("PBS_SYSLOG")
+        pbs_config_data = self.du.parse_pbs_config(hostname=hostname)
+        pbs_locallog = pbs_config_data.get("PBS_LOCALLOG")
+        pbs_syslog = pbs_config_data.get("PBS_SYSLOG")
+
+        if pbs_locallog is None and pbs_syslog is None:
+            pbs_locallog = 1
 
         if pbs_syslog is None:
             pbs_syslog = 0
 
-        if pbs_locallog is None:
-            pbs_locallog = 1
-
-        # file_to_check=1 for syslog, file_to_check=2 for local,
-        # file_to_check=3 for both
-
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 0:
-            raise ValueError('logging should be present in atleast one file')
+            _msg = "All logging turned off in PBS"
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 1:
-            return 2
+            return "check_only_locallog"
 
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 0:
-            return 1
+            return "check_only_syslog"
 
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 1:
-            return 3
+            return "check_both"
+
+        _msg = "Something went wrong in _get_log_type fn"
+        raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
 
 class Comm(PBSService):
