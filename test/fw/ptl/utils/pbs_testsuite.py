@@ -723,6 +723,7 @@ class PBSTestSuite(unittest.TestCase):
                                        func=init_comm_func)
         if cls.comms:
             cls.comm = cls.comms.values()[0]
+        cls.server.comms = cls.comms
 
     @classmethod
     def init_schedulers(cls, init_sched_func=None, skip=None):
@@ -1168,39 +1169,12 @@ class PBSTestSuite(unittest.TestCase):
                 if restart_pbs:
                     # Restart all
                     server.pi.restart(server.hostname)
-                    rv = server.isUp()
-                    if not rv:
-                        self.logger.error('Server '
-                                          + comm.hostname
-                                          + ' is down')
-                        msg = 'Failed to restart server '
-                        msg += server.hostname
-                        self.assertTrue(rv, msg)
+                    self._check_daemons_on_server(server, "server")
                     if new_pbsconf["PBS_START_MOM"] == "1":
-                        rv = server.moms.values()[0].isUp()
-                        if not rv:
-                            self.logger.error('mom '
-                                              + server.moms.values()[0]
-                                              + ' is down')
-                            msg = 'Failed to restart mom '
-                            msg += server.moms.values()[0]
-                            self.assertTrue(rv, msg)
-                    rv = server.schedulers['default'].isUp()
-                    if not rv:
-                        self.logger.error('Scheduler is down')
-                        msg = 'Failed to restart scheduler '
-                        msg += server.scheduler.hostname
-                        self.assertTrue(rv, msg)
-                    if self.du.is_localhost(server.hostname):
-                        if new_pbsconf["PBS_START_COMM"] == "1":
-                            rv = self.comm.isUp()
-                            if not rv:
-                                self.logger.error('comm '
-                                                  + self.comm.hostname
-                                                  + ' is down')
-                                msg = 'Failed to restart comm '
-                                msg += self.comm.hostname
-                                self.assertTrue(rv, msg)
+                        self._check_daemons_on_server(server, "mom")
+                    self._check_daemons_on_server(server, "sched")
+                    if new_pbsconf["PBS_START_COMM"] == "1":
+                        self._check_daemons_on_server(server, "comm")
                 else:
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
@@ -1208,40 +1182,34 @@ class PBSTestSuite(unittest.TestCase):
                                         daemon=initcmd[0])
                         if initcmd[1] == "start":
                             if initcmd[0] == "server":
-                                rv = server.isUp()
-                                if not rv:
-                                    self.logger.error('Server '
-                                                      + comm.hostname
-                                                      + ' is down')
-                                    msg = 'Failed to restart server '
-                                    msg += server.hostname
-                                    self.assertTrue(rv, msg)
+                                self._check_daemons_on_server(server, "server")
                             if initcmd[0] == "sched":
-                                rv = server.schedulers['default'].isUp()
-                                if not rv:
-                                    self.logger.error('Scheduler is down')
-                                    msg = 'Failed to restart scheduler '
-                                    msg += server.scheduler.hostname
-                                    self.assertTrue(rv, msg)
+                                self._check_daemons_on_server(server, "sched")
                             if initcmd[0] == "mom":
-                                rv = server.moms.values()[0].isUp()
-                                if not rv:
-                                        self.logger.error('mom '
-                                                          + server.mom.hostname
-                                                          + ' is down')
-                                        msg = 'Failed to restart mom '
-                                        msg += server.mom.hostname
-                                        self.assertTrue(rv, msg)
+                                self._check_daemons_on_server(server, "mom")
                             if initcmd[0] == "comm":
-                                if self.du.is_localhost(server.hostname):
-                                    rv = self.comm.isUp()
-                                    if not rv:
-                                        self.logger.error('comm '
-                                                          + comm.hostname
-                                                          + ' is down')
-                                        msg = 'Failed to restart comm '
-                                        msg += comm.hostname
-                                        self.assertTrue(rv, msg)
+                                self._check_daemons_on_server(server, "comm")
+
+    def _check_daemons_on_server(self, server_obj, daemon_name):
+        """
+        Checks if specified daemon is up and running on server host
+        server_obj : server
+        daemon_name : server/sched/mom/comm
+        """
+        if daemon_name == "server":
+            if not server_obj.isUp():
+                self.fail("Server is not up")
+        elif daemon_name == "sched":
+            if not server_obj.schedulers['default'].isUp():
+                self.fail("Scheduler is not up")
+        elif daemon_name == "mom":
+            if not server_obj.moms.values()[0].isUp():
+                self.fail("Mom is not up")
+        elif daemon_name == "comm":
+            if not server_obj.comms.values()[0].isUp():
+                self.fail("Comm is not up")
+        else:
+            self.fail("Incorrect daemon specified")
 
     def revert_pbsconf(self):
         """
