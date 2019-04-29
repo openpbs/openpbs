@@ -78,7 +78,7 @@ sys.excepthook = trap_exceptions
 
 def usage():
     msg = """
-Usage: pbs_snapshot -o <path to existing staging directory> [OPTION]
+Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
 
     Take snapshot of a PBS system and optionally capture logs for diagnostics
 
