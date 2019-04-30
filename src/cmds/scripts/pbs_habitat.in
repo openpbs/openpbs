@@ -717,6 +717,24 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 		fi
 		${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 			create queue workq
+		EOF
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			tries=3
+			while [ $tries -ge 0 ]
+			do
+				sleep 2
+				${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+					create queue workq
+				EOF
+				ret=$?
+				if [ $ret -eq 0 ]; then
+					break
+				fi
+				tries=$((tries-1))
+			done
+		fi
+		${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 			set queue workq queue_type = Execution
 			set queue workq enabled = True
 			set queue workq started = True
