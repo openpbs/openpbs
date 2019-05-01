@@ -77,6 +77,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
 
+    @skipOnCpuSet
     def test_advance_reservation(self):
         """
         Test to submit an advanced reservation and submit jobs to that
@@ -88,21 +89,22 @@ class SmokeTest(PBSTestSuite):
         r = Reservation(TEST_USER)
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=4',
-             'reserve_start': now + 5,
-             'reserve_end': now + 105}
+             'reserve_start': now + 10,
+             'reserve_end': now + 110}
         r.set_attributes(a)
         rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
 
         # submit a normal job and an array job to the reservation
         a = {'Resource_List.select': '1:ncpus=1',
-             ATTR_q: rid.split('.')[0]}
+             ATTR_q: rid_q}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 
         a = {'Resource_List.select': '1:ncpus=1',
-             ATTR_q: rid.split('.')[0], ATTR_J: '1-2'}
+             ATTR_q: rid_q, ATTR_J: '1-2'}
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
 

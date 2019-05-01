@@ -866,7 +866,7 @@ create_events(server_info *sinfo)
 	 * Once the first non-timed event is reached, we're done
 	 */
 	all_resresv_len = count_array((void **)sinfo->all_resresv);
-	all_resresv_copy = (resource_resv **)malloc((all_resresv_len + 1) * sizeof(resource_resv *));
+	all_resresv_copy = malloc((all_resresv_len + 1) * sizeof(resource_resv *));
 	if (all_resresv_copy == NULL)
 		return 0;
 	for (i = 0; sinfo->all_resresv[i] != NULL; i++)
@@ -912,8 +912,8 @@ create_events(server_info *sinfo)
 			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
 					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);
 			if (te == NULL) {
-				free(all_resresv_copy);
-				return 0;
+				errflag++;
+				break;
 			}
 			events = add_timed_event(events, te);
 		}
