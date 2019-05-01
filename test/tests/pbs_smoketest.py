@@ -77,16 +77,41 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
 
+    @skipOnCpuSet
     def test_advance_reservation(self):
         """
-        Test to submit an advanced reservation
+        Test to submit an advanced reservation and submit jobs to that
+        reservation. Check if the reservation gets confimed and the jobs
+        inside the reservation starts running when the reservation runs.
         """
-        r = Reservation()
-        a = {'Resource_List.select': '1:ncpus=1'}
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        r = Reservation(TEST_USER)
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=4',
+             'reserve_start': now + 10,
+             'reserve_end': now + 110}
         r.set_attributes(a)
         rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
+
+        # submit a normal job and an array job to the reservation
+        a = {'Resource_List.select': '1:ncpus=1',
+             ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             ATTR_q: rid_q, ATTR_J: '1-2'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, interval=1)
+        self.server.expect(JOB, {'job_state': 'R'}, jid1)
+        self.server.expect(JOB, {'job_state': 'B'}, jid2)
 
     def test_standing_reservation(self):
         """
