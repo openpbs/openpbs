@@ -715,8 +715,20 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 				set server restrict_res_to_release_on_suspend = ncpus
 			EOF
 		fi
+		tries=3
+		while [ $tries -ge 0 ]
+		do
+			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+				create queue workq
+			EOF
+			ret=$?
+			if [ $ret -eq 0 ]; then
+				break
+			fi
+			tries=$((tries-1))
+			sleep 2
+		done
 		${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
-			create queue workq
 			set queue workq queue_type = Execution
 			set queue workq enabled = True
 			set queue workq started = True
