@@ -723,6 +723,7 @@ class PBSTestSuite(unittest.TestCase):
                                        func=init_comm_func)
         if cls.comms:
             cls.comm = cls.comms.values()[0]
+        cls.server.comms = cls.comms
 
     @classmethod
     def init_schedulers(cls, init_sched_func=None, skip=None):
@@ -989,6 +990,8 @@ class PBSTestSuite(unittest.TestCase):
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
                 comm.pbs_conf = new_pbsconf
                 comm.pi.initd(comm.hostname, "restart", daemon="comm")
+                if not comm.isUp():
+                    self.fail("comm is not up")
 
     def _revert_pbsconf_mom(self, primary_server, vals_to_set):
         """
@@ -1062,6 +1065,8 @@ class PBSTestSuite(unittest.TestCase):
                                        append=False)
                 mom.pbs_conf = new_pbsconf
                 mom.pi.initd(mom.hostname, "restart", daemon="mom")
+                if not mom.isUp():
+                    self.fail("Mom is not up")
 
     def _revert_pbsconf_server(self, vals_to_set):
         """
@@ -1164,11 +1169,47 @@ class PBSTestSuite(unittest.TestCase):
                 if restart_pbs:
                     # Restart all
                     server.pi.restart(server.hostname)
+                    self._check_daemons_on_server(server, "server")
+                    if new_pbsconf["PBS_START_MOM"] == "1":
+                        self._check_daemons_on_server(server, "mom")
+                    self._check_daemons_on_server(server, "sched")
+                    if new_pbsconf["PBS_START_COMM"] == "1":
+                        self._check_daemons_on_server(server, "comm")
                 else:
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
                         server.pi.initd(server.hostname, initcmd[1],
                                         daemon=initcmd[0])
+                        if initcmd[1] == "start":
+                            if initcmd[0] == "server":
+                                self._check_daemons_on_server(server, "server")
+                            if initcmd[0] == "sched":
+                                self._check_daemons_on_server(server, "sched")
+                            if initcmd[0] == "mom":
+                                self._check_daemons_on_server(server, "mom")
+                            if initcmd[0] == "comm":
+                                self._check_daemons_on_server(server, "comm")
+
+    def _check_daemons_on_server(self, server_obj, daemon_name):
+        """
+        Checks if specified daemon is up and running on server host
+        server_obj : server
+        daemon_name : server/sched/mom/comm
+        """
+        if daemon_name == "server":
+            if not server_obj.isUp():
+                self.fail("Server is not up")
+        elif daemon_name == "sched":
+            if not server_obj.schedulers['default'].isUp():
+                self.fail("Scheduler is not up")
+        elif daemon_name == "mom":
+            if not server_obj.moms.values()[0].isUp():
+                self.fail("Mom is not up")
+        elif daemon_name == "comm":
+            if not server_obj.comms.values()[0].isUp():
+                self.fail("Comm is not up")
+        else:
+            self.fail("Incorrect daemon specified")
 
     def revert_pbsconf(self):
         """
