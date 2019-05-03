@@ -315,21 +315,17 @@ class ObfuscateSnapshot(object):
                     attrval = attrval.strip()
 
                     # Check if this attribute needs to be deleted
-                    for attr in attrs_to_del:
-                        if attrname == attr:
-                            delete_line = True
-                            val_del = attrval
-                            break
+                    if attrname in attrs_to_del:
+                        delete_line = True
+                        val_del = attrval
 
                     if delete_line is True:
                         continue
 
                     # Check if this attribute needs to be obfuscated
-                    for attr in attrs_to_obf:
-                        if attrname == attr:
-                            val_obf = attrval
-                            key_obf = attrname
-                            break
+                    if attrname in attrs_to_obf:
+                        val_obf = attrval
+                        key_obf = attrname
 
                 if val_obf is None:
                     fdout.write(line)
@@ -455,13 +451,11 @@ class ObfuscateSnapshot(object):
         # will get obfuscated
         custom_rscs = []
         custrscs_path = os.path.join(snap_dir, "server_priv", "resourcedef")
-        with open(custrscs_path, "r") as fd:
-            for line in fd:
-                try:
+        if os.path.isfile(custrscs_path):
+            with open(custrscs_path, "r") as fd:
+                for line in fd:
                     rscs_name = line.split(" ", 1)[0]
-                except IndexError:
-                    continue
-                custom_rscs.append(rscs_name.strip())
+                    custom_rscs.append(rscs_name.strip())
         for rscs in custom_rscs:
             if rscs not in self.val_obf_map:
                 obf = self.bu.random_str(length=random.randint(8, 30))
@@ -480,7 +474,7 @@ class ObfuscateSnapshot(object):
         db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
         sched_logs = []
         for dirname in os.listdir(snap_dir):
-            if str(dirname).startswith(DFLT_SCHED_LOGS_PATH):
+            if dirname.startswith(DFLT_SCHED_LOGS_PATH):
                 dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
         dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs] + sched_logs

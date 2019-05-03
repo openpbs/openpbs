@@ -818,15 +818,14 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
 
         operator = str(OPER_USER) + '@*'
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {ATTR_operators: (INCR, operator)},
-                            sudo=True)
+                            {ATTR_operators: (INCR, operator)})
         real_values[ATTR_operators] = [operator]
 
         real_values[ATTR_SvrHost] = [self.server.hostname]
 
         # Create a queue with acls set
-        a = {ATTR_qtype: 'execution', ATTR_start: 't', ATTR_enable: 't',
-             ATTR_aclgren: 't', ATTR_aclgroup: TSTGRP0,
+        a = {ATTR_qtype: 'execution', ATTR_start: 'True', ATTR_enable: 'True',
+             ATTR_aclgren: 'True', ATTR_aclgroup: TSTGRP0,
              ATTR_acluser: TEST_USER}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
         real_values[ATTR_aclgroup] = [TSTGRP0]
