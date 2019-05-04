@@ -135,28 +135,41 @@ bhtiusabsdlg' % (os.environ['HOME'])
         self.server.manager(MGR_CMD_SET, NODE,
                             {'resources_available.ncpus': 2},
                             self.mom.shortname)
-        # submit a job with future time and should start whenever time hits
+        ret_msg = 'qsub: Failed to save job/resv, '\
+            'refer server logs for details'
         present_tm = int(time.time())
+        # submit a job with future time and should start whenever time hits
         future_tm = time.strftime(
             "%Y%m%d%H%M", time.localtime(
                 present_tm + 60))
-        qsub_cmd = [self.qsub_cmd, '-a', future_tm, '--', '/bin/sleep', '100']
-        rv = self.du.run_cmd(self.server.hostname, cmd=qsub_cmd)
-        if rv['rc'] != 0:
-            self.fail("ERROR in submitting a job with future time: %s" % rv)
-        self.server.expect(JOB, {'job_state': 'W'}, id=str(rv['out'][0]))
+        j1 = Job(TEST_USER, {ATTR_a: future_tm})
+        try:
+            jid_1 = self.server.submit(j1)
+        except PbsSubmitError as e:
+            if e.rc == 57:
+                self.assertFalse(e.msg[0], ret_msg)
+            else:
+                self.fail(
+                    "ERROR in submitting a job with future time: %s" %
+                    e.msg[0])
+        self.server.expect(JOB, {'job_state': 'W'}, id=jid_1)
         self.logger.info(
             'waiting for 60 seconds to run the job as it is a future job...')
         time.sleep(60)
-        self.server.expect(JOB, {'job_state': 'R'}, id=str(rv['out'][0]))
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1)
 
         # submit a job with past time and should start right away
         past_tm = time.strftime(
             "%Y%m%d%H%M", time.localtime(
                 present_tm - 3600))
-        qsub_cmd = [self.qsub_cmd, '-a', past_tm, '--', '/bin/sleep', '100']
-        ret_msg = 'Failed to save job/resv, refer server logs for details'
-        rv_1 = self.du.run_cmd(self.server.hostname, cmd=qsub_cmd)
-        if rv_1['rc'] != 0:
-            self.assertFalse(rv_1['err'][0], ret_msg)
-        self.server.expect(JOB, {'job_state': 'R'}, id=str(rv_1['out'][0]))
+        j2 = Job(TEST_USER, {ATTR_a: past_tm})
+        try:
+            jid_2 = self.server.submit(j2)
+        except PbsSubmitError as e:
+            if e.rc == 57:
+                self.assertFalse(e.msg[0], ret_msg)
+            else:
+                self.fail(
+                    "ERROR in submitting a job with past time: %s" %
+                    e.msg[0])
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)
