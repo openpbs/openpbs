@@ -383,7 +383,11 @@ job_save_db(job *pjob, int updatetype)
 		updatetype = SAVEJOB_FULL;
 		sprintf(log_buffer,"job has already been saved earlier as a new job, thus changing to SAVEJOB_FULL");
 		log_joberr(-1, "job_save_db", log_buffer,  pjob->ji_qs.ji_jobid);
+
 #ifndef WIN32
+#ifdef __GNUC__
+/* backtrace() functionality provided in glibc since from version 2.1 */
+#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
 		/* let's print the backtrace to identify the faulty scenario */
 		int total_frames; /* total number of frames returned by backtrace() */
 		int frame_num;
@@ -415,7 +419,9 @@ job_save_db(job *pjob, int updatetype)
 			sprintf(log_buffer,"backtrace() has not returned any address, might be corrupted");
 			log_joberr(-1, "job_save_db", log_buffer,  pjob->ji_qs.ji_jobid);
 		}
-#endif
+#endif /*-- GLIBC --*/
+#endif /*-- GNUC --*/
+#endif /*-- WIN32 --*/
 	}
 
 	/* if ji_modified is set, ie an attribute changed, then update mtime */
