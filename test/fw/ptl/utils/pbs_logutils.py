@@ -1844,7 +1844,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
         requested
         """
         if nodesfile or jobsfile:
-            self._server = Server(diagmap={NODE: nodesfile, JOB: jobsfile})
+            self._server = Server(snapmap={NODE: nodesfile, JOB: jobsfile})
         else:
             self._server = Server(hostname)
 

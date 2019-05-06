@@ -55,6 +55,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
@@ -66,7 +68,9 @@ def usage():
     msg += ['-l <log level>: one of DEBUG, INFO, ERROR, FATAL, WARNING\n']
     msg += ['\n']
     msg += ['--log-conf=<file>: logging config file\n']
-    msg += ['--as-diag=<pbs_diag>: Mimic pbs_diag snapshot.\n']
+    msg += ['--snap=<pbs_snapshot>: Mimic pbs_snapshot\n']
+    msg += ['\t --acct-logs=<path to acct logs>: path to accounting logs'
+            ', used to create users & groups\n']
     msg += ['--revert-config: revert services to their default ' +
             'configuration\n']
     msg += ['\t --scheduler: operate on scheduler\n']
@@ -241,6 +245,7 @@ def delete_users_groups():
         du.groupdel(k, logerr=False)
     return True
 
+
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
@@ -293,8 +298,9 @@ if __name__ == '__main__':
     import_jobs = False
     home_prefix = 'PBS_m'
     conf_prefix = 'pbs.conf_m'
+    acct_logs = None
 
-    asdiag = None
+    as_snap = None
 
     process_obj = []
     vnodify_args = "a:d:f:N:n:o:P:p:M:l:r:v:Asu"
@@ -304,12 +310,13 @@ if __name__ == '__main__':
              "switch-version=", "log-conf=", "check-ug", "del-hooks=",
              "del-queues=", "version", "make-ug", "multi-mom", "clienthost=",
              "home-prefix=", "conf-prefix=", "serverhost=", "init-port=",
-             "step-port=", "as-diag=", "create=", "restart=", "stop="]
+             "step-port=", "snap=", "acct-logs=", "create=", "restart=",
+             "stop="]
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], vnodify_args + generic_args,
                                    largs)
-    except:
+    except getopt.GetoptError:
         usage()
         sys.exit(1)
 
@@ -361,8 +368,16 @@ if __name__ == '__main__':
             delhooks = eval(val)
         elif o == '--del-queues':
             delqueues = eval(val)
-        elif o == '--as-diag':
-            asdiag = CliUtils.expand_abs_path(val)
+        elif o == '--snap':
+            as_snap = CliUtils.expand_abs_path(val)
+        elif o == '--acct-logs':
+            confirm = raw_input("--acct-logs will create users & groups "
+                                "from accounting log trace\n"
+                                "Ok to do so? (Y/N)")
+            if confirm in ("Y", "y"):
+                acct_logs = CliUtils.expand_abs_path(val)
+            else:
+                acct_logs = None
         elif o == '--import-jobs':
             import_jobs = True
         elif o == '--log-conf':
@@ -509,9 +524,9 @@ if __name__ == '__main__':
                 if ret['rc'] != 0:
                     logging.error(ret['err'])
                 del pi
-    elif asdiag is not None:
+    elif as_snap is not None:
         if os.getuid() != 0:
             logging.error('Must be run as root')
             sys.exit(1)
-        Server(diag=asdiag).clusterize(conf_file, hosts,
-                                       import_jobs=import_jobs)
+        Server(snap=as_snap).clusterize(conf_file, hosts, acct_logs=acct_logs,
+                                        import_jobs=import_jobs)

@@ -78,6 +78,7 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
+from ptl.utils.pbs_dshutils import PtlUtilError
 
 # suppress logging exceptions
 logging.raiseExceptions = False
@@ -256,7 +257,8 @@ class PtlConfig(object):
         if conf is None:
             conf = os.environ.get('PTL_CONF_FILE', '/etc/ptl.conf')
         try:
-            lines = open(conf).readlines()
+            with open(conf) as f:
+                lines = f.readlines()
         except IOError:
             lines = []
         for line in lines:
@@ -1575,9 +1577,8 @@ class BatchUtils(object):
         if d != '' and not os.path.isdir(d):
             os.makedirs(d)
         try:
-            f = open(filename, mode)
-            self.display_dictlist(l, f)
-            f.close()
+            with open(filename, mode) as f:
+                self.display_dictlist(l, f)
         except:
             self.logger.error('error writing to file ' + filename)
             raise
@@ -1592,22 +1593,21 @@ class BatchUtils(object):
         """
         return self.dictlist_to_file(l, writer)
 
-    def file_to_dictlist(self, file=None, attribs=None, id=None):
+    def file_to_dictlist(self, fpath=None, attribs=None, id=None):
         """
         Convert a file to a batch dictlist format
 
-        :param file: File to be converted
-        :type file: str
+        :param fpath: File to be converted
+        :type fpath: str
         :param attribs: Attributes
         :returns: File converted to a batch dictlist format
         """
-        if file is None:
+        if fpath is None:
             return []
 
         try:
-            f = open(file, 'r')
-            lines = f.readlines()
-            f.close()
+            with open(fpath, 'r') as f:
+                lines = f.readlines()
         except Exception, e:
             self.logger.error('error converting list of dictionaries to ' +
                               'file ' + str(e))
@@ -1615,21 +1615,20 @@ class BatchUtils(object):
 
         return self.convert_to_dictlist(lines, attribs, id=id)
 
-    def file_to_vnodedef(self, file=None):
+    def file_to_vnodedef(self, fpath=None):
         """
         Convert a file output of pbsnodes -av to a vnode
         definition format
 
-        :param file: File to be converted
-        :type sile: str
+        :param fpath: File to be converted
+        :type fpath: str
         :returns: Vnode definition format
         """
-        if file is None:
+        if fpath is None:
             return None
         try:
-            f = open(file, 'r')
-            lines = f.readlines()
-            f.close()
+            with open(fpath, 'r') as f:
+                lines = f.readlines()
         except:
             self.logger.error('error converting nodes to vnode def')
             return None
@@ -1919,42 +1918,40 @@ class BatchUtils(object):
 
         return head_bs
 
-    def file_to_batch(self, file=None):
+    def file_to_batch(self, fpath=None):
         """
         Convert a file to batch format
 
-        :param file: File to be converted
-        :type file: str or None
+        :param fpath: File to be converted
+        :type fpath: str or None
         :returns: File converted into batch format
         """
-        if file is None:
+        if fpath is None:
             return None
 
         try:
-            f = open(file, 'r')
-            l = f.readlines()
-            f.close()
+            with open(fpath, 'r') as f:
+                lines = f.readlines()
         except:
-            self.logger.error('error converting file ' + file + ' to batch')
+            self.logger.error('error converting file ' + fpath + ' to batch')
             return None
 
-        return self.convert_to_batch(l)
+        return self.convert_to_batch(lines)
 
-    def batch_to_file(self, bs=None, file=None):
+    def batch_to_file(self, bs=None, fpath=None):
         """
         Write a batch object to file
 
         :param bs: Batch status
-        :param file: File to which batch object is to be written
-        :type file: str
+        :param fpath: File to which batch object is to be written
+        :type fpath: str
         """
-        if bs is None or file is None:
+        if bs is None or fpath is None:
             return
 
         try:
-            f = open(file, 'w')
-            self.display_batch_status(bs, writer=f)
-            f.close()
+            with open(fpath, 'w') as f:
+                self.display_batch_status(bs, writer=f)
         except:
             self.logger.error('error converting batch status to file')
 
@@ -3434,35 +3431,41 @@ class PBSService(PBSObject):
     :param pbsconf_file: Optional path to the pbs configuration
                          file
     :type pbsconf_file: str or None
-    :param diagmap: A dictionary of PBS objects (node,server,etc)
-                    to mapped files from PBS diag directory
-    :type diagmap: Dictionary
-    :param diag: path to PBS diag directory
-                 (This will overrides diagmap)
-    :type diag: str or None
+    :param snapmap: A dictionary of PBS objects (node,server,etc)
+                    to mapped files from PBS snapshot directory
+    :type snapmap: Dictionary
+    :param snap: path to PBS snap directory
+                 (This will override snapmap)
+    :type snap: str or None
     """
     du = DshUtils()
     pu = ProcUtils()
 
-    def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
-                 diagmap={}, diag=None):
+    def __init__(self, name=None, attrs=None, defaults=None, pbsconf_file=None,
+                 snapmap=None, snap=None):
+        if attrs is None:
+            attrs = {}
+        if defaults is None:
+            defaults = {}
+        if snapmap is None:
+            snapmap = {}
         if name is None:
             self.hostname = socket.gethostname()
         else:
             self.hostname = name
-        if diag:
-            self.diagmap = self._load_from_diag(diag)
-            self.has_diag = True
-            self.diag = diag
-        elif len(diagmap) > 0:
-            self.diagmap = diagmap
-            self.diag = None
-            self.has_diag = True
+        if snap:
+            self.snapmap = self._load_from_snap(snap)
+            self.has_snap = True
+            self.snap = snap
+        elif len(snapmap) > 0:
+            self.snapmap = snapmap
+            self.snap = None
+            self.has_snap = True
         else:
-            self.diagmap = {}
-            self.diag = None
-            self.has_diag = False
-        if not self.has_diag:
+            self.snapmap = {}
+            self.snap = None
+            self.has_snap = False
+        if not self.has_snap:
             try:
                 self.fqdn = socket.gethostbyaddr(self.hostname)[0]
                 if self.hostname != self.fqdn:
@@ -3488,11 +3491,11 @@ class PBSService(PBSObject):
 
         PBSObject.__init__(self, name, attrs, defaults)
 
-        if not self.has_diag:
+        if not self.has_snap:
             if not self.du.is_localhost(self.hostname):
                 self._is_local = False
 
-        if pbsconf_file is None and not self.has_diag:
+        if pbsconf_file is None and not self.has_snap:
             self.pbs_conf_file = self.du.get_pbs_conf_file(name)
         else:
             self.pbs_conf_file = pbsconf_file
@@ -3509,16 +3512,16 @@ class PBSService(PBSObject):
         # config file is processed
         self.pbs_server_name = self.hostname
 
-        # If diag is given then bypass parsing pbs.conf
-        if self.has_diag:
-            if diag is None:
-                t = 'pbs_diag_%s' % (time.strftime("%y%m%d_%H%M%S"))
-                self.diag = os.path.join(self.du.get_tempdir(), t)
-            self.pbs_conf['PBS_HOME'] = self.diag
-            self.pbs_conf['PBS_EXEC'] = self.diag
+        # If snap is given then bypass parsing pbs.conf
+        if self.has_snap:
+            if snap is None:
+                t = 'snapshot_%s' % (time.strftime("%y%m%d_%H%M%S"))
+                self.snap = os.path.join(self.du.get_tempdir(), t)
+            self.pbs_conf['PBS_HOME'] = self.snap
+            self.pbs_conf['PBS_EXEC'] = self.snap
             self.pbs_conf['PBS_SERVER'] = self.hostname
-            m = re.match('.*pbs_diag_(?P<datetime>\d{6,6}_\d{6,6}).*',
-                         self.diag)
+            m = re.match('.*snapshot_(?P<datetime>\d{6,6}_\d{6,6}).*',
+                         self.snap)
             if m:
                 tm = time.strptime(m.group('datetime'), "%y%m%d_%H%M%S")
                 self.ctime = int(time.mktime(tm))
@@ -3535,39 +3538,26 @@ class PBSService(PBSObject):
 
         self.init_logfile_path(self.pbs_conf)
 
-    def _load_from_diag(self, diag):
-        diagmap = {}
-        diagmap[SERVER] = os.path.join(diag, 'qstat_Bf.out')
-        diagmap[VNODE] = os.path.join(diag, 'pbsnodes_va.out')
-        diagmap[QUEUE] = os.path.join(diag, 'qstat_Qf.out')
-        diagmap[JOB] = os.path.join(diag, 'qstat_tf.out')
-        if not os.path.isfile(diagmap[JOB]):
-            diagmap[JOB] = os.path.join(diag, 'qstat_f.out')
-        diagmap[RESV] = os.path.join(diag, 'pbs_rstat_f.out')
-        diagmap[SCHED] = os.path.join(diag, 'qmgr_psched.out')
-        diagmap[HOOK] = []
-        if (os.path.isdir(os.path.join(diag, 'server_priv')) and
-                os.path.isdir(os.path.join(diag, 'server_priv', 'hooks'))):
-            _ld = os.listdir(os.path.join(diag, 'server_priv', 'hooks'))
+    def _load_from_snap(self, snap):
+        snapmap = {}
+        snapmap[SERVER] = os.path.join(snap, 'server', 'qstat_Bf.out')
+        snapmap[VNODE] = os.path.join(snap, 'node', 'pbsnodes_va.out')
+        snapmap[QUEUE] = os.path.join(snap, 'server', 'qstat_Qf.out')
+        snapmap[JOB] = os.path.join(snap, 'job', 'qstat_tf.out')
+        if not os.path.isfile(snapmap[JOB]):
+            snapmap[JOB] = os.path.join(snap, 'job', 'qstat_f.out')
+        snapmap[RESV] = os.path.join(snap, 'reservation', 'pbs_rstat_f.out')
+        snapmap[SCHED] = os.path.join(snap, 'scheduler', 'qmgr_psched.out')
+        snapmap[HOOK] = []
+        if (os.path.isdir(os.path.join(snap, 'server_priv')) and
+                os.path.isdir(os.path.join(snap, 'server_priv', 'hooks'))):
+            _ld = os.listdir(os.path.join(snap, 'server_priv', 'hooks'))
             for f in _ld:
                 if f.endswith('.HK'):
-                    diagmap[HOOK].append(
-                        os.path.join(diag, 'server_priv', 'hooks', f))
+                    snapmap[HOOK].append(
+                        os.path.join(snap, 'server_priv', 'hooks', f))
 
-        # Format of qmgr_psched.out differs from Batch Status, we transform
-        # it to go through the common batch status parsing routines
-        if os.path.isfile(diagmap[SCHED]):
-            f = open(os.path.join(diag, 'ptl_qstat_Sched.out'), 'w')
-            lines = open(diagmap[SCHED])
-            f.write("Sched \n")
-            for l in lines:
-                recs = l.split()
-                f.write("".join(recs[2:5]) + "\n")
-            f.close()
-            diagmap[SCHED] = os.path.join(diag, 'ptl_qstat_Sched.out')
-        else:
-            diagmap[SCHED] = None
-        return diagmap
+        return snapmap
 
     def init_logfile_path(self, conf=None):
         """
@@ -4247,14 +4237,13 @@ class PBSService(PBSObject):
         """
         if os.path.isfile(infile):
             conf = {}
-            f = open(infile, 'r')
-            # load all objects from the Pickled file
-            while True:
-                try:
-                    conf = cPickle.load(f)
-                except:
-                    break
-            f.close()
+            with open(infile, 'r') as f:
+                # load all objects from the Pickled file
+                while True:
+                    try:
+                        conf = cPickle.load(f)
+                    except:
+                        break
 
             if objtype and objtype in conf:
                 conf = conf[objtype]
@@ -4328,11 +4317,11 @@ class Comm(PBSService):
     :param pbsconf_file: path to config file to parse for PBS_HOME,
                          PBS_EXEC, etc
     :type pbsconf_file: str or None
-    :param diagmap: A dictionary of PBS objects (node,server,etc) to
-                    mapped files from PBS diag directory
-    :type diagmap: dictionary
-    :param diag: path to PBS diag directory (This will override diagmap)
-    :type diag: str or None
+    :param snapmap: A dictionary of PBS objects (node,server,etc) to
+                    mapped files from PBS snap directory
+    :type snapmap: dictionary
+    :param snap: path to PBS snap directory (This will override snapmap)
+    :type snap: str or None
     :param server: A PBS server instance to which this Comm is associated
     :type server: str
     :param db_access: set to either file containing credentials to DB access or
@@ -4342,21 +4331,21 @@ class Comm(PBSService):
         """
     dflt_attributes = {}
 
-    def __init__(self, name=None, attrs={}, pbsconf_file=None, diagmap={},
-                 diag=None, server=None, db_access=None):
+    def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
+                 snap=None, server=None, db_access=None):
         self.logger = logging.getLogger(__name__)
         if server is not None:
             self.server = server
-            if diag is None and self.server.diag is not None:
-                diag = self.server.diag
-            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
-                diagmap = self.server.diagmap
+            if snap is None and self.server.snap is not None:
+                snap = self.server.snap
+            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+                snapmap = self.server.snapmap
         else:
             self.server = Server(name, pbsconf_file=pbsconf_file,
-                                 db_access=db_access, diag=diag,
-                                 diagmap=diagmap)
+                                 db_access=db_access, snap=snap,
+                                 snapmap=snapmap)
         PBSService.__init__(self, name, attrs, self.dflt_attributes,
-                            pbsconf_file, diagmap, diag)
+                            pbsconf_file, snapmap, snap)
         _m = ['Comm ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -4555,12 +4544,12 @@ class Server(PBSService):
     :param pbsconf_file: path to config file to parse for PBS_HOME,
                          PBS_EXEC, etc
     :type pbsconf_file: str
-    :param diagmap: A dictionary of PBS objects (node,server,etc)
-                    to mapped files from PBS diag directory
-    :type diagmap: Dictionary
-    :param diag: path to PBS diag directory (This will overrides
-                 diagmap)
-    :type diag: str
+    :param snapmap: A dictionary of PBS objects (node,server,etc)
+                    to mapped files from PBS snap directory
+    :type snapmap: Dictionary
+    :param snap: path to PBS snap directory (This will overrides
+                 snapmap)
+    :type snap: str
     :param client: The host to use as client for CLI queries.
                    Defaults to the local hostname.
     :type client: str
@@ -4598,7 +4587,7 @@ class Server(PBSService):
     actions = ExpectActions()
 
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
-                 diagmap={}, diag=None, client=None, client_pbsconf_file=None,
+                 snapmap={}, snap=None, client=None, client_pbsconf_file=None,
                  db_access=None, stat=True):
         self.jobs = {}
         self.nodes = {}
@@ -4630,8 +4619,8 @@ class Server(PBSService):
         self.pexpect_timeout = 15
         self.pexpect_sleep_time = .1
 
-        PBSService.__init__(self, name, attrs, defaults, pbsconf_file, diagmap,
-                            diag)
+        PBSService.__init__(self, name, attrs, defaults, pbsconf_file, snapmap,
+                            snap)
         _m = ['server ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -4812,7 +4801,7 @@ class Server(PBSService):
                                   'API submission is not available')
                 return PTL_CLI
         elif mode == PTL_CLI:
-            if ((not self.has_diag) and
+            if ((not self.has_snap) and
                 not os.path.isdir(os.path.join(self.client_conf['PBS_EXEC'],
                                                'bin'))):
                 self.logger.error(self.logprefix +
@@ -4859,7 +4848,7 @@ class Server(PBSService):
         """
         returns ``True`` if server is up and ``False`` otherwise
         """
-        if self.has_diag:
+        if self.has_snap:
             return True
         i = 0
         op_mode = self.get_op_mode()
@@ -5249,9 +5238,8 @@ class Server(PBSService):
             conf['qmgr_print_hook'] = ret['out']
 
         try:
-            f = open(outfile, mode)
-            cPickle.dump(sconf, f)
-            f.close()
+            with open(outfile, mode) as f:
+                cPickle.dump(sconf, f)
         except:
             self.logger.error('Error processing file ' + outfile)
             return False
@@ -5364,11 +5352,11 @@ class Server(PBSService):
 
         if not isinstance(db_access, dict):
             try:
-                f = open(db_access, 'r')
+                with open(db_access, 'r') as f:
+                    lines = f.readlines()
             except IOError:
                 self.logger.error('Unable to access ' + db_access)
                 return None
-            lines = f.readlines()
             db_access = {}
             for line in lines:
                 (k, v) = line.split('=')
@@ -5459,9 +5447,9 @@ class Server(PBSService):
                resolve_indirectness=False, logerr=True):
         """
         Stat any PBS object ``[queue, server, node, hook, job,
-        resv, sched]``.If the Server is setup from diag input,
-        see diag or diagmap member, the status calls are routed
-        directly to the data on files from diag.
+        resv, sched]``.If the Server is setup from snap input,
+        see snap or snapmap member, the status calls are routed
+        directly to the data on files from snap.
 
         The server can be queried either through the 'qstat'
         command line tool or through the wrapped PBS IFL api,
@@ -5551,10 +5539,10 @@ class Server(PBSService):
             bsl = self.status_db(obj_type, attrib, id, db_access=db_access,
                                  logerr=logerr)
 
-        # 4- Serve data from diag files
-        elif obj_type in self.diagmap:
+        # 4- Serve data from snap files
+        elif obj_type in self.snapmap:
             if obj_type in (HOOK, PBS_HOOK):
-                for f in self.diagmap[obj_type]:
+                for f in self.snapmap[obj_type]:
                     _b = self.utils.file_to_dictlist(f, attrib)
                     if _b and 'hook_name' in _b[0]:
                         _b[0]['id'] = _b[0]['hook_name']
@@ -5563,7 +5551,7 @@ class Server(PBSService):
                     if id is None or id == _b[0]['id']:
                         bsl.extend(_b)
             else:
-                bsl = self.utils.file_to_dictlist(self.diagmap[obj_type],
+                bsl = self.utils.file_to_dictlist(self.snapmap[obj_type],
                                                   attrib, id=id)
         # 6- Stat using PBS CLI commands
         elif self.get_op_mode() == PTL_CLI:
@@ -7256,7 +7244,7 @@ class Server(PBSService):
             prefix += ' with location = %s' % (location)
         self.logger.info(prefix)
 
-        if self.has_diag:
+        if self.has_snap:
             return 0
 
         c = None
@@ -7426,7 +7414,7 @@ class Server(PBSService):
 
         self.logger.info(prefix)
 
-        if self.has_diag:
+        if self.has_snap:
             return 0
 
         c = None
@@ -7682,7 +7670,7 @@ class Server(PBSService):
 
         :returns: The resources as a dictionary
         """
-        if not self.has_diag:
+        if not self.has_snap:
             self.manager(MGR_CMD_LIST, RSC)
         return self.resources
 
@@ -7705,7 +7693,7 @@ class Server(PBSService):
                             Server.
         """
         self.parse_resources()
-        if not self.has_diag:
+        if not self.has_snap:
             if name in self.resources:
                 self.manager(MGR_CMD_DELETE, RSC, id=name)
 
@@ -8487,7 +8475,7 @@ class Server(PBSService):
                 if id in self.nodes:
                     self.nodes[id].attributes.update(binfo)
                 else:
-                    self.nodes[id] = MoM(id, binfo, diagmap={NODE: None},
+                    self.nodes[id] = MoM(id, binfo, snapmap={NODE: None},
                                          server=self)
                 obj = self.nodes[id]
             elif obj_type == SERVER:
@@ -8528,19 +8516,19 @@ class Server(PBSService):
                         hostname = self.hostname
                     else:
                         hostname = binfo['sched_host']
-                    if SCHED in self.diagmap:
-                        diag = self.diag
-                        diagmap = self.diagmap
+                    if SCHED in self.snapmap:
+                        snap = self.snap
+                        snapmap = self.snapmap
                     else:
-                        diag = None
-                        diagmap = {}
+                        snap = None
+                        snapmap = {}
                     spriv = None
                     if 'sched_priv' in binfo:
                         spriv = binfo['sched_priv']
                     self.schedulers[id] = Scheduler(hostname=hostname,
                                                     server=self,
-                                                    diag=diag,
-                                                    diagmap=diagmap,
+                                                    snap=snap,
+                                                    snapmap=snapmap,
                                                     id=id,
                                                     sched_priv=spriv)
                     self.schedulers[id].attributes.update(binfo)
@@ -10156,13 +10144,13 @@ class Server(PBSService):
 
         return all_stmts
 
-    def clusterize(self, conf_file=None, hosts=None, import_jobs=False,
-                   db_creds_file=None):
+    def clusterize(self, conf_file=None, hosts=None, acct_logs=None,
+                   import_jobs=False, db_creds_file=None):
         """
-        Mimic a ``pbs_diag`` snapshot onto a set of hosts running
+        Mimic a ``pbs_snapshot`` snapshot onto a set of hosts running
         a PBS ``server``,``scheduler``, and ``MoM``.
 
-        This method clones the following information from the diag:
+        This method clones the following information from the snap:
 
         ``Server attributes``
         ``Server resourcedef``
@@ -10181,14 +10169,14 @@ class Server(PBSService):
         Jobs are copied over only if import_jobs is True, see below
         for details
 
-        :param asdiag: Path to the pbs_diag snapshot to use
-        :type asdiag: str
         :param conf_file: Configuration file for the MoM instance
-        :param hosts: List of hosts on which to clone the diag
+        :param hosts: List of hosts on which to clone the snap
                       snapshot
         :type hosts: List
+        :param acct_logs: path to accounting logs
+        :type acct_logs str
         :param include_jobs: [Experimental] if True jobs from the
-                             pbs_diag are imported into the host's
+                             pbs_snapshot are imported into the host's
                              database. There are several caveats to
                              this option:
                              The scripts are not imported
@@ -10203,13 +10191,54 @@ class Server(PBSService):
                               to access the DB
         :type db_creds_file: str or None
         """
-        if not self.has_diag:
+        if not self.has_snap:
             return
         if hosts is None:
             return
+
+        # Create users & groups (need to associate users to groups)
+        if acct_logs is not None:
+            self.logger.info("Parsing accounting logs to find "
+                             "users & groups to create")
+            groups = set()
+            users = {}
+            for name in os.listdir(acct_logs):
+                fpath = os.path.join(acct_logs, name)
+                with open(fpath, "r") as fd:
+                    for line in fd:
+                        rec_list = line.split(";", 3)
+                        if len(rec_list) < 4 or rec_list[1] != "E":
+                            continue
+                        try:
+                            uname = rec_list[3].split(
+                                "user=")[1].split()[0]
+                            if uname not in users:
+                                users[uname] = set()
+                            gname = rec_list[3].split(
+                                "group=")[1].split()[0]
+                            users[uname].add(gname)
+                            groups.add(gname)
+                        except IndexError:
+                            continue
+            # Create groups first
+            for grp in groups:
+                try:
+                    self.du.groupadd(name=grp)
+                except PtlUtilError as e:
+                    if "already exists" not in e.msg[0]:
+                        raise
+            # Now create users and add them to their associated groups
+            for user, u_grps in users.iteritems():
+                try:
+                    self.du.useradd(name=user, groups=list(u_grps))
+                except PtlUtilError as e:
+                    if "already exists" not in e.msg[0]:
+                        raise
+
         for h in hosts:
             svr = Server(h)
-            sched = Scheduler(server=svr, diag=self.diag, diagmap=self.diagmap)
+            sched = Scheduler(server=svr, snap=self.snap,
+                              snapmap=self.snapmap)
             try:
                 svr.manager(MGR_CMD_DELETE, NODE, None, id="")
             except:
@@ -10217,34 +10246,40 @@ class Server(PBSService):
             svr.revert_to_defaults(delqueues=True, delhooks=True)
             local = svr.pbs_conf['PBS_HOME']
 
-            diag_rdef = os.path.join(self.diag, 'server_priv', 'resourcedef')
-            diag_sc = os.path.join(self.diag, 'sched_priv', 'sched_config')
-            diag_rg = os.path.join(self.diag, 'sched_priv', 'resource_group')
-            diag_hldy = os.path.join(self.diag, 'sched_priv', 'holidays')
-            nodes = os.path.join(self.diag, 'pbsnodes_va.out')
-            diag_hooks = os.path.join(self.diag, 'qmgr_ph.out')
-            diag_ps = os.path.join(self.diag, 'qmgr_ps.out')
+            snap_rdef = os.path.join(self.snap, 'server_priv', 'resourcedef')
+            snap_sc = os.path.join(self.snap, 'sched_priv', 'sched_config')
+            snap_rg = os.path.join(self.snap, 'sched_priv', 'resource_group')
+            snap_hldy = os.path.join(self.snap, 'sched_priv', 'holidays')
+            nodes = os.path.join(self.snap, 'node', 'pbsnodes_va.out')
+            snap_hooks = os.path.join(self.snap, 'hook',
+                                      'qmgr_ph_default.out')
+            snap_ps = os.path.join(self.snap, 'server', 'qmgr_ps.out')
+            snap_psched = os.path.join(self.snap, 'scheduler',
+                                       'qmgr_psched.out')
+            snap_pq = os.path.join(self.snap, 'server', 'qmgr_pq.out')
 
             local_rdef = os.path.join(local, 'server_priv', 'resourcedef')
             local_sc = os.path.join(local, 'sched_priv', 'sched_config')
             local_rg = os.path.join(local, 'sched_priv', 'resource_group')
             local_hldy = os.path.join(local, 'sched_priv', 'holidays')
 
-            _fcopy = [(diag_rdef, local_rdef), (diag_sc, local_sc),
-                      (diag_rg, local_rg), (diag_hldy, local_hldy)]
+            _fcopy = [(snap_rdef, local_rdef), (snap_sc, local_sc),
+                      (snap_rg, local_rg), (snap_hldy, local_hldy)]
 
             # Restart since resourcedef may have changed
             svr.restart()
 
-            if os.path.isfile(diag_ps):
-                tmp_ps = open(diag_ps)
-                cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')]
-                self.du.run_cmd(h, cmd, stdin=tmp_ps, sudo=True, logerr=False)
-                tmp_ps.close()
+            if os.path.isfile(snap_ps):
+                with open(snap_ps) as tmp_ps:
+                    cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qmgr')]
+                    self.du.run_cmd(h, cmd, stdin=tmp_ps, sudo=True,
+                                    logerr=False)
+            else:
+                self.logger.error("server information not found in snapshot")
 
             # Unset any site-sensitive attributes
-            for a in ['pbs_license_info', 'manager', 'operators',
-                      'mail_from', 'acl_roots', 'acl_hosts']:
+            for a in ['pbs_license_info', 'mail_from', 'acl_hosts']:
                 try:
                     svr.manager(MGR_CMD_UNSET, SERVER, a, sudo=True)
                 except:
@@ -10255,22 +10290,27 @@ class Server(PBSService):
                     self.logger.info('copying ' + d + ' to ' + l)
                     self.du.run_copy(h, src=d, dest=l, sudo=True)
 
-            diag_sched = self.status(SCHED)
-            for ds in diag_sched:
-                for k, v in ds.items():
-                    if k != 'id':
-                        try:
-                            svr.manager(MGR_CMD_SET, SCHED, {k: v},
-                                        logerr=False)
-                        except PbsManagerError:
-                            self.logger.warning(
-                                'Skipping sched attribute ' + k)
-            sched.signal('-HUP')
+            if os.path.isfile(snap_pq):
+                with open(snap_pq) as tmp_pq:
+                    cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qmgr')]
+                    self.du.run_cmd(h, cmd, stdin=tmp_pq, sudo=True,
+                                    logerr=False)
+            else:
+                self.logger.error("queue information not found in snapshot")
+
+            if os.path.isfile(snap_psched):
+                with open(snap_psched) as tmp_psched:
+                    cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qmgr')]
+                    self.du.run_cmd(h, cmd, stdin=tmp_psched, sudo=True,
+                                    logerr=False)
+            else:
+                self.logger.error("sched information not found in snapshot")
 
             if os.path.isfile(nodes):
-                f = open(nodes)
-                lines = f.readlines()
-                f.close()
+                with open(nodes) as f:
+                    lines = f.readlines()
                 dl = self.utils.convert_to_dictlist(lines)
                 vdef = self.utils.dictlist_to_vnodedef(dl)
                 if vdef:
@@ -10295,16 +10335,24 @@ class Server(PBSService):
                 svr.expect(NODE, {'state=free': (GE, len(dl))}, interval=3)
                 for k, v in qtoset.items():
                     svr.manager(MGR_CMD_SET, NODE, {'queue': k}, id=v)
+            else:
+                self.logger.error("nodes information not found in snapshot")
 
             # populate hooks
-            if os.path.isfile(diag_hooks):
-                tmp_hook = open(diag_hooks)
-                cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')]
-                self.du.run_cmd(h, cmd, stdin=tmp_hook, sudo=True)
-                tmp_hook.close()
+            if os.path.isfile(snap_hooks):
+                hooks = svr.status(HOOK, level=logging.DEBUG)
+                hooks = [hk['id'] for hk in hooks]
+                if len(hooks) > 0:
+                    svr.manager(MGR_CMD_DELETE, HOOK, id=hooks)
+                with open(snap_hooks) as tmp_hook:
+                    cmd = [os.path.join(svr.pbs_conf['PBS_EXEC'], 'bin',
+                                        'qmgr')]
+                    self.du.run_cmd(h, cmd, stdin=tmp_hook, sudo=True)
+            else:
+                self.logger.error("hooks information not found in snapshot")
 
             # import jobs
-            if import_jobs is not None:
+            if import_jobs:
                 jobs = self.status(JOB)
                 sql_stmt = self.__insert_jobs_in_db(jobs, h)
                 print "\n".join(sql_stmt)
@@ -10469,12 +10517,12 @@ class Scheduler(PBSService):
                    is associated
     :param pbsconf_file: path to a PBS configuration file
     :type pbsconf_file: str or None
-    :param diagmap: A dictionary of PBS objects (node,server,etc)
-                    to mapped files from PBS diag directory
-    :type diagmap: Dictionary
-    :param diag: path to PBS diag directory (This will overrides
-                 diagmap)
-    :type diag: str or None
+    :param snapmap: A dictionary of PBS objects (node,server,etc)
+                    to mapped files from PBS snap directory
+    :type snapmap: Dictionary
+    :param snap: path to PBS snap directory (This will overrides
+                 snapmap)
+    :type snap: str or None
     :param db_acccess: set to either file containing credentials
                        to DB access or dictionary containing
                        ``{'dbname':...,'user':...,'port':...}``
@@ -10574,7 +10622,7 @@ class Scheduler(PBSService):
     fs_tag = re.compile(fs_re)
 
     def __init__(self, hostname=None, server=None, pbsconf_file=None,
-                 diagmap={}, diag=None, db_access=None, id='default',
+                 snapmap={}, snap=None, db_access=None, id='default',
                  sched_priv=None):
 
         self.sched_config_file = None
@@ -10595,20 +10643,20 @@ class Scheduler(PBSService):
 
         if server is not None:
             self.server = server
-            if diag is None and self.server.diag is not None:
-                diag = self.server.diag
-            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
-                diagmap = self.server.diagmap
+            if snap is None and self.server.snap is not None:
+                snap = self.server.snap
+            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+                snapmap = self.server.snapmap
         else:
             self.server = Server(hostname, pbsconf_file=pbsconf_file,
-                                 db_access=db_access, diag=diag,
-                                 diagmap=diagmap)
+                                 db_access=db_access, snap=snap,
+                                 snapmap=snapmap)
 
         if hostname is None:
             hostname = self.server.hostname
 
         PBSService.__init__(self, hostname, pbsconf_file=pbsconf_file,
-                            diag=diag, diagmap=diagmap)
+                            snap=snap, snapmap=snapmap)
         _m = ['scheduler ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -10888,7 +10936,7 @@ class Scheduler(PBSService):
 
         try:
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
-                                    sudo=(not self.has_diag),
+                                    sudo=(not self.has_snap),
                                     level=logging.DEBUG2)['out']
         except:
             self.logger.error('error parsing scheduler configuration')
@@ -11271,9 +11319,8 @@ class Scheduler(PBSService):
         self._save_config_file(conf, hd)
 
         try:
-            f = open(outfile, mode)
-            cPickle.dump(sconf, f)
-            f.close()
+            with open(outfile, mode) as f:
+                cPickle.dump(sconf, f)
         except:
             self.logger.error('error saving configuration ' + outfile)
             return False
@@ -12153,7 +12200,7 @@ class Scheduler(PBSService):
         associated to that id.Otherwise return the entire fairshare
         tree
         """
-        if self.has_diag:
+        if self.has_snap:
             return None
 
         tree = FairshareTree()
@@ -12235,7 +12282,7 @@ class Scheduler(PBSService):
         :type name: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
         :param usage: The usage value to set
         """
-        if self.has_diag:
+        if self.has_snap:
             return True
 
         if name is None:
@@ -12262,7 +12309,7 @@ class Scheduler(PBSService):
         """
         Decay the fairshare tree through pbsfs
         """
-        if self.has_diag:
+        if self.has_snap:
             return True
 
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
@@ -12286,7 +12333,7 @@ class Scheduler(PBSService):
         :type name2: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
         :returns: the name of the entity of higher priority or None on error
         """
-        if self.has_diag:
+        if self.has_snap:
             return None
 
         if name1 is None or name2 is None:
@@ -12325,8 +12372,8 @@ class Scheduler(PBSService):
             hostname = self.hostname
         # if resource_group is None:
         resource_group = self.resource_group_file
-        # if has_diag is True acces to sched_priv may not require su privilege
-        ret = self.du.cat(hostname, resource_group, sudo=(not self.has_diag))
+        # if.has_snap is True acces to sched_priv may not require su privilege
+        ret = self.du.cat(hostname, resource_group, sudo=(not self.has_snap))
         if ret['rc'] != 0:
             self.logger.error(hostname + ' error reading ' + resource_group)
         tree = FairshareTree(hostname, resource_group)
@@ -12668,12 +12715,12 @@ class MoM(PBSService):
     :param pbsconf_file: path to config file to parse for
                          ``PBS_HOME``, ``PBS_EXEC``, etc
     :type pbsconf_file: str or None
-    :param diagmap: A dictionary of PBS objects ``(node,server,etc)``
-                    to mapped files from PBS diag directory
-    :type diagmap: Dictionary
-    :param diag: path to PBS diag directory (This will overrides
-                 diagmap)
-    :type diag: str or None
+    :param snapmap: A dictionary of PBS objects ``(node,server,etc)``
+                    to mapped files from PBS snap directory
+    :type snapmap: Dictionary
+    :param snap: path to PBS snap directory (This will overrides
+                 snapmap)
+    :type snap: str or None
     :param server: A PBS server instance to which this mom is associated
     :param db_acccess: set to either file containing credentials to DB
                        access or dictionary containing
@@ -12685,24 +12732,24 @@ class MoM(PBSService):
                        'PBS_MANAGER_SERVICE_PORT': '-R',
                        'PBS_HOME': '-d'}
 
-    def __init__(self, name=None, attrs={}, pbsconf_file=None, diagmap={},
-                 diag=None, server=None, db_access=None):
+    def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
+                 snap=None, server=None, db_access=None):
 
         self.logger = logging.getLogger(__name__)
 
         if server is not None:
             self.server = server
-            if diag is None and self.server.diag is not None:
-                diag = self.server.diag
-            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
-                diagmap = self.server.diagmap
+            if snap is None and self.server.snap is not None:
+                snap = self.server.snap
+            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+                snapmap = self.server.snapmap
         else:
             self.server = Server(name, pbsconf_file=pbsconf_file,
-                                 db_access=db_access, diag=diag,
-                                 diagmap=diagmap)
+                                 db_access=db_access, snap=snap,
+                                 snapmap=snapmap)
 
         PBSService.__init__(self, name, attrs, self.dflt_attributes,
-                            pbsconf_file, diag=diag, diagmap=diagmap)
+                            pbsconf_file, snap=snap, snapmap=snapmap)
         _m = ['mom ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -12957,7 +13004,7 @@ class MoM(PBSService):
         self.logger.info(self.logprefix +
                          'reverting configuration to defaults')
         restart = False
-        if not self.has_diag:
+        if not self.has_snap:
             self.delete_pelog()
             if delvnodedefs and self.has_vnode_defs():
                 restart = True
@@ -13002,9 +13049,8 @@ class MoM(PBSService):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
         try:
-            f = open(outfile, mode)
-            cPickle.dump(mconf, f)
-            f.close()
+            with open(outfile, mode) as f:
+                cPickle.dump(mconf, f)
         except:
             self.logger.error('error saving configuration to ' + outfile)
             return False
@@ -13284,9 +13330,8 @@ class MoM(PBSService):
         """
         if vnodefile is None:
             return None
-        f = open(vnodefile)
-        lines = f.readlines()
-        f.close()
+        with open(vnodefile) as f:
+            lines = f.readlines()
         return "".join(lines)
 
     def insert_vnode_def(self, vdef, fname=None, additive=False, restart=True):
@@ -13440,8 +13485,8 @@ class MoM(PBSService):
         :returns: True on success and False on error
         """
 
-        if self.has_diag:
-            _msg = 'MoM is in loaded from diag so bypassing pelog creation'
+        if self.has_snap:
+            _msg = 'MoM is in loaded from snap so bypassing pelog creation'
             self.logger.info(_msg)
             return False
 
@@ -13457,9 +13502,8 @@ class MoM(PBSService):
             self.logger.info(body)
             src = self.du.create_temp_file(prefix='pbs-pelog', body=body)
         elif src is not None:
-            _b = open(src)
-            self.logger.info("\n".join(_b.readlines()))
-            _b.close()
+            with open(src) as _b:
+                self.logger.info("\n".join(_b.readlines()))
         self.logger.info('---')
 
         ret = self.du.run_copy(self.hostname, src, pelog,
