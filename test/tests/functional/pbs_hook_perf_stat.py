@@ -61,7 +61,7 @@ class Test_hook_perf_stat(TestFunctional):
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'qhook'
         hook_event = 'queuejob'
@@ -110,7 +110,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'mhook'
         hook_event = 'modifyjob'
@@ -167,7 +167,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'mvhook'
         hook_event = 'movejob'
@@ -220,7 +220,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'rhook'
         hook_event = 'runjob'
@@ -228,7 +228,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
         self.server.create_import_hook(hook_name, hook_attr, hook_content)
 
         j = Job(TEST_USER)
-        jid = self.server.submit(j)
+        self.server.submit(j)
 
         hd = "hook_perf_stat"
         lbl = "label=hook_%s_%s_.*" % (hook_event, hook_name)
@@ -267,7 +267,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'rhook'
         hook_event = 'resvsub'
@@ -316,7 +316,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """)
         hook_name = 'phook'
         hook_event = 'periodic'
@@ -367,7 +367,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
 """)
         for hook_event in ['execjob_begin',
                            'execjob_launch',
@@ -416,7 +416,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % (s.name,))
             self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                                regexp=True)
 
-            act = "action=hook_output_to:.*"
+            act = "action=hook_output:.*"
             self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                                regexp=True)
 
@@ -437,7 +437,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % (s.name,))
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
 s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % (s.name,))
+pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
 """)
         hook_name = "mom_period"
         hook_event = "exechost_periodic"
@@ -472,7 +472,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % (s.name,))
         self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                            regexp=True)
 
-        act = "action=hook_output_to:.*"
+        act = "action=hook_output:.*"
         self.mom.log_match("%s;%s %s %s" % (hd, lbl, act, stat),
                            regexp=True)
 

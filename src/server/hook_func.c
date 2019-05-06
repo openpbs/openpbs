@@ -4656,7 +4656,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			CLEAR_HEAD(event_resv);
 			req_params_out.vns_list = (pbs_list_head *)&event_vnode;
 			req_params_out.resv_list = (pbs_list_head *)&event_resv;
-			rc = pbs_python_event_to_request(hook_event, &req_params_out, perf_label, "hook_output");
+			rc = pbs_python_event_to_request(hook_event, &req_params_out, perf_label, HOOK_PERF_HOOK_OUTPUT);
 			if (rc == -1) {
 				log_err(PBSE_INTERNAL, phook->hook_name, "error occured recreating request!");
 			}
@@ -4732,22 +4732,22 @@ recreate_request(struct batch_request *preq)
 		req_params.rq_job = (struct rq_quejob *)&preq->rq_ind.rq_queuejob;
 		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_QUEUEJOB, preq->rq_ind.rq_queuejob.rq_jid, getpid());
 		rc = pbs_python_event_to_request(HOOK_EVENT_QUEUEJOB,
-			&req_params, perf_label, "hook_output");
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 		req_params.rq_job = (struct rq_quejob *)&preq->rq_ind.rq_queuejob;
 		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_RESVSUB, preq->rq_ind.rq_queuejob.rq_jid, getpid());
 		rc =pbs_python_event_to_request(HOOK_EVENT_RESVSUB,
-			&req_params, perf_label, "hook_output");
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_ModifyJob) {
 		req_params.rq_manage = (struct manage *)&preq->rq_ind.rq_modify;
 		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_MODIFYJOB, preq->rq_ind.rq_modify.rq_objname, getpid());
 		rc =pbs_python_event_to_request(HOOK_EVENT_MODIFYJOB,
-			&req_params, perf_label, "hook_output");
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_MoveJob) {
 		req_params.rq_move = (struct rq_move *)&preq->rq_ind.rq_move;
 		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_MOVEJOB, preq->rq_ind.rq_move.rq_jid, getpid());
 		rc = pbs_python_event_to_request(HOOK_EVENT_MOVEJOB,
-			&req_params, perf_label, "hook_output");
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else {
 		log_err(PBSE_INTERNAL, __func__, "unexpected request type");
 		rc = -1;

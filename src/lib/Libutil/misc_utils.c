@@ -79,6 +79,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <assert.h>
 #ifndef WIN32
 #include <dlfcn.h>
 #include <grp.h>
@@ -115,6 +116,7 @@ typedef struct perf_stat {
 	pbs_list_link	pi_allstats;
 } perf_stat_t;
 
+static int		perf_stats_initialized = 0;
 static pbs_list_head	perf_stats;
 
 /**
@@ -1611,6 +1613,7 @@ get_cputime()
 	clock_cycles = clock();
 	if (clock_cycles == -1)
 		return (0);
+	assert (CLOCKS_PER_SEC != 0);
 	return (double)clock_cycles / CLOCKS_PER_SEC;
 }
 #endif
@@ -1662,7 +1665,7 @@ perf_stat_find(char *instance)
 {
 	perf_stat_t *p_stat;
 
-	if ((instance == NULL) || (instance[0] == '\0'))
+	if ((instance == NULL) || (instance[0] == '\0') || (perf_stats_initialized == 0))
 		return (NULL);
 
 	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
@@ -1677,6 +1680,36 @@ perf_stat_find(char *instance)
 
 /**
  * @brief
+ *	Remove (deallocate) an 'instance' entry among the list of
+ *	saved performance stats.
+ *
+ * @param[in] instance - entity being measured.
+ *
+ * @return void
+ */
+void
+perf_stat_remove(char *instance)
+{
+	perf_stat_t *p_stat;
+
+	if ((instance == NULL) || (instance[0] == '\0') || (perf_stats_initialized == 0))
+		return;
+
+	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
+	while (p_stat) {
+		if ( strcmp(p_stat->instance, instance) == 0) {
+			break;
+		}
+		p_stat = (perf_stat_t *)GET_NEXT(p_stat->pi_allstats);
+	}
+	if (p_stat != NULL) {
+ 		delete_link(&p_stat->pi_allstats);
+		free(p_stat);
+	}
+}
+
+/**
+ * @brief
  *	Record start counters for the 'instance' entry.
  *
  * @param[in] instance - entity being measured
@@ -1686,15 +1719,14 @@ perf_stat_find(char *instance)
 void
 perf_stat_start(char *instance)
 {
-	static int	init = 0;
 	perf_stat_t	*p_stat;
 
 	if ((instance == NULL) || (instance[0] == '\0'))
 		return;
 
-	if (init == 0) {
+	if (perf_stats_initialized == 0) {
 		CLEAR_HEAD(perf_stats);
-		init = 1;
+		perf_stats_initialized = 1;
 	}
 
 	p_stat = perf_stat_find(instance);

@@ -3928,13 +3928,16 @@ hook_perf_stat_stop(char *label, char *action, int print_end_msg)
 	char instance[MAXBUFLEN];
 	char *msg;
 
-	if (!will_log_event(PBSEVENT_DEBUG4))
-		return;
-
 	if ((label == NULL) || (action == NULL))
 		return;
 
 	snprintf(instance, sizeof(instance), "label=%s action=%s", label, action);
+
+	if (!will_log_event(PBSEVENT_DEBUG4)) {
+		perf_stat_remove(instance);
+		return;
+	}
+
 	msg = perf_stat_stop(instance);
 
 	if (msg == NULL)

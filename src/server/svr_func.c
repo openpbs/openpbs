@@ -6182,11 +6182,11 @@ execute_python_prov_script(hook  *phook,
 	}
 
 	/* let rc pass through */
-	hook_perf_stat_start(perf_label, "run_code", 0);
+	hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
 	rc = pbs_python_run_code_in_namespace(&svr_interp_data,
 		phook->script,
 		&exit_code);
-	hook_perf_stat_stop(perf_label, "run_code", 0);
+	hook_perf_stat_stop(perf_label, HOOK_PERF_RUN_CODE, 0);
 
 	/* go back to server's private directory */
 	if (chdir(path_priv) != 0) {

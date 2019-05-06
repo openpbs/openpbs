@@ -2268,7 +2268,7 @@ main(int argc, char *argv[], char *envp[])
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
 	
-	if (set_msgdaemonname("pbs_python")) {
+	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -2296,13 +2296,13 @@ main(int argc, char *argv[], char *envp[])
 	/* determine the actual server name */
 	pbs_server_name = pbs_default();
 	if ((!pbs_server_name) || (*pbs_server_name == '\0')) {
-		log_err(-1, "pbs_python", "Unable to get server name");
+		log_err(-1, PBS_PYTHON_PROGRAM, "Unable to get server name");
 		return (-1);
 	}
 
 	/* determine the server host name */
 	if (get_fullhostname(pbs_server_name, server_host, PBS_MAXSERVERNAME) != 0) {
-		log_err(-1, "pbs_python", "Unable to get server host name");
+		log_err(-1, PBS_PYTHON_PROGRAM, "Unable to get server host name");
 		return (-1);
 	}
 
@@ -2707,7 +2707,7 @@ main(int argc, char *argv[], char *envp[])
 				sp = the_input;
 		}
 		snprintf(perf_label, sizeof(perf_label), "%s", sp ? sp : "stdin");
-		hook_perf_stat_start(perf_label, "pbs_python", 1);
+		hook_perf_stat_start(perf_label, PBS_PYTHON_PROGRAM, 1);
 
 		CLEAR_HEAD(default_list);
 		CLEAR_HEAD(event);
@@ -2729,7 +2729,7 @@ main(int argc, char *argv[], char *envp[])
 			&event_vnode, &event_vnode_fail, &job_failed_mom_list,
 			&job_succeeded_mom_list, &event_src_queue,
 			&event_aoe, &event_argv, &event_jobs,
-			perf_label, "load_hook_input_file");
+			perf_label, HOOK_PERF_LOAD_INPUT);
 		if (rc == -1) {
 			fprintf(stderr, "%s: failed to populate svrattrl \n", argv[0]);
 			exit(2);
@@ -2756,7 +2756,7 @@ main(int argc, char *argv[], char *envp[])
 				&server_queues, &server_queues_names,
 				&server_resvs, &server_resvs_resvids,
 				&server_vnodes, &server_vnodes_names,
-				the_data, "load_hook_data");
+				the_data, HOOK_PERF_LOAD_DATA);
 			if (rc == -1) {
 				fprintf(stderr,
 					"%s: failed to populate svrattrl \n",
@@ -2863,7 +2863,7 @@ main(int argc, char *argv[], char *envp[])
 		svr_interp_data.destroy_interpreter_data =
 			pbs_python_svr_destroy_interpreter_data;
 
-		svr_interp_data.daemon_name = strdup("pbs_python");
+		svr_interp_data.daemon_name = strdup(PBS_PYTHON_PROGRAM);
 
 		if (svr_interp_data.daemon_name == NULL) { /* should not happen */
 			fprintf(stderr, "strdup failed");
@@ -2873,9 +2873,9 @@ main(int argc, char *argv[], char *envp[])
 		(void)pbs_python_ext_alloc_python_script(hook_script,
 			(struct python_script **) &py_script);
 
-		hook_perf_stat_start(perf_label, "start_interpreter", 0);
+		hook_perf_stat_start(perf_label, HOOK_PERF_START_PYTHON, 0);
 		pbs_python_ext_start_interpreter(&svr_interp_data);
-		hook_perf_stat_stop(perf_label, "start_interpreter", 0);
+		hook_perf_stat_stop(perf_label, HOOK_PERF_START_PYTHON, 0);
 		hook_input_param_init(&req_params);
 		switch (hook_event) {
 
@@ -2894,8 +2894,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -2921,8 +2920,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_job,
 					&rqm.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -2985,8 +2983,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_resv,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3019,8 +3016,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3055,8 +3051,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3106,8 +3101,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3196,10 +3190,10 @@ main(int argc, char *argv[], char *envp[])
 
 			rc=Py_Main(1, tmp_argv);
 		} else {
-			hook_perf_stat_start(perf_label, "run_code", 0);
+			hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
 			rc=pbs_python_run_code_in_namespace(&svr_interp_data,
 				py_script, 0);
-			hook_perf_stat_stop(perf_label, "run_code", 0);
+			hook_perf_stat_stop(perf_label, HOOK_PERF_RUN_CODE, 0);
 		}
 		set_alarm(0, pbs_python_set_interrupt);
 
@@ -3260,7 +3254,7 @@ main(int argc, char *argv[], char *envp[])
 			else
 				sp = the_output;
 		}
-		snprintf(perf_action, sizeof(perf_action), "hook_output_to:%s", sp ? sp : "stdout");
+		snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_HOOK_OUTPUT, sp ? sp : "stdout");
 
 		switch (hook_event) {
 
@@ -3623,7 +3617,7 @@ pbs_python_end:
 		if (env_str != NULL)
 			free(env_str);
 
-		hook_perf_stat_stop(perf_label, "pbs_python", 1);
+		hook_perf_stat_stop(perf_label, PBS_PYTHON_PROGRAM, 1);
 	}
 
 	return rc;

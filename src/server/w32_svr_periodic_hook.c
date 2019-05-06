@@ -295,7 +295,7 @@ execute_python_periodic_hook(hook  *phook)
 	snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", hook_event_as_string(hook_event), phook->hook_name, mypid);
 
 	rc = pbs_python_event_set(hook_event, username,
-		"server", &req_ptr, perf_label);
+		PY_TYPE_SERVER, &req_ptr, perf_label);
 
 	if (rc == -1) { /* internal server code failure */
 		log_event(PBSEVENT_DEBUG2,

@@ -85,6 +85,7 @@
  * ====================== IMPORTANT =======================
  */
 
+#define PBS_PYTHON_PROGRAM "pbs_python"
 struct python_interpreter_data {
 	int data_initialized;     /* data initialized */
 	int interp_started;       /* status flag*/

@@ -307,6 +307,12 @@ void
 perf_stat_start(char *instance);
 
 /**
+ * Remove a performance stats entry.
+ */
+void 
+perf_stat_remove(char *instance);
+
+/**
  * End collecting performance stats (e.g. walltime)
  */
 char *

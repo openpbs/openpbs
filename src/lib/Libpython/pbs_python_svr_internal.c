@@ -3346,7 +3346,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 		que->qu_jobstbuf);
 	/* stuff all the attributes */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_QUEUE_OBJECT, que->qu_qs.qu_name);
-	snprintf(perf_action, sizeof(perf_action), "populate:%s", hook_debug.objname);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_que,
 		py_que_attr_types,
 		que->qu_attr,
@@ -3496,7 +3496,7 @@ _pps_helper_get_server(char *perf_label)
 
 	/* stuff all the attributes */
 	strncpy((char *)hook_debug.objname, SERVER_OBJECT, HOOK_BUF_SIZE-1);
-	snprintf(perf_action, sizeof(perf_action), "populate:%s", hook_debug.objname);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_svr,
 		py_svr_attr_types,
 		server.sv_attr,
@@ -3622,7 +3622,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname, char *per
 	 * OK, At this point we need to start populating the job class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_JOB_OBJECT, pjob->ji_qs.ji_jobid);
-	snprintf(perf_action, sizeof(perf_action), "populate:%s", hook_debug.objname);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_job,
 		py_job_attr_types,
 		pjob->ji_wattr,
@@ -3758,7 +3758,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid, char *perf_label)
 	 * OK, At this point we need to start populating the resv class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_RESV_OBJECT, presv->ri_qs.ri_resvID);
-	snprintf(perf_action, sizeof(perf_action), "populate:%s", hook_debug.objname);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_resv,
 		py_resv_attr_types,
 		presv->ri_wattr,
@@ -3882,7 +3882,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname, char *perf_la
 	 * OK, At this point we need to start populating the vnode class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_VNODE_OBJECT, pvnode->nd_name);
-	snprintf(perf_action, sizeof(perf_action), "populate:%s", hook_debug.objname);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_vnode,
 		py_vnode_attr_types,
 		pvnode->nd_attr,
@@ -5342,7 +5342,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		snprintf(perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_JOB_OBJECT, rqj->rq_jid);
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
 			&rqj->rq_attr, perf_label, perf_action);
 
@@ -5386,7 +5386,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT,  PY_EVENT_PARAM_RESV);
 			goto event_set_exit;
 		}
-		snprintf(perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_RESV_OBJECT, rqj->rq_jid);
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_RESV_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_resv,
 			&rqj->rq_attr, perf_label, perf_action);
 
@@ -5432,7 +5432,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		snprintf(perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_JOB_OBJECT, rqj->rq_objname);
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_objname);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
 			&rqj->rq_attr, perf_label, perf_action);
 
@@ -5624,7 +5624,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		/* SET VNODE_LIST param */
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
 			Py_None);
-		py_vnodelist = create_py_vnodelist(vnlist, perf_label, "populate:pbs.event().vnode_list");
+		py_vnodelist = create_py_vnodelist(vnlist, perf_label, HOOK_PERF_POPULATE_VNODELIST);
 		if (py_vnodelist == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a Python vnodelist object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST);
@@ -5646,7 +5646,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESVLIST,
 			Py_None);
-		py_resvlist = create_py_resvlist(resvlist, perf_label, "populate:pbs.event().resv_list");
+		py_resvlist = create_py_resvlist(resvlist, perf_label, HOOK_PERF_POPULATE_RESVLIST);
 		if (py_resvlist == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a Python resvlist object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_RESVLIST);
@@ -5820,7 +5820,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		snprintf((char *)perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_JOB_OBJECT, rqj->rq_jid);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
@@ -5832,7 +5832,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list,
-					perf_label, "populate:pbs.event().vnode_list");
+					perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -5843,7 +5843,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 			py_vnodelist_fail = create_hook_vnode_list_param(py_event_param,
 						PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
-			    			(pbs_list_head *)req_params->vns_list_fail, perf_label, "populate:pbs.event().vnode_list_fail");
+			    			(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
 					
 			if (py_vnodelist_fail == NULL) {
 				rc = -1;
@@ -5915,7 +5915,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		snprintf((char *)perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_JOB_OBJECT, rqj->rq_jid);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
@@ -5927,7 +5927,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist =
 			   create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
-					(pbs_list_head *)req_params->vns_list, perf_label, "populate:pbs.event().vnode_list");
+					(pbs_list_head *)req_params->vns_list, perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -5937,7 +5937,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist_fail =
 			   create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
-			    	(pbs_list_head *)req_params->vns_list_fail, perf_label, "populate:pbs.event().vnode_list_fail");
+			    	(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
 					
 		if (py_vnodelist_fail == NULL) {
 			rc = -1;
@@ -6063,7 +6063,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list,
-			    perf_label, "populate:pbs.event().vnode_list");
+			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
 
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -6077,7 +6077,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOBLIST,
 				Py_None);
-			py_joblist = create_py_joblist(joblist, perf_label, "populate:pbs.event().job_list");
+			py_joblist = create_py_joblist(joblist, perf_label, HOOK_PERF_POPULATE_JOBLIST);
 			if (py_joblist == NULL) {
 				LOG_ERROR_ARG2("%s: failed to create a Python joblist object for param['%s']",
 					PY_TYPE_EVENT, PY_EVENT_PARAM_JOBLIST);
@@ -6134,7 +6134,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		snprintf((char *)perf_action, sizeof(perf_action), "populate:%s(%s)", EVENT_JOB_OBJECT, rqj->rq_jid);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
@@ -6169,7 +6169,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list,
-			    perf_label, "populate:pbs_event().vnode_list");
+			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -6859,8 +6859,8 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				"unexpected hook event type");
 			goto event_to_request_exit;
 	}
-event_to_request_exit:
 	rc = 0;
+event_to_request_exit:
 	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return rc;
 }
@@ -7088,7 +7088,7 @@ pbsv1mod_meth_get_queue(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_que = _pps_helper_get_queue(NULL, name, "hook_func");
+	py_que = _pps_helper_get_queue(NULL, name, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_que != NULL)
@@ -7147,7 +7147,7 @@ pbsv1mod_meth_get_job(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_job = _pps_helper_get_job(NULL, jname, qname, "hook_func");
+	py_job = _pps_helper_get_job(NULL, jname, qname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_job != NULL)
@@ -7202,7 +7202,7 @@ pbsv1mod_meth_get_resv(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_resv = _pps_helper_get_resv(NULL, rname, "hook_func");
+	py_resv = _pps_helper_get_resv(NULL, rname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_resv != NULL)
@@ -7256,7 +7256,7 @@ pbsv1mod_meth_get_vnode(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_vnode = _pps_helper_get_vnode(NULL, vname, "hook_func");
+	py_vnode = _pps_helper_get_vnode(NULL, vname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_vnode != NULL)
@@ -7307,7 +7307,7 @@ pbsv1mod_meth_server(void)
 {
 	PyObject *py_svr = NULL;
 	hook_set_mode = C_MODE;
-	py_svr = _pps_helper_get_server("hook_func");
+	py_svr = _pps_helper_get_server(HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 	return (py_svr);
 }
@@ -8989,15 +8989,15 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 
 			hook_set_mode = C_MODE;
 			if (strcmp(obj_name, ITER_RESERVATIONS) == 0) {
-				py_object = _pps_helper_get_resv((resc_resv *)iter_entry->data, NULL, "hook_func");
+				py_object = _pps_helper_get_resv((resc_resv *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 				iter_entry->data = (resc_resv *)GET_NEXT(\
 				((resc_resv *)iter_entry->data)->ri_allresvs);
 			} else if (strcmp(obj_name, ITER_QUEUES) == 0) {
-				py_object = _pps_helper_get_queue((pbs_queue *)iter_entry->data, NULL, "hook_func");
+				py_object = _pps_helper_get_queue((pbs_queue *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 				iter_entry->data = (pbs_queue *)GET_NEXT(\
 				((pbs_queue *)iter_entry->data)->qu_link);
 			} else if (strcmp(obj_name, ITER_JOBS) == 0) {
-				py_object = _pps_helper_get_job((job *)iter_entry->data, NULL, NULL, "hook_func");
+				py_object = _pps_helper_get_job((job *)iter_entry->data, NULL, NULL, HOOK_PERF_FUNC);
 
 
 #ifdef NAS /* localmod 014 */
@@ -9033,7 +9033,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				}
 			} else if (strcmp(obj_name, ITER_VNODES) == 0) {
 
-				py_object = _pps_helper_get_vnode((struct pbsnode *)iter_entry->data, NULL, "hook_func");
+				py_object = _pps_helper_get_vnode((struct pbsnode *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 
 				iter_entry->data = NULL;
 				vi = iter_entry->data_index + 1;
@@ -10606,7 +10606,7 @@ py_get_server_static(void)
 
 	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_OBJECT, server_name);
 	tmp_rc = pbs_python_populate_python_class_from_svrattrl(py_svr,
-		server_data, perf_label, "populate");
+		server_data, perf_label, HOOK_PERF_POPULATE);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -10826,7 +10826,7 @@ py_get_queue_static(char *qname, char *svr_name)
 	}
 
 	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_QUEUE_OBJECT, qname);
-	rc = pbs_python_populate_python_class_from_svrattrl(py_queue, &queuel, perf_label, "populate");
+	rc = pbs_python_populate_python_class_from_svrattrl(py_queue, &queuel, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -11065,7 +11065,7 @@ py_get_vnode_static(char *vname, char *svr_name)
 	}
 
 	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_VNODE_OBJECT, vname);
-	rc = pbs_python_populate_python_class_from_svrattrl(py_vnode, &vnodel, perf_label, "populate");
+	rc = pbs_python_populate_python_class_from_svrattrl(py_vnode, &vnodel, perf_label, HOOK_PERF_POPULATE);
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to fully populate Python"
@@ -11328,7 +11328,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	}
 
 	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_JOB_OBJECT, jid);
-	rc = pbs_python_populate_python_class_from_svrattrl(py_job, &jobl, perf_label, "populate");
+	rc = pbs_python_populate_python_class_from_svrattrl(py_job, &jobl, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -11594,7 +11594,7 @@ py_get_resv_static(char *resvid, char *svr_name)
 	}
 
 	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_RESV_OBJECT, resvid);
-	rc = pbs_python_populate_python_class_from_svrattrl(py_resv, &resvl, perf_label, "populate");
+	rc = pbs_python_populate_python_class_from_svrattrl(py_resv, &resvl, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
