@@ -57,12 +57,12 @@ class Test_hook_perf_stat(TestFunctional):
         """
         Test that pbs_server collects performance stats for queuejob hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'qhook'
         hook_event = 'queuejob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
@@ -106,12 +106,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for modifyjob hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'mhook'
         hook_event = 'modifyjob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
@@ -163,12 +163,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for movejob hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'mvhook'
         hook_event = 'movejob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
@@ -216,12 +216,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for runjob hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'rhook'
         hook_event = 'runjob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
@@ -263,12 +263,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for resvsub hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'rhook'
         hook_event = 'resvsub'
         hook_attr = {'enabled': 'true', 'event': hook_event}
@@ -312,12 +312,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for periodic hook
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-""")
+"""
         hook_name = 'phook'
         hook_event = 'periodic'
         hook_attr = {'event': hook_event, 'freq': 5}
@@ -363,12 +363,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_mom collects performance stats for mom hooks
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
-""")
+"""
         for hook_event in ['execjob_begin',
                            'execjob_launch',
                            'execjob_prologue',
@@ -433,12 +433,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
         """
         Test that pbs_mom collects performance stats for mom period hooks
         """
-        hook_content = ("""
+        hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
-""")
+"""
         hook_name = "mom_period"
         hook_event = "exechost_periodic"
         hook_attr = {'enabled': 'true', 'event': hook_event}
