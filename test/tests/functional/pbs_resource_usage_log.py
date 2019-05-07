@@ -342,7 +342,7 @@ class TestResourceUsageLog(TestFunctional):
         a = {'queue_type': 'e', 'started': 't',
              'enabled': 't', 'priority': '180'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="highp")
-        self.scheduler.set_sched_config({'preempt_order': 'R'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
