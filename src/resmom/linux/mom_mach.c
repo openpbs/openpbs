@@ -180,7 +180,6 @@ static char	*totmem		(struct rm_attribute *attrib);
 static char	*availmem	(struct rm_attribute *attrib);
 static char	*ncpus		(struct rm_attribute *attrib);
 static char	*walltime	(struct rm_attribute *attrib);
-static long	get_wm		(pid_t);
 #if	MOM_CPUSET && (CPUSET_VERSION >= 4)
 static uid_t	ownerof		(pid_t);
 #endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
@@ -5308,7 +5307,6 @@ resi_sum(job *pjob)
 {
 	int		i;
 	ulong		resisize;
-	long		wm;		/* Altix weighted RSS replacement */
 	proc_stat_t	*ps;
 
 	resisize = 0;
@@ -5319,16 +5317,6 @@ resi_sum(job *pjob)
 		if (!injob(pjob, ps->session))
 			continue;
 
-		/*
-		 *	Certain Altix ProPack releases (or patches) add an
-		 *	interface to replace the value reported by /proc via
-		 *	the RSS field in the process's stat file.  If the
-		 *	value is available, we use it;  if get_wm() returns
-		 *	-1 indicating an error, we proceed using the old rss
-		 *	value that we read from /proc/<pid>/stat.
-		 */
-		if ((wm = get_wm(ps->pid)) != -1)
-			ps->rss = wm;
 		resisize += ps->rss * pagesize;
 	}
 
@@ -6363,7 +6351,6 @@ resi_job(pid_t jobid)
 {
 	int		i;
 	ulong		resisize;
-	long		wm;		/* Altix weighted RSS replacement */
 	int		found = 0;
 	proc_stat_t	*ps;
 
@@ -6378,16 +6365,6 @@ resi_job(pid_t jobid)
 			continue;
 
 		found = 1;
-		/*
-		 *	Certain Altix ProPack releases (or patches) add an
-		 *	interface to replace the value reported by /proc via
-		 *	the RSS field in the process's stat file.  If the
-		 *	value is available, we use it;  if get_wm() returns
-		 *	-1 indicating an error, we proceed using the old rss
-		 *	value that we read from /proc/<pid>/stat.
-		 */
-		if ((wm = get_wm(ps->pid)) != -1)
-			ps->rss = wm;
 		resisize += ps->rss;
 	}
 	if (found) {
@@ -6415,7 +6392,6 @@ static char *
 resi_proc(pid_t pid)
 {
 	int		i;
-	long		wm;		/* Altix weighted RSS replacement */
 	proc_stat_t	*ps = NULL;
 
 
@@ -6429,17 +6405,6 @@ resi_proc(pid_t pid)
 		rm_errno = RM_ERR_EXIST;
 		return NULL;
 	}
-
-	/*
-	 *	Certain Altix ProPack releases (or patches) add an
-	 *	interface to replace the value reported by /proc via
-	 *	the RSS field in the process's stat file.  If the
-	 *	value is available, we use it;  if get_wm() returns
-	 *	-1 indicating an error, we proceed using the old rss
-	 *	value that we read from /proc/<pid>/stat.
-	 */
-	if ((wm = get_wm(pid)) != -1)
-		ps->rss = wm;
 	/* in KB */
 	sprintf(ret_string, "%lukb", ((ulong)ps->rss * (ulong)pagesize) >> 10);
 	return ret_string;
@@ -7849,137 +7814,8 @@ cpuset_free_job_CPUs(job *pjob)
 #endif	/* DEBUG */
 	}
 }
-#endif	/* MOM_CPUSET */
 
-/**
- *	There is a problem with RSS reporting on (at least) Altix systems:
- *	shared memory (such as dynamic shared object libraries) is charged
- *	fully to each process participating in the sharing rather than
- *	charging only 1/N times as much (where N is the number of processes
- *	sharing a given object).
- *
- *	To address this, SGI has provided a new memacct(3) interface (see
- *	below) to do the proper sharing computation.  It is available on an
- *	Altix with ProPack 5 and patch 10386 installed (or via a subsequent -
- *	name or date not yet known - update to ProPack 5).
- *
- *	This function will return the value of the get_weighted_memory_size
- *	function contained in the libmemacct shared object, scaled to units
- *	expected for RSS (pages).
- *	The synopsis of get_weighted_memory_size is
- *
- *
- *	SYNOPSIS
- *	       cc ... -lmemacct
- *
- *	       #include <sys/types.h>
- *
- *	       extern int get_weighted_memory_size(pid_t pid);
- *
- *	SYNOPSIS
- *	   int *get_weighted_memory_size(pid_t pid);
- *	       Return  the  weighted  memory  size for a pid, in bytes.
- *	       This weights the size of shared regions by the number of processes
- *	       accessing it.  Return -1 when an error occurs.
- *
- *
- *	Yes, there are two synopses and yes, they disagree about the return
- *	value.  Apparently both are wrong:  an update from the SGI developer
- *	of this interface tells us that the correct prototype is
- *
- *	       extern long get_weighted_memory_size(pid_t pid);
- *
- *	so that is how the function return value and``ptr'' variable below have
- *	been defined.
- *
- *	On platforms without the shared object or the named API symbol, this
- *	function will return -1.
- *
- *	Because the Altix version of PBS may be built on older (or unpatched)
- *	versions of ProPack, we cannot simply link against the shared object
- *	we need to use.  Instead, we use dlopen() and dlsym() to map it in
- *	and call the memacct(3) API.
- *
- *	Note:  the log event type, object class, and severity are chosen to
- *	match that of the CSA function ck_acct_facility_present(), q.v.
- */
-static long
-get_wm(pid_t pid)
-{
-#ifdef NAS_NO_WM /* localmod 089 */
-	static int	hardfailure = 1;
-#else
-	static int	hardfailure = 0;
-#endif /* localmod 089 */
-	static void	*handle = NULL;
-	long		wm;
-	long		(*ptr)(pid_t);
-	char		memsym[] = "get_weighted_memory_size";
-	char		memacctsoname[] = "libmemacct.so.1";
 
-	if (hardfailure == 1) {
-		if (handle != NULL) {
-			(void) dlclose(handle);
-			handle = NULL;
-		}
-		return (-1);
-	}
-
-	/*
-	 *	There are three ways this function can fail:
-	 *
-	 *		the shared object may not be present
-	 *		the needed symbol may not be found in the shared object
-	 *		the get_weighted_memory_size interface returns an error
-	 *
-	 *	It might seem reasonable to consider the first of these a soft,
-	 *	recoverable error.  After all, someone might have forgotten to
-	 *	install the appropriate package.  However, at the time of this
-	 *	writing, the memacct package depends on the sgi-numatools-kmp
-	 *	package, which requires an OS reboot.  Thus simply installing
-	 *	the missing package is unlikely to solve the problem, so we
-	 *	consider it unrecoverable.
-	 *
-	 *	The second error is clearly not recoverable:  the shared object
-	 *	was present but didn't contain the symbol we need, so something
-	 *	is quite wrong.
-	 *
-	 *	The third error is problematic:  the interface description
-	 *	contains no information about errors, so we can't tell the
-	 *	difference between one that we might well anticipate (e.g. a
-	 *	process has exited) and one that occurs because the package
-	 *	dependency above hasn't been satisfied.  So, we silently
-	 *	ignore this error.
-	 */
-	if ((handle == NULL) &&
-		(handle = dlopen(memacctsoname, RTLD_LAZY)) == NULL) {
-		sprintf(log_buffer, "%s not found", memacctsoname);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT,
-			LOG_DEBUG, __func__, log_buffer);
-		hardfailure = 1;
-		return (-1);
-	}
-
-#ifdef NAS /* localmod 005 */
-	if ((ptr = (long(*)(pid_t))dlsym(handle, memsym)) == NULL) {
-#else
-	if ((ptr = dlsym(handle, memsym)) == NULL) {
-#endif /* localmod 005 */
-		sprintf(log_buffer, "symbol %s not found in %s",
-			memsym, memacctsoname);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT,
-			LOG_DEBUG, __func__, log_buffer);
-		hardfailure = 1;
-		return (-1);
-	}
-
-	if ((wm = (*ptr)(pid)) == -1)
-		return (-1);
-	else
-		return (wm / pagesize);		/* convert bytes to pages */
-}
-
-#if	MOM_CPUSET
 /** @fn pidcache_create
  * @brief	create space to hold a set of PIDs
  *
