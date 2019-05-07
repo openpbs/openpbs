@@ -171,9 +171,12 @@ def remotesnap_thread(logger, host):
     du.rm(hostname=host, path=snap_home, recursive=True, force=True)
 
 
-def capture_local_snap():
+def capture_local_snap(sudo_val):
     """
     Helper method to capture snapshot of the local host
+
+    :param sudo_val - Value of the --with-sudo option
+    :type sudo_val - bool
 
     :returns Name of the snapshot directory/tar file captured
     """
@@ -185,12 +188,12 @@ def capture_local_snap():
 
     with PBSSnapUtils(out_dir, acct_logs=acct_logs,
                       daemon_logs=daemon_logs, create_tar=create_tar,
-                      log_path=log_path, with_sudo=with_sudo) as snap_utils:
+                      log_path=log_path, with_sudo=sudo_val) as snap_utils:
         snap_name = snap_utils.capture_all()
 
     if obfuscate:
         obj = ObfuscateSnapshot()
-        obj.obfuscate_snapshot(snap_name, map_file)
+        obj.obfuscate_snapshot(snap_name, map_file, sudo_val)
         if additional_hosts is None:
             # Now create the tar
             outtar = snap_name + ".tgz"
@@ -319,7 +322,7 @@ if __name__ == '__main__':
             thread_p.start()
         else:
             # Capture a local snapshot
-            main_snap = capture_local_snap()
+            main_snap = capture_local_snap(with_sudo)
 
         if thread_p is not None:
             # Let's get the main host's snapshot first
@@ -368,7 +371,7 @@ if __name__ == '__main__':
         du.rm(path=p_snappath, force=True)
     else:
         # Capture snapshot of the local host
-        outtar = capture_local_snap()
+        outtar = capture_local_snap(with_sudo)
 
     if outtar is not None:
         print "Snapshot available at: " + outtar

@@ -44,6 +44,7 @@ import random
 import shutil
 import pprint
 import shlex
+import re
 
 from subprocess import STDOUT
 from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
@@ -222,6 +223,7 @@ class ObfuscateSnapshot(object):
     vals_to_del = []
     bu = BatchUtils()
     du = DshUtils()
+    num_bad_acct_records = 0
     logger = logging.getLogger(__name__)
 
     job_attrs_del = [ATTR_v, ATTR_e, ATTR_jobdir,
@@ -239,7 +241,7 @@ class ObfuscateSnapshot(object):
                       ATTR_rescavail + ".vnode"]
     sched_attrs_obf = [ATTR_SchedHost]
     queue_attrs_obf = [ATTR_acluser, ATTR_aclgroup, ATTR_aclhost]
-    skip_vals = ["_pbs_project_default"]
+    skip_vals = ["_pbs_project_default", "*"]
 
     def _obfuscate_stat(self, file_path, attrs_to_obf, attrs_to_del):
         """
@@ -414,8 +416,29 @@ class ObfuscateSnapshot(object):
         for acct_fname in acct_fnames:
             acct_fpath = os.path.join(acct_path, acct_fname)
             self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
+        if self.num_bad_acct_records > 0:
+            self.logger.info("Total bad records found: " +
+                str(self.num_bad_acct_records))
 
-    def obfuscate_snapshot(self, snap_dir, map_file):
+    def _replace_str_in_file(self, key, val, fpath):
+        """
+        Helper function to replace a given string (key) with another (val)
+
+        :param key - the string to replace
+        :type key - str
+        :param val - the string to replace with
+        :type val - str
+        :param filepath - path to the file
+        :type filepath - str
+        """
+        fout = self.du.create_temp_file()
+        with open(fpath, "r") as fd, open(fout, "w") as fdout:
+            alltext = fd.read()
+            otext = re.sub(r'\b' + key + r'\b', val, alltext)
+            fdout.write(otext)
+        shutil.move(fout, fpath)
+
+    def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
         """
         Helper function to obfuscate a snapshot
 
@@ -423,6 +446,8 @@ class ObfuscateSnapshot(object):
         :type snap_dir - str
         :param map_file - path to the map file to create
         :type map_file - str
+        :param sudo_val - value of the --with-sudo option (needed for printjob)
+        :type sudo_val bool
         """
         if not os.path.isdir(snap_dir):
             raise ValueError("Snapshot directory path not accessible"
@@ -477,25 +502,52 @@ class ObfuscateSnapshot(object):
             if dirname.startswith(DFLT_SCHED_LOGS_PATH):
                 dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
+        # Also delete any .JB files, store printjob outputs of them instead
+        conf = self.du.parse_pbs_config()
+        printjob = None
+        if conf is not None:
+            printjob = os.path.join(conf["PBS_EXEC"], "bin", "printjob")
+            if not os.path.isfile(printjob):
+                printjob = None
+        if printjob is None:
+            self.logger.error("printjob not found, so .JB files will "
+            "simply be deleted")
+        jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
+        jbcontent = {}
+        for name in os.listdir(jobspath):
+            if name.endswith(".JB"):
+                ret = None
+                fpath = os.path.join(jobspath, name)
+                if printjob is not None:
+                    cmd = [printjob, fpath]
+                    ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
+                                        as_script=True)
+                self.du.rm(path=fpath)
+                if ret is not None and ret["out"] is not None:
+                    jbcontent[name] =  "\n".join(ret["out"])
+            # Also delete any other files/directories inside mom_priv/jobs
+            else:
+                path = os.path.join(jobspath, name)
+                self.du.rm(path=path, recursive=True, force=True)
+        for name, content in jbcontent.iteritems():
+            # Save the printjob outputs, these will be obfuscated later
+            fpath = os.path.join(jobspath, name + "_printjob")
+            with open(fpath, "w") as fd:
+                fd.write(str(content))
+
         dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs] + sched_logs
         for dirpath in dirs_to_del:
             self.du.rm(path=dirpath, recursive=True, force=True)
 
         # Now, go through the obfuscation map and replace all other instances
         # of the sensitive values in the snapshot with their obfuscated values
-        sed_path = self.du.which(exe="sed")
-        if sed_path is None or sed_path == "sed":
-            raise IOError("Couldn't find path to sed command, aborting .. ")
         for root, _, fnames in os.walk(snap_dir):
             for fname in fnames:
                 fpath = os.path.join(root, fname)
 
                 # Obfuscate values from val_obf_map
                 for key, val in self.val_obf_map.iteritems():
-                    sedcmd = r"%s -i 's/\b%s\b/%s/g' %s" % (sed_path, key,
-                                                            val, fpath)
-                    self.du.run_cmd(cmd=sedcmd, as_script=True,
-                                    level=logging.DEBUG, logerr=False)
+                    self._replace_str_in_file(key, val, fpath)
 
                 # Remove the attr values from vals_to_del list
                 fout = self.du.create_temp_file()
