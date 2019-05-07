@@ -671,6 +671,10 @@ int add_event_to_nodes(timed_event *te, nspec **nspecs);
 
 int add_node_events(timed_event *te, void *arg1, void *arg2);
 
+/*
+ * Find a node by its hostname
+ */
+node_info *find_node_by_host(node_info **ninfo_arr, char *host);
 #ifdef	__cplusplus
 }
 #endif

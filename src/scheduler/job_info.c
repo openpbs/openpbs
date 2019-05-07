@@ -5054,14 +5054,35 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			}
 			break;
 		case INSUFFICIENT_RESOURCE:
-			for (index = 0; job->select->chunks[index] != NULL; index++)
-			{
-				for (req_scan = job->select->chunks[index]->req; req_scan != NULL; req_scan = req_scan->next)
+			/* special check for vnode and host resource because those resources
+			 * do not get into chunk level resources. So in such a case we 
+			 * compare the resource name with the chunk name
+			 */
+			if (inp->err->rdef == getallres(RES_VNODE)) {
+				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
+				if (hreq == NULL)
+					return 0;
+				for (index = 0; job->execselect->chunks[index] != NULL; index++)
 				{
-					if (req_scan->def == inp->err->rdef) {
-						if (req_scan->type.is_non_consumable ||
-						    req_scan->amount > 0) {
+					resource_req *lreq = find_resource_req(job->execselect->chunks[index]->req, inp->err->rdef);
+					if (lreq != NULL)
+						if (strcmp(hreq->res_str, lreq->res_str) == 0)
 							return 1;
+				}
+			} else if (inp->err->rdef == getallres(RES_HOST)) {
+				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
+				if (find_node_by_host(job->ninfo_arr, hreq->res_str) != NULL)
+					return 1;
+			} else {
+				for (index = 0; job->select->chunks[index] != NULL; index++)
+				{
+					for (req_scan = job->select->chunks[index]->req; req_scan != NULL; req_scan = req_scan->next)
+					{
+						if (req_scan->def == inp->err->rdef) {
+							if (req_scan->type.is_non_consumable ||
+							    req_scan->amount > 0) {
+									return 1;
+							}
 						}
 					}
 				}
