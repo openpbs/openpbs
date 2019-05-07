@@ -41,6 +41,8 @@
 extern "C" {
 #endif
 
+#include <math.h>
+
 /* macro to turn a value from enum preempt into it's bit for the bitfield */
 #define PREEMPT_TO_BIT(X) (1 << (X) )
 
@@ -92,12 +94,21 @@ enum select_job_status
 
 #define INIT_ARR_SIZE 2048
 
+/* We need two sets of UNSPECIFIED/SCHD_INFINITY constants.  One for resources
+ * which can be negative, and one for positive integer values.  While we could
+ * use some numbers near -LONG_MAX, that would mean every integer used in the
+ * scheduler would need to be a long, when an int or smaller type is fine.
+ */ 
+
 /* Unspecified resource value */
-#define UNSPECIFIED -1
+#define UNSPECIFIED_RES -HUGE_VAL
 #define UNSPECIFIED_STR "UNSPECIFIED"
 /* infinity value for resources */
-#define SCHD_INFINITY -2
+#define SCHD_INFINITY_RES HUGE_VAL
 #define SCHD_INFINITY_STR "SCHD_INFINITY"
+
+#define UNSPECIFIED -1
+#define SCHD_INFINITY -2
 
 /* infinity walltime value for forever job. This is 5 years(=60 * 60 * 24 * 365 * 5 seconds) */
 #define JOB_INFINITY (60 * 60 * 24 * 365 * 5)
@@ -129,7 +140,7 @@ enum update_accruetype_mode
 };
 
 /* Default values for datatype resource */
-#define RES_DEFAULT_AVAIL SCHD_INFINITY
+#define RES_DEFAULT_AVAIL SCHD_INFINITY_RES
 #define RES_DEFAULT_ASSN 0
 
 #define PREEMPT_QUEUE_SERVER_SOFTLIMIT (1 << (PREEMPT_OVER_QUEUE_LIMIT) | 1 << (PREEMPT_OVER_SERVER_LIMIT) )

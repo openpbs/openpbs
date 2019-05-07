@@ -116,11 +116,11 @@
 int
 cmpres(sch_resource_t r1, sch_resource_t r2)
 {
-	if (r1 == SCHD_INFINITY && r2 == SCHD_INFINITY)
+	if (r1 == SCHD_INFINITY_RES && r2 == SCHD_INFINITY_RES)
 		return 0;
-	if (r1 == SCHD_INFINITY)
+	if (r1 == SCHD_INFINITY_RES)
 		return -1;
-	if (r2 == SCHD_INFINITY)
+	if (r2 == SCHD_INFINITY_RES)
 		return 1;
 	if (r1 < r2)
 		return -1;

@@ -1224,7 +1224,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 				else
 					avail = dynamic_avail(res);
 
-				if (avail == SCHD_INFINITY && (flags & UNSET_RES_ZERO))
+				if (avail == SCHD_INFINITY_RES && (flags & UNSET_RES_ZERO))
 					avail = 0;
 
 				/*
@@ -1232,7 +1232,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 				 * 0 amount of the resource, we do not need to check if any is
 				 * available
 				 */
-				if (avail != SCHD_INFINITY && resreq->amount != 0) {
+				if (avail != SCHD_INFINITY_RES && resreq->amount != 0) {
 					if (avail < resreq->amount) {
 						fail = 1;
 						if (err != NULL) {
@@ -1241,7 +1241,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 
 							res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
 							res_to_str_c(avail, res->def, RF_AVAIL, resbuf2, sizeof(resbuf2));
-							if ((flags & UNSET_RES_ZERO) && res->avail == SCHD_INFINITY)
+							if ((flags & UNSET_RES_ZERO) && res->avail == SCHD_INFINITY_RES)
 								res_to_str_c(0, res->def, RF_AVAIL, resbuf3, sizeof(resbuf3));
 							else
 								res_to_str_r(res, RF_AVAIL, resbuf3, sizeof(resbuf3));
@@ -1302,8 +1302,8 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 sch_resource_t
 dynamic_avail(schd_resource *res)
 {
-	if (res->avail == SCHD_INFINITY)
-		return SCHD_INFINITY;
+	if (res->avail == SCHD_INFINITY_RES)
+		return SCHD_INFINITY_RES;
 	else if ((res->avail - res->assigned) <=0)
 		return 0;
 	else

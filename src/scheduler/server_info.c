@@ -3145,9 +3145,9 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 			if (res->type.is_consumable != 0 || res->type.is_non_consumable !=0)
 				memset(&(res->type), 0, sizeof(struct resource_type));
 
-			/* if val is a string, avail will be set to SCHD_INFINITY */
+			/* if val is a string, avail will be set to SCHD_INFINITY_RES */
 			res->avail = res_to_num(val, &(res->type));
-			if (res->avail == SCHD_INFINITY) {
+			if (res->avail == SCHD_INFINITY_RES) {
 				/* Verify that this is a string type resource */
 				if (!res->def->type.is_string)
 					return 0;
@@ -3162,9 +3162,8 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 			free(res->str_assigned);
 			res->str_assigned = NULL;
 		}
-		/* only set the type there is not type set */
-		if (res->type.is_non_consumable == 0 && res->type.is_consumable == 0)
-			res->assigned = res_to_num(val, &(res->type));
+		if (val[0] == '@') /* Indirect resources will be found elsewhere, assign 0 */
+			res->assigned = 0;
 		else
 			res->assigned = res_to_num(val, NULL);
 		res->str_assigned = string_dup(val);

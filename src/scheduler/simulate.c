@@ -310,7 +310,7 @@ next_event(server_info *sinfo, int advance)
 	 * status.
 	 */
 	if (!calendar->eol) {
-		if (sinfo->policy->prime_status_end !=SCHD_INFINITY) {
+		if (sinfo->policy->prime_status_end != SCHD_INFINITY) {
 			if (te == NULL ||
 				(*calendar->current_time <= sinfo->policy->prime_status_end &&
 				sinfo->policy->prime_status_end < te->event_time)) {
