@@ -194,6 +194,7 @@ JID = 'job_id'
 JRR = 'job_run_rate'
 JSR = 'job_submit_rate'
 JER = 'job_end_rate'
+JTR = 'job_throughput'
 NJQ = 'num_jobs_queued'
 NJR = 'num_jobs_run'
 NJE = 'num_jobs_ended'
@@ -223,7 +224,7 @@ class PBSLogUtils(object):
     pu = ProcUtils()
 
     @classmethod
-    def convert_date_time(cls, dt=None, fmt=None, syslog=False):
+    def convert_date_time(cls, dt=None, fmt=None):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch (with possible microseconds)
@@ -255,11 +256,7 @@ class PBSLogUtils(object):
                 fmt = "%m/%d/%Y %H:%M:%S"
 
         try:
-            # Get datetime object
-            if syslog:
-                t = self.convert_syslog_time(dt=dt)
-            else:
-                t = datetime.strptime(dt, fmt)
+            t = datetime.strptime(dt, fmt)
 
             # Get timedelta object of epoch time
             t -= epoch_datetime
@@ -274,30 +271,37 @@ class PBSLogUtils(object):
         else:
             return int(tm)
 
-    def get_syslog_date_str(self, logline=None):
-        if logline is None:
-            return None
+    def convert_syslog_date_str(self, logline):
+        """
+        Convert syslog time string in logline to the  str time format
+        required by the convert_date_time(),
+        which will convert it to epoch time.
+        The syslog time can be in 2 formats-
+        1) RFC 5424- "yyyy-mm-ddThh:mm:ss-TZ"
+        2) "Month date hh:mm:ss" (with no year)
+        :param logline: the syslog line from which to read date
+        :type logline: str or None
+        :returns: str
+        """
 
-        if "T" in logline:
-            return logline[:19]
-        else:
-            return logline[:15]
-
-    def convert_syslog_time(self, dt=None):
-        if dt is None:
-            return None
-
-        if 'T' in dt:
+        if "T" in logline.split(' ', 1)[0]:
+            # if time format is RFC 5424 -
+            # remove unwanted strings 'T' and time zones from dt
+            # before converting it to datetime
+            dt = logline[:19]
             dt_str = dt[:10] + " " + dt[12:19]
-            t = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-            return t
+            t = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            print("time format is: " + str(t))
+            return str(t)
         else:
-            t = datetime.datetime.strptime(dt, "%b %d %H:%M:%S")
+            dt = logline[:15]
+            t = datetime.strptime(dt, "%b %d %H:%M:%S")
+            # Since there is no year, strptime adds date as 1900.
+            # add the current year to the tuple
             current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
-            t_edit = list(t)
-            t_edit[0] = int(current_t[:4])
-            t = time.struct_time(tuple(t_edit))
-            return t
+            t = t.replace(year=int(current_t[:4]))
+            print("time format is: " + str(t))
+            return str(t)
 
     def get_num_lines(self, log, hostname=None, sudo=False):
         """
@@ -391,28 +395,24 @@ class PBSLogUtils(object):
                         specified time
         :param syslog: If True, checks for syslog format of date.
                        Defaults to False.
-        :type bool
+        :type syslog: bool
         """
         linecount = 0
         ret = []
         if lines:
             for l in lines:
                 if syslog:
-                    if starttime is not None:
-                        starttime = int(starttime)
-                    if endtime is not None:
-                        endtime = int(endtime)
-                    dt_str = self.get_syslog_date_str(logline=l)
+                    dt_str = self.convert_syslog_date_str(logline=l)
                 else:
                     dt_str = l.split(';', 1)[0]
                 if starttime is not None:
                     # dt_str captures the log record time
-                    tm = self.convert_date_time(dt_str, syslog=syslog)
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
                     # dt_str captures the log record time
-                    tm = self.convert_date_time(dt_str, syslog=syslog)
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
@@ -657,12 +657,11 @@ class PBSLogUtils(object):
         elif logval is 'comm_logs':
             daemon_str = 'pbs_comm'
         else:
-            raise ValueError('Unindentified daemon string')
+            raise ValueError('Unindentified daemon string: ' + logval)
 
         for x in list_of_syslog_files:
-            f = FileUtils(x, FILE_TAIL)
-            l_sys = f.tail(n=n)
-
+            l_sys = self.du.tail(hostname=hostname, filename=x,
+                                 n=n, sudo=True)['out']
             for l in l_sys:
                 if daemon_str in l:
                     lines.append(l)
@@ -678,7 +677,7 @@ class PBSLogUtils(object):
         :type severity: int
         :param facility: syslog facilty in pbs.conf
         :type facility: int
-        :param hostname: the on which syslog files reside
+        :param hostname: the host on which syslog files reside
         :type hostname: str
         :return: list of priorites list[]
         """

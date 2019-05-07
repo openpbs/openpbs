@@ -79,6 +79,7 @@ from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
 
+
 # suppress logging exceptions
 logging.raiseExceptions = False
 
@@ -3441,8 +3442,13 @@ class PBSService(PBSObject):
                  (This will overrides diagmap)
     :type diag: str or None
     """
+
     du = DshUtils()
     pu = ProcUtils()
+
+    CHECK_ONLY_SYSLOG = 1
+    CHECK_ONLY_LOCALLOG = 2
+    CHECK_SYSLOG_LOCALLOG = 3
 
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  diagmap={}, diag=None):
@@ -3477,12 +3483,9 @@ class PBSService(PBSObject):
         self.shortname = self.hostname.split('.')[0]
         self.platform = self.du.get_platform()
 
-        try:
-            from ptl.utils.pbs_logutils import PBSLogUtils
-        except:
-            _msg = 'error loading ptl.utils.pbs_logutils'
-            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
-        self.logutils = PBSLogUtils()
+        from ptl.utils.pbs_logutils import PBSLogUtils
+        self.lu = PBSLogUtils()
+
         self.logfile = None
         self.acctlogfile = None
         self.pbs_conf = {}
@@ -3922,7 +3925,7 @@ class PBSService(PBSObject):
         try:
             if syslog:
                 logval = self._instance_to_logpath(logtype)
-                lines = self.logutils._get_syslog_lines(
+                lines = self.lu._get_syslog_lines(
                     hostname=self.hostname, n=n, logval=logval)
             elif logtype == 'tracejob':
                 if id is None:
@@ -4083,12 +4086,12 @@ class PBSService(PBSObject):
             if attempt > 1:
                 attemptmsg = ' - attempt ' + str(attempt)
 
-            lines = self.log_lines(logtype, id, n=n, tail=tail,
-                                   starttime=starttime, endtime=endtime,
-                                   syslog=syslog)
-            rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
-                                         regexp=regexp, starttime=starttime,
-                                         endtime=endtime, syslog=syslog)
+            llines = self.log_lines(logtype, id, n=n, tail=tail,
+                                    starttime=starttime, endtime=endtime,
+                                    syslog=syslog)
+            rv = self.lu.match_msg(lines, msg, allmatch=allmatch,
+                                   regexp=regexp, starttime=starttime,
+                                   endtime=endtime, syslog=syslog)
             if rv:
                 self.logger.log(level, infomsg + '... OK')
                 break
@@ -4148,7 +4151,7 @@ class PBSService(PBSObject):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: float or str
+        :type starttime: int
         :param endtime: If set ignore matches that occur after
                         specified time
         :type endtime: int
@@ -4176,24 +4179,23 @@ class PBSService(PBSObject):
 
         pbs_log_type = self._get_log_type(hostname=self.hostname)
 
-        if pbs_log_type == "check_only_syslog":
+        if pbs_log_type == self.CHECK_ONLY_SYSLOG:
             return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                    max_attempts, interval, starttime,
                                    endtime, level=level, existence=existence,
                                    syslog=True)
-        elif pbs_log_type == "check_only_locallog":
+        elif pbs_log_type == self.CHECK_ONLY_LOCALLOG:
             return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                    max_attempts, interval, starttime,
                                    endtime, level=level, existence=existence,
                                    syslog=False)
-        elif pbs_log_type == "check_both":
+        elif pbs_log_type == self.CHECK_SYSLOG_LOCALLOG:
             self._log_match(self, msg, id, n, tail, allmatch,
                             regexp, max_attempts,
                             interval, starttime, endtime,
                             level=level, existence=existence,
                             syslog=True)
 
-            self.logger.log(level, "Reading local logs")
             return self._log_match(self, msg, id, n, tail, allmatch,
                                    regexp, max_attempts, interval,
                                    starttime, endtime, level=level,
@@ -4427,26 +4429,26 @@ class PBSService(PBSObject):
         pbs_locallog = pbs_config_data.get("PBS_LOCALLOG")
         pbs_syslog = pbs_config_data.get("PBS_SYSLOG")
 
-        if pbs_locallog is None and pbs_syslog is None:
-            pbs_locallog = 1
-
-        if pbs_syslog is None:
+        if pbs_syslog is None or pbs_syslog == "0":
             pbs_syslog = 0
+
+        if pbs_locallog is None and not pbs_syslog:
+            pbs_locallog = 1
 
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 0:
             _msg = "All logging turned off in PBS"
             raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
         if int(pbs_syslog) == 0 and int(pbs_locallog) == 1:
-            return "check_only_locallog"
+            return self.CHECK_ONLY_LOCALLOG
 
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 0:
-            return "check_only_syslog"
+            return self.CHECK_ONLY_SYSLOG
 
         if int(pbs_syslog) > 0 and int(pbs_locallog) == 1:
-            return "check_both"
+            return self.CHECK_SYSLOG_LOCALLOG
 
-        _msg = "Something went wrong in _get_log_type fn"
+        _msg = "invalid PBS_LOCALLOG/PBS_SYSLOG value found"
         raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
 
