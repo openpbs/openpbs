@@ -1634,7 +1634,7 @@ perf_stat_alloc(char *instance)
 	if ((instance == NULL) || (instance[0] == '\0'))
 		return NULL;
 
-	p_stat = (perf_stat_t *)malloc(sizeof(perf_stat_t));
+	p_stat = malloc(sizeof(perf_stat_t));
 	if (p_stat == NULL)
 		return NULL;
 
@@ -1670,7 +1670,7 @@ perf_stat_find(char *instance)
 
 	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
 	while (p_stat) {
-		if ( strcmp(p_stat->instance, instance) == 0) {
+		if (strcmp(p_stat->instance, instance) == 0) {
 			break;
 		}
 		p_stat = (perf_stat_t *)GET_NEXT(p_stat->pi_allstats);
@@ -1697,7 +1697,7 @@ perf_stat_remove(char *instance)
 
 	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
 	while (p_stat) {
-		if ( strcmp(p_stat->instance, instance) == 0) {
+		if (strcmp(p_stat->instance, instance) == 0) {
 			break;
 		}
 		p_stat = (perf_stat_t *)GET_NEXT(p_stat->pi_allstats);

@@ -53,20 +53,27 @@ class Test_hook_perf_stat(TestFunctional):
         self.mom.add_config({'$logevent': 4095})
         self.mom.signal('-HUP')
 
-    def test_queuejob_hook(self):
-        """
-        Test that pbs_server collects performance stats for queuejob hook
-        """
-        hook_content = """
+        self.hook_content = """
 import pbs
 pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
 s = pbs.server()
 pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
 """
+        self.mhook_content = """
+import pbs
+pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
+s = pbs.server()
+pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
+"""
+
+    def test_queuejob_hook(self):
+        """
+        Test that pbs_server collects performance stats for queuejob hook
+        """
         hook_name = 'qhook'
         hook_event = 'queuejob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr, self.hook_content)
 
         j = Job(TEST_USER)
         self.server.submit(j)
@@ -106,16 +113,10 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for modifyjob hook
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-"""
         hook_name = 'mhook'
         hook_event = 'modifyjob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr, self.hook_content)
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)
@@ -163,16 +164,10 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for movejob hook
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-"""
         hook_name = 'mvhook'
         hook_event = 'movejob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr, self.hook_content)
 
         j = Job(TEST_USER, {'Hold_Types': None})
         jid = self.server.submit(j)
@@ -216,16 +211,10 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for runjob hook
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-"""
         hook_name = 'rhook'
         hook_event = 'runjob'
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr, self.hook_content)
 
         j = Job(TEST_USER)
         self.server.submit(j)
@@ -263,16 +252,10 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for resvsub hook
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-"""
         hook_name = 'rhook'
         hook_event = 'resvsub'
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr, self.hook_content)
 
         r = Reservation(TEST_USER)
         self.server.submit(r)
@@ -312,17 +295,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_server collects performance stats for periodic hook
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "server hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
-"""
         hook_name = 'phook'
         hook_event = 'periodic'
         hook_attr = {'event': hook_event, 'freq': 5}
         self.server.create_import_hook(hook_name, hook_attr,
-                                       hook_content, overwrite=True)
+                                       self.hook_content, overwrite=True)
 
         hd = "hook_perf_stat"
         lbl = "label=hook_%s_%s_.*" % (hook_event, hook_name)
@@ -363,12 +340,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "server data collected for %s" % s.name)
         """
         Test that pbs_mom collects performance stats for mom hooks
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
-"""
         for hook_event in ['execjob_begin',
                            'execjob_launch',
                            'execjob_prologue',
@@ -376,7 +347,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
                            'execjob_end']:
             hook_name = hook_event.replace('execjob_', '')
             hook_attr = {'enabled': 'true', 'event': hook_event}
-            self.server.create_import_hook(hook_name, hook_attr, hook_content)
+            self.server.create_import_hook(hook_name, hook_attr,
+                                           self.mhook_content)
         j = Job(TEST_USER)
         j.set_sleep_time(5)
         self.server.submit(j)
@@ -433,16 +405,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
         """
         Test that pbs_mom collects performance stats for mom period hooks
         """
-        hook_content = """
-import pbs
-pbs.logmsg(pbs.LOG_DEBUG, "mom hook called")
-s = pbs.server()
-pbs.logmsg(pbs.LOG_DEBUG, "mom data collected for %s" % s.name)
-"""
         hook_name = "mom_period"
         hook_event = "exechost_periodic"
         hook_attr = {'enabled': 'true', 'event': hook_event}
-        self.server.create_import_hook(hook_name, hook_attr, hook_content)
+        self.server.create_import_hook(hook_name, hook_attr,
+                                       self.mhook_content)
 
         hd = "hook_perf_stat"
         lbl = "label=hook_%s_%s_.*" % (hook_event, hook_name)

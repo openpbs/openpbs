@@ -4199,7 +4199,7 @@ create_py_vnodelist(pbs_list_head *vnlist, char *perf_label, char *perf_action)
 				goto create_py_vnodelist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(py_vn, &rqs.rq_attr, perf_label, perf_action);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_vn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -4432,7 +4432,7 @@ create_py_joblist(pbs_list_head *joblist, char *perf_label, char *perf_action)
 				goto create_py_joblist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(py_jn, &rqs.rq_attr, perf_label, perf_action);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_jn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -4665,7 +4665,7 @@ create_py_resvlist(pbs_list_head *resvlist, char *perf_label, char *perf_action)
 				goto create_py_resvlist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(py_rn, &rqs.rq_attr, perf_label, perf_action);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_rn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
