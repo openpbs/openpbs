@@ -8310,7 +8310,7 @@ class Server(PBSService):
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
                                    extend, level=level, msg=" ".join(msg),
-                                   trigger_sched_cycle=False)
+                                   trigger_sched_cycle=trigger_sched_cycle)
 
         self.logger.log(level, prefix + " ".join(msg) + ' ...  OK')
         return True
