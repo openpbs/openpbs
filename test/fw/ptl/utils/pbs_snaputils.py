@@ -241,7 +241,7 @@ class ObfuscateSnapshot(object):
                       ATTR_rescavail + ".vnode"]
     sched_attrs_obf = [ATTR_SchedHost]
     queue_attrs_obf = [ATTR_acluser, ATTR_aclgroup, ATTR_aclhost]
-    skip_vals = ["_pbs_project_default", "*"]
+    skip_vals = ["_pbs_project_default", "*", "pbsadmin", "pbsuser"]
 
     def _obfuscate_stat(self, file_path, attrs_to_obf, attrs_to_del):
         """
