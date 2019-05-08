@@ -674,7 +674,7 @@ class TestQstatFormats(TestFunctional):
 
     def test_qstat_answ(self):
         """
-        Test if qstat -rwt correctly prints in wide format.
+        Test if qstat -answ correctly prints in wide format.
         This tests the alternate display function
         """
         self.run_namelength_test('-answ')

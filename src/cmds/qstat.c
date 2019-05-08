@@ -1232,7 +1232,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			printf("%s\n", show_nonprint_chars(c));
 		if (how_opt & ALT_DISPLAY_p) {
 			if (wide) {
-				printf("Job id                         Name            User              %% done S Queue          \n");
+				printf("Job id                         Name            User              %% done  S Queue          \n");
 				printf("-----------------------------  --------------- ---------------  -------- - ---------------\n");
 			} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 				printf("Job id                 Name             User               %% done  S Queue\n");
@@ -2609,7 +2609,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	}
 	if (wide) {
 		if (output_format != FORMAT_DEFAULT) {
-			fprintf(stderr, "qstat: option w cannot be used with alternate display formats\n");
+			fprintf(stderr, "qstat: option w cannot be used with -F\n");
 			errflg++;
 		}
 	}
@@ -2618,7 +2618,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	if (errflg) {
 		static char usag2[]="qstat --version\n";
 		static char usage[]="usage: \n\
-qstat [-f] [-J] [-p] [-t] [-x] [-E] [-F format] [-D delim] [ job_identifier... | destination... ]\n\
+qstat [-f] [-J] [-p] [-t] [-x] [-E] [-F format | -w] [-D delim] [ job_identifier... | destination... ]\n\
 qstat [-a|-i|-r|-H|-T] [-J] [-t] [-u user] [-n] [-s] [-G|-M] [-1] [-w]\n\
 \t[ job_identifier... | destination... ]\n\
 qstat -Q [-f] [-F format] [-D delim] [ destination... ]\n\
