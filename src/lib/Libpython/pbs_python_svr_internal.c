@@ -1973,11 +1973,22 @@ py_resource_string_value(pbs_resource_value *resc_val)
  * @param[in] attr_data_array - array of actual attribute names/resources/values
  * @param[in] attr_def_array - array of attribute definitions (ex. job_attr_def)
  * @param[in] attr_def_array_size - size of attr_def_array.
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ * @param[in]	perf_action - passed on to hook_perf_stat* call.
  *
  * @return indication of whether or not 'py_instance' was completely
  *	   populated or not
  * @return 0	- completely populated
  * @return -1	- incompletely populated
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 
 int
@@ -1985,7 +1996,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 	PyObject **attr_py_array,
 	attribute *attr_data_array,
 	attribute_def *attr_def_array,
-	int attr_def_array_size)
+	int attr_def_array_size, char *perf_label, char *perf_action)
 {
 	int i = 0; /* index */
 	int encode_rv = 0;  /* at_encode functions return value */
@@ -2001,6 +2012,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 	char *new_value_str = NULL;
 	pbs_resource_value *resc_val;
 
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	for (i = 0; i < attr_def_array_size; i++) {
 		attr_p = attr_data_array + i;
 		attr_def_p = attr_def_array + i;
@@ -2207,6 +2219,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 			continue;
 		}
 	} /* for */
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return ret_rc;
 }
 
@@ -2219,15 +2232,25 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
  * @param[in] py_instance -  a Python object/class to populate
  * @param[in] svrattrl_list - a pbs_list_head with svrattrl entries whose
  *				values will be used to populate 'py_instance'
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
+ * @param[in]	perf_action - dat passed on to hook_perf_stat* call
  *
  * @return indication of whether or not 'py_instance' was completely
  *	   populated or not
  * @return 0	- completely populated
  * @return -1	- incompletely populated
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 int
-pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
-	pbs_list_head *svrattrl_list)
+pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance, pbs_list_head *svrattrl_list, char *perf_label, char *perf_action)
 {
 	svrattrl	*plist = NULL;
 
@@ -2253,7 +2276,7 @@ pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
 
 	print_svrattrl_list("pbs_python_populate_python_class_from_svrattrl==>",
 		svrattrl_list);
-
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	plist = (svrattrl *)GET_NEXT(*svrattrl_list);
 
 	while (plist) {
@@ -2310,6 +2333,7 @@ pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
 		plist = (svrattrl *)GET_NEXT(plist->al_link);
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (ret_rc);
 
 }
@@ -2569,7 +2593,7 @@ load_cached_resource_value(PyObject *py_resource_match)
  * @return int
  * @retval 0	for success
  * @retval != 0 for error
-
+ *
  */
 int
 pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
@@ -2631,7 +2655,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "python object does not have '%s'", PY_ATTRIBUTES);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
-		return (rc);
+		return rc;
 	}
 
 	py_attr_dict = PyObject_GetAttrString(py_instance, PY_ATTRIBUTES); /* NEW*/
@@ -3229,6 +3253,7 @@ mark_readonly_exit:
  * @param[in]   queue_name - if 'pque' is not set, then create a PBS Python
  *			      queue object mapping a pbs_queue structure in
  *			      the system that matches 'queue_name'.
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
  * @note
  *	This first returns any cached Python queue object found in
  *	'py_hook_pbsque[]' matching 'que_name' or pque's que_name.
@@ -3239,7 +3264,7 @@ mark_readonly_exit:
  *				queue.
  */
 static PyObject *
-_pps_helper_get_queue(pbs_queue *pque, const char *que_name)
+_pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 {
 	PyObject *py_que_class = NULL;
 	PyObject *py_que = NULL;
@@ -3247,6 +3272,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 	pbs_queue *que;
 	int tmp_rc = -1;
 	int i;
+	char perf_action[MAXBUFLEN];
 
 	if (pque != NULL) {
 		que = pque;
@@ -3320,11 +3346,12 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 		que->qu_jobstbuf);
 	/* stuff all the attributes */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_QUEUE_OBJECT, que->qu_qs.qu_name);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_que,
 		py_que_attr_types,
 		que->qu_attr,
 		que_attr_def,
-		QA_ATR_LAST);
+		QA_ATR_LAST, perf_label, perf_action);
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
 			"partially populated python queue object");
@@ -3403,6 +3430,9 @@ ERROR_EXIT:
  * @brief
  * 	Helper method returning a server Python Object representing the local
  *	(current) server.
+ *
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ *
  *  @note
  *	This marks the server object "read-only" in Python mode.
  *	Also, this first returns the cached 'py_hook_pbsserver' object.
@@ -3413,12 +3443,13 @@ ERROR_EXIT:
  *				local server values.
  */
 static PyObject *
-_pps_helper_get_server(void)
+_pps_helper_get_server(char *perf_label)
 {
 	PyObject *py_svr_class = NULL;
 	PyObject *py_svr = NULL;
 	PyObject *py_sargs = NULL;
 	int tmp_rc = -1;
+	char	perf_action[MAXBUFLEN];
 
 	if (py_hook_pbsserver != NULL) {
 		Py_INCREF(py_hook_pbsserver);
@@ -3465,11 +3496,12 @@ _pps_helper_get_server(void)
 
 	/* stuff all the attributes */
 	strncpy((char *)hook_debug.objname, SERVER_OBJECT, HOOK_BUF_SIZE-1);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_svr,
 		py_svr_attr_types,
 		server.sv_attr,
 		svr_attr_def,
-		SRV_ATR_LAST);
+		SRV_ATR_LAST, perf_label, perf_action);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -3510,6 +3542,7 @@ ERROR_EXIT:
  * @param[in] pjob_o - job info
  * @param[in] jobid - job identifier
  * @param[in] qname - queuename
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
  *
  * @return	PyObject*
  * @retval	job python object	success
@@ -3517,7 +3550,7 @@ ERROR_EXIT:
  *
  */
 static PyObject *
-_pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
+_pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname, char *perf_label)
 {
 	PyObject *py_job_class = NULL;
 	PyObject *py_job = NULL;
@@ -3527,6 +3560,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 	job *pjob;
 	int tmp_rc = -1;
 	int t;
+	char	perf_action[MAXBUFLEN];
 
 	if (pjob_o != NULL) {
 		pjob = pjob_o;
@@ -3588,11 +3622,12 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 	 * OK, At this point we need to start populating the job class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_JOB_OBJECT, pjob->ji_qs.ji_jobid);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_job,
 		py_job_attr_types,
 		pjob->ji_wattr,
 		job_attr_def,
-		JOB_ATR_LAST);
+		JOB_ATR_LAST, perf_label, perf_action);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -3601,7 +3636,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 
 	/* set job.queue to actual queue object */
 	if (pjob->ji_qs.ji_queue) {
-		py_que = _pps_helper_get_queue(NULL, pjob->ji_qs.ji_queue);/* NEW ref */
+		py_que = _pps_helper_get_queue(NULL, pjob->ji_qs.ji_queue, perf_label);/* NEW ref */
 		if (py_que) {
 			if (PyObject_HasAttrString(py_job, ATTR_queue)) {
 				/* py_que ref ct incremented as part of py_job */
@@ -3612,7 +3647,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 	}
 
 	/* set job.server to actual server object */
-	py_server = _pps_helper_get_server(); /* NEW Ref */
+	py_server = _pps_helper_get_server(perf_label); /* NEW Ref */
 
 	if (py_server) {
 		if (PyObject_HasAttrString(py_job, ATTR_server)) {
@@ -3647,6 +3682,7 @@ ERROR_EXIT:
  *
  * @param[in] presv_o - reservation structure
  * @param[in] resvid - reservation name
+ * @param[in] perf_label - passed on to hook_perf_stat* call.
  *
  * @return	PyObject *
  * @retval	This returns a Python object that maps
@@ -3654,7 +3690,7 @@ ERROR_EXIT:
  * 		or to the struct returned by find_resv(<resvid>).
  */
 static PyObject *
-_pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
+_pps_helper_get_resv(resc_resv *presv_o, const char *resvid, char *perf_label)
 {
 	PyObject *py_resv_class = NULL;
 	PyObject *py_resv = NULL;
@@ -3665,6 +3701,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 	int tmp_rc = -1;
 	char resvid_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
+	char perf_action[MAXBUFLEN];
 
 	if (presv_o != NULL) {
 		presv = presv_o;
@@ -3721,11 +3758,12 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 	 * OK, At this point we need to start populating the resv class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_RESV_OBJECT, presv->ri_qs.ri_resvID);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_resv,
 		py_resv_attr_types,
 		presv->ri_wattr,
 		resv_attr_def,
-		RESV_ATR_LAST);
+		RESV_ATR_LAST, perf_label, perf_action);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -3734,7 +3772,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 
 	/* set resv.queue to actual queue object */
 	if (presv->ri_qs.ri_queue && PyObject_HasAttrString(py_resv, ATTR_queue)) {
-		py_que = _pps_helper_get_queue(NULL, presv->ri_qs.ri_queue); /* NEW */
+		py_que = _pps_helper_get_queue(NULL, presv->ri_qs.ri_queue, perf_label); /* NEW */
 		if (py_que) {
 			/* py_que ref ct incremented as part of py_resv */
 			(void)PyObject_SetAttrString(py_resv, ATTR_queue, py_que);
@@ -3743,7 +3781,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 	}
 
 	/* set resv.server to actual server object */
-	py_server = _pps_helper_get_server(); /* NEW */
+	py_server = _pps_helper_get_server(perf_label); /* NEW */
 
 	if (py_server) {
 		if (PyObject_HasAttrString(py_resv, ATTR_server)) {
@@ -3783,11 +3821,13 @@ GR_ERROR_EXIT:
  *				  populate a Python vnode object.
  * @param[in]	vname		- name of a vnode to obtain "struct pbsnode *"
  *				  content to populate a Python vnode object.
+ * @param[in]	perf_label	- passed on to hook_perf_stat* call.
+ *
  * @return      PyObject *	- the Python vnode object corresponding to
  *				  'pvnode_o' or 'vname'.
  */
 static PyObject *
-_pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
+_pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname, char *perf_label)
 {
 	PyObject *py_vnode_class = NULL;
 	PyObject *py_vnode = NULL;
@@ -3796,6 +3836,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 	struct pbsnode *pvnode;
 	int tmp_rc = -1;
 	char buf[512];
+	char perf_action[MAXBUFLEN];
 
 	if (pvnode_o != NULL) {
 		pvnode = pvnode_o;
@@ -3841,11 +3882,12 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 	 * OK, At this point we need to start populating the vnode class.
 	 */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_VNODE_OBJECT, pvnode->nd_name);
+	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
 	tmp_rc = pbs_python_populate_attributes_to_python_class(py_vnode,
 		py_vnode_attr_types,
 		pvnode->nd_attr,
 		node_attr_def,
-		ND_ATR_LAST);
+		ND_ATR_LAST, perf_label, perf_action);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -3854,7 +3896,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 
 	/* set vnode.queue to actual queue object */
 	if (pvnode->nd_pque && PyObject_HasAttrString(py_vnode, ATTR_queue)) {
-		py_que = _pps_helper_get_queue(pvnode->nd_pque, NULL); /* NEW */
+		py_que = _pps_helper_get_queue(pvnode->nd_pque, NULL, perf_label); /* NEW */
 		if (py_que) {
 			/* py_que ref ct incremented as part of py_vnode */
 			(void)PyObject_SetAttrString(py_vnode, ATTR_queue, py_que);
@@ -4007,15 +4049,26 @@ _pbs_python_set_mode(int mode)
  * @param[in]	plist->al_name = <node_name>.<attribute_name>
  * @param[in]	plist->al_resc =  <resource_name>,<type>
  * @param[in]	plist->al_value = <value>
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
+ * @param[in]	perf_action - dat passed on to hook_perf_stat* call
  *
  * @return 	PyObject *
  * @retval	<object>	- the Python dictionary object holding
  *			           the individual vnode objects, indexed by
  *				   vnode names.
  * @retval	NULL		- if an error occured.
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 static PyObject *
-create_py_vnodelist(pbs_list_head *vnlist)
+create_py_vnodelist(pbs_list_head *vnlist, char *perf_label, char *perf_action)
 {
 	svrattrl	*plist, *plist_next;
 	PyObject	*py_vn = NULL;  /* class vnode arg list */
@@ -4044,6 +4097,8 @@ create_py_vnodelist(pbs_list_head *vnlist)
 			"failed to create a Vnodes list dictionary!");
 		return NULL;
 	}
+
+	hook_perf_stat_start(perf_label, perf_action, 0);
 
 	py_vnode_class = pbs_python_types_table[PP_VNODE_IDX].t_class;
 
@@ -4144,8 +4199,7 @@ create_py_vnodelist(pbs_list_head *vnlist)
 				goto create_py_vnodelist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(\
-						       py_vn, &rqs.rq_attr);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_vn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -4218,6 +4272,7 @@ create_py_vnodelist_exit:
 		pn = NULL;
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (py_vnlist_ret);
 }
 
@@ -4232,15 +4287,26 @@ create_py_vnodelist_exit:
  * @param[in]	plist->al_name:	<job_name>.<attribute_name>
  * @param[in]	plist->al_resc: <resource_name>,<type>
  * @param[in]	plist->al_value: <value>
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
+ * @param[in]	perf_action - dat passed on to hook_perf_stat* call
  *
  * @return 	PyObject *
- * @retjal	<object>	- the Python dictionary object holding
+ * @retval	<object>	- the Python dictionary object holding
  *			           the individual job objects, indexed by
  *				   job names.
- * @retjal	NULL		- if an error occured.
+ * @retval	NULL		- if an error occured.
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 static PyObject *
-create_py_joblist(pbs_list_head *joblist)
+create_py_joblist(pbs_list_head *joblist, char *perf_label, char *perf_action)
 {
 	svrattrl	*plist, *plist_next;
 	PyObject	*py_jn = NULL;  /* class job arg list */
@@ -4265,6 +4331,7 @@ create_py_joblist(pbs_list_head *joblist)
 		return NULL;
 	}
 
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	py_job_class = pbs_python_types_table[PP_JOB_IDX].t_class;
 
 	rqs.rq_id[0] = '\0';
@@ -4365,8 +4432,7 @@ create_py_joblist(pbs_list_head *joblist)
 				goto create_py_joblist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(\
-						       py_jn, &rqs.rq_attr);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_jn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -4444,6 +4510,7 @@ create_py_joblist_exit:
 		pn = NULL;
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (py_joblist_ret);
 }
 
@@ -4459,14 +4526,26 @@ create_py_joblist_exit:
  *	plist->al_resc: <resource_name>.<type>
  *	plist->al_value: <value>
  *
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
+ * @param[in]	perf_action - dat passed on to hook_perf_stat* call
+ *
  * @return 	PyObject *
  * @retval	<object>	- the Python dictionary object holding
  *			           the individual reservation objects, indexed by
  *				   reservation names.
  * @retval	NULL		- if an error occured.
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 static PyObject *
-create_py_resvlist(pbs_list_head *resvlist)
+create_py_resvlist(pbs_list_head *resvlist, char *perf_label, char *perf_action)
 {
 	svrattrl	*plist, *plist_next;
 	PyObject	*py_rn = NULL;  /* class reservation arg list */
@@ -4491,6 +4570,7 @@ create_py_resvlist(pbs_list_head *resvlist)
 		return (NULL);
 	}
 
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	py_resv_class = pbs_python_types_table[PP_RESV_IDX].t_class;
 
 	memset(rqs.rq_id, 0, sizeof(rqs.rq_id));
@@ -4585,8 +4665,7 @@ create_py_resvlist(pbs_list_head *resvlist)
 				goto create_py_resvlist_exit;
 			}
 
-			rc = pbs_python_populate_python_class_from_svrattrl(
-						       py_rn, &rqs.rq_attr);
+			rc = pbs_python_populate_python_class_from_svrattrl(py_rn, &rqs.rq_attr, NULL, NULL);
 
 			if (rc == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -4664,6 +4743,7 @@ create_py_resvlist_exit:
 		pn = NULL;
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (py_resvlist_ret);
 }
 
@@ -4918,6 +4998,8 @@ read_statm(void)
  * @param[in]	event_type - the event type requesting for this
  * @param[in]	param_name - name of the vnode_list parameter
  * @param[in]	vnlist - data for the vnode_list parameter
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ * @param[in]	perf_action - passed on to hook_perf_stat* call.
  *
  * @return PyObject *
  * @retval <python_object>	- the Python object representing the
@@ -4927,7 +5009,8 @@ read_statm(void)
  */
 static PyObject *
 create_hook_vnode_list_param(PyObject *py_event_param,
-	char *event_type, char *param_name, pbs_list_head *vnlist)
+	char *event_type, char *param_name, pbs_list_head *vnlist,
+	char *perf_label, char *perf_action)
 {
 	PyObject	*py_vnlist = NULL;
 	int		rc;
@@ -4939,7 +5022,7 @@ create_hook_vnode_list_param(PyObject *py_event_param,
 
 	(void)PyDict_SetItemString(py_event_param, param_name, Py_None);
 
-	py_vnlist = create_py_vnodelist(vnlist);
+	py_vnlist = create_py_vnodelist(vnlist, perf_label, perf_action);
 	if (py_vnlist == NULL) {
 		return (NULL);
 	}
@@ -4964,6 +5047,7 @@ create_hook_vnode_list_param(PyObject *py_event_param,
  * @param[in]	req_user	- the requesting user
  * @param[in]	req_host	- the requesting host
  * @param[in]	req_params	- a structure containing the input parameters.
+ * @param[in]	perf_label - data passed on to hook_perf_stat* call
  *
  * @return int
  * @retval	0	- success
@@ -4972,11 +5056,10 @@ create_hook_vnode_list_param(PyObject *py_event_param,
  *			   a keyboard interrupt. This maybe caused by the
  *			   calling process getting a SIGINT. In this case,
  *			   just rerun this call.
- *
  */
 int
 _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
-	hook_input_param_t *req_params)
+	hook_input_param_t *req_params, char *perf_label)
 {
 	PyObject *py_event = NULL;
 	PyObject *py_eargs = NULL;
@@ -5008,6 +5091,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_pid = NULL;
 	PyObject *py_node_list = (PyObject *) NULL;
 	PyObject *py_failed_node_list = (PyObject *) NULL;
+	char	 perf_action[MAXBUFLEN];
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
 	static long min_restart_interval = 0; /* prevents frequent restarts */
@@ -5258,8 +5342,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
-			&rqj->rq_attr);
+			&rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
@@ -5301,8 +5386,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT,  PY_EVENT_PARAM_RESV);
 			goto event_set_exit;
 		}
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_RESV_OBJECT, rqj->rq_jid);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_resv,
-			&rqj->rq_attr);
+			&rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s:partially set remaining param['%s'] attributes",
@@ -5346,8 +5432,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
+		snprintf(perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_objname);
 		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
-			&rqj->rq_attr);
+			&rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
@@ -5372,7 +5459,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			}
 		} else {
 			/* we own this reference */
-			py_job_o = _pps_helper_get_job(NULL, rqj->rq_objname, NULL);
+			py_job_o = _pps_helper_get_job(NULL, rqj->rq_objname, NULL, perf_label);
 		}
 
 		if (!py_job_o || (py_job_o == Py_None)) {
@@ -5440,7 +5527,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
-			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL);
+			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL, perf_label);
 			/* NEW - we own ref */
 		}
 
@@ -5537,7 +5624,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		/* SET VNODE_LIST param */
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
 			Py_None);
-		py_vnodelist = create_py_vnodelist(vnlist);
+		py_vnodelist = create_py_vnodelist(vnlist, perf_label, HOOK_PERF_POPULATE_VNODELIST);
 		if (py_vnodelist == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a Python vnodelist object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST);
@@ -5559,7 +5646,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESVLIST,
 			Py_None);
-		py_resvlist = create_py_resvlist(resvlist);
+		py_resvlist = create_py_resvlist(resvlist, perf_label, HOOK_PERF_POPULATE_RESVLIST);
 		if (py_resvlist == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a Python resvlist object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_RESVLIST);
@@ -5590,7 +5677,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
-			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL);
+			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL, perf_label);
 		}
 		/* NEW - we own ref */
 
@@ -5678,7 +5765,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
-			py_resv = _pps_helper_get_resv(NULL, rqj->rq_objname);
+			py_resv = _pps_helper_get_resv(NULL, rqj->rq_objname, perf_label);
 		}
 
 		if (!py_resv || (py_resv == Py_None)) {
@@ -5733,8 +5820,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
-			&rqj->rq_attr);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
+		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
@@ -5744,7 +5831,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
-					(pbs_list_head *)req_params->vns_list);
+					(pbs_list_head *)req_params->vns_list,
+					perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -5755,7 +5843,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 			py_vnodelist_fail = create_hook_vnode_list_param(py_event_param,
 						PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
-			    			(pbs_list_head *)req_params->vns_list_fail);
+			    			(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
 					
 			if (py_vnodelist_fail == NULL) {
 				rc = -1;
@@ -5827,8 +5915,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
-			&rqj->rq_attr);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
+		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
@@ -5839,7 +5927,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist =
 			   create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
-					(pbs_list_head *)req_params->vns_list);
+					(pbs_list_head *)req_params->vns_list, perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -5849,7 +5937,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist_fail =
 			   create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
-			    	(pbs_list_head *)req_params->vns_list_fail);
+			    	(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
 					
 		if (py_vnodelist_fail == NULL) {
 			rc = -1;
@@ -5974,7 +6062,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
-			    (pbs_list_head *)req_params->vns_list);
+			    (pbs_list_head *)req_params->vns_list,
+			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
 
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -5988,7 +6077,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOBLIST,
 				Py_None);
-			py_joblist = create_py_joblist(joblist);
+			py_joblist = create_py_joblist(joblist, perf_label, HOOK_PERF_POPULATE_JOBLIST);
 			if (py_joblist == NULL) {
 				LOG_ERROR_ARG2("%s: failed to create a Python joblist object for param['%s']",
 					PY_TYPE_EVENT, PY_EVENT_PARAM_JOBLIST);
@@ -6045,8 +6134,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		rc = pbs_python_populate_python_class_from_svrattrl(py_job,
-			&rqj->rq_attr);
+		snprintf((char *)perf_action, sizeof(perf_action), "%s:%s(%s)", HOOK_PERF_POPULATE, EVENT_JOB_OBJECT, rqj->rq_jid);
+		rc = pbs_python_populate_python_class_from_svrattrl(py_job, &rqj->rq_attr, perf_label, perf_action);
 
 		if (rc == -1) {
 			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
@@ -6079,7 +6168,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
-			    (pbs_list_head *)req_params->vns_list);
+			    (pbs_list_head *)req_params->vns_list,
+			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
 					
 		if (py_vnodelist == NULL) {
 			rc = -1;
@@ -6263,6 +6353,8 @@ populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
  *
  * @param[in]		hook_event 	- event in question
  * @param[in/out]	req_params	- results parameter
+ * @param[in]		perf_label - passed on to hook_perf_stat* call.
+ * @param[in]		perf_action - passed on to hook_perf_stat* call.
  * @note
  * 	Care must be taken to malloc free up allocated entries in 'req_params'
  * 	after use. The 'req_params' entries could be partially allocated upon
@@ -6271,9 +6363,18 @@ populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
  * @return int
  * @retval	0 	for success
  * @retval	-1	otherwise, for failure.
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 int
-_pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params)
+_pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params, char *perf_label, char *perf_action)
 {
 	PyObject 		*py_job = NULL;
 	PyObject 		*py_vnode = NULL;
@@ -6296,7 +6397,9 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	int			deletejob_flag;
 	int			rerunjob_flag;
 	char			val_str[HOOK_BUF_SIZE];
+	int			rc = -1;
 
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	switch (hook_event) {
 		case HOOK_EVENT_QUEUEJOB:
 
@@ -6304,7 +6407,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_job) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No job parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			queue = pbs_python_object_get_attr_string_value(py_job,
@@ -6313,7 +6416,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				strcpy(((struct rq_queuejob *)(req_params->rq_job))->rq_destin, queue);
 			if (pbs_python_populate_svrattrl_from_python_class(py_job,
 				&((struct rq_queuejob *)(req_params->rq_job))->rq_attr, NULL, 0) == -1) {
-				return -1;
+				goto event_to_request_exit;
 			}
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>",  &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 			break;
@@ -6329,21 +6432,21 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_job) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No job parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			if (pbs_python_populate_svrattrl_from_python_class(py_job,
 				&((struct rq_queuejob *)(req_params->rq_job))->rq_attr, NULL, 0) == -1) {
 				log_err(PBSE_INTERNAL, __func__,
 					"Failed to populate request structure!");
-				return -1;
+				goto event_to_request_exit;
 			}
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 
 			if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
 				/* populate vnodelist_fail event param */
 				if (populate_svrattrl_from_vnodelist_param(PY_EVENT_PARAM_VNODELIST_FAIL,(pbs_list_head *)(req_params->vns_list_fail))) {
-					return -1;
+					goto event_to_request_exit;
 				}
 			} else if (hook_event == HOOK_EVENT_EXECJOB_LAUNCH) {
 				int ret;
@@ -6352,13 +6455,13 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				if (py_progname == NULL) {
 					log_err(PBSE_INTERNAL, __func__,
 						"No progname parameter found for event!");
-					return -1;
+					goto event_to_request_exit;
 				}
 				progname = strdup(pbs_python_object_str(py_progname));
 				if (progname == NULL) {
 					log_err(PBSE_INTERNAL, __func__,
 						"Failed to strdup progname parameter!");
-					return -1;
+					goto event_to_request_exit;
 				}
 				*((char **)(req_params->progname)) = progname;
 
@@ -6366,7 +6469,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				if (py_arglist == NULL) {
 					log_err(PBSE_INTERNAL, __func__,
 						"No argv parameter found for event!");
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				ret = py_strlist_to_svrattrl(py_arglist,
@@ -6377,27 +6480,27 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 						"%s: Failed to dump Python string list values into a svrattrl list!",
 						PY_EVENT_PARAM_ARGLIST);
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				py_env = _pbs_python_event_get_param(PY_EVENT_PARAM_ENV);
 				if (py_env == NULL) {
 					log_err(PBSE_INTERNAL, __func__,
 						"No env parameter found for event!");
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				env_str = strdup(pbs_python_object_str(py_env));
 				if (env_str == NULL) {
 					log_err(PBSE_INTERNAL, __func__,
 						"Failed to strdup progname parameter!");
-					return -1;
+					goto event_to_request_exit;
 				}
 				*((char **)(req_params->env)) = env_str;
 
 				/* populate vnodelist_fail event param */
 				if (populate_svrattrl_from_vnodelist_param(PY_EVENT_PARAM_VNODELIST_FAIL, (pbs_list_head *)(req_params->vns_list_fail))) {
-					return -1;
+					goto event_to_request_exit;
 				}
 			}
 
@@ -6407,7 +6510,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 
 			/* populate vnodelist event param */
 			if (populate_svrattrl_from_vnodelist_param(PY_EVENT_PARAM_VNODELIST, (pbs_list_head *)(req_params->vns_list))) {
-				return -1;
+				goto event_to_request_exit;
 			}
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_head *)(req_params->vns_list));
 			Py_CLEAR(py_attr_keys);
@@ -6418,13 +6521,13 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				if (!py_joblist) {
 					log_err(PBSE_INTERNAL, __func__,
 						"No job list parameter found for event!");
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				if (!PyDict_Check(py_joblist)) {
 					log_err(PBSE_INTERNAL, __func__,
 						"job list parameter not a dictionary!");
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				py_attr_keys = PyDict_Keys(py_joblist); /* NEW ref */
@@ -6434,7 +6537,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 						"Failed to obtain object's '%s' keys",
 						PY_EVENT_PARAM_JOBLIST);
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				if (!PyList_Check(py_attr_keys)) {
@@ -6443,7 +6546,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 						PY_EVENT_PARAM_JOBLIST);
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
 					Py_CLEAR(py_attr_keys);
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				num_attrs = PyList_Size(py_attr_keys);
@@ -6469,7 +6572,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 						log_err(PBSE_INTERNAL, __func__, log_buffer);
 						Py_CLEAR(py_attr_keys);
 						free(key_str);
-						return -1;
+						goto event_to_request_exit;
 					}
 
 					if (pbs_python_populate_svrattrl_from_python_class(py_job,
@@ -6479,7 +6582,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 						log_err(PBSE_INTERNAL, __func__, log_buffer);
 						Py_CLEAR(py_attr_keys);
 						free(key_str);
-						return -1;
+						goto event_to_request_exit;
 					}
 
 					deletejob_flag = pbs_python_object_get_attr_integral_value(py_job,
@@ -6500,7 +6603,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 							log_err(errno, __func__, log_buffer);
 							Py_CLEAR(py_attr_keys);
 							free(key_str);
-							return -1;
+							goto event_to_request_exit;
 						}
 					}
 
@@ -6522,7 +6625,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 							log_err(errno, __func__, log_buffer);
 							Py_CLEAR(py_attr_keys);
 							free(key_str);
-							return -1;
+							goto event_to_request_exit;
 						}
 					}
 
@@ -6541,11 +6644,11 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_resv) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No resv parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 			if (pbs_python_populate_svrattrl_from_python_class(py_resv,
 				&((struct rq_queuejob *)(req_params->rq_job))->rq_attr, NULL, 0) == -1) {
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
@@ -6556,14 +6659,14 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_job) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No job parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			py_job_o = _pbs_python_event_get_param(PY_EVENT_PARAM_JOB_O);
 			if (!py_job_o) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No job_o parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			/* Need to check if ATTR_v (i.e. Variable_list) changed, and if */
@@ -6587,7 +6690,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 
 			if (pbs_python_populate_svrattrl_from_python_class(py_job,
 				&((struct rq_manage *)(req_params->rq_manage))->rq_attr, NULL, 0) == -1) {
-				return -1;
+				goto event_to_request_exit;
 			}
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_manage *)(req_params->rq_manage))->rq_attr);
 			break;
@@ -6597,7 +6700,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_job) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No job parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 			queue = pbs_python_object_get_attr_string_value(py_job,
 				ATTR_queue);
@@ -6610,13 +6713,13 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_vnodelist) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No vnode list parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			if (!PyDict_Check(py_vnodelist)) {
 				log_err(PBSE_INTERNAL, __func__,
 					"vnode list parameter not a dictionary!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			py_attr_keys = PyDict_Keys(py_vnodelist); /* NEW ref */
@@ -6626,7 +6729,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					"Failed to obtain object's '%s' keys",
 					PY_EVENT_PARAM_VNODE);
 				log_err(PBSE_INTERNAL, __func__, log_buffer);
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			if (!PyList_Check(py_attr_keys)) {
@@ -6635,7 +6738,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					PY_EVENT_PARAM_VNODE);
 				log_err(PBSE_INTERNAL, __func__, log_buffer);
 				Py_CLEAR(py_attr_keys);
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			num_attrs = PyList_Size(py_attr_keys);
@@ -6661,7 +6764,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					Py_CLEAR(py_attr_keys);
 					free(key_str);
 					key_str = NULL;
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				if (pbs_python_populate_svrattrl_from_python_class(py_vnode,
@@ -6672,7 +6775,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					Py_CLEAR(py_attr_keys);
 					free(key_str);
 					key_str = NULL;
-					return -1;
+					goto event_to_request_exit;
 				}
 				free(key_str);
 			}
@@ -6682,13 +6785,13 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			if (!py_resvlist) {
 				log_err(PBSE_INTERNAL, __func__,
 					"No reservation list parameter found for event!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			if (!PyDict_Check(py_resvlist)) {
 				log_err(PBSE_INTERNAL, __func__,
 					"reservation list parameter not a dictionary!");
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			py_attr_keys = PyDict_Keys(py_resvlist); /* NEW ref */
@@ -6698,7 +6801,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					"Failed to obtain object's '%s' keys",
 					PY_EVENT_PARAM_RESVLIST);
 				log_err(PBSE_INTERNAL, __func__, log_buffer);
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			if (!PyList_Check(py_attr_keys)) {
@@ -6707,7 +6810,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					PY_EVENT_PARAM_RESVLIST);
 				log_err(PBSE_INTERNAL, __func__, log_buffer);
 				Py_CLEAR(py_attr_keys);
-				return -1;
+				goto event_to_request_exit;
 			}
 
 			num_attrs = PyList_Size(py_attr_keys);
@@ -6733,7 +6836,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
 					Py_CLEAR(py_attr_keys);
 					free(key_str);
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				if (pbs_python_populate_svrattrl_from_python_class(py_job,
@@ -6743,7 +6846,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
 					Py_CLEAR(py_attr_keys);
 					free(key_str);
-					return -1;
+					goto event_to_request_exit;
 				}
 
 				free(key_str);
@@ -6754,9 +6857,12 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 		default:
 			log_err(PBSE_INTERNAL, __func__,
 				"unexpected hook event type");
-			return -1;
+			goto event_to_request_exit;
 	}
-	return 0;
+	rc = 0;
+event_to_request_exit:
+	hook_perf_stat_stop(perf_label, perf_action, 0);
+	return rc;
 }
 
 /**
@@ -6982,7 +7088,7 @@ pbsv1mod_meth_get_queue(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_que = _pps_helper_get_queue(NULL, name);
+	py_que = _pps_helper_get_queue(NULL, name, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_que != NULL)
@@ -7041,7 +7147,7 @@ pbsv1mod_meth_get_job(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_job = _pps_helper_get_job(NULL, jname, qname);
+	py_job = _pps_helper_get_job(NULL, jname, qname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_job != NULL)
@@ -7096,7 +7202,7 @@ pbsv1mod_meth_get_resv(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_resv = _pps_helper_get_resv(NULL, rname);
+	py_resv = _pps_helper_get_resv(NULL, rname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_resv != NULL)
@@ -7150,7 +7256,7 @@ pbsv1mod_meth_get_vnode(PyObject *self, PyObject *args, PyObject *kwds)
 	}
 
 	hook_set_mode = C_MODE;
-	py_vnode = _pps_helper_get_vnode(NULL, vname);
+	py_vnode = _pps_helper_get_vnode(NULL, vname, HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 
 	if (py_vnode != NULL)
@@ -7201,7 +7307,7 @@ pbsv1mod_meth_server(void)
 {
 	PyObject *py_svr = NULL;
 	hook_set_mode = C_MODE;
-	py_svr = _pps_helper_get_server();
+	py_svr = _pps_helper_get_server(HOOK_PERF_FUNC);
 	hook_set_mode = PY_MODE;
 	return (py_svr);
 }
@@ -8883,18 +8989,15 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 
 			hook_set_mode = C_MODE;
 			if (strcmp(obj_name, ITER_RESERVATIONS) == 0) {
-				py_object = _pps_helper_get_resv(\
-					(resc_resv *)iter_entry->data, NULL);
+				py_object = _pps_helper_get_resv((resc_resv *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 				iter_entry->data = (resc_resv *)GET_NEXT(\
 				((resc_resv *)iter_entry->data)->ri_allresvs);
 			} else if (strcmp(obj_name, ITER_QUEUES) == 0) {
-				py_object = _pps_helper_get_queue(\
-					(pbs_queue *)iter_entry->data, NULL);
+				py_object = _pps_helper_get_queue((pbs_queue *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 				iter_entry->data = (pbs_queue *)GET_NEXT(\
 				((pbs_queue *)iter_entry->data)->qu_link);
 			} else if (strcmp(obj_name, ITER_JOBS) == 0) {
-				py_object = _pps_helper_get_job(\
-					(job *)iter_entry->data, NULL, NULL);
+				py_object = _pps_helper_get_job((job *)iter_entry->data, NULL, NULL, HOOK_PERF_FUNC);
 
 
 #ifdef NAS /* localmod 014 */
@@ -8930,8 +9033,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				}
 			} else if (strcmp(obj_name, ITER_VNODES) == 0) {
 
-				py_object = _pps_helper_get_vnode(\
-			     (struct pbsnode *)iter_entry->data, NULL);
+				py_object = _pps_helper_get_vnode((struct pbsnode *)iter_entry->data, NULL, HOOK_PERF_FUNC);
 
 				iter_entry->data = NULL;
 				vi = iter_entry->data_index + 1;
@@ -10482,6 +10584,7 @@ py_get_server_static(void)
 	PyObject *py_svr = NULL;
 	PyObject *py_sargs = NULL;
 	int tmp_rc = -1;
+	char	perf_label[MAXBUFLEN];
 
 	if (!use_static_data || (server_data == NULL))
 		Py_RETURN_NONE;
@@ -10501,8 +10604,9 @@ py_get_server_static(void)
 	}
 	Py_CLEAR(py_sargs);
 
+	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_OBJECT, server_name);
 	tmp_rc = pbs_python_populate_python_class_from_svrattrl(py_svr,
-		server_data);
+		server_data, perf_label, HOOK_PERF_POPULATE);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -10585,6 +10689,7 @@ py_get_queue_static(char *qname, char *svr_name)
 	char		*attr_name = NULL;
 	pbs_list_head	queuel;
 	int		rc;
+	char		perf_label[MAXBUFLEN];
 
 	if (!use_static_data || (server_queues.data == NULL)) {
 		Py_RETURN_NONE;
@@ -10720,8 +10825,8 @@ py_get_queue_static(char *qname, char *svr_name)
 		goto get_queue_error_exit;
 	}
 
-	rc = pbs_python_populate_python_class_from_svrattrl(\
-				       py_queue, &queuel);
+	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_QUEUE_OBJECT, qname);
+	rc = pbs_python_populate_python_class_from_svrattrl(py_queue, &queuel, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -10822,6 +10927,7 @@ py_get_vnode_static(char *vname, char *svr_name)
 	char		*attr_name = NULL;
 	pbs_list_head	vnodel;
 	int		rc;
+	char		perf_label[MAXBUFLEN];
 
 	if (!use_static_data || (server_vnodes.data == NULL)) {
 		Py_RETURN_NONE;
@@ -10958,8 +11064,8 @@ py_get_vnode_static(char *vname, char *svr_name)
 		goto get_vnode_error_exit;
 	}
 
-	rc = pbs_python_populate_python_class_from_svrattrl(\
-				       py_vnode, &vnodel);
+	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_VNODE_OBJECT, vname);
+	rc = pbs_python_populate_python_class_from_svrattrl(py_vnode, &vnodel, perf_label, HOOK_PERF_POPULATE);
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to fully populate Python"
@@ -11068,6 +11174,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	PyObject *py_server = NULL;
 	PyObject *py_que = NULL;
 	int		rc;
+	char		perf_label[MAXBUFLEN];
 
 	if (!use_static_data || (server_jobs.data == NULL)) {
 		Py_RETURN_NONE;
@@ -11220,8 +11327,8 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 		goto get_job_error_exit;
 	}
 
-	rc = pbs_python_populate_python_class_from_svrattrl(\
-				       py_job, &jobl);
+	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_JOB_OBJECT, jid);
+	rc = pbs_python_populate_python_class_from_svrattrl(py_job, &jobl, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -11347,6 +11454,7 @@ py_get_resv_static(char *resvid, char *svr_name)
 	PyObject *py_server = NULL;
 	PyObject *py_que = NULL;
 	int		rc;
+	char		perf_label[MAXBUFLEN];
 
 	if (!use_static_data || (server_resvs.data == NULL)) {
 		Py_RETURN_NONE;
@@ -11485,8 +11593,8 @@ py_get_resv_static(char *resvid, char *svr_name)
 		goto get_resv_error_exit;
 	}
 
-	rc = pbs_python_populate_python_class_from_svrattrl(\
-				       py_resv, &resvl);
+	snprintf(perf_label, sizeof(perf_label), "hook_func:%s(%s)", SERVER_RESV_OBJECT, resvid);
+	rc = pbs_python_populate_python_class_from_svrattrl(py_resv, &resvl, perf_label, HOOK_PERF_POPULATE);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),

@@ -3617,6 +3617,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 	pbs_list_head *head_ptr;
 	mom_process_hooks_params_t *php = NULL;
 	struct work_task task;
+	char		perf_label[MAXBUFLEN];
 
 	if (hook_input == NULL) {
 		log_err(-1, __func__, "missing input argument to event");
@@ -3792,9 +3793,16 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 
 		}
 
+		if (pjob != NULL)
+			snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%s", hook_event_as_string(hook_event), phook->hook_name, pjob->ji_qs.ji_jobid);
+		else
+			snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", hook_event_as_string(hook_event), phook->hook_name, getpid());
+
+		hook_perf_stat_start(perf_label, "mom_process_hooks", 1);
 		rc = run_hook(phook, hook_event, hook_input,
 			req_user, req_host, php->parent_wait, (void *)post_run_hook,
 			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
+		hook_perf_stat_stop(perf_label, "mom_process_hooks", 1);
 
 		if (last_phook != NULL) {
 			*last_phook = phook;

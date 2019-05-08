@@ -384,6 +384,19 @@ extern void cleanup_hooks_workdir(struct work_task *);
 extern void catch_hook_alarm(ALARM_HANDLER_ARG);
 extern int set_alarm(int sec, void (*)(void));
 
+extern void hook_perf_stat_start(char *label, char *action, int);
+extern void hook_perf_stat_stop(char *label, char *action, int);
+#define HOOK_PERF_POPULATE "populate"
+#define HOOK_PERF_FUNC "hook_func"
+#define HOOK_PERF_RUN_CODE "run_code"
+#define HOOK_PERF_START_PYTHON "start_interpreter"
+#define HOOK_PERF_LOAD_INPUT "load_hook_input_file"
+#define HOOK_PERF_HOOK_OUTPUT "hook_output"
+#define HOOK_PERF_POPULATE_VNODELIST "populate:pbs.event().vnode_list"
+#define HOOK_PERF_POPULATE_VNODELIST_FAIL "populate:pbs.event().vnode_list_fail"
+#define HOOK_PERF_POPULATE_RESVLIST "populate:pbs.event().resv_list"
+#define HOOK_PERF_POPULATE_JOBLIST "populate:pbs.event().job_list"
+#define HOOK_PERF_LOAD_DATA "load_hook_data"
 #ifdef	__cplusplus
 }
 #endif
