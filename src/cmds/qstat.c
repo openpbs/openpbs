@@ -1403,7 +1403,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						*c = '\0';
 						l = strlen(a->value);
 						if (wide) {
-								if (l > SIZEUSER) {
+							if (l > SIZEUSER) {
 								c = a->value + SIZEUSER;
 								*c = '\0';
 							}
