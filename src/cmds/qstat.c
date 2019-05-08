@@ -1232,7 +1232,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			printf("%s\n", show_nonprint_chars(c));
 		if (how_opt & ALT_DISPLAY_p) {
 			if (wide) {
-				printf("Job id                         Name            User              %% done  S Queue          \n");
+				printf("Job id                         Name            User              %% done  S Queue\n");
 				printf("-----------------------------  --------------- ---------------  -------- - ---------------\n");
 			} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 				printf("Job id                 Name             User               %% done  S Queue\n");
@@ -1243,7 +1243,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			}
 		} else {
 			if (wide) {
-				printf("Job id                         Name            User             Time Use S Queue          \n");
+				printf("Job id                         Name            User             Time Use S Queue\n");
 				printf("-----------------------------  --------------- ---------------  -------- - ---------------\n");
 			} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 				printf("Job id                 Name             User              Time Use S Queue\n");
