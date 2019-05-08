@@ -1,0 +1,11 @@
+{
+    "apconfig": {
+        "beginjob_timeout": 30,
+        "unix_socket_file": "/var/run/jacsd/jacsd.sock"
+    },
+    "healthcheck": {
+        "enabled": true,
+        "interval": 0.4,
+        "unix_socket_file": "/var/run/hatsd/hatsd.sock"
+    }
+}
