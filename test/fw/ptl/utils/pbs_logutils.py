@@ -365,13 +365,13 @@ class PBSLogUtils(object):
         if lines:
             for l in lines:
                 if starttime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    # l.split(';', 1)[0] gets the time stamp string
+                    tm = self.convert_date_time(l.split(';', 1)[0])
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    # l.split(';', 1)[0] gets the time stamp string
+                    tm = self.convert_date_time(l.split(';', 1)[0])
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
