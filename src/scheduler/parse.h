@@ -95,6 +95,8 @@ int valid_config(void);
 /* Check if string is a valid special case sorting string */
 int is_speccase_sort(char *sort_res, int sort_type);
 
+void free_sort_info(enum sort_info_type si_type);
+
 #ifdef	__cplusplus
 }
 #endif

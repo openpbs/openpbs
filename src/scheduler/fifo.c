@@ -562,11 +562,7 @@ schedule(int cmd, int sd, char *runjobid)
 		case SCH_CONFIGURE:
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				"reconfigure", "Scheduler is reconfiguring");
-			free_fairshare_head(conf.fairshare);
 			reset_global_resource_ptrs();
-			free(conf.prime_sort);
-			free(conf.non_prime_sort);
-
 			if(schedinit() != 0) {
 				return 0;
 			}
