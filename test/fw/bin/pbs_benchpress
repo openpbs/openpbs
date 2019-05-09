@@ -171,6 +171,7 @@ def usage():
     msg += ['--list-tags: List all currenlty used tags\n']
     msg += [
         '--verbose: show verbose output (used with -i, -L or --tag-info)\n']
+    msg += ['--use-current-setup: Runs test on current PBS setup\n']
     msg += ['--version: show version number and exit\n']
 
     print(''.join(msg))
@@ -187,6 +188,7 @@ if __name__ == '__main__':
     outfile = None
     dbtype = None
     dbname = None
+    use_cur_setup = False
     dbaccess = None
     testfiles = None
     testsuites = None
@@ -232,7 +234,7 @@ if __name__ == '__main__':
     largs += ['stop-on-failure', 'enable-nose-debug']
     largs += ['post-analysis-data=', 'gen-ts-tree']
     largs += ['tc-failure-threshold=', 'cumulative-tc-failure-threshold=']
-    largs += ['max-postdata-threshold=', 'user-plugins=']
+    largs += ['max-postdata-threshold=', 'user-plugins=', 'use-current-setup']
 
     try:
         opts, args = getopt.getopt(
@@ -336,6 +338,8 @@ if __name__ == '__main__':
         elif o == '-h':
             usage()
             sys.exit(0)
+        elif o == '--use-current-setup':
+            use_cur_setup = True
         elif o == '--version':
             print(ptl.__version__)
             sys.exit(0)
@@ -454,9 +458,11 @@ if __name__ == '__main__':
         data = PTLTestData()
         loader.set_data(testgroup, testsuites, excludes, follow, testfiles)
         testtags.set_data(tags, eval_tags)
-        runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
+        runner.set_data(paramfile, testparam, lcov_bin,
+                        lcov_data, lcov_out,
                         genhtml_bin, lcov_nosrc, lcov_baseurl,
-                        tc_failure_threshold, cumulative_tc_failure_threshold)
+                        tc_failure_threshold, cumulative_tc_failure_threshold,
+                        use_cur_setup)
         db.set_data(dbtype, dbname, dbaccess)
         data.set_data(post_data_dir, max_postdata_threshold)
         plugins = (loader, testtags, runner, db, data)

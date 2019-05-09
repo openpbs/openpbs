@@ -430,6 +430,7 @@ class PBSTestSuite(unittest.TestCase):
     del_queues = True
     del_scheds = True
     del_vnodes = True
+    config_saved = False
     server = None
     scheduler = None
     mom = None
@@ -448,6 +449,15 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_param()
         cls.check_users_exist()
         cls.init_servers()
+        if cls.use_cur_setup:
+            _, path = tempfile.mkstemp(prefix="saved_custom_setup",
+                                       suffix=".json")
+            ret = cls.server.save_configuration(path, 'w')
+            if ret:
+                cls.saved_file = path
+            else:
+                cls.logger.error("Failed to save custom setup")
+                raise Exception("Failed to save custom setup")
         cls.init_comms()
         cls.init_schedulers()
         cls.init_moms()
@@ -458,11 +468,28 @@ class PBSTestSuite(unittest.TestCase):
             return
         self.log_enter_setup()
         self.init_proc_mon()
-        self.revert_servers()
+        if not PBSTestSuite.config_saved and self.use_cur_setup:
+            _, path = tempfile.mkstemp(prefix="saved_test_setup",
+                                       suffix=".json")
+            ret = self.server.save_configuration(path, 'w')
+            if ret:
+                self.saved_file = path
+                PBSTestSuite.config_saved = True
+            else:
+                self.logger.error("Failed to save test setup")
+                raise Exception("Failed to save test setup")
+        # Adding only server and pbs.conf methods in use current
+        # setup block, rest of them to be added to this block
+        # once save & load configurations are implemented for
+        # comm, mom, scheduler
+        if self.use_cur_setup:
+            self.server.delete_nodes()
+        else:
+            self.revert_servers()
+            self.revert_pbsconf()
         self.revert_moms()
         self.revert_comms()
         self.revert_schedulers()
-        self.revert_pbsconf()
         self.log_end_setup()
         self.measurements = []
 
@@ -1487,6 +1514,30 @@ class PBSTestSuite(unittest.TestCase):
         cls.logger.info(_m)
         cls.logger.info('=' * _m_len)
 
+    @staticmethod
+    def delete_current_state(svr, moms):
+        """
+        Delete nodes, queues, site hooks, reservations and
+        vnodedef file
+        """
+        # unset server attributes
+        svr.unset_svr_attrib()
+        # Delete site hooks
+        svr.delete_site_hooks()
+        # cleanup reservations
+        svr.cleanup_reservations()
+        # Delete vnodedef file & vnodes
+        for m in moms:
+            # Check if vnodedef file is present
+            if moms[m].has_vnode_defs():
+                moms[m].delete_vnode_defs()
+                moms[m].delete_vnodes()
+                moms[m].restart()
+        # Delete nodes
+        svr.delete_nodes()
+        # Delete queues
+        svr.delete_queues()
+
     def tearDown(self):
         """
         verify that ``server`` and ``scheduler`` are up
@@ -1508,9 +1559,21 @@ class PBSTestSuite(unittest.TestCase):
 
         for sched in self.scheds:
             self.scheds[sched].cleanup_files()
-
+        if self.use_cur_setup:
+            self.delete_current_state(self.server, self.moms)
+            ret = self.server.load_configuration(self.saved_file)
+            if not ret:
+                raise Exception("Failed to load test setup")
         self.log_end_teardown()
 
     @classmethod
     def tearDownClass(cls):
         cls._testMethodName = 'tearDownClass'
+        if cls.use_cur_setup:
+            PBSTestSuite.delete_current_state(cls.server, cls.moms)
+            PBSTestSuite.config_saved = False
+            ret = cls.server.load_configuration(cls.saved_file)
+            if not ret:
+                raise Exception("Failed to load custom setup")
+        if cls.use_cur_setup:
+            cls.du.rm(path=cls.saved_file)
