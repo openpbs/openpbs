@@ -383,12 +383,13 @@ convert_resv_state(char *pcode, int long_str)
 {
 	int i;
 	static char *resv_strings_short[] =
-		{ "NO", "UN", "CO", "WT", "TR", "RN", "FN", "BD", "DE", "DJ", "DG", "AL" };
+		{ "NO", "UN", "CO", "WT", "TR", "RN", "FN", "BD", "DE", "DJ", "DG", "AL", "IC" };
 	static char *resv_strings_long[] =
 		{ "RESV_NONE", "RESV_UNCONFIRMED", "RESV_CONFIRMED",
 		"RESV_WAIT", "RESV_TIME_TO_RUN", "RESV_RUNNING",
 		"RESV_FINISHED", "RESV_BEING_DELETED", "RESV_DELETED",
-		"RESV_DELETING_JOBS", "RESV_DEGRADED", "RESV_BEING_ALTERED"
+		"RESV_DELETING_JOBS", "RESV_DEGRADED", "RESV_BEING_ALTERED",
+		"RESV_IN_CONFLICT"
 	};
 
 	i = atoi(pcode);
@@ -405,6 +406,7 @@ convert_resv_state(char *pcode, int long_str)
 		case RESV_DELETED:
 		case RESV_DELETING_JOBS:
 		case RESV_BEING_ALTERED:
+		case RESV_IN_CONFLICT:
 			if (long_str == 0)	/* short */
 				return resv_strings_short[i];
 			else

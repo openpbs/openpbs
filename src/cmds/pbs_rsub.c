@@ -58,6 +58,8 @@ static int qmoveflg = FALSE;
 static time_t dtstart;
 static time_t dtend;
 static int is_stdng_resv = 0;
+static int is_maintenance_resv = 0;
+static char **maintenance_hosts = NULL;
 
 /* The maximum buffer size that is allowed not to exceed 80 columns.
  * The number 67 (66 chars + 1 EOL) is the result of subtracting the number
@@ -100,7 +102,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char* temp_apvalue = NULL;
 #endif
 
-	while ((c = getopt(argc, argv, "D:E:I:l:m:M:N:q:r:R:u:U:g:G:H:W:")) != EOF) {
+	while ((c = getopt(argc, argv, "D:E:I:l:m:M:N:q:r:R:u:U:g:G:H:W:-:")) != EOF) {
 		switch (c) {
 			case 'D':
 				sprintf(dur_buf, "walltime=%s", optarg);
@@ -256,6 +258,13 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				}
 				break;
 
+			case '-':
+				if (strcmp(optarg, "hosts") == 0)
+					is_maintenance_resv = 1;
+				else
+					errflg++;
+				break;
+
 			default:
 				/* pbs_rsub option not recognized */
 				errflg++;
@@ -266,6 +275,32 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	if (opt_re_flg == TRUE && qmoveflg ==TRUE) {
 		fprintf(stderr, "pbs_rsub: -Wqmove is not compatible with -R or -E option\n");
 		errflg++;
+	}
+
+	if (is_maintenance_resv) {
+		if (argc - optind > 0) {
+			maintenance_hosts = malloc(sizeof(char *) * (argc - optind + 1));
+			if (maintenance_hosts == NULL) {
+				fprintf(stderr, "pbs_rsub: Out of memory\n");
+				return (++errflg);
+			}
+
+			maintenance_hosts[argc - optind] = NULL;
+
+			for (; optind < argc; optind++) {
+				maintenance_hosts[argc - (optind + 1)] = strdup(argv[optind]);
+				if (maintenance_hosts[argc - (optind + 1)] == NULL) {
+					fprintf(stderr, "pbs_rsub: Out of memory\n");
+					return (++errflg);
+				}
+			}
+		}
+
+		if (maintenance_hosts == NULL) {
+			fprintf(stderr, "pbs_rsub: missing host(s)");
+			fprintf(stderr, "\n");
+			return (++errflg);
+		}
 	}
 
 	if (!errflg) {
@@ -541,7 +576,8 @@ print_usage()
 	"                [-N reservation_name] [-u user_list] [-g group_list]\n"
 	"                [-U auth_user_list] [-G auth_group_list] [-H auth_host_list]\n"
 	"                [-R start_time] [-E end_time] [-D duration] [-q destination]\n"
-	"                [-r rrule_expression] [-W otherattributes=value...] -l resource_list\n";
+	"                [-r rrule_expression] [-W otherattributes=value...]\n"
+	"                -l resource_list | --hosts host1 [... hostn]\n";
 
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
@@ -635,6 +671,20 @@ main(int argc, char *argv[], char *envp[])
 	char *new_resvname;		/* the name returned from pbs_submit_resv */
 	struct ecl_attribute_errors *err_list;
 	char *interactive = NULL;
+	char *reservid = NULL;
+	char extend[2];
+	struct batch_status *bstat_head = NULL;
+	struct batch_status *bstat = NULL;
+	struct attrl *pattr = NULL;
+	char *execvnodes_str = NULL;
+	int execvnodes_str_size = 0;
+	char *select_str = NULL;
+	int select_str_size = 0;
+	char **hostp = NULL;
+	struct attrl *pal;
+	char *erp;
+	char *host = NULL;
+	char *endp;   /* used for strtol() */
 
 	/*test for real deal or just version and exit*/
 
@@ -647,11 +697,31 @@ main(int argc, char *argv[], char *envp[])
 #endif
 
 	destbuf[0] = '\0';
+	extend[0] = '\0';
 	errflg = process_opts(argc, argv, &attrib, destbuf); /* get cmdline options */
 
 	if (errflg || ((optind+1) < argc) || argc == 1) {
 		print_usage();
 		exit(2);
+	}
+
+	if (is_maintenance_resv) {
+		pal = attrib;
+		while (pal) {
+			if ((strcasecmp(pal->name, ATTR_l) == 0) &&
+				(strcasecmp(pal->resource, "select") == 0)){
+				fprintf(stderr, "pbs_rsub: can't use -l select with --hosts\n");
+				print_usage();
+				exit(2);
+			}
+			if ((strcasecmp(pal->name, ATTR_l) == 0) &&
+				(strcasecmp(pal->resource, "place") == 0)) {
+				fprintf(stderr, "pbs_rsub: can't use -l place with --hosts\n");
+				print_usage();
+				exit(2);
+			}
+			pal = pal->next;
+		}
 	}
 
 	/* Get any required environment variables needing to be sent. */
@@ -696,8 +766,132 @@ main(int argc, char *argv[], char *envp[])
 		}
 	}
 
+	if (is_maintenance_resv) {
+		int i;
+		char tmp_str[BUF_SIZE];
+		char *endp;
+
+		pbs_errno = 0;
+		bstat_head = pbs_statvnode(connect, "", NULL, NULL);
+		if (bstat_head == NULL) {
+			if (pbs_errno) {
+				errmsg = pbs_geterrmsg(connect);
+				if (errmsg != NULL) {
+					fprintf(stderr, "pbs_rsub: %s\n", errmsg);
+				} else {
+					fprintf(stderr, "pbs_rsub: Error (%d) submitting reservation\n", pbs_errno);
+				}
+			} else {
+				fprintf(stderr, "pbs_rsub: No nodes found\n");
+			}
+
+			CS_close_app();
+			exit(pbs_errno);
+		}
+
+		hostp = maintenance_hosts;
+		for (; *hostp; hostp++) {
+			int host_ncpus = 0;
+
+			for (bstat = bstat_head; bstat; bstat = bstat->next) {
+				char *ncpus_str = NULL;
+				int ncpus;
+
+				for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
+					if (pattr->resource && strcmp(pattr->name, ATTR_rescavail) == 0 && strcmp(pattr->resource, "host") == 0)
+						host = pattr->value;
+					if (pattr->resource && strcmp(pattr->name, ATTR_rescavail) == 0 && strcmp(pattr->resource, "ncpus") == 0)
+						ncpus_str = pattr->value;
+				}
+
+				ncpus = strtol(ncpus_str, &endp, 0);
+				if (*endp != '\0') {
+					fprintf(stderr, "pbs_rsub: Attribute value error\n");
+					CS_close_app();
+					exit(2);
+				}
+
+				/* here, the execvnodes is crafted */
+				if (strcmp(host, *hostp) == 0 && ncpus > 0) {
+					/* count ncpus of a host across vnodes
+					 * it will be used for crafting select
+					 */
+					host_ncpus += ncpus;
+
+					if (!execvnodes_str) {
+						execvnodes_str = malloc(BUF_SIZE);
+						if (execvnodes_str == NULL) {
+							fprintf(stderr, "pbs_rsub: Out of memory\n");
+							CS_close_app();
+							exit(2);
+						}
+						execvnodes_str_size = BUF_SIZE;
+
+						snprintf(execvnodes_str, BUF_SIZE, "(%s:ncpus=%d)", bstat->name, ncpus);
+					} else {
+						snprintf(tmp_str, BUF_SIZE, "+(%s:ncpus=%d)", bstat->name, ncpus);
+
+						if (pbs_strcat(&execvnodes_str, &execvnodes_str_size, tmp_str) == NULL) {
+							fprintf(stderr, "pbs_rsub: Out of memory\n");
+							CS_close_app();
+							exit(2);
+						}
+					}
+				} /* end of part that crafts execvnodes */
+			}
+
+			/* here, the select is crafted */
+			if (host_ncpus > 0) {
+				if (!select_str) {
+					select_str = malloc(BUF_SIZE);
+					if (select_str == NULL) {
+						fprintf(stderr, "pbs_rsub: Out of memory\n");
+						CS_close_app();
+						exit(2);
+					}
+					select_str_size = BUF_SIZE;
+
+					snprintf(select_str, BUF_SIZE, "select=host=%s:ncpus=%d", *hostp, host_ncpus);
+				} else {
+					snprintf(tmp_str, BUF_SIZE, "+host=%s:ncpus=%d", *hostp, host_ncpus);
+
+					if (pbs_strcat(&select_str, &select_str_size, tmp_str) == NULL) {
+						fprintf(stderr, "pbs_rsub: Out of memory\n");
+						CS_close_app();
+						exit(2);
+					}
+				}
+			} /* end of part that crafts select */
+		}
+
+		pbs_statfree(bstat_head);	/* free info returned by pbs_statvnodes() */
+
+		/* add crafted select */
+		if ((i = set_resources(&attrib, select_str, 0, &erp)) != 0) {
+			if (i > 1) {
+				pbs_prt_parse_err("pbs_rsub: illegal -l value\n", select_str,
+					    (int)(erp-select_str), i);
+			} else {
+				fprintf(stderr, "pbs_rsub: illegal -l value\n");
+			}
+
+			CS_close_app();
+			exit(pbs_errno);
+		}
+
+		/* add place=exclhost */
+		if (set_resources(&attrib, "place=exclhost", 0, &erp) != 0) {
+			fprintf(stderr, "pbs_rsub: illegal -l value\n");
+
+			CS_close_app();
+			exit(pbs_errno);
+		}
+
+		strcat(extend, "m");
+	}
+
 	pbs_errno = 0;
-	new_resvname = pbs_submit_resv(connect, (struct attropl *)attrib, NULL);
+	new_resvname = pbs_submit_resv(connect, (struct attropl *)attrib, extend);
 	if (new_resvname == NULL) {
 		if ((err_list = pbs_get_attributes_in_error(connect)))
 			handle_attribute_errors(err_list);
@@ -710,9 +904,43 @@ main(int argc, char *argv[], char *envp[])
 			fprintf(stderr, "pbs_rsub: Error (%d) submitting reservation\n", pbs_errno);
 		CS_close_app();
 		exit(pbs_errno);
+	}
+
+	if (is_maintenance_resv) {
+		char *rest;
+		char *resv_start_time_str;
+		time_t resv_start_time = 0;
+
+		reservid = strtok_r(new_resvname, " ", &rest);
+
+		resv_start_time_str = get_attr(attrib, ATTR_resv_start, NULL);
+		if (resv_start_time_str)
+			resv_start_time = strtol(resv_start_time_str, &endp, 10);
+
+		pbs_errno = 0;
+		if (pbs_confirmresv(connect, reservid, execvnodes_str, resv_start_time, PBS_RESV_CONFIRM_SUCCESS) > 0) {
+			errmsg = pbs_geterrmsg(connect);
+			if (errmsg == NULL)
+				errmsg = "";
+
+			fprintf(stderr, "pbs_rsub: PBS Failed to confirm resv: %s (%d)\n", errmsg, pbs_errno);
+
+			CS_close_app();
+			exit(pbs_errno);
+		}
+
+		printf("%s CONFIRMED\n", reservid);
 	} else {
 		printf("%s\n", new_resvname);
-		free(new_resvname);
+	}
+
+	free(new_resvname);
+
+	if (maintenance_hosts) {
+		hostp = maintenance_hosts;
+		for (; *hostp; hostp++)
+		    free(*hostp);
+		free(maintenance_hosts);
 	}
 
 	/* Disconnet from the server. */

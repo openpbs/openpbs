@@ -467,6 +467,7 @@ enum mgr_obj {
 #define PBS_TERM_CCA		6	/* Interactive term cntl char array */
 #define PBS_RESV_ID_CHAR	'R'	/* Character in front of a resv ID */
 #define PBS_STDNG_RESV_ID_CHAR   'S'   /* Character in front of a resv ID */
+#define PBS_MNTNC_RESV_ID_CHAR   'M'   /* Character in front of a resv ID */
 #define PBS_AUTH_KEY_LEN    (129)
 
 enum batch_op {	SET, UNSET, INCR, DECR,
@@ -555,7 +556,7 @@ typedef int	pbs_resource_t;	/* resource reservation handle */
 enum resv_states { RESV_NONE, RESV_UNCONFIRMED, RESV_CONFIRMED, RESV_WAIT,
 	RESV_TIME_TO_RUN, RESV_RUNNING, RESV_FINISHED,
 	RESV_BEING_DELETED, RESV_DELETED, RESV_DELETING_JOBS, RESV_DEGRADED,
-	RESV_BEING_ALTERED };
+	RESV_BEING_ALTERED, RESV_IN_CONFLICT };
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs
 			 * and not their static libraries
