@@ -93,7 +93,7 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define ALT_DISPLAY_Mw	0x200		/* -M option - show sizes in MW */
 #define ALT_DISPLAY_G		0x400		/* -G option - show sizes in GB */
 #define ALT_DISPLAY_1l	0x800		/* -n -s -f on line line */
-#define ALT_DISPLAY_w		0x1000		/* -[a|s|n]w - wide output */
+#define ALT_DISPLAY_w		0x1000		/* -w - wide output */
 #define ALT_DISPLAY_T		0x2000		/* -T option - estimated start times */
 #define ALT_DISPLAY_p		0x4000		/* -p option - percentage completed for the job */
 #define ALT_DISPLAY_INCR_WIDTH	0x8000	/* increases qstat header width */
