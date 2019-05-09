@@ -796,7 +796,7 @@ is_boottime()
 		fi
 	fi
 	
-	BOOTPYFILE="/var/tmp/pbs_bootcheck.py"
+	BOOTPYFILE="${pbslibdir}/python/pbs_bootcheck.py"
 	BOOTCHECKFILE="/var/tmp/pbs_boot_check"
 
 	if [ ! -r "${BOOTPYFILE}" ] ; then
