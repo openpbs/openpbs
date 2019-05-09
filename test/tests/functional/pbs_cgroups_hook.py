@@ -890,7 +890,7 @@ if %s e.job.in_ms_mom():
             os.sep, pbs_home, 'mom_priv', 'hooks', 'pbs_cgroups.CF')
         # reload config if server and mom cfg differ up to count times
         count = 5
-        while ( count > 0 ):
+        while (count > 0):
             r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
             r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
             if r1['out'] != r2['out']:
