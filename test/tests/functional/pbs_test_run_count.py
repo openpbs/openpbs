@@ -42,15 +42,24 @@ class Test_run_count(TestFunctional):
     """
     Test suite to test run_count attribute of a job.
     """
+    hook_name = "h1"
+    hook_body = ("import pbs\n"
+                 "e=pbs.event()\n"
+                 "e.reject()\n")
 
     def create_reject_begin_hook(self):
         start_time = int(time.time())
-        name = "h1"
-        body = ("import pbs\n"
-                "e=pbs.event()\n"
-                "e.reject()\n")
         attr = {'event': 'execjob_begin'}
-        self.server.create_import_hook(name, attr, body)
+        self.server.create_import_hook(self.hook_name, attr, self.hook_body)
+
+        # make sure hook has propogated to mom
+        self.mom.log_match("h1.HK;copy hook-related file request received",
+                           existence=True, starttime=start_time)
+
+    def disable_reject_begin_hook(self):
+        start_time = int(time.time())
+        attr = {'enabled': 'false'}
+        self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
 
         # make sure hook has propogated to mom
         self.mom.log_match("h1.HK;copy hook-related file request received",
@@ -102,3 +111,28 @@ class Test_run_count(TestFunctional):
         into held state after 5 rejections
         """
         self.check_run_count(input_count="15", output_count="21")
+
+    def test_run_count_subjob(self):
+        """
+        Submit a job array and check if the subjob and the parent are getting
+        held after 20 rejection from mom
+        """
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+
+        a = {ATTR_J: '1-2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_runcount: 21},
+                           attrop=PTL_AND, id=j.create_subjob_id(jid, 1))
+
+        ja_comment = "Job Array Held, too many failed attempts to run subjob"
+
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
+                           ja_comment)}, attrop=PTL_AND, id=jid)
+        self.disable_reject_begin_hook()
+        self.server.rlsjob(jid, 's')
+        self.server.expect(JOB, {ATTR_state: "R"},
+                           id=j.create_subjob_id(jid, 1))
+        self.server.expect(JOB, {ATTR_state: "B"}, id=jid)

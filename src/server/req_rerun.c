@@ -170,15 +170,6 @@ force_reque(job *pjob)
 	/* note in accounting file */
 	account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_RERUN);
 
-	/* if a subjob,  we set substate to RERUN3 to cause trktbl entry */
-	/* to be reset to Qeued, and then blow away the job struct       */
-
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-		job_purge(pjob);
-		return;
-	}
-
 	/*
 	 * Clear any JOB_SVFLG_Actsuspd flag too, as the job is no longer
 	 * suspended (User busy).  A suspended job is rerun in case of a

@@ -1467,14 +1467,6 @@ on_job_rerun(struct work_task *ptask)
 				unset_extra_attributes(pjob);
 
 
-				/* Now  if not a Sub Job, then re-queue the job */
-
-				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-					/* for a sub job, just purge it */
-					/* note: substate already JOB_SUBSTATE_RERUN3 */
-					job_purge(pjob);
-					return;
-				}
 				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HOTSTART) == 0) {
 					/* in case of server shutdown, don't clear exec_vnode */
 					/* will use it on hotstart when next comes up	      */
@@ -2107,6 +2099,23 @@ RetryJob:
 						&pjob->ji_wattr[(int)JOB_ATR_Comment],
 						NULL, NULL,
 						"job held, too many failed attempts to run");
+
+					if (pjob->ji_parentaj) {
+						char comment_buf[100 + PBS_MAXSVRJOBID];
+						svr_setjobstate(pjob->ji_parentaj, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+						pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
+						      at_val.at_long |= HOLD_s;
+						pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
+							at_flags |=
+							ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+						sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s",
+								pjob->ji_qs.ji_jobid);
+						job_attr_def[(int)JOB_ATR_Comment].\
+						at_decode(\
+							&pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_Comment],
+							NULL, NULL,
+							comment_buf);
+					}
 				}
 				break;
 
