@@ -317,6 +317,8 @@ req_releasejob(struct batch_request *preq)
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 				{
+					old_hold = old_hold;
+					rc = rc;
 					attribute *etime = &psubjob->ji_wattr[(int)JOB_ATR_etime];
 					etime->at_val.at_long = time_now;
 					etime->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;

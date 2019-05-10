@@ -502,8 +502,8 @@ req_runjob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-		attribute sub_runcount = {};
-		attribute sub_run_version = {};
+		attribute sub_runcount = {0};
+		attribute sub_run_version = {0};
 
 		/* single subjob, if parent qeueud, it can be run */
 
@@ -569,8 +569,8 @@ req_runjob(struct batch_request *preq)
 			}
 
 			if (get_subjob_state(parent, i) == JOB_STATE_QUEUED) {
-				attribute sub_runcount = {};
-				attribute sub_run_version = {};
+				attribute sub_runcount = {0};
+				attribute sub_run_version = {0};
 				jid  = mk_subjob_id(parent, i);
 				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob) != NULL) {
 					sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
