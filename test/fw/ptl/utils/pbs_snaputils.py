@@ -418,7 +418,7 @@ class ObfuscateSnapshot(object):
             self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
         if self.num_bad_acct_records > 0:
             self.logger.info("Total bad records found: " +
-                str(self.num_bad_acct_records))
+                             str(self.num_bad_acct_records))
 
     def _replace_str_in_file(self, key, val, fpath):
         """
@@ -511,7 +511,7 @@ class ObfuscateSnapshot(object):
                 printjob = None
         if printjob is None:
             self.logger.error("printjob not found, so .JB files will "
-            "simply be deleted")
+                              "simply be deleted")
         jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
         jbcontent = {}
         for name in os.listdir(jobspath):
@@ -521,10 +521,10 @@ class ObfuscateSnapshot(object):
                 if printjob is not None:
                     cmd = [printjob, fpath]
                     ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
-                                        as_script=True)
+                                          as_script=True)
                 self.du.rm(path=fpath)
                 if ret is not None and ret["out"] is not None:
-                    jbcontent[name] =  "\n".join(ret["out"])
+                    jbcontent[name] = "\n".join(ret["out"])
             # Also delete any other files/directories inside mom_priv/jobs
             else:
                 path = os.path.join(jobspath, name)
