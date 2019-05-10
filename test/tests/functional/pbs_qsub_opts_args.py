@@ -60,16 +60,13 @@ class TestQsubOptionsArguments(TestFunctional):
         # PBS returns 15161 error code when it fails to save the job in db
         # but in PTL_CLI mode it returns modulo of the error code.
 
-        # for PTL_API mode
-        if e.rc == 15161:
-            self.assertFalse(e.msg[0], ret_msg)
-        # for PTL_CLI mode
-        elif 15161 % 256 == e.rc:
-            self.assertFalse(e.msg[0], ret_msg)
+        # PTL_API and PTL_CLI mode returns 15161 and 57 error code respectively
+        if err.rc == 15161 or err.rc == 15161 % 256:
+            self.assertFalse(err.msg[0], ret_msg)
         else:
             self.fail(
                 "ERROR in submitting a job with future time: %s" %
-                e.msg[0])
+                err.msg[0])
 
     def test_qsub_with_script_with_long_TMPDIR(self):
         """
