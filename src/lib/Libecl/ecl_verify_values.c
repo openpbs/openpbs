@@ -1853,6 +1853,7 @@ verify_value_preempt_order(int batch_request, int parent_object, int cmd,
 		char s_done = 0;
 		char c_done = 0;
 		char r_done = 0;
+		char d_done = 0;
 		char next_is_num = 0;
 		do {
 			int j = 0;
@@ -1885,6 +1886,12 @@ verify_value_preempt_order(int batch_request, int parent_object, int cmd,
 						case 'R':
 							if (!r_done)
 								r_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						case 'D':
+							if (!d_done)
+								d_done = 1;
 							else
 								return PBSE_BADATVAL;
 							break;

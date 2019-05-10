@@ -219,7 +219,7 @@ query_server(status *pol, int pbs_sd)
 	/* set the time to the current time */
 	sinfo->server_time = policy->current_time;
 
-	if( query_server_dyn_res(sinfo) == -1 ) {
+	if(query_server_dyn_res(sinfo) == -1) {
 		pbs_statfree(server);
 		sinfo -> fairshare = NULL;
 		free_server(sinfo);
@@ -895,6 +895,9 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 									break;
 								case 'R':
 									conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
+									break;
+								case 'D':
+									conf.preempt_order[i].order[j] = PREEMPT_METHOD_DELETE;
 									break;
 							}
 						}

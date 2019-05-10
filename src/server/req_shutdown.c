@@ -79,7 +79,7 @@
 
 /* Private Fuctions Local to this File */
 
-int shutdown_preempt_chkpt(job *, struct batch_request *);
+int shutdown_preempt_chkpt(job *);
 void post_hold(struct work_task *);
 static void post_chkpt(struct work_task *);
 static void rerun_or_kill(job *, char *text);
@@ -209,7 +209,7 @@ svr_shutdown(int type)
 				(*pattr->at_val.at_str != 'n')) {
 				/* do checkpoint of job */
 
-				if (shutdown_preempt_chkpt(pjob, NULL) == 0)
+				if (shutdown_preempt_chkpt(pjob) == 0)
 					continue;
 			}
 
@@ -298,7 +298,7 @@ req_shutdown(struct batch_request *preq)
  */
 
 int
-shutdown_preempt_chkpt(job *pjob, struct batch_request *nest)
+shutdown_preempt_chkpt(job *pjob)
 {
 	struct batch_request *phold;
 	attribute temp;
@@ -328,16 +328,7 @@ shutdown_preempt_chkpt(job *pjob, struct batch_request *nest)
 		return (PBSE_SYSTEM);
 
 	phold->rq_extra = pjob;
-	if (nest) {
-		phold->rq_nest = nest;
-		func = post_hold;
-
-		hold_val = &pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
-		old_hold = *hold_val;
-		*hold_val |= HOLD_s;
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-	} else
-		func = post_chkpt;
+	func = post_chkpt;
 
 	if (relay_to_mom(pjob, phold, func) == 0) {
 
@@ -419,7 +410,7 @@ rerun_or_kill(job *pjob, char *text)
 
 		/* job is rerunable, mark it to be requeued */
 
-		(void)issue_signal(pjob, "SIGKILL", release_req, 0, NULL);
+		(void)issue_signal(pjob, "SIGKILL", release_req, 0);
 		pjob->ji_qs.ji_substate  = JOB_SUBSTATE_RERUN;
 		(void)strcpy(log_buffer, msg_init_queued);
 		(void)strcat(log_buffer, pjob->ji_qhdr->qu_qs.qu_name);

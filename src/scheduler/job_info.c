@@ -2876,7 +2876,9 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			if (preempt_jobs_reply[i].order[0] == '0') {
 				done = 0;
 				fail_list[fail_count++] = job->rank;
-			} else {
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job->name, "Job failed to be deleted");
+			}
+			else {
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
 					/* Set resources_released and execselect on the job */
@@ -2891,10 +2893,18 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by checkpointing");
-				} else {
+				} else if (preempt_jobs_reply[i].order[0] == 'Q') {
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by requeuing");
+				} else {
+					update_universe_on_end(policy, job, "Q", NO_FLAGS);
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+						job->name, "Job preempted by deletion");
+					/* Emulate a deleted job by requeuing it and marking it as can_not_run.  
+					 * It will be ignored for the rest of the cycle
+					 */
+					job->can_not_run = 1;
 				}
 				update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
 				job->job->is_preempted = 1;
@@ -3498,6 +3508,8 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 				if (po->order[j] == PREEMPT_METHOD_REQUEUE &&
 					rjobs[i]->job->can_requeue)
 					break; /* choose if requeue is allowed */
+				if (po->order[i] == PREEMPT_METHOD_DELETE)
+					break;
 			}
 			if (j == PREEMPT_METHOD_HIGH) /* no preemption method good */
 				good = 0;

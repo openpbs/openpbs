@@ -219,7 +219,7 @@ numindex_to_offset(job *parent, int iindx)
 }
 /**
  * @brief
- * 		subjob_index_to_offset - return the offset into the table for an
+ * 		subjob_index_to_offset - return the offset into the table for an array
  *
  * @param[in]	parent - Pointer to to parent job structure.
  * @param[in]	index  - first number of range

@@ -309,7 +309,6 @@ struct rqfpair {
 
 struct batch_request {
 	pbs_list_link rq_link;	/* linkage of all requests 		*/
-	struct batch_request *rq_nest;
 	struct batch_request *rq_parentbr;
 	/* parent request for job array request */
 	int	  rq_refct;	/* reference count - child requests     */

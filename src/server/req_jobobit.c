@@ -1063,8 +1063,11 @@ on_job_exit(struct work_task *ptask)
 
 				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 					issue_track(pjob);
+				
+				if (pjob->ji_pmt_preq != NULL)
+					reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
 				/*
-				 * Check if the history of the finished job can be saved or it needs to be purged .
+				 * Check if the history of the finished job can be saved or it needs to be purged.
 				 */
 				svr_saveorpurge_finjobhist(pjob);
 			}

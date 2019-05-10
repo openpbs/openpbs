@@ -1519,7 +1519,7 @@ get_preemption_order(struct preempt_ordering *porder, int req, int used)
 
 	/* check if we have more then one range... no need to choose if not */
 	if (porder[1].high_range != 0) {
-		percent_left = 100 - (used / req) * 100;
+		percent_left = 100 - ((float) used / req) * 100;
 		if (percent_left < 0)
 			percent_left = 1;
 

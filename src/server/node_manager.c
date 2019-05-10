@@ -4441,13 +4441,13 @@ mom_running_jobs(int stream)
 				if (substate == JOB_SUBSTATE_RUNNING) {
 
 					/* tell Mom to suspend job */
-					(void)issue_signal(pjob, "SIG_SUSPEND", release_req, 0, NULL);
+					(void)issue_signal(pjob, "SIG_SUSPEND", release_req, 0);
 				}
 			} else if (pjob->ji_qs.ji_substate ==JOB_SUBSTATE_RUNNING) {
 				if (substate == JOB_SUBSTATE_SUSPEND) {
 
 					/* tell Mom to resume job */
-					(void)issue_signal(pjob, "SIG_RESUME", release_req, 0, NULL);
+					(void)issue_signal(pjob, "SIG_RESUME", release_req, 0);
 				}
 
 			} else if ((pjob->ji_qs.ji_state != JOB_STATE_EXITING) &&

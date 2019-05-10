@@ -516,7 +516,8 @@ struct job {
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* rpp or tcp */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
-	int		ji_licneed;	/* # of cpu licenses needed by job */
+	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
+	int ji_licneed;			/* # of cpu licenses needed by job */
 	int		ji_licalloc;	/* actual # of cpu licenses allocated */
 #ifdef	PBS_MOM				/* MOM ONLY */
 	struct batch_request *ji_preq;	/* outstanding request */
@@ -1179,7 +1180,7 @@ extern int   site_acl_check(job *, pbs_queue *);
 #endif	/* _QUEUE_H */
 
 #ifdef	_WORK_TASK_H
-extern int   issue_signal(job *, char *, void(*)(struct work_task *), void *, struct batch_request *);
+extern int   issue_signal(job *, char *, void(*)(struct work_task *), void *);
 extern void   on_job_exit(struct work_task *);
 #endif	/* _WORK_TASK_H */
 

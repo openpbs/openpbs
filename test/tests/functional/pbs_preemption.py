@@ -42,6 +42,14 @@ class TestPreemption(TestFunctional):
     """
     Contains tests for scheduler's preemption functionality
     """
+    chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+    chk_script_fail = """#!/bin/bash
+exit 1
+"""
+
     def setUp(self):
         TestFunctional.setUp(self)
 
@@ -81,77 +89,165 @@ class TestPreemption(TestFunctional):
 
         return jid1, jid2, jid3
 
-    def submit_and_preempt_jobs(self, preempt_order='R'):
+    def insert_checkpoint_script(self, chk_script):
+        chk_file = self.du.create_temp_file(body=chk_script)
+        self.du.chmod(path=chk_file, mode=0755)
+        self.du.chown(path=chk_file, uid=0, gid=0, sudo=True)
+        c = {'$action': 'checkpoint_abort 30 !' + chk_file + ' %sid'}
+        self.mom.add_config(c)
+
+    def submit_and_preempt_jobs(self, preempt_order='R', order=None,
+                                job_array=False):
         """
         This function will set the prempt order, submit jobs,
         preempt jobs and do log_match()
         """
-        if preempt_order == 'R':
+        if preempt_order[-1] == 'R':
             job_state = 'Q'
             preempted_by = 'requeuing'
-        elif preempt_order == 'C':
+        elif preempt_order[-1] == 'C':
             job_state = 'Q'
             preempted_by = 'checkpointing'
-        elif preempt_order == 'S':
+        elif preempt_order[-1] == 'S':
             job_state = 'S'
             preempted_by = 'suspension'
+        elif preempt_order[-1] == 'D':
+            job_state = ''
+            preempted_by = 'deletion'
+
+        # construct preempt_order with a number inbetween.  We use 50
+        # since that will cause a different preempt_order to be used for the
+        # first 50% and a different for the second 50%
+        if order == 1:  # first half
+            po = '"' + preempt_order + ' 50 S"'
+        elif order == 2:  # second half
+            po = '"S 50 ' + preempt_order + '"'
+        else:
+            po = preempt_order
 
         # set preempt order
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'preempt_order': preempt_order}, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': po})
 
-        attrs = {ATTR_l + '.select': '1:ncpus=1'}
+        lpattrs = {ATTR_l + '.select': '1:ncpus=1', ATTR_l + '.walltime': 40}
+        if job_array is True:
+            lpattrs[ATTR_J] = '1-3'
 
         # submit a job to regular queue
-        j1 = Job(TEST_USER, attrs)
+        j1 = Job(TEST_USER, lpattrs)
         jid1 = self.server.submit(j1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        if job_array is True:
+            run_state = 'B'
+        else:
+            run_state = 'R'
+        self.server.expect(JOB, {'job_state': run_state}, id=jid1)
+
+        if job_array is True:
+            jids1 = j1.create_subjob_id(jid1, 1)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jids1)
+
+        if order == 2:
+            self.logger.info('Sleep 30s until the job is over 50% done')
+            time.sleep(30)
 
         # submit a job to high priority queue
-        attrs['queue'] = 'expressq'
-        j2 = Job(TEST_USER, attrs)
+        j2 = Job(TEST_USER, {'queue': 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': job_state}, id=jid1)
 
-        self.scheduler.log_match(jid1 + ";Job preempted by " + preempted_by)
-        self.scheduler.log_match(
-            jid1 + ";Job will never run", existence=False, max_attempts=5)
+        if job_array is True:
+            jid = jids1
+        else:
+            jid = jid1
 
-    def test_never_run_preempt_suspension(self):
+        if preempt_order[-1] != 'D':
+            self.server.expect(JOB, {'job_state': job_state}, id=jid)
+        elif job_array is True:
+            self.server.expect(JOB, {'job_state': 'X'}, id=jids1)
+        else:
+            self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+        self.scheduler.log_match(jid + ";Job preempted by " + preempted_by)
+
+    def test_preempt_suspend(self):
         """
-        Test that a job preempted by suspension is not
-        marked as "Job will never run"
+        Test that a job is preempted by suspension
         """
         self.submit_and_preempt_jobs(preempt_order='S')
 
-    def test_never_run_preempt_checkpoint(self):
+    def test_preempt_suspend_ja(self):
         """
-        Test that a preempted job with checkpoint is not
-        marked as "Job will never run"
+        Test that a subjob is preempted by suspension
         """
+        self.submit_and_preempt_jobs(preempt_order='S', job_array=True)
 
-        # Create checkpoint
-        chk_script = """#!/bin/bash
-kill $1
-exit 0
-"""
-        self.chk_file = self.du.create_temp_file(body=chk_script)
-        self.du.chmod(path=self.chk_file, mode=0755)
-        self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
-        c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
-        self.mom.add_config(c)
-        self.attrs = {ATTR_l + '.select': '1:ncpus=1'}
-
-        # preempt jobs and check logs
+    def test_preempt_checkpoint(self):
+        """
+        Test that a job is preempted with checkpoint
+        """
+        self.insert_checkpoint_script(self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='C')
 
-    def test_never_run_preempt_requeue(self):
+    def test_preempt_checkpoint_requeue(self):
         """
-        Test that a preempted job by requeueing is not
-        marked as "Job will never run"
+        Test that when checkpoint fails, a job is correctly requeued
+        """
+        self.insert_checkpoint_script(self.chk_script_fail)
+        self.submit_and_preempt_jobs(preempt_order='CR')
+
+    def test_preempt_requeue(self):
+        """
+        Test that a job is preempted by requeue
         """
         self.submit_and_preempt_jobs(preempt_order='R')
+
+    def test_preempt_requeue_ja(self):
+        """
+        Test that a subjob is preempted by requeue
+        """
+        self.submit_and_preempt_jobs(preempt_order='R', job_array=True)
+
+    def test_preempt_delete(self):
+        """
+        Test preempt via delete correctly deletes a job
+        """
+        self.submit_and_preempt_jobs(preempt_order='D')
+
+    def test_preempt_delete_ja(self):
+        """
+        Test preempt via delete correctly deletes a subjob
+        """
+
+        self.submit_and_preempt_jobs(preempt_order='D', job_array=True)
+
+    def test_preempt_checkpoint_delete(self):
+        """
+        Test that when checkpoint fails, a job is correctly deleted
+        """
+        self.insert_checkpoint_script(self.chk_script_fail)
+        self.submit_and_preempt_jobs(preempt_order='CD')
+
+    def test_preempt_order_requeue_first(self):
+        """
+        Test that a low priority job is requeued if preempt_order is in
+        the form of 'R 50 S' and the job is in the first 50% of its run time
+        """
+        self.submit_and_preempt_jobs(preempt_order='R', order=1)
+
+    def test_preempt_order_requeue_second(self):
+        """
+        Test that a low priority job is requeued if preempt_order is in
+        the form of 'S 50 R' and the job is in the second 50% of its run time
+        """
+        self.submit_and_preempt_jobs(preempt_order='R', order=2)
+
+    def test_preempt_requeue_never_run(self):
+        """
+        Test that a job is preempted by requeue and the scheduler does not
+        report the job as can never run
+        """
+        self.submit_and_preempt_jobs(preempt_order='R')
+        self.scheduler.log_match(
+            ";Job will never run", existence=False, max_attempts=5)
 
     def test_qalter_preempt_targets_to_none(self):
         """
@@ -213,12 +309,7 @@ exit 0
         abort_script = """#!/bin/bash
 exit 3
 """
-        abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=abort_file, mode=0755)
-        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + abort_file}
-        self.mom.add_config(c)
-
+        self.insert_checkpoint_script(abort_script)
         # submit two jobs to regular queue
         j1 = Job(TEST_USER)
         jid1 = self.server.submit(j1)
@@ -249,11 +340,7 @@ exit 3
 kill -9 $1
 exit 0
 """
-        abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=abort_file, mode=0755)
-        self.du.chown(path=abort_file, uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + abort_file + ' %sid'}
-        self.mom.add_config(c)
+        self.insert_checkpoint_script(abort_script)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)

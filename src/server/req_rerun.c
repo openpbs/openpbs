@@ -103,15 +103,17 @@ post_rerun(struct work_task *pwt)
 
 	preq = (struct batch_request *)pwt->wt_parm1;
 
+	pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
+
 	if (preq->rq_reply.brp_code != 0) {
-		if ((pjob = find_job(preq->rq_ind.rq_signal.rq_jid)) != NULL) {
+		if (pjob != NULL) {
 			(void)sprintf(log_buffer, "rerun signal reject by mom: %d",
 				preq->rq_reply.brp_code);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				preq->rq_ind.rq_signal.rq_jid, log_buffer);
 
-			if (preq->rq_nest)
-				reply_preempt_jobs_request(preq->rq_reply.brp_code, 1, preq);
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(preq->rq_reply.brp_code, PREEMPT_METHOD_REQUEUE, pjob);
 
 			if ((preq->rq_reply.brp_code == PBSE_UNKJOBID) &&
 				(preq->rq_extra == 0)) {
@@ -120,8 +122,8 @@ post_rerun(struct work_task *pwt)
 				force_reque(pjob);
 			}
 		}
-	} else if (preq->rq_nest)
-		reply_preempt_jobs_request(PBSE_NONE, 3, preq);
+	} else if (pjob->ji_pmt_preq != NULL)
+		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
 
 	release_req(pwt);
 	return;
@@ -446,7 +448,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	/* ask MOM to kill off the job */
 
-	rc = issue_signal(pjob, SIG_RERUN, post_rerun, force_rerun, NULL);
+	rc = issue_signal(pjob, SIG_RERUN, post_rerun, force_rerun);
 
 	/*
 	 * If force is set and request is from a PBS manager,

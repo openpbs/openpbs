@@ -405,11 +405,13 @@ action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
 			char s_done = 0;
 			char c_done = 0;
 			char r_done = 0;
+			char d_done = 0;
 			char next_is_num = 0;
 
 			psched->preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
 			psched->preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
 			psched->preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
+			psched->preempt_order[0].order[3] = PREEMPT_METHOD_LOW;
 
 			psched->preempt_order[0].high_range = 100;
 			i = 0;
@@ -452,15 +454,25 @@ action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
 								} else
 									return PBSE_BADATVAL;
 								break;
-							default:
-								return PBSE_BADATVAL;
+							case 'D':
+								if (!d_done) {
+									psched->preempt_order[i].order[j] = PREEMPT_METHOD_DELETE;
+									d_done = 1;
+								} else 
+									return PBSE_BADATVAL;
+								break;
+
+						default:
+							return PBSE_BADATVAL;
 						}
 						next_is_num = 1;
 					}
 					s_done = 0;
 					c_done = 0;
 					r_done = 0;
-				} else
+					d_done = 0;
+				}
+				else
 					return PBSE_BADATVAL;
 				tok = strtok(NULL, "\t ");
 			} while (tok != NULL && i < PREEMPT_ORDER_MAX);
