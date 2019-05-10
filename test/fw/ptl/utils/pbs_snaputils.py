@@ -40,13 +40,18 @@ import time
 import tarfile
 import logging
 import socket
+import random
+import shutil
+import pprint
+import shlex
+import re
 
 from subprocess import STDOUT
 from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
 from ptl.lib.pbs_ifl_mock import *
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
-from ptl.utils.pbs_anonutils import PBSAnonymizer
+from ptl.lib.pbs_testlib import BatchUtils
 
 
 # Define an enum which is used to label various pieces of information
@@ -212,11 +217,352 @@ PBS_RSTAT_CMD = os.path.join("bin", "pbs_rstat")
 PBS_PROBE_CMD = os.path.join("sbin", "pbs_probe")
 PBS_HOSTN_CMD = os.path.join("bin", "pbs_hostn")
 
-# A global list of files which contain data in tabular form
-FILE_TABULAR = ["qstat.out", "qstat_t.out", "qstat_x.out", "qstat_ns.out",
-                "pbsnodes_aS.out", "pbsnodes_aSj.out", "pbsnodes_avS.out",
-                "pbsnodes_avSj.out", "qstat_Q.out", "qstat_B.out",
-                "pbs_rstat.out"]
+
+class ObfuscateSnapshot(object):
+    val_obf_map = {}
+    vals_to_del = []
+    bu = BatchUtils()
+    du = DshUtils()
+    num_bad_acct_records = 0
+    logger = logging.getLogger(__name__)
+
+    job_attrs_del = [ATTR_v, ATTR_e, ATTR_jobdir,
+                     ATTR_submit_arguments, ATTR_o, ATTR_S]
+    resv_attrs_del = [ATTR_v]
+    svr_attrs_del = [ATTR_mailfrom]
+    job_attrs_obf = [ATTR_euser, ATTR_egroup, ATTR_project, ATTR_A,
+                     ATTR_g, ATTR_M, ATTR_u, ATTR_owner, ATTR_name]
+    resv_attrs_obf = [ATTR_A, ATTR_g, ATTR_M, ATTR_auth_u, ATTR_auth_g,
+                      ATTR_auth_h, ATTR_resv_owner]
+    svr_attrs_obf = [ATTR_SvrHost, ATTR_acluser, ATTR_aclResvuser,
+                     ATTR_aclResvhost, ATTR_aclhost, ATTR_operators,
+                     ATTR_managers]
+    node_attrs_obf = [ATTR_NODE_Host, ATTR_NODE_Mom, ATTR_rescavail + ".host",
+                      ATTR_rescavail + ".vnode"]
+    sched_attrs_obf = [ATTR_SchedHost]
+    queue_attrs_obf = [ATTR_acluser, ATTR_aclgroup, ATTR_aclhost]
+    skip_vals = ["_pbs_project_default", "*", "pbsadmin", "pbsuser"]
+
+    def _obfuscate_stat(self, file_path, attrs_to_obf, attrs_to_del):
+        """
+        Helper function to obfuscate qstat/rstat -f & pbsnodes -av outputs
+
+        :param file_path - path to the qstat output file in snapshot
+        :type file_path - str
+        :param attrs_to_obf - attribute list to obfuscate
+        :type list
+        :param attrs_to_del- attribute list to delete
+        :type list
+        """
+        fout = self.du.create_temp_file()
+
+        with open(file_path, "r") as fdin, open(fout, "w") as fdout:
+            delete_line = False
+            val_obf = None
+            val_del = None
+            key_obf = None
+            for line in fdin:
+                # Check if this is a line extension for an attr being deleted
+                if line[0] == "\t":
+                    if delete_line:
+                        val_del += line.strip()
+                        continue
+                    elif val_obf is not None:
+                        val_obf += line.strip()
+                        continue
+
+                delete_line = False
+                if val_del is not None:
+                    self.vals_to_del.append(val_del)
+                    val_del = None
+
+                if val_obf is not None:
+                    # Write the previous, obfuscated attribute first
+                    val_to_write = []
+                    for val in val_obf.split(","):
+                        val = val.strip()
+                        val = val.split("@")
+                        out_val = []
+                        for _val in val:
+                            if _val in self.skip_vals:
+                                obf = _val
+                            elif _val not in self.val_obf_map:
+                                obf = self.bu.random_str(
+                                    length=random.randint(8, 30))
+                                self.val_obf_map[_val] = obf
+                            else:
+                                obf = self.val_obf_map[_val]
+                            out_val.append(obf)
+                        out_val = "@".join(out_val)
+                        val_to_write.append(out_val)
+
+                    # Some PBS outputs have inconsistent whitespaces
+                    # e.g - pbs_rstat -f doesn't print leading spaces
+                    # So, extract the lead from the original line
+                    lead = ""
+                    for c in line:
+                        if not c.isspace():
+                            break
+                        lead += c
+
+                    obf_line = lead + key_obf + " = " + \
+                        ",".join(val_to_write) + "\n"
+                    fdout.write(obf_line)
+                    val_obf = None
+                    key_obf = None
+
+                if "=" in line:
+                    attrname, attrval = line.split("=", 1)
+                    attrname = attrname.strip()
+                    attrval = attrval.strip()
+
+                    # Check if this attribute needs to be deleted
+                    if attrname in attrs_to_del:
+                        delete_line = True
+                        val_del = attrval
+
+                    if delete_line is True:
+                        continue
+
+                    # Check if this attribute needs to be obfuscated
+                    if attrname in attrs_to_obf:
+                        val_obf = attrval
+                        key_obf = attrname
+
+                if val_obf is None:
+                    fdout.write(line)
+
+        shutil.move(fout, file_path)
+
+    def _obfuscate_acct_file(self, attrs_obf, file_path):
+        """
+        Helper function to anonymize
+
+        :param attrs_obf - list of attributes to obfuscate
+        :type attrs_obf - list
+        :param file_path - path of acct log file
+        :type file_path - str
+        """
+        fout = self.du.create_temp_file()
+
+        with open(file_path, "r") as fd, open(fout, "w") as fdout:
+            for record in fd:
+                # accounting log format is
+                # %Y/%m/%d %H:%M:%S;<Key>;<Id>;<key1=val1> <key2=val2> ...
+                record_list = record.split(";", 3)
+                if record_list is None or len(record_list) < 4:
+                    continue
+                if record_list[1] in ("A", "L"):
+                    fdout.write(record)
+                    continue
+                content_list = shlex.split(record_list[3].strip())
+
+                skip_record = False
+                kvl_list = [kv.split("=", 1) for kv in content_list]
+                if kvl_list is None:
+                    self.num_bad_acct_records += 1
+                    self.logger.debug("Bad accounting record found:\n" +
+                                      record)
+                    continue
+                for kvl in kvl_list:
+                    try:
+                        k, v = kvl
+                    except ValueError:
+                        self.num_bad_acct_records += 1
+                        self.logger.debug("Bad accounting record found:\n" +
+                                          record)
+                        skip_record = True
+                        break
+
+                    if k in attrs_obf:
+                        val = v.split("@")
+                        obf = []
+                        for _val in val:
+                            if _val == "_pbs_project_default":
+                                obf.append(_val)
+                            elif _val not in self.val_obf_map:
+                                obf_v = self.bu.random_str(
+                                    length=random.randint(8, 30))
+                                self.val_obf_map[_val] = obf_v
+                                obf.append(obf_v)
+                            else:
+                                obf.append(self.val_obf_map[_val])
+                        kvl[1] = "@".join(obf)
+
+                if not skip_record:
+                    record = ";".join(record_list[:3]) + ";" + \
+                        " ".join(["=".join(n) for n in kvl_list])
+                    fdout.write(record + "\n")
+
+        shutil.move(fout, file_path)
+
+    def obfuscate_acct_logs(self, snap_dir):
+        """
+        Helper function to obfuscate accounting logs
+
+        :param snap_dir - the snapshot directory path
+        :type snap_dir - str
+        """
+        attrs_to_obf = self.job_attrs_obf + self.resv_attrs_obf +\
+            self.svr_attrs_obf + self.queue_attrs_obf + self.node_attrs_obf +\
+            self.sched_attrs_obf
+
+        # Some accounting record attributes are named differently
+        acct_extras = ["user", "requestor", "group", "account"]
+        attrs_to_obf += acct_extras
+
+        acct_path = os.path.join(snap_dir, "server_priv", "accounting")
+        acct_fnames = os.listdir(acct_path)
+        for acct_fname in acct_fnames:
+            acct_fpath = os.path.join(acct_path, acct_fname)
+            self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
+        if self.num_bad_acct_records > 0:
+            self.logger.info("Total bad records found: " +
+                             str(self.num_bad_acct_records))
+
+    def _replace_str_in_file(self, key, val, fpath):
+        """
+        Helper function to replace a given string (key) with another (val)
+
+        :param key - the string to replace
+        :type key - str
+        :param val - the string to replace with
+        :type val - str
+        :param filepath - path to the file
+        :type filepath - str
+        """
+        fout = self.du.create_temp_file()
+        with open(fpath, "r") as fd, open(fout, "w") as fdout:
+            alltext = fd.read()
+            otext = re.sub(r'\b' + key + r'\b', val, alltext)
+            fdout.write(otext)
+        shutil.move(fout, fpath)
+
+    def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
+        """
+        Helper function to obfuscate a snapshot
+
+        :param snap_dir - path to snapshot directory to obfsucate
+        :type snap_dir - str
+        :param map_file - path to the map file to create
+        :type map_file - str
+        :param sudo_val - value of the --with-sudo option (needed for printjob)
+        :type sudo_val bool
+        """
+        if not os.path.isdir(snap_dir):
+            raise ValueError("Snapshot directory path not accessible"
+                             " for obfuscation")
+
+        # Let's go through the qmgr, qstat, pbsnodes and resourcedef file
+        # Get the values associated with attributes to obfuscate and
+        # obfuscate them everywhere in the snapshot
+        # Delete the attribute-value pair in the delete lists
+        stat_f_files = {
+            QSTAT_BF_PATH: [self.svr_attrs_obf, self.svr_attrs_del],
+            QSTAT_F_PATH: [self.job_attrs_obf, self.job_attrs_del],
+            QSTAT_TF_PATH: [self.job_attrs_obf, self.job_attrs_del],
+            QSTAT_XF_PATH: [self.job_attrs_obf, self.job_attrs_del],
+            QSTAT_QF_PATH: [self.queue_attrs_obf, []],
+            PBSNODES_VA_PATH: [self.node_attrs_obf, []],
+            PBS_RSTAT_F_PATH: [self.resv_attrs_obf, self.resv_attrs_del]
+        }
+        for s_f_file, attrs in stat_f_files.iteritems():
+            qstat_f_path = os.path.join(snap_dir, s_f_file)
+            if os.path.isfile(qstat_f_path):
+                self._obfuscate_stat(qstat_f_path, attrs[0], attrs[1])
+
+        # Parse resourcedef file and add custom resources to obfuscation map
+        # We will later do a sed on the whole snapshot, that's when these
+        # will get obfuscated
+        custom_rscs = []
+        custrscs_path = os.path.join(snap_dir, "server_priv", "resourcedef")
+        if os.path.isfile(custrscs_path):
+            with open(custrscs_path, "r") as fd:
+                for line in fd:
+                    rscs_name = line.split(" ", 1)[0]
+                    custom_rscs.append(rscs_name.strip())
+        for rscs in custom_rscs:
+            if rscs not in self.val_obf_map:
+                obf = self.bu.random_str(length=random.randint(8, 30))
+                self.val_obf_map[rscs] = obf
+
+        # Obfuscate accounting logs
+        # Note: We can't rely on sed to do this because there might be logs
+        # From long back which have usernames & hostnames that didn't get
+        # captured in the qstat/pbs_rstat/pbsnodes outputs
+        self.obfuscate_acct_logs(snap_dir)
+
+        # Until we can support obfuscating daemon logs, delete them
+        svr_logs = os.path.join(snap_dir, SVR_LOGS_PATH)
+        mom_logs = os.path.join(snap_dir, MOM_LOGS_PATH)
+        comm_logs = os.path.join(snap_dir, COMM_LOGS_PATH)
+        db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
+        sched_logs = []
+        for dirname in os.listdir(snap_dir):
+            if dirname.startswith(DFLT_SCHED_LOGS_PATH):
+                dirpath = os.path.join(snap_dir, str(dirname))
+                sched_logs.append(dirpath)
+        # Also delete any .JB files, store printjob outputs of them instead
+        conf = self.du.parse_pbs_config()
+        printjob = None
+        if conf is not None:
+            printjob = os.path.join(conf["PBS_EXEC"], "bin", "printjob")
+            if not os.path.isfile(printjob):
+                printjob = None
+        if printjob is None:
+            self.logger.error("printjob not found, so .JB files will "
+                              "simply be deleted")
+        jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
+        jbcontent = {}
+        for name in os.listdir(jobspath):
+            if name.endswith(".JB"):
+                ret = None
+                fpath = os.path.join(jobspath, name)
+                if printjob is not None:
+                    cmd = [printjob, fpath]
+                    ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
+                                          as_script=True)
+                self.du.rm(path=fpath)
+                if ret is not None and ret["out"] is not None:
+                    jbcontent[name] = "\n".join(ret["out"])
+            # Also delete any other files/directories inside mom_priv/jobs
+            else:
+                path = os.path.join(jobspath, name)
+                self.du.rm(path=path, recursive=True, force=True)
+        for name, content in jbcontent.iteritems():
+            # Save the printjob outputs, these will be obfuscated later
+            fpath = os.path.join(jobspath, name + "_printjob")
+            with open(fpath, "w") as fd:
+                fd.write(str(content))
+
+        dirs_to_del = [svr_logs, mom_logs, comm_logs, db_logs] + sched_logs
+        for dirpath in dirs_to_del:
+            self.du.rm(path=dirpath, recursive=True, force=True)
+
+        # Now, go through the obfuscation map and replace all other instances
+        # of the sensitive values in the snapshot with their obfuscated values
+        for root, _, fnames in os.walk(snap_dir):
+            for fname in fnames:
+                fpath = os.path.join(root, fname)
+
+                # Obfuscate values from val_obf_map
+                for key, val in self.val_obf_map.iteritems():
+                    self._replace_str_in_file(key, val, fpath)
+
+                # Remove the attr values from vals_to_del list
+                fout = self.du.create_temp_file()
+                with open(fpath, "r") as fd, open(fout, "w") as fdout:
+                    data = fd.read()
+                    for val in self.vals_to_del:
+                        data = data.replace(val, "")
+                    fdout.write(data)
+                shutil.move(fout, fpath)
+
+        with open(map_file, "w") as fd:
+            fd.write("Attributes Obfuscated:\n")
+            fd.write(pprint.pformat(self.val_obf_map) + "\n")
+            fd.write("Attributes Deleted:\n")
+            fd.write("\n".join(self.vals_to_del) + "\n")
 
 
 class PBSSnapUtils(object):
@@ -226,13 +572,10 @@ class PBSSnapUtils(object):
     """
 
     def __init__(self, out_dir, acct_logs=None, daemon_logs=None,
-                 map_file=None, anonymize=None, create_tar=False,
-                 log_path=None, with_sudo=False):
+                 create_tar=False, log_path=None, with_sudo=False):
         self.out_dir = out_dir
         self.acct_logs = acct_logs
         self.srvc_logs = daemon_logs
-        self.map_file = map_file
-        self.anonymize = anonymize
         self.create_tar = create_tar
         self.log_path = log_path
         self.with_sudo = with_sudo
@@ -240,8 +583,7 @@ class PBSSnapUtils(object):
 
     def __enter__(self):
         self.utils_obj = _PBSSnapUtils(self.out_dir, self.acct_logs,
-                                       self.srvc_logs, self.map_file,
-                                       self.anonymize, self.create_tar,
+                                       self.srvc_logs, self.create_tar,
                                        self.log_path, self.with_sudo)
         return self.utils_obj
 
@@ -259,8 +601,7 @@ class _PBSSnapUtils(object):
     """
 
     def __init__(self, out_dir, acct_logs=None, daemon_logs=None,
-                 map_file=None, anonymize=False, create_tar=False,
-                 log_path=None, with_sudo=False):
+                 create_tar=False, log_path=None, with_sudo=False):
         """
         Initialize a PBSSnapUtils object with the arguments specified
 
@@ -270,10 +611,6 @@ class _PBSSnapUtils(object):
         :type acct_logs: int or None
         :param daemon_logs: number of daemon logs to capture
         :type daemon_logs: int or None
-        :param map_file: Path to map file for anonymization map
-        :type map_file str or None
-        :param anonymize: anonymize data?
-        :type anonymize: bool
         :param create_tar: Create a tarball of the output snapshot?
         :type create_tar: bool or None
         :param log_path: Path to pbs_snapshot's log file
@@ -292,7 +629,6 @@ class _PBSSnapUtils(object):
         self.resv_info = {}
         self.sys_info = {}
         self.core_info = {}
-        self.anon_obj = None
         self.all_hosts = []
         self.server = None
         self.mom = None
@@ -335,8 +671,6 @@ class _PBSSnapUtils(object):
         else:
             self.num_daemon_logs = 0
 
-        self.mapfile = map_file
-
         # Check which of the PBS daemons' information is available
         self.server = Server()
         self.scheduler = None
@@ -372,29 +706,6 @@ class _PBSSnapUtils(object):
 
         # Create the snapshot directory tree
         self.__initialize_snapshot()
-
-        # Create a PBSAnonymizer object
-        self.anonymize = anonymize
-
-        if self.anonymize:
-            del_attrs = [ATTR_v, ATTR_e, ATTR_mailfrom, ATTR_m, ATTR_name,
-                         ATTR_jobdir, ATTR_submit_arguments, ATTR_o, ATTR_S]
-            obf_attrs = [ATTR_euser, ATTR_egroup, ATTR_project, ATTR_A,
-                         ATTR_operators, ATTR_managers, ATTR_g, ATTR_M,
-                         ATTR_u, ATTR_SvrHost, ATTR_aclgroup, ATTR_acluser,
-                         ATTR_aclResvgroup, ATTR_aclResvuser, ATTR_SchedHost,
-                         ATTR_aclResvhost, ATTR_aclhost, ATTR_owner,
-                         ATTR_exechost, ATTR_NODE_Host, ATTR_NODE_Mom,
-                         ATTR_rescavail + ".host", ATTR_rescavail + ".vnode",
-                         ATTR_auth_u, ATTR_auth_g, ATTR_resv_owner]
-            obf_rsc_attrs = []
-            if self.custom_rscs is not None:
-                for rsc in self.custom_rscs.keys():
-                    obf_rsc_attrs.append(rsc)
-
-            self.anon_obj = PBSAnonymizer(attr_delete=del_attrs,
-                                          attr_val=obf_attrs,
-                                          resc_key=obf_rsc_attrs)
 
     def __init_cmd_path_map(self):
         """
@@ -576,8 +887,8 @@ class _PBSSnapUtils(object):
             rel_path = os.path.join(self.snapdir, item)
             os.makedirs(rel_path, 0755)
 
-    def __capture_cmd_output(self, out_path, cmd, skip_anon=False,
-                             as_script=False, ret_out=False, sudo=False):
+    def __capture_cmd_output(self, out_path, cmd, as_script=False,
+                             ret_out=False, sudo=False):
         """
         Run a command and capture its output
 
@@ -585,8 +896,6 @@ class _PBSSnapUtils(object):
         :type out_path: str
         :param cmd: The command to execute
         :type cmd: list
-        :param skip_anon: Skip anonymization even though anonymize is True?
-        :type skip_anon: bool
         :param as_script: Passed to run_cmd()
         :type as_Script: bool
         :param ret_out: Return output of the command?
@@ -606,9 +915,6 @@ class _PBSSnapUtils(object):
                 # Just log and return
                 self.logger.error(str(e))
                 return
-
-            if self.anonymize and not skip_anon:
-                self.__anonymize_file(out_path)
 
         if self.create_tar:
             self.__add_to_archive(out_path)
@@ -775,14 +1081,6 @@ quit()
                 self.du.chown(path=snap_logfile, uid=os.getuid(),
                               gid=os.getgid(), sudo=self.with_sudo)
 
-            # Anonymize accounting logs
-            if self.anonymize and "accounting" in snap_logdir:
-                anon = self.anon_obj.anonymize_accounting_log(snap_logfile)
-                if anon is not None:
-                    anon_fd = open(snap_logfile, "w")
-                    anon_fd.write("\n".join(anon))
-                    anon_fd.close()
-
             if self.create_tar:
                 self.__add_to_archive(snap_logfile)
 
@@ -836,36 +1134,6 @@ quit()
             os.remove(file_path)
 
         return True
-
-    def __anonymize_file(self, file_path):
-        """
-        Anonymize/obfuscate a file to remove sensitive information
-
-        :param file_path: path to the file to anonymize
-        :type file_path: str
-        """
-        if not self.anonymize or self.anon_obj is None:
-            return
-
-        self.logger.debug("Anonymizing " + file_path)
-
-        # Anonymizing a file requires editing it, so make sure the user owns it
-        self.du.chown(path=file_path, uid=os.getuid(),
-                      gid=os.getgid(), sudo=self.with_sudo)
-
-        file_name = os.path.basename(file_path)
-        if file_name == "sched_config":
-            self.anon_obj.anonymize_sched_config(self.scheduler)
-            self.scheduler.apply_config(path=file_path, validate=False)
-        elif file_name == "resource_group":
-            anon = self.anon_obj.anonymize_resource_group(file_path)
-            if anon is not None:
-                with open(file_path, "w") as rgfd:
-                    rgfd.write("\n".join(anon))
-        elif file_name in FILE_TABULAR:
-            self.anon_obj.anonymize_file_tabular(file_path, inplace=True)
-        else:
-            self.anon_obj.anonymize_file_kv(file_path, inplace=True)
 
     def __copy_dir_with_core(self, src_path, dest_path, core_dir,
                              except_list=None, only_core=False, sudo=False):
@@ -959,8 +1227,7 @@ quit()
                     os.remove(item_dest_path)
                 else:
                     # This was not a core file, and 'only_core' is not True
-                    # So, we need to capture & anonymize this file
-                    self.__anonymize_file(item_dest_path)
+                    # So, we need to capture this file
                     if self.create_tar:
                         self.__add_to_archive(item_dest_path)
 
@@ -1445,8 +1712,7 @@ quit()
 
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(snap_path, cmd_list_cpy,
-                                      skip_anon=True, as_script=as_script,
-                                      sudo=sudo)
+                                      as_script=as_script, sudo=sudo)
 
         # Capture platform dependent information
         if win_platform:
@@ -1576,20 +1842,6 @@ quit()
             return
 
         self.finalized = True
-
-        if self.anonymize:
-            # Print out number of bad accounting records:
-            if self.anon_obj.num_bad_acct_records > 0:
-                self.logger.error("Number of bad accounting records found: " +
-                                  str(self.anon_obj.num_bad_acct_records))
-            if self.mapfile is not None:
-                # Print out obfuscation map
-                try:
-                    with open(self.mapfile, "w") as mapfd:
-                        mapfd.write(str(self.anon_obj))
-                except Exception:
-                    self.logger.error("Error writing out the map file " +
-                                      self.mapfile)
 
         # Record timestamp of the snapshot
         snap_ctimepath = os.path.join(self.snapdir, CTIME_PATH)

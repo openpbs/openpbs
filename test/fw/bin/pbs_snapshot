@@ -49,7 +49,7 @@ from getopt import GetoptError
 from threading import Thread
 
 from ptl.lib.pbs_testlib import PtlConfig
-from ptl.utils.pbs_snaputils import PBSSnapUtils
+from ptl.utils.pbs_snaputils import PBSSnapUtils, ObfuscateSnapshot
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 
@@ -136,7 +136,7 @@ def remotesnap_thread(logger, host):
     cmd = [host_pbssnappath, "-o", snap_home,
            "--daemon-logs=" + str(daemon_logs),
            "--accounting-logs=" + str(acct_logs)]
-    if anonymize:
+    if obfuscate:
         cmd.extend(["--obfuscate", "--map=" + map_file])
     if with_sudo:
         cmd.append("--with-sudo")
@@ -171,6 +171,41 @@ def remotesnap_thread(logger, host):
     du.rm(hostname=host, path=snap_home, recursive=True, force=True)
 
 
+def capture_local_snap(sudo_val):
+    """
+    Helper method to capture snapshot of the local host
+
+    :param sudo_val - Value of the --with-sudo option
+    :type sudo_val - bool
+
+    :returns Name of the snapshot directory/tar file captured
+    """
+    if obfuscate or additional_hosts is not None:
+        # We will need to the captured snapshot directory in these 2 cases
+        create_tar = False
+    else:
+        create_tar = True
+
+    with PBSSnapUtils(out_dir, acct_logs=acct_logs,
+                      daemon_logs=daemon_logs, create_tar=create_tar,
+                      log_path=log_path, with_sudo=sudo_val) as snap_utils:
+        snap_name = snap_utils.capture_all()
+
+    if obfuscate:
+        obj = ObfuscateSnapshot()
+        obj.obfuscate_snapshot(snap_name, map_file, sudo_val)
+        if additional_hosts is None:
+            # Now create the tar
+            outtar = snap_name + ".tgz"
+            with tarfile.open(outtar, "w:gz") as tar:
+                tar.add(snap_name, arcname=os.path.basename(snap_name))
+            # Delete the snapshot directory itself
+            du.rm(path=snap_name, recursive=True, force=True)
+            snap_name = outtar
+
+    return snap_name
+
+
 if __name__ == '__main__':
 
     # Arguments to PBSSnapUtils
@@ -181,7 +216,7 @@ if __name__ == '__main__':
     daemon_logs = 5   # Capture 5 days of daemon logs by default
     additional_hosts = None
     map_file = None
-    anonymize = False
+    obfuscate = False
     log_file = "pbs_snapshot.log"
     with_sudo = False
     du = DshUtils()
@@ -226,7 +261,7 @@ if __name__ == '__main__':
         elif o == "--map":
             map_file = val
         elif o == "--obfuscate":
-            anonymize = True
+            obfuscate = True
         elif o == "--with-sudo":
             with_sudo = True
         elif o == "--version":
@@ -260,7 +295,7 @@ if __name__ == '__main__':
     ptl_logger.addHandler(stream_hdlr)
     ptl_logger.setLevel(level_int)
 
-    if anonymize is True:
+    if obfuscate is True:
         # find the parent directory of the snapshot
         # This will be used to store the map file
         out_abspath = os.path.abspath(out_dir)
@@ -287,12 +322,7 @@ if __name__ == '__main__':
             thread_p.start()
         else:
             # Capture a local snapshot
-            with PBSSnapUtils(out_dir, acct_logs=acct_logs,
-                              daemon_logs=daemon_logs, map_file=map_file,
-                              anonymize=anonymize, create_tar=False,
-                              log_path=log_path,
-                              with_sudo=with_sudo) as snap_utils:
-                main_snap = snap_utils.capture_all()
+            main_snap = capture_local_snap(with_sudo)
 
         if thread_p is not None:
             # Let's get the main host's snapshot first
@@ -341,13 +371,7 @@ if __name__ == '__main__':
         du.rm(path=p_snappath, force=True)
     else:
         # Capture snapshot of the local host
-
-        with PBSSnapUtils(out_dir, acct_logs=acct_logs,
-                          daemon_logs=daemon_logs, map_file=map_file,
-                          anonymize=anonymize, create_tar=True,
-                          log_path=log_path,
-                          with_sudo=with_sudo) as snap_utils:
-            outtar = snap_utils.capture_all()
+        outtar = capture_local_snap(with_sudo)
 
     if outtar is not None:
         print "Snapshot available at: " + outtar
