@@ -364,14 +364,14 @@ class PBSLogUtils(object):
         ret = []
         if lines:
             for l in lines:
+                # l.split(';', 1)[0] gets the time stamp string
+                dt_str = l.split(';', 1)[0]
                 if starttime is not None:
-                    # l.split(';', 1)[0] gets the time stamp string
-                    tm = self.convert_date_time(l.split(';', 1)[0])
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
-                    # l.split(';', 1)[0] gets the time stamp string
-                    tm = self.convert_date_time(l.split(';', 1)[0])
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or

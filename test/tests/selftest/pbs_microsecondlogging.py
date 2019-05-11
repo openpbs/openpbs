@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2018 Altair Engineering, Inc.
+# Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -41,14 +41,15 @@ import time
 
 class TestMicrosecondLogging(TestSelf):
     """
-    Test pbs microsec logging
+    Test log_match() works when start and endtime
+    values are in microseconds
     """
 
-    def setup_microsecondlogging(self, hostname=None, highrestimestamp=1):
+    def switch_microsecondlogging(self, hostname=None, highrestimestamp=1):
         """
         Set micro second logging in pbs.conf
         """
-        du = DshUtils()
+        self.du = DshUtils()
         if hostname is None:
             hostname = self.server.hostname
         a = {'PBS_LOG_HIGHRES_TIMESTAMP': highrestimestamp}
@@ -56,17 +57,17 @@ class TestMicrosecondLogging(TestSelf):
         PBSInitServices().restart()
         self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
 
-    def test_microsec_logging(self):
+    def test_log_match_microsec_logging(self):
         """
         Test that log_match will work when microsecond logging
         is turned on and then off
         """
 
         # Turn of microsecond logging and test log_match()
-        self.setup_microsecondlogging(highrestimestamp=1)
+        self.st = time.time()
+        self.switch_microsecondlogging(highrestimestamp=1)
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
-        self.st = time.time()
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         msg_str = "Job;" + jid1 + ";Job Run at request of Scheduler"
@@ -76,7 +77,7 @@ class TestMicrosecondLogging(TestSelf):
 
         # Turn off microsecond logging and test log_match()
         self.st = time.time()
-        self.setup_microsecondlogging(highrestimestamp=0)
+        self.switch_microsecondlogging(highrestimestamp=0)
         a = {'Resource_List.ncpus': 1}
         J2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(J2)
