@@ -308,8 +308,11 @@ req_releasejob(struct batch_request *preq)
 		for(i = 0 ; i < pjob->ji_ajtrk->tkm_ct ; i++) {
 			job *psubjob = pjob->ji_ajtrk->tkm_tbl[i].trk_psubjob;
 			if (psubjob && (psubjob->ji_qs.ji_state == JOB_STATE_HELD)) {
+#ifndef NAS
 				old_hold = psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
-				rc = job_attr_def[(int)JOB_ATR_hold].
+				rc =
+#endif
+					job_attr_def[(int)JOB_ATR_hold].
 					at_set(&psubjob->ji_wattr[(int)JOB_ATR_hold],
 					&temphold, DECR);
 #ifndef NAS /* localmod 105 Always reset etime on release */
@@ -317,8 +320,6 @@ req_releasejob(struct batch_request *preq)
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 				{
-					old_hold = old_hold;
-					rc = rc;
 					attribute *etime = &psubjob->ji_wattr[(int)JOB_ATR_etime];
 					etime->at_val.at_long = time_now;
 					etime->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
