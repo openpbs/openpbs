@@ -70,7 +70,6 @@
 #ifndef WIN32
 #include <sys/param.h>
 #include <execinfo.h>
-#define BACKTRACE_BUF_SIZE 50
 #endif
 
 #include "pbs_ifl.h"
@@ -108,12 +107,8 @@
 #ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
 #ifndef WIN32
-#ifdef __GNUC__
-/* backtrace() functionality provided in glibc since from version 2.1 */
-#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
+#define BACKTRACE_BUF_SIZE 50
 void print_backtrace(char *);
-#endif
-#endif
 #endif
 #endif
 
@@ -392,14 +387,8 @@ job_save_db(job *pjob, int updatetype)
 		updatetype = SAVEJOB_FULL;
 		sprintf(log_buffer,"job has already been saved earlier as a new job, thus changing to SAVEJOB_FULL");
 		log_joberr(-1, "job_save_db", log_buffer,  pjob->ji_qs.ji_jobid);
-
 #ifndef WIN32
-#ifdef __GNUC__
-/* backtrace() functionality provided in glibc since from version 2.1 */
-#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
 		print_backtrace(pjob->ji_qs.ji_jobid);
-#endif
-#endif
 #endif
 	}
 
@@ -815,13 +804,11 @@ job_or_resv_recov_db(char *id, int objtype)
  * @param[in]	jobid - Print call trace of the job
  *
  */
-#ifndef WIN32
+void
+print_backtrace(char *jobid) {
 #ifdef __GNUC__
 /* backtrace() functionality provided in glibc since from version 2.1 */
 #if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
-void
-print_backtrace(char *jobid) {
-
 	/* let's print the backtrace to identify the faulty scenario */
 	int total_frames; /* total number of frames returned by backtrace() */
 	int frame_num;
@@ -853,9 +840,8 @@ print_backtrace(char *jobid) {
 		sprintf(log_buffer,"backtrace() has not returned any address, might be corrupted");
 		log_joberr(-1, "job_save_db", log_buffer,  jobid);
 	}
-}
 #endif /*-- GLIBC --*/
 #endif /*-- GNUC  --*/
-#endif /*-- WIN32 --*/
+}
 
 #endif
