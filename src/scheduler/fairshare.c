@@ -521,8 +521,8 @@ decay_fairshare_tree(group_info *root)
 	decay_fairshare_tree(root->child);
 
 	root->usage *= conf.fairshare_decay_factor;
-	if (root->usage == 0)
-		root->usage = 1;
+	if (root->usage < FAIRSHARE_MIN_USAGE)
+		root->usage = FAIRSHARE_MIN_USAGE;
 }
 
 /**

@@ -314,6 +314,8 @@ enum fairshare_flags
 	FS_TRIM = 1
 };
 
+#define FAIRSHARE_MIN_USAGE 1
+
 /* flags used for copy constructors - bit field */
 enum dup_flags
 {

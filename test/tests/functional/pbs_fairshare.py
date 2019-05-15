@@ -351,3 +351,29 @@ class TestFairshare(TestFunctional):
         job_order = [jid3, jid4]
         for i in range(len(job_order)):
             self.assertEqual(job_order[i].split('.')[0], c.political_order[i])
+
+    def test_fairshare_decay_min_usage(self):
+        """
+        Test that fairshare decay doesn't reduce the usage below 1
+        """
+        self.scheduler.set_sched_config({'fair_share': 'True'})
+        self.scheduler.set_sched_config({'log_filter': 0})
+        self.scheduler.add_to_resource_group(TEST_USER, 10, 'root', 50)
+        self.scheduler.set_fairshare_usage(TEST_USER, 1)
+        self.scheduler.set_sched_config({"fairshare_decay_time": "00:00:02"})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        t = int(time.time())
+        # Sleep for 2 seconds
+        time.sleep(2)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        self.scheduler.log_match("Decaying Fairshare Tree", starttime=t,
+                                 max_attempts=5)
+
+        # Check that TEST_USER's usage is 1
+        fs = self.scheduler.query_fairshare(name=str(TEST_USER))
+        self.assertEquals(fs.usage, 1)
