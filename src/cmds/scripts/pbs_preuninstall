@@ -46,7 +46,7 @@ if [ `basename $pbs_exec` = $pbs_version ]; then
         [ `basename "$link_target"` = $pbs_version ] && rm -f $top_level/default
     fi
 fi
-rm -f /opt/modulefiles/pbs/%{version}
+rm -f /opt/modulefiles/pbs/$pbs_version
 
 case "$1" in
 server|execution)
