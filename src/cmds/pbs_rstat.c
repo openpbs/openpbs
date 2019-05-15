@@ -59,7 +59,7 @@ void handle_resv(char *resv_id, char *server, int how);
 static int check_width;
 
 /**
- * @brief 
+ * @brief
  *	display_single_reservation - display a single reservation
  *
  * @param[in] resv - the reservation to display
@@ -358,7 +358,6 @@ handle_resv(char *resv_id, char *server, int how)
 	if (pbs_errno) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		fprintf(stderr, "pbs_rstat: %s\n", errmsg);
-		exit(pbs_errno);
 	}
 
 	display(bstat, how);
@@ -366,7 +365,7 @@ handle_resv(char *resv_id, char *server, int how)
 }
 
 /*
- * @brief	
+ * @brief
  *	convert_resv_state - convert the reservation state from a
  *			     string integer enum resv_states value into
  *			     a human readable string
@@ -375,7 +374,7 @@ handle_resv(char *resv_id, char *server, int how)
  * @param[in] long_str - int value to indicate short or long human readable string to be printed
  *
  * @return - string
- * @retval   "state of reservation"			 
+ * @retval   "state of reservation"
  *
  */
 char *
