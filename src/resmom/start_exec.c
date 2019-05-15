@@ -901,6 +901,14 @@ internal_mkjobdir(char *jobid, char *jobdir)
 int
 impersonate_user(uid_t uid, gid_t gid)
 {
+#if defined(HAVE_GETPWUID) && defined(HAVE_INITGROUPS)
+	struct passwd *pwd = getpwuid(uid);
+
+	if (initgroups(pwd->pw_name, gid) == -1) {
+		return -1;
+	}
+
+#endif
 #if defined(HAVE_SETEUID) && defined(HAVE_SETEGID)
 	/* most systems */
 	if ((setegid(gid) == -1) ||
@@ -923,15 +931,23 @@ impersonate_user(uid_t uid, gid_t gid)
 void
 revert_from_user(void)
 {
-#if defined(HAVE_SETEUID) && defined(HAVE_SETEGID)
+#if defined(HAVE_SETEUID)
 	/* most systems */
 	(void)seteuid(0);
-	(void)setegid(pbsgroup);
-#elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
+#elif defined(HAVE_SETRESUID)
 	(void)setresuid(-1, 0, -1);
+#else
+#error No function to change effective UID
+#endif
+#if defined(HAVE_INITGROUPS)
+	(void)initgroups("root", pbsgroup);
+#endif
+#if defined(HAVE_SETEGID)
+	(void)setegid(pbsgroup);
+#elif defined(HAVE_SETRESGID)
 	(void)setresgid(-1, pbsgroup, -1);
 #else
-#error No function to change effective UID or GID
+#error No function to change effective GID
 #endif
 }
 
