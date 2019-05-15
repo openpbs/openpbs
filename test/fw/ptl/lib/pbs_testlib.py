@@ -10483,6 +10483,9 @@ class Scheduler(PBSService):
         "log_filter": "3328 ",
 
     }
+    dflt_attributes = {
+        ATTR_preempt_sort: "min_time_since_start"
+    }
 
     sched_config_options = ["node_group_key",
                             "dont_preempt_starving",
@@ -10544,9 +10547,9 @@ class Scheduler(PBSService):
             '(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
     fs_tag = re.compile(fs_re)
 
-    def __init__(self, hostname=None, server=None, pbsconf_file=None,
-                 diagmap={}, diag=None, db_access=None, id='default',
-                 sched_priv=None):
+    def __init__(self, hostname=None, server=None, defaults={},
+                 pbsconf_file=None, diagmap={}, diag=None, db_access=None,
+                 id='default', sched_priv=None):
 
         self.sched_config_file = None
         self.dflt_holidays_file = None
@@ -10575,11 +10578,15 @@ class Scheduler(PBSService):
                                  db_access=db_access, diag=diag,
                                  diagmap=diagmap)
 
+        if len(defaults.keys()) == 0:
+            defaults = self.dflt_attributes
+
         if hostname is None:
             hostname = self.server.hostname
 
-        PBSService.__init__(self, hostname, pbsconf_file=pbsconf_file,
-                            diag=diag, diagmap=diagmap)
+        PBSService.__init__(self, hostname, defaults=defaults,
+                            pbsconf_file=pbsconf_file, diag=diag,
+                            diagmap=diagmap)
         _m = ['scheduler ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -11151,13 +11158,17 @@ class Scheduler(PBSService):
                          "reverting configuration to defaults")
 
         ignore_attrs = ['id', 'pbs_version', 'sched_host',
-                        'state', 'sched_port']
+                        'state', 'sched_port', 'preempt_sort']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:
                 unsetattrs.append(k)
         if len(unsetattrs) > 0:
             self.server.manager(MGR_CMD_UNSET, SCHED, unsetattrs)
+        for k in self.dflt_attributes.keys():
+            if(k not in self.attributes or
+               self.attributes[k] != self.dflt_attributes[k]):
+                    setdict[k] = self.dflt_attributes[k]
         self.clear_dedicated_time(hup=False)
         if self.du.cmp(self.hostname, self.dflt_resource_group_file,
                        self.resource_group_file, sudo=True) != 0:
