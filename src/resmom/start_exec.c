@@ -903,6 +903,8 @@ impersonate_user(uid_t uid, gid_t gid)
 {
 #if defined(HAVE_GETPWUID) && defined(HAVE_INITGROUPS)
 	struct passwd *pwd = getpwuid(uid);
+	if (pwd == NULL)
+		return -1;
 
 	if (initgroups(pwd->pw_name, gid) == -1) {
 		return -1;
