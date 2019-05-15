@@ -73,7 +73,7 @@ class TestFairshare(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_sort_formula': 'fairshare_perc'})
 
-        formula = '"pow(2,-(fairshare_tree_usage/fairshare_perc))"'
+        formula = 'pow(2,-(fairshare_tree_usage/fairshare_perc))'
         self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': formula})
 
         formula = 'fairshare_factor'
@@ -151,7 +151,7 @@ class TestFairshare(TestFunctional):
         self.set_up_resource_group()
         self.scheduler.set_sched_config({'log_filter': 2048})
 
-        formula = '"pow(2,-(fairshare_tree_usage/fairshare_perc))"'
+        formula = 'pow(2,-(fairshare_tree_usage/fairshare_perc))'
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': formula})
@@ -263,7 +263,7 @@ class TestFairshare(TestFunctional):
         self.set_up_resource_group()
         self.scheduler.set_sched_config({'log_filter': 2048})
 
-        formula = '\"fairshare_factor + (walltime/ncpus)\"'
+        formula = 'fairshare_factor + (walltime/ncpus)'
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': formula})

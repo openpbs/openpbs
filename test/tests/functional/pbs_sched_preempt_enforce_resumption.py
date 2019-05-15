@@ -42,6 +42,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
     """
     Test sched_preempt_enforce_resumption working
     """
+
     def setUp(self):
         TestFunctional.setUp(self)
 

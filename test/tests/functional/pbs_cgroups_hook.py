@@ -844,9 +844,9 @@ if %s e.job.in_ms_mom():
                 script = fd.read()
         except IOError:
             self.assertTrue(False, 'Failed to open hook file %s' % filename)
-        events = 'execjob_begin,execjob_launch,execjob_attach,'
-        events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic,execjob_resize,execjob_abort'
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
         a = {'enabled': 'True',
              'freq': '10',
              'alarm': 30,
@@ -1898,8 +1898,8 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg4 % (self.swapctl))
         # remove epilogue and periodic from the list of events
         attr = {'enabled': 'True',
-                'event': 'execjob_begin,execjob_launch,'
-                         'execjob_attach,execjob_end,exechost_startup'}
+                'event': ['execjob_begin', 'execjob_launch',
+                          'execjob_attach', 'execjob_end', 'exechost_startup']}
         self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
         self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
         j = Job(TEST_USER)
@@ -2337,7 +2337,7 @@ except Exception as exc:
     event.reject()
 event.accept()
 """ % jid1
-        events = 'execjob_begin,exechost_periodic'
+        events = ['execjob_begin', 'exechost_periodic']
         hookconf = {'enabled': 'True', 'freq': 2, 'alarm': 30, 'event': events}
         self.server.create_import_hook(hookname, hookconf, hookbody,
                                        overwrite=True)
@@ -2745,9 +2745,9 @@ event.accept()
             self.remove_vntype()
         for mom in self.moms_list:
             mom.delete_vnode_defs()
-        events = 'execjob_begin,execjob_launch,execjob_attach,'
-        events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic,execjob_resize,execjob_abort'
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
         # Disable the cgroups hook
         conf = {'enabled': 'False', 'freq': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
