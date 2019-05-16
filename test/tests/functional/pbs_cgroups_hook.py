@@ -904,6 +904,10 @@ if %s e.job.in_ms_mom():
                 break
             time.sleep(1)
             count -= 1
+        # A HUP of each mom ensures update to hook config file is
+        # seen by the exechost_startup hook.
+        for mom in self.moms_list:
+            mom.signal('-HUP')
 
     def load_default_config(self):
         """
