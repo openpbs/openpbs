@@ -365,7 +365,6 @@ class TestFairshare(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         t = int(time.time())
-        # Sleep for 2 seconds
         time.sleep(2)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
