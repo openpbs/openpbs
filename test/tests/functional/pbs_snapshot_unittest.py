@@ -899,6 +899,14 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                 self.assertIn(ret["out"], ["", None, []], str(val) +
                               " was not obfuscated. Real values:\n" +
                               str(real_values))
+                # Also make sure that no filenames contain the sensitive val
+                cmd = ["find", snap_dir, "-name",  "\'*" + str(val) + "*\'"]
+                ret = self.du.run_cmd(cmd=cmd, as_script=True,
+                                      level=logging.DEBUG)
+                self.assertEquals(ret["rc"], 0, "find command failed!")
+                self.assertIn(ret["out"], ["", None, []], str(val) +
+                              " was not obfuscated. Real values:\n" +
+                              str(real_values))
 
     @classmethod
     def tearDownClass(self):
