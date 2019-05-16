@@ -59,12 +59,11 @@ class TestLogMatch(TestSelf):
         Test that log_match will work when microsecond logging
         is turned on and then off
         """
-
         # Turn of microsecond logging and test log_match()
-        st = time.time()
         self.switch_microsecondlogging(highrestimestamp=1)
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
+        st = time.time()
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         msg_str = "Job;" + jid1 + ";Job Run at request of Scheduler"
