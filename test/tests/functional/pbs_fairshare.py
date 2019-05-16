@@ -366,13 +366,12 @@ class TestFairshare(TestFunctional):
 
         t = int(time.time())
         time.sleep(2)
-
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        self.scheduler.log_match("Decaying Fairshare Tree", starttime=t,
-                                 max_attempts=5)
+        self.scheduler.log_match("Decaying Fairshare Tree", starttime=t)
 
         # Check that TEST_USER's usage is 1
         fs = self.scheduler.query_fairshare(name=str(TEST_USER))
-        self.assertEquals(fs.usage, 1)
+        fs_usage = int(fs.usage)
+        self.assertEquals(
+            fs_usage, 1, "Fairshare usage %d not equal to 1" % int(fs_usage))
