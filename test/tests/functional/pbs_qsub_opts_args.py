@@ -143,8 +143,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
 
     def test_qsub_with_option_a(self):
         """
-        submit a job with an option 'a' with time (past and future) and should
-        accept
+        submit a job with an execution time and should accept
         """
         self.server.manager(MGR_CMD_SET, NODE,
                             {'resources_available.ncpus': 2},
@@ -162,8 +161,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         self.server.expect(JOB, {'job_state': 'W'}, id=jid_1)
         self.logger.info(
             'waiting for 60 seconds to run the job as it is a future job...')
-        time.sleep(60)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=60)
 
         # submit a job with past time and should start right away
         past_tm = time.strftime(

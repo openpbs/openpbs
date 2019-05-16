@@ -613,14 +613,9 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
 	prov_rc = check_and_provision_job(preq, pjob, &need_prov);
-	if (prov_rc) { /* problem with the request */
-		free_nodes(pjob);
-		req_reject(prov_rc, 0, preq);
-		return;
-	}
 
-	/* In case of subjob, it was never saved to the database so far.
-	 * Save it now, before a possiblity to return from the routine
+	/* In case of subjob, save it to the database now because
+	 * not saved to the database so far.
 	 */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 		if (job_save(pjob, SAVEJOB_NEW)) {
@@ -630,7 +625,11 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		}
 	}
 
-	if (need_prov == 1) { /* prov required and request is fine */
+	if (prov_rc) { /* problem with the request */
+		free_nodes(pjob);
+		req_reject(prov_rc, 0, preq);
+		return;
+	} else if (need_prov == 1) { /* prov required and request is fine */
 		/* allocate resources right away */
 		set_resc_assigned((void *)pjob, 0,  INCR);
 

@@ -856,7 +856,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 		*rc = PBSE_SYSTEM;
 		return NULL;
 	}
-	subj->ji_newjob = 1; /* help to save in db as a new job */
+	subj->ji_newjob = 1; /* flag to indicate a new job is being added to the db */
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
 	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;

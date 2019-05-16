@@ -383,10 +383,9 @@ job_save_db(job *pjob, int updatetype)
 		return (0);
 
 	if (updatetype == SAVEJOB_NEW && pjob->ji_newjob == 0) {
-		/* If new_job flag is not set but still try to save as a new job, changed to SAVEJOB_FULL*/
 		updatetype = SAVEJOB_FULL;
-		sprintf(log_buffer,"job has already been saved earlier as a new job, thus changing to SAVEJOB_FULL");
-		log_joberr(-1, "job_save_db", log_buffer,  pjob->ji_qs.ji_jobid);
+		sprintf(log_buffer, "job already saved to db, so changing updatetype to SAVEJOB_FULL");
+		log_joberr(-1, "job_save_db", log_buffer, pjob->ji_qs.ji_jobid);
 #ifndef WIN32
 		print_backtrace(pjob->ji_qs.ji_jobid);
 #endif
@@ -819,15 +818,15 @@ print_backtrace(char *jobid) {
 	total_frames = backtrace(bt_buffer, BACKTRACE_BUF_SIZE);
 	if (total_frames != 0) {
 		log_err(-1, "job_save_db", "----- BACKTRACE START -----");
-		sprintf(log_buffer,"backtrace() has returned %d addresses",total_frames);
-		log_joberr(-1, "job_save_db", log_buffer,  jobid);
+		sprintf(log_buffer, "backtrace() has returned %d addresses", total_frames);
+		log_joberr(-1, "job_save_db", log_buffer, jobid);
 		/* backtrace_symbols() resolve addresses into strings containing "filename(function+address)",
 		 * this array must be free()-ed at the end.
 		 */
 		bt_strings = backtrace_symbols(bt_buffer, total_frames);
 		if (bt_strings == NULL) {
-			sprintf(log_buffer,"no backtrace_symbols() found");
-			log_joberr(-1, "job_save_db", log_buffer,  jobid);
+			sprintf(log_buffer, "no backtrace symbols found");
+			log_joberr(-1, "job_save_db", log_buffer, jobid);
 		} else {
 			for (frame_num = 0; frame_num < total_frames; frame_num++) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", bt_strings[frame_num]);
@@ -837,8 +836,8 @@ print_backtrace(char *jobid) {
 		free(bt_strings);
 		log_err(-1, "job_save_db", "----- BACKTRACE END -----");
 	} else {
-		sprintf(log_buffer,"backtrace() has not returned any address, might be corrupted");
-		log_joberr(-1, "job_save_db", log_buffer,  jobid);
+		sprintf(log_buffer, "No backtrace symbols present");
+		log_joberr(-1, "job_save_db", log_buffer, jobid);
 	}
 #endif /*-- GLIBC --*/
 #endif /*-- GNUC  --*/
