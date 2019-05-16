@@ -13,8 +13,9 @@
 <!--- If there is a design, link to it here: **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)** -->
 
 
-#### Attach Test Logs or Output
+#### Attach Test and Valgrind Logs/Output
 <!--- Please attach your test log output from running the test you added (or from existing tests that cover your changes) -->
+<!--- Don't forget to run Valgrind if appropriate and attach the resulting logs -->
 
 
 
