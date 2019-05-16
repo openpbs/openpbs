@@ -54,6 +54,14 @@ class TestPreemption(TestFunctional):
              'enabled': 'True',
              'Priority': 200}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
+        if len(self.moms) == 2:
+            self.mom1 = self.moms.keys()[0]
+            self.mom2 = self.moms.keys()[1]
+            # Since some tests need multi-node setup and majority don't,
+            # delete the second node so that single node tests don't fail.
+            # Tests needing multi-node setup will create the second node
+            # explicity.
+            self.server.manager(MGR_CMD_DELETE, NODE, id=self.mom2)
 
     def submit_jobs(self):
         """
@@ -251,3 +259,81 @@ exit 0
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+    def test_vnode_resource_contention(self):
+        """
+        Test to make sure that preemption happens when the resource in
+        contention is vnode.
+        """
+
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes(name='vnode', attrib=a, num=11,
+                                  mom=self.mom, usenatvnode=False)
+
+        a = {'Resource_List.select': '1:ncpus=2+1:ncpus=2'}
+        for _ in range(5):
+            j = Job(TEST_USER, attrs=a)
+            jid = self.server.submit(j)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Randomly select a vnode with running jobs on it. Request this
+        # vnode in the high priority job later.
+        self.server.expect(NODE, {'state': 'job-busy'}, id='vnode[4]')
+
+        a = {ATTR_q: 'expressq', 'Resource_List.vnode': 'vnode[4]'}
+        hj = Job(TEST_USER, attrs=a)
+        hjid = self.server.submit(hj)
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+
+        # Since high priority job consumed only one ncpu, vnode[4]'s
+        # node state should be free now
+        self.server.expect(NODE, {'state': 'free'}, id='vnode[4]')
+
+    def test_host_resource_contention(self):
+        """
+        Test to make sure that preemption happens when the resource in
+        contention is host.
+        """
+        # Skip test if number of mom provided is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires two MoMs as input, " +
+                          "use -p moms=<mom1>:<mom2>")
+        else:
+            self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom2)
+
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom1)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom2)
+
+        a = {'Resource_List.select': '1:ncpus=2'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        # Stat job to check which job is running on mom1
+        pjid = jid2
+        job_stat = self.server.status(JOB, id=jid1)
+        ehost = job_stat[0]['exec_host'].partition('/')[0]
+        if ehost == self.mom1:
+            pjid = jid1
+
+        # Submit a express queue job requesting the host
+        a = {ATTR_q: 'expressq', 'Resource_List.host': self.mom1}
+        hj = Job(TEST_USER, attrs=a)
+        hjid = self.server.submit(hj)
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+        self.server.expect(JOB, {'job_state': 'S'}, id=pjid)
+
+        # Submit another express queue job requesting the host,
+        # this job will stay queued
+        a = {ATTR_q: 'expressq', 'Resource_List.host': self.mom1,
+             'Resource_List.ncpus': 2}
+        hj2 = Job(TEST_USER, attrs=a)
+        hjid2 = self.server.submit(hj2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=hjid2)
+        comment = "Not Running: Insufficient amount of resource: host"
+        self.server.expect(JOB, {'comment': comment}, id=hjid2)
