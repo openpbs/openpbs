@@ -171,8 +171,10 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		return NULL;
 
 	err = new_schd_error();
-	if(err == NULL)
+	if(err == NULL) {
+		pbs_statfree(resvs);
 		return NULL;
+	}
 
 	cur_resv = resvs;
 
@@ -543,6 +545,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						free(execvnodes_seq);
 						free(execvnode_ptr);
 						free_schd_error(err);
+						pbs_statfree(resvs);
 						return NULL;
 					}
 					sprintf(logmsg, "Occurrence %d/%d,%s", occr_idx, count, start_time);
