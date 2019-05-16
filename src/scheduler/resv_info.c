@@ -171,10 +171,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		return NULL;
 
 	err = new_schd_error();
-	if(err == NULL) {
-		pbs_statfree(resvs);
+	if (err == NULL)
 		return NULL;
-	}
 
 	cur_resv = resvs;
 
@@ -186,7 +184,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 	if ((resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *)
 		* (num_resv + 1))) == NULL) {
 		log_err(errno, "query_reservations", MEM_ERR_MSG);
-		pbs_statfree(resvs);
 		free_schd_error(err);
 		return NULL;
 	}
@@ -197,7 +194,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		/* convert resv info from server batch_status into resv_info */
 		if ((resresv = query_resv(cur_resv, sinfo)) == NULL) {
-			pbs_statfree(resvs);
 			free_resource_resv_array(resresv_arr);
 			free_schd_error(err);
 			return NULL;
@@ -444,7 +440,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				if ((tmp = (resource_resv **) realloc(resresv_arr,
 					sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
 					log_err(errno, "query_reservations", MEM_ERR_MSG);
-					pbs_statfree(resvs);
 					free_resource_resv_array(resresv_arr);
 					free_execvnode_seq(tofree);
 					free(execvnodes_seq);
@@ -488,7 +483,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 							log_err(errno,
 								"query_reservations",
 								"Error duplicating resource reservation");
-							pbs_statfree(resvs);
 							free_resource_resv_array(resresv_arr);
 							free_execvnode_seq(tofree);
 							free(execvnodes_seq);
@@ -545,7 +539,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						free(execvnodes_seq);
 						free(execvnode_ptr);
 						free_schd_error(err);
-						pbs_statfree(resvs);
 						return NULL;
 					}
 					sprintf(logmsg, "Occurrence %d/%d,%s", occr_idx, count, start_time);
@@ -568,7 +561,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		}
 	}
 
-	pbs_statfree(resvs);
 	free_schd_error(err);
 
 	return resresv_arr;
