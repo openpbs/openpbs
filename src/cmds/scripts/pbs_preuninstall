@@ -1,4 +1,4 @@
-
+#!/bin/bash
 #
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -35,81 +35,29 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 #
+pbs_version="$2"
+pbs_exec="$3"
+have_systemd="${4:-0}"
 
-libinitdir = $(libdir)/init.d
+if [ `basename $pbs_exec` = $pbs_version ]; then
+    top_level=`dirname $pbs_exec`
+    if [ -h $top_level/default ]; then
+        link_target=`readlink $top_level/default`
+        [ `basename "$link_target"` = $pbs_version ] && rm -f $top_level/default
+    fi
+fi
+rm -f /opt/modulefiles/pbs/$pbs_version
 
-dist_libinit_DATA = \
-	limits.pbs_mom \
-	limits.pbs_mom.compat \
-	limits.post_services \
-	limits.post_services.compat \
-	sgigenvnodelist.awk \
-	sgiICEvnode.sh \
-	sgiICEplacement.sh
-
-libmpidir = $(libdir)/MPI
-
-dist_libmpi_DATA = \
-	pbsrun.bgl.init.in \
-	pbsrun.ch_gm.init.in \
-	pbsrun.ch_mx.init.in \
-	pbsrun.gm_mpd.init.in \
-	pbsrun.intelmpi.init.in \
-	pbsrun.mpich2.init.in \
-	pbsrun.mvapich1.init.in \
-	pbsrun.mvapich2.init.in \
-	pbsrun.mx_mpd.init.in \
-	sgiMPI.awk
-
-pythonlibdir = $(libdir)/python
-
-dist_pythonlib_PYTHON = \
-	pbs_bootcheck.py \
-	pbs_topologyinfo.py
-
-sysprofiledir = /etc/profile.d
-
-dist_sysprofile_DATA = \
-	pbs.csh \
-	pbs.sh
-
-unitfiledir = @_unitdir@
-
-dist_unitfile_DATA = \
-	pbs.service
-
-dist_libexec_SCRIPTS = \
-	au-nodeupdate \
-	install_db \
-	pbs_habitat \
-	pbs_init.d \
-	pbs_pgsql_env.sh \
-	pbs_postinstall \
-	pbs_preuninstall \
-	pbs_posttrans \
-	pbs_schema_upgrade
-
-dist_bin_SCRIPTS = \
-	pbs_topologyinfo \
-	printjob
-
-dist_sbin_SCRIPTS = \
-	pbs_dataservice \
-	pbs_ds_password \
-	pbs_server \
-	pbs_snapshot
-
-dist_sysconf_DATA = \
-	modulefile \
-	pbs_db_schema.sql
-
-CLEANFILES = \
-	pbs_init.d \
-	limits.pbs_mom \
-	limits.post_services
-
-limits.pbs_mom: $(srcdir)/limits.pbs_mom.compat
-	cp $? $@
-
-limits.post_services: $(srcdir)/limits.post_services.compat
-	cp $? $@
+case "$1" in
+server|execution)
+    [ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
+    [ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
+    rm -f /etc/rc.d/rc?.d/[KS]??pbs
+    rm -f /var/tmp/pbs_boot_check
+    if [ $have_systemd = 1 ]; then
+        echo "have systemd"
+        systemctl disable pbs
+        rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+    fi
+    ;;
+esac

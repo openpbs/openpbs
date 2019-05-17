@@ -308,6 +308,7 @@ cd build
 %make_install
 mandir=$(find %{buildroot} -type d -name man)
 [ -d "$mandir" ] && find $mandir -type f -exec gzip -9 -n {} \;
+install -D %{buildroot}/%{pbs_prefix}/libexec/pbs_init.d %{buildroot}/etc/init.d/pbs
 
 %post %{pbs_server}
 ldconfig %{_libdir}
@@ -322,8 +323,6 @@ fi
 if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %post %{pbs_execution}
@@ -339,8 +338,6 @@ fi
 if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %post %{pbs_client}
@@ -364,60 +361,22 @@ ldconfig %{_libdir}
 %preun %{pbs_server}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
-	[ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
-	[ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
-	rm -f /etc/rc.d/rc?.d/[KS]??pbs
-	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-		if [ -h $top_level/default ]; then
-			link_target=`readlink $top_level/default`
-			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
-		fi
-	fi
-	rm -f /etc/init.d/pbs
-	rm -f /opt/modulefiles/pbs/%{version}
-	rm -f /var/tmp/pbs_boot_check
-	rm -f /var/tmp/pbs_bootcheck.py
-	%if %{defined have_systemd}
-		systemctl disable pbs
-		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-	%endif
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall server \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
 fi
 
 %preun %{pbs_execution}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
-	[ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
-	[ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
-	rm -f /etc/rc.d/rc?.d/[KS]??pbs
-	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-		if [ -h $top_level/default ]; then
-			link_target=`readlink $top_level/default`
-			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
-		fi
-	fi
-	rm -f /etc/init.d/pbs
-	rm -f /opt/modulefiles/pbs/%{version}
-	rm -f /var/tmp/pbs_boot_check
-	rm -f /var/tmp/pbs_bootcheck.py
-	%if %{defined have_systemd}
-		systemctl disable pbs
-		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-	%endif
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall execution \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
 fi
 
 %preun %{pbs_client}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
-	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-		if [ -h $top_level/default ]; then
-			link_target=`readlink $top_level/default`
-			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
-		fi
-	fi
-	rm -f /opt/modulefiles/pbs/%{version}
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall client \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
 fi
 
 %postun %{pbs_server}
@@ -451,20 +410,12 @@ fi
 ldconfig %{_libdir}
 
 %posttrans %{pbs_server}
-# The %preun section of 14.x unconditially removes /etc/init.d/pbs
-# because it does not check whether the package is being removed
-# or upgraded. Make sure it exists here.
-if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
-	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
-fi
+${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
 
 %posttrans %{pbs_execution}
-# The %preun section of 14.x unconditially removes /etc/init.d/pbs
-# because it does not check whether the package is being removed
-# or upgraded. Make sure it exists here.
-if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
-	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
-fi
+${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
 
 %files %{pbs_server}
 %defattr(-,root,root, -)
@@ -575,6 +526,7 @@ fi
 %exclude %{_unitdir}/pbs.service
 %exclude %{pbs_prefix}/lib/*.a
 %exclude %{pbs_prefix}/include/*
+%exclude /etc/init.d/pbs
 %doc README.md
 %license LICENSE
 
