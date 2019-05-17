@@ -256,7 +256,8 @@ localnode = pbs.get_local_nodename()
 vn = pbs.server().vnode(localnode)
 pbs.event().accept()
 """
-        a = {'event': "queuejob,movejob,modifyjob,runjob", 'enabled': "True"}
+        a = {'event': ["queuejob", "movejob", "modifyjob", "runjob"],
+             'enabled': "True"}
         self.server.create_import_hook("test", a, hook_body, overwrite=True)
         # Create workq2
         a = {'queue_type': 'e', 'started': 't', 'enabled': 't'}
@@ -337,7 +338,7 @@ pbs.event().accept()
 import pbs
 pbs.event().accept()
 """
-        a = {'event': "queuejob,modifyjob", 'enabled': 'True'}
+        a = {'event': ["queuejob", "modifyjob"], 'enabled': 'True'}
         self.server.create_import_hook("test", a, hook_body, overwrite=True)
         # Set max_objects and min_interval so that further changes
         # will generate a log message.

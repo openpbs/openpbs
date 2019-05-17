@@ -6527,11 +6527,40 @@ class Server(PBSService):
                                 v = v[1]
                             else:
                                 op = '='
-                            # handle string arrays as double quotes if
-                            # not already set:
+                            if isinstance(v, list) and not isinstance(v, str):
+                                # handle string arrays with strings
+                                # that contain special characters
+                                # with multiple manager calls
+                                if any((c in vv) for c in set(', \'\n"')
+                                       for vv in v):
+                                    if op == '+=' or op == '=':
+                                        oper = INCR
+                                    else:
+                                        oper = DECR
+                                    for vv in v:
+                                        a = {k: (oper, vv)}
+                                        rc = self.manager(cmd=cmd,
+                                                          obj_type=obj_type,
+                                                          attrib=a, id=id,
+                                                          extend=extend,
+                                                          level=level,
+                                                          sudo=sudo,
+                                                          runas=runas,
+                                                          logerr=logerr)
+                                        if rc:
+                                            return rc
+                                    return 0
+                                # if there are no special characters, then
+                                # join the list and parse it normally.
+                                v = ','.join(v)
                             if isinstance(v, str):
-                                if ',' in v and v[0] != '"':
+                                # don't quote if already quoted
+                                if v[0] == v[-1] and v[0] in set('"\''):
+                                    pass
+                                # handle string arrays
+                                elif ',' in v and v[0] != '"':
                                     v = '"' + v + '"'
+                                # handle strings that need to be quoted
                                 elif any((c in v) for c in set(', \'\n"')):
                                     if '"' in v:
                                         v = "'%s'" % v
