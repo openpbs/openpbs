@@ -328,7 +328,7 @@ req_releasejob(struct batch_request *preq)
 					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
 					(void)svr_setjobstate(psubjob, newstate, newsub); /* saves job */
 				}
-				if (psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
+				if (psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n)
 					job_attr_def[(int)JOB_ATR_Comment].at_free(&psubjob->ji_wattr[(int)JOB_ATR_Comment]);
 				(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
 					preq->rq_host);
@@ -337,7 +337,7 @@ req_releasejob(struct batch_request *preq)
 			}
 		}
 	}
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0) {
+	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n) {
 		if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_qs.ji_stime != 0) ) {
 			char timebuf[128];
 

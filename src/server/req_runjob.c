@@ -1421,7 +1421,7 @@ post_sendmom(struct work_task *pwt)
 			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 				/*
 				 * if the job is a subjob, set the comment of parent job array
-				 * only if the job array is not in state begun. Once the job
+				 * only if the job array is in state Queued. Once the job
 				 * array starts its comment is set to a begun message and
 				 * should not change after that
 				 */
