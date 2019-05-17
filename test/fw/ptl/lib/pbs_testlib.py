@@ -4021,10 +4021,10 @@ class PBSService(PBSObject):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
@@ -4198,10 +4198,10 @@ class PBSService(PBSObject):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
@@ -4483,10 +4483,10 @@ class Comm(PBSService):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
@@ -5003,10 +5003,10 @@ class Server(PBSService):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
@@ -10806,10 +10806,10 @@ class Scheduler(PBSService):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
@@ -12858,10 +12858,10 @@ class MoM(PBSService):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: int
+        :type starttime: float
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: int
+        :type endtime: float
         :param level: The logging level, defaults to INFO
         :type level: int
         :param existence: If True (default), check for existence of
