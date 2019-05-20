@@ -421,7 +421,7 @@ To print a site report that summarizes some key metrics from a site::
 
   pbs_stat --report
 
-optionally, use the path to a pbs_diag using the -d option to summarize that
+optionally, use the path to a pbs_snapshot using the -d option to summarize that
 site's information.
 
 To show the number of privileged ports in use::
@@ -501,11 +501,11 @@ followed by the same incrementing number as the configuration file. The
 configuration prefix can be changed by passing the --conf-prefix option and
 the PBS_HOME prefix can be changed via --home-prefix.
 
-To make a PBS daemons mimic the snapshot of a pbs_diag::
+To make a PBS daemons mimic the snapshot of a pbs_snapshot::
 
-  pbs_config --as-diag=<path/to/diag>
+  pbs_config --as-snap=<path/to/snap>
 
-This will set all server and queue attributes from the diag, copy sched_config,
+This will set all server and queue attributes from the snapshot, copy sched_config,
 resource_group, holidays, resourcedef, all site hooks, and create and insert a
 vnode definition that translates all of the nodes reported by pbsnodes -av.
 There may be some specific attributes to adjust, such as pbs_license_info,

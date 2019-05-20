@@ -77,6 +77,8 @@ from ptl.lib.pbs_testlib import BatchUtils
     QMGR_LSCHED_OUT,
     QMGR_PN_OUT,
     QMGR_PR_OUT,
+    QMGR_PQ_OUT,
+    QMGR_PSCHED_OUT,
     # pbsnodes outputs
     PBSNODES_VA_OUT,
     PBSNODES_A_OUT,
@@ -121,7 +123,7 @@ from ptl.lib.pbs_testlib import BatchUtils
     CORE_SERVER,
     CORE_MOM,
     # Miscellaneous
-    CTIME) = range(57)
+    CTIME) = range(59)
 
 
 # Define paths to various files/directories with respect to the snapshot
@@ -133,6 +135,7 @@ QMGR_PS_PATH = os.path.join(SERVER_DIR, "qmgr_ps.out")
 QSTAT_Q_PATH = os.path.join(SERVER_DIR, "qstat_Q.out")
 QSTAT_QF_PATH = os.path.join(SERVER_DIR, "qstat_Qf.out")
 QMGR_PR_PATH = os.path.join(SERVER_DIR, "qmgr_pr.out")
+QMGR_PQ_PATH = os.path.join(SERVER_DIR, "qmgr_pq.out")
 # server_priv/
 SVR_PRIV_PATH = "server_priv"
 ACCT_LOGS_PATH = os.path.join("server_priv", "accounting")
@@ -175,6 +178,7 @@ QMGR_LPBSHOOK_PATH = os.path.join(HOOK_DIR, "qmgr_lpbshook.out")
 # scheduler/
 SCHED_DIR = "scheduler"
 QMGR_LSCHED_PATH = os.path.join(SCHED_DIR, "qmgr_lsched.out")
+QMGR_PSCHED_PATH = os.path.join(SCHED_DIR, "qmgr_psched.out")
 # sched_priv/
 DFLT_SCHED_PRIV_PATH = "sched_priv"
 # sched_logs/
@@ -727,6 +731,8 @@ class _PBSSnapUtils(object):
             self.server_info[QSTAT_QF_OUT] = value
             value = (QMGR_PR_PATH, [QMGR_CMD, "-c", "p r"])
             self.server_info[QMGR_PR_OUT] = value
+            value = (QMGR_PQ_PATH, [QMGR_CMD, "-c", "p q @default"])
+            self.server_info[QMGR_PQ_OUT] = value
 
             # Job information
             value = (QSTAT_PATH, [QSTAT_CMD])
@@ -787,6 +793,8 @@ class _PBSSnapUtils(object):
             # Scheduler information
             value = (QMGR_LSCHED_PATH, [QMGR_CMD, "-c", "l sched"])
             self.sched_info[QMGR_LSCHED_OUT] = value
+            value = (QMGR_PSCHED_PATH, [QMGR_CMD, "-c", "p sched"])
+            self.sched_info[QMGR_PSCHED_OUT] = value
 
         if self.server_info_avail:
             # Server priv and logs
