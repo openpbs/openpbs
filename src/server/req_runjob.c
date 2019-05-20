@@ -520,7 +520,7 @@ req_runjob(struct batch_request *preq)
 
 		if (sub_run_version.at_flags & ATR_VFLAG_SET) {
 			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
-			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
+			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
 		}
 
 		if (sub_runcount.at_flags & ATR_VFLAG_SET) {
