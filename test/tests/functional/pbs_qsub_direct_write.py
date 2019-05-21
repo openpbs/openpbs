@@ -79,17 +79,17 @@ class TestQsub_direct_write(TestFunctional):
         are getting directly written to the mapped directory
         when direct_files option is used.
 
-	directory should be
-	1) owned by a different user
-	2) owned by a group that is not the job user's primary gid
-		(but is a gid that the user is a member of)
-	3) not accessible via group permissions
+        directory should be
+        1) owned by a different user
+        2) owned by a group that is not the job user's primary gid
+                (but is a gid that the user is a member of)
+        3) not accessible via group permissions
         """
         j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
         sub_dir = self.du.mkdtemp(uid=TEST_USER4.uid)
         mapping_dir = self.du.mkdtemp(uid=TEST_USER5.uid, gid=TSTGRP4.gid, \
-			mode=770)
+                        mode=770)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
