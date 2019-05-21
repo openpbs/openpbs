@@ -40,7 +40,6 @@ import time
 
 
 class TestReservations(TestFunctional):
-
     """
     Various tests to verify behavior of PBS scheduler in handling
     reservations
@@ -560,7 +559,8 @@ class TestReservations(TestFunctional):
         start = now + 30
         a = {'reserve_start': start, 'reserve_end': start + 300,
              'Resource_List.select': '1:ncpus=1:vnode=' +
-             self.server.shortname, 'Resource_List.place': 'excl'}
+                                     self.server.shortname,
+             'Resource_List.place': 'excl'}
 
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
@@ -883,3 +883,128 @@ class TestReservations(TestFunctional):
         # The scheduler should log reason why it was denied
         self.scheduler.log_match(rid + ";PBS Failed to confirm resv: " +
                                  "Insufficient amount of resource: ncpus")
+
+    def common_steps(self):
+        """
+        This function has common steps for configuration used in tests
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, SERVER, {
+            'job_history_enable': 'True'}, id=self.server.shortname)
+
+    @skipOnCpuSet
+    def test_advance_reservation_with_job_array(self):
+        """
+        Test to submit a job array within a advance reservation
+        Check if the reservation gets confimed and the jobs
+        inside the reservation starts running when the reservation runs.
+        """
+        self.common_steps()
+        # Submit a job-array
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        j.set_attributes({ATTR_J: '1-4:1'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        self.server.expect(JOB, {'job_state=R': 4}, count=True,
+                           id=jid, extend='t')
+        # Check status of the sub-job using qstat -fx once job completes
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
+                           offset=10, id=jid)
+
+        # Submit a advance reservation (R1) and an array job to the reservation
+        # once reservation confirmed
+        r = Reservation(TEST_USER)
+        now = int(time.time())
+        a = {'reserve_start': now + 20,
+             'reserve_end': now + 120}
+        r.set_attributes(a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+
+        a = {ATTR_q: rid_q, ATTR_J: '1-4'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(10)
+        jid2 = self.server.submit(j2)
+        subjid = []
+        for i in range(1, 5):
+            subjid.append(j.create_subjob_id(jid2, i))
+
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=20)
+        self.server.expect(JOB, {'job_state': 'B'}, jid2)
+        self.server.expect(JOB, {'job_state=R': 1}, count=True,
+                           id=jid2, extend='t')
+        self.server.expect(JOB, {'job_state=Q': 3}, count=True,
+                           extend='t', id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[1])
+        self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[2])
+        self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[3])
+        self.server.deljob(subjid[0])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
+        # Wait for reservation to delete from server
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=10)
+        # Check status of the sub-job using qstat -fx once job completes
+        self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '271'},
+                           extend='x', attrop=PTL_AND, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '0'},
+                           extend='x', attrop=PTL_AND, id=subjid[3])
+
+        # Submit a advance reservation (R2) and an array job to the reservation
+        # once reservation confirmed
+
+        r = Reservation(TEST_USER)
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=4',
+             'reserve_start': now + 20,
+             'reserve_end': now + 180}
+        r.set_attributes(a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+
+        a = {ATTR_q: rid_q, ATTR_J: '1-4'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(60)
+        jid2 = self.server.submit(j2)
+        subjid = []
+        for i in range(1, 5):
+            subjid.append(j.create_subjob_id(jid2, i))
+
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=20)
+        self.server.expect(JOB, {'job_state': 'B'}, jid2)
+        self.server.expect(JOB, {'job_state=R': 4}, count=True,
+                           id=jid2, extend='t')
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[2])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[3])
+        a = {ATTR_q: rid_q, ATTR_J: '1-4'}
+        j3 = Job(TEST_USER, attrs=a)
+        j3.set_sleep_time(10)
+        jid3 = self.server.submit(j3)
+        subjid2 = []
+        for i in range(1, 5):
+            subjid2.append(j.create_subjob_id(jid3, i))
+        self.server.expect(JOB, {'job_state': 'Q'}, jid3)
+        self.server.expect(JOB, {'job_state=Q': 5}, count=True,
+                           id=jid3, extend='t')
+
+        self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=60)
+        self.server.expect(JOB, {'job_state=R': 4}, count=True,
+                           id=jid3, extend='t')
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=10)
+        # Check status of the job-array using qstat -fx at the end of
+        # reservation
+        self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '0'},
+                           extend='x', attrop=PTL_AND, id=jid2)
+        self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '0'},
+                           extend='x', attrop=PTL_AND, id=jid3)
