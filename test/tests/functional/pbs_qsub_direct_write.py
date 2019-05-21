@@ -88,7 +88,8 @@ class TestQsub_direct_write(TestFunctional):
         j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
         sub_dir = self.du.mkdtemp(uid=TEST_USER4.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER5.uid, gid=TSTGRP4.gid, mode=770)
+        mapping_dir = self.du.mkdtemp(uid=TEST_USER5.uid, gid=TSTGRP4.gid, \
+			mode=770)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
