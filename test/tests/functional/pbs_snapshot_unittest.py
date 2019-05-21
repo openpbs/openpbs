@@ -892,10 +892,16 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
             for val in val_list:
                 # Just do a grep for the value in the snapshot
                 cmd = ["grep", "-wR", "\'" + str(val) + "\'", snap_dir]
-                ret = self.du.run_cmd(cmd=cmd, as_script=True,
-                                      level=logging.DEBUG)
+                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
                 # grep returns 2 if an error occurred
                 self.assertNotEqual(ret["rc"], 2, "grep failed!")
+                self.assertIn(ret["out"], ["", None, []], str(val) +
+                              " was not obfuscated. Real values:\n" +
+                              str(real_values))
+                # Also make sure that no filenames contain the sensitive val
+                cmd = ["find", snap_dir, "-name",  "\'*" + str(val) + "*\'"]
+                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
+                self.assertEquals(ret["rc"], 0, "find command failed!")
                 self.assertIn(ret["out"], ["", None, []], str(val) +
                               " was not obfuscated. Real values:\n" +
                               str(real_values))

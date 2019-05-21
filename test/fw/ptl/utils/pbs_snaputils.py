@@ -548,10 +548,13 @@ class ObfuscateSnapshot(object):
         for root, _, fnames in os.walk(snap_dir):
             for fname in fnames:
                 fpath = os.path.join(root, fname)
+                new_fname = None
 
                 # Obfuscate values from val_obf_map
                 for key, val in self.val_obf_map.iteritems():
                     self._replace_str_in_file(key, val, fpath)
+                    if key in fname:
+                        new_fname = fname.replace(key, val)
 
                 # Remove the attr values from vals_to_del list
                 fout = self.du.create_temp_file()
@@ -560,6 +563,9 @@ class ObfuscateSnapshot(object):
                     for val in self.vals_to_del:
                         data = data.replace(val, "")
                     fdout.write(data)
+                if new_fname is not None:
+                    os.remove(fpath)
+                    fpath = os.path.join(root, new_fname)
                 shutil.move(fout, fpath)
 
         with open(map_file, "w") as fd:
