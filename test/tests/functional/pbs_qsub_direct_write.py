@@ -73,6 +73,35 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
+    def test_direct_write_when_job_succeeds_controlled(self):
+        """
+        submit a sleep job and make sure that the std_files
+        are getting directly written to the mapped directory
+        when direct_files option is used.
+
+        directory should be
+        1) owned by a different user
+        2) owned by a group that is not the job user's primary gid
+                (but is a gid that the user is a member of)
+        3) not accessible via other permissions
+        """
+        j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
+        j.set_sleep_time(10)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER4.uid)
+        mapping_dir = self.du.mkdtemp(
+            uid=TEST_USER5.uid, gid=TSTGRP4.gid, mode=0770)
+        self.mom.add_config(
+            {'$usecp': self.server.hostname + ':' + sub_dir
+             + ' ' + mapping_dir})
+        self.mom.restart()
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.logger.info(self.msg)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        file_count = len([name for name in os.listdir(
+            mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
+        self.assertEqual(2, file_count)
+        self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
+
     def test_direct_write_output_file(self):
         """
         submit a sleep job and make sure that the output file
