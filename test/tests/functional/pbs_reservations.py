@@ -1003,3 +1003,87 @@ class TestReservations(TestFunctional):
                            extend='x', attrop=PTL_AND, id=jid2)
         self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '0'},
                            extend='x', attrop=PTL_AND, id=jid3)
+
+    def test_advance_resv_with_multinode_job_array(self):
+        """
+        Test multinode job array with advance reservation
+        """
+        if (len(self.moms) < 2):
+            self.skip_test("Test requires 2 moms: use -p mom1:mom2")
+        a = {'resources_available.ncpus': 4}
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, a, id=mom.shortname)
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+        # Submit reservation with placement type scatter
+        now = int(time.time())
+        a = {'Resource_List.select': '2:ncpus=2',
+             'Resource_List.place': 'scatter',
+             'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(PBSROOT_USER, attrs=a)
+        rid = self.server.submit(r)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        resv_queue = rid.split(".")[0]
+
+        # Submit job array in reservation queue
+        attrs = {ATTR_q: resv_queue, ATTR_J: '1-5',
+                 'Resource_List.select': '2:ncpus=1'}
+        j = Job(PBSROOT_USER, attrs)
+        j.set_sleep_time(60)
+        jid = self.server.submit(j)
+        subjid = []
+        for i in range(1, 6):
+            subjid.append(j.create_subjob_id(jid, i))
+
+        self.logger.info("Wait 30s for resv to be in Running state")
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=30)
+        self.server.expect(JOB, {'job_state': 'B'}, id=jid)
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           extend='t', id=jid)
+        self.server.expect(JOB, {'job_state=Q': 3}, count=True,
+                           extend='t', id=jid)
+        self.server.sigjob(jobid=subjid[0], signal="suspend")
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[2])
+
+        # Submit job array with placement type scatter in resv queue
+        attrs = {ATTR_q: resv_queue, ATTR_J: '1-5',
+                 'Resource_List.place': 'scatter',
+                 'Resource_List.select': '2:ncpus=1'}
+        j1 = Job(PBSROOT_USER, attrs)
+        j1.set_sleep_time(60)
+        jid2 = self.server.submit(j1)
+        subjid2 = []
+        for i in range(1, 6):
+            subjid2.append(j.create_subjob_id(jid2, i))
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        self.server.sigjob(subjid[0], 'resume')
+        self.logger.info("Wait 180s for all the subjobs to complete")
+        self.server.expect(JOB, {'job_state': 'F', 'exit_status': '0'},
+                           id=jid, extend='x', offset=180)
+
+        self.server.expect(JOB, {'job_state': 'B'}, id=jid2)
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           extend='t', id=jid2)
+        self.server.expect(JOB, {'job_state=Q': 3}, count=True,
+                           extend='t', id=jid2)
+        self.server.sigjob(jobid=subjid2[0], signal="suspend")
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid2[0])
+        self.server.sigjob(jobid=subjid2[1], signal="suspend")
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid2[1])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid2[2])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid2[3])
+        self.server.delete([subjid2[2], subjid2[3]])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid2[4])
+        self.server.expect(JOB, {'job_state': 'X'}, id=subjid2[4], offset=60)
+        self.server.sigjob(subjid2[0], 'resume')
+        self.server.sigjob(subjid2[1], 'resume')
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           extend='t', id=jid2)
+        self.logger.info("Wait 180s for all the subjobs to complete")
+        self.server.expect(JOB, {'job_state': 'F'},
+                           id=jid2, extend='x', offset=180)
