@@ -83,7 +83,7 @@ class TestQsub_direct_write(TestFunctional):
         1) owned by a different user
         2) owned by a group that is not the job user's primary gid
                 (but is a gid that the user is a member of)
-        3) not accessible via group permissions
+        3) not accessible via other permissions
         """
         j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
