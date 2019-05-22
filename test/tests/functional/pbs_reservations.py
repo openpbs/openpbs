@@ -891,7 +891,7 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         self.server.manager(MGR_CMD_SET, SERVER, {
-            'job_history_enable': 'True'}, id=self.server.shortname)
+            'job_history_enable': 'True'})
 
     @skipOnCpuSet
     def test_advance_reservation_with_job_array(self):
@@ -902,9 +902,8 @@ class TestReservations(TestFunctional):
         """
         self.common_steps()
         # Submit a job-array
-        j = Job(TEST_USER)
+        j = Job(TEST_USER, attrs={ATTR_J: '1-4'})
         j.set_sleep_time(10)
-        j.set_attributes({ATTR_J: '1-4:1'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
@@ -915,11 +914,10 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R1) and an array job to the reservation
         # once reservation confirmed
-        r = Reservation(TEST_USER)
         now = int(time.time())
         a = {'reserve_start': now + 20,
              'reserve_end': now + 120}
-        r.set_attributes(a)
+        r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
@@ -944,7 +942,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[1])
         self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[2])
         self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[3])
-        self.server.deljob(subjid[0])
+        self.server.delete(subjid[0])
         self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
         # Wait for reservation to delete from server
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
@@ -957,13 +955,11 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R2) and an array job to the reservation
         # once reservation confirmed
-
-        r = Reservation(TEST_USER)
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=4',
              'reserve_start': now + 20,
              'reserve_end': now + 180}
-        r.set_attributes(a)
+        r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
@@ -982,10 +978,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, jid2)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid2, extend='t')
-        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[0])
-        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
-        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[2])
-        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[3])
+        # Submit another job-array with small sleep time than job j2
         a = {ATTR_q: rid_q, ATTR_J: '1-4'}
         j3 = Job(TEST_USER, attrs=a)
         j3.set_sleep_time(10)
@@ -996,7 +989,9 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, jid3)
         self.server.expect(JOB, {'job_state=Q': 5}, count=True,
                            id=jid3, extend='t')
-
+        self.server.expect(JOB, {'job_state': 'Q'}, id=subjid2[0])
+        # Wait for job array j2 to finish and verify all sub-job
+        # from j3 start running
         self.server.expect(JOB, {'job_state': 'B'}, jid3, offset=60)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid3, extend='t')
