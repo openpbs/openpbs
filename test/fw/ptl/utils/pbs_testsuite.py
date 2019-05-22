@@ -1281,10 +1281,16 @@ class PBSTestSuite(unittest.TestCase):
         try:
             # Unset managers list
             server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True)
+            # Unset operators list
+            server.manager(MGR_CMD_UNSET, SERVER, 'operators', sudo=True)
         except PbsManagerError as e:
             self.logger.error(e.msg)
-        a = {ATTR_managers: (INCR, current_user + '@*')}
+        a = {ATTR_managers: (INCR, current_user + '@*,' +
+             MGR_USER.name + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+
+        a1 = {ATTR_operators: (INCR, OPER_USER.name + '@*')}
+        server.manager(MGR_CMD_SET, SERVER, a1, sudo=True)
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
                 force):
             server.revert_to_defaults(reverthooks=self.revert_hooks,
