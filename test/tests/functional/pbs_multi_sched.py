@@ -1655,6 +1655,11 @@ class TestMultipleSchedulers(TestFunctional):
         This function will set the prime time
         in holidays file
         """
+        self.scheds[scid].holidays_delete_entry('a')
+
+        cur_year = datetime.datetime.today().year
+        self.scheds[scid].holidays_set_year(cur_year)
+
         p_day = 'weekday'
         p_hhmm = time.strftime('%H%M', time.localtime(ptime_start))
         np_hhmm = time.strftime('%H%M', time.localtime(ptime_end))

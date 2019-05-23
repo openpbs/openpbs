@@ -222,6 +222,199 @@ cnvrt_timer_init()
  */
 
 
+/**
+ * @brief
+ * 		remove_node_from_resv - procedure removes node from reservation
+ *		the node is removed from RESV_ATR_resv_nodes and assigned
+ *		resources are accounted back to loaner's pool and finally the
+ *		reservation is removed from the node
+ *
+ * @parm[in,out]	presv	-	reservation structure
+ * @parm[in,out]	pnode	-	pointer to node
+ *
+ */
+void
+remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
+{
+	char *begin = NULL;
+	char *end = NULL;
+	char *tmp_buf;
+	struct resvinfo *rinfp, *prev;
+	attribute tmpatr;
+
+	/* +2 for colon and termination */
+	tmp_buf = malloc(strlen(pnode->nd_name) + 2);
+	if (tmp_buf == NULL) {
+		snprintf(log_buffer, LOG_BUF_SIZE, "malloc failure (errno %d)", errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
+		return;
+	}
+
+	snprintf(tmp_buf, strlen(pnode->nd_name) + 1,"%s:", pnode->nd_name);
+
+	/* remove the node '(vn[n]:foo)' from RESV_ATR_resv_nodes attribute */
+	if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+		if ((begin = strstr(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str, tmp_buf)) != NULL) {
+
+			while (*begin != '(')
+				begin--;
+
+			end = strchr(begin, ')');
+			end++;
+
+			if (presv->ri_giveback) {
+				/* resources were actually assigned to this reservation
+				 * we must return the resources back into the loaner's pool.
+				 *
+				 * We use temp attribute for this and this attribute will
+				 * contain only the removed part of resv_nodes and this part will be returned
+				 */
+
+				clear_attr(&tmpatr, &resv_attr_def[(int)RESV_ATR_resv_nodes]);
+
+				resv_attr_def[(int)RESV_ATR_resv_nodes].at_set(&tmpatr, &(presv->ri_wattr[RESV_ATR_resv_nodes]), SET);
+				tmpatr.at_flags = presv->ri_wattr[RESV_ATR_resv_nodes].at_flags;
+
+				strncpy(tmpatr.at_val.at_str, begin, (end - begin));
+				tmpatr.at_val.at_str[end - begin] = '\0';
+
+				update_node_rassn(&tmpatr, DECR);
+
+				resv_attr_def[(int)RESV_ATR_resv_nodes].at_free(&tmpatr);
+
+				/* Note: We do not want to set presv->ri_giveback to 0 here. 
+				 * The resv_nodes may not be empty yet and there could
+				 * be server resources assigned - it will be handled later.
+				 */
+			}
+
+			/* remove "(vn[n]:foo)" from the resv_nodes, no '+' is removed yet */
+			memmove(begin, end, strlen(end) + 1); /* +1 for '\0' */
+
+			if (strlen(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str) == 0 ) {
+				resv_attr_def[(int)RESV_ATR_resv_nodes].at_free(&presv->ri_wattr[(int)RESV_ATR_resv_nodes]);
+				/* full remove of RESV_ATR_resv_nodes is dangerous;
+				 * the associated job can run anywhere without RESV_ATR_resv_nodes
+				 * so stop the associated queue */
+				change_enableORstart(presv, Q_CHNG_START, ATR_FALSE);
+			} else {
+				/* resv_nodes looks like "+(vn2:foo)" or "(vn1:foo)+" or "(vn1:foo)++(vn3:bar)"
+				 * the extra '+' is removed here */
+				int tmp_len;
+
+				/* remove possible leading '+' */
+				if (presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str[0] == '+')
+					memmove(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str,
+						presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str + 1,
+						strlen(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str));
+
+				/* remove possible trailing '+' */
+				tmp_len = strlen(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str);
+				if (presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str[tmp_len - 1] == '+')
+					presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str[tmp_len - 1] = '\0';
+
+				/* change possible '++' into single '+' */
+				if ((begin = strstr(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str, "++")) != NULL) {
+					memmove(begin, begin + 1, strlen(begin + 1) + 1);
+				}
+			}
+
+			presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_modified = 1;
+		}
+	}
+
+	/* traverse the reservations of the node and remove the reservation if found */
+	for (prev = NULL, rinfp = pnode->nd_resvp; rinfp; prev=rinfp, rinfp = rinfp->next) {
+		if (strcmp(presv->ri_qs.ri_resvID, rinfp->resvp->ri_qs.ri_resvID) == 0) {
+			if (prev == NULL)
+				pnode->nd_resvp = rinfp->next;
+			else
+				prev->next = rinfp->next;
+			free(rinfp);
+			break;
+		}
+	}
+	
+	free(tmp_buf);
+}
+
+/**
+ * @brief
+ * 		remove_host_from_resv - it calls remove_node_from_resv() for all
+ *		vnodes on the host
+ *
+ * @parm[in,out]	presv	-	reservation structure
+ * @parm[in]		hostname -	string with hostname
+ *
+ */
+void
+remove_host_from_resv(resc_resv *presv, char *hostname) {
+	pbsnode_list_t *pl = NULL;
+	for (pl = presv->ri_pbsnode_list; pl != NULL; pl = pl->next) {
+		if (strcmp(pl->vnode->nd_hostname, hostname) == 0)
+			remove_node_from_resv(presv, pl->vnode);
+	}
+}
+
+/**
+ * @brief
+ * 		degrade_overlapping_resv - by traversing all associated nodes
+ *		of the presv, search all overlapping reservations and if the
+ *		reservation is not 'maintenance' and it is confirmed then
+ *		degrade the reservation and wipe the overloaded node from the
+ *		overlapping reservation with remove_node_from_resv()
+ *
+ * @parm[in,out]	presv	-	reservation structure
+ *
+ */
+void
+degrade_overlapping_resv(resc_resv *presv) {
+	pbsnode_list_t *pl = NULL;
+	struct resvinfo *rip;
+	resc_resv *tmp_presv;
+	int modified;
+
+	for (pl = presv->ri_pbsnode_list; pl != NULL; pl = pl->next) {
+		do {
+			modified = 0;
+
+			for (rip = pl->vnode->nd_resvp; rip; rip = rip->next) {
+
+				tmp_presv = rip->resvp;
+
+				if (tmp_presv->ri_qs.ri_resvID[0] == PBS_MNTNC_RESV_ID_CHAR)
+					continue;
+
+				if (tmp_presv->ri_qs.ri_state == RESV_UNCONFIRMED)
+					continue;
+
+				if (strcmp(presv->ri_qs.ri_resvID, tmp_presv->ri_qs.ri_resvID) != 0 &&
+					presv->ri_qs.ri_stime <= tmp_presv->ri_qs.ri_etime &&
+					presv->ri_qs.ri_etime >= tmp_presv->ri_qs.ri_stime) {
+
+					set_resv_retry(tmp_presv, time_now);
+
+					if (tmp_presv->ri_qs.ri_state == RESV_CONFIRMED) {
+						resv_setResvState(tmp_presv, RESV_DEGRADED, RESV_IN_CONFLICT);
+					} else {
+						resv_setResvState(tmp_presv, tmp_presv->ri_qs.ri_state, RESV_IN_CONFLICT);
+					}
+
+					remove_host_from_resv(tmp_presv, pl->vnode->nd_hostname);
+
+					if (tmp_presv->ri_modified)
+						job_or_resv_save((void *)tmp_presv, SAVERESV_FULL, RESC_RESV_OBJECT);
+
+					/* we need 'break' here and start over because remove_host_from_resv()
+					 * modifies pl->vnode->nd_resvp */
+					modified = 1;
+					break;
+				}
+			}
+		} while (modified);
+	}
+}
 
 /**
  * @brief
@@ -323,7 +516,7 @@ req_confirmresv(struct batch_request *preq)
 		req_reject(PBSE_UNKRESVID, 0, preq);
 		return;
 	}
-	is_degraded = presv->ri_qs.ri_substate == RESV_DEGRADED ? 1 : 0;
+	is_degraded = (presv->ri_qs.ri_substate == RESV_DEGRADED || presv->ri_qs.ri_substate == RESV_IN_CONFLICT) ? 1 : 0;
 	is_being_altered = presv->ri_alter_flags;
 
 	if (preq->rq_extend == NULL) {
@@ -716,6 +909,9 @@ req_confirmresv(struct batch_request *preq)
 			tmp_buf_size = 0;
 		}
 	}
+
+	if (presv->ri_qs.ri_resvID[0] == PBS_MNTNC_RESV_ID_CHAR)
+		degrade_overlapping_resv(presv);
 
 	free(next_execvnode);
 	reply_ack(preq);

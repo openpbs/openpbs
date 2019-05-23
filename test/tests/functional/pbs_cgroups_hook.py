@@ -844,9 +844,9 @@ if %s e.job.in_ms_mom():
                 script = fd.read()
         except IOError:
             self.assertTrue(False, 'Failed to open hook file %s' % filename)
-        events = '"execjob_begin,execjob_launch,execjob_attach,'
-        events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic,execjob_resize,execjob_abort"'
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
         a = {'enabled': 'True',
              'freq': '10',
              'alarm': 30,
@@ -882,6 +882,32 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
                                     starttime=self.server.ctime)
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        svr_conf = os.path.join(
+            os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
+        pbs_home = self.mom.pbs_conf['PBS_HOME']
+        mom_conf = os.path.join(
+            os.sep, pbs_home, 'mom_priv', 'hooks', 'pbs_cgroups.CF')
+        # reload config if server and mom cfg differ up to count times
+        count = 5
+        while (count > 0):
+            r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
+            r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+            if r1['out'] != r2['out']:
+                self.logger.info('server & mom pbs_cgroups.CF differ')
+                self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
+                self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
+                                            'file request received',
+                                            starttime=self.server.ctime)
+            else:
+                self.logger.info('server & mom pbs_cgroups.CF match')
+                break
+            time.sleep(1)
+            count -= 1
+        # A HUP of each mom ensures update to hook config file is
+        # seen by the exechost_startup hook.
+        for mom in self.moms_list:
+            mom.signal('-HUP')
 
     def load_default_config(self):
         """
@@ -1876,8 +1902,8 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg4 % (self.swapctl))
         # remove epilogue and periodic from the list of events
         attr = {'enabled': 'True',
-                'event': '"execjob_begin,execjob_launch,'
-                         'execjob_attach,execjob_end,exechost_startup"'}
+                'event': ['execjob_begin', 'execjob_launch',
+                          'execjob_attach', 'execjob_end', 'exechost_startup']}
         self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
         self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])
         j = Job(TEST_USER)
@@ -2315,7 +2341,7 @@ except Exception as exc:
     event.reject()
 event.accept()
 """ % jid1
-        events = '"execjob_begin,exechost_periodic"'
+        events = ['execjob_begin', 'exechost_periodic']
         hookconf = {'enabled': 'True', 'freq': 2, 'alarm': 30, 'event': events}
         self.server.create_import_hook(hookname, hookconf, hookbody,
                                        overwrite=True)
@@ -2723,9 +2749,9 @@ event.accept()
             self.remove_vntype()
         for mom in self.moms_list:
             mom.delete_vnode_defs()
-        events = '"execjob_begin,execjob_launch,execjob_attach,'
-        events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic,execjob_resize,execjob_abort"'
+        events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
+                  'execjob_epilogue', 'execjob_end', 'exechost_startup',
+                  'exechost_periodic', 'execjob_resize', 'execjob_abort']
         # Disable the cgroups hook
         conf = {'enabled': 'False', 'freq': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)

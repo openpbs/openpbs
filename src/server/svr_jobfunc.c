@@ -4131,6 +4131,10 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 	if (presv->ri_qs.ri_type != RESC_RESV_OBJECT)
 		return (0);
 
+	if (which == Q_CHNG_START && strcmp(value, ATR_TRUE) == 0 &&
+		! presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET)
+		return (0);
+
 	newreq = alloc_br(PBS_BATCH_Manager);
 	if (newreq == NULL) {
 		(void)sprintf(log_buffer, "batch request allocation failed");

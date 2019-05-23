@@ -66,6 +66,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
@@ -83,7 +85,6 @@ def usage():
     msg += ['-b: show available resources (a.k.a backfill hole)\n']
     msg += ['-c: counts number of matching items\n']
     msg += ['-C: counts grand total of given attribute values in complex\n']
-    msg += ['-d <pbs_diag>: path to diag directory\n']
     msg += ['-j: report job equivalence classes\n']
     msg += ['-n: report node equivalence classes\n']
     msg += ['-r <name>: comma-separated list of resource names, ' +
@@ -94,6 +95,7 @@ def usage():
             'equivalence classes\n']
     msg += ['-U: show current utilization of the system, use -r to \n' +
             '    specify resources, default to ncpus, mem, nodes\n']
+    msg += ['--snap=<pbs_snapshot>: path to snap directory\n']
     msg += ['--id=<obj_id>: identifier of the object to query\n']
     msg += ['--key=<account record>: Accounting record key, one of Q or E\n']
     msg += ['--user=<username>: username to query for limits or '
@@ -149,24 +151,24 @@ def usage():
 
 class SiteReportFormatter:
 
-    def __init__(self, diag, version, sched_version, jeq, neq, utilization,
+    def __init__(self, snap, version, sched_version, jeq, neq, utilization,
                  limits, qtypes, users, groups, sc, formula, backfill, hooks,
                  job_states, osrelease):
 
         self.report_tm = time.ctime()
-        if diag and len(diag) > 1:
-            diag = diag.replace(".", "")
-            diag = diag.replace("/", "_")
-            diag = diag.replace("pbs_diag_", "")
-            if diag[0] in ('/', '_'):
-                diag = diag[1:]
-            m = re.search("(?P<dtm>\d{6}_\d{6})", diag)
+        if snap and len(snap) > 1:
+            snap = snap.replace(".", "")
+            snap = snap.replace("/", "_")
+            snap = snap.replace("snapshot_", "")
+            if snap[0] == '_':
+                snap = snap[1:]
+            m = re.search("(?P<dtm>\d{6}_\d{6})", snap)
             if m:
                 _tm = m.group("dtm")
                 _kt = time.mktime(time.strptime(_tm, "%y%m%d_%H%M%S"))
                 self.report_tm = time.ctime(_kt)
 
-        self.diag = diag
+        self.snap = snap
         self.version = version
         self.sched_version = sched_version
         self.jeq = sorted(jeq, key=lambda e: len(e.entities))
@@ -194,11 +196,11 @@ class SiteReportFormatter:
 
     def __str__(self):
         title = 'PBS Pro cluster report on ' + self.report_tm
-        if len(self.open_tag) == 0 or self.diag is None:
+        if len(self.open_tag) == 0 or self.snap is None:
             msg = []
             self.sep = ['-' * len(title)]
         else:
-            msg = ["---+++" + str(self.diag)]
+            msg = ["---+++" + str(self.snap)]
             self.sep = []
 
         msg += [title]
@@ -320,13 +322,14 @@ def utilization_to_str(u):
 
     return msg
 
+
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
         usage()
         sys.exit(1)
 
-    diag = None
+    snap = None
     lvl = logging.ERROR
     hostname = None
     objtype = None
@@ -378,11 +381,11 @@ if __name__ == '__main__':
     lopts += ["dedtime-file=", "limits-info", "json", "pports", "db-access="]
     lopts += ["over-soft-limits", "id=", "resources", "log-conf=", "version"]
     lopts += ["mode", "cli", "report", "sline", "key=", "resolve-indirectness"]
-    lopts += ["report-twiki", "include-running-jobs"]
+    lopts += ["report-twiki", "include-running-jobs", "snap="]
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "a:A:d:l:r:t:fUbcChjnsT",
+        opts, args = getopt.getopt(sys.argv[1:], "a:A:l:r:t:fUbcChjnsT",
                                    lopts)
-    except:
+    except getopt.GetoptError:
         logging.error('unhandled option')
         usage()
         sys.exit(1)
@@ -399,11 +402,6 @@ if __name__ == '__main__':
             accumulate = True
         elif o == '-C':
             grandtotal = True
-        elif o == '-d':
-            diag = CliUtils.expand_abs_path(val)
-            if not os.path.isdir(diag):
-                sys.stderr.write('Cannnot access diag at ' + str(diag) + '\n')
-                sys.exit(1)
         elif o == '-j':
             jobclasses = True
         elif o == '-l':
@@ -421,6 +419,12 @@ if __name__ == '__main__':
         elif o == '-h':
             usage()
             sys.exit(0)
+        elif o == '--snap':
+            snap = CliUtils.expand_abs_path(val)
+            if not os.path.isdir(snap):
+                sys.stderr.write('Cannnot access snapshot at ' +
+                                 str(snap) + '\n')
+                sys.exit(1)
         elif o == '--cli':
             force_cli = True
         elif o == '--key':
@@ -526,10 +530,10 @@ if __name__ == '__main__':
     bu = BatchUtils()
 
     if len(inputfile) > 0:
-        server = Server(diagmap=inputfile, db_access=db_access)
-    elif diag is not None or db_access is not None:
-        server = Server(hostname, diag=diag, db_access=db_access)
-        scheduler = Scheduler(server=server, diag=diag, db_access=db_access)
+        server = Server(snapmap=inputfile, db_access=db_access)
+    elif snap is not None or db_access is not None:
+        server = Server(hostname, snap=snap, db_access=db_access)
+        scheduler = Scheduler(server=server, snap=snap, db_access=db_access)
     else:
         if hostname is None:
             if 'PBS_SERVER' in os.environ:
@@ -559,10 +563,10 @@ if __name__ == '__main__':
     if dedtimefile:
         if scheduler is None:
             scheduler = Scheduler(
-                server=server, diag=diag, db_access=db_access)
+                server=server, snap=snap, db_access=db_access)
         scheduler.set_dedicated_time_file(dedtimefile)
 
-    # server is assumed up in diag mode
+    # server is assumed up in snap mode
     if not server.isUp() and objtype != RSC and\
             not db_access:
         logging.error('PBS Server is down, exiting')
@@ -602,8 +606,8 @@ if __name__ == '__main__':
             elif 'egroup' in k:
                 groups += 1
         if scheduler is None:
-            scheduler = Scheduler(server=server, diag=server.diag,
-                                  diagmap=server.diagmap)
+            scheduler = Scheduler(server=server, snap=server.snap,
+                                  snapmap=server.snapmap)
         sc = scheduler.sched_config
         formula = backfill = None
         version = 'unavailable'
@@ -642,14 +646,14 @@ if __name__ == '__main__':
         if d and 'pbs_version' in d[0]:
             sched_version = d[0]['pbs_version']
 
-        if diag is not None:
-            f = os.path.join(diag, 'OSrelease')
+        if snap is not None:
+            f = os.path.join(snap, 'OSrelease')
             if os.path.isfile(f):
                 fos = open(f)
                 osrelease = fos.readline()
                 fos.close()
 
-        sr = SiteReportFormatter(diag, version, sched_version, jeq, neq, u,
+        sr = SiteReportFormatter(snap, version, sched_version, jeq, neq, u,
                                  lims, qtypes, users, groups, sc, formula,
                                  backfill, hooks, job_states, osrelease)
         if report_twiki:
@@ -669,8 +673,8 @@ if __name__ == '__main__':
 
     if fstree:
         if scheduler is None:
-            scheduler = Scheduler(server=server, diag=server.diag,
-                                  diagmap=server.diagmap, db_access=db_access)
+            scheduler = Scheduler(server=server, snap=server.snap,
+                                  snapmap=server.snapmap, db_access=db_access)
 
         fs_as_bs = scheduler.fairshare_tree.__batch_status__()
         if json_on:
@@ -764,8 +768,8 @@ if __name__ == '__main__':
 
     if nodeclasses:
         if scheduler is None and os.getuid() == 0:
-            scheduler = Scheduler(server=server, diag=server.diag,
-                                  diagmap=server.diagmap, db_access=db_access)
+            scheduler = Scheduler(server=server, snap=server.snap,
+                                  snapmap=server.snapmap, db_access=db_access)
 
         if attributes:
             res = attributes
@@ -796,7 +800,7 @@ if __name__ == '__main__':
             sm = {SERVER: None}
             # disable logging to avoid displaying server instatiation messages
             logging.disable(logging.INFO)
-            server = Server('__diagserver__', diagmap=sm)
+            server = Server('__snapserver__', snapmap=sm)
             logging.disable(logging.NOTSET)
 
             alog = PBSAccountingLog(show_progress=True)

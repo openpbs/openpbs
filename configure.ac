@@ -273,6 +273,8 @@ AC_CHECK_FUNCS([ \
 	select \
 	setresuid \
 	setresgid \
+	getpwuid \
+	initgroups \
 	seteuid \
 	setegid \
 	strerror_r \

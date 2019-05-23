@@ -314,6 +314,8 @@ enum fairshare_flags
 	FS_TRIM = 1
 };
 
+#define FAIRSHARE_MIN_USAGE 1
+
 /* flags used for copy constructors - bit field */
 enum dup_flags
 {
@@ -574,6 +576,13 @@ enum schd_error_args {
 enum bucket_flags {
 	UPDATE_BUCKET_IND = 1,
 	NO_PRINT_BUCKETS
+};
+
+enum sort_info_type {
+	PRIME_SORT,
+	NON_PRIME_SORT,
+	PRIME_NODE_SORT,
+	NON_PRIME_NODE_SORT
 };
 
 #ifdef	__cplusplus

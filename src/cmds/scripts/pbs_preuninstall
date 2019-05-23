@@ -1,4 +1,4 @@
-
+#!/bin/bash
 #
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -35,45 +35,29 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 #
+pbs_version="$2"
+pbs_exec="$3"
+have_systemd="${4:-0}"
 
-unsupporteddir = ${exec_prefix}/unsupported
+if [ `basename $pbs_exec` = $pbs_version ]; then
+    top_level=`dirname $pbs_exec`
+    if [ -h $top_level/default ]; then
+        link_target=`readlink $top_level/default`
+        [ `basename "$link_target"` = $pbs_version ] && rm -f $top_level/default
+    fi
+fi
+rm -f /opt/modulefiles/pbs/$pbs_version
 
-unsupported_PROGRAMS = pbs_rmget
-
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat \
-	pbs_config
-
-
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini \
-	cray_readme \
-	ReliableJobStartup.py \
-	pbs_output.py
-
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@libz_lib@
-pbs_rmget_SOURCES = pbs_rmget.c
+case "$1" in
+server|execution)
+    [ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
+    [ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
+    rm -f /etc/rc.d/rc?.d/[KS]??pbs
+    rm -f /var/tmp/pbs_boot_check
+    if [ $have_systemd = 1 ]; then
+        echo "have systemd"
+        systemctl disable pbs
+        rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+    fi
+    ;;
+esac

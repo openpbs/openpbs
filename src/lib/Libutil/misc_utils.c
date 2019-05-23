@@ -79,9 +79,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <assert.h>
 #ifndef WIN32
 #include <dlfcn.h>
 #include <grp.h>
+#include <time.h>
+#include <sys/time.h>
 #endif
 #include "pbs_error.h"
 
@@ -104,6 +107,17 @@ struct {
 	{ND_Default_Exclhost, VNS_DFLT_EXCLHOST },
 	{ND_Force_Exclhost,   VNS_FORCE_EXCLHOST}
 };
+
+/* Used for collecting performance stats */
+typedef struct perf_stat {
+	char		instance[MAXBUFLEN + 1];
+	double		walltime;
+	double		cputime;
+	pbs_list_link	pi_allstats;
+} perf_stat_t;
+
+static int		perf_stats_initialized = 0;
+static pbs_list_head	perf_stats;
 
 /**
  * @brief
@@ -1519,4 +1533,252 @@ get_preemption_order(struct preempt_ordering *porder, int req, int used)
 	}
 
 	return po;
+}
+
+#ifdef WIN32
+/**
+ * @brief
+ *	Returns the current wall clock time.
+ *
+ * @return double - number of seconds.
+ */
+static double 
+get_walltime(void)
+{
+	LARGE_INTEGER time, freq;
+
+	if (QueryPerformanceFrequency(&freq) == 0)
+        	return (0);
+
+	if (QueryPerformanceCounter(&time) == 0)
+        	return (0);
+
+	return ((double)time.QuadPart / freq.QuadPart);
+}
+
+/**
+ * @brief
+ *	Returns the current processor time.
+ *
+ * @return double - number of seconds.
+ **/
+static double
+get_cputime()
+{
+	FILETIME	create_time;
+	FILETIME	exit_time;
+	FILETIME	kernel_time;
+	FILETIME	user_time;
+
+	/* The times are returned in 100-nanosecond units */
+	if (GetProcessTimes(GetCurrentProcess(), &create_time, &exit_time, &kernel_time, &user_time) == 0)
+		return (0);
+
+	if (user_time.dwLowDateTime != 0)
+		return ((double)user_time.dwLowDateTime * 0.0000001);
+	
+        return ((double)(((unsigned long long)user_time.dwHighDateTime << 32)) * 0.0000001);
+}
+
+#else
+
+/**
+ * @brief
+ *	Returns the current wall clock time.
+ *
+ * @return double - number of seconds.
+ */
+static double
+get_walltime(void)
+{
+
+	struct timeval time;
+
+	if (gettimeofday(&time, NULL) == -1)
+        	return (0);
+
+	return ((double)time.tv_sec + (double)time.tv_usec * .000001);
+}
+
+/**
+ * @brief
+ *	Returns the current processor time.
+ *
+ * @return double - number of seconds.
+ **/
+static double
+get_cputime()
+{
+	clock_t	clock_cycles;
+	clock_cycles = clock();
+	if (clock_cycles == -1)
+		return (0);
+	assert (CLOCKS_PER_SEC != 0);
+	return (double)clock_cycles / CLOCKS_PER_SEC;
+}
+#endif
+
+/**
+ * @brief
+ *	Allocates memory for a given 'instance' of measurements.
+ *
+ * @param[in] instance - a description of what is being measured.
+ *
+ * @return perf_stat_t - an allocated entry.
+ */
+static perf_stat_t *
+perf_stat_alloc(char *instance)
+{
+	perf_stat_t	*p_stat;
+
+	if ((instance == NULL) || (instance[0] == '\0'))
+		return NULL;
+
+	p_stat = malloc(sizeof(perf_stat_t));
+	if (p_stat == NULL)
+		return NULL;
+
+	(void)memset((char *)p_stat, (int)0, (size_t)sizeof(perf_stat_t));
+
+	strncpy(p_stat->instance, instance, MAXBUFLEN);
+	p_stat->instance[MAXBUFLEN] = '\0';
+	p_stat->walltime = 0;
+	p_stat->cputime = 0;
+
+	delete_link(&p_stat->pi_allstats);
+	append_link(&perf_stats, &p_stat->pi_allstats, p_stat);
+
+	return (p_stat);
+}
+
+/**
+ * @brief
+ *	Find an 'instance' entry among the list of saved performance
+ *	stats.
+ *
+ * @param[in] instance - entity being measured.
+ *
+ * @return perf_stat_t - found entry.
+ */
+static perf_stat_t *
+perf_stat_find(char *instance)
+{
+	perf_stat_t *p_stat;
+
+	if ((instance == NULL) || (instance[0] == '\0') || (perf_stats_initialized == 0))
+		return (NULL);
+
+	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
+	while (p_stat) {
+		if (strcmp(p_stat->instance, instance) == 0) {
+			break;
+		}
+		p_stat = (perf_stat_t *)GET_NEXT(p_stat->pi_allstats);
+	}
+	return (p_stat);  /* may be a null pointer */
+}
+
+/**
+ * @brief
+ *	Remove (deallocate) an 'instance' entry among the list of
+ *	saved performance stats.
+ *
+ * @param[in] instance - entity being measured.
+ *
+ * @return void
+ */
+void
+perf_stat_remove(char *instance)
+{
+	perf_stat_t *p_stat;
+
+	if ((instance == NULL) || (instance[0] == '\0') || (perf_stats_initialized == 0))
+		return;
+
+	p_stat = (perf_stat_t *)GET_NEXT(perf_stats);
+	while (p_stat) {
+		if (strcmp(p_stat->instance, instance) == 0) {
+			break;
+		}
+		p_stat = (perf_stat_t *)GET_NEXT(p_stat->pi_allstats);
+	}
+	if (p_stat != NULL) {
+ 		delete_link(&p_stat->pi_allstats);
+		free(p_stat);
+	}
+}
+
+/**
+ * @brief
+ *	Record start counters for the 'instance' entry.
+ *
+ * @param[in] instance - entity being measured
+ *
+ * @return void
+ */
+void
+perf_stat_start(char *instance)
+{
+	perf_stat_t	*p_stat;
+
+	if ((instance == NULL) || (instance[0] == '\0'))
+		return;
+
+	if (perf_stats_initialized == 0) {
+		CLEAR_HEAD(perf_stats);
+		perf_stats_initialized = 1;
+	}
+
+	p_stat = perf_stat_find(instance);
+	if (p_stat == NULL) {
+		p_stat = perf_stat_alloc(instance);
+		if (p_stat == NULL)
+			return;
+	}
+
+	p_stat->walltime = get_walltime();
+	p_stat->cputime = get_cputime();
+}
+
+/**
+ * @brief
+ *	Returns a summary of statistics gathered (e.g.
+ *	elapsed walltime) since the perf_stat_start() call on the
+ *	same 'instance'.
+ *
+ * @param[in] instance - entity being measured
+ *
+ * @return char *  - a string describing stats gathered.
+ *		   - this is a statically-allocated buffer that
+ *		     will get over-written by the next call to this
+ *		     function.
+ * @note
+ *	This also frees up the memory used by the 'instance' entry
+ *      in the list of saved stats.
+ */
+char *
+perf_stat_stop(char *instance)
+{
+	perf_stat_t	*p_stat;
+	double		now_walltime;
+	double		now_cputime;
+	static		char stat_summary[MAXBUFLEN + 1];
+
+	if ((instance == NULL) || (instance[0] == '\0')) {
+		return (NULL);
+	}
+
+	p_stat = perf_stat_find(instance);
+	if (p_stat == NULL)
+		return (NULL);
+	
+	now_walltime = get_walltime();
+	now_cputime = get_cputime();
+
+	snprintf(stat_summary, sizeof(stat_summary), "%s walltime=%f cputime=%f", instance, (now_walltime - p_stat->walltime),  (now_cputime - p_stat->cputime));
+
+ 	delete_link(&p_stat->pi_allstats);
+	free(p_stat);
+
+	return (stat_summary);
 }

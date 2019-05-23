@@ -271,6 +271,7 @@ execute_python_periodic_hook(hook  *phook)
 	hook_input_param_t	req_ptr;
 	FILE    		*fp_out = NULL;
 	FILE			*fp_out_save = NULL;
+	char			perf_label[MAXBUFLEN];
 	
 	if (!phook)
 		return rc;
@@ -291,8 +292,10 @@ execute_python_periodic_hook(hook  *phook)
 	req_ptr.vns_list = (pbs_list_head *)get_vnode_list();
 	req_ptr.resv_list = (pbs_list_head *)get_resv_list();
 
+	snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", hook_event_as_string(hook_event), phook->hook_name, mypid);
+
 	rc = pbs_python_event_set(hook_event, username,
-		"server", &req_ptr);
+		PY_TYPE_SERVER, &req_ptr, perf_label);
 
 	if (rc == -1) { /* internal server code failure */
 		log_event(PBSEVENT_DEBUG2,

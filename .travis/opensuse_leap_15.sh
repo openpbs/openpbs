@@ -1,9 +1,9 @@
 #!/bin/bash -xe
-OS_NAME=$(${DOCKER_EXEC} cat /etc/os-release | awk -F[=\"] '/^NAME=/ {print $3}')
-OS_VERSION=$(${DOCKER_EXEC} cat /etc/os-release | awk -F[=\"] '/^VERSION=/ {print $3}')
-OS_NAME_VERSION=${OS_NAME// /_}_${OS_VERSION// /_}
-${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/${OS_NAME_VERSION}/devel:tools.repo
-${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/libraries:/c_c++/${OS_NAME_VERSION}/devel:libraries:c_c++.repo
+PRETTY_NAME=$(${DOCKER_EXEC} cat /etc/os-release | awk -F[=\"] '/^PRETTY_NAME=/ {print $3}')
+PRETTY_NAME=${PRETTY_NAME# }
+PRETTY_NAME=${PRETTY_NAME% }
+${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/${PRETTY_NAME// /_}/devel:tools.repo
+${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/libraries:/c_c++/${PRETTY_NAME// /_}/devel:libraries:c_c++.repo
 ${DOCKER_EXEC} zypper -n ref
 ${DOCKER_EXEC} zypper -n update
 ${DOCKER_EXEC} zypper -n install rpmdevtools

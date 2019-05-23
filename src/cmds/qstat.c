@@ -93,7 +93,7 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define ALT_DISPLAY_Mw	0x200		/* -M option - show sizes in MW */
 #define ALT_DISPLAY_G		0x400		/* -G option - show sizes in GB */
 #define ALT_DISPLAY_1l	0x800		/* -n -s -f on line line */
-#define ALT_DISPLAY_w		0x1000		/* -[a|s|n]w - wide output */
+#define ALT_DISPLAY_w		0x1000		/* -w - wide output */
 #define ALT_DISPLAY_T		0x2000		/* -T option - estimated start times */
 #define ALT_DISPLAY_p		0x4000		/* -p option - percentage completed for the job */
 #define ALT_DISPLAY_INCR_WIDTH	0x8000	/* increases qstat header width */
@@ -917,7 +917,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		if (alt_opt & ALT_DISPLAY_T) {
 			pc = get_attr(pstat->attribs, ATTR_state, NULL);
 			if (pc != NULL && (*pc == 'Q' || *pc == 'S'))
-				timeval = cnvt_est_start_time(est_time, wide);
+				timeval = cnvt_est_start_time(est_time, 0);
 			else
 				timeval = "--";
 		}
@@ -935,7 +935,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 				SIZENDS, SIZENDS, nodect,
 				SIZETSK, SIZETSK, tasks);
 			/* static formatting of fixed size values */
-			printf("%6.6s %5.5s %1s %s",
+			printf("%6.6s %5.5s %1s %5.5s",
 				rqmem,
 				usecput ? rqtimecpu : rqtimewal,
 				jstate,
@@ -1194,7 +1194,7 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
  */
 
 int
-display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int how_opt, int alt_opt)
+display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int how_opt, int alt_opt, int wide)
 {
 	struct batch_status *p;
 	struct attrl *a;
@@ -1215,7 +1215,10 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	char *cmdargs = NULL;
 	char *hpcbp_executable;
 
-	if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+	if (wide) {
+		sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
+			SIZEJOBID, SIZEJOBNAME, SIZEUSER, TIMEUL, STATEL, PBS_MAXQUEUENAME);
+	} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 		sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
 			PBS_MAXSEQNUM+10, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
 	} else {
@@ -1223,26 +1226,32 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			PBS_MAXSEQNUM+5, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
 	}
 
-	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
+	if (!full && prtheader && output_format == FORMAT_DEFAULT) {
 		c = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (c)
 			printf("%s\n", show_nonprint_chars(c));
 		if (how_opt & ALT_DISPLAY_p) {
-				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
-					printf("Job id                 Name             User               %% done  S Queue\n");
-					printf("---------------------  ---------------- ----------------  -------- - -----\n");
-				} else {
-					printf("Job id            Name             User               %% done  S Queue\n");
-					printf("----------------  ---------------- ----------------  -------- - -----\n");
-				}
+			if (wide) {
+				printf("Job id                         Name            User              %% done  S Queue\n");
+				printf("-----------------------------  --------------- ---------------  -------- - ---------------\n");
+			} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+				printf("Job id                 Name             User               %% done  S Queue\n");
+				printf("---------------------  ---------------- ----------------  -------- - -----\n");
+			} else {
+				printf("Job id            Name             User               %% done  S Queue\n");
+				printf("----------------  ---------------- ----------------  -------- - -----\n");
+			}
 		} else {
-				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
-					printf("Job id                 Name             User              Time Use S Queue\n");
-					printf("---------------------  ---------------- ----------------  -------- - -----\n");
-				} else {
-					printf("Job id            Name             User              Time Use S Queue\n");
-					printf("----------------  ---------------- ----------------  -------- - -----\n");
-				}
+			if (wide) {
+				printf("Job id                         Name            User             Time Use S Queue\n");
+				printf("-----------------------------  --------------- ---------------  -------- - ---------------\n");
+			} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+				printf("Job id                 Name             User              Time Use S Queue\n");
+				printf("---------------------  ---------------- ----------------  -------- - -----\n");
+			} else {
+				printf("Job id            Name             User              Time Use S Queue\n");
+				printf("----------------  ---------------- ----------------  -------- - -----\n");
+			}
 		}
 	}
 
@@ -1350,7 +1359,12 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 				while (*c != '.' && *c != '\0') c++;
 				*c = '\0';
 				l = strlen(p->name);
-				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+				if (wide) {
+					if (l > SIZEJOBID) {
+						c = p->name + SIZEJOBID;
+						*c = '\0';
+					}
+				} else if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 					if (l > (PBS_MAXSEQNUM+10)) {
 						c = p->name + PBS_MAXSEQNUM + 10;
 						*c = '\0';
@@ -1358,7 +1372,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 				} else {
 					if (l > (PBS_MAXSEQNUM+5)) {
 						c = p->name + PBS_MAXSEQNUM + 5;
-					        *c = '\0';
+						*c = '\0';
 					}
 				}
 				jid = p->name;
@@ -1368,20 +1382,36 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 				if (a->name != NULL) {
 					if (strcmp(a->name, ATTR_name) == 0) {
 						l = strlen(a->value);
-						if (l >= NAMEL) {
-							strncpy(long_name, a->value, (NAMEL - 1));
-							c = long_name;
-						} else
-							c = a->value;
+						if (wide) {
+							if (l >= SIZEJOBNAME) {
+								strncpy(long_name, a->value, (SIZEJOBNAME - 1));
+								c = long_name;
+							} else {
+								c = a->value;
+							}
+						} else {
+							if (l >= NAMEL) {
+								strncpy(long_name, a->value, (NAMEL - 1));
+								c = long_name;
+							} else
+								c = a->value;
+						}
 						name = c;
 					} else if (strcmp(a->name, ATTR_owner) == 0) {
 						c = a->value;
 						while (*c != '@' && *c != '\0') c++;
 						*c = '\0';
 						l = strlen(a->value);
-						if (l > OWNERL) {
-							c = a->value + OWNERL;
-							*c = '\0';
+						if (wide) {
+							if (l > SIZEUSER) {
+								c = a->value + SIZEUSER;
+								*c = '\0';
+							}
+						} else {
+							if (l > OWNERL) {
+								c = a->value + OWNERL;
+								*c = '\0';
+							}
 						}
 						owner = a->value;
 					} else if (strcmp(a->name, ATTR_used) == 0) {
@@ -1428,9 +1458,16 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						while (*c != '@' && *c != '\0') c++;
 						*c = '\0';
 						l = strlen(a->value);
-						if (l > LOCL) {
-							c = a->value + LOCL;
-							*c = '\0';
+						if (wide) {
+							if (l > PBS_MAXQUEUENAME) {
+								c = a->value + PBS_MAXQUEUENAME;
+								*c = '\0';
+							}
+						} else {
+							if (l > LOCL) {
+								c = a->value + LOCL;
+								*c = '\0';
+							}
 						}
 						location = a->value;
 					} else if (strcmp(a->name, ATTR_array_state_count) == 0) {
@@ -2571,9 +2608,8 @@ main(int argc, char **argv, char **envp) /* qstat */
 		errflg++;
 	}
 	if (wide) {
-		if (!((alt_opt & ALT_DISPLAY_a) || (alt_opt & ALT_DISPLAY_n) || (alt_opt & ALT_DISPLAY_s) ||
-			(alt_opt & ALT_DISPLAY_T) || f_opt == 1)) {
-			fprintf(stderr, "qstat: option w can be used only with option a, n, T, s or f\n");
+		if (output_format != FORMAT_DEFAULT) {
+			fprintf(stderr, "qstat: option w cannot be used with -F\n");
 			errflg++;
 		}
 	}
@@ -2582,7 +2618,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	if (errflg) {
 		static char usag2[]="qstat --version\n";
 		static char usage[]="usage: \n\
-qstat [-f] [-J] [-p] [-t] [-x] [-E] [-F format] [-D delim] [ job_identifier... | destination... ]\n\
+qstat [-f] [-J] [-p] [-t] [-x] [-E] [-F format | -w] [-D delim] [ job_identifier... | destination... ]\n\
 qstat [-a|-i|-r|-H|-T] [-J] [-t] [-u user] [-n] [-s] [-G|-M] [-1] [-w]\n\
 \t[ job_identifier... | destination... ]\n\
 qstat -Q [-f] [-F format] [-D delim] [ destination... ]\n\
@@ -2875,10 +2911,10 @@ job_no_args:
 					}
 #else
 
-					if (alt_opt != 0 && !(wide && f_opt)) {
+					if ((alt_opt & ~ALT_DISPLAY_w) != 0 && !(wide && f_opt)) {
 						altdsp_statjob(p_status, p_server, alt_opt, wide, how_opt);
 					} else if (f_opt == 0 || tcl_stat("job", p_status, f_opt))
-						if (display_statjob(p_status, p_server, f_opt, how_opt, alt_opt))
+						if (display_statjob(p_status, p_server, f_opt, how_opt, alt_opt, wide))
 							exit_qstat("out of memory");
 #endif /* localmod 071 */
 					p_header = FALSE;

@@ -165,11 +165,11 @@ class TestQmgr(TestFunctional):
         Set the node's comment, then print it and re-import it
         """
         a = {'comment': comment}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.hostname)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         qmgr_path = \
             os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')
         qmgr_cmd_print = qmgr_path + \
-            (' -c "p n %s comment"' % self.mom.hostname)
+            (' -c "p n %s comment"' % self.mom.shortname)
         ret = self.du.run_cmd(self.server.hostname,
                               cmd=qmgr_cmd_print, as_script=True)
         self.assertEqual(ret['rc'], 0)

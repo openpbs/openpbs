@@ -3868,3 +3868,85 @@ cleanup_hooks_workdir(struct work_task *ptask)
 		cleanup_hooks_workdir, NULL);
 
 }
+
+/**
+ *
+ * @brief
+ * 	Start profiling the next lines of code, collectively giving it
+ *      a 'label' and an 'action' description.
+ *	The 'label' usually identifies to some object being profiled
+ *	(e.g. hook), while the 'action' describes what
+ *	is being captured for the object (e.g. "initialization").
+ *	Both 'label' and 'action' uniquely identify the
+ *	data collected.
+ *
+ * @param[in]	label - describes a particular object 
+ * @param[in]	action - refers to the object's action
+ *
+ * @param[in]	print_start_msg - if 1, then log a "profile_start" message. 
+ *
+ * @return void
+ *
+ */
+void
+hook_perf_stat_start(char *label, char *action, int print_start_msg)
+{
+	char instance[MAXBUFLEN];
+
+	if (!will_log_event(PBSEVENT_DEBUG4))
+		return;
+
+	if ((label == NULL) || (action == NULL))
+		return;
+
+	snprintf(instance, sizeof(instance), "label=%s action=%s", label, action);
+	perf_stat_start(instance);
+
+	if (print_start_msg) {
+		snprintf(log_buffer, sizeof(log_buffer), "%s profile_start", instance);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_HOOK, LOG_INFO, "hook_perf_stat", log_buffer);
+	}
+}
+
+/**
+ *
+ * @brief
+ * 	Log summary of what has been tracked since hook_perf_stat_start()
+ *	call on the same label, action given.
+ *
+ * @param[in]	label - refers to a particular object 
+ * @param[in]	action - refers to the object's action
+ *
+ * @param[in]	print_end_msg - if 1, then mark a "profile_stop" message. 
+ *
+ * @return void
+ *
+ */
+void
+hook_perf_stat_stop(char *label, char *action, int print_end_msg)
+{
+	char instance[MAXBUFLEN];
+	char *msg;
+
+	if ((label == NULL) || (action == NULL))
+		return;
+
+	snprintf(instance, sizeof(instance), "label=%s action=%s", label, action);
+
+	if (!will_log_event(PBSEVENT_DEBUG4)) {
+		perf_stat_remove(instance);
+		return;
+	}
+
+	msg = perf_stat_stop(instance);
+
+	if (msg == NULL)
+		return;
+
+	if (print_end_msg)
+		snprintf(log_buffer, sizeof(log_buffer), "%s profile_stop", msg);
+	else
+		snprintf(log_buffer, sizeof(log_buffer), "%s", msg);
+
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_HOOK, LOG_INFO, "hook_perf_stat", log_buffer);
+}

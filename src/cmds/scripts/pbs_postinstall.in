@@ -397,10 +397,6 @@ install_pbsinitd() {
 		esac
 		pbslibdir="${PBS_EXEC}/lib64"
 		[ -d "${pbslibdir}" ] || pbslibdir="${PBS_EXEC}/lib"
-		if [ -f ${pbslibdir}/python/pbs_bootcheck.py ] ; then
-			cp ${pbslibdir}/python/pbs_bootcheck.py /var/tmp/pbs_bootcheck.py
-			chmod 0644 /var/tmp/pbs_bootcheck.py
-		fi
 		if [ -f /var/tmp/pbs_boot_check ] ; then
 			rm -f /var/tmp/pbs_boot_check
 		fi

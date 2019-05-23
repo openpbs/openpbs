@@ -300,6 +300,24 @@ void convert_duration_to_str(time_t duration, char* buf, int bufsize);
 struct preempt_ordering *
 get_preemption_order(struct preempt_ordering *porder, int req, int used);
 
+/**
+ * Begin collecting performance stats (e.g. walltime)
+ */
+void 
+perf_stat_start(char *instance);
+
+/**
+ * Remove a performance stats entry.
+ */
+void 
+perf_stat_remove(char *instance);
+
+/**
+ * End collecting performance stats (e.g. walltime)
+ */
+char *
+perf_stat_stop(char *instance);
+
 #ifdef  __cplusplus
 }
 #endif

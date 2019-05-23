@@ -226,8 +226,8 @@ new_group_info()
 	new->shares = UNSPECIFIED;
 	new->tree_percentage = 0.0;
 	new->group_percentage = 0.0;
-	new->usage = 1;
-	new->temp_usage = 1;
+	new->usage = FAIRSHARE_MIN_USAGE;
+	new->temp_usage = FAIRSHARE_MIN_USAGE;
 	new->usage_factor = 0.0;
 	new->gpath = NULL;
 	new->parent = NULL;
@@ -521,8 +521,8 @@ decay_fairshare_tree(group_info *root)
 	decay_fairshare_tree(root->child);
 
 	root->usage *= conf.fairshare_decay_factor;
-	if (root->usage == 0)
-		root->usage = 1;
+	if (root->usage < FAIRSHARE_MIN_USAGE)
+		root->usage = FAIRSHARE_MIN_USAGE;
 }
 
 /**

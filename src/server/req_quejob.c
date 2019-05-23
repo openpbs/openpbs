@@ -2070,6 +2070,10 @@ req_resvSub(struct batch_request *preq)
 	char		*fmt = "%a %b %d %H:%M:%S %Y";
 	char		 tbuf1[256] = {0};
 	char		 tbuf2[256] = {0};
+	int		 is_maintenance = 0;
+
+	if (preq->rq_extend && strchr(preq->rq_extend, 'm'))
+		is_maintenance = 1;
 
 	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
 			pbs_python_set_interrupt)) {
@@ -2118,6 +2122,11 @@ req_resvSub(struct batch_request *preq)
 	}
 
 	resc_access_perm = preq->rq_perm | ATR_DFLAG_Creat;
+
+	if (is_maintenance && ! (preq->rq_perm & (ATR_DFLAG_OPWR | ATR_DFLAG_MGWR))) {
+		req_reject(PBSE_PERM, 0, preq);
+		return;
+	}
 
 	/* get reseravtion id/queue name locally */
 	if ((next_svr_sequence_id = get_next_svr_sequence_id()) == -1) {
@@ -2356,6 +2365,10 @@ req_resvSub(struct batch_request *preq)
 					ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 		}
 	}
+
+	if (is_maintenance)
+		rid[0] = qbuf[0] = PBS_MNTNC_RESV_ID_CHAR;
+
 	(void)strcpy(presv->ri_qs.ri_resvID, rid);
 	presv->ri_modified = 1;
 	if (created_here) {
@@ -2699,7 +2712,8 @@ req_resvSub(struct batch_request *preq)
 	 * is available for consideration
 	 */
 	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
+	if (!is_maintenance)
+		set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 }
 
 

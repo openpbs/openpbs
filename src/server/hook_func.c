@@ -3993,6 +3993,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pid_t 			mypid;
 	pbs_list_head 		event_vnode;
 	pbs_list_head 		event_resv;
+	char			perf_label[MAXBUFLEN];
 
 	if (req_ptr == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -4003,7 +4004,20 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		return -1;
 	}
 
+	if (phook == NULL) {
+		log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_ERR,
+			phook->hook_name, "no associated hook");
+		return -1;
+	}
+
 	mypid = getpid();
+	if (pjob != NULL)
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%s", hook_event_as_string(hook_event), phook->hook_name, pjob->ji_qs.ji_jobid);
+	else
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", hook_event_as_string(hook_event), phook->hook_name, mypid);
+
+	hook_perf_stat_start(perf_label, "server_process_hooks", 1);
 
 	if (suffix_sz == 0)
 		suffix_sz = strlen(HOOK_SCRIPT_SUFFIX);
@@ -4060,7 +4074,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	/* at least one enabled hook */
 	if (!(*event_initialized)) { /* only once for all hooks */
 		rc = pbs_python_event_set(hook_event, rq_user,
-			rq_host, req_ptr);
+			rq_host, req_ptr, perf_label);
 
 		if (rc == -1) { /* internal server code failure */
 			log_event(PBSEVENT_DEBUG2,
@@ -4147,7 +4161,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			pbs_python_set_hook_debug_data_fp(NULL);
 			pbs_python_set_hook_debug_data_file("");
 		}
-		return (-1);
+		rc = -1;
+		goto server_process_hooks_exit;
 	}
 
 	/*
@@ -4180,7 +4195,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			pbs_python_set_hook_debug_output_fp(NULL);
 			pbs_python_set_hook_debug_output_file("");
 		}
-		return (-1);
+		rc = -1;
+		goto server_process_hooks_exit;
 	}
 
 	if (rq_type == PBS_BATCH_HookPeriodic) {
@@ -4210,7 +4226,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				pbs_python_set_hook_debug_output_fp(NULL);
 				pbs_python_set_hook_debug_output_file("");
 			}
-			return (-1);
+			rc = -1;
+			goto server_process_hooks_exit;
 		}
 	}	
 	
@@ -4292,7 +4309,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				pbs_python_set_hook_debug_output_fp(NULL);
 				pbs_python_set_hook_debug_output_file("");
 			}
-			return (-1);
+			rc = -1;
+			goto server_process_hooks_exit;
 		}
 	}
 
@@ -4325,9 +4343,11 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	}
 
 	/* let rc pass through */
-	if (rc==0)
-		rc=pbs_python_run_code_in_namespace(&svr_interp_data,
-			phook->script, 0);
+	if (rc == 0) {
+		hook_perf_stat_start(perf_label, "run_code", 0);
+		rc = pbs_python_run_code_in_namespace(&svr_interp_data, phook->script, 0);
+		hook_perf_stat_stop(perf_label, "run_code", 0);
+	}
 
 	if (fp_debug != NULL) {
 		fclose(fp_debug);
@@ -4360,9 +4380,11 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				PBS_EVENTCLASS_HOOK, LOG_ERR,
 				phook->hook_name, msgbuf);
 			free(msgbuf);
-			if (rq_type == PBS_BATCH_HookPeriodic)
+			if (rq_type == PBS_BATCH_HookPeriodic) {
 				/* we will need output file to read data from hook later */
-				return (-1);
+				rc = -1;
+				goto server_process_hooks_exit;
+			}
 		} else {
 			fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
 			if (fp_debug_out_save != NULL) {
@@ -4416,7 +4438,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				pbs_python_set_hook_debug_output_fp(NULL);
 				pbs_python_set_hook_debug_output_file("");
 			}
-			return (-1); /* should not happen */
+			rc = -1;
+			goto server_process_hooks_exit;
 		case -2:	/* unhandled exception */
 			pbs_python_event_reject(NULL);
 			pbs_python_event_param_mod_disallow();
@@ -4431,7 +4454,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				"request rejected as filter hook '%s' encountered an "
 				"exception. Please inform Admin", phook->hook_name);
 			write_hook_reject_debug_output_and_close(hook_msg);
-			return (0);
+			rc = 0;
+			goto server_process_hooks_exit;
 		case -3:	/* alarm timeout */
 			pbs_python_event_reject(NULL);
 			pbs_python_event_param_mod_disallow();
@@ -4446,7 +4470,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				"request rejected as filter hook '%s' got an "
 				"alarm call. Please inform Admin", phook->hook_name);
 			write_hook_reject_debug_output_and_close(hook_msg);
-			return (0);
+			rc = 0;
+			goto server_process_hooks_exit;
 	}
 	*num_run += 1;
 	if (pbs_python_get_scheduler_restart_cycle_flag() == TRUE) {
@@ -4510,7 +4535,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 
 		pbs_python_do_vnode_set();
 		write_hook_reject_debug_output_and_close(emsg);
-		return (0);
+		rc = 0;
+		goto server_process_hooks_exit;
 	} else { 	/* hook request has been accepted */
 
 		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
@@ -4601,7 +4627,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					(vnode_modified?PY_EVENT_PARAM_VNODE:PY_EVENT_PARAM_JOB));
 
 				write_hook_reject_debug_output_and_close(hook_msg);
-				return (0);
+				rc = 0;
+				goto server_process_hooks_exit;
 			}
 
 			hook_msg[0] = '\0';
@@ -4614,7 +4641,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				strncpy(hook_msg, log_buffer, msg_len-1);
 				attribute_jobmap_restore(pjob, runjob_accept_attrlist);
 				write_hook_reject_debug_output_and_close(hook_msg);
-				return (0);
+				rc = 0;
+				goto server_process_hooks_exit;
 			}
 		}
 
@@ -4628,7 +4656,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			CLEAR_HEAD(event_resv);
 			req_params_out.vns_list = (pbs_list_head *)&event_vnode;
 			req_params_out.resv_list = (pbs_list_head *)&event_resv;
-			rc = pbs_python_event_to_request(hook_event, &req_params_out);
+			rc = pbs_python_event_to_request(hook_event, &req_params_out, perf_label, HOOK_PERF_HOOK_OUTPUT);
 			if (rc == -1) {
 				log_err(PBSE_INTERNAL, phook->hook_name, "error occured recreating request!");
 			}
@@ -4639,12 +4667,16 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			if (fp_debug_out != NULL)
 				fclose(fp_debug_out);
 			pbs_python_set_hook_debug_output_fp(NULL);
-			return (1);
+			rc = 1;
+			goto server_process_hooks_exit;
 		}
 	}
 
 	write_hook_accept_debug_output_and_close();
-	return (1);
+	rc = 1;
+server_process_hooks_exit:
+	hook_perf_stat_stop(perf_label, "server_process_hooks", 1);
+	return (rc);
 }
 
 /**
@@ -4668,6 +4700,7 @@ recreate_request(struct batch_request *preq)
 	hook_output_param_t req_params;
 	FILE *fp_debug = NULL;
 	char *hook_outfile = NULL;
+	char perf_label[MAXBUFLEN];		
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4697,20 +4730,24 @@ recreate_request(struct batch_request *preq)
 	hook_output_param_init(&req_params);
 	if (preq->rq_type == PBS_BATCH_QueueJob) {
 		req_params.rq_job = (struct rq_quejob *)&preq->rq_ind.rq_queuejob;
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_QUEUEJOB, preq->rq_ind.rq_queuejob.rq_jid, getpid());
 		rc = pbs_python_event_to_request(HOOK_EVENT_QUEUEJOB,
-			&req_params);
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_SubmitResv) {
 		req_params.rq_job = (struct rq_quejob *)&preq->rq_ind.rq_queuejob;
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_RESVSUB, preq->rq_ind.rq_queuejob.rq_jid, getpid());
 		rc =pbs_python_event_to_request(HOOK_EVENT_RESVSUB,
-			&req_params);
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_ModifyJob) {
 		req_params.rq_manage = (struct manage *)&preq->rq_ind.rq_modify;
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_MODIFYJOB, preq->rq_ind.rq_modify.rq_objname, getpid());
 		rc =pbs_python_event_to_request(HOOK_EVENT_MODIFYJOB,
-			&req_params);
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else if (preq->rq_type == PBS_BATCH_MoveJob) {
 		req_params.rq_move = (struct rq_move *)&preq->rq_ind.rq_move;
+		snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_MOVEJOB, preq->rq_ind.rq_move.rq_jid, getpid());
 		rc = pbs_python_event_to_request(HOOK_EVENT_MOVEJOB,
-			&req_params);
+			&req_params, perf_label, HOOK_PERF_HOOK_OUTPUT);
 	} else {
 		log_err(PBSE_INTERNAL, __func__, "unexpected request type");
 		rc = -1;

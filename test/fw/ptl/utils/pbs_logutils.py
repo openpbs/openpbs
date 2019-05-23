@@ -364,14 +364,14 @@ class PBSLogUtils(object):
         ret = []
         if lines:
             for l in lines:
+                # l.split(';', 1)[0] gets the time stamp string
+                dt_str = l.split(';', 1)[0]
                 if starttime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    tm = self.convert_date_time(dt_str)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
@@ -1844,7 +1844,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
         requested
         """
         if nodesfile or jobsfile:
-            self._server = Server(diagmap={NODE: nodesfile, JOB: jobsfile})
+            self._server = Server(snapmap={NODE: nodesfile, JOB: jobsfile})
         else:
             self._server = Server(hostname)
 

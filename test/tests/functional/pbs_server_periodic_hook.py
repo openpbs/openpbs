@@ -259,7 +259,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         This test case checks that periodic and queuejob
         event can be set for the same hook
         """
-        events = "periodic,queuejob"
+        events = ["periodic", "queuejob"]
         hook_name = "TestHook"
         hook_attrib = {'event': events, 'freq': 100}
         scr = self.create_hook(True, 10)
@@ -335,7 +335,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         expected_msg = "periodic hook started at "
         self.server.log_match(expected_msg, starttime=start_time,
-                              interval=(freq+1))
+                              interval=(freq + 1))
         self.check_next_occurances(count=1, freq=freq, hook_run_time=25,
                                    check_for_hook_end=False)
         hook_name = "exechost_periodic_hook3"
@@ -347,10 +347,10 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         self.server.create_import_hook(hook_name, attrs, scr)
         start_time = int(time.time())
         expected_msg = "periodic hook started at "
-        self.mom.log_match(expected_msg, interval=(freq+1),
+        self.mom.log_match(expected_msg, interval=(freq + 1),
                            starttime=start_time)
         expected_msg = "periodic hook ended at "
-        self.mom.log_match(expected_msg, interval=(hook_run_time+1),
+        self.mom.log_match(expected_msg, interval=(hook_run_time + 1),
                            starttime=start_time)
 
     def test_other_pbs_operations_work(self):

@@ -60,7 +60,7 @@ else:
     jid = "newjob"
 pbs.logjobmsg(jid, "server is %s" % (s.name,))
 """
-        a = {'event': 'queuejob,execjob_begin', 'enabled': 'True'}
+        a = {'event': ['queuejob', 'execjob_begin'], 'enabled': 'True'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)

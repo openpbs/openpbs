@@ -6114,6 +6114,7 @@ execute_python_prov_script(hook  *phook,
 	unsigned int		hook_event;
 	char 			*emsg = NULL;
 	hook_input_param_t	req_ptr;
+	char			perf_label[MAXBUFLEN];
 
 	if (!phook || !prov_vnode_info)
 		return rc;
@@ -6123,9 +6124,10 @@ execute_python_prov_script(hook  *phook,
 	if (phook->user != HOOK_PBSADMIN)
 		return rc;
 
+	snprintf(perf_label, sizeof(perf_label), "hook_%s_%s_%d", HOOKSTR_PROVISION, phook->hook_name, getpid());
 	req_ptr.rq_prov = (struct prov_vnode_info *)prov_vnode_info;
 	rc = pbs_python_event_set(hook_event, "root",
-		"server", &req_ptr);
+		"server", &req_ptr, perf_label);
 	if (rc == -1) { /* internal server code failure */
 		log_event(PBSEVENT_DEBUG2,
 			PBS_EVENTCLASS_HOOK, LOG_ERR, __func__,
@@ -6173,9 +6175,11 @@ execute_python_prov_script(hook  *phook,
 	}
 
 	/* let rc pass through */
-	rc=pbs_python_run_code_in_namespace(&svr_interp_data,
+	hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
+	rc = pbs_python_run_code_in_namespace(&svr_interp_data,
 		phook->script,
 		&exit_code);
+	hook_perf_stat_stop(perf_label, HOOK_PERF_RUN_CODE, 0);
 
 	/* go back to server's private directory */
 	if (chdir(path_priv) != 0) {

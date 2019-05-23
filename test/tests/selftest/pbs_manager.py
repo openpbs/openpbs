@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -34,46 +34,28 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-unsupporteddir = ${exec_prefix}/unsupported
-
-unsupported_PROGRAMS = pbs_rmget
-
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat \
-	pbs_config
+from tests.selftest import *
 
 
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini \
-	cray_readme \
-	ReliableJobStartup.py \
-	pbs_output.py
+class TestManager(TestSelf):
+    """
+    Test ptl.server.manager()
+    """
 
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@libz_lib@
-pbs_rmget_SOURCES = pbs_rmget.c
+    def test_pbs_conf(self):
+        """
+        Test setting an string array with quote characters
+        """
+        attr = {'type': 'string_array', 'flag': 'h'}
+        rc = self.server.manager(MGR_CMD_CREATE, RSC, attr, id='f')
+        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {"resources_available.f":
+                             ["A'A", 'B"B', 'C C']
+                             })
+        servers = self.server.filter(SERVER,
+                                     {'resources_available.f':
+                                      """A'A,B"B,C C"""})
+        self.logger.info(servers)
+        self.assertTrue(servers)

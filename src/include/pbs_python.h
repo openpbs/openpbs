@@ -85,6 +85,7 @@
  * ====================== IMPORTANT =======================
  */
 
+#define PBS_PYTHON_PROGRAM "pbs_python"
 struct python_interpreter_data {
 	int data_initialized;     /* data initialized */
 	int interp_started;       /* status flag*/
@@ -443,12 +444,13 @@ extern int  pbs_python_event_set(
 	unsigned int hook_event,
 	char *req_user,
 	char *req_host,
-	hook_input_param_t *req_params);
+	hook_input_param_t *req_params,
+	char *perf_label);
 
 extern void pbs_python_event_unset(void);
 
 extern int  pbs_python_event_to_request(unsigned int hook_event,
-	hook_output_param_t *req_params);
+	hook_output_param_t *req_params, char *perf_label, char *perf_action);
 
 extern int  pbs_python_event_set_attrval(char *name, char *value);
 

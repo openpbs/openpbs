@@ -1000,11 +1000,22 @@ chk_vnode_pool(attribute *pattr, void *pobject, int actmode)
  *
  * @param[in]	event_jobs_svrattrl	-	gets <attribute_name>=EVENT_JOBLIST_OBJECT data
  * 			            				Caution: svrattrl values stored in sorted order
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ * @param[in]	perf_action - passed on to hook_perf_stat* call.
+ *
  * @return	int
  * @retval	0	: success
  * @retval	-1	: failure, and free_attrlist() is used to free the memory
  *					associated with each non-NULL list parameter.
  *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 int
 pbs_python_populate_svrattrl_from_file(char *input_file,
@@ -1015,7 +1026,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	pbs_list_head *job_failed_mom_list_svrattrl,
 	pbs_list_head *job_succeeded_mom_list_svrattrl,
 	pbs_list_head *event_src_queue_svrattrl, pbs_list_head *event_aoe_svrattrl,
-	pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl)
+	pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl,
+	char *perf_label, char *perf_action)
 {
 
 	char *attr_name;
@@ -1068,6 +1080,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 		fp = stdin;
 	}
 
+	hook_perf_stat_start(perf_label, perf_action, 0);
 	if (default_svrattrl) free_attrlist(default_svrattrl);
 	if (event_svrattrl) free_attrlist(event_svrattrl);
 	if (event_job_svrattrl) free_attrlist(event_job_svrattrl);
@@ -1457,6 +1470,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	if (in_data != NULL) {
 		free(in_data);
 	}
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (0);
 
 populate_svrattrl_fail:
@@ -1479,6 +1493,7 @@ populate_svrattrl_fail:
 		free(in_data);
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (rc);
 }
 
@@ -1508,11 +1523,22 @@ populate_svrattrl_fail:
  * @param[out]	server_vnodes_svrattrl	-	gets <attribute_name>=SERVER_VNODE_OBJECT data
  * 			                				Caution: stored in sorted order.
  * @param[out]	server_vnodes_names_svrattrl	-	gets list of vnode names obtained.
+ * @param[in]	perf_label - passed on to hook_perf_stat* call.
+ * @param[in]	perf_action - passed on to hook_perf_stat* call.
  *
  * @return	int
  * @retval	0	: success
  * @retval	-1	: failure, and free_attrlist() is used to free the memory
  *					associated with each non-NULL list parameter.
+ *
+ * @note
+ *		This function calls a single hook_perf_stat_start()
+ *		that has some malloc-ed data that are freed in the
+ *		hook_perf_stat_stop() call, which is done at the end of
+ *		this function.
+ *		Ensure that after the hook_perf_stat_start(), all
+ *		program execution path lead to hook_perf_stat_stop()
+ *		call.
  */
 int
 pbs_python_populate_server_svrattrl_from_file(char *input_file,
@@ -1525,7 +1551,8 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 	pbs_list_head *server_resvs_svrattrl,
 	pbs_list_head *server_resvs_resvids_svrattrl,
 	pbs_list_head *server_vnodes_svrattrl,
-	pbs_list_head *server_vnodes_names_svrattrl)
+	pbs_list_head *server_vnodes_names_svrattrl,
+	char *perf_label, char *perf_action)
 {
 
 	char *attr_name;
@@ -1580,6 +1607,8 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 	} else {
 		fp = stdin;
 	}
+
+	hook_perf_stat_start(perf_label, perf_action, 0);
 
 	if (default_svrattrl) {
 		free_attrlist(default_svrattrl);
@@ -2061,6 +2090,7 @@ pbs_python_populate_server_svrattrl_from_file(char *input_file,
 	if (in_data != NULL) {
 		free(in_data);
 	}
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (0);
 
 populate_server_svrattrl_fail:
@@ -2113,6 +2143,7 @@ populate_server_svrattrl_fail:
 		free(in_data);
 	}
 
+	hook_perf_stat_stop(perf_label, perf_action, 0);
 	return (rc);
 }
 
@@ -2237,7 +2268,7 @@ main(int argc, char *argv[], char *envp[])
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
 	
-	if (set_msgdaemonname("pbs_python")) {
+	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -2265,13 +2296,13 @@ main(int argc, char *argv[], char *envp[])
 	/* determine the actual server name */
 	pbs_server_name = pbs_default();
 	if ((!pbs_server_name) || (*pbs_server_name == '\0')) {
-		log_err(-1, "pbs_python", "Unable to get server name");
+		log_err(-1, PBS_PYTHON_PROGRAM, "Unable to get server name");
 		return (-1);
 	}
 
 	/* determine the server host name */
 	if (get_fullhostname(pbs_server_name, server_host, PBS_MAXSERVERNAME) != 0) {
-		log_err(-1, "pbs_python", "Unable to get server host name");
+		log_err(-1, PBS_PYTHON_PROGRAM, "Unable to get server host name");
 		return (-1);
 	}
 
@@ -2505,6 +2536,9 @@ main(int argc, char *argv[], char *envp[])
 		int	print_argv = 0;
 		int	print_env = 0;
 		char	*tmp_str = NULL;
+		char	perf_label[MAXBUF];
+		char	perf_action[MAXBUFLEN];
+		char	*sp;
 
 		the_input[0] = '\0';
 		the_output[0] = '\0';
@@ -2664,6 +2698,17 @@ main(int argc, char *argv[], char *envp[])
 			exit(1);
 		}
 
+		sp = NULL;
+		if (the_input[0] != '\0') {
+			sp = strrchr(the_input, '/');
+			if (sp != NULL)
+				sp++;
+			else
+				sp = the_input;
+		}
+		snprintf(perf_label, sizeof(perf_label), "%s", sp ? sp : "stdin");
+		hook_perf_stat_start(perf_label, PBS_PYTHON_PROGRAM, 1);
+
 		CLEAR_HEAD(default_list);
 		CLEAR_HEAD(event);
 		CLEAR_HEAD(event_job);
@@ -2683,7 +2728,8 @@ main(int argc, char *argv[], char *envp[])
 			&event, &event_job, &event_job_o, &event_resv,
 			&event_vnode, &event_vnode_fail, &job_failed_mom_list,
 			&job_succeeded_mom_list, &event_src_queue,
-			&event_aoe, &event_argv, &event_jobs);
+			&event_aoe, &event_argv, &event_jobs,
+			perf_label, HOOK_PERF_LOAD_INPUT);
 		if (rc == -1) {
 			fprintf(stderr, "%s: failed to populate svrattrl \n", argv[0]);
 			exit(2);
@@ -2709,7 +2755,8 @@ main(int argc, char *argv[], char *envp[])
 				&server_jobs, &server_jobs_ids,
 				&server_queues, &server_queues_names,
 				&server_resvs, &server_resvs_resvids,
-				&server_vnodes, &server_vnodes_names);
+				&server_vnodes, &server_vnodes_names,
+				the_data, HOOK_PERF_LOAD_DATA);
 			if (rc == -1) {
 				fprintf(stderr,
 					"%s: failed to populate svrattrl \n",
@@ -2816,7 +2863,7 @@ main(int argc, char *argv[], char *envp[])
 		svr_interp_data.destroy_interpreter_data =
 			pbs_python_svr_destroy_interpreter_data;
 
-		svr_interp_data.daemon_name = strdup("pbs_python");
+		svr_interp_data.daemon_name = strdup(PBS_PYTHON_PROGRAM);
 
 		if (svr_interp_data.daemon_name == NULL) { /* should not happen */
 			fprintf(stderr, "strdup failed");
@@ -2826,7 +2873,9 @@ main(int argc, char *argv[], char *envp[])
 		(void)pbs_python_ext_alloc_python_script(hook_script,
 			(struct python_script **) &py_script);
 
+		hook_perf_stat_start(perf_label, HOOK_PERF_START_PYTHON, 0);
 		pbs_python_ext_start_interpreter(&svr_interp_data);
+		hook_perf_stat_stop(perf_label, HOOK_PERF_START_PYTHON, 0);
 		hook_input_param_init(&req_params);
 		switch (hook_event) {
 
@@ -2845,16 +2894,14 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
 				req_params.rq_job = (struct rq_quejob *)&rqj;
 				req_params.vns_list = (pbs_list_head *)&event_vnode;
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -2873,15 +2920,13 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_job,
 					&rqm.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 
 				req_params.rq_manage = (struct rq_manage *)&rqm;
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -2900,8 +2945,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				req_params.rq_move = (struct rq_move *)&rqmv;
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -2920,8 +2964,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 				req_params.rq_run = (struct rq_runjob *)&rqrun;
 
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -2940,15 +2983,13 @@ main(int argc, char *argv[], char *envp[])
 				}
 				if (copy_svrattrl_list(&event_resv,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
 				req_params.rq_job = (struct rq_queuejob *)&rqj;
 				req_params.vns_list = (pbs_list_head *)&event_vnode;
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -2975,8 +3016,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -2989,8 +3029,7 @@ main(int argc, char *argv[], char *envp[])
 					req_params.succeeded_mom_list = &job_succeeded_mom_list;
 				}
 
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -3012,8 +3051,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3043,8 +3081,7 @@ main(int argc, char *argv[], char *envp[])
 					env_str_orig = "";
 				}
 
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
@@ -3064,8 +3101,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (copy_svrattrl_list(&event_job,
 					&rqj.rq_attr) == -1) {
-					log_err(errno, "pbs_python",
-						"failed to copy event_job");
+					log_err(errno, PBS_PYTHON_PROGRAM, "failed to copy event_job");
 					rc = 1;
 					goto pbs_python_end;
 				}
@@ -3082,8 +3118,7 @@ main(int argc, char *argv[], char *envp[])
 				req_params.vns_list = (pbs_list_head *)&event_vnode;
 
 
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR,
@@ -3098,8 +3133,7 @@ main(int argc, char *argv[], char *envp[])
 				if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 					req_params.jobs_list = &event_jobs;
 				}
-				rc = pbs_python_event_set(hook_event, req_user,
-					req_host, &req_params);
+				rc = pbs_python_event_set(hook_event, req_user, req_host, &req_params, perf_label);
 
 				if (rc == -1) { /* internal server code failure */
 					log_event(PBSEVENT_DEBUG,
@@ -3156,8 +3190,10 @@ main(int argc, char *argv[], char *envp[])
 
 			rc=Py_Main(1, tmp_argv);
 		} else {
+			hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
 			rc=pbs_python_run_code_in_namespace(&svr_interp_data,
 				py_script, 0);
+			hook_perf_stat_stop(perf_label, HOOK_PERF_RUN_CODE, 0);
 		}
 		set_alarm(0, pbs_python_set_interrupt);
 
@@ -3209,6 +3245,17 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		hook_output_param_init(&req_params_out);
+
+		sp = NULL;
+		if (the_output[0] != '\0') {
+			sp = strrchr(the_output, '/');
+			if (sp != NULL)
+				sp++;
+			else
+				sp = the_output;
+		}
+		snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_HOOK_OUTPUT, sp ? sp : "stdout");
+
 		switch (hook_event) {
 
 			case HOOK_EVENT_QUEUEJOB:
@@ -3226,8 +3273,7 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 
 					req_params_out.rq_job = (struct rq_quejob *)&rqj;
-					pbs_python_event_to_request(hook_event,
-						&req_params_out);
+					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 
 					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
 						&rqj.rq_attr);
@@ -3249,8 +3295,7 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 					req_params_out.rq_manage = (struct rq_manage *)&rqm;
-					pbs_python_event_to_request(hook_event,
-						&req_params_out);
+					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
 						&rqm.rq_attr);
 				}
@@ -3270,8 +3315,7 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 					req_params_out.rq_move = (struct rq_manage *)&rqmv;
-					pbs_python_event_to_request(hook_event,
-						&req_params_out);
+					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					if ((rqmv.rq_destin != NULL) &&
 						(rqmv.rq_destin[0] != '\0'))
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_OBJECT,
@@ -3333,8 +3377,7 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
 					fprintf(fp_out, "%s=False\n", EVENT_REJECT_OBJECT);
 					req_params_out.rq_job = (struct rq_quejob *)&rqj;
-					pbs_python_event_to_request(hook_event,
-						&req_params_out);
+					pbs_python_event_to_request(hook_event, &req_params_out, perf_label, perf_action);
 					fprint_svrattrl_list(fp_out, EVENT_RESV_OBJECT,
 						&rqj.rq_attr);
 				}
@@ -3397,7 +3440,7 @@ main(int argc, char *argv[], char *envp[])
 				req_params_out.rq_job = (struct rq_quejob *)&rqj;
 				req_params_out.vns_list = (pbs_list_head *)&event_vnode;
 				pbs_python_event_to_request(hook_event,
-					&req_params_out);
+					&req_params_out, perf_label, perf_action);
 				fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
 					&rqj.rq_attr);
 				fprint_svrattrl_list(fp_out,
@@ -3505,7 +3548,7 @@ main(int argc, char *argv[], char *envp[])
 					req_params_out.jobs_list = (pbs_list_head *)&event_jobs;
 				}
 				pbs_python_event_to_request(hook_event,
-					&req_params_out);
+					&req_params_out, perf_label, perf_action);
 
 				fprint_svrattrl_list(fp_out, EVENT_VNODELIST_OBJECT,
 					&event_vnode);
@@ -3552,6 +3595,7 @@ pbs_python_end:
 				SERVER_OBJECT,
 				PY_SCHEDULER_RESTART_CYCLE_METHOD);
 		}
+
 		if ((fp_out != NULL) && (fp_out != stdout))
 			fclose(fp_out);
 
@@ -3572,6 +3616,8 @@ pbs_python_end:
 			free(progname);
 		if (env_str != NULL)
 			free(env_str);
+
+		hook_perf_stat_stop(perf_label, PBS_PYTHON_PROGRAM, 1);
 	}
 
 	return rc;

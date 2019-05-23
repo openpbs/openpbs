@@ -171,7 +171,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		return NULL;
 
 	err = new_schd_error();
-	if(err == NULL)
+	if (err == NULL)
 		return NULL;
 
 	cur_resv = resvs;
@@ -184,7 +184,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 	if ((resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *)
 		* (num_resv + 1))) == NULL) {
 		log_err(errno, "query_reservations", MEM_ERR_MSG);
-		pbs_statfree(resvs);
 		free_schd_error(err);
 		return NULL;
 	}
@@ -195,7 +194,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		/* convert resv info from server batch_status into resv_info */
 		if ((resresv = query_resv(cur_resv, sinfo)) == NULL) {
-			pbs_statfree(resvs);
 			free_resource_resv_array(resresv_arr);
 			free_schd_error(err);
 			return NULL;
@@ -442,7 +440,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				if ((tmp = (resource_resv **) realloc(resresv_arr,
 					sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
 					log_err(errno, "query_reservations", MEM_ERR_MSG);
-					pbs_statfree(resvs);
 					free_resource_resv_array(resresv_arr);
 					free_execvnode_seq(tofree);
 					free(execvnodes_seq);
@@ -459,7 +456,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				/* Do not attempt to re-confirm a degraded reservations with a
 				 * retry time in the past that is currently in state running */
 				if (resresv->resv->resv_state == RESV_RUNNING &&
-					resresv->resv->resv_substate == RESV_DEGRADED &&
+					(resresv->resv->resv_substate == RESV_DEGRADED || resresv->resv->resv_substate == RESV_IN_CONFLICT) &&
 					resresv->resv->retry_time <= sinfo->server_time)
 					resresv->resv->retry_time = (sinfo->server_time) + 1;
 
@@ -486,7 +483,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 							log_err(errno,
 								"query_reservations",
 								"Error duplicating resource reservation");
-							pbs_statfree(resvs);
 							free_resource_resv_array(resresv_arr);
 							free_execvnode_seq(tofree);
 							free(execvnodes_seq);
@@ -565,7 +561,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		}
 	}
 
-	pbs_statfree(resvs);
 	free_schd_error(err);
 
 	return resresv_arr;
@@ -734,9 +729,10 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	 * handled as an UNCONFIRMED reservation when its resources are to be
 	 * replaced.
 	 */
-	if (advresv->resv->resv_state ==RESV_DEGRADED) {
+	if (advresv->resv->resv_state == RESV_DEGRADED) {
 		advresv->resv->resv_state = RESV_CONFIRMED;
-		advresv->resv->resv_substate = RESV_DEGRADED;
+		if (advresv->resv->resv_substate != RESV_IN_CONFLICT)
+			advresv->resv->resv_substate = RESV_DEGRADED;
 	}
 	return advresv;
 }
@@ -973,7 +969,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				 * universe. These resources will be replaced by the newly allocated
 				 * ones from the simulated server universe.
 				 */
-				if (nresv->resv->resv_substate == RESV_DEGRADED)
+				if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT)
 					release_nodes(sinfo->resvs[i]);
 
 				/* the number of occurrences is set during the confirmation process */
@@ -1029,7 +1025,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * previous scheduling cycle. We retrieve the existing object from
 						 * the all_resresv list
 						 */
-						if (nresv->resv->resv_substate == RESV_DEGRADED) {
+						if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 							nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 								nresv_copy->name, nresv->resv->occr_start_arr[j]);
 							if (nresv_copy == NULL) {
@@ -1075,7 +1071,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					 * processing a degraded reservation as otherwise, the resources
 					 * had already been added to the real universe in query_reservations
 					 */
-					if (nresv_copy->resv->resv_substate != RESV_DEGRADED) {
+					if (nresv_copy->resv->resv_substate != RESV_DEGRADED && nresv_copy->resv->resv_substate != RESV_IN_CONFLICT) {
 						timed_event *te_start;
 						timed_event *te_end;
 						te_start = create_event(TIMED_RUN_EVENT, nresv_copy->start,
@@ -1116,7 +1112,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				 * the all_resresv list and update the retry_time to break out of
 				 * the main loop that checks for reservations that need confirmation
 				 */
-				if (nresv->resv->resv_substate == RESV_DEGRADED) {
+				if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 					for (j = 0; j < nresv->resv->count; j++) {
 						nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 							nresv->name, nresv->resv->occr_start_arr[j]);
@@ -1328,7 +1324,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			 * real universe, so instead of duplicating the parent reservation, it
 			 * is retrieved from the duplicated real server universe
 			 */
-			if (nresv->resv->resv_substate == RESV_DEGRADED) {
+			if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 				nresv_copy = find_resource_resv_by_time(nsinfo->all_resresv,
 					nresv->name, next);
 				if (nresv_copy == NULL) {
@@ -1387,18 +1383,19 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * are, then resources allocated to this reservation are released and the
 		 * reconfirmation proceeds.
 		 */
-		if (nresv->resv->resv_substate == RESV_DEGRADED) {
+		if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 			/* determine the number of vnodes associated to the reservation that are
 			 * unavailable. If none, then this reservation or occurrence does not
 			 * require reconfirmation.
 			 */
 			vnodes_down = check_vnodes_down(nresv->ninfo_arr, &tot_vnodes,
 				names_of_down_vnodes);
-			if (vnodes_down == -1) {
+
+			if (vnodes_down == -1 && nresv->resv->resv_substate != RESV_IN_CONFLICT) {
 				rconf = RESV_CONFIRM_FAIL;
 				break;
 			}
-			else if (vnodes_down > 0)
+			else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT)
 				release_nodes(nresv);
 			else if (vnodes_down == 0) {
 				/* this occurrence doesn't require reconfirmation so skip it by
@@ -1506,7 +1503,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				(void) translate_fail_code(err, NULL, logmsg);
 
 				/* If the reservation is degraded, we log a message and continue */
-				if (nresv->resv->resv_substate == RESV_DEGRADED) {
+				if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 					pbs_asprintf(&msgbuf, "Reservation Failed to Reconfirm: %s", logmsg);
 					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 						nresv->name, msgbuf);
@@ -1826,7 +1823,7 @@ int will_confirm(resource_resv *resv, time_t server_time) {
 	if (resv->resv->resv_state == RESV_UNCONFIRMED ||
 		resv->resv->resv_state == RESV_BEING_ALTERED ||
 		((resv->resv->resv_state != RESV_RUNNING &&
-		resv->resv->resv_substate == RESV_DEGRADED &&
+		(resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_substate == RESV_IN_CONFLICT) &&
 		resv->resv->retry_time != UNSPECIFIED &&
 		resv->resv->retry_time <= server_time)))
 		return 1;

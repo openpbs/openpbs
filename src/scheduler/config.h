@@ -167,8 +167,6 @@
 #define PARSE_OPT_BACKFILL_FUZZY_TIME "opt_backfill_fuzzy_time"
 
 /* deprecated */
-#define PARSE_SORT_BY "sort_by"
-#define PARSE_KEY "key"
 #define PARSE_PREEMPT_STARVING "preempt_starving"
 #define PARSE_PREEMPT_FAIRSHARE "preempt_fairshare"
 #define PARSE_LOAD_BALANCING_RR "load_balancing_rr"

@@ -85,6 +85,8 @@ dist_libexec_SCRIPTS = \
 	pbs_init.d \
 	pbs_pgsql_env.sh \
 	pbs_postinstall \
+	pbs_preuninstall \
+	pbs_posttrans \
 	pbs_schema_upgrade
 
 dist_bin_SCRIPTS = \

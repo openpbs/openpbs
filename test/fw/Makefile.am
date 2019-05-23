@@ -72,7 +72,8 @@ ptlbindir = $(exec_prefix)/unsupported/fw/bin
 dist_ptlbin_SCRIPTS = \
 	bin/pbs_stat \
 	bin/pbs_loganalyzer \
-	bin/pbs_snapshot
+	bin/pbs_snapshot \
+	bin/pbs_config
 
 dist_ptlmodule_PYTHON = ptl/__init__.py
 
@@ -113,8 +114,9 @@ install-data-hook:
 	cd $(DESTDIR)$(ptlbindir) && \
 	mv pbs_stat pbs_stat.py && \
 	mv pbs_loganalyzer pbs_loganalyzer.py && \
-	mv pbs_snapshot pbs_snapshot.py
+	mv pbs_snapshot pbs_snapshot.py && \
+	mv pbs_config pbs_config.py
 
 uninstall-hook:
 	cd $(DESTDIR)$(ptlbindir) && \
-	rm -f pbs_stat.py pbs_loganalyzer.py pbs_snapshot.py
+	rm -f pbs_stat.py pbs_loganalyzer.py pbs_snapshot.py pbs_config.py
