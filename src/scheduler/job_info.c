@@ -2898,12 +2898,9 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by requeuing");
 				} else {
-					update_universe_on_end(policy, job, "Q", NO_FLAGS);
+					update_universe_on_end(policy, job, "X", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by deletion");
-					/* Emulate a deleted job by requeuing it and marking it as can_not_run.  
-					 * It will be ignored for the rest of the cycle
-					 */
 					job->can_not_run = 1;
 				}
 				update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);

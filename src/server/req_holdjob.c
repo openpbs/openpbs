@@ -147,7 +147,7 @@ req_holdjob(struct batch_request *preq)
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
 		/* Need to check if the subjob is being preempted */
 		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
-		if(pjob != NULL && pjob->ji_pmt_preq != NULL)
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_IVALREQ, PREEMPT_METHOD_CHECKPOINT, pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
@@ -165,7 +165,7 @@ req_holdjob(struct batch_request *preq)
 
 	if ((rc = get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_IVALREQ, PREEMPT_METHOD_CHECKPOINT, pjob);
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 		req_reject(rc, 0, preq);
 		return;
 	}

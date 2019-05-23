@@ -791,8 +791,13 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, "Delete forced");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
+			/* 
+			 * If we are waiting for preemption to be complete and someone does a qdel -Wforce
+			 * we need to reply back to the scheduler.  We need to reply back as a failed
+			 * preemption because the moms will still be cleaning up the job 
+			 */
 			if (pjob->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
+				reply_preempt_jobs_request(PBSE_INTERNAL, PREEMPT_METHOD_DELETE, pjob);
 			reply_ack(preq);
 			discard_job(pjob, "Forced Delete", 1);
 			rel_resc(pjob);
@@ -1295,6 +1300,8 @@ resend:
 			 * server crash, when post_sendmom completes.
 			 */
 			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN) {
+				if (pjob->ji_pmt_preq != NULL)
+					reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 				req_reject(rc, 0, preq_clt);
 				return;
 			}
@@ -1307,6 +1314,8 @@ resend:
 			reply_ack(preq_clt);
 			svr_saveorpurge_finjobhist(pjob);
 		} else {
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 			req_reject(rc, 0, preq_clt);
 		}
 		return;
