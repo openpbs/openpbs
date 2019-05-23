@@ -334,7 +334,6 @@ job_alloc(void)
 	CLEAR_LINK(pj->ji_unlicjobs);
 
 	pj->ji_rerun_preq = NULL;
-	pj->ji_pmt_preq = NULL;
 
 #ifdef	PBS_MOM
 	CLEAR_HEAD(pj->ji_tasks);
@@ -374,6 +373,7 @@ job_alloc(void)
 	pj->ji_setup = NULL;
 #else	/* SERVER */
 	pj->ji_prunreq = NULL;
+	pj->ji_pmt_preq = NULL;
 	CLEAR_HEAD(pj->ji_svrtask);
 	CLEAR_HEAD(pj->ji_rejectdest);
 	pj->ji_terminated = 0;

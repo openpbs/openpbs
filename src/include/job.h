@@ -516,7 +516,9 @@ struct job {
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* rpp or tcp */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
+#ifndef PBS_MOM
 	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
+#endif /* PBS_MOM */
 	int ji_licneed;			/* # of cpu licenses needed by job */
 	int		ji_licalloc;	/* actual # of cpu licenses allocated */
 #ifdef	PBS_MOM				/* MOM ONLY */
