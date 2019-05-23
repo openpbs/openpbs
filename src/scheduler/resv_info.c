@@ -1031,8 +1031,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * the all_resresv list
 						 */
 						if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
-							nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
-								nresv_copy->name, nresv->resv->occr_start_arr[j]);
+							nresv_copy = find_resource_resv_by_time_index(sinfo->all_resresv,
+								nresv_copy->name, nresv->resv->occr_start_arr[j], -1);
 							if (nresv_copy == NULL) {
 								schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
 									LOG_INFO, nresv->name,
@@ -1119,8 +1119,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				 */
 				if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 					for (j = 0; j < nresv->resv->count; j++) {
-						nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
-							nresv->name, nresv->resv->occr_start_arr[j]);
+						nresv_copy = find_resource_resv_by_time_index(sinfo->all_resresv,
+							nresv->name, nresv->resv->occr_start_arr[j], -1);
 						if (nresv_copy == NULL) {
 							schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
 								LOG_INFO, nresv->name,
@@ -1330,8 +1330,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			 * is retrieved from the duplicated real server universe
 			 */
 			if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
-				nresv_copy = find_resource_resv_by_time(nsinfo->all_resresv,
-					nresv->name, next);
+				nresv_copy = find_resource_resv_by_time_index(nsinfo->all_resresv,
+					nresv->name, next, -1);
 				if (nresv_copy == NULL) {
 					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 						"Error determining if reservation can be confirmed: "

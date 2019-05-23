@@ -1216,13 +1216,8 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_user_run == SCHD_INFINITY) &&
-		(max_genuser_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*user_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genuser_run == SCHD_INFINITY))
 		return (0);
-	}
 
 
 	/* at this point, we know a generic or individual limit is set */
@@ -1288,13 +1283,8 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_group_run == SCHD_INFINITY) &&
-		(max_gengroup_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*group_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_gengroup_run == SCHD_INFINITY))
 		return (0);
-	}
 
 
 	/* at this point, we know a generic or individual limit is set */
@@ -1473,13 +1463,8 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_user_run == SCHD_INFINITY) &&
-		(max_genuser_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*user_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genuser_run == SCHD_INFINITY))
 		return (0);
-	}
 
 
 	/* at this point, we know a generic or individual limit is set */
@@ -1545,13 +1530,8 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_group_run == SCHD_INFINITY) &&
-		(max_gengroup_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*group_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_gengroup_run == SCHD_INFINITY))
 		return (0);
-	}
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, group, NULL);
@@ -1739,13 +1719,8 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		max_res = lim_get(reskey, LI2RESCTX(qi->liminfo));
 		free(reskey);
 
-		if (max_res == SCHD_INFINITY) {
-			(void) sprintf(log_buffer, "%s max_res.%s is unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		if (max_res == SCHD_INFINITY)
 			continue;
-		}
 
 		if ((used_res = find_resource_req(c->rescts, res->def)) == NULL)
 			used = 0;
@@ -1820,13 +1795,8 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		max_res = lim_get(reskey, LI2RESCTX(si->liminfo));
 		free(reskey);
 
-		if (max_res == SCHD_INFINITY) {
-			(void) sprintf(log_buffer, "%s max_res.%s is unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		if (max_res == SCHD_INFINITY)
 			continue;
-		}
 
 		if ((used_res = find_resource_req(c->rescts, res->def)) == NULL)
 			used = 0;
@@ -2246,13 +2216,8 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	free(key);
 
 	if ((max_user_run_soft == SCHD_INFINITY) &&
-		(max_genuser_run_soft == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*user_run_soft are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genuser_run_soft == SCHD_INFINITY))
 		return (0);
-	}
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->user_counts, user, NULL);
@@ -2312,13 +2277,8 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	free(key);
 
 	if ((max_group_run_soft == SCHD_INFINITY) &&
-		(max_gengroup_run_soft == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*group_run_soft are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_gengroup_run_soft == SCHD_INFINITY))
 		return (0);
-	}
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->group_counts, group, NULL);
@@ -2440,13 +2400,9 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		max_res_soft = lim_get(reskey, LI2RESCTXSOFT(si->liminfo));
 		free(reskey);
 
-		if (max_res_soft == SCHD_INFINITY) {
-			(void) sprintf(log_buffer, "%s max_res_soft.%s is unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		if (max_res_soft == SCHD_INFINITY)
 			continue;
-		}
+
 		if ((used_res = find_resource_req(c->rescts, res->def)) == NULL)
 			used = 0;
 		else
@@ -2508,13 +2464,8 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		max_res_soft = lim_get(reskey, LI2RESCTXSOFT(qi->liminfo));
 		free(reskey);
 
-		if (max_res_soft == SCHD_INFINITY) {
-			(void) sprintf(log_buffer, "%s max_res_soft.%s is unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		if (max_res_soft == SCHD_INFINITY)
 			continue;
-		}
 
 		if ((used_res = find_resource_req(c->rescts, res->def)) == NULL)
 			used = 0;
@@ -2586,14 +2537,8 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 		free(gengroupreskey);
 
 		if ((max_group_res == SCHD_INFINITY) &&
-			(max_gengroup_res == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*group_res.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_gengroup_res == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->name);
@@ -2669,14 +2614,8 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
 		free(gengroupreskey);
 
 		if ((max_group_res_soft == SCHD_INFINITY) &&
-			(max_gengroup_res_soft == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*group_res_soft.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_gengroup_res_soft == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->name);
@@ -2752,14 +2691,8 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 		free(genuserreskey);
 
 		if ((max_user_res == SCHD_INFINITY) &&
-			(max_genuser_res == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*user_res.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_genuser_res == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->name);
@@ -2838,14 +2771,8 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		free(genuserreskey);
 
 		if ((max_user_res_soft == SCHD_INFINITY) &&
-			(max_genuser_res_soft == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*user_res_soft.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_genuser_res_soft == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->name);
@@ -3279,16 +3206,8 @@ lim_get(const char *param, void *ctx)
 		sch_resource_t	v;
 
 		v = res_to_num(retptr, NULL);
-		(void) sprintf(log_buffer, "param:  %s, retptr:  %s, v:  %.1lf",
-			param, retptr, v);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-			log_buffer);
 		return (v);
 	} else {
-		(void) sprintf(log_buffer, "entlim_get(%s) returned NULL",
-			param);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-			log_buffer);
 		return (SCHD_INFINITY);
 	}
 }
@@ -3414,14 +3333,8 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 		free(genprojectreskey);
 
 		if ((max_project_res == SCHD_INFINITY) &&
-			(max_genproject_res == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*project_res.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_genproject_res == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->name);
@@ -3498,14 +3411,8 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
 		free(genprojectreskey);
 
 		if ((max_project_res_soft == SCHD_INFINITY) &&
-			(max_genproject_res_soft == SCHD_INFINITY)) {
-			(void) sprintf(log_buffer,
-				"%s max_*project_res_soft.%s are unset",
-				rr->name, res->name);
-			schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+			(max_genproject_res_soft == SCHD_INFINITY))
 			continue;
-		}
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->name);
@@ -3633,13 +3540,9 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	free(key);
 
 	if ((max_project_run_soft == SCHD_INFINITY) &&
-		(max_genproject_run_soft == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*project_run_soft are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genproject_run_soft == SCHD_INFINITY))
 		return (0);
-	}
+
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->project_counts, project, NULL);
@@ -3892,13 +3795,8 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_project_run == SCHD_INFINITY) &&
-		(max_genproject_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*project_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genproject_run == SCHD_INFINITY))
 		return (0);
-	}
 
 
 	/* at this point, we know a generic or individual limit is set */
@@ -3971,13 +3869,8 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 	if ((max_project_run == SCHD_INFINITY) &&
-		(max_genproject_run == SCHD_INFINITY)) {
-		(void) sprintf(log_buffer, "%s max_*project_run are unset",
-			rr->name);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			__func__, log_buffer);
+		(max_genproject_run == SCHD_INFINITY))
 		return (0);
-	}
 
 
 	/* at this point, we know a generic or individual limit is set */

@@ -1285,8 +1285,8 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 		case TIMED_END_EVENT:
 			oep = (resource_resv *) ote->event_ptr;
 			event_ptr =
-				find_resource_resv_by_time(nsinfo->all_resresv,
-				oep->name, oep->start);
+				find_resource_resv_by_time_index(nsinfo->all_resresv,
+				oep->name, oep->start, oep->resresv_ind);
 
 			if (event_ptr == NULL) {
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,
