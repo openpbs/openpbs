@@ -37,7 +37,7 @@
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "0MB",
-            "reserve_percent"    : "0",
+            "reserve_percent"    : 0,
             "reserve_amount"     : "0MB"
         },
         "memory" : {
@@ -46,7 +46,7 @@
             "exclude_vntypes"    : [],
             "soft_limit"         : false,
             "default"            : "256MB",
-            "reserve_percent"    : "0",
+            "reserve_percent"    : 0,
             "reserve_amount"     : "64MB"
         },
         "memsw" : {
@@ -54,7 +54,7 @@
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",
-            "reserve_percent"    : "0",
+            "reserve_percent"    : 0,
             "reserve_amount"     : "64MB"
         }
     }
