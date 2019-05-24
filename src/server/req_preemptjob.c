@@ -92,6 +92,8 @@ static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id) {
 /**
  * @brief create a local batch_request for a suspend request
  * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for suspend
  */ 
 static struct batch_request *create_suspend_request(char *job_id) 
 {
@@ -101,13 +103,15 @@ static struct batch_request *create_suspend_request(char *job_id)
 	if (newreq == NULL) 
 		return NULL;
 	snprintf(newreq->rq_ind.rq_signal.rq_jid, sizeof(newreq->rq_ind.rq_signal.rq_jid), "%s", job_id);
-	snprintf(newreq->rq_ind.rq_signal.rq_signame, sizeof(newreq->rq_ind.rq_signal.rq_signame), "%s", "suspend");
+	snprintf(newreq->rq_ind.rq_signal.rq_signame, sizeof(newreq->rq_ind.rq_signal.rq_signame), "%s", SIG_SUSPEND);
 	return newreq;
 }
 
 /**
  * @brief create a local batch_request for a checkpoint request
  * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for holdjob (checkpoint)
  */
 
 static struct batch_request *create_ckpt_request(char *job_id) 
@@ -139,6 +143,8 @@ static struct batch_request *create_ckpt_request(char *job_id)
 /**
  * @brief create a local batch_request for a requeue request
  * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for rerun (requeue)
  */
 
 static struct batch_request *create_requeue_request(char *job_id) 
@@ -156,6 +162,8 @@ static struct batch_request *create_requeue_request(char *job_id)
 /**
  * @brief create a local batch_request for a delete request
  * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for delete
  */
 
 static struct batch_request *create_delete_request(char *job_id)
@@ -303,7 +311,7 @@ req_preemptjobs(struct batch_request *preq)
 	for (i = 0; i < count; i++) {
 		ppj = &(preq->rq_ind.rq_preempt.ppj_list[i]);
 		pjob = find_job(ppj->job_id);
-		/* The job is already out of the way.  This must of happened after the scheduler
+		/* The job is already out of the way. This must have happened after the scheduler
 		 * queried the universe and before it tried to preempt the jobs.
 		 * Regardless of the preempt_order, use the correct reply code to what
 		 * actually happened so the scheduler correctly handles the job.

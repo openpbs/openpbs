@@ -1429,6 +1429,9 @@ on_job_rerun(struct work_task *ptask)
 				if (handle != -1 && pjob->ji_mom_prot == PROT_TCP)
 					svr_disconnect(handle);
 
+				if (pjob->ji_pmt_preq != NULL)
+					reply_preempt_jobs_request(PBSE_SISCOMM, PREEMPT_METHOD_DELETE, pjob);
+				
 				discard_job(pjob, "A sister Mom failed to delete job", 0);
 				return;
 			} else if ((preq->rq_reply.brp_code == DIS_EOF) ||

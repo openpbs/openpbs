@@ -145,7 +145,10 @@ req_holdjob(struct batch_request *preq)
 	if (pjob == NULL)
 		return;
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
-		/* Need to check if the subjob is being preempted */
+		/*
+		 * We need to find the job again because chk_job_request() will return
+		 * the parent array if the job is a subjob.
+		 */
 		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
 		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_IVALREQ, PREEMPT_METHOD_CHECKPOINT, pjob);
@@ -174,7 +177,7 @@ req_holdjob(struct batch_request *preq)
 
 	if ((rc = chk_hold_priv(temphold.at_val.at_long, preq->rq_perm)) != 0) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_PERM, PREEMPT_METHOD_CHECKPOINT, pjob);
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 
 		req_reject(rc, 0, preq);
 		return;
@@ -454,6 +457,15 @@ post_hold(struct work_task *pwt)
 	preq->rq_conn = preq->rq_orgconn;	/* restore client socket */
 	
 	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+
+	if (pjob == NULL) {
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			  preq->rq_ind.rq_hold.rq_orig.rq_objname,
+			  msg_postmomnojob);
+		req_reject(PBSE_UNKJOBID, 0, preq);
+		return;
+	}
+
 	if (pwt->wt_aux2 != 1) { /* not rpp */
 		conn = get_conn(preq->rq_conn);
 
@@ -468,16 +480,6 @@ post_hold(struct work_task *pwt)
 		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 	}
 
-	if (pjob  == NULL) {
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			preq->rq_ind.rq_hold.rq_orig.rq_objname,
-			msg_postmomnojob);
-		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_CHECKPOINT, pjob);
-		else
-			req_reject(PBSE_UNKJOBID, 0, preq);
-		return;
-	}
 	if (code != 0) {
 		/* Checkpoint failed, remove checkpoint flags from job */
 		pjob->ji_qs.ji_svrflags &= ~(JOB_SVFLG_HASHOLD | JOB_SVFLG_CHKPT);

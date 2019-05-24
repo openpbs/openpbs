@@ -105,25 +105,26 @@ post_rerun(struct work_task *pwt)
 
 	pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
 
-	if (preq->rq_reply.brp_code != 0) {
-		if (pjob != NULL) {
+	if (pjob != NULL) {
+		if (preq->rq_reply.brp_code != 0) {
 			(void)sprintf(log_buffer, "rerun signal reject by mom: %d",
-				preq->rq_reply.brp_code);
+				      preq->rq_reply.brp_code);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-				preq->rq_ind.rq_signal.rq_jid, log_buffer);
+				  preq->rq_ind.rq_signal.rq_jid, log_buffer);
 
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(preq->rq_reply.brp_code, PREEMPT_METHOD_REQUEUE, pjob);
 
 			if ((preq->rq_reply.brp_code == PBSE_UNKJOBID) &&
-				(preq->rq_extra == 0)) {
+			    (preq->rq_extra == 0)) {
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 				discard_job(pjob, "Force rerun", 1);
 				force_reque(pjob);
 			}
 		}
-	} else if (pjob->ji_pmt_preq != NULL)
-		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
+		else if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
+	}
 
 	release_req(pwt);
 	return;

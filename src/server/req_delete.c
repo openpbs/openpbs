@@ -421,8 +421,10 @@ req_deletejob(struct batch_request *preq)
 		}
 
 		if ((i == JOB_STATE_EXITING) && (forcedel == 0)) {
-			if (parent->ji_pmt_preq != NULL) 
-				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, parent);
+			if (parent->ji_pmt_preq != NULL) {
+				pjob = find_job(jid);
+				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
+			}
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		} else if (i == JOB_STATE_EXPIRED) {

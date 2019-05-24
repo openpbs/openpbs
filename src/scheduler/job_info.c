@@ -2879,6 +2879,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job->name, "Job failed to be deleted");
 			}
 			else {
+				int update_accrue_type = 1;
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
 					/* Set resources_released and execselect on the job */
@@ -2902,8 +2903,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by deletion");
 					job->can_not_run = 1;
+					update_accrue_type = 0;
 				}
-				update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
+				if (update_accrue_type)
+					update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
 				job->job->is_preempted = 1;
 				job->job->time_preempted = sinfo->server_time;
 				sinfo->num_preempted++;

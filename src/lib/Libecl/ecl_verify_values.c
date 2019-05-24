@@ -1903,7 +1903,9 @@ verify_value_preempt_order(int batch_request, int parent_object, int cmd,
 				s_done = 0;
 				c_done = 0;
 				r_done = 0;
-			} else
+				d_done = 0;
+			}
+			else
 				return PBSE_BADATVAL;
 			tok = strtok_r(NULL, "\t ", &save_ptr);
 		} while (tok != NULL && i < PREEMPT_ORDER_MAX);
