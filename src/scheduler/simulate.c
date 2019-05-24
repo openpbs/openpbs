@@ -1284,9 +1284,16 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 		case TIMED_RUN_EVENT:
 		case TIMED_END_EVENT:
 			oep = (resource_resv *) ote->event_ptr;
-			event_ptr =
-				find_resource_resv_by_time_index(nsinfo->all_resresv,
-				oep->name, oep->start, oep->resresv_ind);
+			if (oep->is_resv)
+				event_ptr =
+					find_resource_resv_by_time(nsinfo->all_resresv,
+					oep->name, oep->start);
+			else
+				/* In case of jobs there can be only one occurance of job in
+				 * all_resresv list, so no need to search using start time of job
+				 */
+				event_ptr = find_resource_resv_by_indrank(nsinfo->all_resresv, 
+					    oep->rank, oep->resresv_ind);
 
 			if (event_ptr == NULL) {
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,

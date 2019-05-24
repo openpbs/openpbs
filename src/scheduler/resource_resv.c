@@ -543,8 +543,6 @@ find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index)
  * @param[in]	resresv_arr -	array of resource_resvs to search
  * @param[in]	name        -	name of resource_resv to find
  * @param[in]	start_time  -	the start time of the resource_resv
- * @param[in]	index	    -	index of resource_resv in all_resresv array
- *				It is ignored when negative
  *
  * @return	resource_resv *
  * @retval	resource_resv	: if found
@@ -552,14 +550,11 @@ find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index)
  *
  */
 resource_resv *
-find_resource_resv_by_time_index(resource_resv **resresv_arr, char *name, time_t start_time, int index)
+find_resource_resv_by_time(resource_resv **resresv_arr, char *name, time_t start_time)
 {
 	int i;
 	if (resresv_arr == NULL || name == NULL)
 		return NULL;
-
-	if ((index >= 0) && (resresv_arr[index]->start == start_time))
-		return resresv_arr[index];
 
 	for (i = 0; resresv_arr[i] != NULL;i++) {
 		if ((strcmp(resresv_arr[i]->name, name) == 0) && (resresv_arr[i]->start == start_time))
@@ -1351,8 +1346,8 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 					next_occr_time = get_occurrence(resresv->resv->rrule,
 						resresv->resv->req_start, resresv->resv->timezone, 2);
 					if (next_occr_time >= 0) {
-						next_occr = find_resource_resv_by_time_index(resresv->server->resvs,
-							resresv->name, next_occr_time, -1);
+						next_occr = find_resource_resv_by_time(resresv->server->resvs,
+							resresv->name, next_occr_time);
 						if (next_occr != NULL) {
 							if (resv_queue->jobs != NULL) {
 								for (i = 0; resv_queue->jobs[i] != NULL; i++) {

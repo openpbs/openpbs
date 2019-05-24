@@ -496,7 +496,7 @@ exit 0
         a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER)+"=1]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        # submit a bunch of jobs under projectrB
+        # submit a bunch of jobs under ProjectB
         a = {ATTR_l + '.select=1:ncpus': 1, ATTR_project: "ProjectB"}
         for _ in range(2000):
             j = Job(TEST_USER2, attrs=a)
