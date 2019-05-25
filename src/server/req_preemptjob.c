@@ -239,16 +239,12 @@ static void clear_preempt_hold(job *pjob)
 	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
 	job_attr_def[(int)JOB_ATR_hold].at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
 					       &temphold, DECR);
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 
 	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
 		pjob->ji_modified = 1; /* indicates attributes changed    */
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
-
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 	}
 	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
 		job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
@@ -320,7 +316,6 @@ req_preemptjobs(struct batch_request *preq)
 			sprintf(preempt_jobs_list[preempt_index].job_id, "%s", ppj->job_id);
 			strcpy(preempt_jobs_list[preempt_index].order, "D");
 			preempt_index++;
-			job_preempt_fail(preq, ppj->job_id);
 			continue;
 		}
 
@@ -333,6 +328,7 @@ req_preemptjobs(struct batch_request *preq)
 					break;
 				case JOB_STATE_EXPIRED:
 				case JOB_STATE_FINISHED:
+				case JOB_STATE_MOVED:
 					strcpy(preempt_jobs_list[preempt_index].order, "D");
 					preempt_index++;
 					break;

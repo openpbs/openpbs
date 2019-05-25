@@ -2714,6 +2714,13 @@ discard_job(job *pjob, char *txt, int noack)
 	int	 rc;
 	int	 rver;
 
+	/* We're about to discard the job, reply to a preemption. 
+	 * This serves as a catch all just incase the code doesn't reply on its own.
+	 */
+
+	if (pjob->ji_pmt_preq != NULL)
+		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
+
 	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
 		/*  no exec_vnode list from which to work */
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
