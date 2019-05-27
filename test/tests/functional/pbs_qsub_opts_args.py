@@ -143,7 +143,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
 
     def test_qsub_with_option_a(self):
         """
-        submit a job with an execution time and should accept
+        Test submission of job with execution time(future and past)
         """
         self.server.manager(MGR_CMD_SET, NODE,
                             {'resources_available.ncpus': 2},
