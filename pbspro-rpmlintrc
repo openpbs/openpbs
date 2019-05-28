@@ -5,6 +5,7 @@ addFilter("non-standard-executable-perm .*pbs_iff")
 addFilter("setuid-binary .*pbs_iff")
 addFilter("non-standard-executable-perm .*pbs_rcp")
 addFilter("setuid-binary .*pbs_rcp")
+addFilter("only-non-binary-in-usr-lib")
 # FIXME: The following errors need to be addressed rather than ignored
 addFilter('permissions-file-setuid-bit')
 setBadness('permissions-file-setuid-bit', 0)
