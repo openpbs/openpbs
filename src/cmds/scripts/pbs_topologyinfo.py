@@ -44,135 +44,128 @@ import math
 import platform
 
 
-def reportsockets_win(f):
-    temp = f.read().split(',')
-    for item in temp:
-        if item.find('sockets:') != -1:
-            sockets = int(item[8:])  # len('sockets:') = 8
-        if item.find('gpus:') != -1:
-            gpus = int(item[5:])  # len('gpus:') = 5
-        if item.find('mics:') != -1:
-            coproc = int(item[5:])  # len('mics:') = 5
-    return (sockets, gpus, coproc)
+class Inventory(object):
+    """
+    This class is used to parse the inventory details
+    and hold the device information
+    """
 
+    def reset(self):
+        self.nsockets = 0
+        self.nnodes = 0
+        self.hwloclatest = 0
+        self.CrayVersion = "0.0"
+        self.ndevices = 0
 
-def latest_hwloc(hwlocVersion):
-    hwlocVersion = hwlocVersion.split('.')
-    major = int(hwlocVersion[0])
-    minor = int(hwlocVersion[1]) if len(hwlocVersion) > 1 else 0
-    if ((major == 1) and (minor >= 11)) or (major > 1):
-        return 1
-    return 0
+    def __init__(self):
+        self.reset()
 
-
-try:
-    import xml.parsers.expat
-    from xml.parsers.expat import ExpatError
-
-    def reportsockets(dirs, files, options):
+    def reportsockets_win(self, topo_file):
         """
-        Look for and report the number of "Package" elements which stands
-        for Sockets in a string produced by hwloc_topology_export_xmlbuffer().
-
-        This version of reportsockets uses expat to parse the XML.
-        If the PBS version of Python does not allow import of expat,
-        we go on to try a simpler approach (below).
+        counting devices by parsing topo_file
         """
+        temp = topo_file.read().split(',')
+        for item in temp:
+            if item.find('sockets:') != -1:
+                self.nsockets = int(item[8:])  # len('sockets:') = 8
+                self.ndevices += int(item[8:])
+            if item.find('gpus:') != -1:
+                self.ndevices += int(item[5:])  # len('gpus:') = 5
+            if item.find('mics:') != -1:
+                self.ndevices += int(item[5:])  # len('mics:') = 5
 
-        def socketXMLstart(name, attrs):
-            if name == "BasilResponse":
-                socketXMLstart.CrayVersion = attrs.get("protocol")
-                return
-            if (name == "info" and attrs.get("name") == "hwlocVersion"):
-                socketXMLstart.hwloclatest = latest_hwloc(attrs.get("value"))
-                return
-            if socketXMLstart.CrayVersion != "0.0":
-                if float(socketXMLstart.CrayVersion) <= 1.2 and name == "Node":
-                    socketXMLstart.nsockets += 2
-                elif name == "Socket":
-                    socketXMLstart.nsockets += 1
-                if name == "Accelerator" and attrs.get("type") == "GPU":
-                    socketXMLstart.ngpus += 1
-            else:
-                if (name == "object" and ((socketXMLstart.hwloclatest == 1 and
-                    attrs.get("type") == "Package") or
-                    (socketXMLstart.hwloclatest == 0 and attrs.get("type") ==
-                        "Socket"))):
-                    socketXMLstart.nsockets += 1
-                if (name == "object" and attrs.get("type") == "OSDev" and
-                    attrs.get("osdev_type") == "1" and
-                        attrs.get("name").startswith("card")):
-                    socketXMLstart.ngpus += 1
-                if (name == "object" and attrs.get("type") == "OSDev" and
-                    attrs.get("osdev_type") == "5" and
-                        attrs.get("name").startswith("mic")):
-                    socketXMLstart.ncoproc += 1
+    def latest_hwloc(self, hwlocVersion):
+        """
+        socket tag is different on versions above 1.11
+        turning hwloclatest flag on if the version is above 1.11
+        """
+        hwlocVersion = hwlocVersion.split('.')
+        major = int(hwlocVersion[0])
+        minor = int(hwlocVersion[1]) if len(hwlocVersion) > 1 else 0
+        if ((major == 1) and (minor >= 11)) or (major > 1):
+            self.hwloclatest = 1
+
+    def calculate(self):
+        """
+        Returns the number of licenses required based on specific formula
+        """
+        return(int(math.ceil(self.ndevices / 4.0)))
+
+    def reportsockets(self, dirs, files, options):
+        """
+        Look for and report the number of socket/node licenses
+        required by the cluster. Uses expat to parse the XML.
+        dirs - directory to look for topology files.
+        files - files for which inventory needs to be parsed
+        options - node / socket.
+        """
 
         if files is None:
             compute_socket_nodelist = True
             try:
                 files = os.listdir(dirs)
+                if not files:
+                    return
             except (IOError, OSError) as err:
                 (e, strerror) = err.args
-                print "%s:  %s (%s)" % (dirs, strerror, e)
+                print("%s:  %s (%s)" % (dirs, strerror, e))
                 return
         else:
             compute_socket_nodelist = False
         try:
             maxwidth = max(map(len, files))
-        except StandardError, e:
-            print 'max/map failed: %s' % e
+        except StandardError as e:
+            print('max/map failed: %s' % e)
             return
+
+        try:
+            import xml.parsers.expat
+            from xml.parsers.expat import ExpatError
+            ExpatParser = True
+        except ImportError:
+            ExpatParser = False
+
         for name in files:
             pathname = os.sep.join((dirs, name))
-            socketXMLstart.nsockets = 0
-            socketXMLstart.ngpus = 0
-            socketXMLstart.ncoproc = 0
-            socketXMLstart.hwloclatest = 0
-            socketXMLstart.CrayVersion = "0.0"
+            self.reset()
             try:
-                with open(pathname, "r") as f:
+                with open(pathname, "r") as topo_file:
+
                     if platform.system() == "Windows":
-                        (socketXMLstart.nsockets, socketXMLstart.ngpus,
-                            socketXMLstart.ncoproc) = reportsockets_win(f)
-                    else:
+                        self.reportsockets_win(topo_file)
+                    elif ExpatParser:
                         try:
-                            socketXMLstart.isCray = False
                             p = xml.parsers.expat.ParserCreate()
                             p.StartElementHandler = socketXMLstart
-                            p.ParseFile(f)
+                            p.ParseFile(topo_file)
                         except ExpatError as e:
-                            print "%s:  parsing error at line %d, column %d" \
-                                % (name, e.lineno, e.offset)
+                            print("%s:  parsing error at line %d, column %d"
+                                  % (name, e.lineno, e.offset))
+                    else:
+                        self.countsockets(topo_file)
 
                     if options.sockets:
-                        print "%-*s%d" % (maxwidth + 1, name,
-                                          socketXMLstart.nsockets)
+                        print("%-*s%d" % (maxwidth + 1, name, self.nsockets))
                     else:
-                        total = socketXMLstart.nsockets + \
-                            socketXMLstart.ngpus + socketXMLstart.ncoproc
-                        print "%-*s%d" % (maxwidth + 1, name,
-                                          int(math.ceil(total / 4.0)))
+                        self.nnodes += self.calculate()
+                        print("%-*s%d" % (maxwidth + 1, name,
+                              inventory.nnodes))
+
             except IOError as err:
                 (e, strerror) = err.args
                 if e == errno.ENOENT:
                     if not compute_socket_nodelist:
-                        print "no socket information available for node %s" \
-                            % name
+                        print("no socket information available for node %s"
+                              % name)
                     continue
                 else:
-                    print "%s:  %s (%s)" % (pathname, strerror, e)
+                    print("%s:  %s (%s)" % (pathname, strerror, e))
                     raise
 
-except ImportError:
-    def reportsockets(dirs, files, options):
+    def countsockets(self, topo_file):
         """
-        Look for and report the number of "Package" elements in a string
-        produced by hwloc_topology_export_xmlbuffer().
-
-        This is a backup version of reportsockets which we use when an
-        import of the xml.parsers.expat module fails.  In this version,
-        we simply count occurrences of "Package" objects.
+        Used when an import of the xml.parsers.expat module fails.
+        This version makes use of regex expressions.
         """
         socketpattern = r'<\s*object\s+type="Socket"'
         packagepattern = r'<\s*object\s+type="Package"'
@@ -185,74 +178,81 @@ except ImportError:
         craysocketpattern = r'<\s*Socket\s+ordinal='
         craygpupattern = r'<\s*Accelerator\s+.*type="GPU"'
         hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+'
-        if files is None:
-            compute_socket_nodelist = True
-            try:
-                files = os.listdir(dirs)
-            except (IOError, OSError) as err:
-                (e, strerror) = err.args
-                print "%s:  %s (%s)" % (dirs, strerror, e)
-                return
-        else:
-            compute_socket_nodelist = False
-        try:
-            maxwidth = max(map(len, files))
-        except StandardError, e:
-            print 'max/map failed: %s' % e
-            return
-        for name in files:
-            pathname = os.sep.join((dirs, name))
-            try:
-                with open(pathname, "r") as f:
-                    (nsockets, ngpus, ncoproc, CrayVersion, hwloclatest) = \
-                        (0, 0, 0, "0.0", 0)
-                    if platform.system() == "Windows":
-                        (nsockets, ngpus, ncoproc) = reportsockets_win(f)
-                    else:
-                        for line in f:
-                            if hwloclatest == 1:
-                                nsockets += 1 if re.search(packagepattern,
-                                                           line) else 0
-                            else:
-                                nsockets += 1 if re.search(socketpattern,
-                                                           line) else 0
-                            ngpus += 1 if re.search(gpupattern, line) else 0
-                            ncoproc += 1 if re.search(micpattern, line) else 0
-                            if re.search(craypattern, line):
-                                start_index = line.find('protocol="') + \
-                                    len('protocol="')
-                                CrayVersion = line[start_index:
-                                                   line.find('"', start_index)]
-                                continue
-                            if re.search(hwloclatestpattern, line):
-                                hwlocVer = line[line.find('value="') +
-                                                len('value="'):
-                                                line.rfind('"/>')]
-                                hwloclatest = latest_hwloc(hwlocVer)
-                            if CrayVersion != "0.0":
-                                if float(CrayVersion) <= 1.2 and re.search(
-                                        craynodepattern, line):
-                                    nsockets += 2
-                                elif re.search(craysocketpattern, line):
-                                    nsockets += 1
-                                if re.search(craygpupattern, line):
-                                    ngpus += 1
-                    if options.sockets:
-                        print "%-*s%d" % (maxwidth + 1, name, nsockets)
-                    else:
-                        total = nsockets + ngpus + ncoproc
-                        print "%-*s%d" % (maxwidth + 1, name,
-                                          int(math.ceil(total / 4.0)))
-            except IOError as err:
-                (e, strerror) = err.args
-                if e == errno.ENOENT:
-                    if not compute_socket_nodelist:
-                        print "no socket information available for node %s" \
-                            % name
-                    continue
-                else:
-                    print "%s:  %s (%s)" % (pathname, strerror, e)
-                    raise
+
+        for line in topo_file:
+            if re.search(craypattern, line):
+                start_index = line.find('protocol="') + len('protocol="')
+                self.CrayVersion = line[start_index:
+                                        line.find('"', start_index)]
+                continue
+            if re.search(hwloclatestpattern, line):
+                hwlocVer = line[line.find('value="') + len('value="'):
+                                line.rfind('"/>')]
+                self.latest_hwloc(hwlocVer)
+                continue
+
+            if self.CrayVersion != "0.0":
+                if re.search(craynodepattern, line):
+                    self.nnodes += self.calculate()
+                    self.ndevices = 0
+                    if float(self.CrayVersion) <= 1.2:
+                        self.nsockets += 2
+                        self.ndevices += 2
+                elif re.search(craysocketpattern, line):
+                    self.nsockets += 1
+                    self.ndevices += 1
+                if re.search(craygpupattern, line):
+                    self.ndevices += 1
+            else:
+                if ((self.hwloclatest and re.search(packagepattern, line)) or
+                        (not self.hwloclatest and re.search(socketpattern,
+                                                            line))):
+                    self.nsockets += 1
+                    self.ndevices += 1
+                self.ndevices += 1 if re.search(gpupattern, line) else 0
+                self.ndevices += 1 if re.search(micpattern, line) else 0
+
+
+def socketXMLstart(name, attrs):
+    """
+    StartElementHandler for expat parser
+    """
+    global inventory
+
+    if name == "BasilResponse":
+        inventory.CrayVersion = attrs.get("protocol")
+        return
+    if (name == "info" and attrs.get("name") == "hwlocVersion"):
+        inventory.latest_hwloc(attrs.get("value"))
+        return
+    if inventory.CrayVersion != "0.0":
+        if name == "Node":
+            inventory.nnodes += inventory.calculate()
+            inventory.ndevices = 0
+            if float(inventory.CrayVersion) <= 1.2:
+                inventory.nsockets += 2
+                inventory.ndevices += 2
+        elif name == "Socket":
+            inventory.nsockets += 1
+            inventory.ndevices += 1
+        if name == "Accelerator" and attrs.get("type") == "GPU":
+            inventory.ndevices += 1
+    else:
+        if (name == "object" and ((inventory.hwloclatest == 1 and
+            attrs.get("type") == "Package") or
+            (inventory.hwloclatest == 0 and attrs.get("type") ==
+                "Socket"))):
+            inventory.nsockets += 1
+            inventory.ndevices += 1
+        if (name == "object" and attrs.get("type") == "OSDev" and
+            attrs.get("osdev_type") == "1" and
+                attrs.get("name").startswith("card")):
+            inventory.ndevices += 1
+        if (name == "object" and attrs.get("type") == "OSDev" and
+            attrs.get("osdev_type") == "5" and
+                attrs.get("name").startswith("mic")):
+            inventory.ndevices += 1
+
 
 if __name__ == "__main__":
     usagestr = "usage:  %prog [ -a -s ]\n\t%prog -s node1 [ node2 ... ]"
@@ -269,11 +269,12 @@ if __name__ == "__main__":
         topology_dir = os.sep.join((os.environ["PBS_HOME"], "server_priv",
                                     "topology"))
     except KeyError:
-        print "PBS_HOME must be present in the caller's environment"
+        print("PBS_HOME must be present in the caller's environment")
         sys.exit(1)
     if not (options.sockets or options.license):
         sys.exit(1)
+    inventory = Inventory()
     if options.allnodes:
-        reportsockets(topology_dir, None, options)
+        inventory.reportsockets(topology_dir, None, options)
     else:
-        reportsockets(topology_dir, progargs, options)
+        inventory.reportsockets(topology_dir, progargs, options)

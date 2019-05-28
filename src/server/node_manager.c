@@ -223,7 +223,6 @@ extern void free_prov_vnode(struct pbsnode *);
 extern void fail_vnode_job(struct prov_vnode_info *, int);
 extern struct prov_tracking * get_prov_record_by_vnode(char *);
 extern int parse_prov_vnode(char *,exec_vnode_listtype *);
-extern void propagate_socket_licensing(mominfo_t *);
 extern vnpool_mom_t *vnode_pool_mom_list;
 
 static void check_and_set_multivnode(struct pbsnode *);
@@ -3808,9 +3807,10 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
 				(ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
 		}
+		(void)release_node_lic(pnode);
 	}
 
-	/* set attributes/resources if not already non-default */
+	/* set attributes/resources if they are default */
 
 	pRA = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 
@@ -4985,7 +4985,7 @@ found:
 							}
 						}
 					}
-					propagate_socket_licensing(pmom);
+					propagate_socket_licensing(pmom, 1);
 				}
 				vnl_free(vnlp);
 				vnlp = NULL;

@@ -369,12 +369,6 @@ enum vnode_degraded_op {
 	Set_Degraded_Time,
 };
 
-enum node_topology_type {
-	tt_hwloc,
-	tt_Cray,
-	tt_Win
-};
-typedef enum node_topology_type ntt_t;
 
 /*
  * NTYPE_* values are used in "node.nd_type"
@@ -474,7 +468,7 @@ extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
 extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
-extern	int	nsockets_from_topology(char *topology_str, ntt_t type);
+extern void	propagate_socket_licensing(mominfo_t *, int);
 
 extern char *msg_daemonname;
 

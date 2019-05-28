@@ -295,7 +295,6 @@ extern "C" {
 #define ATTR_dfltqsubargs       "default_qsub_arguments"
 #define ATTR_rpp_retry		"rpp_retry"
 #define ATTR_rpp_highwater	"rpp_highwater"
-#define ATTR_license_location	"pbs_license_file_location"
 #define ATTR_pbs_license_info	"pbs_license_info"
 #define ATTR_license_min	"pbs_license_min"
 #define ATTR_license_max	"pbs_license_max"
@@ -378,6 +377,8 @@ extern "C" {
 #define ATTR_NODE_poweroff_eligible	"poweroff_eligible"
 #define ATTR_NODE_last_state_change_time	"last_state_change_time"
 #define ATTR_NODE_last_used_time	"last_used_time"
+
+#define ND_RESC_LicSignature "lic_signature"	/* custom resource used for licensing */
 
 /* Resource "attribute" names */
 #define ATTR_RESC_TYPE		"type"

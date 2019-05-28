@@ -43,6 +43,15 @@ extern "C" {
 
 #include <limits.h>
 
+/* Node license types */
+
+#define ND_LIC_TYPE_locked	'l'
+#define ND_LIC_TYPE_float 	'f'
+#define ND_LIC_TYPE_unlic	'u'
+#define ND_LIC_TYPE_cloud	'c'
+#define ND_LIC_locked_str	"l"
+#define ND_LIC_cloud_str	"c"
+
 struct license_block {
 	int  lb_trial;		/* non_zero if trial license */
 	int  lb_glob_floating;	/* number of floating licenses avail globally */
@@ -66,14 +75,19 @@ enum  fl_feature_type {
 	FL_FEATURE_LAST		/* must be last one, used to define array sz */
 };
 
+enum node_topology_type {
+	tt_hwloc,
+	tt_Cray,
+	tt_Win
+};
+typedef enum node_topology_type ntt_t;
+
 #define  PBS_MIN_LICENSING_LICENSES  0
 #define  PBS_MAX_LICENSING_LICENSES  INT_MAX
 #define  PBS_LIC_LINGER_TIME 	31536000 /* keep extra licenses 1 year by default */
 #define  PBS_LICENSE_LOCATION				\
-	(pbs_conf.pbs_license_file_location ?		\
-	 pbs_conf.pbs_license_file_location :		\
 	 (pbs_licensing_license_location ?		\
-	  pbs_licensing_license_location : "null" ))
+	  pbs_licensing_license_location : "null" )
 
 enum licensing_backend {
 	LIC_SERVER,	/* reachable license server (to license CPUs) */
@@ -107,6 +121,12 @@ extern void   inspect_license_path(void);
 extern int    licstate_is_up(enum licensing_backend);
 extern void   licstate_down(void);
 extern void   licstate_unconfigured(enum licensing_backend);
+extern int	nsockets_from_topology(char *, ntt_t);
+extern int	check_sign(void *, void *);
+extern void	process_topology_info(void *, char *, ntt_t );
+extern void	unset_signature(void *, char *);
+extern	int	release_node_lic(void *);
+extern	int	validate_sign(char *, void *);
 
 /* Licensing-related variables */
 extern int    ext_license_server;

@@ -1089,11 +1089,6 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
  *		set_license_location - action function for the pbs_licensing_license_location
  * 				server attribute.
  *
- *  	NOTE: The SRV_ATR_license_location atribute is opaque to us - it's a
- *        place where the admin can specify the value for
- *        "pbs_licensing_license_location", which is what is consulted by the
- *        license server functions.
- *
  * @param[in]	pattr	-	pointer to attribute structure
  * @param[in]	pobject -	pointer to some parent object.(not used here)
  * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)

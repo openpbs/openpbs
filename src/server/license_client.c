@@ -68,136 +68,326 @@ void        inspect_license_path(void);
 int         licstate_is_configured(enum licensing_backend);
 int         licstate_is_up(enum licensing_backend);
 
+/**
+ * @brief
+ *		pbs_licensing_status	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	LICSTATE_HAS_SOCKETS
+ */
 int
 pbs_licensing_status(void)
 {
 	return (LICSTATE_HAS_SOCKETS);
 }
 
+/**
+ * @brief
+ *		pbs_licensing_count	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	10000000
+ */
 int
 pbs_licensing_count(void)
 {
 	return (avail_sockets);
 }
 
+/**
+ * @brief
+ *		pbs_open_con_licensing	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	zero
+ */
 int
 pbs_open_con_licensing(void)
 {
 	return (0);
 }
 
+/**
+ * @brief
+ *		pbs_close_con_licensing	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 pbs_close_con_licensing(void)
 {
 }
 
+/**
+ * @brief
+ *		pbs_licensing_checkin	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	zero
+ */
 int
 pbs_licensing_checkin(void)
 {
 	return (0);
 }
 
+/**
+ * @brief
+ *		pbs_checkout_licensing	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	need
+ */
 int
 pbs_checkout_licensing(int need)
 {
 	return (need);
 }
 
+/**
+ * @brief
+ *		pbs_license_location	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	NULL
+ */
 char *
 pbs_license_location(void)
 {
-	if (pbs_conf.pbs_license_file_location)
-		return (pbs_conf.pbs_license_file_location);
-	else
-		return (pbs_licensing_license_location);
+	return (pbs_licensing_license_location);
 }
 
+/**
+ * @brief
+ *		inspect_license_path	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 inspect_license_path(void)
 {
 }
 
+/**
+ * @brief
+ *		init_socket_licenses	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 init_socket_licenses(char *license_file)
 {
 }
 
+/**
+ * @brief
+ *		sockets_available	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	10000000
+ */
 int
 sockets_available(void)
 {
 	return (avail_sockets);
 }
 
+/**
+ * @brief
+ *		sockets_reset	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 sockets_reset(void)
 {
 	return;
 }
 
+/**
+ * @brief
+ *		sockets_release	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 sockets_release(int nsockets)
 {
 	return;
 }
 
+/**
+ * @brief
+ *		sockets_consume	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	zero
+ */
 int
 sockets_consume(int nsockets)
 {
 	return (0);
 }
 
+/**
+ * @brief
+ *		sockets_total	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	total sockets
+ */
 int
 sockets_total(void)
 {
 	return (total_sockets);
 }
 
+/**
+ * @brief
+ *		licstate_unconfigured	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ */
 void
 licstate_unconfigured(enum licensing_backend lb)
 {
 }
 
+/**
+ * @brief
+ *		licstate_down	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ */
 void
 licstate_down(void)
 {
 }
 
+/**
+ * @brief
+ *		licstate_is_up	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	LICSTATE_HAS_SOCKETS
+ */
 int
 licstate_is_configured(enum licensing_backend lb)
 {
 	return (LICSTATE_HAS_SOCKETS);
 }
 
+/**
+ * @brief
+ *		licstate_is_up	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	one
+ */
 int
 licstate_is_up(enum licensing_backend lb)
 {
 	return (1);
 }
 
+/**
+ * @brief
+ *		license_sanity_check	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	zero
+ */
 int
 license_sanity_check(void)
 {
 	return (0);
 }
 
+/**
+ * @brief
+ *		license_more_nodes	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 license_more_nodes(void) {
 	return;
 }
 
+/**
+ * @brief
+ *		propagate_socket_licensing	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
-propagate_socket_licensing(mominfo_t *pmom) {
+propagate_socket_licensing(mominfo_t *pmom, int distribute) {
 	return;
 }
 
+/**
+ * @brief
+ *		nsockets_from_topology	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	zero
+ */
 int
 nsockets_from_topology(char *topology_str, ntt_t type)
 {
 	return 0;
 }
 
+/**
+ * @brief
+ *		unlicense_socket_licensed_nodes	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
 void
 unlicense_socket_licensed_nodes(void)
+{
+	return;
+}
+
+/**
+ * @brief
+ *		release_node_lic	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return zero
+ */
+int
+release_node_lic(void *pobj)
+{
+	return 0;
+}
+
+/**
+ * @brief
+ *		validate_sign	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return True
+ */
+int
+validate_sign(char *sign, void *pobj)
+{
+   return 1;
+}
+
+/**
+ * @brief
+ *		unset_signature	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return zero
+ */
+int check_sign(void *pobj, void *new)
+{
+	return 0;
+}
+
+/**
+ * @brief
+ *		unset_signature	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
+void process_topology_info(void *pobj, char *topology_str, ntt_t type)
+{
+	return;
+}
+
+/**
+ * @brief
+ *		unset_signature	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
+void unset_signature(void *pobj, char * rs_name)
 {
 	return;
 }
