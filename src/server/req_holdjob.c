@@ -513,6 +513,6 @@ post_hold(struct work_task *pwt)
 	}
 	if (pjob->ji_pmt_preq != NULL)
 		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_CHECKPOINT, pjob);
-	else
-		reply_ack(preq);
+	
+	reply_ack(preq);
 }

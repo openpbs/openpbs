@@ -81,7 +81,9 @@ static preempt_job_info *preempt_jobs_list = NULL;
  * @param[in] job_id - the job to mark as failed
  * @return void
  */
-static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id) {
+static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id, int code) {
+	snprintf(log_buffer, sizeof(log_buffer), "preemption failed for job (%d)", code);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, job_id, log_buffer);
 	preempt_preq->rq_reply.brp_code = 1;
 	strcpy(preempt_jobs_list[preempt_index].order, "000");
 	sprintf(preempt_jobs_list[preempt_index].job_id, "%s", job_id);
@@ -333,7 +335,7 @@ req_preemptjobs(struct batch_request *preq)
 					preempt_index++;
 					break;
 				default:
-					job_preempt_fail(preq, ppj->job_id);
+					job_preempt_fail(preq, ppj->job_id, PBSE_BADSTATE);
 			}
 			continue;
 		}
@@ -378,7 +380,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] == PREEMPT_METHOD_CHECKPOINT)
 			clear_preempt_hold(pjob);
 		if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index + 1], pjob, preq)) {
-			job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
+			job_preempt_fail(preq, pjob->ji_qs.ji_jobid, code);
 			pjob->ji_pmt_preq = NULL;
 		}
 		pjob->preempt_order_index++;

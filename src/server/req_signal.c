@@ -467,8 +467,8 @@ post_signal_req(struct work_task *pwt)
 
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_SUSPEND, pjob);
-		else
-			req_reject(rc, 0, preq);
+		
+		req_reject(rc, 0, preq);
 	} else {
 
 		/* everything went ok for signal request at Mom */
@@ -518,8 +518,8 @@ post_signal_req(struct work_task *pwt)
 
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_SUSPEND, pjob);
-		else
-			reply_ack(preq);
+		
+		reply_ack(preq);
 	}
 }
 

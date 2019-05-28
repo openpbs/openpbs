@@ -714,7 +714,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-				  pjob->ji_qs.ji_jobid, "deleting instead of reruning");
+				  pjob->ji_qs.ji_jobid, "deleting instead of rerunning");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
 			reply_ack(preq);
 			return;
