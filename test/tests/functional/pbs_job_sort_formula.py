@@ -45,8 +45,8 @@ class TestJobSortFormula(TestFunctional):
 
     def test_job_sort_formula_negative_value(self):
         """
-        Test to see that negative values in the job_sort_formula
-        correctly sort properly
+        Test to see that negative values in the
+        job_sort_formula sort properly
         """
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.server.shortname)
@@ -57,7 +57,7 @@ class TestJobSortFormula(TestFunctional):
 
         j1 = Job(TEST_USER, attrs={'Resource_List.foo': -2})
         jid1 = self.server.submit(j1)
-        j2 = Job(TEST_USER, attrs={'Resource_List.foo': 1})
+        j2 = Job(TEST_USER, attrs={'Resource_List.foo': -1})
         jid2 = self.server.submit(j2)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
