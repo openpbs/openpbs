@@ -124,7 +124,7 @@ static int  svr_strtjob2(job *, struct batch_request *);
 static job *chk_job_torun(struct batch_request *preq, job *);
 static void req_runjob2(struct batch_request *preq, job *pjob);
 static job *where_to_runjob(struct batch_request *preq, job *);
-
+void convert_job_to_resv(job *pjob);
 /* Global Data Items: */
 
 extern int       license_expired;
@@ -1000,6 +1000,12 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	if (rc != 0)
 		return rc;
 
+	if (pjob->ji_wattr[JOB_ATR_create_resv_from].at_val.at_long) {
+		if (pjob->allow_job_conversion)
+			convert_job_to_resv(pjob);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			pjob->ji_qs.ji_jobid, "Hooray");
+	}
 	/* Move job_kill_delay attribute from Server to MOM */
 	if (pque->qu_attr[(int)QE_ATR_KillDelay].at_flags & ATR_VFLAG_SET)
 		delay = pque->qu_attr[(int)QE_ATR_KillDelay].at_val.at_long;
@@ -1965,4 +1971,43 @@ req_defschedreply(struct batch_request *preq)
 	free(pdefr);
 
 	reply_send(preq);
+}
+
+void
+convert_job_to_resv(job *pjob)
+{
+	svrattrl *psatl;
+	unsigned int len;
+	pbs_list_head *plhed;
+	struct work_task *pwt;
+	struct batch_request *newreq;
+
+	newreq = alloc_br(PBS_BATCH_SubmitResv);
+	if (newreq == NULL) {
+		(void)sprintf(log_buffer, "batch request allocation failed");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	}
+	newreq->rq_type = PBS_BATCH_SubmitResv;
+	strncpy(newreq->rq_user, pjob->ji_wattr[JOB_ATR_job_owner].at_val.at_str, PBS_MAXUSER);
+	newreq->rq_perm = READ_WRITE | ATR_DFLAG_ALTRUN;
+
+	strncpy(newreq->rq_ind.rq_queuejob.rq_jid, "", PBS_MAXSVRJOBID);
+	strncpy(newreq->rq_ind.rq_queuejob.rq_destin, "", PBS_MAXSVRJOBID);
+
+	len = strlen(pjob->ji_qs.ji_jobid) + 1;
+	plhed = &newreq->rq_ind.rq_queuejob.rq_attr;
+	CLEAR_HEAD(newreq->rq_ind.rq_queuejob.rq_attr);
+	if ((psatl = attrlist_create(ATTR_resv_job, NULL, len)) != NULL) {
+
+		psatl->al_flags = resv_attr_def[RESV_ATR_job].at_flags;
+		strcpy(psatl->al_value, pjob->ji_qs.ji_jobid);
+		append_link(plhed, &psatl->al_link, psatl);
+	}
+
+	newreq->rq_extend = strdup("j");
+
+	if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, release_req, &pwt, 0) == -1)
+		free_br(newreq);
+
 }

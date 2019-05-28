@@ -282,6 +282,7 @@ enum job_atr {
 	JOB_ATR_submit_host,
 	JOB_ATR_cred_id,
 	JOB_ATR_cred_validity,
+	JOB_ATR_create_resv_from,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -660,7 +661,8 @@ struct job {
 	int             ji_etlimit_decr_queued;
 
 	struct preempt_ordering	*preempt_order;
-	int			preempt_order_index;
+	int preempt_order_index;
+	int allow_job_conversion;
 
 #endif					/* END SERVER ONLY */
 

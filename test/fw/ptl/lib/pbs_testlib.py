@@ -6073,6 +6073,9 @@ class Server(PBSService):
             if isinstance(obj, Reservation) and obj.hosts:
                 runcmd += ['--hosts'] + obj.hosts
 
+            if isinstance(obj, Reservation) and obj.job:
+                runcmd += ['--job', obj.job]
+
             if _interactive_job:
                 ijid = self.submit_interactive_job(obj, runcmd)
                 try:
@@ -6093,6 +6096,7 @@ class Server(PBSService):
                 objid = None
             else:
                 objid = ret['out'][0]
+
             if ret['err'] != ['']:
                 self.last_error = ret['err']
             self.last_rc = rc = ret['rc']
@@ -14293,7 +14297,7 @@ class Reservation(ResourceResv):
 
     dflt_attributes = {}
 
-    def __init__(self, username=TEST_USER, attrs=None, hosts=None):
+    def __init__(self, username=TEST_USER, attrs=None, hosts=None, job=None):
         self.server = {}
         self.script = None
 
@@ -14307,6 +14311,11 @@ class Reservation(ResourceResv):
         else:
             self.hosts = []
 
+        if job:
+            self.job = job
+        else:
+            self.job = []
+
         if username is None:
             userinfo = pwd.getpwuid(os.getuid())
             self.username = userinfo[0]
@@ -14315,11 +14324,11 @@ class Reservation(ResourceResv):
 
         # These are not in dflt_attributes because of the conversion to CLI
         # options is done strictly
-        if ATTR_resv_start not in self.attributes:
+        if ATTR_resv_start not in self.attributes and job is None:
             self.attributes[ATTR_resv_start] = str(int(time.time()) +
                                                    36 * 3600)
 
-        if ATTR_resv_end not in self.attributes:
+        if ATTR_resv_end not in self.attributes and job is None:
             if ATTR_resv_duration not in self.attributes:
                 self.attributes[ATTR_resv_end] = str(int(time.time()) +
                                                      72 * 3600)

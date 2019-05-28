@@ -297,7 +297,6 @@ find_queuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#ifdef NAS /* localmod 075 */
 
 /**
  * @brief
@@ -311,12 +310,12 @@ find_queuebyname(char *quename)
 pbs_queue *
 find_resvqueuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] ='\0';
+	qname[PBS_MAXDEST] = '\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
@@ -331,7 +330,38 @@ find_resvqueuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#endif /* localmod 075 */
+
+/**
+ * @brief
+ * 		find_resvbyquename() - find a reservation by the name of its queue
+ *
+ * @param[in]	quename	- queue name.
+ *
+ * @return	resc_resv *
+ */
+
+resc_resv *
+find_resvbyquename(char *quename)
+{
+	char *pc;
+	resc_resv *presv;
+	char qname[PBS_MAXDEST + 1];
+
+	(void)strncpy(qname, quename, PBS_MAXDEST);
+	qname[PBS_MAXDEST] = '\0';
+	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
+	if (pc)
+		*pc = '\0';
+	presv = (resc_resv *)GET_NEXT(svr_allresvs);
+	while (presv != NULL) {
+		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
+			break;
+		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	}
+	if (pc)
+		*pc = '@';	/* restore '@' server portion */
+	return (presv);
+}
 
 /**
  * @brief
