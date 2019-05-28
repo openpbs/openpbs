@@ -856,6 +856,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 		*rc = PBSE_SYSTEM;
 		return NULL;
 	}
+	subj->ji_newjob = 1; /* flag to indicate a new job is being added to the db */
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
 	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;
@@ -904,8 +905,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 
 	subj->ji_qs.ji_svrflags &= ~JOB_SVFLG_ArrayJob;
 	subj->ji_qs.ji_svrflags |=  JOB_SVFLG_SubJob;
-	subj->ji_modified = 0;  /* to avoid db save in svr_setjobstate()*/
-	subj->ji_newjob = 1;    /* Hack to use ji_newjob to mean SAVEJOB_NEW for subjobs */
 	subj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSICM;
 	(void)svr_setjobstate(subj, JOB_STATE_QUEUED, JOB_SUBSTATE_QUEUED);
 	subj->ji_modified = 1;  /* to force a SAVEJOB_NEW db save in svr_setjobstate() for subjobs */

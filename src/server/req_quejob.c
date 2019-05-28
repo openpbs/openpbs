@@ -1845,7 +1845,6 @@ req_commit(struct batch_request *preq)
 	delete_link(&pj->ji_alljobs);
 
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
-	pj->ji_modified = 0; /* don't save from svr_setjobstate, we will save soon after */
 	(void)svr_setjobstate(pj, newstate, newsub);
 
 #ifdef WIN32

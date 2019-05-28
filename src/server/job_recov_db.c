@@ -57,6 +57,7 @@
  *	db_to_svr_resv		  -	Load data from database resv object to a server resv object
  *	resv_save_db		  -	Save resv to database
  *	resv_recov_db		  - Recover resv from database
+ *	print_backtrace		  - Print backtrace of the program
  *
  */
 
@@ -68,6 +69,7 @@
 
 #ifndef WIN32
 #include <sys/param.h>
+#include <execinfo.h>
 #endif
 
 #include "pbs_ifl.h"
@@ -104,6 +106,10 @@
 
 #ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
+#ifndef WIN32
+#define BACKTRACE_BUF_SIZE 50
+void print_backtrace(char *);
+#endif
 #endif
 
 #ifdef NAS /* localmod 005 */
@@ -375,6 +381,15 @@ job_save_db(job *pjob, int updatetype)
 	 */
 	if (pjob->ji_newjob == 1 && updatetype != SAVEJOB_NEW)
 		return (0);
+
+	if (updatetype == SAVEJOB_NEW && pjob->ji_newjob == 0) {
+		updatetype = SAVEJOB_FULL;
+		sprintf(log_buffer, "job already saved to db, so changing updatetype to SAVEJOB_FULL");
+		log_joberr(-1, "job_save_db", log_buffer, pjob->ji_qs.ji_jobid);
+#ifndef WIN32
+		print_backtrace(pjob->ji_qs.ji_jobid);
+#endif
+	}
 
 	/* if ji_modified is set, ie an attribute changed, then update mtime */
 	if (pjob->ji_modified) {
@@ -777,4 +792,55 @@ job_or_resv_recov_db(char *id, int objtype)
 		return (job_recov_db(id));
 	}
 }
+
+/**
+ * @brief
+ *		Print backtrace of the program
+ *
+ * @see
+ * 		job_save_db
+ *
+ * @param[in]	jobid - Print call trace of the job
+ *
+ */
+void
+print_backtrace(char *jobid) {
+#ifdef __GNUC__
+/* backtrace() functionality provided in glibc since from version 2.1 */
+#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
+	/* let's print the backtrace to identify the faulty scenario */
+	int total_frames; /* total number of frames returned by backtrace() */
+	int frame_num;
+	void *bt_buffer[BACKTRACE_BUF_SIZE];
+	char **bt_strings;
+
+	/* backtrace() returns current stack addresses */
+	total_frames = backtrace(bt_buffer, BACKTRACE_BUF_SIZE);
+	if (total_frames != 0) {
+		log_err(-1, "job_save_db", "----- BACKTRACE START -----");
+		sprintf(log_buffer, "backtrace() has returned %d addresses", total_frames);
+		log_joberr(-1, "job_save_db", log_buffer, jobid);
+		/* backtrace_symbols() resolve addresses into strings containing "filename(function+address)",
+		 * this array must be free()-ed at the end.
+		 */
+		bt_strings = backtrace_symbols(bt_buffer, total_frames);
+		if (bt_strings == NULL) {
+			sprintf(log_buffer, "no backtrace symbols found");
+			log_joberr(-1, "job_save_db", log_buffer, jobid);
+		} else {
+			for (frame_num = 0; frame_num < total_frames; frame_num++) {
+				snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", bt_strings[frame_num]);
+				log_err(-1, "job_save_db", log_buffer);
+			}
+		}
+		free(bt_strings);
+		log_err(-1, "job_save_db", "----- BACKTRACE END -----");
+	} else {
+		sprintf(log_buffer, "No backtrace symbols present");
+		log_joberr(-1, "job_save_db", log_buffer, jobid);
+	}
+#endif /*-- GLIBC --*/
+#endif /*-- GNUC  --*/
+}
+
 #endif

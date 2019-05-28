@@ -378,6 +378,7 @@ job_alloc(void)
 	pj->ji_terminated = 0;
 	pj->ji_deletehistory = 0;
 	pj->ji_newjob = 0;
+	pj->ji_modified = 0;
 	pj->ji_script = NULL;
 #endif
 	pj->ji_qs.ji_jsversion = JSVERSION;

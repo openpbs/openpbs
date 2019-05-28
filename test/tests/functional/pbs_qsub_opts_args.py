@@ -54,6 +54,20 @@ class TestQsubOptionsArguments(TestFunctional):
         self.qsub_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
 
+    def validate_error(self, err):
+        ret_msg = 'qsub: Failed to save job/resv, '\
+            'refer server logs for details'
+        # PBS returns 15161 error code when it fails to save the job in db
+        # but in PTL_CLI mode it returns modulo of the error code.
+
+        # PTL_API and PTL_CLI mode returns 15161 and 57 error code respectively
+        if err.rc == 15161 or err.rc == 15161 % 256:
+            self.assertFalse(err.msg[0], ret_msg)
+        else:
+            self.fail(
+                "ERROR in submitting a job with future time: %s" %
+                err.msg[0])
+
     def test_qsub_with_script_with_long_TMPDIR(self):
         """
         submit a job with a script and with long path in TMPDIR
@@ -126,3 +140,36 @@ bhtiusabsdlg' % (os.environ['HOME'])
         cmd = [self.qsub_cmd, '-V', self.fn]
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertEquals(rv['rc'], 0, 'qsub failed')
+
+    def test_qsub_with_option_a(self):
+        """
+        Test submission of job with execution time(future and past)
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 2},
+                            self.mom.shortname)
+        present_tm = int(time.time())
+        # submit a job with future time and should start whenever time hits
+        future_tm = time.strftime(
+            "%Y%m%d%H%M", time.localtime(
+                present_tm + 60))
+        j1 = Job(TEST_USER, {ATTR_a: future_tm})
+        try:
+            jid_1 = self.server.submit(j1)
+        except PbsSubmitError as e:
+            self.validate_error(e)
+        self.server.expect(JOB, {'job_state': 'W'}, id=jid_1)
+        self.logger.info(
+            'waiting for 60 seconds to run the job as it is a future job...')
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=60)
+
+        # submit a job with past time and should start right away
+        past_tm = time.strftime(
+            "%Y%m%d%H%M", time.localtime(
+                present_tm - 3600))
+        j2 = Job(TEST_USER, {ATTR_a: past_tm})
+        try:
+            jid_2 = self.server.submit(j2)
+        except PbsSubmitError as e:
+            self.validate_error(e)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)

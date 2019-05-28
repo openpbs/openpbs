@@ -713,14 +713,10 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 		}
 	}
 
-	if (pjob->ji_modified) {
-		if (pjob->ji_newjob)	/* Hack to use ji_newjob to mean SAVEJOB_NEW for subjobs */
-			return (job_save(pjob, SAVEJOB_NEW));
-		else
-			return (job_save(pjob, SAVEJOB_FULL));
-	} else if (changed)
+	if (pjob->ji_modified)
+		return (job_save(pjob, SAVEJOB_FULL));
+	else if(changed)
 		return (job_save(pjob, SAVEJOB_QUICK));
-
 	return (0);
 }
 
