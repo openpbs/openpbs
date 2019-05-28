@@ -625,7 +625,7 @@ class TestQstatFormats(TestFunctional):
     def run_namelength_test(self, options=''):
         """
         Changes the server name, sets a long job and queue name,
-        and ensures they're truncated correctly.
+        and ensures they're truncated correctly in a wide format
         """
         self.server.stop()
         self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
@@ -634,14 +634,14 @@ class TestQstatFormats(TestFunctional):
         self.du.set_pbs_config(
             self.server.hostname,
             confs={'PBS_SERVER_HOST_NAME': conf['PBS_SERVER'],
-                   'PBS_SERVER': 'supersuperduperlongservername30'})
+                   'PBS_SERVER': 'supersuperduperlongservername31'})
 
         self.server.start()
         self.assertTrue(self.server.isUp(), 'Failed to start PBS')
         a = {'queue_type': 'Execution', 'enabled': 'True',
              'started': 'True'}
         qname = 'queuename15char'
-        jname = 'jobname16charxxx'
+        jname = 'jobname16xxxchar'
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=qname)
         a = {ATTR_queue: qname, ATTR_name: jname}
         j = Job(TEST_USER, attrs=a)
@@ -650,8 +650,8 @@ class TestQstatFormats(TestFunctional):
                                  'qstat') + ' ' + options + ' ' + str(jid)
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
         qstat_out = '\n'.join(ret['out'])
-        jid_trunc = jid[:30]
-        jname_trunc = jname[:15]
+        jid_trunc = jid[:29] + '*'
+        jname_trunc = jname[:14] + '*'
         self.assertIn(jid_trunc, qstat_out)
         self.assertIn(qname, qstat_out)
         self.assertIn(jname_trunc, qstat_out)
@@ -678,3 +678,40 @@ class TestQstatFormats(TestFunctional):
         This tests the alternate display function
         """
         self.run_namelength_test('-answ')
+
+    def test_qstat_ans(self):
+        """
+        Test if qstat -ans correctly prints with truncation.
+        """
+        self.server.stop()
+        self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
+
+        server_hostname = self.server.pbs_conf['PBS_SERVER']
+        self.du.set_pbs_config(
+            self.server.hostname,
+            confs={'PBS_SERVER_HOST_NAME': server_hostname,
+                   'PBS_SERVER': 'supersuperduperlongservername31'})
+
+        self.server.start()
+        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
+        a = {'queue_type': 'Execution', 'enabled': 'True',
+             'started': 'True'}
+        qname = 'queuename15char'
+        jname = 'jobname16xxxchar'
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id=qname)
+        a = {ATTR_queue: qname, ATTR_name: jname}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                 'qstat') + ' -ans ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
+        qstat_out = '\n'.join(ret['out'])
+        jid_trunc = jid[:14] + '*'
+        jname_trunc = jname[:9] + '*'
+        qname_trunc = qname[:7] + '*'
+        self.assertIn(jid_trunc, qstat_out)
+        self.assertIn(jname_trunc, qstat_out)
+        self.assertIn(qname_trunc, qstat_out)
+        self.assertNotIn(jid, qstat_out)
+        self.assertNotIn(jname, qstat_out)
+        self.assertNotIn(qname, qstat_out)
