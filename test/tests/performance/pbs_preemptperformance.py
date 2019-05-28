@@ -496,8 +496,9 @@ exit 0
         a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER)+"=1]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        # submit a bunch of jobs under ProjectB
-        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_project: "ProjectB"}
+
+        # submit a bunch of jobs as TEST_USER2
+        a = {ATTR_l + '.select=1:ncpus': 1}
         for _ in range(2000):
             j = Job(TEST_USER2, attrs=a)
             j.set_sleep_time(3000)
@@ -512,8 +513,7 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_project: "ProjectB",
-             ATTR_q: 'highp'}
+        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_q: 'highp'}
         jid = ""
         for _ in range(2000):
             j = Job(TEST_USER2, attrs=a)
