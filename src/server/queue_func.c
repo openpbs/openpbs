@@ -297,7 +297,6 @@ find_queuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#ifdef NAS /* localmod 075 */
 
 /**
  * @brief
@@ -331,7 +330,6 @@ find_resvqueuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#endif /* localmod 075 */
 
 /**
  * @brief

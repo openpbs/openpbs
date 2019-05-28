@@ -279,6 +279,7 @@ enum job_atr {
 	JOB_ATR_resc_released_list,
 	JOB_ATR_relnodes_on_stageout,
 	JOB_ATR_tolerate_node_failures,
+	JOB_ATR_create_resv_from,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -630,7 +631,8 @@ struct job {
 	int             ji_etlimit_decr_queued;
 
 	struct preempt_ordering	*preempt_order;
-	int			preempt_order_index;
+	int preempt_order_index;
+	int allow_job_conversion;
 
 #endif					/* END SERVER ONLY */
 

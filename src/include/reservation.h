@@ -117,6 +117,7 @@ enum resv_atr {
 	RESV_ATR_resv_execvnodes,
 	RESV_ATR_resv_timezone,
 	RESV_ATR_retry,
+	RESV_ATR_job,
 	RESV_ATR_node_set,
 	RESV_ATR_UNKN,
 	RESV_ATR_LAST

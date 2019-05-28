@@ -1954,7 +1954,7 @@ get_hostPart(char *from)
  *
  * @par MT-safe:	No.
  */
-static int
+int
 set_select_and_place(int objtype, void *pobj, attribute *patr)
 {
 	pbs_list_head     collectresc;
@@ -2000,7 +2000,7 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 
 		/* Have a nodes spec, use it  to make select and place */
 
-		if ((rc=cvt_nodespec_to_select(ndspec, &cvt, &cvt_len, patr)) != 0)
+		if ((rc = cvt_nodespec_to_select(ndspec, &cvt, &cvt_len, patr)) != 0)
 			return rc;
 
 		if ((rc = prdefsl->rs_decode(&prescsl->rs_value, NULL, "select", cvt)) != 0)
@@ -2431,14 +2431,14 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
 	presc   = find_resc_entry(pdest, prdefsl);
 	/* if not set, set select/place */
-	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET)==0))
+	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0))
 		if ((rc = set_select_and_place(objtype, pobj, pdest)) != 0)
 			return rc;
 
 	prdefpc = find_resc_def(svr_resc_def, "place", svr_resc_size);
 	presc = find_resc_entry(pdest, prdefpc);
 	/* if "place" still not set, force to "free" */
-	if ((presc == NULL) || ((presc->rs_value.at_flags&ATR_VFLAG_SET)==0)) {
+	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0)) {
 		presc = add_resource_entry(pdest, prdefpc);
 		if (presc == NULL)
 			return PBSE_SYSTEM;
@@ -4435,6 +4435,7 @@ start_end_dur_wall(void *pobj, int objtype)
 
 	int	swcode = 0;	/*"switch code"*/
 	int	rc = 0;		/*return code, assume success*/
+	short	check_start = 1;
 
 	if (pobj == 0)
 		return (-1);
@@ -4472,6 +4473,7 @@ start_end_dur_wall(void *pobj, int objtype)
 		pattr = &presv->ri_wattr[RESV_ATR_resource];
 		prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource],
 			rscdef);
+		check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
 	} else if (objtype == RESV_JOB_OBJECT) {
 		pjob = (job *)pobj;
 		presv = pjob->ji_resvp;
@@ -4508,7 +4510,7 @@ start_end_dur_wall(void *pobj, int objtype)
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
 		case  3:	/*start, end*/
-			if (((pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
+			if ((((check_start) && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
@@ -4522,7 +4524,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  5:	/*start, duration*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
@@ -4534,7 +4536,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  7:	/*start, end, duration*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
 				((petime->at_val.at_long - pstime->at_val.at_long) !=
@@ -4557,7 +4559,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  9:	/*start, wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0))
 				rc = -1;
 			else {
@@ -4589,7 +4591,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 11:	/*start, end, wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0) ||
 				(petime->at_val.at_long - pstime->at_val.at_long !=
 					prsc->rs_value.at_val.at_long))
@@ -4602,7 +4604,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 13:	/*start, duration & wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
@@ -4615,7 +4617,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 15:	/*start, end, duration & wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) || (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
 				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||

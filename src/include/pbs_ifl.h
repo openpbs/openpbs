@@ -94,6 +94,7 @@ extern "C" {
 #define ATTR_resv_duration	"reserve_duration"
 #define ATTR_resv_state		"reserve_state"
 #define ATTR_resv_substate	"reserve_substate"
+#define ATTR_resv_job		"reserve_job"
 #define ATTR_auth_u		"Authorized_Users"
 #define ATTR_auth_g		"Authorized_Groups"
 #define ATTR_auth_h		"Authorized_Hosts"
@@ -191,6 +192,7 @@ extern "C" {
 #define ATTR_job_kill_delay	"job_kill_delay"
 #define ATTR_topjob_ineligible "topjob_ineligible"
 #define ATTR_history_timestamp	"history_timestamp"
+#define ATTR_create_resv_from	"create_resv_from"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
 #define ATTR_exit_status        "Exit_status"
@@ -458,7 +460,7 @@ enum mgr_obj {
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
 #define PBS_MAXSVRJOBID	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
-#define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID)
+#define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID + 1)
 #define PBS_MAXQRESVNAME	(PBS_MAXQUEUENAME)
 #define PBS_MAXCLTJOBID		(PBS_MAXSVRJOBID + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* client job id size */
 #define PBS_MAXDEST		256	/* destination size */
