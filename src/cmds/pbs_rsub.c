@@ -297,8 +297,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		}
 
 		if (maintenance_hosts == NULL) {
-			fprintf(stderr, "pbs_rsub: missing host(s)");
-			fprintf(stderr, "\n");
+			fprintf(stderr, "pbs_rsub: missing host(s)\n");
 			return (++errflg);
 		}
 	}
@@ -865,6 +864,14 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		pbs_statfree(bstat_head);	/* free info returned by pbs_statvnodes() */
+
+		if (select_str == NULL) {
+			fprintf(stderr, "pbs_rsub: missing host(s)\n");
+			print_usage();
+
+			CS_close_app();
+			exit(2);
+		}
 
 		/* add crafted select */
 		if ((i = set_resources(&attrib, select_str, 0, &erp)) != 0) {
