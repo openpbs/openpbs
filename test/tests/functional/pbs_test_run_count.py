@@ -65,15 +65,6 @@ class Test_run_count(TestFunctional):
         self.mom.log_match("h1.HK;copy hook-related file request received",
                            existence=True, starttime=start_time)
 
-    def enable_reject_begin_hook(self):
-        start_time = int(time.time())
-        attr = {'enabled': 'true'}
-        self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
-
-        # make sure hook has propogated to mom
-        self.mom.log_match("h1.HK;copy hook-related file request received",
-                           existence=True, starttime=start_time)
-
     def check_run_count(self, input_count="0", output_count="21"):
         """
         Creates a hook, submits a job and checks the run count.
@@ -156,11 +147,6 @@ class Test_run_count(TestFunctional):
                             {'resources_available.ncpus': 1},
                             id=self.mom.shortname)
 
-        # Create an execjob_begin hook that rejects the job
-        self.create_reject_begin_hook()
-        time.sleep(2)
-        self.disable_reject_begin_hook()
-
         a = {ATTR_J: '1-6'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(10)
@@ -168,7 +154,8 @@ class Test_run_count(TestFunctional):
         time.sleep(9)
         self.server.expect(JOB, {ATTR_state: "R"},
                            id=j.create_subjob_id(jid, 2))
-        self.enable_reject_begin_hook()
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
         time.sleep(8)
         self.server.expect(JOB, {ATTR_state: "X"},
                            id=j.create_subjob_id(jid, 2))
@@ -200,11 +187,6 @@ class Test_run_count(TestFunctional):
                             {'resources_available.ncpus': 1},
                             id=self.mom.shortname)
 
-        # Create an execjob_begin hook that rejects the job
-        self.create_reject_begin_hook()
-        time.sleep(2)
-        self.disable_reject_begin_hook()
-
         a = {ATTR_W: "run_count=453", ATTR_J: '1-6'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(10)
@@ -212,7 +194,8 @@ class Test_run_count(TestFunctional):
         time.sleep(9)
         self.server.expect(JOB, {ATTR_state: "R"},
                            id=j.create_subjob_id(jid, 2))
-        self.enable_reject_begin_hook()
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
         time.sleep(8)
         self.server.expect(JOB, {ATTR_state: "X"},
                            id=j.create_subjob_id(jid, 2))
