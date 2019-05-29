@@ -107,6 +107,44 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertEquals("pbs_rsub: can't use -l place with --hosts", msg)
 
+    def test_maintenance_missing_hosts(self):
+        """
+        Test if the pbs_rsub with all unknown hosts return error.
+        Test if the --hosts without host parameter return error.
+        """
+        now = int(time.time())
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': '%s@*' % TEST_USER})
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = ["foo"]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEquals("pbs_rsub: missing host(s)", msg)
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = [""]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEquals("pbs_rsub: missing host(s)", msg)
+
     def test_maintenance_confirm(self):
         """
         Test if the maintenance (prefixed with 'M') is immediately
