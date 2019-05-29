@@ -502,36 +502,45 @@ req_runjob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
+		attribute sub_runcount = {0};
+		attribute sub_run_version = {0};
 
 		/* single subjob, if parent qeueud, it can be run */
 
-		if ((pjobsub = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob) != NULL)
+		if ((pjobsub = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob) != NULL) {
+			sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
+			sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
 			job_purge(pjobsub);
+		}
 
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 			req_reject(j, 0, preq);
 			return;
 		}
+
+		if (sub_run_version.at_flags & ATR_VFLAG_SET) {
+			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
+			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+		}
+
+		if (sub_runcount.at_flags & ATR_VFLAG_SET) {
+			pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
+			pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+		}
+
 		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
 				pbs_python_set_interrupt) == 0) {
 			/* subjob reject from hook*/
-			job_purge(pjobsub);
 			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			return;
 		}
 		pjob = where_to_runjob(preq, pjobsub);
-		if (pjob == NULL) {
-			/* requeue subjob */
-			pjobsub->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-			job_purge(pjobsub);
-			return;
+		if (pjob) {
+			/* free prov_vnode before use */
+			job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
+				&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
+			req_runjob2(preq, pjob);
 		}
-
-		/* free prov_vnode before use */
-		job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
-
-		req_runjob2(preq, pjob);
 		return;
 
 	}
@@ -560,25 +569,37 @@ req_runjob(struct batch_request *preq)
 			}
 
 			if (get_subjob_state(parent, i) == JOB_STATE_QUEUED) {
+				attribute sub_runcount = {0};
+				attribute sub_run_version = {0};
 				jid  = mk_subjob_id(parent, i);
-				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob) != NULL)
+				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob) != NULL) {
+					sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
+					sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
 					job_purge(pjobsub);
+				}
 
 				if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 					req_reject(j, 0, preq);
 					continue;
 				}
+
+				if (sub_run_version.at_flags & ATR_VFLAG_SET) {
+					pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
+					pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+				}
+
+				if (sub_runcount.at_flags & ATR_VFLAG_SET) {
+					pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
+					pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+				}
+
 				if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
 						pbs_python_set_interrupt) == 0) {
 					/* subjob reject from hook*/
-					job_purge(pjobsub);
 					reply_text(preq, PBSE_HOOKERROR, hook_msg);
 					return;
 				}
 				if ((pjob = where_to_runjob(preq, pjobsub)) == NULL) {
-					/* requeue subjob */
-					pjobsub->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-					job_purge(pjobsub);
 					continue;
 				}
 				dup_br_for_subjob(preq, pjob, req_runjob2);
@@ -674,11 +695,6 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	if (((rc = svr_startjob(pjob, preq)) != 0) &&
 		((rq_type == PBS_BATCH_AsyrunJob) || preq)) {
 		free_nodes(pjob);
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-			/* requeue subjob */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-			job_purge(pjob);
-		}
 		if (preq)
 			req_reject(rc, 0, preq);
 	}
@@ -795,11 +811,6 @@ post_stagein(struct work_task *pwt)
 			if (preq->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Text)
 				svr_mailowner(pjob, MAIL_STAGEIN, MAIL_FORCE,
 					preq->rq_reply.brp_un.brp_txt.brp_str);
-			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				/* requeue subjob */
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-				job_purge(pjob);
-			}
 		} else {
 			/* stage in was successful */
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_StagedIn;
@@ -1421,11 +1432,11 @@ post_sendmom(struct work_task *pwt)
 			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 				/*
 				 * if the job is a subjob, set the comment of parent job array
-				 * only if the job array is not in state begun. Once the job
+				 * only if the job array is in state Queued. Once the job
 				 * array starts its comment is set to a begun message and
 				 * should not change after that
 				 */
-				if (jobp->ji_parentaj->ji_qs.ji_state != JOB_STATE_BEGUN) {
+				if (jobp->ji_parentaj->ji_qs.ji_state == JOB_STATE_QUEUED) {
 					job_attr_def[(int) JOB_ATR_Comment].at_decode(
 						&jobp->ji_parentaj->ji_wattr[(int) JOB_ATR_Comment],
 						NULL, NULL, log_buffer);
@@ -1578,9 +1589,26 @@ post_sendmom(struct work_task *pwt)
 							ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 						job_attr_def[(int)JOB_ATR_Comment].\
 						at_decode(\
-					  &jobp->ji_wattr[(int)JOB_ATR_Comment],
+							&jobp->ji_wattr[(int)JOB_ATR_Comment],
 							NULL, NULL,
 							"job held, too many failed attempts to run");
+
+						if (jobp->ji_parentaj) {
+							char comment_buf[100 + PBS_MAXSVRJOBID];
+							svr_setjobstate(jobp->ji_parentaj, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+							jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
+							      at_val.at_long |= HOLD_s;
+							jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
+								at_flags |=
+								ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+							sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s",
+									jobp->ji_qs.ji_jobid);
+							job_attr_def[(int)JOB_ATR_Comment].\
+							at_decode(\
+								&jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_Comment],
+								NULL, NULL,
+								comment_buf);
+						}
 					}
 
 					if (r == SEND_JOB_HOOKERR) {
@@ -1611,11 +1639,6 @@ post_sendmom(struct work_task *pwt)
 
 				svr_evaljobstate(jobp, &newstate, &newsub, 1);
 				(void)svr_setjobstate(jobp, newstate, newsub);
-				if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-					/* requeue subjob */
-					jobp->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-					job_purge(jobp);
-				}
 			} else {
 				if (preq)
 					req_reject(PBSE_BADSTATE, 0, preq);

@@ -300,9 +300,54 @@ req_releasejob(struct batch_request *preq)
 		pjob->ji_modified = 1;	/* indicates attributes changed    */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
+
 	}
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
-		job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+
+	if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_ajtrk)) {
+		int i;
+		for(i = 0 ; i < pjob->ji_ajtrk->tkm_ct ; i++) {
+			job *psubjob = pjob->ji_ajtrk->tkm_tbl[i].trk_psubjob;
+			if (psubjob && (psubjob->ji_qs.ji_state == JOB_STATE_HELD)) {
+#ifndef NAS
+				old_hold = psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+				rc =
+#endif
+					job_attr_def[(int)JOB_ATR_hold].
+					at_set(&psubjob->ji_wattr[(int)JOB_ATR_hold],
+					&temphold, DECR);
+#ifndef NAS /* localmod 105 Always reset etime on release */
+				if (!rc && (old_hold != psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long)) {
+#endif /* localmod 105 */
+#ifdef NAS /* localmod 105 */
+				{
+					attribute *etime = &psubjob->ji_wattr[(int)JOB_ATR_etime];
+					etime->at_val.at_long = time_now;
+					etime->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+#endif /* localmod 105 */
+					psubjob->ji_modified = 1;	/* indicates attributes changed    */
+					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
+					(void)svr_setjobstate(psubjob, newstate, newsub); /* saves job */
+				}
+				if (psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n)
+					job_attr_def[(int)JOB_ATR_Comment].at_free(&psubjob->ji_wattr[(int)JOB_ATR_Comment]);
+				(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
+					preq->rq_host);
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+					psubjob->ji_qs.ji_jobid, log_buffer);
+			}
+		}
+	}
+	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n) {
+		if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_qs.ji_stime != 0) ) {
+			char timebuf[128];
+
+			strftime(timebuf, 128, "%a %b %d at %H:%M", localtime(&pjob->ji_qs.ji_stime));
+			sprintf(log_buffer, "Job Array Began at %s", timebuf);
+
+			job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, log_buffer);
+		} else
+			job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+	}
 	(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
 		preq->rq_host);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,

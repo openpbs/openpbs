@@ -42,15 +42,24 @@ class Test_run_count(TestFunctional):
     """
     Test suite to test run_count attribute of a job.
     """
+    hook_name = "h1"
+    hook_body = ("import pbs\n"
+                 "e=pbs.event()\n"
+                 "e.reject()\n")
 
     def create_reject_begin_hook(self):
         start_time = int(time.time())
-        name = "h1"
-        body = ("import pbs\n"
-                "e=pbs.event()\n"
-                "e.reject()\n")
         attr = {'event': 'execjob_begin'}
-        self.server.create_import_hook(name, attr, body)
+        self.server.create_import_hook(self.hook_name, attr, self.hook_body)
+
+        # make sure hook has propogated to mom
+        self.mom.log_match("h1.HK;copy hook-related file request received",
+                           existence=True, starttime=start_time)
+
+    def disable_reject_begin_hook(self):
+        start_time = int(time.time())
+        attr = {'enabled': 'false'}
+        self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
 
         # make sure hook has propogated to mom
         self.mom.log_match("h1.HK;copy hook-related file request received",
@@ -102,3 +111,104 @@ class Test_run_count(TestFunctional):
         into held state after 5 rejections
         """
         self.check_run_count(input_count="15", output_count="21")
+
+    def subjob_check(self, jid, sjid, maxruncount="21"):
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_runcount: maxruncount},
+                           attrop=PTL_AND, id=sjid)
+        ja_comment = "Job Array Held, too many failed attempts to run subjob"
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
+                           ja_comment)}, attrop=PTL_AND, id=jid)
+        self.disable_reject_begin_hook()
+        self.server.rlsjob(jid, 's')
+        self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
+        ja_comment = "Job Array Began at"
+        self.server.expect(JOB, {ATTR_state: "B", ATTR_comment: (MATCH_RE,
+                           ja_comment)}, attrop=PTL_AND, id=jid)
+
+    def test_run_count_subjob(self):
+        """
+        Submit a job array and check if the subjob and the parent are getting
+        held after 20 rejection from mom
+        """
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+
+        a = {ATTR_J: '1-2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        self.subjob_check(jid=jid, sjid=j.create_subjob_id(jid, 1))
+
+    def test_run_count_subjob_in_x(self):
+        """
+        Submit a job array and check if the subjob and the parent are getting
+        held after 20 rejection from mom when there is another subjob in X
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+
+        a = {ATTR_J: '1-6'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        time.sleep(9)
+        self.server.expect(JOB, {ATTR_state: "R"},
+                           id=j.create_subjob_id(jid, 2))
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+        time.sleep(8)
+        self.server.expect(JOB, {ATTR_state: "X"},
+                           id=j.create_subjob_id(jid, 2))
+
+        self.subjob_check(jid=jid, sjid=j.create_subjob_id(jid, 3))
+
+    def test_large_run_count_subjob(self):
+        """
+        Submit a job array with a large (>20) but valid run_count value and
+        check if the subjob and the parent are getting
+        held after 1 rejection from mom
+        """
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+
+        a = {ATTR_W: "run_count=39", ATTR_J: '1-2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        sjid = j.create_subjob_id(jid, 1)
+        self.subjob_check(jid, sjid, maxruncount="40")
+        return sjid
+
+    def test_large_run_count_subjob_in_x(self):
+        """
+        Submit a job array and check if the subjob and the parent are getting
+        held after 20 rejection from mom when there is another subjob in X
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+
+        a = {ATTR_W: "run_count=453", ATTR_J: '1-6'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        time.sleep(9)
+        self.server.expect(JOB, {ATTR_state: "R"},
+                           id=j.create_subjob_id(jid, 2))
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+        time.sleep(8)
+        self.server.expect(JOB, {ATTR_state: "X"},
+                           id=j.create_subjob_id(jid, 2))
+
+        self.subjob_check(jid=jid, sjid=j.create_subjob_id(jid, 3),
+                          maxruncount="454")
+
+    def test_subjob_run_count_on_rerun(self):
+        """
+        to check if subjob which was previously held retains its run_count on
+        rerun
+        """
+        sjid = self.test_large_run_count_subjob()
+        self.server.rerunjob(sjid)
+        self.server.expect(JOB, {ATTR_state: "R", ATTR_runcount: "42"},
+                           attrop=PTL_AND, id=sjid)

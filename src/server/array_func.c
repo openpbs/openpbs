@@ -440,7 +440,8 @@ chk_array_doneness(job *parent)
 	if (ptbl->tkm_flags & (TKMFLG_NO_DELETE | TKMFLG_CHK_ARRAY))
 		return;	/* delete of subjobs in progress, or re-entering, so return here */
 
-	if (ptbl->tkm_subjsct[JOB_STATE_QUEUED] + ptbl->tkm_subjsct[JOB_STATE_RUNNING] + ptbl->tkm_subjsct[JOB_STATE_EXITING] == 0) {
+	if (ptbl->tkm_subjsct[JOB_STATE_QUEUED] + ptbl->tkm_subjsct[JOB_STATE_RUNNING]
+			+ ptbl->tkm_subjsct[JOB_STATE_HELD] + ptbl->tkm_subjsct[JOB_STATE_EXITING] == 0) {
 
 		/* Array Job all done, do simple eoj processing */
 

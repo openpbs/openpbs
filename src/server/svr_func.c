@@ -5760,13 +5760,6 @@ prov_startjob(struct work_task *ptask)
 		DBPRT(("%s: Jobid: %s - startjob failed - rc:%d\n",
 			__func__, pjob->ji_qs.ji_jobid, rc))
 		free_nodes(pjob);
-		if (pjob->ji_qs.ji_svrflags &
-			JOB_SVFLG_SubJob) {
-			/* requeue subjob */
-			pjob->ji_qs.ji_substate =
-				JOB_SUBSTATE_RERUN3;
-			job_purge(pjob);
-		}
 	}
 	DBPRT(("%s: Jobid: %s, startjob returned: %d\n",
 		__func__, pjob->ji_qs.ji_jobid, rc))
