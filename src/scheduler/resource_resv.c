@@ -1037,7 +1037,7 @@ set_resource_req(resource_req *req, char *val)
 {
 	resdef *rdef;
 
-	/* if val is a string, req -> amount will be set to SCHD_INFINITY */
+	/* if val is a string, req -> amount will be set to SCHD_INFINITY_RES */
 	req->amount = res_to_num(val, &(req->type));
 	req->res_str = string_dup(val);
 
@@ -1050,7 +1050,7 @@ set_resource_req(resource_req *req, char *val)
 	if (rdef != NULL)
 		req->type = rdef->type;
 
-	if (req->amount == SCHD_INFINITY) {
+	if (req->amount == SCHD_INFINITY_RES) {
 		/* Verify that this is actually a non-numeric resource */
 		if (!req->def->type.is_string)
 			return 0;

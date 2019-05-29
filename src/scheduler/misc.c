@@ -252,14 +252,14 @@ add_str_to_array(char ***str_arr, char *str)
  * @retval	a number in kilobytes or seconds
  * @retval	0 for False, if type is boolean
  * @retval	1 for True, if type is boolean
- * @retval	SCHD_INFINITY	: if not a number
+ * @retval	SCHD_INFINITY_RES	: if not a number
  *
  */
 sch_resource_t
 res_to_num(char *res_str, struct resource_type *type)
 {
-	sch_resource_t count = SCHD_INFINITY;	/* convert string resource to numeric */
-	sch_resource_t count2 = SCHD_INFINITY;	/* convert string resource to numeric */
+	sch_resource_t count = SCHD_INFINITY_RES;	/* convert string resource to numeric */
+	sch_resource_t count2 = SCHD_INFINITY_RES;	/* convert string resource to numeric */
 	char *endp;				/* used for strtol() */
 	char *endp2;				/* used for strtol() */
 	long multiplier = 1;			/* multiplier to count */
@@ -267,7 +267,7 @@ res_to_num(char *res_str, struct resource_type *type)
 	int is_time = 0;			/* resource value is a time spec */
 
 	if (res_str == NULL)
-		return SCHD_INFINITY;
+		return SCHD_INFINITY_RES;
 
 	if (!strcasecmp(ATR_TRUE, res_str)) {
 		if (type != NULL) {
@@ -288,7 +288,7 @@ res_to_num(char *res_str, struct resource_type *type)
 			type->is_string = 1;
 			type->is_non_consumable = 1;
 		}
-		count = SCHD_INFINITY;
+		count = SCHD_INFINITY_RES;
 	}
 	else {
 		count = (sch_resource_t) strtod(res_str, &endp);
@@ -300,7 +300,7 @@ res_to_num(char *res_str, struct resource_type *type)
 				count += count2 * 60;
 				count += strtol(endp2 + 1, &endp, 10);
 				if (*endp != '\0')
-					count = SCHD_INFINITY;
+					count = SCHD_INFINITY_RES;
 			}
 			else			 { /* form of MM:SS */
 				count *= 60;
@@ -1613,7 +1613,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	}
 	else if (rt->is_num) {
 		int const_print = 0;
-		if (amount == UNSPECIFIED) {
+		if (amount == UNSPECIFIED_RES) {
 			if (flags & PRINT_INT_CONST) {
 				if (flags & NOEXPAND)
 					snprintf(*buf, *bufsize, UNSPECIFIED_STR);
@@ -1622,7 +1622,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 
 				const_print = 1;
 			}
-		} else if (amount == SCHD_INFINITY) {
+		} else if (amount == SCHD_INFINITY_RES) {
 			if (flags & PRINT_INT_CONST) {
 				if (flags & NOEXPAND)
 					snprintf(*buf, *bufsize, SCHD_INFINITY_STR);

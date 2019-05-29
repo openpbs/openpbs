@@ -980,7 +980,7 @@ talk_with_mom(node_info *ninfo)
 						break;
 					}
 				}
-				else if (res->avail == SCHD_INFINITY)
+				else if (res->avail == SCHD_INFINITY_RES)
 					res->avail = 0;
 
 				snprintf(errbuf, sizeof(errbuf), "%s = %s (\"%s\")",

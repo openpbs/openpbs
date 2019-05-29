@@ -608,7 +608,7 @@ is_res_avail_set(schd_resource *res)
 		if (res->str_avail != NULL && res->str_avail[0] != NULL)
 			return 1;
 	}
-	else if (res->avail != SCHD_INFINITY)
+	else if (res->avail != SCHD_INFINITY_RES)
 		return 1;
 
 	return 0;
