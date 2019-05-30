@@ -818,6 +818,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			return;
 		}
 		if (rc) {
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 			req_reject(rc, 0, preq); /* cant send to MOM */
 			(void) sprintf(log_buffer, "Delete failed %d", rc);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,

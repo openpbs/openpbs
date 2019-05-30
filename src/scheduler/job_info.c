@@ -3508,7 +3508,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 				if (po->order[j] == PREEMPT_METHOD_REQUEUE &&
 					rjobs[i]->job->can_requeue)
 					break; /* choose if requeue is allowed */
-				if (po->order[i] == PREEMPT_METHOD_DELETE)
+				if (po->order[j] == PREEMPT_METHOD_DELETE)
 					break;
 			}
 			if (j == PREEMPT_METHOD_HIGH) /* no preemption method good */

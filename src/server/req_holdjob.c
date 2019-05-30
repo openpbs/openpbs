@@ -245,6 +245,9 @@ req_holdjob(struct batch_request *preq)
 			svr_evaljobstate(pjob, &newstate, &newsub, 0);
 			(void)svr_setjobstate(pjob, newstate, newsub);
 		}
+		/* Reject preemption because job requested -c n */
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_NOSUP, PREEMPT_METHOD_CHECKPOINT, pjob);
 		reply_ack(preq);
 	}
 }
@@ -283,7 +286,7 @@ req_releasejob(struct batch_request *preq)
 
 	/* cannot do anything until we decode the holds to be set */
 
-	if ((rc=get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
+	if ((rc = get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -472,9 +475,7 @@ post_hold(struct work_task *pwt)
 		if (!conn) {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_CHECKPOINT, pjob);
-			else
-				req_reject(PBSE_SYSTEM, 0, preq);
-			return;
+			req_reject(PBSE_SYSTEM, 0, preq);
 		}
 
 		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
@@ -491,8 +492,7 @@ post_hold(struct work_task *pwt)
 			/* send message back to server for display to user */
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(code, PREEMPT_METHOD_CHECKPOINT, pjob);
-			else
-				reply_text(preq, code, log_buffer);
+			reply_text(preq, code, log_buffer);
 			return;
 		}
 	} else if (code == 0) {

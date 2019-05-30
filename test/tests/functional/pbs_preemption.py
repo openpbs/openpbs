@@ -97,7 +97,7 @@ exit 1
         self.mom.add_config(c)
 
     def submit_and_preempt_jobs(self, preempt_order='R', order=None,
-                                job_array=False):
+                                job_array=False, extra_attrs=None):
         """
         This function will set the prempt order, submit jobs,
         preempt jobs and do log_match()
@@ -131,6 +131,8 @@ exit 1
         lpattrs = {ATTR_l + '.select': '1:ncpus=1', ATTR_l + '.walltime': 40}
         if job_array is True:
             lpattrs[ATTR_J] = '1-3'
+        if extra_attrs is not None:
+            lpattrs.update(extra_attrs)
 
         # submit a job to regular queue
         j1 = Job(TEST_USER, lpattrs)
@@ -225,6 +227,27 @@ exit 1
         """
         self.insert_checkpoint_script(self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CD')
+
+    def test_preempt_rerunable_false(self):
+        # in CLI mode Rerunnable requires a 'n' value.  It's different with API
+        m = self.server.get_op_mode()
+
+        self.server.set_op_mode(PTL_CLI)
+        a = {'Rerunable': 'n'}
+        self.submit_and_preempt_jobs(preempt_order='RD', extra_attrs=a)
+
+        self.server.set_op_mode(m)
+
+    def test_preempt_checkpoint_false(self):
+        # in CLI mode Checkpoint requires a 'n' value.  It's different with API
+        m = self.server.get_op_mode()
+        self.server.set_op_mode(PTL_CLI)
+
+        self.insert_checkpoint_script(self.chk_script)
+        a = {'Checkpoint': 'n'}
+        self.submit_and_preempt_jobs(preempt_order='CD', extra_attrs=a)
+
+        self.server.set_op_mode(m)
 
     def test_preempt_order_requeue_first(self):
         """

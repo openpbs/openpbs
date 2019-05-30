@@ -227,6 +227,8 @@ req_rerunjob(struct batch_request *preq)
 		return;		/* note, req_reject already called */
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
+		if (parent->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, parent);
 		req_reject(PBSE_PERM, 0, preq);
 		return;
 	}
@@ -269,6 +271,8 @@ req_rerunjob(struct batch_request *preq)
 		/* The Array Job itself ... */
 
 		if (parent->ji_qs.ji_state != JOB_STATE_BEGUN) {
+			if (parent->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, parent);
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -299,8 +303,9 @@ req_rerunjob(struct batch_request *preq)
 		return;
 
 	}
-	/* what's left to handle is a range of subjobs, foreach subjob 	*/
-	/* if running, all req_rerunjob2			        */
+	/* what's left to handle is a range of subjobs, foreach subjob
+	 * if running, all req_rerunjob2
+	 */
 
 	range = get_index_from_jid(jid);
 	if (range == NULL) {
@@ -423,6 +428,8 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long == 0) &&
 		(force == 0)) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_DELETE, pjob);
 		req_reject(PBSE_NORERUN, 0, preq);
 		return;
 	}
@@ -430,6 +437,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	/* the job must be running */
 
 	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
+
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -438,6 +448,8 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
          */
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
             (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -474,6 +486,8 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	}
 
 	if (rc != 0) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 		req_reject(rc, 0, preq);
 		return;
 	}
