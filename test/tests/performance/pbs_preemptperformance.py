@@ -491,7 +491,7 @@ exit 0
         self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
-        self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
+        self.server.manager(MGR_CMD_SET, SCHED, a)
 
         a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER)+"=1]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
@@ -513,16 +513,17 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_q: 'highp'}
-        jid = ""
+        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_q: qname}
         for _ in range(2000):
             j = Job(TEST_USER2, attrs=a)
             j.set_sleep_time(3000)
-            jid = self.server.submit(j)
+            ljid = self.server.submit(j)
         scycle = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        (_, str1) = self.scheduler.log_match("Starting Scheduling Cycle",
-                                             n='ALL', starttime=int(scycle),
+
+        # Rollback 2000 job ids to get to the first high priority job id
+        fjid = str((int(ljid.split('.')[0]) - 2000)) + '.' + ljid.split('.')[1]
+        (_, str1) = self.scheduler.log_match(fjid + ";Considering job to run",
                                              max_attempts=1, interval=2)
         date_time1 = str1.split(";")[0]
         epoch1 = self.lu.convert_date_time(date_time1)
@@ -530,7 +531,7 @@ exit 0
         self.server.expect(JOB, {'job_state=S': 2000}, interval=10, offset=5,
                            max_attempts=100)
         # record the start time of last high priority job
-        (_, str2) = self.scheduler.log_match(jid + ";Job run",
+        (_, str2) = self.scheduler.log_match(ljid + ";Job run",
                                              n='ALL',
                                              max_attempts=1, interval=2)
         date_time2 = str2.split(";")[0]

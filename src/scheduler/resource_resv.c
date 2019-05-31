@@ -538,7 +538,7 @@ find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index)
 
 /**
  * @brief
- * 		find a resource_resv by name/index and start time
+ * 		find a resource_resv by name and start time
  *
  * @param[in]	resresv_arr -	array of resource_resvs to search
  * @param[in]	name        -	name of resource_resv to find
