@@ -928,7 +928,7 @@ class HookUtils(object):
                     result = False
                 try:
                     val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
-                    cgroup.set_swappiness(value)
+                    cgroup.set_swappiness(val)
                 except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                '%s: Failed to set swappiness' % caller_name())
@@ -1640,8 +1640,8 @@ class NodeUtils(object):
         # Calculate reserved memory
         reserved = 0
         if not ignore_reserved:
-            reserve_percent = self.cfg['cgroup']['memory']['reserve_percent']
-            reserved += int(total * (int(reserve_percent) / 100))
+            reserve_pct = int(self.cfg['cgroup']['memory']['reserve_percent'])
+            reserved += int(total * (reserve_pct / 100.0))
             reserve_amount = self.cfg['cgroup']['memory']['reserve_amount']
             reserved += size_as_int(reserve_amount)
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved mem: %d' % reserved)
@@ -1702,8 +1702,8 @@ class NodeUtils(object):
         # Calculate reserved vmem
         reserved = 0
         if not ignore_reserved:
-            reserve_percent = self.cfg['cgroup']['memsw']['reserve_percent']
-            reserved += int(total * (int(reserve_percent) / 100))
+            reserve_pct = int(self.cfg['cgroup']['memsw']['reserve_percent'])
+            reserved += int(total * (reserve_pct / 100.0))
             reserve_amount = self.cfg['cgroup']['memsw']['reserve_amount']
             reserved += size_as_int(reserve_amount)
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved vmem: %d' % reserved)
@@ -1762,8 +1762,8 @@ class NodeUtils(object):
         # Calculate reserved hpmem
         reserved = 0
         if not ignore_reserved:
-            reserve_percent = self.cfg['cgroup']['hugetlb']['reserve_percent']
-            reserved += int(total * (int(reserve_percent) / 100))
+            reserve_pct = int(self.cfg['cgroup']['hugetlb']['reserve_percent'])
+            reserved += int(total * (reserve_pct / 100.0))
             reserve_amount = self.cfg['cgroup']['hugetlb']['reserve_amount']
             reserved += size_as_int(reserve_amount)
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved hpmem: %d' % reserved)
@@ -2360,7 +2360,7 @@ class CgroupUtils(object):
         defaults['cgroup']['memory']['default'] = '0MB'
         defaults['cgroup']['memory']['reserve_percent'] = 0
         defaults['cgroup']['memory']['reserve_amount'] = '0MB'
-        defaults['cgroup']['memory']['swappiness'] = 20
+        defaults['cgroup']['memory']['swappiness'] = 10
         defaults['cgroup']['memsw'] = {}
         defaults['cgroup']['memsw']['enabled'] = False
         defaults['cgroup']['memsw']['exclude_hosts'] = []
@@ -2414,17 +2414,6 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4,
                    '%s: cgroup hook configuration: %s' %
                    (caller_name(), config))
-        # Older versions of the default config file defined reserve_percent
-        # as a string rather than an integer. Make sure they are integers.
-        if type(config['cgroup']['hugetlb']['reserve_percent']) is not int:
-            config['cgroup']['hugetlb']['reserve_percent'] = \
-                int(config['cgroup']['hugetlb']['reserve_percent'])
-        if type(config['cgroup']['memory']['reserve_percent']) is not int:
-            config['cgroup']['memory']['reserve_percent'] = \
-                int(config['cgroup']['memory']['reserve_percent'])
-        if type(config['cgroup']['memsw']['reserve_percent']) is not int:
-            config['cgroup']['memsw']['reserve_percent'] = \
-                int(config['cgroup']['memsw']['reserve_percent'])
         return config
 
     def create_paths(self):
@@ -3601,7 +3590,7 @@ class CgroupUtils(object):
         Set the swappiness for a memory cgroup
         """
         pbs.logmsg(pbs.EVENT_DEBUG3, "%s: Method called" % (caller_name()))
-        path = self.__cgroup_path('memory', 'swappiness', jobid)
+        path = self._cgroup_path('memory', 'swappiness', jobid)
         try:
             self.write_value(path, value)
         except Exception as exc:
