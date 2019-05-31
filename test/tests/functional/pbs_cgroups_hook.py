@@ -267,8 +267,8 @@ else
 fi
 sleep 10
 """
-        self.check_dirs_script = """#!/bin/bash
-#PBS -joe
+        self.check_dirs_script = """
+PBS_JOBID=$(qstat | tail -1 | awk '{print $1}')
 
 check_file_diff() {
     for filename in $1/*.*; do
@@ -283,7 +283,8 @@ check_file_diff() {
 }
 
 jobnum=${PBS_JOBID%%.*}
-cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2`
+cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
+             tr " " "\n" | sed -n '1p'`
 if [ -d "$cpuset_base/propbs" ]; then
     cpuset_job="$cpuset_base/propbs/$PBS_JOBID"
 else
@@ -334,7 +335,6 @@ if [ -d $devices_job ]; then
 else
     echo "Devices directory should be populated"
 fi
-sleep 10
 """
         self.check_gpu_script = """#!/bin/bash
 #PBS -joe
@@ -1340,28 +1340,24 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg2)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.check_dirs_script)
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        filename = j.attributes[ATTR_o]
-        self.tempfile.append(filename)
-        ehost = j.attributes['exec_host']
-        tmp_file = filename.split(':')[1]
-        tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
+        scr = self.du.run_cmd(cmd=[self.check_dirs_script], as_script=True)
+        scr_out = scr['out']
         check_devices = ['b *:* rwm',
                          'c 5:1 rwm',
                          'c 4:* rwm',
                          'c 1:* rwm',
                          'c 10:* rwm']
         for device in check_devices:
-            self.assertTrue(device in tmp_out,
-                            '"%s" not found in: %s' % (device, tmp_out))
+            self.assertTrue(device in scr_out,
+                            '"%s" not found in: %s' % (device, scr_out))
         self.logger.info('device_list check passed')
         self.assertFalse('Disabled cgroup subsystems are populated '
-                         'with the job id' in tmp_out,
+                         'with the job id' in scr_out,
                          'Found disabled cgroup subsystems populated')
         self.logger.info('Disabled subsystems check passed')
 
