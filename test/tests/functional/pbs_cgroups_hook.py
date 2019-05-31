@@ -211,7 +211,7 @@ if sleeptime > 0:
 #PBS -joe
 echo $PBS_JOBID
 cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
-             grep cgroup`
+             sort | tail -1`
 if [ -z "$cpuset_base" ]; then
     echo "Cpuset subsystem not mounted."
     exit 1
@@ -284,7 +284,7 @@ check_file_diff() {
 
 jobnum=${PBS_JOBID%%.*}
 cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
-             grep cgroup`
+             sort | tail -1`
 if [ -d "$cpuset_base/propbs" ]; then
     cpuset_job="$cpuset_base/propbs/$PBS_JOBID"
 else
