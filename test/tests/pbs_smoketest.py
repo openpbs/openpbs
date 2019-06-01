@@ -432,7 +432,6 @@ class SmokeTest(PBSTestSuite):
 
         self.scheduler.log_match(jid1 + ";Job preempted by suspension")
 
-
     @skipOnCpuSet
     def test_fairshare(self):
         """
