@@ -272,27 +272,6 @@ exit 1
         self.scheduler.log_match(
             ";Job will never run", existence=False, max_attempts=5)
 
-    def test_preempt_qrun(self):
-        """
-        Test that a job is preempted when a high priority job is run via qrun
-        """
-        j = Job(TEST_USER)
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'})
-
-        j2 = Job(TEST_USER)
-        jid2 = self.server.submit(j2)
-
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
-
-        self.server.runjob(jid2)
-        self.server.expect(JOB, {'job_state': 'S'}, id=jid)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-
-        self.scheduler.log_match(jid + ";Job preempted by suspension")
-
     def test_qalter_preempt_targets_to_none(self):
         """
         Test that a job requesting preempt targets set to two different queues
