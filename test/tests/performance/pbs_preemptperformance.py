@@ -514,17 +514,19 @@ exit 0
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         a = {ATTR_l + '.select=1:ncpus': 1, ATTR_q: qname}
+        fjid = None
         for _ in range(2000):
             j = Job(TEST_USER2, attrs=a)
             j.set_sleep_time(3000)
-            ljid = self.server.submit(j)
+            if fjid is None:
+                fjid = self.server.submit(j)
+            else:
+                ljid = self.server.submit(j)
         scycle = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        # Rollback 2000 job ids to get to the first high priority job id
-        fjid = str((int(ljid.split('.')[0]) - 2000)) + '.' + ljid.split('.')[1]
-        (_, str1) = self.scheduler.log_match(fjid + ";Considering job to run",
-                                             max_attempts=1, interval=2)
+        (_, str1) = self.scheduler.log_match(fjid + ";Considering job to run")
+
         date_time1 = str1.split(";")[0]
         epoch1 = self.lu.convert_date_time(date_time1)
         # make sure 2000 jobs were suspended
