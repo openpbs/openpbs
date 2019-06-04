@@ -439,11 +439,15 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 	} else {
 		histerr = svr_chk_histjob(pjob);
 		if (histerr && deletehist == 0) {
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(histerr, PREEMPT_METHOD_DELETE, pjob);
 			req_reject(histerr, 0, preq);
 			return NULL;
 		}
 		if (deletehist ==1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
 			pjob->ji_qs.ji_substate != JOB_SUBSTATE_FINISHED) {
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(PBSE_UNKJOBID, PREEMPT_METHOD_DELETE, pjob);
 			job_purge(pjob);
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return NULL;
@@ -473,6 +477,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_PERM, PREEMPT_METHOD_DELETE, pjob);
 		req_reject(PBSE_PERM, 0, preq);
 		return NULL;
 	}
@@ -490,6 +496,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 			pjob->ji_qs.ji_state);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return NULL;
 	}

@@ -63,7 +63,6 @@
 #include "svrfunc.h"
 
 extern void post_signal_req(struct work_task *);
-int shutdown_preempt_chkpt(job *pjob, struct batch_request *nest);
 struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched);
 
 /* Global Data Items: */
@@ -71,6 +70,205 @@ struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched);
 extern struct server server;
 
 extern time_t time_now;
+
+static int preempt_total = 0;
+static int preempt_index = 0;
+static preempt_job_info *preempt_jobs_list = NULL;
+
+/**
+ * @brief mark a job preemption as failed
+ * @param[in] preempt_preq - the preemption preq from the scheduler
+ * @param[in] job_id - the job to mark as failed
+ * @return void
+ */
+static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id, int code) {
+	snprintf(log_buffer, sizeof(log_buffer), "preemption failed for job (%d)", code);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, job_id, log_buffer);
+	preempt_preq->rq_reply.brp_code = 1;
+	strcpy(preempt_jobs_list[preempt_index].order, "000");
+	sprintf(preempt_jobs_list[preempt_index].job_id, "%s", job_id);
+	preempt_index++;
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, job_id, "Job failed to be preempted");
+}
+
+/**
+ * @brief create a local batch_request for a suspend request
+ * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for suspend
+ */ 
+static struct batch_request *create_suspend_request(char *job_id) 
+{
+	struct batch_request *newreq;
+
+	newreq = alloc_br(PBS_BATCH_SignalJob);
+	if (newreq == NULL) 
+		return NULL;
+	snprintf(newreq->rq_ind.rq_signal.rq_jid, sizeof(newreq->rq_ind.rq_signal.rq_jid), "%s", job_id);
+	snprintf(newreq->rq_ind.rq_signal.rq_signame, sizeof(newreq->rq_ind.rq_signal.rq_signame), "%s", SIG_SUSPEND);
+	return newreq;
+}
+
+/**
+ * @brief create a local batch_request for a checkpoint request
+ * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for holdjob (checkpoint)
+ */
+
+static struct batch_request *create_ckpt_request(char *job_id) 
+{
+	int hold_name_size;
+	int hold_val_size = 2; /* 2 for 's' and '\0' */
+	struct batch_request *newreq;
+	svrattrl *hold_svrattrl;
+
+	hold_name_size = strlen(job_attr_def[(int)JOB_ATR_hold].at_name) + 1;
+	newreq = alloc_br(PBS_BATCH_HoldJob);
+	hold_svrattrl = attrlist_alloc(hold_name_size, 0, hold_val_size);
+	if (newreq == NULL || hold_svrattrl == NULL) {
+		if (newreq != NULL)
+			free_br(newreq);
+		if (hold_svrattrl != NULL)
+			free(hold_svrattrl);
+		return NULL;
+	}
+	snprintf(newreq->rq_ind.rq_hold.rq_orig.rq_objname, sizeof(newreq->rq_ind.rq_hold.rq_orig.rq_objname), "%s", job_id);
+	snprintf(hold_svrattrl->al_name, hold_name_size, "%s", job_attr_def[(int)JOB_ATR_hold].at_name);
+	snprintf(hold_svrattrl->al_value, hold_val_size, "s");
+	CLEAR_HEAD(newreq->rq_ind.rq_hold.rq_orig.rq_attr);
+	append_link(&newreq->rq_ind.rq_hold.rq_orig.rq_attr, &hold_svrattrl->al_link, hold_svrattrl);
+
+	return newreq;
+}
+
+/**
+ * @brief create a local batch_request for a requeue request
+ * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for rerun (requeue)
+ */
+
+static struct batch_request *create_requeue_request(char *job_id) 
+{
+	struct batch_request *newreq;
+
+	newreq = alloc_br(PBS_BATCH_Rerun);
+	if (newreq == NULL)
+		return NULL;
+
+	snprintf(newreq->rq_ind.rq_signal.rq_jid, sizeof(newreq->rq_ind.rq_signal.rq_jid), "%s", job_id);
+	return newreq;
+}
+
+/**
+ * @brief create a local batch_request for a delete request
+ * @param[in] job_id - the job to create the request for
+ * @return batch_request *
+ * @retval new batch_request for delete
+ */
+
+static struct batch_request *create_delete_request(char *job_id)
+{
+	struct batch_request *newreq;
+	newreq = alloc_br(PBS_BATCH_DeleteJob);
+	if (newreq == NULL)
+		return NULL;
+	snprintf(newreq->rq_ind.rq_delete.rq_objname, sizeof(newreq->rq_ind.rq_delete.rq_objname), "%s", job_id);
+	return newreq;
+}
+
+/**
+ * @brief create and issue local preemption request for a job
+ * @param[in] preempt_method - preemption method
+ * @param[in] pjob - the job to be preempted
+ * @param[in] preq - the preempt request from the scheduler
+ * @return success/failure
+ */
+static int issue_preempt_request(int preempt_method, job *pjob, struct batch_request *preq)
+{
+	struct batch_request *newreq;
+	struct work_task *pwt;
+
+	switch (preempt_method) {
+		case PREEMPT_METHOD_SUSPEND:
+			newreq = create_suspend_request(pjob->ji_qs.ji_jobid);
+			break;
+		case PREEMPT_METHOD_CHECKPOINT:
+			newreq = create_ckpt_request(pjob->ji_qs.ji_jobid);
+			break;
+		case PREEMPT_METHOD_REQUEUE:
+			newreq = create_requeue_request(pjob->ji_qs.ji_jobid);
+			break;
+		case PREEMPT_METHOD_DELETE:
+			newreq = create_delete_request(pjob->ji_qs.ji_jobid);
+			break;
+		default:
+			return 1;
+	}
+
+	if (newreq != NULL) {
+		newreq->rq_extend = NULL;
+		snprintf(newreq->rq_user, sizeof(newreq->rq_user), "%s", preq->rq_user);
+		snprintf(newreq->rq_host, sizeof(newreq->rq_host), "%s", preq->rq_host);
+		newreq->rq_perm = preq->rq_perm;
+		if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, release_req, &pwt, 0) == -1) {
+			free_br(newreq);
+			return 1;
+		}
+		append_link(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
+	}
+	else
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief clear the system hold on a job after a checkpoint request
+ * @param[in] pjob - the job to clear
+ */
+static void clear_preempt_hold(job *pjob)
+{
+	attribute temphold;
+	long old_hold;
+	int newsub;
+	int newstate;
+
+	clear_attr(&temphold, &job_attr_def[(int)JOB_ATR_hold]);
+	job_attr_def[(int)JOB_ATR_hold].at_decode(&temphold, NULL, NULL, "s");
+
+	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+	job_attr_def[(int)JOB_ATR_hold].at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
+					       &temphold, DECR);
+
+	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
+		pjob->ji_modified = 1; /* indicates attributes changed    */
+
+		svr_evaljobstate(pjob, &newstate, &newsub, 0);
+		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
+	}
+	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
+		job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+}
+
+/**
+ * @brief send the reply back to the scheduler once all the jobs are preempted
+ * @param[in] preq - the preemption batch request from the scheduler
+ */
+void
+send_preempt_reply(struct batch_request *preq)
+{
+	if (preq == NULL)
+		return;
+	/* Send reply */
+	preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list = preempt_jobs_list;
+	reply_send(preq);
+	free(preempt_jobs_list);
+	preempt_index = 0;
+	preempt_total = 0;
+	preempt_jobs_list = NULL;
+}
 
 /**
  * @brief
@@ -85,34 +283,73 @@ extern time_t time_now;
 void
 req_preemptjobs(struct batch_request *preq)
 {
-	int			i = 0;
-	int			count = 0;
-	job			*pjob = NULL;
-	preempt_job_info	*ppj = NULL;
-	pbs_sched		*psched;
+	int i = 0;
+	int count = 0;
+	job *pjob = NULL;
+	preempt_job_info *ppj = NULL;
+	pbs_sched *psched;
 
 	preq->rq_reply.brp_code = 0;
 	count = preq->rq_ind.rq_preempt.count;
 	psched = find_sched_from_sock(preq->rq_conn);
 
+	preempt_total = preq->rq_ind.rq_preempt.count;
+
+	if (preempt_jobs_list == NULL) {
+		if ((preempt_jobs_list = calloc(sizeof(preempt_job_info), preempt_total)) == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			log_err(errno, __func__, "Unable to allocate memory");
+			return;
+		}
+	}
+
+	preq->rq_reply.brp_choice = BATCH_REPLY_CHOICE_PreemptJobs;
+	preq->rq_reply.brp_un.brp_preempt_jobs.count = preq->rq_ind.rq_preempt.count;
+
 	for (i = 0; i < count; i++) {
 		ppj = &(preq->rq_ind.rq_preempt.ppj_list[i]);
 		pjob = find_job(ppj->job_id);
+		/* The job is already out of the way. This must have happened after the scheduler
+		 * queried the universe and before it tried to preempt the jobs.
+		 * Regardless of the preempt_order, use the correct reply code to what
+		 * actually happened so the scheduler correctly handles the job.
+		 */
+		if (pjob == NULL) {
+			sprintf(preempt_jobs_list[preempt_index].job_id, "%s", ppj->job_id);
+			strcpy(preempt_jobs_list[preempt_index].order, "D");
+			preempt_index++;
+			continue;
+		}
+
+		if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+			sprintf(preempt_jobs_list[preempt_index].job_id, "%s", ppj->job_id);
+			switch (pjob->ji_qs.ji_state) {
+				case JOB_STATE_QUEUED:
+					strcpy(preempt_jobs_list[preempt_index].order, "Q");
+					preempt_index++;
+					break;
+				case JOB_STATE_EXPIRED:
+				case JOB_STATE_FINISHED:
+				case JOB_STATE_MOVED:
+					strcpy(preempt_jobs_list[preempt_index].order, "D");
+					preempt_index++;
+					break;
+				default:
+					job_preempt_fail(preq, ppj->job_id, PBSE_BADSTATE);
+			}
+			continue;
+		}
+
+		pjob->ji_pmt_preq = preq;
 
 		pjob->preempt_order = svr_get_preempt_order(pjob, psched);
 		pjob->preempt_order_index = 0;
-		switch((int)pjob->preempt_order[0].order[0]) {
-			case PREEMPT_METHOD_SUSPEND:
-				issue_signal(pjob, SIG_SUSPEND, post_signal_req, pjob, preq);
-				break;
-			case PREEMPT_METHOD_CHECKPOINT:
-				shutdown_preempt_chkpt(pjob, preq);
-				break;
-			case PREEMPT_METHOD_REQUEUE:
-				issue_signal(pjob, SIG_RERUN, post_rerun, pjob, preq);
-				break;
-		}
+		if (issue_preempt_request((int)pjob->preempt_order[0].order[0], pjob, preq))
+			reply_preempt_jobs_request(PBSE_SYSTEM, (int)pjob->preempt_order[0].order[0], pjob);
 	}
+	/* check if all jobs failed */
+	if (preempt_index == preempt_total)
+		send_preempt_reply(preq);
 }
 
 /**
@@ -126,112 +363,54 @@ req_preemptjobs(struct batch_request *preq)
  *
  * @param[in] code - determines if the job was preempted or not.
  * @param[in] aux  - determines the method by which job was preempted.
- * @param[in] local_preq - contains the job information and the scheuler
- *                         request to which reply is to be sent.
+ * @param[in] pjob - the job in which we are replying to the preemption request
  */
 
 void
-reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq)
+reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 {
-	job *pjob;
-	int newsub;
-	int newstate;
-	attribute temphold;
-	struct batch_request *preq = local_preq->rq_nest;
-	struct batch_reply *preply = &(preq->rq_reply);
+	struct batch_request *preq;
 
-	static int count = 0;
-	static int index = 0;
-	static preempt_job_info	*preempt_jobs_list = NULL;
+	if (pjob == NULL)
+		return;
 
-	count = preq->rq_ind.rq_preempt.count;
-	pjob = local_preq->rq_extra;
-
-	if (preempt_jobs_list == NULL) {
-		if ((preempt_jobs_list = calloc(sizeof(preempt_job_info), count)) == NULL) {
-			log_err(errno, __func__, "Unable to allocate memory");
-			return;
-		}
-	}
-
-	preply->brp_choice = BATCH_REPLY_CHOICE_PreemptJobs;
-	preply->brp_un.brp_preempt_jobs.count = preq->rq_ind.rq_preempt.count;
+	preq = pjob->ji_pmt_preq;
 
 	if (code != PBSE_NONE) {
-		switch ((int)pjob->preempt_order[0].order[pjob->preempt_order_index+1]) {
-			case PREEMPT_METHOD_SUSPEND:
-				issue_signal(pjob, SIG_SUSPEND, post_signal_req, pjob, preq);
-				break;
-			case PREEMPT_METHOD_CHECKPOINT:
-				shutdown_preempt_chkpt(pjob, preq);
-				break;
-			case PREEMPT_METHOD_REQUEUE:
-				issue_signal(pjob, SIG_RERUN, post_rerun, pjob, preq);
-				break;
-			default:
-				/* preemption failed */
-				preply->brp_code = 1;
-				strcpy(preempt_jobs_list[index].order, "000");
-				sprintf(preempt_jobs_list[index].job_id, "%s", pjob->ji_qs.ji_jobid);
-				index++;
-				break;
+		if (pjob->preempt_order[0].order[pjob->preempt_order_index] == PREEMPT_METHOD_CHECKPOINT)
+			clear_preempt_hold(pjob);
+		if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index + 1], pjob, preq)) {
+			job_preempt_fail(preq, pjob->ji_qs.ji_jobid, code);
+			pjob->ji_pmt_preq = NULL;
 		}
 		pjob->preempt_order_index++;
 	} else {
 		/* successful preemption */
-		long old_hold;
 		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_val.at_long = time(0);
 		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		switch (aux) {
-			case 1:
-				strcpy(preempt_jobs_list[index].order, "S");
+			case PREEMPT_METHOD_SUSPEND:
+				strcpy(preempt_jobs_list[preempt_index].order, "S");
 				break;
-			case 2:
-				strcpy(preempt_jobs_list[index].order, "C");
-
-				clear_attr(&temphold, &job_attr_def[(int)JOB_ATR_hold]);
-				job_attr_def[(int)JOB_ATR_hold].at_decode(
-					&temphold,
-					NULL,
-					NULL,
-					"s");
-
-				old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
-				job_attr_def[(int)JOB_ATR_hold].
-					at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
-					&temphold, DECR);
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-
-
-				if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
-					pjob->ji_modified = 1;	/* indicates attributes changed    */
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-
-					svr_evaljobstate(pjob, &newstate, &newsub, 0);
-					(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
-
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-				}
-				if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
-					job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+			case PREEMPT_METHOD_CHECKPOINT:
+				strcpy(preempt_jobs_list[preempt_index].order, "C");
+				clear_preempt_hold(pjob);
 				break;
-			case 3:
-				strcpy(preempt_jobs_list[index].order, "Q");
+			case PREEMPT_METHOD_REQUEUE:
+				strcpy(preempt_jobs_list[preempt_index].order, "Q");
+				break;
+			case PREEMPT_METHOD_DELETE:
+				strcpy(preempt_jobs_list[preempt_index].order, "D");
 				break;
 		}
-		sprintf(preempt_jobs_list[index].job_id, "%s", pjob->ji_qs.ji_jobid);
-		index++;
-	}
+		sprintf(preempt_jobs_list[preempt_index].job_id, "%s", pjob->ji_qs.ji_jobid);
+		pjob->ji_pmt_preq = NULL;
 
-	if (index == count) {
-		/* Send reply */
-		preply->brp_un.brp_preempt_jobs.ppj_list = preempt_jobs_list;
-		reply_send(preq);
-		free(preempt_jobs_list);
-		index = 0;
-		count = 0;
-		preempt_jobs_list = NULL;
+		preempt_index++;
 	}
+	/* send reply if we're done */
+	if (preempt_index == preempt_total)
+		send_preempt_reply(preq);
 }
 
 /**

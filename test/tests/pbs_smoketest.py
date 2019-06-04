@@ -409,24 +409,28 @@ class SmokeTest(PBSTestSuite):
     @skipOnCpuSet
     def test_preemption_qrun(self):
         """
-        Test that qrun will preempt other jobs
+        Test that a job is preempted when a high priority job is run via qrun
         """
         self.server.manager(MGR_CMD_SET, NODE,
                             {'resources_available.ncpus': 1},
                             id=self.mom.shortname)
-        J1 = Job(TEST_USER)
-        jid1 = self.server.submit(J1)
 
-        J2 = Job(TEST_USER)
-        jid2 = self.server.submit(J2)
+        j = Job(TEST_USER)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
-        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
 
-        self.server.runjob(jobid=jid2)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        self.server.runjob(jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        self.scheduler.log_match(jid1 + ";Job preempted by suspension")
 
     @skipOnCpuSet
     def test_fairshare(self):

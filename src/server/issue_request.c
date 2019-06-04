@@ -288,7 +288,7 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 /**
  * @brief
  * 			release_req - this is the basic function to call after we are
- *			through with an internally generated  request to another server.
+ *			through with an internally generated request to another server.
  *			It frees the request structure and closes the connection (handle).
  *
  *			In the work task entry, wt_event is the connection handle and

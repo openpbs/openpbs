@@ -2876,7 +2876,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			if (preempt_jobs_reply[i].order[0] == '0') {
 				done = 0;
 				fail_list[fail_count++] = job->rank;
-			} else {
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job->name, "Job failed to be deleted");
+			}
+			else {
+				int update_accrue_type = 1;
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
 					/* Set resources_released and execselect on the job */
@@ -2891,12 +2894,19 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by checkpointing");
-				} else {
+				} else if (preempt_jobs_reply[i].order[0] == 'Q') {
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by requeuing");
+				} else {
+					update_universe_on_end(policy, job, "X", NO_FLAGS);
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+						job->name, "Job preempted by deletion");
+					job->can_not_run = 1;
+					update_accrue_type = 0;
 				}
-				update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
+				if (update_accrue_type)
+					update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
 				job->job->is_preempted = 1;
 				job->job->time_preempted = sinfo->server_time;
 				sinfo->num_preempted++;
@@ -3498,6 +3508,8 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 				if (po->order[j] == PREEMPT_METHOD_REQUEUE &&
 					rjobs[i]->job->can_requeue)
 					break; /* choose if requeue is allowed */
+				if (po->order[j] == PREEMPT_METHOD_DELETE)
+					break;
 			}
 			if (j == PREEMPT_METHOD_HIGH) /* no preemption method good */
 				good = 0;

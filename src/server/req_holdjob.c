@@ -145,18 +145,30 @@ req_holdjob(struct batch_request *preq)
 	if (pjob == NULL)
 		return;
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
+		/*
+		 * We need to find the job again because chk_job_request() will return
+		 * the parent array if the job is a subjob.
+		 */
+		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_IVALREQ, PREEMPT_METHOD_CHECKPOINT, pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
 	if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
 		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_CHECKPOINT, pjob);
+
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
 	/* cannot do anything until we decode the holds to be set */
 
-	if ((rc=get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
+	if ((rc = get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -164,6 +176,9 @@ req_holdjob(struct batch_request *preq)
 	/* if other than HOLD_u is being set, must have privil */
 
 	if ((rc = chk_hold_priv(temphold.at_val.at_long, preq->rq_perm)) != 0) {
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
+
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -177,6 +192,9 @@ req_holdjob(struct batch_request *preq)
 		  strcasecmp(preq->rq_user, PBS_DEFAULT_ADMIN) != 0 )
 #endif
 	{
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_PERM, PREEMPT_METHOD_CHECKPOINT, pjob);
+
 		req_reject(PBSE_PERM, 0, preq);
 		return;
 	}
@@ -205,6 +223,8 @@ req_holdjob(struct batch_request *preq)
 
 		if ((rc = relay_to_mom(pjob, preq, post_hold)) != 0) {
 			*hold_val = old_hold;	/* reset to the old value */
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 			req_reject(rc, 0, preq);
 		} else {
 			pjob->ji_qs.ji_svrflags |=
@@ -225,6 +245,9 @@ req_holdjob(struct batch_request *preq)
 			svr_evaljobstate(pjob, &newstate, &newsub, 0);
 			(void)svr_setjobstate(pjob, newstate, newsub);
 		}
+		/* Reject preemption because job requested -c n */
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(PBSE_NOSUP, PREEMPT_METHOD_CHECKPOINT, pjob);
 		reply_ack(preq);
 	}
 }
@@ -263,7 +286,7 @@ req_releasejob(struct batch_request *preq)
 
 	/* cannot do anything until we decode the holds to be set */
 
-	if ((rc=get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
+	if ((rc = get_hold(&preq->rq_ind.rq_hold.rq_orig.rq_attr, &pset)) != 0) {
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -435,43 +458,41 @@ post_hold(struct work_task *pwt)
 	preq = pwt->wt_parm1;
 	code = preq->rq_reply.brp_code;
 	preq->rq_conn = preq->rq_orgconn;	/* restore client socket */
+	
+	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+
+	if (pjob == NULL) {
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			  preq->rq_ind.rq_hold.rq_orig.rq_objname,
+			  msg_postmomnojob);
+		req_reject(PBSE_UNKJOBID, 0, preq);
+		return;
+	}
 
 	if (pwt->wt_aux2 != 1) { /* not rpp */
 		conn = get_conn(preq->rq_conn);
 
 		if (!conn) {
-			if (preq->rq_nest)
-				reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
-			else
-				req_reject(PBSE_SYSTEM, 0, preq);
-			return;
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_CHECKPOINT, pjob);
+			req_reject(PBSE_SYSTEM, 0, preq);
 		}
 
 		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 	}
 
-	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
-	if (pjob  == NULL) {
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			preq->rq_ind.rq_hold.rq_orig.rq_objname,
-			msg_postmomnojob);
-		if (preq->rq_nest)
-			reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
-		else
-			req_reject(PBSE_UNKJOBID, 0, preq);
-		return;
-	}
 	if (code != 0) {
+		/* Checkpoint failed, remove checkpoint flags from job */
+		pjob->ji_qs.ji_svrflags &= ~(JOB_SVFLG_HASHOLD | JOB_SVFLG_CHKPT);
 		if (code != PBSE_NOSUP) {
 			/* a "real" error - log message with return error code */
 			(void)sprintf(log_buffer, msg_mombadhold, code);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				pjob->ji_qs.ji_jobid, log_buffer);
 			/* send message back to server for display to user */
-			if (preq->rq_nest)
-				reply_preempt_jobs_request(code, 0, preq);
-			else
-				reply_text(preq, code, log_buffer);
+			if (pjob->ji_pmt_preq != NULL)
+				reply_preempt_jobs_request(code, PREEMPT_METHOD_CHECKPOINT, pjob);
+			reply_text(preq, code, log_buffer);
 			return;
 		}
 	} else if (code == 0) {
@@ -490,8 +511,8 @@ post_hold(struct work_task *pwt)
 
 		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	}
-	if (preq->rq_nest)
-		reply_preempt_jobs_request(PBSE_NONE, 2, preq);
-	else
-		reply_ack(preq);
+	if (pjob->ji_pmt_preq != NULL)
+		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_CHECKPOINT, pjob);
+	
+	reply_ack(preq);
 }

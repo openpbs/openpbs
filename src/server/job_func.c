@@ -255,7 +255,7 @@ job_abt(job *pjob, char *text)
 	if ((old_state == JOB_STATE_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
 		(void)svr_setjobstate(pjob,
 			JOB_STATE_RUNNING, JOB_SUBSTATE_ABORT);
-		rc = issue_signal(pjob, "SIGKILL", release_req, 0, NULL);
+		rc = issue_signal(pjob, "SIGKILL", release_req, 0);
 		if (rc != 0) {
 			(void)sprintf(log_buffer, msg_abt_err,
 				pjob->ji_qs.ji_jobid, old_substate);
@@ -373,6 +373,7 @@ job_alloc(void)
 	pj->ji_setup = NULL;
 #else	/* SERVER */
 	pj->ji_prunreq = NULL;
+	pj->ji_pmt_preq = NULL;
 	CLEAR_HEAD(pj->ji_svrtask);
 	CLEAR_HEAD(pj->ji_rejectdest);
 	pj->ji_terminated = 0;

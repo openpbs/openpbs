@@ -140,7 +140,7 @@ extern void spool_filename(job *pjob, char *namebuf, char *suffix);
 extern enum failover_state are_we_primary(void);
 extern void license_more_nodes(void);
 extern void reset_svr_sequence_window(void);
-extern void reply_preempt_jobs_request(int code, int aux, struct batch_request *local_preq);
+extern void reply_preempt_jobs_request(int code, int aux, struct job *pjob);
 
 #ifdef	_PROVISION_H
 extern int find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_name);
