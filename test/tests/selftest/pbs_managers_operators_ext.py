@@ -38,7 +38,7 @@
 from tests.selftest import *
 
 
-class ManagersOperators(TestSelf):
+class TestManagersOperators(TestSelf):
 
     """
     This test suite contains tests related to managers and operators
@@ -50,13 +50,32 @@ class ManagersOperators(TestSelf):
         after test setUp run
         """
         runas = ROOT_USER
+        manager_usr_str = str(MGR_USER) + '@*'
         current_usr = pwd.getpwuid(os.getuid())[0]
-        attr = {ATTR_managers: current_usr + '@*'}
-        self.server.expect(SERVER, attrib=attr)
+        current_usr_str = str(current_usr) + '@*'
+        svr_mgr = self.server.status(SERVER, 'managers')
+        if str(manager_usr_str) not in str(svr_mgr):
+            raise ValueError
+        if str(current_usr_str) not in str(svr_mgr):
+            raise ValueError
+
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
         a = {ATTR_managers: (INCR, mgr_user1 + '@*,' + mgr_user2 + '@*')}
         self.server.manager(MGR_CMD_SET, SERVER, a, runas=runas)
         self.logger.info("Calling test setUp:")
         TestSelf.setUp(self)
-        self.server.expect(SERVER, attrib=attr)
+
+        svr_mgr = self.server.status(SERVER, 'managers')
+        if str(manager_usr_str) not in str(svr_mgr):
+            raise ValueError
+        if str(current_usr_str) not in str(svr_mgr):
+            raise ValueError
+
+    def test_default_oper(self):
+        """
+        Check that default operator user is set on PTL setup
+        """
+        svr_opr = self.server.status(SERVER, 'operators')
+        if str(OPER_USER) not in str(svr_opr):
+            raise ValueError
