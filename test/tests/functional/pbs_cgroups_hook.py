@@ -1569,8 +1569,15 @@ if %s e.job.in_ms_mom():
         if ret['rc'] != 0:
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state FROZEN')
-        self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
-                           id=self.nodes_list[0], offset=10, interval=3)
+        # Catch any exception so we can thaw the cgroup or the jobs
+        # will remain frozen and impact subsequent tests
+        passed = True
+        try:
+            self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
+                               id=self.nodes_list[0], offset=10, interval=3)
+        except Exception as exc:
+            passed = False
+            self.logger.info('Node never went offline')
         # Thaw the cgroup
         state = 'THAWED'
         fn = self.du.create_temp_file(hostname=self.hosts_list[0], body=state)
@@ -1594,6 +1601,7 @@ if %s e.job.in_ms_mom():
             self.server.manager(MGR_CMD_CREATE, NODE, id=host)
             self.server.expect(NODE, {'state': 'free'},
                                id=host, interval=3)
+        self.assertTrue(passed)
 
     def test_cgroup_cpuset_host_excluded(self):
         """
@@ -2281,6 +2289,7 @@ if %s e.job.in_ms_mom():
 import pbs
 import os
 import re
+import time
 import traceback
 event = pbs.event()
 jid_to_prepend = '%s'
@@ -2323,12 +2332,11 @@ jobsfile = os.path.join(pbs_mom_home, 'mom_priv', 'hooks',
                         'hook_data', 'cgroup_jobs')
 try:
     with open(jobsfile, 'r+') as desc:
-        joblist = desc.readline().split()
-        jobset = set(joblist)
-        if jid_to_prepend not in jobset:
-            jobset.add(jid_to_prepend)
+        jobdict = eval(desc.read())
+        if jid_to_prepend not in jobdict:
+            jobdict[jid_to_prepend] = time.time()
             desc.seek(0)
-            desc.write(' '.join(jobset))
+            desc.write(str(jobdict))
             desc.truncate()
 except Exception as exc:
     pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to modify ' + jobsfile)
