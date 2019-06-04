@@ -1959,7 +1959,6 @@ class NodeUtils(object):
             # cleaning up before this event has sent updates to server
             with open(self.offline_file, 'w') as fd:
                 fd.write(str(time.time()))
-                fd.truncate()
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to write to %s: %s' %
                        (caller_name(), self.offline_file, exc))
@@ -3344,7 +3343,7 @@ class CgroupUtils(object):
                                  int(regex.search(vnode).group(2))])
         else:
             sockets = available.keys()
-            # If placement type is load_balanced, reorder the sockets
+            # If placement type is job_balanced, reorder the sockets
             if self.cfg['placement_type'] == 'job_balanced':
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            'Requested job_balanced placement')
@@ -3983,6 +3982,8 @@ class CgroupUtils(object):
             else:
                 avail_resc = self.available_node_resources(node)
             assigned = self.assign_job(hostresc, avail_resc, node)
+            # If this was not the first attempt, do not bother trying to
+            # clean up again. This is handled immediately after the loop.
             if attempt != 0:
                 break
             if not assigned:
@@ -4662,7 +4663,6 @@ class CgroupUtils(object):
         try:
             with open(self.cgroup_jobs_file, 'w') as fd:
                 fd.write(str(dict()))
-                fd.truncate()
         except IOError:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file: %s' %
                        self.cgroup_jobs_file)
