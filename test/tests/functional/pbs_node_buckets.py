@@ -109,7 +109,8 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
 
         jid = self.server.submit(j)
-        self.scheduler.log_match(jid + ';Evaluating subchunk', n=10000)
+        self.scheduler.log_match(jid + ';Evaluating subchunk', n=10000,
+                                 interval=1)
 
         self.server.delete(jid, wait=True)
 
