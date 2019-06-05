@@ -47,7 +47,6 @@ dist_unsupported_SCRIPTS = \
 	pbs_stat \
 	pbs_config
 
-
 # Marking all *.py files as data as these files are meant to be used as hooks and 
 # need no compilation.
 dist_unsupported_DATA = \
@@ -66,9 +65,10 @@ dist_unsupported_DATA = \
 	ReliableJobStartup.py \
 	pbs_output.py
 
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@ \
-					@KRB5_CFLAGS@
+pbs_rmget_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@libz_inc@ \
+	@KRB5_CFLAGS@
 pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \

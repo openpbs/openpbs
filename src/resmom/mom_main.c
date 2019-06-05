@@ -82,6 +82,7 @@
 #include	<limits.h>
 #include	<sys/types.h>
 #include	<sys/stat.h>
+#include	<arpa/inet.h>
 
 #include	"libpbs.h"
 #include	"pbs_ifl.h"
@@ -125,7 +126,9 @@
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
 #include	"pbs_reliable.h"
-#include	<arpa/inet.h>
+#ifdef PMIX
+#include	"mom_pmix.h"
+#endif /* PMIX */
 
 #include	"renew_creds.h"
 
@@ -9805,6 +9808,10 @@ main(int argc, char *argv[])
 	initialize();
 #endif	/* WIN32 */
 
+#ifdef PMIX
+	pbs_pmix_server_init(msg_daemonname);
+#endif
+
 	/*
 	 * Now at last, we are ready to do some work, the following section
 	 * constitutes the "main" loop of MOM
@@ -10319,6 +10326,11 @@ main(int argc, char *argv[])
 	}
 
 	cleanup();
+
+#ifdef PMIX
+	PMIx_server_finalize();
+#endif
+
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
 	log_close(1);
