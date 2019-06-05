@@ -1,5 +1,5 @@
 # coding: utf-8
-
+#
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -56,7 +56,7 @@ class PTLTestData(Plugin):
     Save post analysis data on test cases failure or error
     """
     name = 'PTLTestData'
-    score = sys.maxint - 6
+    score = sys.maxsize - 6
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -119,7 +119,7 @@ class PTLTestData(Plugin):
             signal.alarm(0)
         self.logger.log(logging.DEBUG2, 'Saving post analysis data...')
         current_host = socket.gethostname().split('.')[0]
-        self.du.mkdir(current_host, path=datadir, mode=0755,
+        self.du.mkdir(current_host, path=datadir, mode=0o755,
                       parents=True, logerr=False, level=logging.DEBUG2)
         if err is not None:
             if isclass(err[0]) and issubclass(err[0], SkipTest):
@@ -149,9 +149,10 @@ class PTLTestData(Plugin):
             self.logger.error(_msg)
             f.close()
             return
-        svr = getattr(_test, 'server', None)
-        if svr is not None:
-            svr_host = svr.hostname
+
+        servers = getattr(_test, 'servers', None)
+        if servers is not None:
+            server_host = servers.values()[0].shortname
         else:
             _msg = 'Could not find Server Object in given test object'
             _msg += ', skipping saving post analysis data'
@@ -159,154 +160,71 @@ class PTLTestData(Plugin):
             self.logger.warning(_msg)
             f.close()
             return
-        pbs_diag = os.path.join(svr.pbs_conf['PBS_EXEC'],
-                                'unsupported', 'pbs_diag')
+        moms = getattr(_test, 'moms', None)
+        comms = getattr(_test, 'comms', None)
+        client = getattr(_test.servers.values()[0], 'client', None)
+        server = servers.values()[0]
+        add_hosts = []
+        if len(servers) > 1:
+            for param in servers.values()[1:]:
+                add_hosts.append(param.shortname)
+        if moms is not None:
+            for param in moms.values():
+                add_hosts.append(param.shortname)
+        if comms is not None:
+            for param in comms.values():
+                add_hosts.append(param.shortname)
+        if client is not None:
+            add_hosts.append(client.split('.')[0])
+
+        add_hosts = list(set(add_hosts) - set([server_host]))
+
+        pbs_snapshot_path = os.path.join(
+            server.pbs_conf["PBS_EXEC"], "sbin", "pbs_snapshot")
         cur_user = self.du.get_current_user()
-        cmd = [pbs_diag, '-f', '-d', '2']
-        cmd += ['-u', cur_user]
-        cmd += ['-o', pwd.getpwnam(cur_user).pw_dir]
-        if len(svr.jobs) > 0:
-            cmd += ['-j', ','.join(svr.jobs.keys())]
-        ret = self.du.run_cmd(svr_host, cmd, sudo=True, level=logging.DEBUG2)
+        cur_user_dir = pwd.getpwnam(cur_user).pw_dir
+        cmd = [
+            pbs_snapshot_path,
+            '-H', server_host,
+            '--daemon-logs',
+            '2',
+            '--accounting-logs',
+            '2',
+            '--with-sudo'
+            ]
+        if len(add_hosts) > 0:
+            cmd += ['--additional-hosts=' + ','.join(add_hosts)]
+        cmd += ['-o', cur_user_dir]
+        ret = self.du.run_cmd(current_host, cmd, level=logging.DEBUG2,
+                              logerr=False)
         if ret['rc'] != 0:
-            _msg = 'Failed to get diag information for '
-            _msg += 'on %s:' % svr_host
+            _msg = 'Failed to get analysis information for '
+            _msg += 'on %s:' % servers_host
             _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
             f.write(_msg + '\n')
             self.logger.error(_msg)
             f.close()
             return
         else:
-            diag_re = r"(?P<path>\/.*\/pbs_diag_[\d]+_[\d]+\.tar\.gz).*"
-            m = re.search(diag_re, '\n'.join(ret['out']))
-            if m is not None:
-                diag_out = m.group('path')
-            else:
-                _msg = 'Failed to find generated diag path in below output:'
-                _msg += '\n\n' + '-' * 80 + '\n'
-                _msg += '\n'.join(ret['out']) + '\n'
-                _msg += '-' * 80 + '\n\n'
-                f.write(_msg)
-                self.logger.error(_msg)
+            if len(ret['out']) == 0:
+                self.logger.error('Snapshot command failed')
                 f.close()
                 return
-        diag_out_dest = os.path.join(datadir, os.path.basename(diag_out))
-        if not self.du.is_localhost(svr_host):
-            diag_out_r = svr_host + ':' + diag_out
-        else:
-            diag_out_r = diag_out
-        ret = self.du.run_copy(current_host, diag_out_r, diag_out_dest,
-                               sudo=True, level=logging.DEBUG2)
-        if ret['rc'] != 0:
-            _msg = 'Failed to copy generated diag from'
-            _msg += ' %s to %s' % (diag_out_r, diag_out_dest)
-            f.write(_msg + '\n')
-            self.logger.error(_msg)
-            f.close()
-            return
-        else:
-            self.du.rm(svr_host, path=diag_out, sudo=True, force=True,
-                       level=logging.DEBUG2)
-        cores = []
-        dir_list = ['server_priv', 'sched_priv', 'mom_priv']
-        for d in dir_list:
-            path = os.path.join(svr.pbs_conf['PBS_HOME'], d)
-            files = self.du.listdir(hostname=svr_host, path=path, sudo=True,
-                                    level=logging.DEBUG2)
-            for _f in files:
-                if os.path.basename(_f).startswith('core'):
-                    cores.append(_f)
-        cores = list(set(cores))
-        if len(cores) > 0:
-            cmd = ['gunzip', diag_out_dest]
-            ret = self.du.run_cmd(current_host, cmd, sudo=True,
-                                  level=logging.DEBUG2)
-            if ret['rc'] != 0:
-                _msg = 'Failed unzip generated diag at %s:' % diag_out_dest
-                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-                f.write(_msg + '\n')
-                self.logger.error(_msg)
-                f.close()
-                return
-            diag_out_dest = diag_out_dest.rstrip('.gz')
-            cmd = ['tar', '-xf', diag_out_dest, '-C', datadir]
-            ret = self.du.run_cmd(current_host, cmd, sudo=True,
-                                  level=logging.DEBUG2)
-            if ret['rc'] != 0:
-                _msg = 'Failed extract generated diag %s' % diag_out_dest
-                _msg += ' to %s:' % datadir
-                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-                f.write(_msg + '\n')
-                self.logger.error(_msg)
-                f.close()
-                return
-            self.du.rm(hostname=current_host, path=diag_out_dest,
-                       force=True, sudo=True, level=logging.DEBUG2)
-            diag_out_dest = diag_out_dest.rstrip('.tar')
-            for c in cores:
-                cmd = [pbs_diag, '-g', c]
-                ret = self.du.run_cmd(svr_host, cmd, sudo=True,
-                                      level=logging.DEBUG2)
-                if ret['rc'] != 0:
-                    _msg = 'Failed to get core file information for '
-                    _msg += '%s on %s:' % (c, svr_host)
-                    _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-                    f.write(_msg + '\n')
-                    self.logger.error(_msg)
-                else:
-                    of = os.path.join(diag_out_dest,
-                                      os.path.basename(c) + '.out')
-                    _f = open(of, 'w+')
-                    _f.write('\n'.join(ret['out']) + '\n')
-                    _f.close()
-                    self.du.rm(hostname=svr_host, path=c, force=True,
-                               sudo=True, level=logging.DEBUG2)
-            cmd = ['tar', '-cf', diag_out_dest + '.tar']
-            cmd += [os.path.basename(diag_out_dest)]
-            ret = self.du.run_cmd(current_host, cmd, sudo=True, cwd=datadir,
-                                  level=logging.DEBUG2)
-            if ret['rc'] != 0:
-                _msg = 'Failed generate tarball of diag directory'
-                _msg += ' %s' % diag_out_dest
-                _msg += ' after adding core(s) information in it:'
-                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-                f.write(_msg + '\n')
-                self.logger.error(_msg)
-                f.close()
-                return
-            cmd = ['gzip', diag_out_dest + '.tar']
-            ret = self.du.run_cmd(current_host, cmd, sudo=True,
-                                  level=logging.DEBUG2)
-            if ret['rc'] != 0:
-                _msg = 'Failed compress tarball of diag %s' % diag_out_dest
-                _msg += '.tar after adding core(s) information in it:'
-                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-                f.write(_msg + '\n')
-                self.logger.error(_msg)
-                f.close()
-                return
-            self.du.rm(current_host, diag_out_dest, sudo=True,
-                       recursive=True, force=True, level=logging.DEBUG2)
-        else:
-            diag_out_dest = diag_out_dest.rstrip('.tar.gz')
+
+        snap_out = ret['out'][0]
+        snap_out_dest = (snap_out.split(":")[1]).strip()
+
         dest = os.path.join(datadir,
-                            'PBS_' + current_host.split('.')[0] + '.tar.gz')
-        ret = self.du.run_copy(current_host, diag_out_dest + '.tar.gz',
+                            'PBS_' + server_host + '.tar.gz')
+        ret = self.du.run_copy(current_host, snap_out_dest,
                                dest, sudo=True, level=logging.DEBUG2)
-        if ret['rc'] != 0:
-            _msg = 'Failed rename tarball of diag from %s' % diag_out_dest
-            _msg += '.tar.gz to %s:' % dest
-            _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
-            f.write(_msg + '\n')
-            self.logger.error(_msg)
-            f.close()
-            return
-        self.du.rm(current_host, path=diag_out_dest + '.tar.gz',
-                   force=True, sudo=True, level=logging.DEBUG2)
+        self.du.rm(current_host, path=snap_out_dest,
+                   recursive=True, force=True, level=logging.DEBUG2)
+
         f.close()
         self.__save_data_count += 1
-        _msg = 'Successfully saved post analysis data'
-        self.logger.log(logging.DEBUG2, _msg)
+        _msg = 'Saved post analysis data'
+        self.logger.info(_msg)
 
     def addError(self, test, err):
         self.__save_home(test, 'ERROR', err)
