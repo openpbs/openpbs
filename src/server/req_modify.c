@@ -96,7 +96,7 @@ extern char *msg_nostf_resv;
 int modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad);
 extern void resv_revert_alter_times(resc_resv *presv);
 extern int gen_future_reply(resc_resv *presv, long fromNow);
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
 
 
@@ -191,7 +191,7 @@ req_modifyjob(struct batch_request *preq)
 	if (pseldef == NULL)  /* do one time to keep handy */
 		pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
 
-	pjob = chk_job_request(preq->rq_ind.rq_modify.rq_objname, preq, &jt);
+	pjob = chk_job_request(preq->rq_ind.rq_modify.rq_objname, preq, &jt, NULL);
 	if (pjob == NULL)
 		return;
 

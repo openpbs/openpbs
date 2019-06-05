@@ -84,7 +84,7 @@ extern char	*msg_jobholdrel;
 extern char	*msg_mombadhold;
 extern char	*msg_postmomnojob;
 extern time_t	 time_now;
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 
 
 int chk_hold_priv(long val, int perm);
@@ -137,13 +137,17 @@ req_holdjob(struct batch_request *preq)
 	job		*pjob;
 	char		*pset;
 	int		 rc;
-	char             date[32];
-	time_t           now;
+	char 		 date[32];
+	time_t 		 now;
+	int err = PBSE_NONE;
 
-
-	pjob = chk_job_request(preq->rq_ind.rq_hold.rq_orig.rq_objname, preq, &jt);
-	if (pjob == NULL)
+	pjob = chk_job_request(preq->rq_ind.rq_hold.rq_orig.rq_objname, preq, &jt, &err);
+	if (pjob == NULL) {
+		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(err, PREEMPT_METHOD_CHECKPOINT, pjob);
 		return;
+	}
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
 		/*
 		 * We need to find the job again because chk_job_request() will return
@@ -275,7 +279,7 @@ req_releasejob(struct batch_request *preq)
 	int		 rc;
 
 
-	pjob = chk_job_request(preq->rq_ind.rq_release.rq_objname, preq, &jt);
+	pjob = chk_job_request(preq->rq_ind.rq_release.rq_objname, preq, &jt, NULL);
 	if (pjob == NULL)
 		return;
 

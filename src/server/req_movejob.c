@@ -116,7 +116,7 @@ req_movejob(struct batch_request *req)
 				LOG_INFO, "", "movejob event: accept req by default");
 	}
 
-	jobp = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt);
+	jobp = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt, NULL);
 
 	if (jobp == NULL)
 		return;
@@ -193,11 +193,11 @@ req_orderjob(struct batch_request *req)
 	job	*pjob2;
 	long	 rank;
 	int	 rc;
-	char	 tmpqn[PBS_MAXQUEUENAME+1];
+	char	 tmpqn[PBS_MAXQUEUENAME + 1];
 
-	if ((pjob1=chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt1)) == NULL)
+	if ((pjob1 = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt1, NULL)) == NULL)
 		return;
-	if ((pjob2=chk_job_request(req->rq_ind.rq_move.rq_destin, req, &jt2)) == NULL)
+	if ((pjob2 = chk_job_request(req->rq_ind.rq_move.rq_destin, req, &jt2, NULL)) == NULL)
 		return;
 	if ((jt1 == IS_ARRAY_Single) || (jt2 == IS_ARRAY_Single) ||
 		(jt1 == IS_ARRAY_Range)  || (jt2 == IS_ARRAY_Range)) {

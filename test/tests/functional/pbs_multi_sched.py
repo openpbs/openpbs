@@ -405,6 +405,65 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
                                      max_attempts=10, starttime=t)
 
+    def test_preemption_two_sched(self):
+        """
+        Test two schedulers preempting jobs at the same time
+        """
+        self.common_setup()
+        q = {'queue_type': 'Execution', 'started': 'True',
+             'enabled': 'True', 'Priority': 150}
+        q['partition'] = 'P1'
+        self.server.manager(MGR_CMD_CREATE, QUEUE, q, id='highp_P1')
+        q['partition'] = 'P2'
+        self.server.manager(MGR_CMD_CREATE, QUEUE, q, id='highp_P2')
+
+        n = {'resources_available.ncpus': 20}
+        self.server.manager(MGR_CMD_SET, NODE, n, id='vnode[0]')
+        self.server.manager(MGR_CMD_SET, NODE, n, id='vnode[1]')
+
+        jids1 = []
+        job_attrs = {'Resource_List.select': '1:ncpus=1', 'queue': 'wq1'}
+        for _ in range(20):
+            j = Job(TEST_USER, job_attrs)
+            jid = self.server.submit(j)
+            jids1.append(jid)
+
+        jids2 = []
+        job_attrs['queue'] = 'wq2'
+        for _ in range(20):
+            j = Job(TEST_USER, job_attrs)
+            jid = self.server.submit(j)
+            jids2.append(jid)
+
+        self.server.expect(JOB, {'job_state=R': 40})
+
+        s = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SCHED, s, id='sc1')
+        self.server.manager(MGR_CMD_SET, SCHED, s, id='sc2')
+
+        job_attrs = {'Resource_List.select': '20:ncpus=1', 'queue': 'highp_P1'}
+        hj1 = Job(TEST_USER, job_attrs)
+        hj1_jid = self.server.submit(hj1)
+
+        job_attrs['queue'] = 'highp_P2'
+        hj2 = Job(TEST_USER, job_attrs)
+        hj2_jid = self.server.submit(hj2)
+
+        s = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SCHED, s, id='sc1')
+        self.server.manager(MGR_CMD_SET, SCHED, s, id='sc2')
+
+        for jid in jids1:
+            self.server.expect(JOB, {'job_state': 'S'}, id=jid)
+            self.scheds['sc1'].log_match(jid + ';Job preempted by suspension')
+
+        for jid in jids2:
+            self.server.expect(JOB, {'job_state': 'S'}, id=jid)
+            self.scheds['sc2'].log_match(jid + ';Job preempted by suspension')
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=hj1_jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=hj2_jid)
+
     def test_backfill_per_scheduler(self):
         """
         Test backfilling is applicable only per scheduler

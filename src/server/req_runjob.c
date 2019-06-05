@@ -145,7 +145,7 @@ extern char *msg_job_abort;
 extern pbs_list_head svr_deferred_req;
 extern time_t time_now;
 extern int   svr_totnodes;	/* non-zero if using nodes */
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 
 
 /* private data */
@@ -323,7 +323,7 @@ req_runjob(struct batch_request *preq)
 	}
 
 	jid = preq->rq_ind.rq_run.rq_jid;
-	parent = chk_job_request(jid, preq, &jt);
+	parent = chk_job_request(jid, preq, &jt, NULL);
 	if (parent == NULL)
 		return;		/* note, req_reject already called */
 

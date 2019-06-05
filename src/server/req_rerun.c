@@ -80,7 +80,7 @@ static void req_rerunjob2(struct batch_request *preq, job *pjob);
 extern char *msg_manager;
 extern char *msg_jobrerun;
 extern time_t time_now;
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 
 
 
@@ -220,11 +220,16 @@ req_rerunjob(struct batch_request *preq)
 	char		 *range;
 	char		 *vrange;
 	int		  x, y, z;
+	int 		  err = PBSE_NONE;
 
 	jid = preq->rq_ind.rq_signal.rq_jid;
-	parent = chk_job_request(jid, preq, &jt);
-	if (parent == NULL)
-		return;		/* note, req_reject already called */
+	parent = chk_job_request(jid, preq, &jt, &err);
+	if (parent == NULL) {
+		pjob = find_job(jid);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(err, PREEMPT_METHOD_REQUEUE, pjob);
+		return; /* note, req_reject already called */
+	}
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		if (parent->ji_pmt_preq != NULL)

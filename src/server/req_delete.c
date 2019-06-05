@@ -368,6 +368,7 @@ req_deletejob(struct batch_request *preq)
 	int delhist = 0;
 	int maxindex = 0;
 	int count = 0;
+	int err = PBSE_NONE;
 
 	jid = preq->rq_ind.rq_delete.rq_objname;
 
@@ -383,9 +384,13 @@ req_deletejob(struct batch_request *preq)
 	else
 		qdel_mail = 1;
 
-	parent = chk_job_request(jid, preq, &jt);
-	if (parent == NULL) 
+	parent = chk_job_request(jid, preq, &jt, &err);
+	if (parent == NULL) {
+		pjob = find_job(jid);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(err, PREEMPT_METHOD_DELETE, pjob);
 		return; /* note, req_reject already called */
+	}
 
 	if (delhist) {
 		rc = check_deletehistoryjob(preq);
@@ -795,11 +800,12 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
 			/* 
 			 * If we are waiting for preemption to be complete and someone does a qdel -Wforce
-			 * we need to reply back to the scheduler.  We need to reply back as a failed
-			 * preemption because the moms will still be cleaning up the job 
+			 * we need to reply back to the scheduler.  We need to reply success so we don't
+			 * attempt another preemption method.  This leads to a minor race condition
+			 * where the moms might not be finished cleaning up when the high priority job runs.
 			 */
 			if (pjob->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(PBSE_INTERNAL, PREEMPT_METHOD_DELETE, pjob);
+				reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
 			reply_ack(preq);
 			discard_job(pjob, "Forced Delete", 1);
 			rel_resc(pjob);
