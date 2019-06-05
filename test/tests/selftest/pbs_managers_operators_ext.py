@@ -57,8 +57,6 @@ class TestManagersOperators(TestSelf):
         self.assertIn(str(manager_usr_str), svr_mgr)
         self.assertIn(str(current_usr_str), svr_mgr)
 
-        print("server is ++++++++++++++")
-        print(str(self.server.status()))
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
         a = {ATTR_managers: (INCR, mgr_user1 + '@*,' + mgr_user2 + '@*')}
