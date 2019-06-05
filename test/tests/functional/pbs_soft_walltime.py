@@ -1036,6 +1036,8 @@ e.accept()
         regular jobs
         """
 
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         J = Job(TEST_USER, attrs={ATTR_J: '1-5',
