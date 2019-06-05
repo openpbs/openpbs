@@ -53,12 +53,12 @@ class TestManagersOperators(TestSelf):
         manager_usr_str = str(MGR_USER) + '@*'
         current_usr = pwd.getpwuid(os.getuid())[0]
         current_usr_str = str(current_usr) + '@*'
-        svr_mgr = self.server.status(SERVER, 'managers')
-        if str(manager_usr_str) not in str(svr_mgr):
-            raise ValueError
-        if str(current_usr_str) not in str(svr_mgr):
-            raise ValueError
+        svr_mgr = str(self.server.status(SERVER, 'managers'))
+        self.assertIn(str(manager_usr_str), svr_mgr)
+        self.assertIn(str(current_usr_str), svr_mgr)
 
+        print("server is ++++++++++++++")
+        print(str(self.server.status()))
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
         a = {ATTR_managers: (INCR, mgr_user1 + '@*,' + mgr_user2 + '@*')}
@@ -66,16 +66,13 @@ class TestManagersOperators(TestSelf):
         self.logger.info("Calling test setUp:")
         TestSelf.setUp(self)
 
-        svr_mgr = self.server.status(SERVER, 'managers')
-        if str(manager_usr_str) not in str(svr_mgr):
-            raise ValueError
-        if str(current_usr_str) not in str(svr_mgr):
-            raise ValueError
+        svr_mgr = str(self.server.status(SERVER, 'managers'))
+        self.assertIn(str(manager_usr_str), svr_mgr)
+        self.assertIn(str(current_usr_str), svr_mgr)
 
     def test_default_oper(self):
         """
         Check that default operator user is set on PTL setup
         """
-        svr_opr = self.server.status(SERVER, 'operators')
-        if str(OPER_USER) not in str(svr_opr):
-            raise ValueError
+        svr_opr = str(self.server.status(SERVER, 'operators'))
+        self.assertIn(str(OPER_USER) + '@*', svr_opr)
