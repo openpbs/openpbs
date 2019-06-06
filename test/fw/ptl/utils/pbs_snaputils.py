@@ -1741,7 +1741,13 @@ quit()
         snap_ospath = os.path.join(self.snapdir, OS_PATH)
         with open(snap_ospath, "w") as osfd:
             osinfo = self.du.get_os_info()
-            osfd.write(osinfo)
+            osfd.write(osinfo + "\n")
+            # If /etc/os-release is available then save that as well
+            fpath = os.path.join(os.sep, "etc", "os-release")
+            if os.path.isfile(fpath):
+                with open(fpath, "r") as fd:
+                    fcontent = fd.read()
+                osfd.write("\n/etc/os-release:\n" + fcontent)
         if self.create_tar:
             self.__add_to_archive(snap_ospath)
 
