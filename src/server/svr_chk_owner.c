@@ -404,6 +404,7 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
  *						(1) - for an Array Job
  *						(2)   - for a single subjob
  *						(3)    - for a range of  subjobs
+ * @param[out]	err		PBSE reason why request was rejected
  *
  * @return	job *
  * @retval	a pointer to the job	: if found and the tests pass.
