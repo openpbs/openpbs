@@ -470,9 +470,11 @@ post_signal_req(struct work_task *pwt)
 			rel_resc(pjob);
 		}
 
+		if (pjob == NULL)
+			pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_SUSPEND, pjob);
-		
+
 		req_reject(rc, 0, preq);
 	} else {
 
