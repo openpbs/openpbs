@@ -86,14 +86,15 @@ const static char *preempt_methods[] = {
  * @param[in] job_id - the job to mark as failed
  * @return void
  */
-static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id) {
+static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id) 
+{
 	int preempt_index = preempt_preq->rq_reply.brp_un.brp_preempt_jobs.count;
-	preempt_job_info *preempt_jobs_list = preempt_jobs_list = preempt_preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list;
+	preempt_job_info *preempt_jobs_list = preempt_preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list;
 
 	preempt_preq->rq_reply.brp_code = 1;
 	strcpy(preempt_jobs_list[preempt_index].order, "000");
 	sprintf(preempt_jobs_list[preempt_index].job_id, "%s", job_id);
-	preempt_preq->rq_reply.brp_un.brp_preempt_jobs.count = preempt_index + 1;
+	preempt_preq->rq_reply.brp_un.brp_preempt_jobs.count++;
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, job_id, "Job failed to be preempted");
 }
 
@@ -285,6 +286,11 @@ req_preemptjobs(struct batch_request *preq)
 	psched = find_sched_from_sock(preq->rq_conn);
 	preempt_total = preq->rq_ind.rq_preempt.count;
 
+	if (psched == NULL) {
+		req_reject(PBSE_INTERNAL, 0, preq);
+		return;
+	}
+
 	if ((preempt_jobs_list = calloc(sizeof(preempt_job_info), preempt_total)) == NULL) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		log_err(errno, __func__, "Unable to allocate memory");
@@ -385,8 +391,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 			job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
 			pjob->ji_pmt_preq = NULL;
 		}
-	}
-	else {
+	} else {
 		int preempt_index;
 		preempt_job_info *preempt_jobs_list;
 
