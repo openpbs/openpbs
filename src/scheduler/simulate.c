@@ -855,11 +855,21 @@ create_events(server_info *sinfo)
 	int		errflag = 0;
 	int		i = 0;
 	time_t 		end = 0;
+	resource_resv	**all_resresv_copy;
+	int		all_resresv_len;
 
-	/* all_resresv is sorted such that the timed events are in the front of
-	 * the array.  Once the first non-timed event is reached, we're done
+	/* create a temporary copy of all_resresv array which is sorted such that
+	 * the timed events are in the front of the array.
+	 * Once the first non-timed event is reached, we're done
 	 */
-	all = sinfo->all_resresv;
+	all_resresv_len = count_array((void **)sinfo->all_resresv);
+	all_resresv_copy = malloc((all_resresv_len + 1) * sizeof(resource_resv *));
+	if (all_resresv_copy == NULL)
+		return 0;
+	for (i = 0; sinfo->all_resresv[i] != NULL; i++)
+		all_resresv_copy[i] = sinfo->all_resresv[i];
+	all_resresv_copy[i] = NULL;
+	all = all_resresv_copy;
 
 	/* sort the all resersv list so all the timed events are in the front */
 	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
@@ -898,8 +908,10 @@ create_events(server_info *sinfo)
 		if (node->is_sleeping) {
 			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
 					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);
-			if (te == NULL)
-				return 0;
+			if (te == NULL) {
+				errflag++;
+				break;
+			}
 			events = add_timed_event(events, te);
 		}
 	}
@@ -907,9 +919,11 @@ create_events(server_info *sinfo)
 	/* A malloc error was encountered, free all allocated memory and return */
 	if (errflag > 0) {
 		free_timed_event_list(events);
+		free(all_resresv_copy);
 		return 0;
 	}
 
+	free(all_resresv_copy);
 	return events;
 }
 
