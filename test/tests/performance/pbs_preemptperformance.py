@@ -480,6 +480,72 @@ exit 0
             ncpus *= 3
             S_jobs += ncpus
 
+    @timeout(3600)
+    def test_preemption_with_soft_limits(self):
+        """
+        Measure the time scheduler takes to preempt when the high priority
+        job hits soft limits under a considerable amount of workload.
+        """
+        a = {'resources_available.ncpus': 4,
+             'resources_available.mem': '6400mb'}
+        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False)
+        p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
+        a = {'preempt_prio': p}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER)+"=1]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # submit a bunch of jobs as TEST_USER2
+        a = {ATTR_l + '.select=1:ncpus': 1}
+        for _ in range(2000):
+            j = Job(TEST_USER2, attrs=a)
+            j.set_sleep_time(3000)
+            self.server.submit(j)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state=R': 2000}, interval=10, offset=5,
+                           max_attempts=100)
+
+        qname = 'highp'
+        a = {'queue_type': 'execution', 'priority': '200',
+             'started': 'True', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        a = {ATTR_l + '.select=1:ncpus': 1, ATTR_q: qname}
+        fjid = None
+        for _ in range(2000):
+            j = Job(TEST_USER2, attrs=a)
+            j.set_sleep_time(3000)
+            if fjid is None:
+                fjid = self.server.submit(j)
+            else:
+                ljid = self.server.submit(j)
+        scycle = time.time()
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        (_, str1) = self.scheduler.log_match(fjid + ";Considering job to run")
+
+        date_time1 = str1.split(";")[0]
+        epoch1 = self.lu.convert_date_time(date_time1)
+        # make sure 2000 jobs were suspended
+        self.server.expect(JOB, {'job_state=S': 2000}, interval=10, offset=5,
+                           max_attempts=100)
+        # record the start time of last high priority job
+        (_, str2) = self.scheduler.log_match(ljid + ";Job run",
+                                             n='ALL',
+                                             max_attempts=1, interval=2)
+        date_time2 = str2.split(";")[0]
+        epoch2 = self.lu.convert_date_time(date_time2)
+        time_diff = epoch2 - epoch1
+        self.logger.info('#' * 80)
+        self.logger.info('#' * 80)
+        res_str = "RESULT: THE TIME TAKEN IS : " + str(time_diff) + " SECONDS"
+        self.logger.info(res_str)
+        self.logger.info('#' * 80)
+        self.logger.info('#' * 80)
+
     def tearDown(self):
         TestPerformance.tearDown(self)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
