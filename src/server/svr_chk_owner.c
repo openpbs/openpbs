@@ -404,6 +404,7 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
  *						(1) - for an Array Job
  *						(2)   - for a single subjob
  *						(3)    - for a range of  subjobs
+ * @param[out]	err		PBSE reason why request was rejected
  *
  * @return	job *
  * @retval	a pointer to the job	: if found and the tests pass.
@@ -412,7 +413,7 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
 
 
 job *
-chk_job_request(char *jobid, struct batch_request *preq, int *rc)
+chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 {
 	int	 t;
 	int	 histerr = 0;
@@ -434,6 +435,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 	if (pjob == NULL) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobid, msg_unkjobid);
+		if (err != NULL)
+			*err = PBSE_UNKJOBID;
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return NULL;
 	} else {
@@ -441,13 +444,13 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 		if (histerr && deletehist == 0) {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(histerr, PREEMPT_METHOD_DELETE, pjob);
+			if (err != NULL)
+				*err = histerr;
 			req_reject(histerr, 0, preq);
 			return NULL;
 		}
 		if (deletehist ==1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
 			pjob->ji_qs.ji_substate != JOB_SUBSTATE_FINISHED) {
-			if (pjob->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(PBSE_UNKJOBID, PREEMPT_METHOD_DELETE, pjob);
 			job_purge(pjob);
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return NULL;
@@ -477,8 +480,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_PERM, PREEMPT_METHOD_DELETE, pjob);
+		if (err != NULL)
+			*err = PBSE_PERM;
 		req_reject(PBSE_PERM, 0, preq);
 		return NULL;
 	}
@@ -496,8 +499,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 			pjob->ji_qs.ji_state);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
+		if (err != NULL)
+			*err = PBSE_BADSTATE;
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return NULL;
 	}

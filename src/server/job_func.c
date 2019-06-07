@@ -709,6 +709,13 @@ job_purge(job *pjob)
 		reply_text(pjob->ji_rerun_preq, PBSE_INTERNAL, "job rerun");
 		pjob->ji_rerun_preq = NULL;
 	}
+#ifndef PBS_MOM
+	if (pjob->ji_pmt_preq != NULL) {
+		log_joberr(PBSE_INTERNAL, __func__, "preempt request outstanding",
+			   pjob->ji_qs.ji_jobid);
+		reply_preempt_jobs_request(PBSE_INTERNAL, PREEMPT_METHOD_DELETE, pjob);
+	}
+#endif
 #ifdef	PBS_MOM
 	delete_link(&pjob->ji_jobque);
 	delete_link(&pjob->ji_alljobs);

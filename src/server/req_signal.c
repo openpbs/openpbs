@@ -84,7 +84,7 @@ int create_resreleased (job *pjob);
 
 extern char *msg_momreject;
 extern char *msg_signal_job;
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 
 
 /**
@@ -113,12 +113,17 @@ req_signaljob(struct batch_request *preq)
 	int		  resume = 0;
 	char		 *vrange;
 	int		  x, y, z;
+	int 		 err = PBSE_NONE;
 
 	jid = preq->rq_ind.rq_signal.rq_jid;
 
-	parent = chk_job_request(jid, preq, &jt);
-	if (parent == NULL)
-		return;		/* note, req_reject already called */
+	parent = chk_job_request(jid, preq, &jt, &err);
+	if (parent == NULL) {
+		pjob = find_job(jid);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(err, PREEMPT_METHOD_SUSPEND, pjob);
+		return; /* note, req_reject already called */
+	}
 
 	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
 		resume = 1;
@@ -465,9 +470,11 @@ post_signal_req(struct work_task *pwt)
 			rel_resc(pjob);
 		}
 
-		if (pjob->ji_pmt_preq != NULL)
+		if (pjob == NULL)
+			pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_SUSPEND, pjob);
-		
+
 		req_reject(rc, 0, preq);
 	} else {
 
@@ -516,7 +523,9 @@ post_signal_req(struct work_task *pwt)
 				form_attr_comment("Job run at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 		}
 
-		if (pjob->ji_pmt_preq != NULL)
+		if (pjob == NULL)
+			pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
+		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_SUSPEND, pjob);
 		
 		reply_ack(preq);

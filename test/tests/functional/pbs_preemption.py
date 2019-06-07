@@ -272,6 +272,29 @@ exit 1
         self.scheduler.log_match(
             ";Job will never run", existence=False, max_attempts=5)
 
+    def test_preempt_multiple_jobs(self):
+        """
+        Test that multiple jobs are preempted by one large high priority job
+        """
+        a = {'resources_available.ncpus': 10}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        for _ in range(10):
+            a = {'Resource_List.select': '1:ncpus=1',
+                 'Resource_List.walltime': 40}
+            j = Job(TEST_USER, a)
+            self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state=R': 10})
+        a = {'Resource_List.select': '1:ncpus=10',
+             'Resource_List.walltime': 40,
+             'queue': 'expressq'}
+        hj = Job(TEST_USER, a)
+        hjid = self.server.submit(hj)
+
+        self.server.expect(JOB, {'job_state=S': 10})
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+
     def test_qalter_preempt_targets_to_none(self):
         """
         Test that a job requesting preempt targets set to two different queues

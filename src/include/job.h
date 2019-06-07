@@ -1162,7 +1162,7 @@ extern int   job_or_resv_save_db(void *, int, int);
 
 
 #ifdef	_BATCH_REQUEST_H
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 extern int   net_move(job *, struct batch_request *);
 extern int   svr_chk_owner(struct batch_request *, job *);
 extern int   svr_movejob(job *, char *, struct batch_request *);

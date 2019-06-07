@@ -77,7 +77,7 @@ static void post_message_req(struct work_task *);
 
 extern char *msg_messagejob;
 
-extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 
 
 
@@ -97,7 +97,7 @@ req_messagejob(struct batch_request *preq)
 	job		 *pjob;
 	int		  rc;
 
-	if ((pjob = chk_job_request(preq->rq_ind.rq_message.rq_jid, preq, &jt)) == 0)
+	if ((pjob = chk_job_request(preq->rq_ind.rq_message.rq_jid, preq, &jt, NULL)) == 0)
 		return;
 
 	if (jt != IS_ARRAY_NO) {
@@ -194,7 +194,7 @@ req_py_spawn(struct batch_request *preq)
 	 ** Returns job pointer for singleton job or "parent" of
 	 ** an array job.
 	 */
-	pjob = chk_job_request(jid, preq, &jt);
+	pjob = chk_job_request(jid, preq, &jt, NULL);
 	if (pjob == NULL)
 		return;
 
@@ -289,7 +289,7 @@ req_relnodesjob(struct batch_request *preq)
 	 ** Returns job pointer for singleton job or "parent" of
 	 ** an array job.
 	 */
-	pjob = chk_job_request(jid, preq, &jt);
+	pjob = chk_job_request(jid, preq, &jt, NULL);
 	if (pjob == NULL) {
 		return;
 	}
