@@ -53,10 +53,10 @@ class TestManagersOperators(TestSelf):
         manager_usr_str = str(MGR_USER) + '@*'
         current_usr = pwd.getpwuid(os.getuid())[0]
         current_usr_str = str(current_usr) + '@*'
-        mgr_users = [manager_usr_str, current_usr_str]
+        mgr_users = {manager_usr_str, current_usr_str}
         svr_mgr = self.server.status(SERVER, 'managers')[0]['managers']\
             .split(",")
-        self.assertEqual(mgr_users, svr_mgr)
+        self.assertEqual(mgr_users, set(svr_mgr))
 
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
@@ -67,7 +67,7 @@ class TestManagersOperators(TestSelf):
 
         svr_mgr = self.server.status(SERVER, 'managers')[0]['managers'] \
             .split(",")
-        self.assertEqual(mgr_users, svr_mgr)
+        self.assertEqual(mgr_users, set(svr_mgr))
 
     def test_default_oper(self):
         """
@@ -75,5 +75,5 @@ class TestManagersOperators(TestSelf):
         """
         svr_opr = self.server.status(SERVER, 'operators')[0]['operators'] \
             .split(",")
-        opr_usr = [str(OPER_USER) + '@*']
-        self.assertEqual(opr_usr, svr_opr)
+        opr_usr = {str(OPER_USER) + '@*'}
+        self.assertEqual(opr_usr, set(svr_opr))
