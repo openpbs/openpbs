@@ -121,7 +121,7 @@ que_alloc(char *name)
 	CLEAR_HEAD(pq->qu_jobs);
 	CLEAR_LINK(pq->qu_link);
 
-	snprintf(pq->qu_qs.qu_name, PBS_MAXQUEUENAME, "%s", name);
+	snprintf(pq->qu_qs.qu_name, sizeof(pq->qu_qs.qu_name), "%s", name);
 	append_link(&svr_queues, &pq->qu_link, pq);
 	server.sv_qs.sv_numque++;
 

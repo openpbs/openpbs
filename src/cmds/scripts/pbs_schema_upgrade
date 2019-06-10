@@ -163,47 +163,59 @@ upgrade_pbs_schema_from_v1_3_0() {
 		
 		CREATE EXTENSION hstore;
 		
-		ALTER TABLE pbs.job ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.job ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.job SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.job_attr WHERE pbs.job_attr.ji_jobid=pbs.job.ji_jobid) AS attr);
+		UPDATE pbs.job SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.job ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.node ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.node ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.node SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.node_attr WHERE pbs.node_attr.nd_name=pbs.node.nd_name) AS attr);
+		UPDATE pbs.node SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.node ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.queue ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.queue ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.queue SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.queue_attr WHERE pbs.queue_attr.qu_name=pbs.queue.qu_name) AS attr);
+		UPDATE pbs.queue SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.queue ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.resv ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.resv ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.resv SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.resv_attr WHERE pbs.resv_attr.ri_resvid=pbs.resv.ri_resvid) AS attr);
+		UPDATE pbs.resv SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.resv ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.scheduler ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.scheduler ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.scheduler SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.scheduler_attr WHERE pbs.scheduler_attr.sched_name=pbs.scheduler.sched_name) AS attr);
+		UPDATE pbs.scheduler SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.scheduler ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.server ADD attributes public.hstore DEFAULT ''::public.hstore NOT NULL;
+		ALTER TABLE pbs.server ADD attributes public.hstore DEFAULT ''::public.hstore;
 		UPDATE pbs.server SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
 					      concat(attr_flags, '.' , attr_value) AS value
 						FROM pbs.server_attr WHERE pbs.server_attr.sv_name=pbs.server.sv_name) AS attr);
+		UPDATE pbs.server SET attributes='' WHERE attributes IS NULL;
+		ALTER TABLE pbs.server ALTER COLUMN attributes SET NOT NULL;
 
 		DROP TABLE pbs.server_attr;
 		DROP TABLE pbs.scheduler_attr;
