@@ -107,6 +107,7 @@ OPER_USER = PbsUser('pbsoper', uid=4356, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
 ADMIN_USER = PbsUser('pbsadmin', uid=4357, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
                                                    GRP_AGT])
 PBSROOT_USER = PbsUser('pbsroot', uid=4371, groups=[TSTGRP0, TSTGRP2])
+
 ROOT_USER = PbsUser('root', uid=0, groups=[ROOT_GRP])
 
 PBS_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
@@ -1286,10 +1287,10 @@ class PBSTestSuite(unittest.TestCase):
         except PbsManagerError as e:
             self.logger.error(e.msg)
         a = {ATTR_managers: (INCR, current_user + '@*,' +
-             MGR_USER.name + '@*')}
+             str(MGR_USER) + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
 
-        a1 = {ATTR_operators: (INCR, OPER_USER.name + '@*')}
+        a1 = {ATTR_operators: (INCR, str(OPER_USER) + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a1, sudo=True)
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
                 force):

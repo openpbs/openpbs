@@ -41,21 +41,22 @@ from tests.selftest import *
 class TestManagersOperators(TestSelf):
 
     """
-    This test suite contains tests related to managers and operators
-
+        Additional managers users, except current user and MGR_USER
+        should get unset after test setUp run
     """
     def test_managers_unset_setup(self):
         """
-        Additional managers users, except current user should get unset
-        after test setUp run
+        Additional managers users, except current user and MGR_USER should
+        get unset after test setUp run
         """
         runas = ROOT_USER
         manager_usr_str = str(MGR_USER) + '@*'
         current_usr = pwd.getpwuid(os.getuid())[0]
         current_usr_str = str(current_usr) + '@*'
-        svr_mgr = str(self.server.status(SERVER, 'managers'))
-        self.assertIn(str(manager_usr_str), svr_mgr)
-        self.assertIn(str(current_usr_str), svr_mgr)
+        mgr_users = [manager_usr_str, current_usr_str]
+        svr_mgr = self.server.status(SERVER, 'managers')[0]['managers']\
+            .split(",")
+        self.assertEqual(mgr_users, svr_mgr)
 
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
@@ -64,13 +65,15 @@ class TestManagersOperators(TestSelf):
         self.logger.info("Calling test setUp:")
         TestSelf.setUp(self)
 
-        svr_mgr = str(self.server.status(SERVER, 'managers'))
-        self.assertIn(str(manager_usr_str), svr_mgr)
-        self.assertIn(str(current_usr_str), svr_mgr)
+        svr_mgr = self.server.status(SERVER, 'managers')[0]['managers'] \
+            .split(",")
+        self.assertEqual(mgr_users, svr_mgr)
 
     def test_default_oper(self):
         """
         Check that default operator user is set on PTL setup
         """
-        svr_opr = str(self.server.status(SERVER, 'operators'))
-        self.assertIn(str(OPER_USER) + '@*', svr_opr)
+        svr_opr = self.server.status(SERVER, 'operators')[0]['operators'] \
+            .split(",")
+        opr_usr = [str(OPER_USER) + '@*']
+        self.assertEqual(opr_usr, svr_opr)
