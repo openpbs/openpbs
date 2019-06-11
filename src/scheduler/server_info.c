@@ -1976,9 +1976,13 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job !=NULL) {
-					if (!strcmp(resresv->user, sinfo->jobs[i]->user) ||
-						!strcmp(resresv->group, sinfo->jobs[i]->group) ||
-						!strcmp(resresv->project, sinfo->jobs[i]->project))
+					if (((resresv->job->queue->has_user_limit || sinfo->has_user_limit) &&
+					    (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
+					    ((resresv->job->queue->has_grp_limit || sinfo->has_grp_limit) &&
+					    (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
+					    ((resresv->job->queue->has_proj_limit || sinfo->has_proj_limit) &&
+					    (!strcmp(resresv->project, sinfo->jobs[i]->project))))
+
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}
@@ -3369,9 +3373,12 @@ update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job !=NULL) {
-					if (!strcmp(resresv->user, sinfo->jobs[i]->user) ||
-						!strcmp(resresv->group, sinfo->jobs[i]->group) ||
-						!strcmp(resresv->project, sinfo->jobs[i]->project))
+					if (((resresv->job->queue->has_user_limit || sinfo->has_user_limit) &&
+					    (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
+					    ((resresv->job->queue->has_grp_limit || sinfo->has_grp_limit) &&
+					    (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
+					    ((resresv->job->queue->has_proj_limit || sinfo->has_proj_limit) &&
+					    (!strcmp(resresv->project, sinfo->jobs[i]->project))))
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}

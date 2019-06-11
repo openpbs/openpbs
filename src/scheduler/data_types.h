@@ -393,7 +393,10 @@ struct queue_info
 	unsigned has_soft_limit:1;	/* queue has a soft user/grp limit set */
 	unsigned has_hard_limit:1;	/* queue has a hard user/grp limit set */
 	unsigned is_peer_queue:1;	/* queue is a peer queue */
-	unsigned has_resav_limit:1;		/* queue has resources_available limits */
+	unsigned has_resav_limit:1;	/* queue has resources_available limits */
+	unsigned has_user_limit:1;	/* queue has user hard or soft limit */
+	unsigned has_grp_limit:1;	/* queue has group hard or soft limit */
+	unsigned has_proj_limit:1;	/* queue has project hard or soft limit */
 	struct server_info *server;	/* server where queue resides */
 	char *name;			/* queue name */
 	state_count sc;			/* number of jobs in different states */
