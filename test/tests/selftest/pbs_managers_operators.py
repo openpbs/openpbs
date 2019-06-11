@@ -73,7 +73,6 @@ class TestManagersOperators(TestSelf):
         """
         Check that default operator user is set on PTL setup
         """
-        svr_opr = self.server.status(SERVER, 'operators')[0]['operators'] \
-            .split(",")
-        opr_usr = {str(OPER_USER) + '@*'}
-        self.assertEqual(opr_usr, set(svr_opr))
+        svr_opr = str(self.server.status(SERVER, 'operators'))
+        opr_usr = str(OPER_USER) + '@*'
+        self.assertEqual(opr_usr, svr_opr)
