@@ -1087,3 +1087,39 @@ class TestReservations(TestFunctional):
         self.logger.info("Wait 180s for all the subjobs to complete")
         self.server.expect(JOB, {'job_state': 'F'},
                            id=jid2, extend='x', offset=180)
+
+    def test_reservations_with_expired_subjobs(self):
+        """
+        Test that an array job submitted to a reservation ends when
+        there are expired subjobs in the array job and job history is
+        enabled
+        """
+        self.common_steps()
+        # Submit a advance reservation and an array job to the reservation
+        # once reservation confirmed
+        now = int(time.time())
+        a = {'reserve_start': now + 20,
+             'reserve_end': now + 80}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+
+        # submit enough jobs that there are some expired subjobs and some
+        # queued/running subjobs left in the system by the time reservation
+        # ends
+        a = {ATTR_q: rid_q, ATTR_J: '1-20'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=20)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        # Wait for reservation to delete from server
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=10)
+        # Check status of the parent-job using qstat -fx once reservation ends
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '91'},
+                           extend='x', id=jid)
