@@ -190,6 +190,7 @@ class TestCgroupsStress(TestPerformance):
         Create a hook configuration file with the provided contents.
         """
         fn = self.du.create_temp_file(body=cfg)
+        self.logger.info("Current config: %s" % cfg)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
@@ -197,11 +198,32 @@ class TestCgroupsStress(TestPerformance):
         os.remove(fn)
         self.mom.log_match('pbs_cgroups.CF;copy hook-related ' +
                            'file request received',
-                           max_attempts=5,
                            starttime=self.server.ctime)
-        self.logger.info("Current config: %s" % cfg)
-        # Restart MoM to work around PP-993
-        self.mom.restart()
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        svr_conf = os.path.join(
+            os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
+        pbs_home = self.mom.pbs_conf['PBS_HOME']
+        mom_conf = os.path.join(
+            os.sep, pbs_home, 'mom_priv', 'hooks', 'pbs_cgroups.CF')
+        # reload config if server and mom cfg differ up to count times
+        count = 5
+        while (count > 0):
+            r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
+            r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+            if r1['out'] != r2['out']:
+                self.logger.info('server & mom pbs_cgroups.CF differ')
+                self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
+                self.mom.log_match('pbs_cgroups.CF;copy hook-related ' +
+                                   'file request received',
+                                   starttime=self.server.ctime)
+            else:
+                self.logger.info('server & mom pbs_cgroups.CF match')
+                break
+            time.sleep(1)
+            count -= 1
+        # A HUP of mom ensures update to hook config file is
+        # seen by the exechost_startup hook.
+        self.mom.signal('-HUP')
 
     @timeout(1200)
     def test_cgroups_race_condition(self):
