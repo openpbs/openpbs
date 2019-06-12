@@ -807,9 +807,6 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
 
         # We will try to set all attributes which --obfuscate anonymizes
         manager1 = str(MGR_USER) + '@*'
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {ATTR_managers: (INCR, manager1)},
-                            sudo=True)
         manager2 = str(TEST_USER) + "@*"
         self.server.manager(MGR_CMD_SET, SERVER,
                             {ATTR_managers: (INCR, manager2)},
@@ -817,8 +814,6 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         real_values[ATTR_managers] = [manager1, manager2]
 
         operator = str(OPER_USER) + '@*'
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {ATTR_operators: (INCR, operator)})
         real_values[ATTR_operators] = [operator]
 
         real_values[ATTR_SvrHost] = [self.server.hostname]
