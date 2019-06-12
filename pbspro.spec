@@ -41,7 +41,7 @@
 %endif
 
 %if !%{defined pbs_version}
-%define pbs_version 19.0.0
+%define pbs_version 19.1.2
 %endif
 
 %if !%{defined pbs_release}
