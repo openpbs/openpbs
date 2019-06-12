@@ -1138,9 +1138,6 @@ req_deleteReservation(struct batch_request *preq)
 				continue;
 			}
 
-			if (pjob == NULL)
-				break;
-
 			newreq = alloc_br(PBS_BATCH_DeleteJob);
 			if (newreq != NULL) {
 

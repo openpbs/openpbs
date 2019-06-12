@@ -1098,8 +1098,8 @@ class TestReservations(TestFunctional):
         # Submit a advance reservation and an array job to the reservation
         # once reservation confirmed
         now = int(time.time())
-        a = {'reserve_start': now + 20,
-             'reserve_end': now + 80}
+        a = {'reserve_start': now + 10,
+             'reserve_end': now + 40}
         r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         rid_q = rid.split('.')[0]
@@ -1111,11 +1111,11 @@ class TestReservations(TestFunctional):
         # ends
         a = {ATTR_q: rid_q, ATTR_J: '1-20'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(10)
+        j.set_sleep_time(2)
         jid = self.server.submit(j)
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=20)
+        self.server.expect(RESV, a, id=rid, offset=10)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         # Wait for reservation to delete from server
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
