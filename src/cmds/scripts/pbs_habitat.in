@@ -485,7 +485,6 @@ backupdir() {
 	if [ -d "$1" -a -d "$2" ]; then
 		backupdir="$(basename $1).pre.${PBS_VERSION}"
 		echo "*** Backing up $1 to ${2}/${backupdir}"
-		echo "*** ${2}/${backupdir} may need to be manually removed if you do not wish to downgrade PBSPro."
 		mv "$1" "${2}/${backupdir}"
 	fi
 }
@@ -676,7 +675,10 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			if [ -d "${old_inst_dir}" ]; then
 				backupdir "$old_inst_dir" "$PBS_HOME"
 				if [ $? -ne 0 ]; then
-					echo "*** ${old_inst_dir} need to be manually backup and copy ${PBS_EXEC}/pgsql as ${PBS_HOME}/pgsql.forupgrade."
+					echo "*** ${old_inst_dir} needs to be manually backed up and run the below command"
+					echo "*** cp -pr ${PBS_EXEC}/pgsql ${PBS_HOME}/pgsql.forupgrade"
+				else
+					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBSPro."
 				fi
 			fi
 		fi
