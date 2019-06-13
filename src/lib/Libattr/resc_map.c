@@ -224,6 +224,8 @@ find_resc_flag_map(int perms)
 		flags[i++] = 'i';
 	else if ((perms & ATR_DFLAG_USWR) == 0)
 		flags[i++] = 'r';
+	if (perms & ATR_DFLAG_MOM)
+		flags[i++] = 'm';
 
 	flags[i] = '\0';
 	return flags;

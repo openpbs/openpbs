@@ -48,7 +48,7 @@ class SmokeTest(PBSTestSuite):
     # Class variables
     resc_types = [None, 'long', 'float', 'boolean', 'size', 'string',
                   'string_array']
-    resc_flags = [None, 'n', 'h', 'nh', 'q', 'f', 'fh']
+    resc_flags = [None, 'n', 'h', 'nh', 'q', 'f', 'fh', 'm', 'mh']
     resc_flags_ctl = [None, 'r', 'i']
     objs = [QUEUE, SERVER, NODE, JOB, RESV]
     resc_name = "ptl_custom_res"

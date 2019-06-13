@@ -423,6 +423,8 @@ parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p)
 			resc_flag |= ATR_DFLAG_ANASSN;
 		else if (*val == 'h')
 			resc_flag |= ATR_DFLAG_CVTSLT;
+		else if (*val == 'm')
+			resc_flag |= ATR_DFLAG_MOM;
 		else if (*val == 'r') {
 			if (flag_ir == 0) {
 				resc_flag &= ~READ_WRITE;
