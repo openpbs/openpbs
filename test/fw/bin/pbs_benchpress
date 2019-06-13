@@ -434,10 +434,13 @@ if __name__ == '__main__':
         follow = True
 
     if only_info:
+        loader = PTLTestLoader()
         testinfo = PTLTestInfo()
+        loader.set_data(testgroup, testsuites, excludes, True,
+                        need_info=True)
         testinfo.set_data(testsuites, list_test,
                           showinfo, verbose, gen_ts_tree)
-        plugins = (testinfo,)
+        plugins = (loader, testinfo)
     elif (tags_info or list_tags):
         loader = PTLTestLoader()
         testtags = PTLTestTags()

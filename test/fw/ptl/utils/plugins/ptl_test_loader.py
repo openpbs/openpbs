@@ -40,6 +40,7 @@ import sys
 import logging
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
+from ptl.utils.pbs_dshutils import DshUtils
 
 log = logging.getLogger('nose.plugins.PTLTestLoader')
 
@@ -66,6 +67,7 @@ class PTLTestLoader(Plugin):
         self.__tests_list_copy = {self._only_ts: [], self._only_tc: []}
         self.__allowed_cls = []
         self.__allowed_method = []
+        self.__need_info = False
 
     def options(self, parser, env):
         """
@@ -73,7 +75,7 @@ class PTLTestLoader(Plugin):
         """
         pass
 
-    def set_data(self, testgroup, suites, excludes, follow):
+    def set_data(self, testgroup, suites, excludes, follow, need_info=False):
         """
         Set the data required for loading test data
 
@@ -90,6 +92,7 @@ class PTLTestLoader(Plugin):
         if excludes is not None:
             self.excludes.extend(excludes.split(','))
         self.follow = follow
+        self.__need_info = need_info
 
     def configure(self, options, config):
         """
@@ -191,7 +194,31 @@ class PTLTestLoader(Plugin):
 
         def check_loadTestsFromNames(names, module=None):
             rv = old_loadTestsFromNames(names, module)
-            self.check_unknown()
+            test_list = self.__tests_list_copy
+            test_suites = self.__tests_list_copy['__only__ts__']
+            if (len(test_list) > 2) or (len(test_suites) != 0):
+                if 'PBSTestSuite' not in test_suites:
+                    self._du = DshUtils()
+                    ptl_test_dir = self._du.which(exe='pbs_benchpress')
+                    ptl_test_dir = ptl_test_dir.replace('bin/pbs_benchpress',
+                                                        'tests')
+                    user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
+                    if user_test_dir is not None:
+                        if os.path.isdir(user_test_dir):
+                            rv = old_loadTestsFromNames([user_test_dir],
+                                                        module)
+                        else:
+                            _msg = "Invalid directory specified"
+                            _msg += " in PTL_TESTS_DIR"
+                            logging.error(_msg)
+                            sys.exit(1)
+                    elif os.path.isdir(ptl_test_dir):
+                        rv = old_loadTestsFromNames([ptl_test_dir], module)
+                    if not self.__need_info:
+                        self.check_unknown()
+            else:
+                if not self.__need_info:
+                    self.check_unknown()
             return rv
         loader.loadTestsFromNames = check_loadTestsFromNames
         return loader
