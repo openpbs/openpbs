@@ -1120,6 +1120,12 @@ req_deleteReservation(struct batch_request *preq)
 
 			pnxj = (job *) GET_NEXT(pjob->ji_jobque);
 
+			/* skip all expired subjobs, expired subjobs are deleted when array parent is
+			 * issued delete request
+			 */
+			for (; pnxj != NULL && (pnxj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+			     pnxj->ji_qs.ji_state == JOB_STATE_EXPIRED; pnxj = (job *) GET_NEXT(pnxj->ji_jobque))
+				;
 			/*
 			 * If a history job (job state is JOB_STATE_MOVED
 			 * or JOB_STATE_FINISHED, then no need to delete
@@ -1131,6 +1137,7 @@ req_deleteReservation(struct batch_request *preq)
 				pjob = pnxj;
 				continue;
 			}
+
 			newreq = alloc_br(PBS_BATCH_DeleteJob);
 			if (newreq != NULL) {
 
