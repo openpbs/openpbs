@@ -113,7 +113,9 @@ class TestSchedulingIndirectResources(TestFunctional):
             self.submit_job(attr),
             self.submit_job(attr)]
 
-        # Verify that the jobs are running on correct vnodes
+        # since there are 6 vnodes and the test grouped them on foostr
+        # resource, we now have groups in pair of vnode 0-3, 1-4, 2-5
+        # check that the jobs are running on correct vnode groups.
         for i in range(3):
             self.server.expect(JOB, {'job_state': 'R'}, id=j[i][0])
             self.server.status(JOB, 'exec_vnode', j[i][0])
