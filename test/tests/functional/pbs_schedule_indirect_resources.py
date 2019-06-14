@@ -47,8 +47,9 @@ class TestSchedulingIndirectResources(TestFunctional):
         """
         Configure the PBS complex for node grouping test
         """
-        # Create a non-consumable custom resource foostr'
-        self.server.add_resource(res, res_type, flag)
+        # Create a custom resource
+        attr = {"type": res_type, "flag": flag}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id=res)
 
         # Add resource to the resources line in sched_config
         self.scheduler.add_resource(res)
@@ -62,7 +63,6 @@ class TestSchedulingIndirectResources(TestFunctional):
         Helper function to submit a sleep job with provided attributes
         """
         job = Job(TEST_USER1, attr)
-        job.set_sleep_time(3600)
         jobid = self.server.submit(job)
 
         return (jobid, job)
@@ -79,9 +79,6 @@ class TestSchedulingIndirectResources(TestFunctional):
         -> Verify that the last three vnodes are part of their respective
         placement sets
         """
-
-        # Delete any existing vnodes on the system
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
         # Create 6 vnodes
         attr = {'resources_available.ncpus': 1}
@@ -108,21 +105,17 @@ class TestSchedulingIndirectResources(TestFunctional):
         attr = {'resources_available.foostr': '@vnode[2]'}
         self.server.manager(MGR_CMD_SET, NODE, attr, 'vnode[5]')
 
-        # Verify that the last three vnodes are part of their respective
-        # placement sets
-        # Submit 3 jobs requesting placement sets 'A', 'B' and 'C', and vnodes
-        # vnode[3], vnode[4] and vnode[5] respectively
-        attr1 = {'Resource_List.select': '1:foostr=A:vnode=vnode[3]'}
-        attr2 = {'Resource_List.select': '1:foostr=B:vnode=vnode[4]'}
-        attr3 = {'Resource_List.select': '1:foostr=C:vnode=vnode[5]'}
+        # Submit 3 jobs requesting 2 vnodes and check they ran on the nodes
+        # within same group
+        attr = {'Resource_List.select': '2:ncpus=1'}
         j = [
-            self.submit_job(attr1),
-            self.submit_job(attr2),
-            self.submit_job(attr3)]
+            self.submit_job(attr),
+            self.submit_job(attr),
+            self.submit_job(attr)]
 
         # Verify that the jobs are running on correct vnodes
         for i in range(3):
             self.server.expect(JOB, {'job_state': 'R'}, id=j[i][0])
             self.server.status(JOB, 'exec_vnode', j[i][0])
-            self.assertEqual(
-                j[i][1].get_vnodes()[0], 'vnode[' + str(i + 3) + ']')
+            vn = j[i][1].get_vnodes()
+            self.assertEqual(int(vn[0][6])+3, int(vn[1][6]))
