@@ -2023,7 +2023,7 @@ else:
         # make sure that the second job ran in the same cycle as the high
         # priority job
         c = self.scheduler.cycles(lastN=3)
-        for i, sched_cycle in enumerate(c):
+        for _, sched_cycle in enumerate(c):
             if jidh.split('.')[0] in sched_cycle.sched_job_run:
                 break
         self.assertIn(jid2.split('.')[0], sched_cycle.sched_job_run)
