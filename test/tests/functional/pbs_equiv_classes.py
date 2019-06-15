@@ -1993,11 +1993,11 @@ else:
                                   attrfunc=self.change_res)
 
         # Create an express queue
-        a = {'queue_type': 'e', 'started': 't',
-             'enabled': 't', 'Priority': 200}
+        a = {'queue_type': 'execution', 'started': 'true',
+             'enabled': 'true', 'Priority': 200}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
         # Set node sort key so that higher memory node comes up first
-        a = {'node_sort_key': '"mem HIGH " ALL'}
+        a = {'node_sort_key': '"mem HIGH" ALL'}
         self.scheduler.set_sched_config(a)
 
         a = {'Resource_List.select': '1:ncpus=1:mem=4gb'}
@@ -2023,7 +2023,7 @@ else:
         # make sure that the second job ran in the same cycle as the high
         # priority job
         c = self.scheduler.cycles(lastN=3)
-        for i in range(len(c)):
-            if jidh.split('.')[0] in c[i].sched_job_run.keys():
+        for i, sched_cycle in enumerate(c):
+            if jidh.split('.')[0] in sched_cycle.sched_job_run:
                 break
-        self.assertIn(jid2.split('.')[0], c[i].sched_job_run.keys())
+        self.assertIn(jid2.split('.')[0], sched_cycle.sched_job_run)
