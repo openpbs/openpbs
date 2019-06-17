@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestSchedulingIndirectResources(TestFunctional):
+class TestIndirectResources(TestFunctional):
     """
     Test Scheduler resolve indirect resources correctly
     """
@@ -108,16 +108,13 @@ class TestSchedulingIndirectResources(TestFunctional):
         # Submit 3 jobs requesting 2 vnodes and check they ran on the nodes
         # within same group
         attr = {'Resource_List.select': '2:ncpus=1'}
-        j = [
-            self.submit_job(attr),
-            self.submit_job(attr),
-            self.submit_job(attr)]
 
         # since there are 6 vnodes and the test grouped them on foostr
         # resource, we now have groups in pair of vnode 0+3, 1+4, 2+5
         # check that the jobs are running on correct vnode groups.
         for i in range(3):
-            self.server.expect(JOB, {'job_state': 'R'}, id=j[i][0])
-            self.server.status(JOB, 'exec_vnode', j[i][0])
-            vn = j[i][1].get_vnodes()
+            jid, j = self.submit_job(attr)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+            self.server.status(JOB, 'exec_vnode', jid)
+            vn = j.get_vnodes()
             self.assertEqual(int(vn[0][6])+3, int(vn[1][6]))
