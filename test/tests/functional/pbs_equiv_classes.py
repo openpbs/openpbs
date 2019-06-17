@@ -1974,7 +1974,16 @@ else:
 
     def change_res(self, name, total, node_num, attribs):
         """
-        Change the value of memory on one of the node
+        Callback to change the value of memory on one of the node
+
+        :param name: Name of the vnode which is being created
+        :type name: str
+        :param total: Total number of vnodes being created
+        :type total: int
+        :param node_num: Index of the node for which callback is being called
+        :type node_num: int
+        :param attribs: attributes of the node being created
+        :type attribs: dict
         """
         if node_num % 2 != 0:
             attribs['resource_available.mem'] = '16gb'
@@ -1984,7 +1993,7 @@ else:
 
     def test_equiv_class_not_marked_on_suspend(self):
         """
-        Test that is a job is suspended then scheduler does not mark its
+        Test that if a job is suspended then scheduler does not mark its
         equivalence class as can_not_run within the same cycle when it gets
         suspended.
         """
