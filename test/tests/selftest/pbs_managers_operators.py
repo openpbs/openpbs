@@ -38,25 +38,41 @@
 from tests.selftest import *
 
 
-class ManagersOperators(TestSelf):
+class TestManagersOperators(TestSelf):
 
     """
-    This test suite contains tests related to managers and operators
-
+        Additional managers users, except current user and MGR_USER
+        should get unset after test setUp run
     """
     def test_managers_unset_setup(self):
         """
-        Additional managers users, except current user should get unset
-        after test setUp run
+        Additional managers users, except current user and MGR_USER should
+        get unset after test setUp run
         """
         runas = ROOT_USER
+        manager_usr_str = str(MGR_USER) + '@*'
         current_usr = pwd.getpwuid(os.getuid())[0]
-        attr = {ATTR_managers: current_usr + '@*'}
-        self.server.expect(SERVER, attrib=attr)
+        current_usr_str = str(current_usr) + '@*'
+        mgr_users = {manager_usr_str, current_usr_str}
+        svr_mgr = self.server.status(SERVER, 'managers')[0]['managers']\
+            .split(",")
+        self.assertEqual(mgr_users, set(svr_mgr))
+
         mgr_user1 = str(TEST_USER)
         mgr_user2 = str(TEST_USER1)
         a = {ATTR_managers: (INCR, mgr_user1 + '@*,' + mgr_user2 + '@*')}
         self.server.manager(MGR_CMD_SET, SERVER, a, runas=runas)
         self.logger.info("Calling test setUp:")
         TestSelf.setUp(self)
-        self.server.expect(SERVER, attrib=attr)
+
+        svr_mgr = self.server.status(SERVER, 'managers')[0]['managers'] \
+            .split(",")
+        self.assertEqual(mgr_users, set(svr_mgr))
+
+    def test_default_oper(self):
+        """
+        Check that default operator user is set on PTL setup
+        """
+        svr_opr = self.server.status(SERVER, 'operators')[0].get('operators')
+        opr_usr = str(OPER_USER) + '@*'
+        self.assertEqual(opr_usr, svr_opr)

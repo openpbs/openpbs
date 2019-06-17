@@ -177,7 +177,7 @@ class TestQstatFormats(TestFunctional):
             #        "PBS_O_QUEUE":"workq",
             #    },
 
-            if ',' in val:
+            if key == ATTR_v:
                 for v in val.split(','):
                     qstat_attrs.append(str(v).split('=')[0])
         return qstat_attrs
