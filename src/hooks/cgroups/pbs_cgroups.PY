@@ -773,7 +773,7 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(key[6:])
+                        gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     string.join(mics, ','))
@@ -782,6 +782,7 @@ class HookUtils(object):
                     # This will cause it to fail.
                     env_list.append('CUDA_VISIBLE_DEVICES=%s' %
                                     string.join(gpus, ','))
+                    env_list.append('CUDA_DEVICE_ORDER=PCI_BUS_ID')
             pbs.logmsg(pbs.EVENT_DEBUG4, 'ENV_LIST: %s' % env_list)
             cgroup.write_job_env_file(event.job.id, env_list)
         # Add jobid to cgroup_jobs file to tell periodic handler that this
@@ -838,6 +839,7 @@ class HookUtils(object):
         Handler for execjob_launch events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        node = NodeConfig(cgroup.cfg)
         # delete this jobid from cgroup_jobs in case hook events before me
         # failed to do that
         cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
@@ -850,7 +852,7 @@ class HookUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        'assigned_resources: %s' %
                        (cgroup.assigned_resources))
-            cgroup.setup_job_devices_env()
+            cgroup.setup_job_devices_env(node.devices['gpu'])
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
@@ -1007,7 +1009,7 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(key[6:])
+                        gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     string.join(mics, ','))
@@ -1016,6 +1018,7 @@ class HookUtils(object):
                     # This will cause it to fail.
                     env_list.append('CUDA_VISIBLE_DEVICES=%s' %
                                     string.join(gpus, ','))
+                    env_list.append('CUDA_DEVICE_ORDER=PCI_BUS_ID')
             pbs.logmsg(pbs.EVENT_DEBUG4, 'ENV_LIST: %s' % env_list)
             cgroup.write_job_env_file(event.job.id, env_list)
         return True
@@ -1425,7 +1428,7 @@ class NodeConfig(object):
                 for inst in devices[dclass]:
                     for gpuid in gpus:
                         bus_id = devices[dclass][inst]['bus_id'].lower()
-                        if bus_id == gpus[gpuid]:
+                        if bus_id == gpus[gpuid]['pci_bus_id']:
                             devices['gpu'][gpuid] = devices[dclass][inst]
                             # For NVIDIA devices, sysfs doesn't contain a dev
                             # file, so we must get the major, minor and device
@@ -1443,6 +1446,8 @@ class NodeConfig(object):
                                 devices[dclass][inst]['type'] = \
                                     devinfo['type']
                                 devices[dclass][inst]['device'] = path
+                                devices[dclass][inst]['uuid'] = \
+                                    gpus[gpuid]['uuid']
         if gpus and not devices['gpu']:
             pbs.logmsg(pbs.EVENT_SYSTEM, '%s: GPUs discovered but could not '
                        'be successfully mapped to devices.' % (caller_name()))
@@ -1492,7 +1497,10 @@ class NodeConfig(object):
                     if len(domain) != 4:
                         raise ValueError('GPU ID not recognized: ' + bus_id)
                     name = 'nvidia%s' % child.find('minor_number').text
-                    gpus[name] = (domain + ':' + instance).lower()
+                    gpus[name] = {
+                        'pci_bus_id': (domain + ':' + instance).lower(),
+                        'uuid': child.find('uuid').text
+                    }
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Unexpected error: %s' % exc)
         pbs.logmsg(pbs.EVENT_DEBUG4, 'GPUs: %s' % gpus)
@@ -2861,7 +2869,7 @@ class CgroupUtils(object):
                                        (str(pids), tasks_file,
                                         errno.errorcode[exc.errno]))
 
-    def setup_job_devices_env(self):
+    def setup_job_devices_env(self, gpus):
         """
         Setup the job environment for the devices assigned to the job for an
         execjob_launch hook
@@ -2880,7 +2888,7 @@ class CgroupUtils(object):
                 if name.startswith('mic'):
                     offload_devices.append(name[3:])
                 elif name.startswith('nvidia'):
-                    cuda_visible_devices.append(name[6:])
+                    cuda_visible_devices.append(gpus[name]['uuid'])
             if offload_devices:
                 value = string.join(offload_devices, '\\,')
                 pbs.event().env['OFFLOAD_DEVICES'] = '%s' % value
@@ -2889,6 +2897,7 @@ class CgroupUtils(object):
             if cuda_visible_devices:
                 value = string.join(cuda_visible_devices, '\\,')
                 pbs.event().env['CUDA_VISIBLE_DEVICES'] = '%s' % value
+                pbs.event().env['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            'cuda_visible_devices: %s' % cuda_visible_devices)
             pbs.logmsg(pbs.EVENT_DEBUG4,
