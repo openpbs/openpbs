@@ -423,6 +423,9 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 				res = &unset_res;
 			}
 			if (res != NULL) {
+				/* Incase of indirect resource, point it to the right place */
+			        if (res->indirect_res != NULL)
+					res = res->indirect_res;
 				for (val_i = 0; res->str_avail[val_i] != NULL; val_i++) {
 					/* 2: 1 for '=' 1 for '\0' */
 					if (reslen + strlen(res->str_avail[val_i]) + 2 < 1024) {
@@ -532,6 +535,9 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 				res = &unset_res;
 			}
 			if (res != NULL) {
+				/* Incase of indirect resource, point it to the right place */
+			        if (res->indirect_res != NULL)
+					res = res->indirect_res;
 				if (compare_res_to_str(res, np_arr[np_i]->res_val, CMP_CASE)) {
 					if (np_arr[np_i]->ok_break) {
 						tmpres = find_resource(nodes[node_i]->res, getallres(RES_HOST));
