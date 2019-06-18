@@ -671,11 +671,12 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			fi
 			exit $ret
 		else
-			#Remove old dataservice directory
 			if [ -d "${old_inst_dir}" ]; then
 				backupdir "$old_inst_dir" "$PBS_HOME"
 				if [ $? -ne 0 ]; then
-					echo "*** ${old_inst_dir} needs to be manually backed up and run the below command"
+					echo "Failed to backup $old_inst_dir, please follow the below instructions:"
+					echo "*** Backup "$old_inst_dir" if you need to downgrade pgsql later on."
+					echo "*** For future upgrades to be successful run the below command."
 					echo "*** cp -pr ${PBS_EXEC}/pgsql ${PBS_HOME}/pgsql.forupgrade"
 				else
 					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBSPro."
