@@ -1379,6 +1379,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_PreemptJobs:
 			free(preq->rq_ind.rq_preempt.ppj_list);
+			free(preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list);
 			break;
 #endif /* PBS_MOM */
 	}
