@@ -423,7 +423,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
+%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -434,7 +434,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %endif
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %doc README.md
 %license LICENSE
@@ -445,7 +445,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_rcp
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
+%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -475,7 +475,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %doc README.md
 %license LICENSE
@@ -485,7 +485,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %dir %{pbs_prefix}
 %{pbs_prefix}/*
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
-%attr(644, root, root) %{pbs_prefix}/lib/libpbs.la
+%attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 %config(noreplace) %{_sysconfdir}/profile.d/*
@@ -524,7 +524,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
-%exclude %{pbs_prefix}/lib/*.a
+%exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %exclude /etc/init.d/pbs
 %doc README.md
@@ -532,7 +532,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 
 %files %{pbs_devel}
 %defattr(-,root,root, -)
-%{pbs_prefix}/lib/*.a
+%{pbs_prefix}/lib*/*.a
 %{pbs_prefix}/include/*
 %doc README.md
 %license LICENSE
