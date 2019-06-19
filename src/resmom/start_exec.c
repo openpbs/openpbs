@@ -906,7 +906,8 @@ impersonate_user(uid_t uid, gid_t gid)
 	if (pwd == NULL)
 		return -1;
 
-	if (initgroups(pwd->pw_name, gid) == -1) {
+	if ((geteuid() != uid) &&
+		(initgroups(pwd->pw_name, gid) == -1)) {
 		return -1;
 	}
 
