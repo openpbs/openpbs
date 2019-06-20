@@ -331,6 +331,7 @@ req_preemptjobs(struct batch_request *preq)
 					break;
 				default:
 					job_preempt_fail(preq, ppj->job_id);
+					preempt_index++;
 			}
 			continue;
 		}
@@ -385,10 +386,23 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] != PREEMPT_METHOD_LOW) {
 			if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index], pjob, preq)) {
 				job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
+				pjob->preempt_order_index = 0;
+				pjob->preempt_order = NULL;
 				pjob->ji_pmt_preq = NULL;
+			} else {
+				/* reply_preempt_jobs_request() is somewhat recursive.  It is possible for one call to issue the next
+				 * preempt request.  The next preempt request immediately fails and calls reply_preempt_jobs_request()
+				 * again before the first call ends.  There is a case when the last job in the preemption reply fails
+				 * in the recursive call.  This will reply to the scheduler's preq.  We don't want to pop back up here
+				 * and reply again, so we return.
+				 */
+				if (pjob->ji_pmt_preq == NULL)
+					return;
 			}
 		} else {
 			job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
+			pjob->preempt_order_index = 0;
+			pjob->preempt_order = NULL;
 			pjob->ji_pmt_preq = NULL;
 		}
 	} else {
@@ -420,12 +434,12 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		pjob->ji_pmt_preq = NULL;
 
 		preq->rq_reply.brp_un.brp_preempt_jobs.count++;
+		pjob->preempt_order_index = 0;
+		pjob->preempt_order = NULL;
 	}
 	/* send reply if we're done */
 	if (preq->rq_reply.brp_un.brp_preempt_jobs.count == preq->rq_ind.rq_preempt.count) {
 		reply_send(preq);
-		pjob->preempt_order_index = 0;
-		pjob->preempt_order = NULL;
 	}
 }
 

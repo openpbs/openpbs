@@ -2714,7 +2714,7 @@ discard_job(job *pjob, char *txt, int noack)
 	int	 rc;
 	int	 rver;
 
-	/* We're about to discard the job, reply to a preemption. 
+	/* We're about to discard the job, reply to a preemption.
 	 * This serves as a catch all just incase the code doesn't reply on its own.
 	 */
 
