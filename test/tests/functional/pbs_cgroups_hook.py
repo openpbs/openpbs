@@ -112,6 +112,10 @@ class TestCgroupsHook(TestFunctional):
             if mom.is_cray():
                 self.iscray = True
             host = mom.shortname
+            # Check if mom has cgroup mounted, otherwise skip test
+            if not (self.is_cgroup(host)):
+                self.skipTest('cgroup subsystem is not mounted on %s' % host)
+            self.logger.info("%s: cgroup is mounted" % host)
             if self.iscray:
                 node = self.get_hostname(host)
             else:
@@ -768,6 +772,19 @@ e=pbs.event()
 if %s e.job.in_ms_mom():
     e.reject("Cannot resize the job")
 """
+
+    def is_cgroup(self, host):
+        """
+        Returns true if cgroup is mounted on the mom host, false otherwise.
+        """
+        ret = self.du.cat(host, '/proc/mounts')
+        val = False
+        for mnt in ret['out']:
+            if 'cgroup' not in mnt:
+                continue
+            else:
+                val = True
+        return val
 
     def get_paths(self):
         """
