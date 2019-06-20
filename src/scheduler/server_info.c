@@ -1765,10 +1765,8 @@ update_server_on_run(status *policy, server_info *sinfo,
 		}
 
 
-		/* a new job has been run, recreate running jobs array */
-		free(sinfo->running_jobs);
-		sinfo->running_jobs = resource_resv_filter(
-			sinfo->jobs, sinfo->sc.total, check_run_job, NULL, 0);
+		/* a new job has been run, update running jobs array */
+		sinfo->running_jobs = add_resresv_to_array(sinfo->running_jobs, resresv, NO_FLAGS);
 	}
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {

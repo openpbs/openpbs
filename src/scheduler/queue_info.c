@@ -674,9 +674,8 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 
 		req = req->next;
 	}
-	free(qinfo->running_jobs);
-	qinfo->running_jobs = resource_resv_filter(qinfo->jobs, qinfo->sc.total,
-		check_run_job, NULL, 0);
+
+	qinfo->running_jobs = add_resresv_to_array(qinfo->running_jobs, resresv, NO_FLAGS);
 
 	if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
 
