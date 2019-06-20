@@ -1971,3 +1971,68 @@ else:
         # one for no foores
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
+
+    def change_res(self, name, total, node_num, attribs):
+        """
+        Callback to change the value of memory on one of the node
+
+        :param name: Name of the vnode which is being created
+        :type name: str
+        :param total: Total number of vnodes being created
+        :type total: int
+        :param node_num: Index of the node for which callback is being called
+        :type node_num: int
+        :param attribs: attributes of the node being created
+        :type attribs: dict
+        """
+        if node_num % 2 != 0:
+            attribs['resource_available.mem'] = '16gb'
+        else:
+            attribs['resource_available.mem'] = '4gb'
+        return attribs
+
+    def test_equiv_class_not_marked_on_suspend(self):
+        """
+        Test that if a job is suspended then scheduler does not mark its
+        equivalence class as can_not_run within the same cycle when it gets
+        suspended.
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vnode', a, 2, self.mom,
+                                  attrfunc=self.change_res)
+
+        # Create an express queue
+        a = {'queue_type': 'execution', 'started': 'true',
+             'enabled': 'true', 'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
+        # Set node sort key so that higher memory node comes up first
+        a = {'node_sort_key': '"mem HIGH" ALL'}
+        self.scheduler.set_sched_config(a)
+
+        a = {'Resource_List.select': '1:ncpus=1:mem=4gb'}
+        (jid1, ) = self.submit_jobs(1, a)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Turn off scheduling
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # submit another normal job
+        (jid2, ) = self.submit_jobs(1, a)
+
+        # submit a high priority job
+        a = {'queue': 'wq2', 'Resource_List.select': '1:ncpus=2:mem=14gb',
+             'Resource_List.place': 'excl'}
+        (jidh, ) = self.submit_jobs(1, a)
+
+        # Turn on scheduling
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jidh)
+
+        # make sure that the second job ran in the same cycle as the high
+        # priority job
+        c = self.scheduler.cycles(lastN=3)
+        for sched_cycle in c:
+            if jidh.split('.')[0] in sched_cycle.sched_job_run:
+                break
+        self.assertIn(jid2.split('.')[0], sched_cycle.sched_job_run)
