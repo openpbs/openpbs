@@ -348,7 +348,7 @@ exit 1
     def test_preempt_retry(self):
         """
         Test that jobs can be successfully preempted after a previously failed
-        attempt at preemption. 
+        attempt at preemption.
         """
         # in CLI mode Rerunnable requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
