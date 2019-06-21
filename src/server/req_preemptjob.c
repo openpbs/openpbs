@@ -389,11 +389,12 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 				job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
 				clear_preempt_vars = 1;
 			} else {
-				/* reply_preempt_jobs_request() is somewhat recursive.  It is possible for one call to issue the next
-				 * preempt request.  The next preempt request immediately fails and calls reply_preempt_jobs_request()
-				 * again before the first call ends.  There is a case when the last job in the preemption reply fails
-				 * in the recursive call.  This will reply to the scheduler's preq.  We don't want to pop back up here
-				 * and reply again, so we return.
+				/* reply_preempt_jobs_request() is somewhat recursive.  If a preemption method fails, one call will issue the next
+				 * preemptiom method request.  The next preemption method request immediately is rejected, it will call
+				 * reply_preempt_jobs_request() again before the first call ends.  A reject like this is considered a successful 
+				 * call to issue_Drequest().  If pjob->ji_pmt_preq has been NULLed, it means the last preemption method has failed.  
+				 * If this is the last job in the preemption list, the call to reply_preempt_job_request() will have replied to 
+				 * the scheduler.  In this case, we do not want to reply a second time.
 				 */
 				if (pjob->ji_pmt_preq == NULL)
 					return;

@@ -347,7 +347,8 @@ exit 1
 
     def test_preempt_retry(self):
         """
-        Test to make sure that preemption is retried if it fails.
+        Test that jobs can be successfully preempted after a previously failed
+        attempt at preemption. 
         """
         # in CLI mode Rerunnable requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
@@ -385,15 +386,10 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
 
-        self.mom.log_match(jid2 + ";checkpoint failed:")
-        self.mom.log_match(jid1 + ";checkpoint failed:")
+        self.server.log_match(jid1 + ';Job failed to be preempted')
+        self.server.log_match(jid2 + ';Job failed to be preempted')
 
-        abort_script = """#!/bin/bash
-kill -9 $1
-exit 0
-"""
-        self.insert_checkpoint_script(abort_script)
-
+        # Allow jobs to be requeued.
         attrs = {'Rerunable': 'y'}
         self.server.alterjob(jid1, attrs)
         self.server.alterjob(jid2, attrs)
