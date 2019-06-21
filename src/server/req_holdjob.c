@@ -129,21 +129,24 @@ chk_hold_priv(long val, int perm)
 void
 req_holdjob(struct batch_request *preq)
 {
-	long		*hold_val;
-	int		 jt;		/* job type */
-	int		 newstate;
-	int		 newsub;
-	long		 old_hold;
-	job		*pjob;
-	char		*pset;
-	int		 rc;
-	char 		 date[32];
-	time_t 		 now;
+	long *hold_val;
+	int jt;		/* job type */
+	int newstate;
+	int newsub;
+	long old_hold;
+	job *pjob;
+	char *pset;
+	char jid[PBS_MAXSVRJOBID + 1];
+	int rc;
+	char date[32];
+	time_t now;
 	int err = PBSE_NONE;
 
-	pjob = chk_job_request(preq->rq_ind.rq_hold.rq_orig.rq_objname, preq, &jt, &err);
+	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_hold.rq_orig.rq_objname);
+
+	pjob = chk_job_request(jid, preq, &jt, &err);
 	if (pjob == NULL) {
-		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+		pjob = find_job(jid);
 		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(err, PREEMPT_METHOD_CHECKPOINT, pjob);
 		return;
@@ -153,7 +156,7 @@ req_holdjob(struct batch_request *preq)
 		 * We need to find the job again because chk_job_request() will return
 		 * the parent array if the job is a subjob.
 		 */
-		pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
+		pjob = find_job(jid);
 		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_IVALREQ, PREEMPT_METHOD_CHECKPOINT, pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);

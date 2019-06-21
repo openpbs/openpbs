@@ -208,21 +208,21 @@ force_reque(job *pjob)
 void
 req_rerunjob(struct batch_request *preq)
 {
-	int		  anygood = 0;
-	int		  i;
-	int		  j;
-	char		 *jid;
-	int		  jt;		/* job type */
-	int		  offset;
-	char		 *pc;
-	job		 *pjob;
-	job		 *parent;
-	char		 *range;
-	char		 *vrange;
-	int		  x, y, z;
-	int 		  err = PBSE_NONE;
+	int anygood = 0;
+	int i;
+	int j;
+	char jid[PBS_MAXSVRJOBID + 1];
+	int jt;				/* job type */
+	int offset;
+	char *pc;
+	job *pjob;
+	job *parent;
+	char *range;
+	char *vrange;
+	int x, y, z;
+	int err = PBSE_NONE;
 
-	jid = preq->rq_ind.rq_signal.rq_jid;
+	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
 	parent = chk_job_request(jid, preq, &jt, &err);
 	if (parent == NULL) {
 		pjob = find_job(jid);
