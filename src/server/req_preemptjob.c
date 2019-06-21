@@ -369,6 +369,7 @@ void
 reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 {
 	struct batch_request *preq;
+	int clear_preempt_vars = 0;
 
 	if (pjob == NULL)
 		return;
@@ -386,9 +387,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] != PREEMPT_METHOD_LOW) {
 			if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index], pjob, preq)) {
 				job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
-				pjob->preempt_order_index = 0;
-				pjob->preempt_order = NULL;
-				pjob->ji_pmt_preq = NULL;
+				clear_preempt_vars = 1;
 			} else {
 				/* reply_preempt_jobs_request() is somewhat recursive.  It is possible for one call to issue the next
 				 * preempt request.  The next preempt request immediately fails and calls reply_preempt_jobs_request()
@@ -401,9 +400,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 			}
 		} else {
 			job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
-			pjob->preempt_order_index = 0;
-			pjob->preempt_order = NULL;
-			pjob->ji_pmt_preq = NULL;
+			clear_preempt_vars = 1;
 		}
 	} else {
 		int preempt_index;
@@ -431,11 +428,14 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 				break;
 		}
 		sprintf(preempt_jobs_list[preempt_index].job_id, "%s", pjob->ji_qs.ji_jobid);
-		pjob->ji_pmt_preq = NULL;
+		clear_preempt_vars = 1;
 
 		preq->rq_reply.brp_un.brp_preempt_jobs.count++;
+	}
+	if (clear_preempt_vars) {
 		pjob->preempt_order_index = 0;
 		pjob->preempt_order = NULL;
+		pjob->ji_pmt_preq = NULL;
 	}
 	/* send reply if we're done */
 	if (preq->rq_reply.brp_un.brp_preempt_jobs.count == preq->rq_ind.rq_preempt.count) {

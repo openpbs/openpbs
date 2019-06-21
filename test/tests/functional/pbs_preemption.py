@@ -77,10 +77,10 @@ exit 1
         """
         j1 = Job(TEST_USER)
         jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         time.sleep(1)
         j2 = Job(TEST_USER)
         jid2 = self.server.submit(j2)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
         j3 = Job(TEST_USER)
