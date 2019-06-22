@@ -500,12 +500,6 @@ struct preempt_ordering *svr_get_preempt_order(job *pjob, pbs_sched *psched)
 	if (get_job_req_used_time(pjob, &req, &used) != 0)
 		return NULL;
 
-	if (used == -1 || req == -1) {
-		snprintf(log_buffer, sizeof(log_buffer),
-				"No walltime/cput to determine percent of time left - will use first preempt_order");
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-	}
-
 	po = get_preemption_order(psched->preempt_order, req, used);
 
 	return po;
