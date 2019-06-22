@@ -112,10 +112,11 @@ class TestCgroupsHook(TestFunctional):
             if mom.is_cray():
                 self.iscray = True
             host = mom.shortname
-            # Check if mom has cgroup mounted, otherwise skip test
-            if not (self.is_cgroup(host)):
-                self.skipTest('cgroup subsystem is not mounted on %s' % host)
-            self.logger.info("%s: cgroup is mounted" % host)
+            # Check if mom has needed cgroup mounted, otherwise skip test
+            self.paths = self.get_paths(host)
+            if not (self.paths['cpuset'] and self.paths['memory']):
+                self.skipTest('cpuset and memory cgroup subsystem not mounted')
+            self.logger.info("%s: cgroup cpuset and memory are mounted" % host)
             if self.iscray:
                 node = self.get_hostname(host)
             else:
@@ -149,9 +150,6 @@ class TestCgroupsHook(TestFunctional):
             self.server.manager(MGR_CMD_CREATE, NODE, id=host)
 
         self.serverA = self.servers.values()[0].name
-        self.paths = self.get_paths()
-        if not (self.paths['cpuset'] and self.paths['memory']):
-            self.skipTest('cpuset or memory cgroup subsystem not mounted')
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs(extend='force')
@@ -773,23 +771,10 @@ if %s e.job.in_ms_mom():
     e.reject("Cannot resize the job")
 """
 
-    def is_cgroup(self, host):
-        """
-        Returns true if cgroup is mounted on the mom host, false otherwise.
-        """
-        ret = self.du.cat(host, '/proc/mounts')
-        val = False
-        for mnt in ret['out']:
-            if 'cgroup' not in mnt:
-                continue
-            else:
-                val = True
-        return val
-
-    def get_paths(self):
+    def get_paths(self, host):
         """
         Returns a dictionary containing the location where each cgroup
-        is mounted.
+        is mounted on host.
         """
         paths = {'pids': None,
                  'blkio': None,
@@ -800,23 +785,23 @@ if %s e.job.in_ms_mom():
                  'cpuacct': None,
                  'devices': None}
         # Loop through the mounts and collect the ones for cgroups
-        with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as fd:
-            for line in fd:
-                entries = line.split()
-                if entries[2] != 'cgroup':
-                    continue
-                flags = entries[3].split(',')
-                if 'noprefix' in flags:
-                    self.noprefix = True
-                subsys = os.path.basename(entries[1])
-                paths[subsys] = entries[1]
-                if 'memory' in flags:
-                    paths['memsw'] = paths[subsys]
-                    paths['memory'] = paths[subsys]
-                if 'cpuacct' in flags:
-                    paths['cpuacct'] = paths[subsys]
-                if 'devices' in flags:
-                    paths['devices'] = paths[subsys]
+        fd = self.du.cat(host, '/proc/mounts')
+        for line in fd['out']:
+            entries = line.split()
+            if entries[2] != 'cgroup':
+                continue
+            flags = entries[3].split(',')
+            if 'noprefix' in flags:
+                self.noprefix = True
+            subsys = os.path.basename(entries[1])
+            paths[subsys] = entries[1]
+            if 'memory' in flags:
+                paths['memsw'] = paths[subsys]
+                paths['memory'] = paths[subsys]
+            if 'cpuacct' in flags:
+                paths['cpuacct'] = paths[subsys]
+            if 'devices' in flags:
+                paths['devices'] = paths[subsys]
         return paths
 
     def is_dir(self, cpath, host):
