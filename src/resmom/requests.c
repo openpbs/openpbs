@@ -725,13 +725,17 @@ req_holdjob(struct batch_request *preq)
  * @retval	PBSE_INTERNAL	internal server error occurred
  *
  */
-
 int
 message_job(job *pjob, enum job_file jft, char *text)
 {
-	char		*pstr = NULL;
-	int		len;
-	int		fds;
+	char *pstr = NULL;
+	int len;
+	int fds = -1;
+	int flags;
+	int slept=0;
+	ssize_t bytes_written = 0;
+	ssize_t total_bytes_written = 0;
+
 
 	if (pjob == NULL)
 		return PBSE_UNKJOBID;
@@ -746,16 +750,30 @@ message_job(job *pjob, enum job_file jft, char *text)
 	else if (len == 1)
 		jft = StdOut;	/* only have stdout open */
 
+#ifdef WIN32
 	if ((fds = open_std_file(pjob, jft, O_WRONLY|O_APPEND,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid)) < 0)
 		return PBSE_MOMREJECT;
 
-#ifdef WIN32
 	/* set to append mode */
 	SetFilePointer((HANDLE)_get_osfhandle(fds), (LONG)NULL,
 		(PLONG)NULL, FILE_END);
-#endif
+#else
+	while ((slept < 5) && (fds < 0)) {
+		fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND | O_NONBLOCK,
+	                         pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+		if (fds < 0) {
+			if ( errno == EAGAIN || errno == EWOULDBLOCK) {
+				sleep(1);
+				slept++;
+			} else
+				return PBSE_MOMREJECT;
+		}
+	}
 
+	if (fds < 0)
+		return PBSE_MOMREJECT;
+#endif
 	len = strlen(text);
 	if (text[len-1] != '\n') {
 		if ((pstr = malloc(len+2)) == NULL)
@@ -765,15 +783,37 @@ message_job(job *pjob, enum job_file jft, char *text)
 		pstr[len++] = '\n';	/* append new-line */
 		text = pstr;
 	}
-	(void)write(fds, text, len);
 #ifdef	WIN32
+	(void)write(fds, text, len);
 	(void)_commit(fds);
+#else
+	flags = fcntl(fds, F_GETFL, 0);
+	fcntl(fds, F_SETFL, flags | O_NONBLOCK);
+
+	while ((slept < 5) && (total_bytes_written < len)) {
+		bytes_written = write(fds, text, len-total_bytes_written);
+		total_bytes_written += bytes_written;
+		text += bytes_written;
+		if (bytes_written <= 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				sleep(1);
+				slept++;
+			} else {
+					(void)close(fds);
+					return PBSE_MOMREJECT;
+			}
+		}
+	}
 #endif
 	(void)close(fds);
 	if (pstr)
 		free(pstr);
 
-	return PBSE_NONE;
+	if (total_bytes_written == len)
+		return PBSE_NONE;
+	else
+		return PBSE_MOMREJECT;
 }
 
 /**
