@@ -521,6 +521,8 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	struct attropl opl = { NULL, ATTR_q, NULL, NULL, EQ };
 	static struct attropl opl2[2] = { { &opl2[1], ATTR_state, NULL, "Q", EQ},
 		{ NULL, ATTR_array, NULL, "True", NE} };
+	struct attrl *attrib = NULL;
+	int i;
 
 	/* linked list of jobs returned from pbs_selstat() */
 	struct batch_status *jobs;
@@ -551,7 +553,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 	schd_error *err;
 
-	int i;
 	/* used for pbs_geterrmsg() */
 	char *errmsg;
 
@@ -562,6 +563,41 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	time_t end;
 	time_t server_time;
 	long duration;
+	char *jobattrs[] = {
+			ATTR_p,
+			ATTR_qtime,
+			ATTR_qrank,
+			ATTR_etime,
+			ATTR_stime,
+			ATTR_N,
+			ATTR_state,
+			ATTR_substate,
+			ATTR_sched_preempted,
+			ATTR_comment,
+			ATTR_released,
+			ATTR_euser,
+			ATTR_egroup,
+			ATTR_project,
+			ATTR_resv_ID,
+			ATTR_altid,
+			ATTR_SchedSelect,
+			ATTR_array_id,
+			ATTR_node_set,
+			ATTR_array,
+			ATTR_array_index,
+			ATTR_topjob_ineligible,
+			ATTR_array_indices_remaining,
+			ATTR_execvnode,
+			ATTR_l,
+			ATTR_rel_list,
+			ATTR_used,
+			ATTR_accrue_type,
+			ATTR_eligible_time,
+			ATTR_estimated,
+			ATTR_c,
+			ATTR_r,
+			NULL
+	};
 
 	if (policy == NULL || qinfo == NULL || queue_name == NULL)
 		return pjobs;
@@ -573,8 +609,18 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 	server_time = qinfo->server->server_time;
 
+	for (i = 0; jobattrs[i] != NULL; i++) {
+		struct attrl *temp_attrl = NULL;
+
+		temp_attrl = new_attrl();
+		temp_attrl->name = strdup(jobattrs[i]);
+		temp_attrl->next = attrib;
+		temp_attrl->value = "";
+		attrib = temp_attrl;
+	}
+
 	/* get jobs from PBS server */
-	if ((jobs = pbs_selstat(pbs_sd, &opl, NULL, "S")) == NULL) {
+	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, "S")) == NULL) {
 		if (pbs_errno > 0) {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
