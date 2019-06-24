@@ -437,7 +437,7 @@ if __name__ == '__main__':
         loader = PTLTestLoader()
         testinfo = PTLTestInfo()
         loader.set_data(testgroup, testsuites, excludes, True,
-                        need_info=True)
+                        testfiles)
         testinfo.set_data(testsuites, list_test,
                           showinfo, verbose, gen_ts_tree)
         plugins = (loader, testinfo)
@@ -453,7 +453,7 @@ if __name__ == '__main__':
         runner = PTLTestRunner()
         db = PTLTestDb()
         data = PTLTestData()
-        loader.set_data(testgroup, testsuites, excludes, follow)
+        loader.set_data(testgroup, testsuites, excludes, follow, testfiles)
         testtags.set_data(tags, eval_tags)
         runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
                         genhtml_bin, lcov_nosrc, lcov_baseurl,

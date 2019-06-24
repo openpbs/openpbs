@@ -77,7 +77,7 @@ class PTLTestInfo(Plugin):
     Load test cases from given parameter
     """
     name = 'PTLTestInfo'
-    score = sys.maxint - 1
+    score = sys.maxint - 2
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -128,26 +128,9 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
-        if not issubclass(cls, PBSTestSuite):
-            return False
-        if cls.__name__ == 'PBSTestSuite':
-            return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:
             self.wantClass(cls.__bases__[0])
-        return False
-
-    def wantFunction(self, function):
-        """
-        Is the function wanted?
-        """
-        return False
-
-    def wantMethod(self, method):
-        """
-        Is the method wanted?
-        """
-        return False
 
     def _get_hierarchy(self, cls, level=0):
         delim = '    ' * level
