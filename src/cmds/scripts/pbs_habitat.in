@@ -155,8 +155,13 @@ utf8_to_sql_ascii() {
 	# are working with old database.
 	#
 
-	PGSQL_INST_DIR="${PBS_HOME}/pgsql.old"
-	export PGSQL_INST_DIR
+	if [ -d "${PBS_HOME}/pgsql.old" ]; then
+		PGSQL_INST_DIR="${PBS_HOME}/pgsql.old"
+		export PGSQL_INST_DIR
+	elif [ -d "${PBS_HOME}/pgsql.forupgrade" ]; then
+		PGSQL_INST_DIR="${PBS_HOME}/pgsql.forupgrade"
+		export PGSQL_INST_DIR
+	fi
 
 	${PBS_EXEC}/sbin/pbs_dataservice start > /dev/null
 	if [ $? -ne 0 ]; then
@@ -218,8 +223,19 @@ upgrade_pbs_database() {
 	user="${PBS_DATA_SERVICE_USER}"
 	inst_dir="${PGSQL_DIR}"
 	data_dir="${PBS_HOME}/datastore"
-	old_inst_dir="${PBS_HOME}/pgsql.old"
-	old_data_dir="${PBS_HOME}/datastore.old"
+
+	# Check for existence of old data service directory.
+	if [ -d "${PBS_HOME}/pgsql.old" ]; then
+		old_inst_dir="${PBS_HOME}/pgsql.old"
+		old_data_dir="${PBS_HOME}/datastore.old"
+	elif [ -d "${PBS_HOME}/pgsql.forupgrade" ]; then
+		old_inst_dir="${PBS_HOME}/pgsql.forupgrade"
+		old_data_dir="${PBS_HOME}/datastore.forupgrade"
+	else
+		echo "Data service directory from previous PBS installation not found,"
+		echo "Datastore upgrade cannot continue"
+		return 1
+	fi
 
 	if [ ! -f "${data_dir}/PG_VERSION" ]; then
 		echo "Database version file: ${data_dir}/PG_VERSION not found, cannot continue"
@@ -270,13 +286,6 @@ upgrade_db() {
 
 	if [ ! -x "${inst_dir}/bin/pg_upgrade" ]; then
 		echo "${inst_dir}/bin/pg_upgrade not found"
-		return 1
-	fi
-
-	# Check for existence of old data service directory.
-	if [ ! -d "${old_inst_dir}" ]; then
-		echo "Data service directory from previous PBS installation not found,"
-		echo "Datastore upgrade cannot continue"
 		return 1
 	fi
 
@@ -472,6 +481,14 @@ check_hostname() {
 	return 1
 }
 
+backupdir() {
+	if [ -d "$1" -a -d "$2" ]; then
+		backupdir="$(basename $1).pre.${PBS_VERSION}"
+		echo "*** Backing up $1 to ${2}/${backupdir}"
+		mv "$1" "${2}/${backupdir}"
+	fi
+}
+
 #
 # Start of the pbs_habitat script
 #
@@ -654,11 +671,15 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			fi
 			exit $ret
 		else
-			#Remove old dataservice directory
-			if [ `echo "${old_inst_dir}"| grep "pgsql.old"` ]; then
-				err=`rm -rf "${old_inst_dir}"`
+			if [ -d "${old_inst_dir}" ]; then
+				backupdir "$old_inst_dir" "$PBS_HOME"
 				if [ $? -ne 0 ]; then
-					echo "$err"
+					echo "Failed to backup $old_inst_dir, please follow the below instructions:"
+					echo "*** Backup "$old_inst_dir" if you need to downgrade pgsql later on."
+					echo "*** For future upgrades to be successful run the below command."
+					echo "*** cp -pr ${PBS_EXEC}/pgsql ${PBS_HOME}/pgsql.forupgrade"
+				else
+					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBSPro."
 				fi
 			fi
 		fi
@@ -824,6 +845,9 @@ fi
 # This will prevent updating PBS_HOME if this same version is re-installed
 #
 echo "${pbs_version}" >"$PBS_HOME/pbs_version"
+
+# Copy pgsql directory to PBS_HOME (as pgsql.forupgrade) for it's future upgrade
+[ ! -d "${PBS_HOME}/pgsql.forupgrade" -a -d "${PBS_EXEC}/pgsql" -a -d "${PBS_HOME}" ] && cp -pr --no-preserve=timestamps "${PBS_EXEC}/pgsql" "${PBS_HOME}/pgsql.forupgrade" 2>&1
 
 echo "*** End of ${0}"
 exit 0
