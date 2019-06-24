@@ -442,14 +442,12 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 	} else {
 		histerr = svr_chk_histjob(pjob);
 		if (histerr && deletehist == 0) {
-			if (pjob->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(histerr, PREEMPT_METHOD_DELETE, pjob);
 			if (err != NULL)
 				*err = histerr;
 			req_reject(histerr, 0, preq);
 			return NULL;
 		}
-		if (deletehist ==1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
+		if (deletehist == 1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
 			pjob->ji_qs.ji_substate != JOB_SUBSTATE_FINISHED) {
 			job_purge(pjob);
 			req_reject(PBSE_UNKJOBID, 0, preq);

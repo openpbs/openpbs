@@ -233,7 +233,7 @@ req_rerunjob(struct batch_request *preq)
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		if (parent->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, parent);
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, parent);
 		req_reject(PBSE_PERM, 0, preq);
 		return;
 	}
@@ -277,7 +277,7 @@ req_rerunjob(struct batch_request *preq)
 
 		if (parent->ji_qs.ji_state != JOB_STATE_BEGUN) {
 			if (parent->ji_pmt_preq != NULL)
-				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, parent);
+				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, parent);
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -434,7 +434,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	if ((pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long == 0) &&
 		(force == 0)) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_DELETE, pjob);
+			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_NORERUN, 0, preq);
 		return;
 	}
@@ -443,24 +443,25 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 	/* a node failure tolerant job could be waiting for healthy nodes
-         * and it would have a JOB_SUBSTATE_PRERUN substate.
-         */
+	 * and it would have a JOB_SUBSTATE_PRERUN substate.
+	 */
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
             (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
+			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
 	/* Set the flag for post_rerun only when
-	 * force is set and request is from manager */
+	 * force is set and request is from manager 
+	 */
 	if (force == 1 && is_mgr == 1)
 		force_rerun = (void *)1;
 
@@ -492,7 +493,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	if (rc != 0) {
 		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(rc, 0, preq);
 		return;
 	}

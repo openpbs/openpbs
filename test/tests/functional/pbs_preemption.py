@@ -77,10 +77,10 @@ exit 1
         """
         j1 = Job(TEST_USER)
         jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         time.sleep(1)
         j2 = Job(TEST_USER)
         jid2 = self.server.submit(j2)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
         j3 = Job(TEST_USER)
@@ -347,8 +347,14 @@ exit 1
 
     def test_preempt_retry(self):
         """
-        Test to make sure that preemption is retried if it fails.
+        Test that jobs can be successfully preempted after a previously failed
+        attempt at preemption.
         """
+        # in CLI mode Rerunnable requires a 'n' value.  It's different with API
+        m = self.server.get_op_mode()
+
+        self.server.set_op_mode(PTL_CLI)
+
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
@@ -357,19 +363,20 @@ exit 3
 """
         self.insert_checkpoint_script(abort_script)
         # submit two jobs to regular queue
-        j1 = Job(TEST_USER)
+        attrs = {'Resource_List.select': '1:ncpus=1', 'Rerunable': 'n'}
+        j1 = Job(TEST_USER, attrs)
         jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
         time.sleep(2)
 
-        j2 = Job(TEST_USER)
+        j2 = Job(TEST_USER, attrs)
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
         # set preempt order
-        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'CR'})
 
         # submit a job to high priority queue
         a = {ATTR_q: 'expressq'}
@@ -379,19 +386,19 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
 
-        self.mom.log_match(jid2 + ";checkpoint failed:")
-        self.mom.log_match(jid1 + ";checkpoint failed:")
+        self.server.log_match(jid1 + ';Job failed to be preempted')
+        self.server.log_match(jid2 + ';Job failed to be preempted')
 
-        abort_script = """#!/bin/bash
-kill -9 $1
-exit 0
-"""
-        self.insert_checkpoint_script(abort_script)
+        # Allow jobs to be requeued.
+        attrs = {'Rerunable': 'y'}
+        self.server.alterjob(jid1, attrs)
+        self.server.alterjob(jid2, attrs)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.set_op_mode(m)
 
     def test_vnode_resource_contention(self):
         """

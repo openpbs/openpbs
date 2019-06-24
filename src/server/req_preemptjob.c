@@ -331,6 +331,7 @@ req_preemptjobs(struct batch_request *preq)
 					break;
 				default:
 					job_preempt_fail(preq, ppj->job_id);
+					preempt_index++;
 			}
 			continue;
 		}
@@ -368,6 +369,7 @@ void
 reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 {
 	struct batch_request *preq;
+	int clear_preempt_vars = 0;
 
 	if (pjob == NULL)
 		return;
@@ -385,11 +387,21 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] != PREEMPT_METHOD_LOW) {
 			if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index], pjob, preq)) {
 				job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
-				pjob->ji_pmt_preq = NULL;
+				clear_preempt_vars = 1;
+			} else {
+				/* reply_preempt_jobs_request() is somewhat recursive.  If a preemption method fails, one call will issue the next
+				 * preemptiom method request.  The next preemption method request immediately is rejected, it will call
+				 * reply_preempt_jobs_request() again before the first call ends.  A reject like this is considered a successful 
+				 * call to issue_Drequest().  If pjob->ji_pmt_preq has been NULLed, it means the last preemption method has failed.  
+				 * If this is the last job in the preemption list, the call to reply_preempt_job_request() will have replied to 
+				 * the scheduler.  In this case, we do not want to reply a second time.
+				 */
+				if (pjob->ji_pmt_preq == NULL)
+					return;
 			}
 		} else {
 			job_preempt_fail(preq, pjob->ji_qs.ji_jobid);
-			pjob->ji_pmt_preq = NULL;
+			clear_preempt_vars = 1;
 		}
 	} else {
 		int preempt_index;
@@ -417,15 +429,18 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 				break;
 		}
 		sprintf(preempt_jobs_list[preempt_index].job_id, "%s", pjob->ji_qs.ji_jobid);
-		pjob->ji_pmt_preq = NULL;
+		clear_preempt_vars = 1;
 
 		preq->rq_reply.brp_un.brp_preempt_jobs.count++;
+	}
+	if (clear_preempt_vars) {
+		pjob->preempt_order_index = 0;
+		pjob->preempt_order = NULL;
+		pjob->ji_pmt_preq = NULL;
 	}
 	/* send reply if we're done */
 	if (preq->rq_reply.brp_un.brp_preempt_jobs.count == preq->rq_ind.rq_preempt.count) {
 		reply_send(preq);
-		pjob->preempt_order_index = 0;
-		pjob->preempt_order = NULL;
 	}
 }
 

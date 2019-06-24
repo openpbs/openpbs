@@ -2882,7 +2882,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			if (preempt_jobs_reply[i].order[0] == '0') {
 				done = 0;
 				fail_list[fail_count++] = job->rank;
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job->name, "Job failed to be deleted");
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job->name, "Job failed to be preempted");
 			}
 			else {
 				int update_accrue_type = 1;
