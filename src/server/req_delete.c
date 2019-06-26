@@ -355,7 +355,7 @@ req_deletejob(struct batch_request *preq)
 	int forcedel = 0;
 	int i;
 	int j;
-	char *jid;
+	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
 	int offset;
 	char *pc;
@@ -370,7 +370,7 @@ req_deletejob(struct batch_request *preq)
 	int count = 0;
 	int err = PBSE_NONE;
 
-	jid = preq->rq_ind.rq_delete.rq_objname;
+	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_delete.rq_objname);
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
 		delhist = 1;
