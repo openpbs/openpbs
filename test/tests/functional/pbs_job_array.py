@@ -644,7 +644,7 @@ class TestJobArray(TestFunctional):
         Test that subjobs standard error and out files are generated
         in the custom directory provided with oe qsub options
         """
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_J: '1-4'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(2)

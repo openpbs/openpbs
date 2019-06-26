@@ -50,7 +50,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -66,7 +66,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_sandbox: 'private'})
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -81,7 +81,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'o'})
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'o'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -102,8 +102,8 @@ class TestQsub_remove_files(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'de', ATTR_R: 'e'})
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -127,13 +127,13 @@ class TestQsub_remove_files(TestFunctional):
         are getting deleted from custom path provided in
         -e and -o option when -Roe is set.
         """
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         err_file = os.path.join(tmp_dir, 'error_file')
         out_file = os.path.join(tmp_dir, 'output_file')
         a = {ATTR_e: err_file, ATTR_o: out_file, ATTR_R: 'oe'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -147,11 +147,11 @@ class TestQsub_remove_files(TestFunctional):
         are getting deleted from custom directory path
         provided in -e and -o option when -Roe is set.
         """
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_R: 'oe'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -169,7 +169,7 @@ class TestQsub_remove_files(TestFunctional):
         j.set_sleep_time(1)
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'default_qsub_arguments': '-Roe'})
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -185,7 +185,7 @@ class TestQsub_remove_files(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
         j.set_execargs('sleep', 1)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
         file_count = len([name for name in os.listdir(
@@ -248,7 +248,7 @@ class TestQsub_remove_files(TestFunctional):
         j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_J: '1-3'},
                 jobname='JOB_NAME')
         j.create_script(script)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
         self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)
@@ -274,11 +274,11 @@ class TestQsub_remove_files(TestFunctional):
             "/bin/sleep 3;\n"\
             "if [ $PBS_ARRAY_INDEX -eq 2 ]; then\n"\
             "exit 1; fi; exit 0;"
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         j = Job(TEST_USER, attrs={ATTR_e: tmp_dir, ATTR_o: tmp_dir,
                                   ATTR_R: 'oe', ATTR_J: '1-3'})
         j.create_script(script)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
         self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)

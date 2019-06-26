@@ -119,6 +119,7 @@ class DshUtils(object):
     sudo_cmd = DFLT_SUDO_CMD
     copy_cmd = DFLT_COPY_CMD
     tmpfilelist = []
+    tmpdirlist = []
 
     def __init__(self):
 
@@ -1926,11 +1927,11 @@ class DshUtils(object):
         self.tmpfilelist.append(tmpfile)
         return tmpfile
 
-    def mkdtemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
-                uid=None, gid=None, mode=None, level=logging.INFOCLI2):
+    def create_temp_dir(self, hostname=None, suffix='', prefix='PtlPbs',
+                        dirname=None, asuser=None, asgroup=None, mode=None,
+                        level=logging.INFOCLI2):
         """
         Create a temp dir by calling ``tempfile.mkdtemp``
-
         :param hostname: the hostname on which to query tempdir from
         :type hostname: str or None
         :param suffix: the directory name will end with this suffix
@@ -1946,30 +1947,48 @@ class DshUtils(object):
                      directory
         :param level: logging level, defaults to INFOCLI2
         """
+        # create a temp dir as current user
+        tmpdir = tempfile.mkdtemp(suffix, prefix)
+        if dirname is not None:
+            dirname = str(dirname)
+            self.run_copy(hostname, tmpdir, dirname, runas=asuser,
+                          preserve_permission=False, level=level)
+            tmpdir = dirname + tmpdir[4:]
+
+        # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
-            tmp_args = []
-            if suffix:
-                tmp_args += ['suffix=\'' + suffix + '\'']
-            if prefix:
-                tmp_args += ['prefix=\'' + prefix + '\'']
-            if dir is not None:
-                tmp_args += ['dir=\'' + str(dir) + '\'']
-            args = ",".join(tmp_args)
-            ret = self.run_cmd(hostname,
-                               ['python', '-c', '"import tempfile; ' +
-                                'print tempfile.mkdtemp(' + args + ')"'],
-                               level=level)
-            if ret['rc'] == 0 and ret['out']:
-                fn = ret['out'][0]
-        else:
-            fn = tempfile.mkdtemp(suffix, prefix, dir)
-        if mode is not None:
-            self.chmod(hostname, fn, mode=mode, recursive=True, level=level,
-                       sudo=True)
-        if ((uid is not None) or (gid is not None)):
-            self.chown(hostname, fn, uid=uid, gid=gid, recursive=True,
-                       sudo=True)
-        return fn
+            if asuser is not None:
+                # by default mkstemp creates dir with 0600 permission
+                # to create dir as different user first change the dir
+                # permission to 0644 so that other user has read permission
+                self.chmod(path=tmpdir, mode=0755)
+                # copy temp dir created on local host to remote host
+                # as different user
+                self.run_copy(hostname, tmpdir, tmpdir, runas=asuser,
+                              preserve_permission=False, level=level)
+            else:
+                # copy temp dir created on localhost to remote as current user
+                self.run_copy(hostname, tmpdir, tmpdir,
+                              preserve_permission=False, level=level)
+            # remove local temp dir
+            os.rmdir(tmpdir)
+        if asuser is not None:
+            # by default mkdtemp creates dir with 0600 permission
+            # to create dir as different user first change the dir
+            # permission to 0644 so that other user has read permission
+            self.chmod(path=tmpdir, mode=0755)
+            # since we need to create as differnt user than current user
+            # create a temp dir just to get temp dir name with absolute path
+            tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
+            # copy the orginal temp as new temp dir
+            self.run_copy(hostname, tmpdir, tmpdir2, runas=asuser,
+                          preserve_permission=False, level=level)
+            # remove original temp dir
+            os.rmdir(tmpdir)
+            self.tmpdirlist.append(tmpdir2)
+            return tmpdir2
+        self.tmpdirlist.append(tmpdir)
+        return tmpdir
 
     def parse_strace(self, lines):
         """

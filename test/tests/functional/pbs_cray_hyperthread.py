@@ -93,7 +93,7 @@ class TestCrayHyperthread(TestFunctional):
         scr += ['/bin/sleep 5\n']
         scr += ['aprun -b %s /bin/hostname\n' % aprun_args]
 
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         j1.create_script(scr)
         jid1 = self.server.submit(j1, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)

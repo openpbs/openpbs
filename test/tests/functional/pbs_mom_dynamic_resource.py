@@ -387,7 +387,8 @@ class TestMomDynRes(TestFunctional):
         # This should make loading of this file fail in all cases.
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
-        dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir, suffix=' tmp')
+        dir_temp = self.du.create_temp_dir(mode=0766, dirname=home_dir,
+                                           suffix=' tmp')
         fp = self.mom.add_mom_dyn_res("foo", script_body=scr_body,
                                       dirname=dir_temp)
 
