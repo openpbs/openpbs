@@ -209,8 +209,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 	attrs = attr_list->attributes;
 
 	/* now that attribute has been encoded, update to db */
-	while ((pal = (svrattrl *)GET_NEXT(lhead)) !=
-		(svrattrl *)0) {
+	while ((pal = (svrattrl *)GET_NEXT(lhead)) != NULL) {
 		attrs[j].attr_name[sizeof(attrs[j].attr_name) - 1] = '\0';
 		strncpy(attrs[j].attr_name, pal->al_atopl.name, sizeof(attrs[j].attr_name));
 		if (pal->al_atopl.resource) {
@@ -313,6 +312,8 @@ decode_attr_db(
 
 		amt = pal->al_tsize - sizeof(svrattrl);
 		if (amt < 1) {
+			free(pal);
+			free(palarray);
 			snprintf(log_buffer,LOG_BUF_SIZE, "Invalid attr list size in DB");
 			log_err(-1, __func__, log_buffer);
 			goto out;

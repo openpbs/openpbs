@@ -6159,10 +6159,8 @@ cput_proc(pid_t pid)
 	double		cputime;
 	proc_stat_t	*ps = NULL;
 
-	cputime = 0.0;
-
 	mom_get_sample();
-	for (i=0; i<nproc; i++) {
+	for (i = 0; i < nproc; i++) {
 		ps = &proc_info[i];
 		if (ps->pid == pid)
 			break;
@@ -6278,7 +6276,7 @@ mem_proc(pid_t pid)
 	proc_stat_t	*ps = NULL;
 
 	mom_get_sample();
-	for (i=0; i<nproc; i++) {
+	for (i = 0; i < nproc; i++) {
 		ps = &proc_info[i];
 		if (ps->pid == pid)
 			break;
@@ -6396,7 +6394,7 @@ resi_proc(pid_t pid)
 
 
 	mom_get_sample();
-	for (i=0; i<nproc; i++) {
+	for (i = 0; i < nproc; i++) {
 		ps = &proc_info[i];
 		if (ps->pid == pid)
 			break;

@@ -1589,11 +1589,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				else
 					ret = 1;
 			}
-			else {
+			else
 				/* if we're simulating, resresvs can't fail to run */
 				ret = 1;
-				execvnode = "";
-			}
 		}
 		else  { /* should never happen */
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rr->name,
@@ -2435,6 +2433,14 @@ sched_settings_frm_svr(struct batch_status *status)
 		}
 		attr = attr->next;
 	}
+
+	if (tmp_priv_dir == NULL || tmp_log_dir == NULL) {
+		free(tmp_priv_dir);
+		free(tmp_log_dir);
+		free(tmp_comment);
+		return 0;
+	}
+
 	if (!dflt_sched) {
 		int err;
 		int priv_dir_update_fail = 0;

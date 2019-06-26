@@ -1464,7 +1464,7 @@ show_nonprint_chars(char *str)
 		return str;
 
 	nsize = (strlen(str) * 2) + 1;
-	if (nsize > locbuf_size) {
+	if (nsize > locbuf_size || locbuf == NULL) {
 		char *tmpbuf;
 		if ((tmpbuf = realloc(locbuf, nsize)) == NULL)
 			return str;

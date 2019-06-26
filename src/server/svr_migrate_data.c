@@ -651,6 +651,7 @@ svr_migrate_data_from_fs(void)
 			return (-1);
 		}
 		(void) closedir(dir);
+		free(scrbuf);
 		fprintf(stderr, msg_init_exptjobs, recovered);
 		fprintf(stderr, "\n");
 	}

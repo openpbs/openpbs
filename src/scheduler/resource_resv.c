@@ -1025,8 +1025,8 @@ find_resource_req(resource_req *reqlist, resdef *def)
  * @brief
  *		set_resource_req - set the value and type of a resource req
  *
- * @param[out]	req	-	the resource_req to set
- * @param[in]	val -	the string value
+ * @param[out]	req		the resource_req to set
+ * @param[in]	val -		the string value (can be NULL)
  *
  * @return	int
  * @retval	1 for Success
@@ -1036,6 +1036,9 @@ int
 set_resource_req(resource_req *req, char *val)
 {
 	resdef *rdef;
+
+	if (req == NULL)
+		return 0;
 
 	/* if val is a string, req -> amount will be set to SCHD_INFINITY_RES */
 	req->amount = res_to_num(val, &(req->type));
@@ -1052,7 +1055,7 @@ set_resource_req(resource_req *req, char *val)
 
 	if (req->amount == SCHD_INFINITY_RES) {
 		/* Verify that this is actually a non-numeric resource */
-		if (!req->def->type.is_string)
+		if (!req->type.is_string)
 			return 0;
 	}
 
@@ -2083,8 +2086,10 @@ create_select_from_nspec(nspec **nspec_array)
 			}
 		}
 	}
-	/* get rid of trailing '+' */
-	select_spec[strlen(select_spec)-1] = '\0';
+	if (select_spec != NULL) {
+		/* get rid of trailing '+' */
+		select_spec[strlen(select_spec) - 1] = '\0';
+	}
 
 	return select_spec;
 }

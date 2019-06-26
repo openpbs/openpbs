@@ -471,8 +471,10 @@ free_if_info(struct log_net_info *ni)
 		struct log_net_info *temp;
 		temp = curr;
 		curr = curr -> next;
-		for (i = 0; temp->ifhostnames[i]; i++)
-			free(temp->ifhostnames[i]);
+		if (temp->ifhostnames != NULL) {
+			for (i = 0; temp->ifhostnames[i]; i++)
+				free(temp->ifhostnames[i]);
+		}
 		free(temp->ifhostnames);
 		free(temp);
 	}

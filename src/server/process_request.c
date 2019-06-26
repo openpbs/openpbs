@@ -1112,7 +1112,7 @@ arrayfree(char **array)
 
 	if (array == NULL)
 		return;
-	for (i=0; array[i]; i++)
+	for (i = 0; array[i]; i++)
 		free(array[i]);
 	free(array);
 }

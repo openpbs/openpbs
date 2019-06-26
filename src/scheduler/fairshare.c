@@ -367,8 +367,10 @@ preload_tree()
 	if ((head = new_fairshare_head()) == NULL)
 		return 0;
 
-	if ((root = new_group_info()) == NULL)
+	if ((root = new_group_info()) == NULL) {
+		free_fairshare_head(head);
 		return 0;
+	}
 
 	head->root = root;
 

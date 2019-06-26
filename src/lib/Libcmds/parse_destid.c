@@ -122,8 +122,15 @@ parse_destination_id(char *destination_in, char **queue_name_out, char **server_
 	if (*c != '\0') goto err;
 
 	/* set char * pointers to static data, to arguments */
-	if (queue_name_out != NULL) *queue_name_out = queue_name;
-	if (server_name_out != NULL) *server_name_out = server_name;
+	if (queue_name_out != NULL) 
+		*queue_name_out = queue_name;
+	else
+		free(queue_name);
+	
+	if (server_name_out != NULL)
+		*server_name_out = server_name;
+	else
+		free(server_name);
 
 	return 0;
 

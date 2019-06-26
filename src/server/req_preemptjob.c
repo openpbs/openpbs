@@ -345,10 +345,8 @@ req_preemptjobs(struct batch_request *preq)
 	}
 	preq->rq_reply.brp_un.brp_preempt_jobs.count = preempt_index;
 	/* check if all jobs failed */
-	if (preempt_index == preempt_total) {
+	if (preempt_index == preempt_total)
 		reply_send(preq);
-		pjob->ji_pmt_preq = NULL;
-	}
 }
 
 /**

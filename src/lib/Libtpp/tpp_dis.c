@@ -843,6 +843,7 @@ set_tpp_config(struct pbs_config *pbs_conf,
 
 		hlen = strlen(nm);
 		if ((tmp = realloc(formatted_names, len + hlen + 2)) == NULL) { /* 2 for command and null char */
+			free(formatted_names);
 			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make formatted node name");
 			fprintf(stderr, "%s\n", log_buffer);
 			tpp_log_func(LOG_CRIT, NULL, log_buffer);

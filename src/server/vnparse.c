@@ -2753,7 +2753,7 @@ intmap_need_to_have_resources(char *buf, size_t buf_sz,
 		return;
 
 	have_int = (int)strtol(have_val, &endp, 10);
-	if ((*endp != '\0') || (have_int == LONG_MIN) || (have_int == LONG_MAX)) {
+	if (*endp != '\0') {
 		log_err(errno, __func__, "strtoul error"); 
 		return;
 	}

@@ -995,8 +995,10 @@ create_tree(int dups, int keylen)
 	if (AVL_p == NULL)
 		return NULL;
 
-	if (avl_create_index(AVL_p, dups, keylen))
+	if (avl_create_index(AVL_p, dups, keylen)) {
+		free(AVL_p);
 		return NULL;
+	}
 
 	return AVL_p;
 }

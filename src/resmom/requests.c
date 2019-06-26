@@ -872,9 +872,9 @@ req_py_spawn(struct batch_request *preq)
 		return;
 	}
 
-	/* count the number of args */
-	for (i=0; preq->rq_ind.rq_py_spawn.rq_argv[i] != NULL; i++)
-		allarglen += strlen(preq->rq_ind.rq_py_spawn.rq_argv[i]) + 1;
+	/* count the number of args (2 for space and null) */
+	for (i = 0; preq->rq_ind.rq_py_spawn.rq_argv[i] != NULL; i++)
+		allarglen += strlen(preq->rq_ind.rq_py_spawn.rq_argv[i]) + 2;
 
 	argv = (char **)calloc(i+2, sizeof(char *));
 	if (argv == NULL) {
@@ -899,18 +899,19 @@ req_py_spawn(struct batch_request *preq)
 	/* allargs will have a trailing blank */
 	argv[0] = pypath;
 	allargs[0] = '\0';
-	for (i=0; preq->rq_ind.rq_py_spawn.rq_argv[i] != NULL; i++) {
-		argv[i+1] = preq->rq_ind.rq_py_spawn.rq_argv[i];
+	for (i = 0; preq->rq_ind.rq_py_spawn.rq_argv[i] != NULL; i++) {
+		argv[i + 1] = preq->rq_ind.rq_py_spawn.rq_argv[i];
 		strcat(allargs, preq->rq_ind.rq_py_spawn.rq_argv[i]);
 		strcat(allargs, " ");
 	}
-	argv[i+1] = NULL;
+	argv[i + 1] = NULL;
 
 	ptask = momtask_create(pjob);
 	if (ptask == NULL) {
 		req_reject(PBSE_INTERNAL, 0, preq);
 		free(argv);
 		free(allargs);
+		free(op);
 		return;
 	}
 
@@ -932,6 +933,7 @@ req_py_spawn(struct batch_request *preq)
 
 		req_reject(ret, 0, preq);
 		free(allargs);
+		free(op);
 		return;
 	}
 
@@ -1565,8 +1567,9 @@ do_susres(job *pjob, int which)
 		for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
 			ptask != NULL;
 			ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask)) {
-			rc = (which == SUSPEND) ?	/* don't care about rc */
-				kill_task(ptask, resume_signal, 0) :
+			if (which == SUSPEND)
+				kill_task(ptask, resume_signal, 0);
+			else
 				kill_task(ptask, suspend_signal, 1);
 		}
 		errno = err;

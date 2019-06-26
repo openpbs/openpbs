@@ -2399,8 +2399,7 @@ main(int argc, char *argv[], char *envp[])
 
 		/* Copy envp to lenvp */
 		found_pyhome = 0;
-		i = 0;
-		for (i=0; envp[i] != NULL; i++) {
+		for (i = 0; envp[i] != NULL; i++) {
 			if (strncmp(envp[i], PYHOME_EQUAL,
 				sizeof(PYHOME_EQUAL)-1) == 0) {
 				printf("[%d] found py_home %s resetting to %s\n",
@@ -2851,8 +2850,8 @@ main(int argc, char *argv[], char *envp[])
 			 * strcat() instead.
 			 */
 			snprintf(full_logname, sizeof(full_logname), "%s", curdir);
-			strncat(full_logname, slash, sizeof(full_logname) - strlen(full_logname));
-			strncat(full_logname, logname, sizeof(full_logname) - strlen(full_logname));
+			strncat(full_logname, slash, sizeof(full_logname) - strlen(full_logname) - 1);
+			strncat(full_logname, logname, sizeof(full_logname) - strlen(full_logname) - 1);
 			snprintf(logname, sizeof(logname), "%s", full_logname);
 		}
 

@@ -4995,13 +4995,13 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 			 * this is for log message, we have the new value anyways.
 			 */
 			strtime = convert_long_to_time(pattr->at_val.at_long);
-			if (strtime == NULL)
-				strtime = errtime;
 
 			sprintf(logstr, "Accrue type is %s, previous accrue type was %s for %ld secs, due to qalter total eligible_time=%s",
-				msg[newaccruetype], msg[oldaccruetype], accrued_time, strtime);
+				msg[newaccruetype], msg[oldaccruetype], accrued_time, strtime != NULL ? strtime: errtime);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				pjob->ji_qs.ji_jobid, logstr);
+
+			free(strtime);
 
 			return PBSE_NONE;
 		}

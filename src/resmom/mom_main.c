@@ -1874,7 +1874,7 @@ add_mom_action(char *str)
 	str = skipwhite(str);
 	if (*str == '\0')
 		return HANDLER_FAIL;
-	for (na=0; na<(int)LastAction; na++) {
+	for (na = 0; na < (int)LastAction; na++) {
 		if (strcmp(arg, mom_action[na].ma_name) == 0) {
 			/* have a valid event name */
 			break;
@@ -1964,23 +1964,25 @@ add_mom_action(char *str)
 		}
 		pargs = (char **)malloc((count+1) * sizeof(char *));
 		if (pargs == NULL) {
+			free(scp);
 			return HANDLER_FAIL;
 		}
 
-		/* now we  know how many and have space, copy each arg */
+		/* now we know how many and have space, copy each arg */
 
-		for (i=0; i<count; i++) {
+		for (i = 0; i < count; i++) {
 			str = wtokcpy(str, arg, _POSIX_PATH_MAX);
 			str = skipwhite(str);
-			if ((*(pargs+i) = strdup(arg)) == NULL) {
-				for (;i>=0;i--) {
-					free(*(pargs+i));
+			if ((*(pargs + i) = strdup(arg)) == NULL) {
+				for ( ; i >= 0; i--) {
+					free(*(pargs + i));
 				}
+				free(scp);
 				free(pargs);
 				return HANDLER_FAIL;
 			}
 		}
-		*(pargs+i) = NULL;
+		*(pargs + i) = NULL;
 
 		/* now we can set the action array member */
 
@@ -1991,10 +1993,8 @@ add_mom_action(char *str)
 		goto done;
 	}
 
-	/* not a script,  must be a recognized verb */
+	/* not a script, must be a recognized verb */
 
-	str = TOKCPY(str, arg);
-	str = skipwhite(str);
 	if (strcmp(arg, "requeue") == 0) {
 
 		/* Requeue Verb */
@@ -2771,8 +2771,10 @@ do_mom_action_script(int	ae,	/* index into action table */
 
 	/* set args[0] to script */
 	args[0] = strdup(ma->ma_script);
-	if (args[0] == NULL)
+	if (args[0] == NULL) {
+		free(args);
 		return -1;
+	}
 
 	pargs = ma->ma_args;
 	for (i = 1; i < nargs; i++, pargs++) {
@@ -3120,6 +3122,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		vtable.v_envp = (char **)calloc(vtable.v_ensize,
 			sizeof(char *));
 		if (vtable.v_envp == NULL) {
+			free(args);
 			log_err(errno, "setup environment", "out of memory");
 			return -1;
 		}
@@ -3187,6 +3190,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 				PBS_EVENTCLASS_JOB,
 				LOG_ERR, pjob->ji_qs.ji_jobid,
 				"failed to setup dependent environment!");
+			free(args);
 			return -1;
 		}
 
@@ -4769,6 +4773,7 @@ do_readdir(char *dirname, time_t *mod)
 		}
 	}
 	if (errno != 0 && errno != ENOENT) {
+		free_dirlist(list);
 		perror(dirname);
 		(void) closedir(dirp);
 		return NULL;

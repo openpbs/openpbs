@@ -35,6 +35,7 @@
 * trademark licensing policies.
 */
 
+#include <stdlib.h>
 #include <ctype.h>
 #include "pbs_json.h"
 #include "libutil.h"
@@ -244,8 +245,10 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	if (node->value_type == JSON_STRING) {
 		if (value != NULL) {
 			ptr = strdup_escape(esc_type, value);
-			if (ptr == NULL)
+			if (ptr == NULL) {
+				free(node);
 				return NULL;
+			}
 		}
 		node->value.string = ptr;
 	}

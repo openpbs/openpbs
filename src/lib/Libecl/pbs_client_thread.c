@@ -548,6 +548,7 @@ __pbs_client_thread_init_thread_context(void)
 	int ret;
 	struct passwd *pw;
 	uid_t pbs_current_uid;
+	int free_ptr = 0;
 
 	/* initialize the TLS key for all threads */
 	if (pthread_once(&pre_init_key_once, __init_thread_data) != 0) {
@@ -577,6 +578,7 @@ __pbs_client_thread_init_thread_context(void)
 	/* initialize any elements of the ptr */
 	ptr->th_dis_buffer = calloc(1, dis_buffsize); /* defined in tcp_dis.c */
 	if (ptr->th_dis_buffer == NULL) {
+		free_ptr = 1;
 		ret = PBSE_SYSTEM;
 		goto err;
 	}
@@ -586,6 +588,7 @@ __pbs_client_thread_init_thread_context(void)
 	 * thread-safe
 	 */
 	if (pbs_client_thread_lock_conf() != 0) {
+		free_ptr = 1;
 		ret = PBSE_SYSTEM;
 		goto err;
 	}
@@ -598,11 +601,13 @@ __pbs_client_thread_init_thread_context(void)
 	 */
 	pbs_current_uid = getuid();
 	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
+		free_ptr = 1;
 		ret = PBSE_SYSTEM;
 		pbs_client_thread_unlock_conf();
 		goto err;
 	}
 	if (strlen(pw->pw_name) > (PBS_MAXUSER - 1)) {
+		free_ptr = 1;
 		ret = PBSE_BADUSER;
 		pbs_client_thread_unlock_conf();
 		goto err;
@@ -639,6 +644,10 @@ err:
 	 * to read the error code out of it.
 	 */
 	pbs_client_thread_set_single_threaded_mode();
+	if (free_ptr) {
+		free(ptr->th_dis_buffer);
+		free(ptr);
+	}
 	pbs_errno = ret; /* set the errno so that client can access it */
 	return ret;
 }

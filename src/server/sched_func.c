@@ -279,7 +279,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
-	if (actmode != ATR_ACTION_RECOV)
+	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER)
 		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
 	return PBSE_NONE;
 }

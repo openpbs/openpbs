@@ -1050,12 +1050,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * the required fields.
 						 */
 						release_nodes(nresv_copy);
-						nresv_copy->nspec_arr = parse_execvnode(occr_execvnodes_arr[j],
-							sinfo);
-						nresv_copy->ninfo_arr = create_node_array_from_nspec(
-							nresv_copy->nspec_arr);
-						nresv_copy->resv->resv_nodes = create_resv_nodes(
-							nresv_copy->nspec_arr, sinfo);
+						nresv_copy->nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo);
+						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
+						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
 
 					/* Note that the sequence of occurrence dates and time are determined
@@ -1232,7 +1229,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	int confirmd_occr = 0;   /* the number of confirmed occurrence(s) */
 	int j, cur_count;
 
-	int tot_vnodes;   /* total number of vnodes associated to the reservation */
+	int tot_vnodes = 0;   /* total number of vnodes associated to the reservation */
 	int vnodes_down = 0;   /* the number of vnodes that are down */
 	char names_of_down_vnodes[MAXVNODELIST] = "";  /* the list of down vnodes */
 

@@ -505,15 +505,15 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			/* If there are no events left to check or if we have reached the front of event list or
 			 * if the event is falling before min end time, break.
 			 */
-			if ((te == NULL && last_skipped_event == NULL) || te == initial_event || te->event_time < min_end_time)
-				break;
-			/* If no events in this segment, then try last skipped event of the previous segment */
-			else if (te == NULL) {
+			if (te == NULL)
+			{
 				te = last_skipped_event;
 				last_skipped_event = NULL;
 				/* No need to try next segments after this event as there are no events left */
 				retry_count = 0;
-			}
+			} else if ((te == NULL && last_skipped_event == NULL) || te == initial_event || te->event_time < min_end_time)
+				break;
+			/* If no events in this segment, then try last skipped event of the previous segment */
 			/* Skip events that fall in the previous segment or if the event time is already tried */
 			else if (te->event_time > end_time || te->event_time == last_tried_event_time) {
 				last_skipped_event = te;
@@ -728,6 +728,9 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	resource_req	*resreq = NULL;
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
+		return NULL;
+	
+	if (resresv->is_job && qinfo == NULL)
 		return NULL;
 
 	err = perr;
@@ -1036,7 +1039,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 */
 	if (sinfo->res != NULL) {
 		if (resresv->is_resv ||
-				(resresv->is_job && resresv->job->resv == NULL)) {
+				(resresv->is_job && resresv->job != NULL && resresv->job->resv == NULL)) {
 			res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
 			if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
 				resreq = resresv->job->resreq_rel;
@@ -1257,14 +1260,16 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 					}
 				}
 			}
-			if(fail && (flags&RETURN_ALL_ERR)) {
+			if(fail && (flags & RETURN_ALL_ERR)) {
 				fail = 0;
 				any_fail = 1;
-				err->next = new_schd_error();
-				if(err->next == NULL)
-					return 0;
-				prev_err = err;
-				err = err->next;
+				if (err != NULL) {
+					err->next = new_schd_error();
+					if (err->next == NULL)
+						return 0;
+					prev_err = err;
+					err = err->next;
+				}
 			}
 		}
 	}
@@ -1695,12 +1700,16 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
  * @retval	0	: if it is dedtime and qinfo is a dedtime queue or
  *	     			if it is not dedtime and qinfo is not a dedtime queue
  * @retval	DED_TIME	: if jobs can not run in queue because of dedtime restrictions
+ * @retval	SCHD_ERROR	: An error has occurred.
  *
  */
 int
 check_ded_time_queue(queue_info *qinfo)
 {
 	int rc = 0;		/* return code */
+
+	if (qinfo == NULL || qinfo->server == NULL)
+		return SCHD_ERROR;
 
 	if (is_ded_time(qinfo->server->server_time)) {
 		if (qinfo->is_ded_queue)

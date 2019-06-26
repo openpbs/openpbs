@@ -338,14 +338,15 @@ verify_value_path(int batch_request, int parent_object, int cmd,
 	struct attropl *pattr, char **err_msg)
 {
 	char *path_out;
+
+	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+		return PBSE_BADATVAL;
+
 	path_out = malloc(MAXPATHLEN + 1);
 	if (path_out == NULL)
 		return PBSE_SYSTEM;
 	else
-		memset(path_out, 0, MAXPATHLEN+1);
-
-	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
-		return PBSE_BADATVAL;
+		memset(path_out, 0, MAXPATHLEN + 1);
 
 	if (prepare_path(pattr->value, path_out) != 0) {
 		free(path_out);

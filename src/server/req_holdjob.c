@@ -483,6 +483,7 @@ post_hold(struct work_task *pwt)
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_CHECKPOINT, pjob);
 			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
 		}
 
 		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;

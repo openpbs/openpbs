@@ -166,18 +166,18 @@ main(int argc, char *argv[])
 #endif
 
 	maxfd = sysconf(_SC_OPEN_MAX);
-	routem = (struct routem *)malloc(maxfd*sizeof(struct routem));
+	routem = (struct routem *)malloc(maxfd * sizeof(struct routem));
 	if (routem == NULL) {
 		fprintf(stderr, "%s: out of memory\n", argv[0]);
 		exit(2);
 	}
-	for (i=0; i<maxfd; ++i) {
-		(routem+i)->r_where = invalid;
-		(routem+i)->r_nl    = 1;
-		(routem+i)->r_first = 0;
+	for (i = 0; i < maxfd; ++i) {
+		(routem + i)->r_where = invalid;
+		(routem + i)->r_nl    = 1;
+		(routem + i)->r_first = 0;
 	}
-	(routem+main_sock_out)->r_where = new_out;
-	(routem+main_sock_err)->r_where = new_err;
+	(routem + main_sock_out)->r_where = new_out;
+	(routem + main_sock_err)->r_where = new_err;
 
 
 	FD_ZERO(&readset);
@@ -218,20 +218,20 @@ main(int argc, char *argv[])
 			}
 		}
 
-		for (i=0; n && i<maxfd; ++i) {
+		for (i = 0; n && i < maxfd; ++i) {
 			if (FD_ISSET(i, &selset)) {     /* this socket has data */
 				n--;
-				switch ((routem+i)->r_where) {
+				switch ((routem + i)->r_where) {
 					case new_out:
 					case new_err:
 						newsock = accept(i, 0, 0);
-						(routem+newsock)->r_where =  (routem+i)->r_where== new_out ? old_out : old_err;
+						(routem + newsock)->r_where =  (routem + i)->r_where == new_out ? old_out : old_err;
 						FD_SET(newsock, &readset);
-						(routem+newsock)->r_first = 1;
+						(routem + newsock)->r_first = 1;
 						break;
 					case old_out:
 					case old_err:
-						readit(i, routem+i);
+						readit(i, routem + i);
 						break;
 					default:
 						fprintf(stderr, "%s: internal error\n", argv[0]);
@@ -240,5 +240,6 @@ main(int argc, char *argv[])
 			}
 		}
 	}
+	free(routem);
 	return 0;
 }

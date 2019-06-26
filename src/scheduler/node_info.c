@@ -4173,7 +4173,7 @@ parse_selspec(char *select_spec)
 	}
 
 	s = strlen(select_spec);
-	if (s > specbuf_size) {
+	if (s > specbuf_size || specbuf == NULL) {
 		tmpptr = realloc(specbuf, s * 2 + 1);
 		if (tmpptr == NULL) {
 			log_err(errno, "parse_selspec", MEM_ERR_MSG);
@@ -4766,7 +4766,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 
 	nsize = count_array((void **) nodes);
 
-	if (node_array_size < nsize + 1) {
+	if ((node_array_size < nsize + 1) || node_array == NULL) {
 		tmparr = realloc(node_array, sizeof(node_info *) * (nsize + 1));
 		if (tmparr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);

@@ -71,7 +71,7 @@
  *
  */
 int
-parse_jobid(char *job_id, char **arg_seq_number, char **arg_parent_server, char ** arg_current_server)
+parse_jobid(char *job_id, char **arg_seq_number, char **arg_parent_server, char **arg_current_server)
 {
 	int is_resv = 0;
 	char *c;
@@ -223,9 +223,20 @@ parse_jobid(char *job_id, char **arg_seq_number, char **arg_parent_server, char 
 	}
 
 	/* set char * pointers to static data, to arguments */
-	if (arg_seq_number != NULL) *arg_seq_number = seq_number;
-	if (arg_parent_server != NULL) *arg_parent_server = parent_server;
-	if (arg_current_server != NULL) *arg_current_server = current_server;
+	if (arg_seq_number != NULL) 
+		*arg_seq_number = seq_number;
+	else
+		free(seq_number);
+
+	if (arg_parent_server != NULL) 
+		*arg_parent_server = parent_server;
+	else
+		free(parent_server);
+	
+	if (arg_current_server != NULL)
+		*arg_current_server = current_server;
+	else
+		free(current_server);
 
 	return 0;
 

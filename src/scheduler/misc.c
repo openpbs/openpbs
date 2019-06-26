@@ -645,8 +645,8 @@ string_array_to_str(char **strarr)
 
 	len += i; /* added space for the commas */
 
-	if (arrlen <= len) {
-		tmp = realloc(arrbuf, arrlen+len+1);
+	if (arrlen <= len || arrbuf == NULL) {
+		tmp = realloc(arrbuf, arrlen + len + 1);
 		if (tmp != NULL) {
 			arrlen += len + 1;
 			arrbuf = tmp;

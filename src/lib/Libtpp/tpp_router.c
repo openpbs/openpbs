@@ -271,8 +271,6 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 	}
 	tpp_unlock(&router_lock);
 
-	free(pkey);
-
 	chunks[0].len = sizeof(tpp_join_pkt_hdr_t);
 	while ((lf_data = (struct leaf_data *) tpp_deque(&ctl_hdr_queue))) {
 
@@ -288,6 +286,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 		free(lf_data->addrs);
 		free(lf_data);
 	}
+	free(pkey);
 	return 0;
 
 err:

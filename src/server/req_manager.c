@@ -1730,6 +1730,7 @@ mgr_server_unset(struct batch_request *preq)
 					tm_list = attrlist_create(plist->al_name, "ncpus", 8);
 					if (tm_list == NULL) {
 						reply_badattr(-1, bad_attr, plist, preq);
+						return;
 					}
 					tm_list->al_link.ll_next->ll_struct = NULL;
 					sprintf(tm_list->al_value, "%d", 1);
@@ -2748,7 +2749,7 @@ mgr_node_unset(struct batch_request *preq)
 						strncpy(hostname, pnode->nd_name, (sizeof(hostname) - 1));
 					}
 					clear_attr(&tmp, &node_attr_def[(int)ND_ATR_Mom]);
-					rc = decode_arst(&tmp, ND_ATR_Mom, NULL, hostname);
+					rc = decode_arst(&tmp, ATTR_NODE_Mom, NULL, hostname);
 					if (rc == 0) {
 						set_arst(&pnode->nd_attr[(int)ND_ATR_Mom], &tmp, INCR);
 						pnode->nd_attr[(int)ND_ATR_Mom].at_flags |= ATR_VFLAG_DEFLT;
@@ -2915,7 +2916,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 	len = sizeof(u_long) * (i + 1);
 	*pul = (u_long *)malloc(len);
 	if (*pul == NULL) {
-		strcat(log_buffer, "out of  memory ");
+		strcat(log_buffer, "Out of memory ");
 		return (PBSE_SYSTEM);
 	}
 
@@ -2932,7 +2933,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 	}
 	(*pul)[i] = 0; /* null term array ip adrs */
 
-	freeaddrinfo( pai);
+	freeaddrinfo(pai);
 
 	tpul = malloc(sizeof(struct pul_store));
 	if (!tpul) {
@@ -3025,7 +3026,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	char		*pc;
 	char		*phost;		/* trial host name */
 	char		*pname;		/* node name w/o any :ts       */
-	u_long		*pul;		/* 0 terminated host adrs array*/
+	u_long		*pul = NULL;	/* 0 terminated host adrs array*/
 	int		 rc;
 	int		 j;
 	int		 iht;
@@ -3290,10 +3291,11 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 				 * an "empty" pul list
 				 */
 				pul = malloc(sizeof(u_long) * (1));
-				pul[0]=0;
+				pul[0] = 0;
 				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
 			} else {
 				effective_node_delete(pnode);
+				free(pul);
 				return (rc); /* return the error code from make_host_addresses_list */
 			}
 		}
@@ -3305,7 +3307,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		nport = pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long;
 
-		if ((pmom = create_svrmom_entry(phost , nport, pul)) == NULL) {
+		if ((pmom = create_svrmom_entry(phost, nport, pul)) == NULL) {
 			effective_node_delete(pnode);
 			return (PBSE_SYSTEM);
 		}
@@ -3531,9 +3533,9 @@ struct batch_request *preq;
 	/*remove the IP address array hanging from the node               */
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
-	for (i=0; i<svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		if (numnodes > 1)
-			pnode=pbsndlist[i];
+			pnode = pbsndlist[i];
 
 		rc = 0;
 
