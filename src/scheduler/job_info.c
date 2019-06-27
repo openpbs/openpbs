@@ -2884,8 +2884,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 				int update_accrue_type = 1;
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
-					/* Set resources_released and execselect on the job */
-					create_res_released(policy, job);
+					if (policy->rel_on_susp != NULL) {
+						/* Set resources_released and execselect on the job */
+						create_res_released(policy, job);
+					}
 
 					update_universe_on_end(policy, job, "S", NO_FLAGS);
 					job->job->is_susp_sched = 1;
