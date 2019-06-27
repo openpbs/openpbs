@@ -2888,7 +2888,6 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 						/* Set resources_released and execselect on the job */
 						create_res_released(policy, job);
 					}
-
 					update_universe_on_end(policy, job, "S", NO_FLAGS);
 					job->job->is_susp_sched = 1;
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
