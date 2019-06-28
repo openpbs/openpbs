@@ -146,7 +146,7 @@ class HookHelper(object):
 
                 # the following are hidden
                 'version_uri': '/rm/v1',
-                'resource_name': '/compute/jobs',
+                'resource_name': '/jobs',
             },
             'healthcheck': {
                 'enabled': True,
@@ -154,8 +154,8 @@ class HookHelper(object):
                 'unix_socket_file': '/var/run/hatsd/hatsd.sock',
 
                 # the following are hidden
-                'version_uri': '/nhc/v1',
-                'resource_name': '/healthchecks'
+                'version_uri': '/rm/v1',
+                'resource_name': '/tasks'
             },
         }
         # Identify the config file and read in the data
@@ -191,7 +191,7 @@ class HookHelper(object):
         """
         if not cls.config:
             cls.load_config()
-        pbs.logmsg(pbs.EVENT_DEBUG, '%s' % (str(cls.config)))
+        # pbs.logmsg(pbs.EVENT_DEBUG, '%s' % (str(cls.config)))
         return cls.config
 
     @staticmethod
