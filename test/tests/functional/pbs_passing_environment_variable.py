@@ -89,7 +89,28 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         Define a shell function with new line characters and check that
         the function is passed correctly
         """
-        os.environ['foo'] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
+        # Check if ShellShock fix for exporting shell function in bash exists
+        # on this system and what "BASH_FUNC_" format to use
+        foo_scr = """#!/bin/bash
+foo() { a=B; echo $a; }
+export -f foo
+env | grep foo
+unset -f foo
+exit 0
+"""
+        fn = self.du.create_temp_file(body=foo_scr)
+        self.du.chmod(path=fn, mode=0755)
+        foo_msg = 'Failed to run foo_scr'
+        ret = self.du.run_cmd(self.server.hostname, cmd=fn)
+        self.assertEqual(ret['rc'], 0, foo_msg)
+        msg = 'BASH_FUNC_'
+        n = 'foo'
+        for m in ret['out']:
+            if m.find(msg) != -1:
+                n = m.split('=')[0]
+                break
+        # Adjustments in bash due to ShellShock malware fix in various OS
+        os.environ[n] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
         script = ['#PBS -V']
         script += ['env | grep -A 3 foo\n']
         script += ['foo\n']
@@ -101,7 +122,8 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         job_output = ""
         with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
-        match = 'foo=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
+        match = n + \
+            '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
                          msg="Environment variable foo content does "
                          "not match original")
