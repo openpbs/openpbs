@@ -224,16 +224,19 @@ class TestSchedPerf(TestPerformance):
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
+        # We want to submit jobs with -V option
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_qsub_arguments': '-V'})
+
         # We have 10010 vnodes, submit 10050 jobs so that it can run almost
         # all of them
         a = {'Resource_List.select': '1:ncpus=1'}
-        jids = self.submit_jobs(attribs=a, num=10050, step=0, wt_start=900)
+        self.submit_jobs(attribs=a, num=10050, step=0, wt_start=900)
 
-        # Kick a sched cycle which will run 1010 jobs
+        # Kick a sched cycle which will run 10010 jobs
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        jid1010 = jids[1009]
-        self.server.expect(JOB, {"job_state": "R"}, jid1010)
+        self.server.expect(JOB, {"job_state=R": 10010})
 
         # Now kick a 100 sched cycles to exercise the querying of universe
         for _ in range(100):

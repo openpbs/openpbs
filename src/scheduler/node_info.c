@@ -133,6 +133,7 @@
 #include <grunt.h>
 #include <libutil.h>
 #include <pbs_internal.h>
+#include "attribute.h"
 #include "node_info.h"
 #include "server_info.h"
 #include "job_info.h"
@@ -181,9 +182,51 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	int num_nodes = 0;			/* the number of nodes */
 	int i;
 	int nidx;
+	static struct attrl *attrib = NULL;
+	char *nodeattrs[] = {
+			ATTR_NODE_state,
+			ATTR_NODE_Mom,
+			ATTR_NODE_Port,
+			ATTR_partition,
+			ATTR_NODE_jobs,
+			ATTR_NODE_ntype,
+			ATTR_maxrun,
+			ATTR_maxuserrun,
+			ATTR_maxgrprun,
+			ATTR_queue,
+			ATTR_NODE_pcpus,
+			ATTR_p,
+			ATTR_NODE_Sharing,
+			ATTR_NODE_License,
+			ATTR_rescavail,
+			ATTR_rescassn,
+			ATTR_NODE_NoMultiNode,
+			ATTR_ResvEnable,
+			ATTR_NODE_ProvisionEnable,
+			ATTR_NODE_current_aoe,
+			ATTR_NODE_power_provisioning,
+			ATTR_NODE_current_eoe,
+			ATTR_NODE_in_multivnode_host,
+			ATTR_NODE_last_state_change_time,
+			ATTR_NODE_last_used_time,
+			ATTR_NODE_resvs,
+			NULL
+	};
+
+	if (attrib == NULL) {
+		for (i = 0; nodeattrs[i] != NULL; i++) {
+			struct attrl *temp_attrl = NULL;
+
+			temp_attrl = new_attrl();
+			temp_attrl->name = strdup(nodeattrs[i]);
+			temp_attrl->next = attrib;
+			temp_attrl->value = "";
+			attrib = temp_attrl;
+		}
+	}
 
 	/* get nodes from PBS server */
-	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, NULL)) == NULL) {
+	if ((nodes = pbs_statvnode(pbs_sd, NULL, attrib, NULL)) == NULL) {
 		err = pbs_geterrmsg(pbs_sd);
 		sprintf(errbuf, "Error getting nodes: %s", err);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", errbuf);

@@ -521,7 +521,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	struct attropl opl = { NULL, ATTR_q, NULL, NULL, EQ };
 	static struct attropl opl2[2] = { { &opl2[1], ATTR_state, NULL, "Q", EQ},
 		{ NULL, ATTR_array, NULL, "True", NE} };
-	struct attrl *attrib = NULL;
+	static struct attrl *attrib = NULL;
 	int i;
 
 	/* linked list of jobs returned from pbs_selstat() */
@@ -609,14 +609,16 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 	server_time = qinfo->server->server_time;
 
-	for (i = 0; jobattrs[i] != NULL; i++) {
-		struct attrl *temp_attrl = NULL;
+	if (attrib == NULL) {
+		for (i = 0; jobattrs[i] != NULL; i++) {
+			struct attrl *temp_attrl = NULL;
 
-		temp_attrl = new_attrl();
-		temp_attrl->name = strdup(jobattrs[i]);
-		temp_attrl->next = attrib;
-		temp_attrl->value = "";
-		attrib = temp_attrl;
+			temp_attrl = new_attrl();
+			temp_attrl->name = strdup(jobattrs[i]);
+			temp_attrl->next = attrib;
+			temp_attrl->value = "";
+			attrib = temp_attrl;
+		}
 	}
 
 	/* get jobs from PBS server */
