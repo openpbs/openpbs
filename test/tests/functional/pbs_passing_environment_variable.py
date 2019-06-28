@@ -104,13 +104,13 @@ exit 0
         ret = self.du.run_cmd(self.server.hostname, cmd=fn)
         self.assertEqual(ret['rc'], 0, foo_msg)
         msg = 'BASH_FUNC_'
-        self.n = 'foo'
+        n = 'foo'
         for m in ret['out']:
             if m.find(msg) != -1:
-                self.n = m.split('=')[0]
-                continue
+                n = m.split('=')[0]
+                break
         # Adjustments in bash due to ShellShock malware fix in various OS
-        os.environ[self.n] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
+        os.environ[n] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
         script = ['#PBS -V']
         script += ['env | grep -A 3 foo\n']
         script += ['foo\n']
@@ -122,7 +122,7 @@ exit 0
         job_output = ""
         with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
-        match = self.n + \
+        match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
                          msg="Environment variable foo content does "
