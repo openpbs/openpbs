@@ -731,11 +731,9 @@ message_job(job *pjob, enum job_file jft, char *text)
 	char *pstr = NULL;
 	int len;
 	int fds = -1;
-	int flags;
-	int slept=0;
+	int slept = 0;
 	ssize_t bytes_written = 0;
 	ssize_t total_bytes_written = 0;
-
 
 	if (pjob == NULL)
 		return PBSE_UNKJOBID;
@@ -751,7 +749,7 @@ message_job(job *pjob, enum job_file jft, char *text)
 		jft = StdOut;	/* only have stdout open */
 
 #ifdef WIN32
-	if ((fds = open_std_file(pjob, jft, O_WRONLY|O_APPEND,
+	if ((fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid)) < 0)
 		return PBSE_MOMREJECT;
 
@@ -763,7 +761,7 @@ message_job(job *pjob, enum job_file jft, char *text)
 		fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND | O_NONBLOCK,
 	                         pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 		if (fds < 0) {
-			if ( errno == EAGAIN || errno == EWOULDBLOCK) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				sleep(1);
 				slept++;
 			} else
@@ -775,8 +773,8 @@ message_job(job *pjob, enum job_file jft, char *text)
 		return PBSE_MOMREJECT;
 #endif
 	len = strlen(text);
-	if (text[len-1] != '\n') {
-		if ((pstr = malloc(len+2)) == NULL)
+	if (text[len - 1] != '\n') {
+		if ((pstr = malloc(len + 2)) == NULL)
 			return PBSE_INTERNAL;
 
 		(void)strcpy(pstr, text);
@@ -787,16 +785,12 @@ message_job(job *pjob, enum job_file jft, char *text)
 	(void)write(fds, text, len);
 	(void)_commit(fds);
 #else
-	flags = fcntl(fds, F_GETFL, 0);
-	fcntl(fds, F_SETFL, flags | O_NONBLOCK);
-
 	while ((slept < 5) && (total_bytes_written < len)) {
-		bytes_written = write(fds, text, len-total_bytes_written);
+		bytes_written = write(fds, text, len - total_bytes_written);
 		total_bytes_written += bytes_written;
 		text += bytes_written;
 		if (bytes_written <= 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-			{
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				sleep(1);
 				slept++;
 			} else {
