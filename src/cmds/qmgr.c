@@ -4225,6 +4225,9 @@ parse_request(char *request, char ***req)
 		fprintf(stderr, "malloc failure (errno %d)\n", errno);
 		exit(1);
 	}
+	for (i = IND_FIRST; i <= IND_LAST; i++)
+		(*req)[i] = NULL;
+		
 	for (i = 0; !EOL(*foreptr) && i < MAX_REQ_WORDS && error == 0;) {
 		while (White(*foreptr))
 			foreptr++;

@@ -794,7 +794,7 @@ main(int argc, char *argv[], char *envp[])
 
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				char *ncpus_str = NULL;
-				int ncpus;
+				int ncpus = 0;
 
 				for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 					if (pattr->resource && strcmp(pattr->name, ATTR_rescavail) == 0 && strcmp(pattr->resource, "host") == 0)
