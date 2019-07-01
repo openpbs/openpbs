@@ -731,7 +731,6 @@ message_job(job *pjob, enum job_file jft, char *text)
 	char *pstr = NULL;
 	int len;
 	int fds = -1;
-	int slept = 0;
 	ssize_t bytes_written = 0;
 	ssize_t total_bytes_written = 0;
 
@@ -757,16 +756,18 @@ message_job(job *pjob, enum job_file jft, char *text)
 	SetFilePointer((HANDLE)_get_osfhandle(fds), (LONG)NULL,
 		(PLONG)NULL, FILE_END);
 #else
-	while ((slept < 5) && (fds < 0)) {
+	int i;
+	unsigned int usecs = 250 * 1000; /* 250 milliseconds */
+	for (i = 0; i < 3; i++) {
 		fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND | O_NONBLOCK,
 	                         pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-		if (fds < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				sleep(1);
-				slept++;
-			} else
+		if (fds > 0)
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				usleep(usecs);
+			else
 				return PBSE_MOMREJECT;
-		}
+		else
+			break;
 	}
 
 	if (fds < 0)
@@ -785,19 +786,20 @@ message_job(job *pjob, enum job_file jft, char *text)
 	(void)write(fds, text, len);
 	(void)_commit(fds);
 #else
-	while ((slept < 5) && (total_bytes_written < len)) {
+	for (i = 0; i < 5; i++) {
 		bytes_written = write(fds, text, len - total_bytes_written);
 		if (bytes_written <= 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				sleep(1);
-				slept++;
-			} else {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				usleep(usecs);
+			else {
 				(void)close(fds);
 				return PBSE_MOMREJECT;
 			}
 		} else {
-			total_bytes_written += bytes_written;
 			text += bytes_written;
+			total_bytes_written += bytes_written;
+			if (total_bytes_written == len)
+				break;
 		}
 	}
 #endif
