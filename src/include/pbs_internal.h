@@ -224,6 +224,7 @@ struct pbs_config
 	char *pbs_tmpdir;			/* temporary file directory */
 	char *pbs_server_host_name;	/* name of host on which Server is running */
 	char *pbs_public_host_name;	/* name of the local host for outgoing connections */
+	char *pbs_scheduler_host_name;  /* name of the host on which sched is running */
 	char *pbs_mail_host_name;	/* name of host to which to address mail */
 	char *pbs_smtp_server_name;   /* name of SMTP host to which to send mail */
 	char *pbs_output_host_name;	/* name of host to which to stage std out/err */
@@ -293,6 +294,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_CORE_LIMIT	"PBS_CORE_LIMIT"      /* RLIMIT_CORE setting */
 #define PBS_CONF_SERVER_HOST_NAME "PBS_SERVER_HOST_NAME"
 #define PBS_CONF_PUBLIC_HOST_NAME "PBS_PUBLIC_HOST_NAME"
+#define PBS_CONF_SCHEDULER_HOST_NAME "PBS_SCHEDULER_HOST_NAME"
 #define PBS_CONF_MAIL_HOST_NAME "PBS_MAIL_HOST_NAME"
 #define PBS_CONF_OUTPUT_HOST_NAME "PBS_OUTPUT_HOST_NAME"
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */

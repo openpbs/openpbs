@@ -107,6 +107,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_tmpdir */
 	NULL,					/* pbs_server_host_name */
 	NULL,					/* pbs_public_host_name */
+	NULL,					/* pbs_scheduler_host_name */
 	NULL,					/* pbs_mail_host_name */
 	NULL,					/* pbs_output_host_name */
 	NULL,					/* pbs_smtp_server_name */
@@ -541,6 +542,10 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_public_host_name);
 				pbs_conf.pbs_public_host_name = strdup(conf_value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_SCHEDULER_HOST_NAME)) {
+				free(pbs_conf.pbs_scheduler_host_name);
+				pbs_conf.pbs_scheduler_host_name = strdup(conf_value);
+			}
 			else if (!strcmp(conf_name, PBS_CONF_MAIL_HOST_NAME)) {
 				free(pbs_conf.pbs_mail_host_name);
 				pbs_conf.pbs_mail_host_name = strdup(conf_value);
@@ -766,6 +771,10 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_PUBLIC_HOST_NAME)) != NULL) {
 		free(pbs_conf.pbs_public_host_name);
 		pbs_conf.pbs_public_host_name = strdup(gvalue);
+	}
+	if ((gvalue = getenv(PBS_CONF_SCHEDULER_HOST_NAME)) != NULL) {
+		free(pbs_conf.pbs_scheduler_host_name);
+		pbs_conf.pbs_scheduler_host_name = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_MAIL_HOST_NAME)) != NULL) {
 		free(pbs_conf.pbs_mail_host_name);

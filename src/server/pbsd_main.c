@@ -1074,6 +1074,11 @@ main(int argc, char **argv)
 		pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_primary);
 	}
 
+	/* set the scheduler name if it is set in an env var or conf file */
+	if (pbs_conf.pbs_scheduler_host_name != NULL) {
+		pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_scheduler_host_name);
+	}
+
 	/* parse the parameters from the command line */
 
 	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:S:g:G:s:P:-:")) != -1) {
