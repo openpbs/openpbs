@@ -59,8 +59,8 @@ class TestQsub_direct_write(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -110,8 +110,8 @@ class TestQsub_direct_write(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'do'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -138,8 +138,8 @@ class TestQsub_direct_write(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'de'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -164,14 +164,14 @@ class TestQsub_direct_write(TestFunctional):
         are getting directly written to the custom path
         provided in -e and -o option even when -doe is set.
         """
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         err_file = os.path.join(tmp_dir, 'error_file')
         out_file = os.path.join(tmp_dir, 'output_file')
         a = {ATTR_e: err_file, ATTR_o: out_file, ATTR_k: 'doe'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -190,12 +190,12 @@ class TestQsub_direct_write(TestFunctional):
         are getting directly written to the custom dir
         provided in -e and -o option even when -doe is set.
         """
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_k: 'doe'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -218,8 +218,8 @@ class TestQsub_direct_write(TestFunctional):
         j.set_sleep_time(10)
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'default_qsub_arguments': '-kdoe'})
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -241,7 +241,7 @@ class TestQsub_direct_write(TestFunctional):
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -302,8 +302,8 @@ class TestQsub_direct_write(TestFunctional):
         self.mom.add_config({'$logevent': '0xffffffff'})
         j = Job(TEST_USER, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
@@ -331,7 +331,7 @@ class TestQsub_direct_write(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_k: 'doe', ATTR_J: '1-4'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
         self.server.expect(JOB, {ATTR_state + '=R': 4}, count=True,
@@ -356,12 +356,12 @@ class TestQsub_direct_write(TestFunctional):
         """
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_k: 'doe', ATTR_J: '1-4'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
-        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir
              + ' ' + mapping_dir})
