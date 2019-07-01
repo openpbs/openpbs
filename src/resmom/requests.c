@@ -787,16 +787,17 @@ message_job(job *pjob, enum job_file jft, char *text)
 #else
 	while ((slept < 5) && (total_bytes_written < len)) {
 		bytes_written = write(fds, text, len - total_bytes_written);
-		total_bytes_written += bytes_written;
-		text += bytes_written;
 		if (bytes_written <= 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				sleep(1);
 				slept++;
 			} else {
-					(void)close(fds);
-					return PBSE_MOMREJECT;
+				(void)close(fds);
+				return PBSE_MOMREJECT;
 			}
+		} else {
+			total_bytes_written += bytes_written;
+			text += bytes_written;
 		}
 	}
 #endif
