@@ -761,7 +761,7 @@ message_job(job *pjob, enum job_file jft, char *text)
 	for (i = 0; i < 3; i++) {
 		fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND | O_NONBLOCK,
 	                         pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-		if (fds > 0)
+		if (fds < 0)
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				usleep(usecs);
 			else
@@ -793,6 +793,8 @@ message_job(job *pjob, enum job_file jft, char *text)
 				usleep(usecs);
 			else {
 				(void)close(fds);
+				if (pstr)
+					free(pstr);
 				return PBSE_MOMREJECT;
 			}
 		} else {
