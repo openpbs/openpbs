@@ -6379,7 +6379,8 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
 int
 open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
 {
-	int  fds;
+	int fds;
+	int open_errno = 0; 
 	extern gid_t pbsgroup;
 
 	/* must open or create file as the user */
@@ -6387,9 +6388,13 @@ open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
 	if (impersonate_user(exuid, exgid) == -1)
 		return -1;
 
-	fds = open(path, oflag, mode);
+	if ((fds = open(path, oflag, mode)) == -1)
+		open_errno = errno;
 
 	revert_from_user();
+
+	if (open_errno)
+		errno = open_errno;
 
 	return (fds);
 }

@@ -725,13 +725,14 @@ req_holdjob(struct batch_request *preq)
  * @retval	PBSE_INTERNAL	internal server error occurred
  *
  */
-
 int
 message_job(job *pjob, enum job_file jft, char *text)
 {
-	char		*pstr = NULL;
-	int		len;
-	int		fds;
+	char *pstr = NULL;
+	int len;
+	int fds = -1;
+	ssize_t bytes_written = 0;
+	ssize_t total_bytes_written = 0;
 
 	if (pjob == NULL)
 		return PBSE_UNKJOBID;
@@ -746,34 +747,71 @@ message_job(job *pjob, enum job_file jft, char *text)
 	else if (len == 1)
 		jft = StdOut;	/* only have stdout open */
 
-	if ((fds = open_std_file(pjob, jft, O_WRONLY|O_APPEND,
+#ifdef WIN32
+	if ((fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid)) < 0)
 		return PBSE_MOMREJECT;
 
-#ifdef WIN32
 	/* set to append mode */
 	SetFilePointer((HANDLE)_get_osfhandle(fds), (LONG)NULL,
 		(PLONG)NULL, FILE_END);
-#endif
+#else
+	int i;
+	unsigned int usecs = 250 * 1000; /* 250 milliseconds */
+	for (i = 0; i < 3; i++) {
+		fds = open_std_file(pjob, jft, O_WRONLY | O_APPEND | O_NONBLOCK,
+	                         pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+		if (fds < 0)
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				usleep(usecs);
+			else
+				return PBSE_MOMREJECT;
+		else
+			break;
+	}
 
+	if (fds < 0)
+		return PBSE_MOMREJECT;
+#endif
 	len = strlen(text);
-	if (text[len-1] != '\n') {
-		if ((pstr = malloc(len+2)) == NULL)
+	if (text[len - 1] != '\n') {
+		if ((pstr = malloc(len + 2)) == NULL)
 			return PBSE_INTERNAL;
 
 		(void)strcpy(pstr, text);
 		pstr[len++] = '\n';	/* append new-line */
 		text = pstr;
 	}
-	(void)write(fds, text, len);
 #ifdef	WIN32
+	(void)write(fds, text, len);
 	(void)_commit(fds);
+#else
+	for (i = 0; i < 3; i++) {
+		bytes_written = write(fds, text, len - total_bytes_written);
+		if (bytes_written <= 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				usleep(usecs);
+			else {
+				(void)close(fds);
+				free(pstr);
+				return PBSE_MOMREJECT;
+			}
+		} else {
+			text += bytes_written;
+			total_bytes_written += bytes_written;
+			if (total_bytes_written == len)
+				break;
+		}
+	}
 #endif
 	(void)close(fds);
 	if (pstr)
 		free(pstr);
 
-	return PBSE_NONE;
+	if (total_bytes_written == len)
+		return PBSE_NONE;
+	else
+		return PBSE_MOMREJECT;
 }
 
 /**
