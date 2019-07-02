@@ -786,7 +786,7 @@ message_job(job *pjob, enum job_file jft, char *text)
 	(void)write(fds, text, len);
 	(void)_commit(fds);
 #else
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < 3; i++) {
 		bytes_written = write(fds, text, len - total_bytes_written);
 		if (bytes_written <= 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
