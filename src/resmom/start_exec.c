@@ -6388,7 +6388,7 @@ open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
 	if (impersonate_user(exuid, exgid) == -1)
 		return -1;
 
-	if ((fds = open(path, oflag, mode)))
+	if ((fds = open(path, oflag, mode)) == -1)
 		open_errno = errno;
 
 	revert_from_user();

@@ -793,8 +793,7 @@ message_job(job *pjob, enum job_file jft, char *text)
 				usleep(usecs);
 			else {
 				(void)close(fds);
-				if (pstr)
-					free(pstr);
+				free(pstr);
 				return PBSE_MOMREJECT;
 			}
 		} else {
