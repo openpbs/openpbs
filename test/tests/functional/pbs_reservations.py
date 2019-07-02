@@ -1123,3 +1123,409 @@ class TestReservations(TestFunctional):
         # Check status of the parent-job using qstat -fx once reservation ends
         self.server.expect(JOB, {'job_state': 'F', 'substate': '91'},
                            extend='x', id=jid)
+
+    @skipOnCpuSet
+    def test_ASAP_resv_with_job_array(self):
+        """
+        Test job array with ASAP reservation
+        """
+        self.common_steps()
+
+        # Submit a short job to take up the resources (J1)
+        a = {'Resource_List.walltime': '20',
+             'Resource_List.select': '1:ncpus=4'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(20)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+
+        # Submit a job-array (JA2)
+        a = {ATTR_J: '1-10',
+             'Resource_List.select': '1:ncpus=4',
+             'Resource_List.walltime': '10'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(10)
+        jid2 = self.server.submit(j2)
+        subjid = []
+        for i in range(1, 10):
+            subjid.append(j.create_subjob_id(jid2, i))
+        self.server.expect(JOB, {'job_state': 'Q'}, jid2)
+        self.server.expect(JOB, {'job_state=Q': 11}, count=True,
+                           id=jid2, extend='t')
+
+        # Wait for job J1 to finish
+        self.logger.info('Waiting for job J1 to be finished')
+        self.server.expect(JOB, {'job_state': 'F'},
+                           extend='x', id=jid, offset=20)
+
+        # Convert JA2 into an ASAP reservation
+        now = int(time.time())
+        rid1 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid2)
+        rid1_q = rid1.split('.')[0]
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        self.server.expect(
+            JOB, {'job_state': 'R', 'queue': 'workq'}, id=subjid[0])
+        # Wait for the ASAP reservation to start, verify sub-job state in
+        # reservation
+        self.logger.info('Waiting for reservation to start')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid1, offset=5)
+        self.server.expect(
+            JOB, {'job_state': 'R', 'queue': rid1_q},
+            attrop=PTL_AND, id=subjid[1])
+        self.server.expect(
+            JOB, {'job_state': 'Q', 'queue': rid1_q},
+            attrop=PTL_AND, id=subjid[2])
+        self.server.expect(
+            JOB, {'job_state': 'Q', 'queue': rid1_q},
+            attrop=PTL_AND, id=subjid[8])
+
+        # Wait for reservations to finish
+        msg = "Que;" + rid1_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=10)
+        # Check status of the parent job-array and sub-job using
+        # qstat -fx at the end of  reservation
+        self.server.expect(JOB, {'job_state=F': 1}, count=True,
+                           id=jid2, extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'queue': rid1_q,
+                                 'substate': '91'}, id=subjid[1],
+                           attrop=PTL_AND, extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'queue': rid1_q,
+                                 'substate': '91'}, id=subjid[2],
+                           attrop=PTL_AND, extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'queue': rid1_q,
+                                 'substate': '91'}, id=subjid[3],
+                           attrop=PTL_AND, extend='x')
+
+        # Test two job-array converted in two ASAP reservation
+        # which request same time
+        # Submit a short job to consume all resources (J1)
+        a = {'Resource_List.walltime': '20',
+             'Resource_List.select': '1:ncpus=4'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(20)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+
+        # Submit a longer job-array with a longer wall time (JA2)
+        a = {ATTR_J: '1-5',
+             'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': '20'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(20)
+        jid2 = self.server.submit(j2)
+        subjid = []
+        for i in range(1, 5):
+            subjid.append(j.create_subjob_id(jid2, i))
+        self.server.expect(JOB, {'job_state=Q': 6}, count=True,
+                           id=jid2, extend='t')
+
+        # Convert JA2 into an ASAP reservation
+        now = int(time.time())
+        rid1 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid2)
+        rid1_q = rid1.split('.')[0]
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+        self.server.expect(
+            JOB, {'job_state': 'Q', 'queue': rid1_q}, id=subjid[0])
+
+        # Submit a another job-array with a longer wall time (JA3)
+        j3 = Job(TEST_USER, attrs=a)
+        j3.set_sleep_time(20)
+        jid3 = self.server.submit(j3)
+        subjid2 = []
+        for i in range(1, 5):
+            subjid2.append(j.create_subjob_id(jid3, i))
+        self.server.expect(JOB, {'job_state': 'Q'}, jid3)
+        self.server.expect(JOB, {'job_state=Q': 6}, count=True,
+                           id=jid3, extend='t')
+
+        # Convert JA3 into an ASAP reservation
+        now2 = int(time.time())
+        rid2 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid3)
+        rid2_q = rid2.split('.')[0]
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid2)
+        self.server.expect(
+            JOB, {'job_state': 'Q', 'queue': rid2_q}, id=subjid2[0])
+
+        # Wait for both  reservation to start
+        self.logger.info('Waiting 20 seconds for reservation to start')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid1, offset=18)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid2)
+        # Verify only one sub-job from JA2 and and JA3 start running
+        self.server.expect(
+            JOB, {'job_state': 'R', 'queue': rid1_q}, id=subjid[0])
+        self.server.expect(
+            JOB, {'job_state': 'R', 'queue': rid2_q}, id=subjid2[0])
+
+        # Wait for reservations to finish
+        msg = "Que;" + rid1_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=5)
+        msg = "Que;" + rid2_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now2, interval=5)
+
+        # verify pbs is up
+        if not self.server.isUp():
+            self.fail("Server is not up")
+        if not self.server.isUp():
+            self.fail("Server is not up")
+
+        # Check status of the parent-job array using qstat -fx once reservation
+        # ends
+        self.server.expect(JOB, {'job_state=F': 1}, count=True,
+                           id=jid2, extend='x')
+        self.server.expect(JOB, {'job_state=F': 1}, count=True,
+                           id=jid3, extend='x')
+        # Check status of the sub-job array using qstat -fx once reservation
+        # ends
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '92',
+                                 'queue': rid1_q}, id=subjid[0],
+                           attrop=PTL_AND,  extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '91',
+                                 'queue': rid1_q}, id=subjid[1],
+                           attrop=PTL_AND, extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '92',
+                                 'queue': rid2_q}, id=subjid2[0],
+                           attrop=PTL_AND,  extend='x')
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '91',
+                                 'queue': rid2_q}, id=subjid2[1],
+                           attrop=PTL_AND,  extend='x')
+
+    @skipOnCpuSet
+    def test_standing_resv_with_job_array(self):
+        """
+        Test job array with standing reservation
+        """
+        self.common_steps()
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+        # Submit a standing reservation to occur every other minute for a
+        #  total count of 2
+        start = int(time.time()) + 10
+        end = start + 60
+        a = {'Resource_List.select': '1:ncpus=4',
+             ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             }
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        rid_q = rid.split(".")[0]
+        # Submit a job-array within resrvation
+        j = Job(TEST_USER, attrs={ATTR_q: rid_q, ATTR_J: '1-5'})
+        j.set_sleep_time(40)
+        jid = self.server.submit(j)
+        subjid = []
+        for i in range(1, 5):
+            subjid.append(j.create_subjob_id(jid, i))
+        self.server.expect(JOB, {'job_state': 'Q',
+                                 'comment': (MATCH_RE,
+                                             'Queue not started')}, jid)
+        # Wait for standing reservation first instance to start
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid, offset=10)
+        self.server.expect(RESV, {'reserve_index': 1}, id=rid)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        self.server.expect(JOB, {'job_state=R': 4}, count=True,
+                           id=jid, extend='t')
+        self.server.expect(JOB, {'job_state=Q': 1}, count=True,
+                           id=jid, extend='t')
+        # Wait for standing reservation first instance to finished
+        self.logger.info(
+            'Waiting 60 seconds for first instance of reservation to Finish')
+        time.sleep(60)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        # Wait for standing reservation second instance to start
+        self.logger.info(
+            'Waiting 60 seconds for second  instance of reservation to start')
+        self.server.expect(RESV, {'reserve_index': 2}, offset=60, id=rid)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        # Wait for reservations to be finished
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=end, interval=20)
+
+        # Check for finished jobs by issuing the command qstat
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '93'},
+                           extend='x', id=subjid[3], offset=65)
+        job_list = subjid
+        job_list.pop()
+        for i in job_list:
+            self.server.expect(JOB, {'job_state': 'F', 'substate': '93'},
+                               extend='x', id=i)
+        # Check for finished jobs by issuing the command qstat
+        self.server.expect(JOB, {'job_state=F': 6}, extend='xt',
+                           offset=62, id=jid)
+
+        # Submit a standing reservation, that gets confirmed.  Submission time
+        # is HHMM
+        start = int(time.time()) + 10
+        end = int(time.time()) + 3660
+        a = {ATTR_resv_rrule: 'FREQ=DAILY;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             }
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        rid_q = rid.split(".")[0]
+        # Submit a job-array within resrvation
+        j = Job(TEST_USER, attrs={
+                'Resource_List.walltime': 60, ATTR_q: rid_q, ATTR_J: '1-5'})
+        j.set_sleep_time(60)
+        jid = self.server.submit(j)
+        subjid = []
+        for i in range(1, 6):
+            subjid.append(j.create_subjob_id(jid, i))
+        self.server.expect(JOB, {'job_state': 'Q',
+                                 'comment': (MATCH_RE,
+                                             'Queue not started')}, jid)
+        # Wait for standing reservation first instance to start
+        # Verify one sub-job should running and others in queued
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid, offset=10)
+        self.server.expect(RESV, {'reserve_index': 1}, id=rid)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        self.server.expect(JOB, {'job_state=R': 1}, count=True,
+                           id=jid, extend='t')
+        self.server.expect(JOB, {'job_state=Q': 4}, count=True,
+                           id=jid, extend='t')
+        # Suspend running sub-job[1] after 10sec, verify
+        # second sub-job start running
+        time.sleep(10)
+        self.server.sigjob(jobid=subjid[0], signal="suspend")
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
+        # Resume suspend sub-job[1], and verify sub-job[1] should
+        # once resource available
+        self.server.sigjob(subjid[0], 'resume')
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid[0])
+        self.server.delete(subjid[1])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[2])
+        self.server.expect(JOB, {'job_state': 'S'}, id=subjid[0])
+        self.server.delete([subjid[2], subjid[3], subjid[4]])
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjid[0])
+        self.server.expect(JOB, {'job_state': 'F',  'substate': '92',
+                                 'queue': rid_q}, id=subjid[0], extend='x',
+                           offset=61)
+        self.server.expect(JOB, {'job_state': 'F',  'queue': rid_q},
+                           id=jid, extend='x')
+
+    @skipOnCpuSet
+    def test_job_array_within_recurring_reservation(self):
+        """
+        Test job-array submitted to recurring reservations
+        """
+        self.common_steps()
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+
+        # Submit a standing reservation to occur every other minute for a
+        #  total count of 2
+        start = int(time.time()) + 10
+        end = start + 60
+        a = {'Resource_List.select': '1:ncpus=4',
+             ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             }
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        rid_q = rid.split(".")[0]
+        # Submit  job-array within reservation with sleep time longer
+        # than instance resrvation
+        subjid = []
+        jids = []
+        for i in range(3):
+            j = Job(TEST_USER, attrs={ATTR_q: rid_q, ATTR_J: '1-2'})
+            j.set_sleep_time(100)
+            pjid = self.server.submit(j)
+            jids.append(pjid)
+            for subid in range(1, 3):
+                subjid.append(j.create_subjob_id(pjid, subid))
+        for job in jids:
+            self.server.expect(JOB, {'job_state': 'Q',
+                                     'comment': (MATCH_RE,
+                                                 'Queue not started')}, id=job)
+        # Wait for first instance of resrvation to be start
+        self.logger.info("Wait for first instance of resrvation to be start")
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid, offset=10)
+        self.server.expect(RESV, {'reserve_index': 1}, id=rid)
+        self.server.expect(JOB, {'job_state': 'B'}, jids[0])
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           id=jids[0], extend='t')
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           id=jids[1], extend='t')
+        self.server.expect(JOB, {'job_state=Q': 3}, count=True,
+                           id=jids[2], extend='t')
+        # At end of first instance of resrvation  ,verify running sub-job
+        # terminated
+        self.logger.info(
+            'Waiting 60 seconds for first  instance of reservation to end')
+        time.sleep(62)
+        job_list = subjid
+        job_list.pop()
+        job_list.pop()
+        for subjob in job_list:
+            self.server.expect(JOB, {'job_state': 'F', 'substate': '93'},
+                               extend='x', id=subjob)
+
+        # Wait for standing reservation second instance to confirmed
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid, offset=5)
+        # Check for queued jobs in second instance of resrvation
+        self.server.expect(JOB, {'job_state': 'Q',
+                                 'comment': (MATCH_RE, 'Queue not started')},
+                           id=jids[2])
+        self.server.expect(JOB, {'job_state=Q': 3}, extend='xt',
+                           id=jids[2])
+        self.logger.info(
+            'Waiting 60 seconds for second  instance of reservation to start')
+        self.server.expect(RESV, {'reserve_index': 2}, offset=60, id=rid)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        # Check for queued jobs should be running
+        self.server.expect(JOB, {'job_state=R': 2}, extend='xt',
+                           id=jids[2])
+
+        # Check for running jobs in second instance should finished
+        self.server.expect(JOB, {'job_state=F': 3}, extend='xt',
+                           offset=62, id=jids[2])
+
+        # Wait for reservations to be finished
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=end, interval=20)
+        # Check for all jobs should finished
+        for subjob in subjid:
+            self.server.expect(JOB, {'job_state': 'F', 'substate': '93',
+                                     'queue': rid_q}, extend='xt', offset=10,
+                               attrop=PTL_AND, id=subjob)
