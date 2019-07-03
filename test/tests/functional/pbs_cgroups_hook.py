@@ -196,10 +196,10 @@ if sleeptime > 0:
             '#PBS -S /bin/bash\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'python - 200 2 10 <<EOF\n' \
-            '%s EOF\n' \
+            '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'python - 100 4 10 <<EOF\n' \
-            '%sEOF\n' \
+            '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'sleep 25\n' % (self.eatmem_script, self.eatmem_script)
         self.eatmem_job3 = \
