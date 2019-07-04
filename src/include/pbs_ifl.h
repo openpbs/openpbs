@@ -190,6 +190,9 @@ extern "C" {
 #define ATTR_sample_starttime	"sample_starttime"
 #define ATTR_job_kill_delay	"job_kill_delay"
 #define ATTR_topjob_ineligible "topjob_ineligible"
+#define ATTR_krb_princ		"krb_princ"
+#define ATTR_submit_host	"Submit_Host"
+#define ATTR_cred_validity	"credential_validity"
 #define ATTR_history_timestamp	"history_timestamp"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
@@ -317,6 +320,13 @@ extern "C" {
 #define ATTR_power_provisioning "power_provisioning"
 #define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
 #define ATTR_max_job_sequence_id "max_job_sequence_id"
+#define ATTR_acl_krb_realm_enable "acl_krb_realm_enable"
+#define ATTR_acl_krb_realms	"acl_krb_realms"
+#define ATTR_acl_krb_submit_realms "acl_krb_submit_realms"
+#define ATTR_cred_renew_enable	"cred_renew_enable"
+#define ATTR_cred_renew_tool	"cred_renew_tool"
+#define ATTR_cred_renew_period	"cred_renew_period"
+#define ATTR_cred_renew_cache_period "cred_renew_cache_period"
 
 /**
  * RPP_MAX_PKT_CHECK_DEFAULT controls the number of loops used to process
@@ -478,7 +488,8 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 /* PBS supported authentication methods */
 enum pbs_auth_method {
 	AUTH_RESV_PORT,      /* Reserved port authentication */
-	AUTH_MUNGE           /* MUNGE Authentication */
+	AUTH_MUNGE,           /* MUNGE Authentication */
+	AUTH_GSS           /* GSS Authentication */
 };
 
 /* shutdown manners externally visible */

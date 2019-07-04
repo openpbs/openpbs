@@ -94,6 +94,7 @@
 #include	"pbs_internal.h"
 #include	"placementsets.h"
 #include	"pbs_reliable.h"
+#include	"renew.h"
 
 
 /* Global Data Items */
@@ -2228,6 +2229,7 @@ node_bailout(job *pjob, hnodent *np)
 			case	IM_OBIT_TASK:
 			case	IM_GET_INFO:
 			case	IM_GET_RESC:
+			case	IM_CRED:
 				/*
 				 ** A user attempt failed, inform process.
 				 */
@@ -4951,6 +4953,14 @@ join_err:
 					break;
 			}
 			break;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		case	IM_CRED:
+			ret = im_cred_read(pjob, np, stream);
+			if (ret != DIS_SUCCESS)
+				goto err;
+			break;
+#endif
 
 		case	IM_ERROR:		/* this is a REPLY */
 		case	IM_ERROR2:		/* this is a REPLY */

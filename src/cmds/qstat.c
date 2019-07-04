@@ -1355,6 +1355,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						strcmp(a->name, ATTR_qtime) == 0 ||
 						strcmp(a->name, ATTR_resv_start) == 0 ||
 						strcmp(a->name, ATTR_resv_end) == 0 ||
+						strcmp(a->name, ATTR_cred_validity) == 0 ||
 						(strcmp(a->name, ATTR_estimated) == 0 &&
 						strcmp(a->resource, "start_time") == 0) ||
 						strcmp(a->name, ATTR_a) == 0) {

@@ -81,6 +81,8 @@
 #include "mom_hook_func.h"
 #include "placementsets.h"
 #include "hook.h"
+#include "renew.h"
+
 /**
  * @file	catch_child.c
  */
@@ -1628,6 +1630,14 @@ end_loop:
 		 */
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_EXITING)
 			continue;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		/* job in state JOB_SUBSTATE_EXITING destroy creds */
+		if (cred_by_job(pjob, CRED_DESTROY) != PBS_KRB5_OK) {
+			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,
+				"failed to destroy credentials");
+		}
+#endif
 
 		/*
 		 ** This job is exiting.  If MOM_CHKPT_ACTIVE is on, it

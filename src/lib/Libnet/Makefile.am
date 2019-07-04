@@ -38,7 +38,7 @@
 
 lib_LIBRARIES = libnet.a
 
-libnet_a_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/lib/Libtpp
+libnet_a_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/lib/Libtpp @KRB5_CFLAGS@
 
 libnet_a_SOURCES = \
 	get_hostaddr.c \

@@ -127,6 +127,8 @@
 #include	"pbs_reliable.h"
 #include	<arpa/inet.h>
 
+#include	"renew.h"
+
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
 #define		PRIO_MAX	20
@@ -271,6 +273,11 @@ extern time_t		time_now;
 time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
 extern struct var_table vtable;	/* see start_exec.c */
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern pbs_list_head svr_allcreds;
+#endif
+
 #if	MOM_ALPS
 #define	ALPS_REL_WAIT_TIME_DFLT		400000;	/* 0.4 sec */
 #define	ALPS_REL_JITTER_DFLT		120000;	/* 0.12 sec */
@@ -6517,6 +6524,13 @@ kill_job(job *pjob, int sig)
 				exiting_tasks = 1;
 		}
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5) && 0
+	if (cred_by_job(pjob, CRED_DESTROY) != PBS_KRB5_OK) {
+		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,
+			"failed to destroy credentials");
+	}
+#endif
 	DBPRT(("%s: done %s killed %d\n", __func__, pjob->ji_qs.ji_jobid, ct))
 	return ct;
 #endif	/* WIN32 */
@@ -9200,6 +9214,10 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(task_list_timed);
 	CLEAR_HEAD(task_list_event);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	CLEAR_HEAD(svr_allcreds);
+#endif
+
 #ifdef	WIN32
 	CLEAR_HEAD(mom_copyreqs_list);
 
@@ -9237,7 +9255,7 @@ main(int argc, char *argv[])
 	}
 
 	rpp_fd = -1;
-	if (init_network_add(sock_bind_mom, process_request) != 0) {
+	if (init_network_add(sock_bind_mom, NULL, process_request) != 0) {
 
 		c = ERRORNO;
 		(void)sprintf(log_buffer,
@@ -9257,7 +9275,7 @@ main(int argc, char *argv[])
 		return (3);
 	}
 
-	if (init_network_add(sock_bind_rm, tcp_request) != 0) {
+	if (init_network_add(sock_bind_rm, NULL, tcp_request) != 0) {
 
 		c = ERRORNO;
 		(void)sprintf(log_buffer,
@@ -9321,7 +9339,7 @@ main(int argc, char *argv[])
 	    /* set tcp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
-		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
+		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
 				rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers,
 														pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {
@@ -9642,9 +9660,9 @@ main(int argc, char *argv[])
 #ifndef	WIN32
 	initialize();		/* init RM code */
 #endif
-	(void)add_conn(rppfd, RppComm, (pbs_net_t)0, 0, rpp_request);
+	(void)add_conn(rppfd, RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
 	if (pbs_conf.pbs_use_tcp == 0)
-		(void)add_conn(privfd, RppComm, (pbs_net_t)0, 0, rpp_request);
+		(void)add_conn(privfd, RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
 
 	/* initialize machine dependent polling routines */
 	if ((c = mom_open_poll()) != PBSE_NONE) {

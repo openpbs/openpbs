@@ -97,6 +97,8 @@
 #include "pbs_internal.h"
 #include "pbs_reliable.h"
 
+#include "renew.h"
+
 #define	PIPE_READ_TIMEOUT	5
 #define EXTRA_ENV_PTRS	       32
 
@@ -1147,6 +1149,13 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 	gid_t *grplist = NULL;
 	static int   maxgroups=0;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	int32_t pag = 0;
+	pag = getpag();
+#endif
+#endif
+
 	/* obtain the maximum number of groups possible in the list */
 	if (maxgroups == 0)
 		maxgroups = (int)sysconf(_SC_NGROUPS_MAX);
@@ -1174,6 +1183,14 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 			}
 			grplist[numsup++] = rgid;
 		}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+		if (pag)
+		    grplist[numsup++] = pag;
+#endif
+#endif
+
 		if ((setgroups((size_t)numsup, grplist) != -1) &&
 		    (setgid(egid) != -1) &&
 		    (setuid(euid) != -1)) {
@@ -3224,6 +3241,14 @@ finish_exec(job *pjob)
 	pjob->ji_qs.ji_stime = time_now;
 	pjob->ji_sampletim  = time_now;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	setpag(pjob->ji_extended.ji_ext.ji_pag);
+	if (pjob->ji_extended.ji_ext.ji_pag == 0)
+		pjob->ji_extended.ji_ext.ji_pag = getpag();
+#endif
+#endif
+
 	/*
 	 ** Fork the child process that will become the job.
 	 */
@@ -3246,10 +3271,14 @@ finish_exec(job *pjob)
 		(void)close(parent2child_job_update_status_pipe_r);
 		(void)close(parent2child_moms_status_pipe_r);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		DIS_tcp_setup(jsmpipe[0]);
+#endif
+
 		/* add the pipe to the connection table so we can poll it */
 
 		if ((conn = add_conn(jsmpipe[0], ChildPipe, (pbs_net_t)0,
-				(unsigned int) 0, record_finish_exec)) == NULL) {
+				(unsigned int) 0, NULL, record_finish_exec)) == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					pjob->ji_qs.ji_jobid,
 					"Unable to start job, communication connection table is full");
@@ -3290,7 +3319,7 @@ finish_exec(job *pjob)
 		 */
 		if (prolo_hooks > 0) {
 			if ((conn = add_conn(jsmpipe2[0], ChildPipe,
-				(pbs_net_t)0, (unsigned int)0,
+				(pbs_net_t)0, (unsigned int)0, NULL,
 					receive_pipe_request)) == NULL) {
 				log_event(PBSEVENT_ERROR,
 					PBS_EVENTCLASS_JOB, LOG_ERR,
@@ -3320,7 +3349,7 @@ finish_exec(job *pjob)
 		if (do_tolerate_node_failures(pjob)) {
 
 			if ((conn = add_conn(child2parent_job_update_pipe[0], ChildPipe,
-				(pbs_net_t)0, (unsigned int)0,
+				(pbs_net_t)0, (unsigned int)0, NULL,
 					receive_job_update_request)) == NULL) {
 				log_event(PBSEVENT_ERROR,
 					PBS_EVENTCLASS_JOB, LOG_ERR,
@@ -3430,6 +3459,17 @@ finish_exec(job *pjob)
 		pjob->ji_wattr[(int)JOB_ATR_jobdir].at_flags =
 			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
 #endif	/* SHELL_INVOKE */
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) {
+			send_cred_sisters(pjob);
+		}
+
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+		/* remove afs pag from main process */
+		removepag();
+#endif
+#endif
 
 		return;
 
@@ -3542,6 +3582,12 @@ finish_exec(job *pjob)
 		log_err(ENOMEM, __func__, "out of memory");
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (cred_by_job(ptask->ti_job, CRED_RENEWAL) != PBS_KRB5_OK) {
+		starter_return(upfds, downfds, JOB_EXEC_FAIL_KRB5, &sjr);
+	}
+#endif
 
 	/*  First variables from the local environment */
 
@@ -4699,6 +4745,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	hook			*last_phook = NULL;
 	unsigned int		hook_fail_action = 0;
 	FILE			*temp_stderr = stderr;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	int			cred_action;
+#endif
 
 	pbs_jobdir = jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir);
 	memset(&sjr, 0, sizeof(sjr));
@@ -4828,6 +4877,21 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	if (vtable.v_envp == NULL) {
 		return PBSE_SYSTEM;
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (ptask->ti_job->ji_tasks.ll_prior == ptask->ti_job->ji_tasks.ll_next) {/* create only on first task */
+		cred_action = CRED_RENEWAL;
+	} else {
+		cred_action = CRED_SETENV;
+	}
+
+	if (cred_by_job(ptask->ti_job, cred_action) != PBS_KRB5_OK) {
+		sprintf(log_buffer, "failed to set credentials for task %8.8X",
+			ptask->ti_qs.ti_task);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	}
+#endif
 
 	/* First variables from the local environment */
 	for (j = 0; j < num_var_env; ++j)

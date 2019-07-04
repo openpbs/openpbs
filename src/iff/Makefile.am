@@ -38,14 +38,15 @@
 
 sbin_PROGRAMS = pbs_iff
 
-pbs_iff_CPPFLAGS = -I$(top_srcdir)/src/include
+pbs_iff_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
 
 pbs_iff_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
-	@socket_lib@
+	@socket_lib@ \
+	@KRB5_LIBS@
 
 pbs_iff_SOURCES = iff2.c
 

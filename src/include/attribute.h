@@ -548,6 +548,9 @@ extern int action_resc_dflt_svr(attribute *pattr, void *pobj, int actmode);
 extern int action_jobscript_max_size(attribute *pattr, void *pobj, int actmode);
 extern int action_check_res_to_release(attribute *pattr, void *pobj, int actmode);
 extern int set_max_job_sequence_id(attribute *pattr, void *pobj, int actmode);
+extern int set_cred_renew_enable(attribute *pattr, void *pobject, int actmode);
+extern int set_cred_renew_period(attribute *pattr, void *pobject, int actmode);
+extern int set_cred_renew_cache_period(attribute *pattr, void *pobject, int actmode);
 
 
 /* Extern functions from sched_attr_def*/

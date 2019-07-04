@@ -48,6 +48,7 @@ extern "C" {
 #endif
 
 #define STD		0	/* standard PBS security (pbs_iff program) */
+#define KRB5		1	/* krb5/gssapi based authentication and encryption */
 
 #define CS_SUCCESS		0	/* success			*/
 #define CS_FATAL_NOMEM		1	/* memory allocation failure	*/

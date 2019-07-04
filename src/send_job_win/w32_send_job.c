@@ -318,7 +318,7 @@ main(int argc, char *argv[])
 	}
 
 	(void)init_network(0);
-	(void)init_network_add(-1, NULL);
+	(void)init_network_add(-1, NULL, NULL);
 
 	while (fgets(buf, sizeof(buf), stdin) != NULL) {
 		buf[strlen(buf)-1] = '\0';	/* gets rid of newline */

@@ -205,6 +205,17 @@ extern void DIS_tcp_funcs(void);
 extern void DIS_tcp_reset(int fd, int rw);
 extern void DIS_tcp_setup(int fd);
 extern int  DIS_tcp_wflush(int fd);
+extern void DIS_tcp_release(int fd);
+
+extern void tcp_set_extra(int fd, void *extra);
+extern void *tcp_get_extra(int fd);
+
+#include "pbs_gss.h"
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern int DIS_tcp_gss_wflush(int fd);
+extern void DIS_gss_funcs(void);
+extern int DIS_tcp_gss_set(int fd, gss_extra_t *gss_extra);
+#endif
 
 int diswull(int stream, u_Long value);
 u_Long disrull(int stream, int *retval);

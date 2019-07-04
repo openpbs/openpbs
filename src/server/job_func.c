@@ -135,6 +135,9 @@
 #include "net_connect.h"
 #include "pbs_reliable.h"
 
+#if defined(PBS_MOM) && defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#include "renew.h"
+#endif
 
 /* External functions */
 
@@ -218,6 +221,24 @@ tasks_free(job *pj)
 	}
 }
 #else	/* PBS_MOM */
+
+char *get_job_principal(char *jobid)
+{
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	job *pjob;
+
+	if ((pjob = find_job(jobid)) == NULL)
+		return NULL;
+
+	if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) {
+		return pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str;
+	}
+#endif
+
+	return NULL;
+}
+
+
 /**
  * @brief
  * 		job_abt - abort a job
@@ -363,6 +384,11 @@ job_alloc(void)
 	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = 0;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	pj->ji_extended.ji_ext.ji_pag = 0;
+#endif
+#endif
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -941,6 +967,11 @@ job_purge(job *pjob)
 				pjob->ji_qs.ji_jobid);
 		}
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	delete_cred(pjob->ji_qs.ji_jobid);
+#endif
+
 #else
 	/* delete job and dependants from database */
 	obj.pbs_db_obj_type = PBS_DB_JOB;

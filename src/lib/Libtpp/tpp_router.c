@@ -101,15 +101,15 @@ AVL_IX_DESC *AVL_my_leaves_notify = NULL;
 time_t router_last_leaf_joined = 0;
 
 /* forward declarations */
-static int router_pkt_handler(int phy_fd, void *data, int len, void *c);
-static int router_close_handler(int phy_con, int error, void *c);
+static int router_pkt_handler(int phy_fd, void *data, int len, void *c, void *extra);
+static int router_close_handler(int phy_con, int error, void *c, void *extra);
 static int send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target);
 static tpp_router_t *get_preferred_router(tpp_leaf_t *l, tpp_router_t *this_router, int *fd);
 static int add_route_to_leaf(tpp_leaf_t *l, tpp_router_t *r, int index);
 static tpp_router_t *del_router_from_leaf(tpp_leaf_t *l, int tfd);
 static int leaf_get_router_index(tpp_leaf_t *l, tpp_router_t *r);
 static int router_timer_handler(time_t now);
-static int router_post_connect_handler(int tfd, void *data, void *c);
+static int router_post_connect_handler(int tfd, void *data, void *c, void *extra);
 
 /* structure identifying this router */
 static tpp_router_t *this_router = NULL;
@@ -486,7 +486,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
  *
  */
 static int
-router_post_connect_handler(int tfd, void *data, void *c)
+router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	int rc = 0;
@@ -950,7 +950,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
  *
  */
 static int
-router_close_handler(int tfd, int error, void *c)
+router_close_handler(int tfd, int error, void *c, void *extra)
 {
 	int rc;
 	/* set hop to 1 and send to inner */
@@ -1038,7 +1038,7 @@ router_timer_handler(time_t now)
  *
  */
 static int
-router_pkt_handler(int tfd, void *data, int len, void *c)
+router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	enum TPP_MSG_TYPES type;
@@ -2058,8 +2058,13 @@ tpp_init_router(struct tpp_config *cnf)
 	this_router = r; /* mark this one as this router */
 
 	/* first set the transport handlers */
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	gss_transport_set_handlers(NULL, NULL, router_pkt_handler, router_close_handler, router_post_connect_handler,
+		router_timer_handler);
+#else
 	tpp_transport_set_handlers(NULL, NULL, router_pkt_handler, router_close_handler, router_post_connect_handler,
 		router_timer_handler);
+#endif
 
 	if ((tpp_transport_init(tpp_conf)) == -1)
 		return -1;
