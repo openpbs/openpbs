@@ -2892,13 +2892,11 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					job->job->is_susp_sched = 1;
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by suspension");
-					job->can_not_run = 1;
 				} else if (preempt_jobs_reply[i].order[0] == 'C') {
 					job->job->is_checkpointed = 1;
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by checkpointing");
-					job->can_not_run = 1;
 				} else if (preempt_jobs_reply[i].order[0] == 'Q') {
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,

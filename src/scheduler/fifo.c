@@ -1038,7 +1038,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
 			if(sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED) {
 				resresv_set *ec = sinfo->equiv_classes[njob->ec_index];
-				if (rc != RUN_FAILURE &&  !ec->can_not_run) {
+				if (rc != RUN_FAILURE &&  !ec->can_not_run && !(njob->job->is_susp_sched || njob->job->is_checkpointed)) {
 					ec->can_not_run = 1;
 					ec->err = dup_schd_error(err);
 				}
