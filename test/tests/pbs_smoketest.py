@@ -675,7 +675,8 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         # Given node configuration of 8 cpus the only jobs that could run are
         # j4id j1id and j3id
-        self.server.expect(JOB, {'job_state=R': 3})
+        self.server.expect(JOB, {'job_state=R': 3},
+                           trigger_sched_cycle=False)
         cycle = self.scheduler.cycles(start=self.server.ctime, lastN=2)
         if len(cycle) > 0:
             i = len(cycle) - 1

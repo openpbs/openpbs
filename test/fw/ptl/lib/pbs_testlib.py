@@ -8128,7 +8128,7 @@ class Server(PBSService):
 
         # Add check for substate=42 for jobstate=R, if not added explicitly.
         if obj_type == JOB:
-            add_attribs = {'substate': False}
+            add_attribs = {}
             substate = False
             for k, v in attrib.items():
                 if k == 'job_state' and ((isinstance(v, tuple) and
@@ -8138,8 +8138,8 @@ class Server(PBSService):
                     add_attribs['substate=42'] = v
                 elif 'substate' in k:
                     substate = True
-            if add_attribs['substate'] and not substate:
-                attrib['substate'] = add_attribs['substate']
+            if add_attribs and not substate:
+                attrib.update(add_attribs)
                 attrop = PTL_AND
             del add_attribs, substate
 
