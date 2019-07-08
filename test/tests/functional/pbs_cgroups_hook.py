@@ -194,6 +194,7 @@ if sleeptime > 0:
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
+            'sync\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'python - 200 2 10 <<EOF\n' \
             '%s\nEOF\n' \
