@@ -1202,13 +1202,13 @@ if %s e.job.in_ms_mom():
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
         usage = int(match.groups()[0])
-        self.assertGreater(30000, usage)
+        self.assertGreater(300000, usage)
         if self.swapctl == 'true':
             vmem = qstat[0]['resources_used.vmem']
             match = re.match(r'(\d+)kb', vmem)
             self.assertFalse(match is None)
             usage = int(match.groups()[0])
-            self.assertGreater(30000, usage)
+            self.assertGreater(300000, usage)
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
         self.moms_list[0].log_match(err_msg, max_attempts=3,
