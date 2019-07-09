@@ -4588,7 +4588,7 @@ class Server(PBSService):
 
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  snapmap={}, snap=None, client=None, client_pbsconf_file=None,
-                 db_access=None, stat=True):
+                 db_access=None, stat=True, uais=None):
         self.jobs = {}
         self.nodes = {}
         self.reservations = {}
@@ -4629,6 +4629,8 @@ class Server(PBSService):
         self.pi = PBSInitServices(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
         self.set_client(client)
+
+        self.set_uais(uais)
 
         if client_pbsconf_file is None:
             self.client_pbs_conf_file = self.du.get_pbs_conf_file(self.client)
@@ -4723,6 +4725,17 @@ class Server(PBSService):
             self.client = socket.gethostname()
         else:
             self.client = name
+
+    def set_uais(self, uais=None):
+        """
+        Set uais
+
+        :param uais: Dictionary of uais
+        :type uais: dict
+        """
+        if uais:
+            self.logger.info('Setting uais to %s' % (str(uais)))
+        self.uais = uais
 
     def _connect(self, hostname, attempt=1):
         if ((self._conn is None or self._conn < 0) or
@@ -5556,7 +5569,10 @@ class Server(PBSService):
                                                   attrib, id=id)
         # 6- Stat using PBS CLI commands
         elif self.get_op_mode() == PTL_CLI:
-            tgt = self.client
+            if runas in self.uais:
+                tgt = self.uais[runas]
+            else:
+                tgt = self.client
             if obj_type in (JOB, QUEUE, SERVER):
                 pcmd = [os.path.join(
                         self.client_conf['PBS_EXEC'],
@@ -5994,7 +6010,8 @@ class Server(PBSService):
                     'PBS_CONF_FILE=' + self.client_pbs_conf_file] + runcmd
                 as_script = True
 
-            ret = self.du.run_cmd(self.client, runcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, runcmd, runas=runas,
                                   level=logging.INFOCLI, as_script=as_script,
                                   logerr=False)
             if ret['rc'] != 0:
@@ -6160,7 +6177,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, logerr=logerr,
                                   level=logging.INFOCLI)
             rc = ret['rc']
@@ -6235,7 +6253,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, logerr=logerr,
                                   level=logging.INFOCLI)
             rc = ret['rc']
@@ -6380,7 +6399,8 @@ class Server(PBSService):
             else:
                 as_script = False
 
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             if ret['err'] != ['']:
@@ -6750,7 +6770,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -6842,7 +6863,8 @@ class Server(PBSService):
             else:
                 as_script = False
 
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -6918,7 +6940,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -6988,7 +7011,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   logerr=logerr, as_script=as_script,
                                   level=logging.INFOCLI)
             rc = ret['rc']
@@ -7057,7 +7081,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -7121,7 +7146,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -7187,7 +7213,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -7264,7 +7291,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']
@@ -7339,7 +7367,8 @@ class Server(PBSService):
             else:
                 as_script = False
 
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   logerr=logerr, as_script=as_script,
                                   level=logging.INFOCLI)
             rc = ret['rc']
@@ -7436,7 +7465,8 @@ class Server(PBSService):
             else:
                 as_script = False
 
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   level=logging.INFOCLI, as_script=as_script)
             rc = ret['rc']
             if ret['err'] != ['']:
@@ -7511,7 +7541,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             if ret['err'] != ['']:
@@ -7558,7 +7589,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             if ret['err'] != ['']:
@@ -7605,7 +7637,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             if ret['err'] != ['']:
@@ -7651,7 +7684,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             if ret['err'] != ['']:
@@ -8015,7 +8049,8 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+            tgt = self.uais.get(runas, self.client)
+            ret = self.du.run_cmd(tgt, pcmd, runas=runas,
                                   as_script=as_script, level=logging.INFOCLI,
                                   logerr=logerr)
             rc = ret['rc']

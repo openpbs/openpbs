@@ -596,7 +596,7 @@ class PTLTestRunner(Plugin):
         tparam_contents = {}
         nomomlist = []
         shortname = (socket.gethostname()).split('.', 1)[0]
-        for key in ['servers', 'moms', 'comms', 'clients']:
+        for key in ['servers', 'moms', 'comms', 'clients', 'uais']:
             tparam_contents[key] = []
         if self.param is not None:
             for h in self.param.split(','):
@@ -612,7 +612,9 @@ class PTLTestRunner(Plugin):
                         tparam_contents['clients'] = v.split(':')
                     elif k == 'nomom':
                         nomomlist = v.split(':')
-        for pkey in ['servers', 'moms', 'comms', 'clients']:
+                    elif k == 'uais':
+                        tparam_contents['uais'].extend(v.split(':'))
+        for pkey in ['servers', 'moms', 'comms', 'clients', 'uais']:
             if not tparam_contents[pkey]:
                 tparam_contents[pkey] = set([shortname])
             else:
