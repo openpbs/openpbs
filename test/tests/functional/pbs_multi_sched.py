@@ -963,12 +963,12 @@ class TestMultipleSchedulers(TestFunctional):
         j2 = Job(TEST_USER1, attrs={ATTR_queue: 'wq1'})
         jid2 = self.server.submit(j2)
 
-        t_start = int(time.time())
+        t_start = time.time()
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
         self.scheds['sc1'].log_match(
             'Leaving Scheduling Cycle', starttime=t_start)
-        t_end = int(time.time())
+        t_end = time.time()
         job_list = self.scheds['sc1'].log_match(
             'Considering job to run', starttime=t_start,
             allmatch=True, endtime=t_end)
@@ -1002,12 +1002,12 @@ class TestMultipleSchedulers(TestFunctional):
         j2 = Job(TEST_USER1, attrs={ATTR_queue: 'wq1'})
         jid2 = self.server.submit(j2)
 
-        t_start = int(time.time())
+        t_start = time.time()
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
         self.scheds['sc1'].log_match(
             'Leaving Scheduling Cycle', starttime=t_start)
-        t_end = int(time.time())
+        t_end = time.time()
         job_list = self.scheds['sc1'].log_match(
             'Considering job to run', starttime=t_start,
             allmatch=True, endtime=t_end)

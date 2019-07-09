@@ -225,13 +225,13 @@ class TestPBSTestSuite(TestSelf):
         # Set a non-default pbs.conf variables, let's say
         # PBS_LOG_HIGHRES_TIMESTAMP, and restart PBS
         self.server.pi.stop()
-        pbs_conf_val["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+        pbs_conf_val["PBS_LOCALLOG"] = "1"
         self.du.set_pbs_config(confs=pbs_conf_val)
         self.server.pi.start()
 
         # Confirm that the pbs.conf variable is set
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
-        self.assertEqual(pbs_conf_val["PBS_LOG_HIGHRES_TIMESTAMP"], "1")
+        self.assertEqual(pbs_conf_val["PBS_LOCALLOG"], "1")
 
         # Now, call self.revert_pbsconf()
         self.revert_pbsconf()
@@ -239,7 +239,7 @@ class TestPBSTestSuite(TestSelf):
         # Confirm that the value gets removed from the list as it is not
         # a default setting
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
-        self.assertFalse("PBS_LOG_HIGHRES_TIMESTAMP" in pbs_conf_val)
+        self.assertFalse("PBS_LOCALLOG" in pbs_conf_val)
 
     def test_revert_pbsconf_fewer_vars(self):
         """
