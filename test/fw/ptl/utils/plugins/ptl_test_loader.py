@@ -38,6 +38,7 @@
 import os
 import sys
 import logging
+import copy
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.pbs_dshutils import DshUtils
@@ -168,11 +169,12 @@ class PTLTestLoader(Plugin):
         Check for unknown test suite and test case
         """
         log.debug('check_unknown called')
-        only_ts = self.__tests_list_copy.pop(self._only_ts)
-        only_tc = self.__tests_list_copy.pop(self._only_tc)
+        tests_list_copy = copy.deepcopy(self.__tests_list_copy)
+        only_ts = tests_list_copy.pop(self._only_ts)
+        only_tc = tests_list_copy.pop(self._only_tc)
         msg = []
-        if len(self.__tests_list_copy) > 0:
-            for k, v in self.__tests_list_copy.items():
+        if len(tests_list_copy) > 0:
+            for k, v in tests_list_copy.items():
                 msg.extend(map(lambda x: k + '.' + x, v))
         if len(only_tc) > 0:
             msg.extend(only_tc)
@@ -193,6 +195,7 @@ class PTLTestLoader(Plugin):
         old_loadTestsFromNames = loader.loadTestsFromNames
 
         def check_loadTestsFromNames(names, module=None):
+            tests_dir = names
             if not self.testfiles:
                 self._du = DshUtils()
                 ptl_test_dir = self._du.which(exe='pbs_benchpress')
@@ -200,28 +203,15 @@ class PTLTestLoader(Plugin):
                                                     'tests')
                 user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
                 if user_test_dir is not None:
-                    if os.path.isdir(user_test_dir):
-                        if os.path.isdir(ptl_test_dir):
-                            rv = old_loadTestsFromNames(
-                                names + [ptl_test_dir, user_test_dir], module)
-                        else:
-                            rv = old_loadTestsFromNames(
-                                names + [user_test_dir], module)
-                    else:
-                        if os.path.isdir(ptl_test_dir):
-                            rv = old_loadTestsFromNames(names +
-                                                        [ptl_test_dir], module)
-                else:
-                    if os.path.isdir(ptl_test_dir):
-                        rv = old_loadTestsFromNames(names +
-                                                    [ptl_test_dir], module)
-                    else:
-                        rv = old_loadTestsFromNames(names, module)
+                    tests_dir += [user_test_dir]
+                if os.path.isdir(ptl_test_dir):
+                    tests_dir += [ptl_test_dir]
+                rv = old_loadTestsFromNames(tests_dir, module)
             else:
                 rv = old_loadTestsFromNames(names, module)
             self.check_unknown()
             return rv
-
+        
         loader.loadTestsFromNames = check_loadTestsFromNames
         return loader
 
