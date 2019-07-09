@@ -167,7 +167,7 @@ dup_range_list(range *old_r)
 	while (cur_old_r != NULL) {
 		new_r = dup_range(cur_old_r);
 		if (new_r == NULL) {
-			free_range(new_r_head);
+			free_range_list(new_r_head);
 			return NULL;
 		}
 

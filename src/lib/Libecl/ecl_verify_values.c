@@ -339,7 +339,7 @@ verify_value_path(int batch_request, int parent_object, int cmd,
 {
 	char *path_out;
 
-	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+	if ((pattr == NULL) || (pattr->value == NULL) || (pattr->value[0] == '\0'))
 		return PBSE_BADATVAL;
 
 	path_out = malloc(MAXPATHLEN + 1);

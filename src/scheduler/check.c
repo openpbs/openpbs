@@ -502,19 +502,21 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 		/* Now, go backwards in the events list */
 		for (te = farthest_event; retry_count != 0;
 			te = find_prev_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
-			/* If there are no events left to check or if we have reached the front of event list or
-			 * if the event is falling before min end time, break.
-			 */
 			if (te == NULL)
 			{
+				/* If we've reached the end of the list, we're done */
+				if (last_skipped_event == NULL)
+					break;
 				te = last_skipped_event;
 				last_skipped_event = NULL;
 				/* No need to try next segments after this event as there are no events left */
 				retry_count = 0;
-			} else if ((te == NULL && last_skipped_event == NULL) || te == initial_event || te->event_time < min_end_time)
+			/* If we have reached the front of event list or if the event is falling before min end time, break. */
+			} else if (te == initial_event || te->event_time < min_end_time)
 				break;
-			/* If no events in this segment, then try last skipped event of the previous segment */
-			/* Skip events that fall in the previous segment or if the event time is already tried */
+			/* If no events in this segment, then try last skipped event of the previous segment
+			 * Skip events that fall in the previous segment or if the event time is already tried 
+			 */
 			else if (te->event_time > end_time || te->event_time == last_tried_event_time) {
 				last_skipped_event = te;
 				continue;

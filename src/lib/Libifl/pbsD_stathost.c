@@ -672,7 +672,7 @@ build_collective(struct batch_status *pbs,
 				else
 					cupatl->next = nwpatl;
 				if ((nwpatl->name = strdup(attr_names[i].an_name)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
@@ -693,40 +693,37 @@ build_collective(struct batch_status *pbs,
 	/* then for resources_assigned				    */
 
 	for (i = 0; i < consumable_size; ++i) {
-		if ((consum+i)->cons_set == 0)
+		if ((consum + i)->cons_set == 0)
 			continue;
-		if ((consum+i)->cons_consum) {
+		if ((consum + i)->cons_consum) {
 			sprintf(convtbuf, "%lld", (consum+i)->cons_avail_sum);
 			if ((consum+i)->cons_k)
 				strcat(convtbuf, "kb");
 			dup = convtbuf;
 		} else {
-			dup = (consum+i)->cons_avail_str;
+			dup = (consum + i)->cons_avail_str;
 		}
 		if (dup != NULL) {
-			nwpatl = malloc(sizeof(struct attrl));
+			nwpatl = new_attrl();
 
 			if (nwpatl) {
 				if (hdpatl == NULL)
 					hdpatl = nwpatl;
 				else
 					cupatl->next = nwpatl;
-				nwpatl->next     = NULL;
+				nwpatl->next = NULL;
 				if ((nwpatl->name = strdup(ATTR_rescavail)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->resource = strdup((consum+i)->cons_resource)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->value = strdup(dup)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl->resource);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
@@ -754,20 +751,17 @@ build_collective(struct batch_status *pbs,
 				else
 					cupatl->next = nwpatl;
 				if ((nwpatl->name = strdup(ATTR_rescassn)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->resource = strdup((consum+i)->cons_resource)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->value = strdup(convtbuf)) == NULL) {
-					free(nwpatl->resource);
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}

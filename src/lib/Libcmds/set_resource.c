@@ -159,7 +159,6 @@ set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
 		if (str == NULL) {
 			free(v);
 			free_attrl(attr);
-			free(str);
 			fprintf(stderr, "Out of memory\n");
 			return 2;
 		}

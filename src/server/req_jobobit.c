@@ -2166,6 +2166,7 @@ RetryJob:
 
 				FREE_RUU(pruu)
 				free(mailbuf);
+				free(acctbuf);
 				return;
 
 			case JOB_EXEC_INITRMG:

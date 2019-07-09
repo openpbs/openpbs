@@ -6073,7 +6073,6 @@ aterr:
 			info = disrcs(fd, &len, &ret);
 			if (ret != DIS_SUCCESS) {
 				free(name);
-				free(info);
 				sprintf(log_buffer, bail_format, "POSTINFO info");
 				goto err;
 			}

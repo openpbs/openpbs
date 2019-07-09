@@ -1235,7 +1235,7 @@ main(int argc, char *argv[])
 					return 1;
 				}
 				generate_json(stdout);
-				free_json_node();
+				free_json_node_list();
 			}
 			pbs_statfree(bstat_head);
 
@@ -1288,7 +1288,7 @@ main(int argc, char *argv[])
 					exit(1);
 				}
 				generate_json(stdout);
-				free_json_node();
+				free_json_node_list();
 			}
 
 			break;
@@ -1359,7 +1359,7 @@ main(int argc, char *argv[])
 					exit(1);
 				}
 				generate_json(stdout);
-				free_json_node();
+				free_json_node_list();
 			}
 			pbs_statfree(bstat_head);
 			break;

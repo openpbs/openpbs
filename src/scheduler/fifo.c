@@ -2434,12 +2434,8 @@ sched_settings_frm_svr(struct batch_status *status)
 		attr = attr->next;
 	}
 
-	if (tmp_priv_dir == NULL || tmp_log_dir == NULL) {
-		free(tmp_priv_dir);
-		free(tmp_log_dir);
-		free(tmp_comment);
-		return 0;
-	}
+	if (tmp_priv_dir == NULL || tmp_log_dir == NULL)
+		goto cleanup;
 
 	if (!dflt_sched) {
 		int err;

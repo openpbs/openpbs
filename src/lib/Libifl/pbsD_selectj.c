@@ -98,6 +98,7 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0) {
+		/* Even though ret is a char **, PBSD_select_get() allocated all its memory in one malloc() */
 		free(ret);
 		return NULL;
 	}

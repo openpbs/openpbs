@@ -39,4 +39,4 @@ struct JsonNode{
 JsonNode* add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value);
 char *strdup_escape(JsonEscapeType esc_type, const char *str);
 int  generate_json(FILE *stream);
-void free_json_node();
+void free_json_node_list();
