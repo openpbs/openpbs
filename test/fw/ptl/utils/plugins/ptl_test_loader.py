@@ -211,7 +211,6 @@ class PTLTestLoader(Plugin):
                 rv = old_loadTestsFromNames(names, module)
             self.check_unknown()
             return rv
-        
         loader.loadTestsFromNames = check_loadTestsFromNames
         return loader
 
