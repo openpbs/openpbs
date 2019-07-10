@@ -416,6 +416,57 @@ job_alloc(void)
 	return (pj);
 }
 
+#ifndef PBS_MOM
+
+/**
+ * @brief
+ * 	free work tasks and pending batch requests related to this job
+ *
+ * @param[in]	pj - pointer to job structure
+ *
+ * @return	void
+ */
+void
+free_job_work_tasks(job *pj)
+{
+	struct work_task *pwt;
+	struct batch_request *tbr = NULL;
+	/*
+	* Delete any work task entries associated with the job.
+	* mom deferred tasks via TPP are also hooked into the
+	* ji_svrtask now, so they also get automatically cleared
+	* in this following loop
+	*/
+	while ((pwt = (struct work_task *)GET_NEXT(pj->ji_svrtask)) != NULL) {
+		if (pwt->wt_type == WORK_Deferred_Reply) {
+			tbr = (struct batch_request *)pwt->wt_parm1;
+			if (tbr != NULL) {
+				/* Check if the reply is for scheduler
+					* If so, then reject the request.
+					*/
+				if ((tbr->rq_orgconn != -1) &&
+					(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
+					tbr->rq_conn = tbr->rq_orgconn;
+					req_reject(PBSE_HISTJOBID, 0, tbr);
+				}
+				/*
+				* free batch request from task struct
+				* if task is deferred reply
+				*/
+				else
+					free_br(tbr);
+			}
+		}
+
+		/* wt_event2 either has additional data (like msgid) or NULL */
+		free(pwt->wt_event2);
+
+		delete_task(pwt);
+	}
+
+}
+#endif
+
 /**
  * @brief
  * 		job_free - free job structure and its various sub-structures
@@ -466,43 +517,9 @@ job_free(job *pj)
 #ifndef PBS_MOM
 	{
 		/* Server only */
-
-		struct work_task	*pwt;
 		badplace		*bp;
-		struct batch_request	*tbr = NULL;
 
-		/*
-		 * Delete any work task entries associated with the job.
-		 * mom deferred tasks via TPP are also hooked into the
-		 * ji_svrtask now, so they also get automatically cleared
-		 * in this following loop
-		 */
-		while ((pwt = (struct work_task *)GET_NEXT(pj->ji_svrtask)) != NULL) {
-			if (pwt->wt_type == WORK_Deferred_Reply) {
-				tbr = (struct batch_request *)pwt->wt_parm1;
-				if (tbr != NULL) {
-					/* Check if the reply is for scheduler
-					 * If so, then reject the request.
-					 */
-					if ((tbr->rq_orgconn != -1) &&
-						(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
-						tbr->rq_conn = tbr->rq_orgconn;
-						req_reject(PBSE_HISTJOBID, 0, tbr);
-					}
-					/*
-					* free batch request from task struct
-					* if task is deferred reply
-					*/
-					else
-					        free_br(tbr);
-				}
-			}
-
-			/* wt_event2 either has additional data (like msgid) or NULL */
-			free(pwt->wt_event2);
-
-			delete_task(pwt);
-		}
+		free_job_work_tasks(pj);
 
 		/* free any bad destination structs */
 

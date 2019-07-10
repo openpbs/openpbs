@@ -830,6 +830,8 @@ on_job_exit(struct work_task *ptask)
 					(preq->rq_reply.brp_code == DIS_EOD)) {
 					/* connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_exit);
+					free_br(preq);
+					preq = NULL;
 					return;
 				}
 
@@ -859,7 +861,7 @@ on_job_exit(struct work_task *ptask)
 			 */
 
 			free_br(preq);
-			preq = 0;
+			preq = NULL;
 			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 				JOB_SUBSTATE_STAGEDEL);
 			ptask->wt_type = WORK_Immed;
@@ -920,6 +922,8 @@ on_job_exit(struct work_task *ptask)
 					(preq->rq_reply.brp_code == DIS_EOD)) {
 					/* tcp connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_exit);
+					free_br(preq);
+					preq = NULL;
 					return;
 				}
 				if (preq->rq_reply.brp_code == PBSE_TRYAGAIN) {
@@ -929,8 +933,10 @@ on_job_exit(struct work_task *ptask)
 					t = pjob->ji_retryok++;
 					t = time_now + (t * t);
 					ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
-						);
+					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+
+					free_br(preq);
+					preq = NULL;
 					return;
 				}
 
@@ -948,7 +954,7 @@ on_job_exit(struct work_task *ptask)
 				svr_mailowner(pjob, MAIL_OTHER, MAIL_FORCE, log_buffer);
 			}
 			free_br(preq);
-			preq = 0;
+			preq = NULL;
 			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 				JOB_SUBSTATE_EXITED);
 
@@ -1017,6 +1023,8 @@ on_job_exit(struct work_task *ptask)
 				(preq->rq_reply.brp_code == DIS_EOD)) {
 				/* tcp connection to Mom broken */
 				conn_to_mom_failed(pjob, on_job_exit);
+				free_br(preq);
+				preq = NULL;
 				return;
 			} else if (preq->rq_reply.brp_code == PBSE_TRYAGAIN) {
 				/* Mom hasn't finished her post processing yet,
@@ -1025,8 +1033,10 @@ on_job_exit(struct work_task *ptask)
 				t = pjob->ji_retryok++;
 				t = time_now + (t * t);
 				ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
-				append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
-					);
+				append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+				
+				free_br(preq);
+				preq = NULL;
 				return;
 			} else {
 				/* all went ok with the delete by Mom(s) */
@@ -1250,6 +1260,8 @@ on_job_rerun(struct work_task *ptask)
 					(preq->rq_reply.brp_code == DIS_EOD)) {
 					/* tcp connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_rerun);
+					free_br(preq);
+					NULL;
 					return;
 				}
 				on_exitrerun_msg(pjob, msg_obitnocpy);
@@ -1258,7 +1270,7 @@ on_job_rerun(struct work_task *ptask)
 				JOB_SUBSTATE_RERUN1);
 			ptask->wt_type = WORK_Immed;
 			free_br(preq);
-			preq = 0;
+			preq = NULL;
 
 			/* NO BREAK, FALL THROUGH TO NEXT CASE, including the request */
 
@@ -1306,6 +1318,8 @@ on_job_rerun(struct work_task *ptask)
 					(preq->rq_reply.brp_code == DIS_EOD)) {
 					/* tcp connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_rerun);
+					free_br(preq);
+					preq = NULL;
 					return;
 				}
 				on_exitrerun_msg(pjob, msg_obitnocpy);
@@ -1328,7 +1342,7 @@ on_job_rerun(struct work_task *ptask)
 			 */
 
 			free_br(preq);
-			preq = 0;
+			preq = NULL;
 			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 				JOB_SUBSTATE_RERUN2);
 			ptask->wt_type = WORK_Immed;
@@ -1372,13 +1386,15 @@ on_job_rerun(struct work_task *ptask)
 					(preq->rq_reply.brp_code == DIS_EOD)) {
 					/* tcp connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_rerun);
+					free_br(preq);
+					preq = NULL;
 					return;
 				}
 				/* for other errors, just log it */
 				on_exitrerun_msg(pjob, msg_obitnocpy);
 			}
 			free_br(preq);
-			preq = 0;
+			preq = NULL;
 			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 				JOB_SUBSTATE_RERUN3);
 			ptask->wt_type = WORK_Immed;
@@ -1438,6 +1454,8 @@ on_job_rerun(struct work_task *ptask)
 				(preq->rq_reply.brp_code == DIS_EOD)) {
 				/* tcp connection to Mom broken */
 				conn_to_mom_failed(pjob, on_job_rerun);
+				free_br(preq);
+				preq = NULL;
 				return;
 			} else {
 				/* all went ok with the delete by Mom(s) */
