@@ -287,3 +287,25 @@ class TestPBSTestSuite(TestSelf):
 
         # Make sure the default config is back
         self.assertEqual(self.mom.parse_config(), c2)
+
+    def test_revert_conf_highres_logging(self):
+        """
+        Test that if PBS_LOG_HIGHRES_TIMESTAMP by default is set to 1 and
+        if its value is changed in the test it will be reverted to 1 by
+        revert_pbsconf()
+        """
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("1", highres_val)
+
+        a = {'PBS_LOG_HIGHRES_TIMESTAMP': "0"}
+        self.du.set_pbs_config(confs=a, append=True)
+        self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("0", highres_val)
+
+        self.revert_pbsconf()
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("1", highres_val)

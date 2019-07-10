@@ -983,10 +983,9 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_comm = True
-            if "PBS_LOG_HIGHRES_TIMESTAMP" not in new_pbsconf  or \
-            new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
-                restart_pbs = True
+                restart_comm = True
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1061,10 +1060,9 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_mom = True
-            if "PBS_LOG_HIGHRES_TIMESTAMP" not in new_pbsconf  or \
-            new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
-                restart_pbs = True
+                restart_mom = True
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1153,7 +1151,7 @@ class PBSTestSuite(unittest.TestCase):
                 # instead of making PTL start each of them one at a time
                 restart_pbs = True
 
-            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_SERVER 
+            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_SERVER
             # and PBS_LOG_HIGHRES_TIMESTAMP
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
@@ -1166,8 +1164,7 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_pbs = True
-            if "PBS_LOG_HIGHRES_TIMESTAMP" not in new_pbsconf  or \
-            new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
                 restart_pbs = True
 
