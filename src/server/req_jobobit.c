@@ -1261,7 +1261,7 @@ on_job_rerun(struct work_task *ptask)
 					/* tcp connection to Mom broken */
 					conn_to_mom_failed(pjob, on_job_rerun);
 					free_br(preq);
-					NULL;
+					preq = NULL;
 					return;
 				}
 				on_exitrerun_msg(pjob, msg_obitnocpy);
