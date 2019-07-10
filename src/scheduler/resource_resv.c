@@ -1202,6 +1202,14 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 		if (resresv->job->is_suspended) {
 			for (ns_size = 0; nspec_arr[ns_size] != NULL; ns_size++)
 				nspec_arr[ns_size]->ninfo->num_susp_jobs--;
+			if (resresv->job->resreleased != NULL) {
+				free_nspecs(resresv->job->resreleased);
+				resresv->job->resreleased = NULL;
+			}
+			if (resresv->job->resreq_rel != NULL) {
+				free_resource_req_list(resresv->job->resreq_rel);
+				resresv->job->resreq_rel = NULL;
+			}
 		}
 
 		set_job_state("R", resresv->job);

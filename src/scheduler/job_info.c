@@ -2774,10 +2774,6 @@ struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv)
 	if (get_job_req_used_time(resresv, &req, &used) != 0)
 		return NULL;
 
-	if (req == -1 || used == -1)
-		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
-				"No walltime/cput to determine percent of time left - will use first preempt order");
-
 	po = get_preemption_order(conf.preempt_order, req, used);
 
 	return po;
@@ -2888,9 +2884,10 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 				int update_accrue_type = 1;
 				preempted_list[preempted_count++] = job->rank;
 				if (preempt_jobs_reply[i].order[0] == 'S') {
-					/* Set resources_released and execselect on the job */
-					create_res_released(policy, job);
-
+					if (policy->rel_on_susp != NULL) {
+						/* Set resources_released and execselect on the job */
+						create_res_released(policy, job);
+					}
 					update_universe_on_end(policy, job, "S", NO_FLAGS);
 					job->job->is_susp_sched = 1;
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3247,7 +3244,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		po = schd_get_preempt_order(pjob);
 		if (po != NULL) {
-			if (po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
+			if (policy->rel_on_susp != NULL && po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
 				pjob->job->resreleased = create_res_released_array(npolicy, pjob);
 				pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
 			}
@@ -3255,7 +3252,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
-		if ( nsinfo->calendar != NULL ) {
+		if (nsinfo->calendar != NULL) {
 			te = find_timed_event(nsinfo->calendar->events, 0, pjob->name, TIMED_END_EVENT, 0);
 			if (te != NULL) {
 				if (delete_event(nsinfo, te, DE_NO_FLAGS) == 0)
