@@ -191,7 +191,10 @@ extern long 	svr_history_duration;
 
 extern void resv_retry_handler(struct work_task *);
 
-/* Global Data Items */
+/* external functions */
+#ifndef PBS_MOM
+extern void free_job_work_tasks(job *);
+#endif
 
 /* Private Functions */
 
@@ -5343,7 +5346,6 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	int newstate = 0;
 	int newsubstate = 0;
 	struct ajtrkhd *ptbl = NULL;
-	struct work_task *pwt = NULL;
 
 	if (type == T_MOV_JOB) { /* MOVED job */
 		char *destination = pjob->ji_qs.ji_destin;
@@ -5503,14 +5505,9 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 
 	/*
 	 * Work tasks on history jobs are not required and may change the
-	 * history info which is dangerous, so better delete them. Walk
-	 * through the work task list of the job and delete them using
-	 * delete_task().
+	 * history info which is dangerous, so better delete them.
 	 */
-	while ((pwt = (struct work_task *)GET_NEXT(pjob->ji_svrtask)) != NULL) {
-		free(pwt->wt_event2);	/* wt_event2 either has additional data (like msgid) or NULL */
-		delete_task(pwt);
-	}
+	free_job_work_tasks(pjob);
 
 }
 
