@@ -203,7 +203,7 @@ free_json_node(JsonNode *node)
 
 /**
  * @brief
- *	frees a json node
+ *	frees the json node list
  *
  * @return	Void
  *
