@@ -223,7 +223,7 @@ class TestPBSTestSuite(TestSelf):
                         (self.server.hostname))
 
         # Set a non-default pbs.conf variables, let's say
-        # PBS_LOG_HIGHRES_TIMESTAMP, and restart PBS
+        # PBS_LOCALLOG, and restart PBS
         self.server.pi.stop()
         pbs_conf_val["PBS_LOCALLOG"] = "1"
         self.du.set_pbs_config(confs=pbs_conf_val)
