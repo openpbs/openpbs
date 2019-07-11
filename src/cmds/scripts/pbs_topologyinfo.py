@@ -257,7 +257,7 @@ def socketXMLstart(name, attrs):
             inventory.gpudevices += 1
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "1" and
-                attrs.get("name").startswith("control")):
+                attrs.get("name").startswith("controlD")):
             if (inventory.gpudevices > 0):
                 inventory.gpudevices -= 1
         if (name == "object" and attrs.get("type") == "OSDev" and
