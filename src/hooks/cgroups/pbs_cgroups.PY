@@ -4102,6 +4102,10 @@ class CgroupUtils(object):
                     pass
         # Give the OS a moment to update the tasks file
         time.sleep(0.1)
+        # After killing processes, tasks file could disappear when cgroup
+        # parent dir is cleaned up,
+        if not os.path.isfile(tasks_file):
+            return 0
         count = 0
         with open(tasks_file, 'r') as tasks_desc:
             for line in tasks_desc:
