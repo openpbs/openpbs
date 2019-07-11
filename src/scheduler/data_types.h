@@ -854,9 +854,6 @@ struct resresv_set
 	place *place_spec;		/* place spec of set */
 	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */
 	queue_info *qinfo;		/* The queue the resresv is in if the queue has nodes associated */
-
-	resource_resv **resresv_arr;	/* The resresvs in the set */
-	int num_resresvs;		/* The number of resresvs in the set */
 };
 
 struct node_partition
