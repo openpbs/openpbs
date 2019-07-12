@@ -79,3 +79,4 @@ class TestConf(TestFunctional):
         self.assertTrue(self.server.isUp(), 'Failed to start PBS')
         logmsg = "Could not contact Scheduler"
         self.server.log_match(logmsg, starttime=now)
+
