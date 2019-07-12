@@ -4102,30 +4102,30 @@ class CgroupUtils(object):
                     pass
         # Give the OS a moment to update the tasks file
         time.sleep(0.1)
-        # After killing processes, tasks file could disappear when cgroup
-        # parent dir is cleaned up,
-        if not os.path.isfile(tasks_file):
-            return 0
         count = 0
-        with open(tasks_file, 'r') as tasks_desc:
-            for line in tasks_desc:
-                count += 1
-                pid = line.strip()
-                filename = os.path.join(os.sep, 'proc', pid, 'status')
-                statlist = []
-                try:
-                    with open(filename, 'r') as status_desc:
-                        for line2 in status_desc:
-                            if line2.find('Name:') != -1:
-                                statlist.append(line2.strip())
-                            if line2.find('State:') != -1:
-                                statlist.append(line2.strip())
-                            if line2.find('Uid:') != -1:
-                                statlist.append(line2.strip())
-                except Exception:
-                    pass
-                pbs.logmsg(pbs.EVENT_DEBUG2, '%s: PID %s survived: %s' %
-                           (caller_name(), pid, statlist))
+        try:
+            with open(tasks_file, 'r') as tasks_desc:
+                for line in tasks_desc:
+                    count += 1
+                    pid = line.strip()
+                    filename = os.path.join(os.sep, 'proc', pid, 'status')
+                    statlist = []
+                    try:
+                        with open(filename, 'r') as status_desc:
+                            for line2 in status_desc:
+                                if line2.find('Name:') != -1:
+                                    statlist.append(line2.strip())
+                                if line2.find('State:') != -1:
+                                    statlist.append(line2.strip())
+                                if line2.find('Uid:') != -1:
+                                    statlist.append(line2.strip())
+                    except Exception:
+                        pass
+                    pbs.logmsg(pbs.EVENT_DEBUG2, '%s: PID %s survived: %s' %
+                               (caller_name(), pid, statlist))
+        except Exception as exc:
+            if exc.errno != errno.ENOENT:
+                raise
         return count
 
     def _delete_cgroup_children(self, path):
