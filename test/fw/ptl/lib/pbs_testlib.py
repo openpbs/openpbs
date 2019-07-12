@@ -3508,6 +3508,9 @@ class PBSService(PBSObject):
         else:
             self.default_pbs_conf = True
 
+        self.logger.info('pbs_conf_file <%s> default_pbs_conf <%s>' %
+                         (self.pbs_conf_file, self.default_pbs_conf))
+
         # default pbs_server_name to hostname, it will get set again once the
         # config file is processed
         self.pbs_server_name = self.hostname
@@ -12810,7 +12813,7 @@ class MoM(PBSService):
                                 '$alps_client': alps_client,
                                 '$usecp': '*:%s %s' % (usecp, usecp)}
         else:
-            self.dflt_config = {'$clienthost': self.server.hostname}
+            self.dflt_config = {'$clienthost': 'pbs-service-nmn'}
         self.version = None
         self._is_cpuset_mom = None
 
@@ -13792,6 +13795,7 @@ class Job(ResourceResv):
             self.attributes[ATTR_N] = jobname
         self.set_variable_list(self.username)
         self.set_sleep_time(100)
+        self.set_attributes({ATTR_k: 'oe'})
 
     def add_cray_vntype(self, select=None):
         """
@@ -14534,7 +14538,7 @@ class PBSInitServices(object):
                        sched, comm or all
         :type daemon: str
         """
-        init_cmd = ['sudo']
+        init_cmd = copy.copy(self.du.sudo_cmd)
         if daemon is not None and daemon != 'all':
             conf = self.du.parse_pbs_config(hostname, conf_file)
             dconf = {
