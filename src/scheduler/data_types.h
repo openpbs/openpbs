@@ -622,17 +622,18 @@ struct node_info
 
 	char *current_aoe;		/* AOE name instantiated on node */
 	char *current_eoe;		/* EOE name instantiated on node */
-	char *nodesig;                /* resource signature */
-	int nodesig_ind;              /* resource signature index in server array */
+	char *nodesig;			/* resource signature */
+	int nodesig_ind;		/* resource signature index in server array */
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
-	node_partition *hostset;      /* other vnodes on on the same host */
-	node_scratch nscr;            /* scratch space local to node search code */
-	char *partition;	      /* partition to which node belongs to */
+	node_partition *hostset;	/* other vnodes on on the same host */
+	node_scratch nscr;		/* scratch space local to node search code */
+	char *partition;		/* partition to which node belongs to */
 	time_t last_state_change_time;	/* Node state change at time stamp */
 	time_t last_used_time;		/* Node was last active at this time */
 	te_list *node_events;		/* list of events that affect the node */
 	int bucket_ind;			/* index in server's bucket array */
 	int node_ind;			/* node's index into sinfo->unordered_nodes */
+	node_partition **np_arr;	/* array of node partitions node is in */
 };
 
 struct resv_info
@@ -714,6 +715,8 @@ struct resource_resv
 	enum site_j_share_type share_type;	/* How resv counts against group share */
 #endif /* localmod 034 */
 	int		resresv_ind;		/* resource_resv index in all_resresv array */
+	timed_event 	*run_event;		/* run event in calendar */
+	timed_event	*end_event;		/* end event in calendar */
 };
 
 
@@ -1121,6 +1124,7 @@ struct event_list
 	unsigned int eol:1;		/* we've reached the end of time */
 	timed_event *events;		/* the calendar of events */
 	timed_event *next_event;	/* the next event to be performed */
+	timed_event *first_run_event;	/* The first run event in the calendar */
 	time_t *current_time;		/* [reference] current time in the calendar */
 };
 

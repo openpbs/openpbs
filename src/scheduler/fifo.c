@@ -1656,13 +1656,18 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		if (ns != NULL) {
 			for (i = 0; ns[i] != NULL; i++) {
+				int j;
 				update_node_on_run(ns[i], rr, &old_state);
+				if (ns[i]->ninfo->np_arr != NULL) {
+					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++)
+						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+				}
 				/* if the node is being provisioned, it's brought down in
 				 * update_node_on_run().  We need to add an event in the calendar to
 				 * bring it back up.
 				 */
 				if (ns[i]->go_provision) {
-					if (add_prov_event(sinfo->calendar, sinfo->server_time + PROVISION_DURATION, ns[i]->ninfo)== 0) {
+					if (add_prov_event(sinfo->calendar, sinfo->server_time + PROVISION_DURATION, ns[i]->ninfo) == 0) {
 						set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 						return -1;
 					}
@@ -1671,8 +1676,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 		update_queue_on_run(qinfo, rr, &old_state);
-
-		sinfo->pset_metadata_stale = 1;
 
 		update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
 
@@ -2264,12 +2267,12 @@ next_job(status *policy, server_info *sinfo, int flag)
 		}
 		return rjob;
 	}
-	if (skip != SKIP_RESERVATIONS) {
+	if (!(skip & SKIP_RESERVATIONS)) {
 		rjob = find_ready_resv_job(sinfo->resvs);
 		if (rjob != NULL)
 			return rjob;
 		else
-			skip = SKIP_RESERVATIONS;
+			skip |= SKIP_RESERVATIONS;
 	}
 
 	if ((sort_status != SORTED) || ((flag == MAY_RESORT_JOBS) && policy->fair_share)
@@ -2349,18 +2352,18 @@ next_job(status *policy, server_info *sinfo, int flag)
 			queues_finished = 0;
 		}
 	} else if (policy->by_queue) {
-		if (skip != SKIP_NON_NORMAL_JOBS) {
+		if (!(skip & SKIP_NON_NORMAL_JOBS)) {
 			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index);
 			if (ind == -1) {
 				/* No more preempted jobs */
-				skip = SKIP_NON_NORMAL_JOBS;
+				skip |= SKIP_NON_NORMAL_JOBS;
 				last_job_index = 0;
 			} else {
 				rjob = sinfo->jobs[ind];
 				last_job_index = ind;
 			}
 		}
-		if (skip == SKIP_NON_NORMAL_JOBS) {
+		if (skip & SKIP_NON_NORMAL_JOBS) {
 			while(last_queue < sinfo->num_queues &&
 			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index)) == -1)) {
 				last_queue++;

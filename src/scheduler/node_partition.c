@@ -278,6 +278,35 @@ dup_node_partition(node_partition *onp, server_info *nsinfo)
 }
 
 /**
+ * @brief copy a node partition array from pointers out of another.
+ * @param[in] onp_arr - old node partition array
+ * @param[in] new_nps - node partition array with new pointers
+ * 
+ * @return node_partition **
+ */
+node_partition **
+copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps)
+{
+	int cnt;
+	int i;
+	node_partition **nnp_arr;
+
+	if (onp_arr == NULL || new_nps == NULL)
+		return NULL;
+
+	cnt = count_array((void **)onp_arr);
+	if ((nnp_arr = calloc(cnt + 1, sizeof(node_partition *))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+
+	for (i = 0; i < cnt; i++)
+		nnp_arr[i] = find_node_partition_by_rank(new_nps, onp_arr[i]->rank);
+
+	return nnp_arr;
+}
+
+/**
  * @brief
  *		find_node_partition - find a node partition by (resource_name=value)
  *			      partition name from a pool of partitions
@@ -473,7 +502,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							np_arr[np_i]->rank = get_sched_rank();
 
 							if (np_arr[np_i]->res_val == NULL) {
-								np_arr[np_i+1] = NULL;
+								np_arr[np_i + 1] = NULL;
 								free_node_partition_array(np_arr);
 								return NULL;
 							}
@@ -536,7 +565,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 			}
 			if (res != NULL) {
 				/* Incase of indirect resource, point it to the right place */
-			        if (res->indirect_res != NULL)
+				if (res->indirect_res != NULL)
 					res = res->indirect_res;
 				if (compare_res_to_str(res, np_arr[np_i]->res_val, CMP_CASE)) {
 					if (np_arr[np_i]->ok_break) {
@@ -550,6 +579,13 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							}
 						}
 					}
+					tmp_arr = add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
+					if (tmp_arr == NULL) {
+						free_node_partition_array(np_arr);
+						return NULL;
+					}
+					nodes[node_i]->np_arr = tmp_arr;
+
 					np_arr[np_i]->ninfo_arr[i] = nodes[node_i];
 					i++;
 					np_arr[np_i]->ninfo_arr[i] = NULL;
@@ -1108,6 +1144,7 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes)
 	node_partition *np;
 	int i, j;
 	int cnt;
+	node_partition **tmp_arr;
 
 	if (name == NULL || nodes == NULL)
 		return NULL;
@@ -1133,6 +1170,13 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes)
 	j = 0;
 	for (i = 0; i < cnt; i++) {
 		if (!nodes[i]->is_stale) {
+			tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
+			if (tmp_arr == NULL) {
+				free_node_partition(np);
+				return NULL;
+			}
+			nodes[i]->np_arr = tmp_arr;
+
 			np->ninfo_arr[j] = nodes[i];
 			j++;
 		}

@@ -577,6 +577,7 @@ new_node_info()
 	new->NASrank = -1;
 #endif
 	new->partition = NULL;
+	new->np_arr = NULL;
 	return new;
 }
 
@@ -659,6 +660,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->partition != NULL)
 			free(ninfo->partition);
+
+		if (ninfo->np_arr != NULL)
+			free(ninfo->np_arr);
 
 		free(ninfo);
 	}
@@ -1604,7 +1608,6 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	counts *cts;
 	resource_resv **tmp_arr;
 	node_info *ninfo;
-	timed_event *te;
 
 	if (ns == NULL || resresv == NULL)
 		return;
@@ -1724,14 +1727,8 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 		}
 	}
 
-	for(te = resresv->server->calendar->next_event; te != NULL; te = te->next) {
-		if(te->event_type & TIMED_RUN_EVENT) {
-			if(te->event_ptr == resresv)
-				break;
-		}
-	}
-
-	remove_te_list(&ninfo->node_events, te);
+	if (resresv->run_event != NULL)
+		remove_te_list(&ninfo->node_events, resresv->run_event);
 
 	if (ninfo->node_ind != -1 && ninfo->bucket_ind != -1) {
 		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
@@ -1758,7 +1755,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
  *
  * @param[in]	ninfo	-	the node where the job was running
  * @param[in]	resresv -	the resource resv which is ending
- * @param[in]  job_state -	the old state of a job if resresv is a job
+ * @param[in]	job_state -	the old state of a job if resresv is a job
  *				If the old_state is found to be suspended
  *				then only resources that were released
  *				during suspension will be accounted.
@@ -3160,8 +3157,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 				nspecs_allocated++;
 			}
 
-			if (is_vnode_eligible_chunk(specreq_noncons, ninfo_arr[i], resresv,
-					err)) {
+			if (is_vnode_eligible_chunk(specreq_noncons, ninfo_arr[i], resresv, err)) {
 				if (!ninfo_arr[i]->lic_lock) {
 					ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
 					if (ncpusreq != NULL)
@@ -3409,7 +3405,7 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 
 	if (resresv->is_job) {
 		/* don't enforce max run limits of job is being qrun */
-		if (resresv->server->qrun_job ==NULL) {
+		if (resresv->server->qrun_job == NULL) {
 			if (node->max_running != SCHD_INFINITY &&
 			    node->max_running <= node->num_jobs) {
 				set_schd_error_codes(err, NOT_RUN, NODE_JOB_LIMIT_REACHED);
@@ -3866,7 +3862,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	 * need to check for timed conflicts if the current object is a job inside a
 	 * reservation.
 	 */
-	if (min_chunks > 0 && calendar != NULL && exists_run_event(calendar, end_time)
+	if (min_chunks > 0 && exists_run_event_on_node(ninfo, end_time)
 		&& !(resresv->job != NULL && resresv->job->resv != NULL)) {
 		/* Check for possible conflicts with timed events by walking the sorted
 		 * event list that was created in eval_selspec. This runs a simulation
@@ -3931,13 +3927,13 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 					/* One event will need provisioning while the other will not,
 					 * they cannot co exist at same time.
 					 */
-					if (resresv->aoename != NULL && resc_resv->aoename ==NULL) {
+					if (resresv->aoename != NULL && resc_resv->aoename == NULL) {
 						set_schd_error_codes(err, NOT_RUN, PROV_RESRESV_CONFLICT);
 						min_chunks = 0;
 						break;
 					}
 
-					if (is_excl(resc_resv->place_spec, ninfo->sharing) ||resresv_excl) {
+					if (is_excl(resc_resv->place_spec, ninfo->sharing) || resresv_excl) {
 						min_chunks = 0;
 					}
 					else {
@@ -5805,6 +5801,8 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		if (misc_err == NULL)
 			return;
 	}
+
+	/* Translate this once and keep it around so we can use it later */
 	if (exclerr_buf[0] == '\0') {
 		set_schd_error_codes(misc_err, NOT_RUN, NODE_NOT_EXCL);
 		translate_fail_code(misc_err, NULL, exclerr_buf);
@@ -5814,7 +5812,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 
 	/* Pre-mark all ineligible nodes so we don't need to look at them later */
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		if ((!ninfo_arr[i]->nscr.ineligible)) {
+		if (!ninfo_arr[i]->nscr.ineligible) {
 			clear_schd_error(err);
 			if (is_vnode_eligible(ninfo_arr[i], resresv, pl, err) == 0) {
 				ninfo_arr[i]->nscr.ineligible = 1;
@@ -5849,7 +5847,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 
 /**
  * @brief
- *      node_in_partition	-  Tells whether the given node belongs to this scheduler
+ *	node_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	ninfo		-  node information
  * @param[in]	partitions	-  array of partitions associated to scheduler

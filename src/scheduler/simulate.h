@@ -183,6 +183,9 @@ event_list *create_event_list(server_info *sinfo);
  */
 int exists_run_event(event_list *calendar, time_t end_time);
 
+/* Checks to see if there is a run event on a node before the end time */
+int exists_run_event_on_node(node_info *ninf, time_t end);
+
 /* Checks if a reservation run event exists between now and 'end' */
 int exists_resv_event(event_list *calendar, time_t end);
 
