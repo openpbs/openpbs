@@ -197,8 +197,7 @@ class PTLTestLoader(Plugin):
         def check_loadTestsFromNames(names, module=None):
             tests_dir = names
             if not self.testfiles:
-                self._du = DshUtils()
-                ptl_test_dir = self._du.which(exe='pbs_benchpress')
+                ptl_test_dir = sys.argv[0]
                 ptl_test_dir = ptl_test_dir.replace('bin/pbs_benchpress',
                                                     'tests')
                 user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
