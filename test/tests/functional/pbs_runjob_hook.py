@@ -69,8 +69,8 @@ e = pbs.event()
 j = e.job
 if not j.run_version is None:
     pbs.logmsg(pbs.LOG_DEBUG,
-        "rerun_job_hook %s: Resource_List.foo_str=%s" %
-        (j.id,j.Resource_List['foo_str']))
+        "rerun_job_hook %s(%s): Resource_List.foo_str=%s" %
+        (j.id,j.run_version,j.Resource_List['foo_str']))
 else:
     j.Resource_List['foo_str'] = "foo_value"
 """
@@ -163,11 +163,11 @@ else:
                             {'scheduling': 'False'})
         # kill mom
         self.mom.stop('-KILL')
+        m = "'runjob_hook' hook set job's Resource_List.foo_str = foo_value"
+        sid = {}
         for i in range(lower, upper + 1):
-            sid = j1.create_subjob_id(jid, i)
-            m = "'runjob_hook' hook set job's "
-            "Resource_List.foo_str = foo_value"
-            self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
+            sid[i] = j1.create_subjob_id(jid, i)
+            self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
         # check subjob state change from R->Q
         self.server.expect(JOB, {'job_state=Q': 3}, count=True,
                            id=jid, extend='t')
@@ -181,10 +181,9 @@ else:
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
         # log match from hook log for custom res value
+        m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
         for i in range(lower, upper + 1):
-            sid = j1.create_subjob_id(jid, i)
-            m = "rerun_job_hook %s: Resource_List.foo_str=foo_value"
-            self.server.log_match(m % (sid), start_time)
+            self.server.log_match(m % (sid[i]), start_time)
 
     def test_array_sub_res_persist_in_hook_qrerun(self):
         """
@@ -216,29 +215,27 @@ else:
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
+        m = "'runjob_hook' hook set job's Resource_List.foo_str = foo_value"
+        sid = {}
         for i in range(lower, upper + 1):
-            sid = j1.create_subjob_id(jid, i)
-            m = "'runjob_hook' hook set job's "
-            "Resource_List.foo_str = foo_value"
-            self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
+            sid[i] = j1.create_subjob_id(jid, i)
+            self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
         start_time = int(time.time())
         # rerun the array job
         self.server.rerunjob(jobid=jid, runas=ROOT_USER)
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
         # log match from hook log for custom res value
+        m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
         for i in range(lower, upper + 1):
-            sid = j1.create_subjob_id(jid, i)
-            m = "rerun_job_hook %s: Resource_List.foo_str=foo_value"
-            self.server.log_match(m % (sid), start_time)
+            self.server.log_match(m % (sid[i]), start_time)
         start_time = int(time.time())
         # rerun a single subjob
-        sid = j1.create_subjob_id(jid, 2)
-        self.server.rerunjob(jobid=sid, runas=ROOT_USER)
-        self.server.expect(JOB, {'job_state': 'R'}, id=sid)
+        self.server.rerunjob(jobid=sid[2], runas=ROOT_USER)
+        self.server.expect(JOB, {'job_state': 'R'}, id=sid[2])
         # log match from hook log for custom res value
-        m = "rerun_job_hook %s: Resource_List.foo_str=foo_value"
-        self.server.log_match(m % (sid), start_time)
+        m = "rerun_job_hook %s(2): Resource_List.foo_str=foo_value"
+        self.server.log_match(m % (sid[2]), start_time)
 
     def test_normal_job_index(self):
         """

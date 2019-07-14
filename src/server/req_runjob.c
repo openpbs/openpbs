@@ -519,6 +519,8 @@ req_runjob(struct batch_request *preq)
 		}
 
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
+			if (sub_prev_res.at_flags & ATR_VFLAG_SET)
+				job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
 			req_reject(j, 0, preq);
 			return;
 		}
@@ -527,7 +529,7 @@ req_runjob(struct batch_request *preq)
 			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
 			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
 
-			if (sub_run_version.at_val.at_long && (sub_prev_res.at_flags & ATR_VFLAG_SET)) {
+			if (sub_prev_res.at_flags & ATR_VFLAG_SET) {
 				job_attr_def[JOB_ATR_resource].at_free(&pjobsub->ji_wattr[JOB_ATR_resource]);
 				job_attr_def[JOB_ATR_resource].at_set(&pjobsub->ji_wattr[JOB_ATR_resource], &sub_prev_res, SET);
 				job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
