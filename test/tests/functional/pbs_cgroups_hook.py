@@ -823,7 +823,7 @@ if %s e.job.in_ms_mom():
             rv = self.du.isfile(hostname=host, path=cpath, sudo=True)
             if rv:
                 return True
-            time.sleep(0.1)
+            time.sleep(0.5)
         return False
 
     def get_cgroup_job_dir(self, subsys, jobid, host):
@@ -2180,10 +2180,11 @@ if %s e.job.in_ms_mom():
         """
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.swapctl))
-        self.server.expect(NODE, {'state': 'free'},
-                           id=self.nodes_list[0], interval=3, offset=10)
-        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
-             self.hosts_list[0]}
+        nid = self.nodes_list[0]
+        self.server.expect(NODE, {'state': 'free'}, id=nid,
+                           interval=3, offset=10)
+        hostn = self.hosts_list[0]
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
@@ -2193,20 +2194,19 @@ if %s e.job.in_ms_mom():
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         spread_path = 'cpuset.memory_spread_page'
-        fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
+        fn = self.get_cgroup_job_dir('cpuset', jid, hostn)
         if self.noprefix:
             spread_path = 'memory_spread_page'
         fn = os.path.join(fn, spread_path)
-        result = self.du.cat(hostname=self.hosts_list[0],
-                             filename=fn, sudo=True)
+        self.assertTrue(self.is_file(fn, hostn))
+        result = self.du.cat(hostname=hostn, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'true', self.swapctl))
-        self.server.expect(NODE, {'state': 'free'},
-                           id=self.nodes_list[0], interval=3, offset=10)
-        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
-             self.hosts_list[0]}
+        self.server.expect(NODE, {'state': 'free'}, id=nid,
+                           interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
@@ -2215,10 +2215,9 @@ if %s e.job.in_ms_mom():
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
-        fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
+        fn = self.get_cgroup_job_dir('cpuset', jid, hostn)
         fn = os.path.join(fn, spread_path)
-        result = self.du.cat(hostname=self.hosts_list[0],
-                             filename=fn, sudo=True)
+        result = self.du.cat(hostname=hostn, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '1')
 
