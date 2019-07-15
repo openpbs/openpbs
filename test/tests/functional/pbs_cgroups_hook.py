@@ -188,23 +188,26 @@ if sleeptime > 0:
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
+            'sync\n' \
             'sleep 4\n' \
             'python - 80 10 10 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
+            'sync\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'python - 200 2 10 <<EOF\n' \
-            '%s EOF\n' \
+            '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'python - 100 4 10 <<EOF\n' \
-            '%sEOF\n' \
+            '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'sleep 25\n' % (self.eatmem_script, self.eatmem_script)
         self.eatmem_job3 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
+            'sync\n' \
             'sleep 2\n' \
             'let i=0; while [ $i -lt 500000 ]; do let i+=1 ; done\n' \
             'python - 90 5 30 <<EOF\n' \
