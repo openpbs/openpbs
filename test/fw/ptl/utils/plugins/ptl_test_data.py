@@ -198,8 +198,8 @@ class PTLTestData(Plugin):
         ret = self.du.run_cmd(current_host, cmd, level=logging.DEBUG2,
                               logerr=False)
         if ret['rc'] != 0:
-            _msg = 'Failed to get analysis information for '
-            _msg += 'on %s:' % servers_host
+            _msg = 'Failed to get analysis information '
+            _msg += 'on %s:' % server_host
             _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
             f.write(_msg + '\n')
             self.logger.error(_msg)
