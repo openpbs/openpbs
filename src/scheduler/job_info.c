@@ -3867,9 +3867,9 @@ is_job_array(char *jobname)
 	bracket = strchr(jobname, (int) '[');
 
 	if (bracket != NULL) {
-		if (*(bracket+1) == ']')
+		if (*(bracket + 1) == ']')
 			ret = 1;
-		if (strchr(bracket, (int) '-') != NULL)
+		else if (strchr(bracket, (int) '-') != NULL)
 			ret = 3;
 		else
 			ret = 2;
@@ -4410,7 +4410,7 @@ geteoename(selspec *select)
 {
 	resource_req *req;
 
-	if (select == NULL)
+	if (select == NULL || select->chunks == NULL || select->chunks[0] == NULL)
 		return NULL;
 
 	/* we only need to look at 1st chunk since either all request eoe

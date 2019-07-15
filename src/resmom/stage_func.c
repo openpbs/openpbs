@@ -450,9 +450,9 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str);
 			if (
 #ifdef WIN32
-					(working_path[strlen(working_path) -1] == '\\')
+					working_path[strlen(working_path) -1] == '\\'
 #else
-					(working_path[strlen(working_path) -1] == '/')
+					working_path[strlen(working_path) -1] == '/'
 #endif
 					) {
 				strcat(working_path, pjob->ji_qs.ji_jobid);
@@ -467,9 +467,9 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str);
 		if (
 #ifdef WIN32
-				(working_path[strlen(working_path) -1] == '\\')
+				working_path[strlen(working_path) -1] == '\\'
 #else
-				(working_path[strlen(working_path) -1] == '/')
+				working_path[strlen(working_path) -1] == '/'
 #endif
 				) {
 				strcat(working_path, pjob->ji_qs.ji_jobid);

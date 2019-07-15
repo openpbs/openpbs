@@ -656,7 +656,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 	*attrlist = paol;
 
 	ltxt = attname_len;
-	Mstring(paol->name, ltxt+1);
+	Mstring(paol->name, ltxt + 1);
 	strncpy(paol->name, attname, ltxt);
 	paol->name[ltxt] = '\0';
 
@@ -2641,7 +2641,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 			}
 
 			sp = sname->svr;
-			if ((oper == MGR_CMD_LIST)) {
+			if (oper == MGR_CMD_LIST) {
 				sa = attropl2attrl(attribs);
 				switch (type) {
 					case MGR_OBJ_SERVER:
@@ -2685,7 +2685,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 
 				pbs_statfree(ss);
 			}
-			else if ((oper == MGR_CMD_PRINT)) {
+			else if (oper == MGR_CMD_PRINT) {
 
 				sa = attropl2attrl(attribs);
 				switch (type) {
@@ -4225,10 +4225,9 @@ parse_request(char *request, char ***req)
 		fprintf(stderr, "malloc failure (errno %d)\n", errno);
 		exit(1);
 	}
-	for (i=IND_FIRST;i<=IND_LAST;i++) {
-		(*req)[i] = '\0';
-	}
-
+	for (i = IND_FIRST; i <= IND_LAST; i++)
+		(*req)[i] = NULL;
+		
 	for (i = 0; !EOL(*foreptr) && i < MAX_REQ_WORDS && error == 0;) {
 		while (White(*foreptr))
 			foreptr++;
@@ -4245,15 +4244,14 @@ parse_request(char *request, char ***req)
 			pstderr("qmgr: max word length exceeded\n");
 			CaretErr(request, chars_parsed);
 		}
-		if (len != 0) {
-			(*req)[i] = (char *) malloc(len + 1);
-			if ((*req)[i] == NULL) {
-				fprintf(stderr, "malloc failure (errno %d)\n", errno);
-				exit(1);
-			}
-			((*req)[i])[len] = '\0';
-			strncpy((*req)[i], backptr, len);
+		(*req)[i] = (char *)malloc(len + 1);
+		if ((*req)[i] == NULL) {
+			fprintf(stderr, "malloc failure (errno %d)\n", errno);
+			exit(1);
 		}
+		((*req)[i])[len] = '\0';
+		if (len > 0)
+			strncpy((*req)[i], backptr, len);
 		i++;
 
 	}

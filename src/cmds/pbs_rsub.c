@@ -794,7 +794,7 @@ main(int argc, char *argv[], char *envp[])
 
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				char *ncpus_str = NULL;
-				int ncpus;
+				int ncpus = 0;
 
 				for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 					if (pattr->resource && strcmp(pattr->name, ATTR_rescavail) == 0 && strcmp(pattr->resource, "host") == 0)
@@ -803,8 +803,10 @@ main(int argc, char *argv[], char *envp[])
 						ncpus_str = pattr->value;
 				}
 
-				ncpus = strtol(ncpus_str, &endp, 0);
-				if (*endp != '\0') {
+				if (ncpus_str != NULL)
+					ncpus = strtol(ncpus_str, &endp, 0);
+				
+				if (*endp != '\0' || ncpus_str == NULL) {
 					fprintf(stderr, "pbs_rsub: Attribute value error\n");
 					CS_close_app();
 					exit(2);

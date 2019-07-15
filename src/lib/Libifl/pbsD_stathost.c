@@ -663,7 +663,7 @@ build_collective(struct batch_status *pbs,
 
 	hdpatl = NULL;
 
-	for (i=0; attr_names[i].an_name; ++i) {
+	for (i = 0; attr_names[i].an_name; ++i) {
 		if (attr_names[i].an_value) {
 			nwpatl = new_attrl();
 			if (nwpatl) {
@@ -672,15 +672,16 @@ build_collective(struct batch_status *pbs,
 				else
 					cupatl->next = nwpatl;
 				if ((nwpatl->name = strdup(attr_names[i].an_name)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
-				nwpatl->value    = attr_names[i].an_value;
+				nwpatl->value = attr_names[i].an_value;
 				/* note, the above is not dupped */
 				attr_names[i].an_value = NULL;
 				cupatl = nwpatl;
 			} else {
+				free_attrl_list(hdpatl);
 				pbs_errno = PBSE_SYSTEM;
 				return;
 			}
@@ -691,46 +692,44 @@ build_collective(struct batch_status *pbs,
 	/* takes two passes, first for resources_available and      */
 	/* then for resources_assigned				    */
 
-	for (i=0; i<consumable_size; ++i) {
-		if ((consum+i)->cons_set == 0)
+	for (i = 0; i < consumable_size; ++i) {
+		if ((consum + i)->cons_set == 0)
 			continue;
-		if ((consum+i)->cons_consum) {
+		if ((consum + i)->cons_consum) {
 			sprintf(convtbuf, "%lld", (consum+i)->cons_avail_sum);
 			if ((consum+i)->cons_k)
 				strcat(convtbuf, "kb");
 			dup = convtbuf;
 		} else {
-			dup = (consum+i)->cons_avail_str;
+			dup = (consum + i)->cons_avail_str;
 		}
 		if (dup != NULL) {
-			nwpatl = malloc(sizeof(struct attrl));
+			nwpatl = new_attrl();
 
 			if (nwpatl) {
 				if (hdpatl == NULL)
 					hdpatl = nwpatl;
 				else
 					cupatl->next = nwpatl;
-				nwpatl->next     = NULL;
+				nwpatl->next = NULL;
 				if ((nwpatl->name = strdup(ATTR_rescavail)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->resource = strdup((consum+i)->cons_resource)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->value = strdup(dup)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl->resource);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				cupatl = nwpatl;
 			} else {
+				free_attrl_list(hdpatl);
 				pbs_errno = PBSE_SYSTEM;
 				return;
 			}
@@ -738,12 +737,12 @@ build_collective(struct batch_status *pbs,
 	}
 
 	/* now do the resources_assigned */
-	for (i=0; i<consumable_size; ++i) {
-		if ((consum+i)->cons_set == 0)
+	for (i = 0; i < consumable_size; ++i) {
+		if ((consum + i)->cons_set == 0)
 			continue;
-		if ((consum+i)->cons_consum) {
+		if ((consum + i)->cons_consum) {
 			sprintf(convtbuf, "%lld", (consum+i)->cons_assn_sum);
-			if ((consum+i)->cons_k)
+			if ((consum + i)->cons_k)
 				strcat(convtbuf, "kb");
 			nwpatl = new_attrl();
 			if (nwpatl) {
@@ -752,25 +751,23 @@ build_collective(struct batch_status *pbs,
 				else
 					cupatl->next = nwpatl;
 				if ((nwpatl->name = strdup(ATTR_rescassn)) == NULL) {
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->resource = strdup((consum+i)->cons_resource)) == NULL) {
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				if ((nwpatl->value = strdup(convtbuf)) == NULL) {
-					free(nwpatl->resource);
-					free(nwpatl->name);
-					free(nwpatl);
+					free_attrl_list(hdpatl);
 					pbs_errno = PBSE_SYSTEM;
 					return;
 				}
 				cupatl = nwpatl;
 			} else {
+				free_attrl_list(hdpatl);
 				pbs_errno = PBSE_SYSTEM;
 				return;
 			}
@@ -813,19 +810,19 @@ struct batch_status *build_return_status(struct batch_status *bstatus,
 
 	/* is the host in question a single or multi-vnode host */
 
-	for (i=0; i<host_list_size; ++i) {
-		if (strcasecmp(hname, (phost_list+i)->hl_name) == 0) {
-			if ((phost_list+i)->hl_node != NULL) {
+	for (i = 0; i < host_list_size; ++i) {
+		if (strcasecmp(hname, (phost_list + i)->hl_name) == 0) {
+			if ((phost_list + i)->hl_node != NULL) {
 
 				/* single vnode host - use the real one */
 
 				/* prevent double free: copy name, move attribs */
-				if ((npbs->name = strdup((phost_list+i)->hl_node->name)) == NULL) {
+				if ((npbs->name = strdup((phost_list + i)->hl_node->name)) == NULL) {
 					free(npbs);
 					pbs_errno = PBSE_SYSTEM;
 					return NULL;
 				}
-				npbs->attribs = (phost_list+i)->hl_node->attribs;
+				npbs->attribs = (phost_list + i)->hl_node->attribs;
 				(phost_list+i)->hl_node->attribs = NULL;
 				if ((phost_list+i)->hl_node->text)
 					if ((npbs->text = strdup((phost_list+i)->hl_node->text)) == NULL) {

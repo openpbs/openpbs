@@ -208,7 +208,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 
 		/* check that certain required attributues are valid */
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str==NULL) ||
+		if ((pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str == NULL) ||
 			(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str == NULL)) {
 			/* this case shouldn't happen, log it and don't do copy     */
 			/* use null jobid, if attr missing, jobid is likely bad too */
@@ -309,6 +309,8 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 
 	pair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
 	if (pair == NULL) {
+		free(from);
+		free(to);
 		free_br(preq);
 		return NULL;
 	}
@@ -2182,6 +2184,7 @@ RetryJob:
 
 				FREE_RUU(pruu)
 				free(mailbuf);
+				free(acctbuf);
 				return;
 
 			case JOB_EXEC_INITRMG:
@@ -2224,6 +2227,7 @@ RetryJob:
 					svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 					FREE_RUU(pruu)
 					free(mailbuf);
+					free(acctbuf);
 					return;
 		}
 	}

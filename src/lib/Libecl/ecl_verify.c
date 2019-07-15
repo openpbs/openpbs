@@ -355,15 +355,13 @@ verify_an_attribute(int batch_request, int parent_object, int cmd,
 	return PBSE_NONE;
 
 err:
-	if ((err_code !=0) && (*err_msg == NULL)) {
+	if ((err_code != 0) && (*err_msg == NULL)) {
 		/* find err_msg and update it */
 		p = pbse_to_txt(err_code);
 		if (p) {
 			*err_msg = strdup(p);
-			if (*err_msg == NULL) {
-				err_code = PBSE_SYSTEM;
+			if (*err_msg == NULL)
 				return -1;
-			}
 		}
 	}
 	return err_code;

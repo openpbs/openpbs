@@ -35,6 +35,7 @@
 * trademark licensing policies.
 */
 
+#include <stdlib.h>
 #include <ctype.h>
 #include "pbs_json.h"
 #include "libutil.h"
@@ -183,6 +184,45 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 }
 
 /**
+ * @brief free an individual json node
+ * @param[in] node - node to free
+ * 
+ * @return void
+ */
+void
+free_json_node(JsonNode *node)
+{
+	if ((node->value_type == JSON_STRING) || (node->value_type == JSON_NUMERIC)) {
+		if (node->value.string != NULL)
+			free(node->value.string);
+	}
+	if (node->key != NULL)
+		free(node->key);
+	free(node);
+}
+
+/**
+ * @brief
+ *	frees the json node list
+ *
+ * @return	Void
+ *
+ */
+void
+free_json_node_list()
+{
+	JsonLink *link = head;
+	while (link != NULL) {
+		free_json_node(link->node);
+		head = link->next;
+		free(link);
+		link = head;
+	}
+	head = NULL;
+	prev_link = NULL;
+}
+
+/**
  * @brief
  *	add node to json list
  *
@@ -212,6 +252,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	if (key != NULL) {
 		ptr = strdup((char *)key);
 		if (ptr == NULL) {
+			free_json_node(node);
 			fprintf(stderr, "Json Node: out of memory\n");
 			return NULL;
 		}
@@ -228,61 +269,38 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 		if (strcmp(pc, "") == 0) {
 			node->value_type = JSON_NUMERIC;
 			ptr = strdup(value);
-			if (ptr == NULL)
+			if (ptr == NULL) {
+				free_json_node(node);
 				return NULL;
+			}
 			node->value.string = ptr;
 		} else
 			node->value_type = JSON_STRING;
-   	} else {
+	} else {
 		node->value_type = vtype;
 		if (node->value_type == JSON_INT)
 			node->value.inumber = *((long int *)value);
 		else if (node->value_type == JSON_FLOAT)
 			node->value.fnumber = *((double *)value);
-    	}
-            
+	}
+
 	if (node->value_type == JSON_STRING) {
 		if (value != NULL) {
 			ptr = strdup_escape(esc_type, value);
-			if (ptr == NULL)
+			if (ptr == NULL) {
+				free_json_node(node);
 				return NULL;
+			}
 		}
 		node->value.string = ptr;
 	}
 	rc = link_node(node);
 	if (rc) {
-		free(node);
+		free_json_node(node);
 		fprintf(stderr, "Json link: out of memory\n");
 		return NULL;
 	}
 	return node;
-}
-
-/**
- * @brief
- *	frees a json node
- *
- * @return	Void
- *
- */
-void
-free_json_node() {
-
-	JsonLink *link = head;
-	while (link != NULL) {
-		if ((link->node->value_type == JSON_STRING) || (link->node->value_type == JSON_NUMERIC )) {
-			if (link->node->value.string != NULL)
-				free(link->node->value.string);
-		}
-		if (link->node->key != NULL)
-			free(link->node->key);
-		free(link->node);
-		head = link->next;
-		free(link);
-		link = head;
-	}
-	head = NULL;
-	prev_link = NULL;
 }
 
 /**

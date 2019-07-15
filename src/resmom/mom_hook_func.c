@@ -3524,7 +3524,7 @@ void reply_hook_bg(job *pjob)
 
 	pjob = php->hook_input->pjob;
 
-	if ( php->hook_output && *(php->hook_output->reject_errcode)){
+	if (php->hook_output && *(php->hook_output->reject_errcode)){
 		reply_hook_bg(pjob);
 		goto fini;
 	}

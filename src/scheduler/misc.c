@@ -640,13 +640,16 @@ string_array_to_str(char **strarr)
 	if (strarr == NULL)
 		return NULL;
 
+	if (strarr[0] == NULL)
+		return "";
+
 	for (i = 0; strarr[i] != NULL; i++)
 		len += strlen(strarr[i]);
 
 	len += i; /* added space for the commas */
 
-	if (arrlen <= len) {
-		tmp = realloc(arrbuf, arrlen+len+1);
+	if (arrlen <= len || arrbuf == NULL) {
+		tmp = realloc(arrbuf, arrlen + len + 1);
 		if (tmp != NULL) {
 			arrlen += len + 1;
 			arrbuf = tmp;
@@ -663,7 +666,7 @@ string_array_to_str(char **strarr)
 		strcat(arrbuf, strarr[i]);
 		strcat(arrbuf, ",");
 	}
-	arrbuf[strlen(arrbuf)-1] = '\0';
+	arrbuf[strlen(arrbuf) - 1] = '\0';
 
 	return arrbuf;
 }

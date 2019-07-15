@@ -83,6 +83,11 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 			ap = ap->next;
 		}
 		if (ap == NULL) {
+			while (ap1 != NULL) {
+				ap = ap1->next;
+				free(ap1);
+				ap1 = ap;
+			}
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
 		}

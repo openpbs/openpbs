@@ -2032,10 +2032,10 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 		if ((encode_rv == 0) && (svrattr_val != NULL)) {
 			encode_rv = 1;
 		}
-		if ((encode_rv == 0)) {
+		if (encode_rv == 0) {
 			/* not set or no value */
 			continue;
-		} else if ((encode_rv >= 1)) {    /* good, single value */
+		} else if (encode_rv >= 1) {    /* good, single value */
 			/* we could be a resource list */
 			if (ATTR_IS_RESC(attr_def_p)) {
 				if (!PyObject_HasAttrString(py_instance, attr_def_p->at_name)) {
@@ -11312,7 +11312,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	if (py_jargs == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"could not build args list for job %s",
-			plist->al_name);
+			plist ? plist->al_name: "");
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		goto get_job_error_exit;
 	}
@@ -11322,7 +11322,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	if (py_job == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to create a python job %s object",
-			plist->al_name);
+			plist ? plist->al_name: "");
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		goto get_job_error_exit;
 	}
@@ -11333,7 +11333,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to fully populate Python"
-			" job %s object", plist->al_name);
+			" job %s object", plist ? plist->al_name: "");
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		goto get_job_error_exit;
 	}
@@ -11617,8 +11617,8 @@ py_get_resv_static(char *resvid, char *svr_name)
 			if (py_que != NULL) {
 				/* py_server queue ref ct incremented as part of py_resv */
 				(void)PyObject_SetAttrString(py_resv, ATTR_queue, py_que);
+				Py_DECREF(py_que); /* we no longer need to reference */
 			}
-			Py_DECREF(py_que);	/* we no longer need to reference */
 		}
 	}
 

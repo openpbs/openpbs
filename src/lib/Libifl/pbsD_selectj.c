@@ -97,8 +97,11 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 		ret = PBSD_select_get(c);
 
 	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
+	if (pbs_client_thread_unlock_connection(c) != 0) {
+		/* Even though ret is a char **, PBSD_select_get() allocated all its memory in one malloc() */
+		free(ret);
 		return NULL;
+	}
 
 	return ret;
 }
@@ -252,7 +255,7 @@ PBSD_select_get(int c)
 		 structures", freeing all strings we just allocated...
 		 */
 
-		totsize = stringtot + (njobs+1) * (sizeof(char *));
+		totsize = stringtot + (njobs + 1) * (sizeof(char *));
 		retval = (char **)malloc(totsize);
 		if (retval == NULL) {
 			pbs_errno = PBSE_SYSTEM;
@@ -261,7 +264,7 @@ PBSD_select_get(int c)
 		}
 		sr = reply->brp_un.brp_select;
 		sp = (char *)retval + (njobs + 1) * sizeof(char *);
-		for (i=0; i<njobs; i++) {
+		for (i = 0; i < njobs; i++) {
 			retval[i] = sp;
 			strcpy(sp, sr->brp_jobid);
 			sp += strlen(sp) + 1;

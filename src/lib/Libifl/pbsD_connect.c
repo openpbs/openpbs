@@ -326,7 +326,7 @@ engage_authentication(int sd,
 			if ((ret = CS_client_auth(sd)) == CS_SUCCESS)
 				return (0);
 
-			if ((ret == CS_AUTH_USE_IFF)) {
+			if (ret == CS_AUTH_USE_IFF) {
 				/* CS_client_auth that got called was the one for STD security */
 				/*sock_port needs to be passed only for Windows.*/
 				if (PBSD_authenticate(sd, server_name, server_port, clnt_paddr) == 0)

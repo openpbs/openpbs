@@ -2013,7 +2013,7 @@ mgr_hook_set(struct batch_request *preq)
 			default:
 				snprintf(hook_msg, sizeof(hook_msg),
 					"%s - %s:%d", msg_internal,
-					plx->al_name, plx->al_op);
+					plx ? plx->al_name: "", plx ? plx->al_op: -1);
 				goto mgr_hook_set_error;
 		}
 		free(hook_fail_action_val);
@@ -6027,8 +6027,10 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 						g_sync_hook_tid)) == NULL)
 			return NULL;
 
-		if ((dup_msgid = strdup(g_hook_mcast_array[i].msgid)) == NULL)
+		if ((dup_msgid = strdup(g_hook_mcast_array[i].msgid)) == NULL) {
+			free(info);
 			return NULL;
+		}
 
 		if (add_mom_deferred_list(conn, minfo, post_sendhookRPP,
 					dup_msgid, minfo, info) == NULL) {
@@ -7361,7 +7363,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 			}
 
 			/* if the hook is rejected we can go out now */
-			if((*reject_flag == 1) && (reject_msg != NULL))
+			if((reject_flag != NULL) && (*reject_flag == 1) && (reject_msg != NULL))
 				goto get_hook_results_end;
 		} else if (strncmp(obj_name, EVENT_VNODELIST_OBJECT,
 			vn_obj_len) == 0) {
@@ -7421,7 +7423,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 				pnode = find_nodebyname(vname_str);
 				if (pnode == NULL) {
 					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-						LOG_INFO, phook->hook_name, "node_name not found");
+						LOG_INFO, vname_str, "node_name not found");
 				} else if ((pnode->nd_state & INUSE_DELETED) == 0) {
 					save_characteristic(pnode);
 

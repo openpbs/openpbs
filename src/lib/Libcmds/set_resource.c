@@ -138,6 +138,7 @@ set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
 		/* Allocate memory for the attrl structure */
 		attr = new_attrl();
 		if (attr == NULL) {
+			free(v);
 			fprintf(stderr, "Out of memory\n");
 			return 2;
 		}
@@ -145,6 +146,8 @@ set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
 		/* Allocate memory for the attribute name and copy */
 		str = (char *) malloc(strlen(ATTR_l)+1);
 		if (str == NULL) {
+			free(v);
+			free_attrl(attr);
 			fprintf(stderr, "Out of memory\n");
 			return 2;
 		}
@@ -154,6 +157,8 @@ set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
 		/* Allocate memory for the resource name and copy */
 		str = (char *) malloc(len + 1);
 		if (str == NULL) {
+			free(v);
+			free_attrl(attr);
 			fprintf(stderr, "Out of memory\n");
 			return 2;
 		}
@@ -167,6 +172,7 @@ set_resources(struct attrl **attrib, char *resources, int add, char **erptr)
 		} else {
 			str = (char *) malloc(1);
 			if (str == NULL) {
+				free_attrl(attr);
 				fprintf(stderr, "Out of memory\n");
 				return 2;
 			}

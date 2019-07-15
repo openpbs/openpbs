@@ -213,8 +213,8 @@ parse_config_line(FILE *fp, char **key, char **val)
 	char *split;
 	char *ret;
 
-	*key = '\0';
-	*val = '\0';
+	*key = "";
+	*val = "";
 
 	/* Use a do-while rather than a goto. */
 	do {

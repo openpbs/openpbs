@@ -460,7 +460,7 @@ unroll_execvnode_seq(char *str, char ***tofree)
 	/* Allocate memory for the returning variable rev_dict which
 	 * will be an array of pointers of length, the number of occurrences,
 	 * for which each index corresponds to the execvnode associated to that occurrence */
-	if ((rev_dict = (char **) malloc((max_idx+1)*sizeof(char *))) == NULL) {
+	if ((rev_dict = (char **) malloc((max_idx + 1) * sizeof(char *))) == NULL) {
 		DBPRT(("unroll_execvnode_seq: %s\n", MALLOC_ERR_MSG));
 		return NULL;
 	}
@@ -469,7 +469,7 @@ unroll_execvnode_seq(char *str, char ***tofree)
 	 * This block of memory is made as large as rev_dict in the worst case where
 	 * all execvnodes are distinct but is resized later for the average case
 	 * where most execvnodes after a certain date will be identical */
-	if ((*tofree = (char **) malloc((max_idx+1)*sizeof(char *))) == NULL) {
+	if ((*tofree = (char **) malloc((max_idx + 1) * sizeof(char *))) == NULL) {
 		free(rev_dict);
 		return NULL;
 	}
@@ -498,11 +498,11 @@ unroll_execvnode_seq(char *str, char ***tofree)
 				last = first;
 				/* Each index in range is parsed */
 				range = string_token(NULL, RANGE_TOK, &nm3);
-				if (range!=NULL)
+				if (range != NULL)
 					last = atoi(range);
 				/* Append the <vnode> token to the pointer array
 				 * for each index indicated by range */
-				for (i=first; i<=last; i++)
+				for (i = first; i <= last; i++)
 					rev_dict[i] = (char *) tmp;
 			}
 			else {
@@ -671,6 +671,7 @@ dict_to_str(dictionary *dict)
 	 * resize to what's actually been used */
 	tmp = realloc(condensed, (strlen(condensed)+1)*sizeof(char));
 	if (tmp == NULL) {
+		free(condensed);
 		DBPRT(("dict_to_str: %s\n", MALLOC_ERR_MSG));
 		return NULL;
 	}

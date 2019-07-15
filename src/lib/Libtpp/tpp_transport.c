@@ -1240,7 +1240,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 		return 1;
 
 	if (conn->td != NULL) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td->thrd_index);
+		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td ? td->thrd_index: -1);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 	}
 
@@ -2145,7 +2145,7 @@ send_data(phy_conn_t *conn)
 				if (the_pkt_presend_handler(conn->sock_fd, p) != 0) {
 					/* handler asked not to send data, skip packet */
 					conn->send_queue_size -= tosend;
-					n = tpp_que_del_elem(&conn->send_queue, n);
+					(void) tpp_que_del_elem(&conn->send_queue, n);
 					n = TPP_QUE_HEAD(&conn->send_queue);
 					p = TPP_QUE_DATA(n);
 					continue;
@@ -2338,7 +2338,7 @@ send_data(phy_conn_t *conn)
 			 * all data in this packet has been sent or done with.
 			 * delete this node and get next node in queue
 			 */
-			n = tpp_que_del_elem(&conn->send_queue, n);
+			(void)tpp_que_del_elem(&conn->send_queue, n);
 			n = TPP_QUE_HEAD(&conn->send_queue);
 			p = TPP_QUE_DATA(n);
 		}

@@ -1439,7 +1439,7 @@ attropl2attrl(struct attropl *from)
 		if (from->name != NULL) {
 			if ((ap->name = (char*) malloc(strlen(from->name) + 1)) == NULL) {
 				perror("Out of memory");
-				free_attrl(ap);
+				free_attrl_list(rattrl);
 				return NULL;
 			}
 			strcpy(ap->name, from->name);
@@ -1447,7 +1447,7 @@ attropl2attrl(struct attropl *from)
 		if (from->resource != NULL) {
 			if ((ap->resource = (char*) malloc(strlen(from->resource) + 1)) == NULL) {
 				perror("Out of memory");
-				free_attrl(ap);
+				free_attrl_list(rattrl);
 				return NULL;
 			}
 			strcpy(ap->resource, from->resource);
@@ -1455,7 +1455,7 @@ attropl2attrl(struct attropl *from)
 		if (from->value != NULL) {
 			if ((ap->value = (char*) malloc(strlen(from->value) + 1)) == NULL) {
 				perror("Out of memory");
-				free_attrl(ap);
+				free_attrl_list(rattrl);
 				return NULL;
 			}
 			strcpy(ap->value, from->value);

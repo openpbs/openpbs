@@ -587,20 +587,13 @@ pps_size_number_methods_subtract(PyObject *left, PyObject *right)
 
 		if (rc != 0)
 			goto QUIT;
-#ifdef NAS /* localmod 005 */
 		if (tmp_right.atsv_num > tmp_left.atsv_num) {
-#else
-		l_result = tmp_left.atsv_num - tmp_right.atsv_num;
-		if ((l_result < 0) || (l_result > tmp_left.atsv_num)) {
-#endif /* localmod 005 */
 			PyErr_SetString(PyExc_ArithmeticError,
 				"expression evaluates to negative _size value");
 			result = NULL;
 			goto QUIT;
 		}
-#ifdef NAS /* localmod 005 */
 		l_result = tmp_left.atsv_num - tmp_right.atsv_num;
-#endif /* localmod 005 */
 		sz_result.atsv_num = l_result;
 		sz_result.atsv_shift = tmp_left.atsv_shift;
 		sz_result.atsv_units = tmp_left.atsv_units;

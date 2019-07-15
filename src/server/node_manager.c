@@ -7046,7 +7046,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			return PBSE_BADNODESPEC;
 
 		if (!strlen(execvnod))
-                        return PBSE_UNKNODE;
+			return PBSE_UNKNODE;
 
 		/* are we to allocate the nodes "excl" ? */
 		prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);

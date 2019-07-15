@@ -1136,11 +1136,11 @@ tpp_multi_deflate_do(void *c, int fini, void *inbuf, unsigned int inlen)
 			ctx->len = ctx->len * 2;
 			p = realloc(ctx->cmpr_buf, ctx->len);
 			if (!p) {
+				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating deflate buffer %d bytes", ctx->len);
+				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 				deflateEnd(&ctx->cmpr_strm);
 				free(ctx->cmpr_buf);
 				free(ctx);
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating deflate buffer %d bytes", ctx->len);
-				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 				return -1;
 			}
 			ctx->cmpr_buf = p;
@@ -1470,12 +1470,14 @@ tpp_get_addresses(char *names, int *count)
 		
 		addrs_tmp = tpp_sock_resolve_host(token, &tmp_count); /* get all ipv4 addresses */
 		if (addrs_tmp) {
-			if ((addrs = realloc(addrs, (tot_count + tmp_count) * sizeof(tpp_addr_t))) == NULL) {
+			tpp_addr_t *tmp;
+			if ((tmp = realloc(addrs, (tot_count + tmp_count) * sizeof(tpp_addr_t))) == NULL) {
 				free(addrs);
 				free(node_names);
 				tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating address block");
 				return NULL;
 			}
+			addrs = tmp;
 
 			for (i = 0; i < tmp_count; i++) {
 				for (j = 0; j < tot_count; j++) {

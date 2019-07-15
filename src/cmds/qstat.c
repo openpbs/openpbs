@@ -3150,7 +3150,7 @@ svr_no_args:
 		if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)
 			exit_qstat("out of memory");
 		generate_json(stdout);
-		free_json_node();
+		free_json_node_list();
 	}
 #ifdef NAS /* localmod 071 */
 	tcl_run(tcl_opt);

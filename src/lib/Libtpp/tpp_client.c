@@ -89,6 +89,7 @@
 #include <sys/time.h>
 #ifndef WIN32
 #include <stdint.h>
+#include <stdlib.h>
 #endif
 
 #include "avltree.h"
@@ -1270,7 +1271,7 @@ tpp_recv(int sd, void *data, int len)
 		cur_pkt = TPP_QUE_DATA(n);
 
 	/* read from head */
-	if ((cur_pkt == NULL)) {
+	if (cur_pkt == NULL) {
 		errno = EWOULDBLOCK;
 		return -1; /* no data currently - would block */
 	}

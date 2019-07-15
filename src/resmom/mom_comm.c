@@ -2776,7 +2776,6 @@ send_resc_used_to_ms(int stream, char *jobid)
 	CLEAR_HEAD(send_head);
 
 	pal = (svrattrl *)GET_NEXT(lhead);
-	psatl = pal;
 
 	while (pal != NULL) {
 		nxpal = (struct svrattrl *)GET_NEXT(pal->al_link);
@@ -2870,7 +2869,6 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 		pdef->at_free(&pjob->ji_resources[nodeidx].nr_used);
 	}
 	/* decode attributes from request into job structure */
-	errcode = 0;
 	clear_attr(&pjob->ji_resources[nodeidx].nr_used,
 		&job_attr_def[JOB_ATR_resc_used]);
 
@@ -6080,8 +6078,11 @@ aterr:
 			}
 			DBPRT(("%s: POSTINFO %s task %8.8X sent info %s:%s(%d)\n", __func__,
 				jobid, fromtask, name, info, (int)len))
-			if (prev_error)
+			if (prev_error) {
+				free(name);
+				free(info);
 				goto done;
+			}
 
 			task_saveinfo(ptask, name, info, (int)len);
 			ret = tm_reply(fd, version, TM_OKAY, event);
@@ -6111,7 +6112,7 @@ aterr:
 	BAIL("tvnodeid")
 
 	pnode = pjob->ji_vnods;
-	for (i=0; i<pjob->ji_numvnod; i++, pnode++) {
+	for (i = 0; i < pjob->ji_numvnod; i++, pnode++) {
 		if (pnode->vn_node == tvnodeid)
 			break;
 	}
@@ -6193,9 +6194,9 @@ aterr:
 			argc = disrui(fd, &ret);
 			if (ret != DIS_SUCCESS)
 				goto done;
-			argv = (char **)calloc(argc+1, sizeof(char *));
+			argv = (char **)calloc(argc + 1, sizeof(char *));
 			assert(argv);
-			for (i=0; i<argc; i++) {
+			for (i = 0; i < argc; i++) {
 				argv[i] = disrst(fd, &ret);
 				if (ret != DIS_SUCCESS) {
 					argv[i] = NULL;
@@ -6210,7 +6211,7 @@ aterr:
 			numele = 3;
 			envp = (char **)calloc(numele, sizeof(char *));
 			assert(envp);
-			for (i=0;; i++) {
+			for (i = 0; ; i++) {
 				char	*env;
 
 				env = disrst(fd, &ret);
@@ -6287,45 +6288,75 @@ aterr:
 			ret = im_compose(phost->hn_stream, jobid, cookie,
 					 IM_SPAWN_TASK, ep->ee_event, fromtask,
 					 found_empty_string ? IM_PROTOCOL_VER : IM_OLD_PROTOCOL_VER);
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
 				goto done;
+			}
 			ret = diswui(phost->hn_stream, myvnodeid);
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
 				goto done;
+			}
 			ret = diswui(phost->hn_stream, tvnodeid);
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
 				goto done;
+			}
 			ret = diswui(phost->hn_stream, TM_NULL_TASK);
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
 				goto done;
+			}
 			if (found_empty_string) {
 				ret = diswui(phost->hn_stream, argc);
-				if (ret != DIS_SUCCESS)
-			  		goto done;
-				for (i=0; i<argc; i++) {
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					goto done;
+				}
+				for (i = 0; i < argc; i++) {
 					ret = diswst(phost->hn_stream, argv[i]);
-					if (ret != DIS_SUCCESS)
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
 						goto done;
+					}
 				}
 			} else {
-			  	for (i=0; argv[i]; i++) {
+			  	for (i = 0; argv[i]; i++) {
 					ret = diswst(phost->hn_stream, argv[i]);
-					if (ret != DIS_SUCCESS)
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
 						goto done;
+					}
 				}
 				ret = diswst(phost->hn_stream, "");
-				if (ret != DIS_SUCCESS)
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
 					goto done;
+				}
 			}
-			for (i=0; envp[i]; i++) {
+			for (i = 0; envp[i]; i++) {
 				ret = diswst(phost->hn_stream, envp[i]);
-				if (ret != DIS_SUCCESS)
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
 					goto done;
+				}
 			}
 			ret = (rpp_flush(phost->hn_stream) == -1) ?
 				DIS_NOCOMMIT : DIS_SUCCESS;
-			if (ret != DIS_SUCCESS)
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
 				goto done;
+			}
 			reply = FALSE;
 			arrayfree(argv);
 			arrayfree(envp);

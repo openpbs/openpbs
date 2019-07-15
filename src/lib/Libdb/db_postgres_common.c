@@ -449,6 +449,7 @@ pbs_get_connect_string(char *host, int timeout, int *err_code, char *errmsg, int
 	} else {
 		if ((hostaddr = get_hostaddr(host)) == (pbs_net_t)0) {
 			free(pquoted);
+			free(svr_conn_info);
 			free(p);
 			free(usr);
 			snprintf(errmsg, len, "Could not resolve dataservice host %s", host);
@@ -459,6 +460,7 @@ pbs_get_connect_string(char *host, int timeout, int *err_code, char *errmsg, int
 		q = inet_ntoa(in);
 		if (!q) {
 			free(pquoted);
+			free(svr_conn_info);
 			free(p);
 			free(usr);
 			snprintf(errmsg, len, "inet_ntoa failed, errno=%d", errno);
