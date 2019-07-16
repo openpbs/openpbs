@@ -63,6 +63,18 @@ e = pbs.event()
 e.job.Resource_List['site'] = 'site_value'
 """
 
+    rerun_hook_script = """
+import pbs
+e = pbs.event()
+j = e.job
+if not j.run_version is None:
+    pbs.logmsg(pbs.LOG_DEBUG,
+        "rerun_job_hook %s(%s): Resource_List.foo_str=%s" %
+        (j.id,j.run_version,j.Resource_List['foo_str']))
+else:
+    j.Resource_List['foo_str'] = "foo_value"
+"""
+
     def test_array_sub_job_index(self):
         """
         Submit a job array. Check the array sub-job index value
@@ -112,6 +124,118 @@ e.job.Resource_List['site'] = 'site_value'
             self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
             m = 'E;' + re.escape(sid) + ';.*Resource_List.site=site_value'
             self.server.accounting_match(m, regexp=True)
+
+    def test_array_sub_res_persist_in_hook_forcereque(self):
+        """
+        set custom resource in runjob hook. Submit a job array.
+        Check if custom resource set persists after force requeue due to
+        node fail requeue
+        """
+        # configure node fail requeue to lower value
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'node_fail_requeue': 5})
+        # set three cpu for three subjobs
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # create custom non-consumable string server resource
+        attr = {'type': 'string'}
+        r = 'foo_str'
+        self.server.manager(
+            MGR_CMD_CREATE, RSC, attr, id=r, logerr=False)
+        # create and import hook
+        hook_name = "runjob_hook"
+        attrs = {'event': "runjob"}
+        rv = self.server.create_import_hook(hook_name, attrs,
+                                            self.rerun_hook_script,
+                                            overwrite=True)
+        self.assertTrue(rv)
+        # create and submit job array
+        lower = 1
+        upper = 3
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_J: '%d-%d' % (lower, upper)})
+        jid = self.server.submit(j1)
+        # check if running
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+        # kill mom
+        self.mom.stop('-KILL')
+        m = "'runjob_hook' hook set job's Resource_List.foo_str = foo_value"
+        sid = {}
+        for i in range(lower, upper + 1):
+            sid[i] = j1.create_subjob_id(jid, i)
+            self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
+        # check subjob state change from R->Q
+        self.server.expect(JOB, {'job_state=Q': 3}, count=True,
+                           id=jid, extend='t')
+        # bring back mom
+        self.mom.start()
+        start_time = int(time.time())
+        self.mom.isUp()
+        # let subjobs get rerun from sched Q->R
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
+        # log match from hook log for custom res value
+        m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
+        for i in range(lower, upper + 1):
+            self.server.log_match(m % (sid[i]), start_time)
+
+    def test_array_sub_res_persist_in_hook_qrerun(self):
+        """
+        set custom resource in runjob hook. Submit a job array.
+        Check if custom resource set persists after a qrerun
+        """
+        # set three cpu for three subjobs
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # create custom non-consumable string server resource
+        attr = {'type': 'string'}
+        r = 'foo_str'
+        self.server.manager(
+            MGR_CMD_CREATE, RSC, attr, id=r, logerr=False)
+        # create and import hook
+        hook_name = "runjob_hook"
+        attrs = {'event': "runjob"}
+        rv = self.server.create_import_hook(hook_name, attrs,
+                                            self.rerun_hook_script,
+                                            overwrite=True)
+        self.assertTrue(rv)
+        # create and submit job array
+        lower = 1
+        upper = 3
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_J: '%d-%d' % (lower, upper)})
+        jid = self.server.submit(j1)
+        # check if running
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
+        m = "'runjob_hook' hook set job's Resource_List.foo_str = foo_value"
+        sid = {}
+        for i in range(lower, upper + 1):
+            sid[i] = j1.create_subjob_id(jid, i)
+            self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
+        start_time = int(time.time())
+        # rerun the array job
+        self.server.rerunjob(jobid=jid, runas=ROOT_USER)
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
+        # log match from hook log for custom res value
+        m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
+        for i in range(lower, upper + 1):
+            self.server.log_match(m % (sid[i]), start_time)
+        start_time = int(time.time())
+        # rerun a single subjob
+        self.server.rerunjob(jobid=sid[2], runas=ROOT_USER)
+        self.server.expect(JOB, {'job_state': 'R'}, id=sid[2])
+        # log match from hook log for custom res value
+        m = "rerun_job_hook %s(2): Resource_List.foo_str=foo_value"
+        self.server.log_match(m % (sid[2]), start_time)
 
     def test_normal_job_index(self):
         """
