@@ -917,6 +917,8 @@ class PBSTestSuite(unittest.TestCase):
             scppath = self.du.which(hostobj.hostname, "scp")
             if scppath != "scp":
                 return scppath
+        elif conf == "PBS_LOG_HIGHRES_TIMESTAMP":
+            return "1"
 
         return None
 
@@ -981,6 +983,9 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_comm = True
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+                new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+                restart_comm = True
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1055,6 +1060,9 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_mom = True
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+                new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+                restart_mom = True
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1143,7 +1151,8 @@ class PBSTestSuite(unittest.TestCase):
                 # instead of making PTL start each of them one at a time
                 restart_pbs = True
 
-            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_SERVER
+            # and PBS_LOG_HIGHRES_TIMESTAMP
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
                 restart_pbs = True
@@ -1155,6 +1164,9 @@ class PBSTestSuite(unittest.TestCase):
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
                     restart_pbs = True
+            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+                new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+                restart_pbs = True
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1228,7 +1240,8 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_START_SERVER": None,
             "PBS_START_MOM": None,
             "PBS_CORE_LIMIT": None,
-            "PBS_SCP": None
+            "PBS_SCP": None,
+            "PBS_LOG_HIGHRES_TIMESTAMP": None
         }
 
         self._revert_pbsconf_server(vals_to_set)

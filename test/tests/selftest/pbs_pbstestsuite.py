@@ -223,15 +223,15 @@ class TestPBSTestSuite(TestSelf):
                         (self.server.hostname))
 
         # Set a non-default pbs.conf variables, let's say
-        # PBS_LOG_HIGHRES_TIMESTAMP, and restart PBS
+        # PBS_LOCALLOG, and restart PBS
         self.server.pi.stop()
-        pbs_conf_val["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+        pbs_conf_val["PBS_LOCALLOG"] = "1"
         self.du.set_pbs_config(confs=pbs_conf_val)
         self.server.pi.start()
 
         # Confirm that the pbs.conf variable is set
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
-        self.assertEqual(pbs_conf_val["PBS_LOG_HIGHRES_TIMESTAMP"], "1")
+        self.assertEqual(pbs_conf_val["PBS_LOCALLOG"], "1")
 
         # Now, call self.revert_pbsconf()
         self.revert_pbsconf()
@@ -239,7 +239,7 @@ class TestPBSTestSuite(TestSelf):
         # Confirm that the value gets removed from the list as it is not
         # a default setting
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
-        self.assertFalse("PBS_LOG_HIGHRES_TIMESTAMP" in pbs_conf_val)
+        self.assertFalse("PBS_LOCALLOG" in pbs_conf_val)
 
     def test_revert_pbsconf_fewer_vars(self):
         """
@@ -287,3 +287,24 @@ class TestPBSTestSuite(TestSelf):
 
         # Make sure the default config is back
         self.assertEqual(self.mom.parse_config(), c2)
+
+    def test_revert_conf_highres_logging(self):
+        """
+        Test that if PBS_LOG_HIGHRES_TIMESTAMP by default is set to 1 and
+        if its value is changed in the test it will be reverted to 1 by
+        revert_pbsconf()
+        """
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("1", highres_val)
+
+        a = {'PBS_LOG_HIGHRES_TIMESTAMP': "0"}
+        self.du.set_pbs_config(confs=a, append=True)
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("0", highres_val)
+
+        self.revert_pbsconf()
+        highres_val = self.du.parse_pbs_config()\
+            .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        self.assertEqual("1", highres_val)
