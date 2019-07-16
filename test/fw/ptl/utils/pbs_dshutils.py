@@ -916,11 +916,6 @@ class DshUtils(object):
         ret = {'out': '', 'err': '', 'rc': 0}
 
         for hostname in hosts:
-            hostname_port = hostname.split('+')
-            hostname = hostname_port[0]
-            port = None
-            if len(hostname_port) > 1:
-                port = hostname_port[1]
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
@@ -929,10 +924,7 @@ class DshUtils(object):
                 ret['rc'] = 1
                 continue
             if not islocal:
-                if port:
-                    rshcmd = self.rsh_cmd + ['-p', port, hostname]
-                else:
-                    rshcmd = self.rsh_cmd + [hostname]
+                rshcmd = self.rsh_cmd + [hostname]
             if sudo or ((runas is not None) and (runas != _user)):
                 sudocmd = copy.copy(self.sudo_cmd)
                 if runas is not None:

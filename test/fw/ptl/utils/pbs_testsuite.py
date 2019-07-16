@@ -778,14 +778,8 @@ class PBSTestSuite(unittest.TestCase):
             client = _cl[0]
             if len(_cl) > 1:
                 client_conf = _cl[1]
-        if 'uais' in cls.conf:
-            uais = {}
-            _uais = cls.conf['uais'].split(':')
-            for _uai in _uais:
-                user, host = _uai.split('@')
-                uais[user] = host
         server = Server(hostname, pbsconf_file=pbsconf_file, client=client,
-                        client_pbsconf_file=client_conf, uais=uais)
+                        client_pbsconf_file=client_conf)
         server._conn_timeout = 0
         if cls.conf is not None:
             if 'mode' in cls.conf:
