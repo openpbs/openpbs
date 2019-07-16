@@ -217,7 +217,7 @@ class TestSchedPerf(TestPerformance):
         self.assertLess(cycle2_time, cycle1_time,
                         'Optimization was not faster')
 
-    @timeout(3600)
+    @timeout(5000)
     def test_sched_query(self):
         """
         Test scheduler's turnaround time with focus on querying the universe
@@ -238,14 +238,14 @@ class TestSchedPerf(TestPerformance):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.expect(JOB, {"job_state=R": 10010})
 
-        # Now kick a 100 sched cycles to exercise the querying of universe
-        for _ in range(100):
+        # Now kick 300 sched cycles to exercise the querying of universe
+        for _ in range(300):
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
             self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        cycles = self.scheduler.cycles(lastN=100)
+        cycles = self.scheduler.cycles(lastN=300)
         sum_all_len = 0
         for cycle in cycles:
             sum_all_len += cycle.end - cycle.start
-        self.logger.info("Average sched cycle length for last 100 cycles: "
-                         + str(sum_all_len / len(cycles)))
+        self.logger.info("Sum of sched cycle lengths for last 100 cycles: "
+                         + str(sum_all_len))
