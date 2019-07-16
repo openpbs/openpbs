@@ -930,13 +930,13 @@ class DshUtils(object):
                 continue
             if not islocal:
                 if port:
-                    rshcmd = self.rsh_cmd + ['-p', port, runas+'@'+hostname]
+                    rshcmd = self.rsh_cmd + ['-p', port, hostname]
                 else:
                     rshcmd = self.rsh_cmd + [hostname]
-            # if sudo or ((runas is not None) and (runas != _user)):
-            #    sudocmd = copy.copy(self.sudo_cmd)
-            #    if runas is not None:
-            #        sudocmd += ['-u', runas]
+            if sudo or ((runas is not None) and (runas != _user)):
+                sudocmd = copy.copy(self.sudo_cmd)
+                if runas is not None:
+                    sudocmd += ['-u', runas]
 
             # Initialize information to return
             ret = {'out': None, 'err': None, 'rc': None}

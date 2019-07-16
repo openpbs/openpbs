@@ -778,8 +778,8 @@ class PBSTestSuite(unittest.TestCase):
             client = _cl[0]
             if len(_cl) > 1:
                 client_conf = _cl[1]
-        uais = {}
         if 'uais' in cls.conf:
+            uais = {}
             _uais = cls.conf['uais'].split(':')
             for _uai in _uais:
                 user, host = _uai.split('@')
@@ -925,10 +925,6 @@ class PBSTestSuite(unittest.TestCase):
                 return scppath
         elif conf == "PBS_LOG_HIGHRES_TIMESTAMP":
             return "1"
-        elif conf == 'PBS_LEAF_NAME' and hosttype == 'server':
-            return 'pbs-service-nmn'
-        elif conf == 'PBS_SERVER_HOST_NAME' and hosttype == 'mom':
-            return 'pbs-service-nmn'
 
         return None
 
@@ -1073,7 +1069,6 @@ class PBSTestSuite(unittest.TestCase):
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
                 restart_mom = True
-            new_pbsconf['PBS_SERVER_HOST_NAME'] = 'pbs-service-nmn'
 
             # Check if existing pbs.conf has more/less entries than the
             # default list
@@ -1177,9 +1172,6 @@ class PBSTestSuite(unittest.TestCase):
                     restart_pbs = True
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
-            if 'PBS_LEAF_NAME' not in new_pbsconf or \
-                    new_pbsconf['PBS_LEAF_NAME'] != 'pbs-service-nmn':
-                new_pbsconf['PBS_LEAF_NAME'] = 'pbs-service-nmn'
                 restart_pbs = True
 
             # Check if existing pbs.conf has more/less entries than the
@@ -1190,7 +1182,7 @@ class PBSTestSuite(unittest.TestCase):
             if restart_pbs or dmns_to_restart > 0:
                 # Write out the new pbs.conf file
                 self.du.set_pbs_config(server.hostname, confs=new_pbsconf,
-                                       append=False, fout=server.pbs_conf_file)
+                                       append=False)
                 server.pbs_conf = new_pbsconf
 
                 if restart_pbs:
@@ -1314,7 +1306,7 @@ class PBSTestSuite(unittest.TestCase):
         except PbsManagerError as e:
             self.logger.error(e.msg)
         a = {ATTR_managers: (INCR, current_user + '@*,' +
-                             str(MGR_USER) + '@*')}
+             str(MGR_USER) + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
 
         a1 = {ATTR_operators: (INCR, str(OPER_USER) + '@*')}
