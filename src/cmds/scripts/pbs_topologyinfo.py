@@ -56,6 +56,7 @@ class Inventory(object):
         self.hwloclatest = 0
         self.CrayVersion = "0.0"
         self.ndevices = 0
+        self.gpudevices = 0
 
     def __init__(self):
         self.reset()
@@ -89,6 +90,7 @@ class Inventory(object):
         """
         Returns the number of licenses required based on specific formula
         """
+        self.ndevices += self.gpudevices
         return(int(math.ceil(self.ndevices / 4.0)))
 
     def reportsockets(self, dirs, files, options):
@@ -171,6 +173,8 @@ class Inventory(object):
         packagepattern = r'<\s*object\s+type="Package"'
         gpupattern = r'<\s*object\s+type="OSDev"\s+name="card\d+"\s+' \
             'osdev_type="1"'
+        nongpupattern = r'<\s*object\s+type="OSDev"\s+name="controlD\d+"\s+' \
+            'osdev_type="1"'
         micpattern = r'<\s*object\s+type="OSDev"\s+name="mic\d+"\s+' \
             'osdev_type="5"'
         craypattern = r'<\s*BasilResponse\s+'
@@ -209,7 +213,10 @@ class Inventory(object):
                                                             line))):
                     self.nsockets += 1
                     self.ndevices += 1
-                self.ndevices += 1 if re.search(gpupattern, line) else 0
+                self.gpudevices += 1 if re.search(gpupattern, line) else 0
+                if re.search(nongpupattern, line):
+                    if (self.gpudevices > 0):
+                        self.gpudevices -= 1
                 self.ndevices += 1 if re.search(micpattern, line) else 0
 
 
@@ -247,7 +254,12 @@ def socketXMLstart(name, attrs):
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "1" and
                 attrs.get("name").startswith("card")):
-            inventory.ndevices += 1
+            inventory.gpudevices += 1
+        if (name == "object" and attrs.get("type") == "OSDev" and
+            attrs.get("osdev_type") == "1" and
+                attrs.get("name").startswith("controlD")):
+            if (inventory.gpudevices > 0):
+                inventory.gpudevices -= 1
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "5" and
                 attrs.get("name").startswith("mic")):
