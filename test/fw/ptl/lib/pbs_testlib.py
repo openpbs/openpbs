@@ -6701,10 +6701,55 @@ class Server(PBSService):
                     sname = 'default'
                 else:
                     sname = id
+
                 # Default max cycle length is 1200 seconds (20m)
                 self.expect(SCHED, {'state': 'scheduling'}, op=NE, id=sname,
-                            interval=1, max_attempts=1200)
+                            interval=1, max_attempts=1200,
+                            trigger_sched_cycle=False)
         return rc
+
+    def run_sched_cycle(self, sched="default"):
+        """
+        Convenience method to start and finish a sched cycle
+
+        :param sched - the scheduler to kick a cycle for
+        :type sched - str
+
+        :return tuple of (start time, end time) of the new sched cycle
+        """
+        old_val = self.status(SCHED, 'scheduling', id=sched)
+
+        # Make sure that we aren't in a sched cycle already
+        self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'}, id=sched)
+
+        # Kick a new cycle
+        tbefore = time.time()
+        self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'}, id=sched)
+        m1 = self.schedulers[sched].log_match("Starting Scheduling",
+                                              starttime=tbefore)
+        m2 = self.schedulers[sched].log_match("Leaving Scheduling",
+                                              starttime=tbefore, interval=1,
+                                              max_attempts=1200)
+
+        # Get start and end timestamps for the sched cycle
+        if self.logutils is None:
+            try:
+                from ptl.utils.pbs_logutils import PBSLogUtils
+            except:
+                _msg = 'error loading ptl.utils.pbs_logutils'
+                raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+            self.logutils = PBSLogUtils()
+        t1 = m1[1].split(";", 1)[0]
+        t1 = self.logutils.convert_date_time(t1)
+        t2 = m2[1].split(";", 1)[0]
+        t2 = self.logutils.convert_date_time(t2)
+
+        # Restore original value of scheduling
+        if old_val[0]['scheduling'] == 'False':
+            self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                         id=sched)
+
+        return (t1, t2)
 
     def sigjob(self, jobid=None, signal=None, extend=None, runas=None,
                logerr=True):
