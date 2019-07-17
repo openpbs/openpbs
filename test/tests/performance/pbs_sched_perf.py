@@ -165,6 +165,19 @@ class TestSchedPerf(TestPerformance):
         num_jobs = 3000
         self.compare_normal_path_to_buckets('free', num_jobs)
 
+    @timeout(10000)
+    def test_run_10000_normal_jobs(self):
+        """
+        Submit 10000 jobs and time the cycle that runs all of them.
+        """
+
+        a = {'Resource_List.select': '1:ncpus=1'}
+        self.submit_jobs(a, 10000)
+        t = self.run_cycle()
+        self.logger.info('#' * 80)
+        self.logger.info('Time taken in cycle to run 10000 jobs: %.2f' % (t))
+        self.logger.info('#' * 80)
+
     @timeout(3600)
     def test_pset_fuzzy_perf(self):
         """

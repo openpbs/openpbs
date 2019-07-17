@@ -3021,7 +3021,6 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	schd_error *full_err = NULL;
 	schd_error *cur_err = NULL;
-	timed_event *te = NULL;
 
 	resource_req *preempt_targets_req = NULL;
 	char **preempt_targets_list = NULL;

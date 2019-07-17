@@ -621,8 +621,6 @@ perform_event(status *policy, timed_event *event)
 int
 exists_run_event(event_list *calendar, time_t end)
 {
-	timed_event *te;
-
 	if (calendar == NULL || calendar->first_run_event == NULL)
 		return 0;
 	
