@@ -65,12 +65,10 @@ class TestConf(TestFunctional):
         self.server.log_match(logmsg, starttime=now)
 
         # Now set it to cvs and show that the server can't talk to the sched
-        self.server.stop()
         self.du.set_pbs_config(
             self.server.hostname,
             confs={'PBS_SCHEDULER_HOST_NAME': 'cvs.pbspro.com'})
         now = int(time.time())
         self.server.restart()
-        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
         logmsg = 'Could not contact Scheduler'
         self.server.log_match(logmsg, starttime=now)
