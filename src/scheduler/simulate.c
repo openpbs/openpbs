@@ -638,7 +638,7 @@ exists_run_event(event_list *calendar, time_t end)
 int
 exists_run_event_on_node(node_info *ninfo, time_t end)
 {
-	if (ninfo == NULL && ninfo->node_events == NULL)
+	if (ninfo == NULL || ninfo->node_events == NULL)
 		return 0;
 	
 	if (ninfo->node_events->event->event_time < end)
