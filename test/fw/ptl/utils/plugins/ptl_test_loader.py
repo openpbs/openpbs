@@ -197,9 +197,9 @@ class PTLTestLoader(Plugin):
         def check_loadTestsFromNames(names, module=None):
             tests_dir = names
             if not self.testfiles:
-                ptl_test_dir = sys.argv[0]
-                ptl_test_dir = ptl_test_dir.replace('bin/pbs_benchpress',
-                                                    'tests')
+                ptl_test_dir = __file__
+                ptl_test_dir = os.path.join(ptl_test_dir.split('ptl')[0],
+                                            "ptl", "tests")
                 user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
                 if user_test_dir is not None:
                     tests_dir += [user_test_dir]
