@@ -313,7 +313,7 @@ class TestFairshare(TestFunctional):
         J2 = Job(TEST_USER1)
         jid2 = self.server.submit(J2)
 
-        self.server.run_sched_cycle()
+        self.scheduler.run_scheduling_cycle()
 
         c = self.scheduler.cycles(lastN=1)[0]
         job_order = [jid2, jid1]
@@ -343,7 +343,7 @@ class TestFairshare(TestFunctional):
         J4 = Job(TEST_USER1)
         jid4 = self.server.submit(J4)
 
-        self.server.run_sched_cycle()
+        self.scheduler.run_scheduling_cycle()
 
         c = self.scheduler.cycles(lastN=1)[0]
         job_order = [jid3, jid4]

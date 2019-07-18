@@ -6708,49 +6708,6 @@ class Server(PBSService):
                             trigger_sched_cycle=False)
         return rc
 
-    def run_sched_cycle(self, sched="default"):
-        """
-        Convenience method to start and finish a sched cycle
-
-        :param sched - the scheduler to kick a cycle for
-        :type sched - str
-
-        :return tuple of (start time, end time) of the new sched cycle
-        """
-        old_val = self.status(SCHED, 'scheduling', id=sched)
-
-        # Make sure that we aren't in a sched cycle already
-        self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'}, id=sched)
-
-        # Kick a new cycle
-        tbefore = time.time()
-        self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'}, id=sched)
-        m1 = self.schedulers[sched].log_match("Starting Scheduling",
-                                              starttime=tbefore)
-        m2 = self.schedulers[sched].log_match("Leaving Scheduling",
-                                              starttime=tbefore, interval=1,
-                                              max_attempts=1200)
-
-        # Get start and end timestamps for the sched cycle
-        if self.logutils is None:
-            try:
-                from ptl.utils.pbs_logutils import PBSLogUtils
-            except:
-                _msg = 'error loading ptl.utils.pbs_logutils'
-                raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
-            self.logutils = PBSLogUtils()
-        t1 = m1[1].split(";", 1)[0]
-        t1 = self.logutils.convert_date_time(t1)
-        t2 = m2[1].split(";", 1)[0]
-        t2 = self.logutils.convert_date_time(t2)
-
-        # Restore original value of scheduling
-        if old_val[0]['scheduling'] == 'False':
-            self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
-                         id=sched)
-
-        return (t1, t2)
-
     def sigjob(self, jobid=None, signal=None, extend=None, runas=None,
                logerr=True):
         """
@@ -10928,6 +10885,48 @@ class Scheduler(PBSService):
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
+
+    def run_scheduling_cycle(self):
+        """
+        Convenience method to start and finish a sched cycle
+
+        :return start time of the new sched cycle
+        """
+        sched = self.attributes['id']
+        old_val = self.server.status(SCHED, 'scheduling', id=sched)[
+            0]['scheduling']
+
+        # Make sure that we aren't in a sched cycle already
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'scheduling': 'False'}, id=sched)
+
+        # Kick a new cycle
+        tbefore = time.time()
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'scheduling': 'True'}, id=sched)
+        msg = self.log_match("Starting Scheduling",
+                             starttime=tbefore)
+        self.log_match("Leaving Scheduling",
+                       starttime=tbefore, interval=1,
+                       max_attempts=1200)
+
+        # Get start timestamp of the sched cycle
+        if self.logutils is None:
+            try:
+                from ptl.utils.pbs_logutils import PBSLogUtils
+            except:
+                _msg = 'error loading ptl.utils.pbs_logutils'
+                raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+            self.logutils = PBSLogUtils()
+        startt = msg[1].split(";", 1)[0]
+        startt = self.logutils.convert_date_time(startt)
+
+        # Restore original value of scheduling
+        if old_val == 'False':
+            self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                                id=sched)
+
+        return startt
 
     def pbs_version(self):
         """
