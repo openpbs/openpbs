@@ -10889,8 +10889,6 @@ class Scheduler(PBSService):
     def run_scheduling_cycle(self):
         """
         Convenience method to start and finish a sched cycle
-
-        :return start time of the new sched cycle
         """
         sched = self.attributes['id']
         old_val = self.server.status(SCHED, 'scheduling', id=sched)[
@@ -10904,29 +10902,16 @@ class Scheduler(PBSService):
         tbefore = time.time()
         self.server.manager(MGR_CMD_SET, SCHED, {
                             'scheduling': 'True'}, id=sched)
-        msg = self.log_match("Starting Scheduling",
-                             starttime=tbefore)
+        self.log_match("Starting Scheduling",
+                       starttime=tbefore)
         self.log_match("Leaving Scheduling",
                        starttime=tbefore, interval=1,
                        max_attempts=1200)
-
-        # Get start timestamp of the sched cycle
-        if self.logutils is None:
-            try:
-                from ptl.utils.pbs_logutils import PBSLogUtils
-            except:
-                _msg = 'error loading ptl.utils.pbs_logutils'
-                raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
-            self.logutils = PBSLogUtils()
-        startt = msg[1].split(";", 1)[0]
-        startt = self.logutils.convert_date_time(startt)
 
         # Restore original value of scheduling
         if old_val == 'False':
             self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
                                 id=sched)
-
-        return startt
 
     def pbs_version(self):
         """
