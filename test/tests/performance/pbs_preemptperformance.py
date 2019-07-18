@@ -240,6 +240,7 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
+        self.perf_test_result(time_diff, "preemp_time:nonconsume_resc", "sec")
 
     @timeout(3600)
     @tags('sched', 'scheduling_policy')
@@ -331,6 +332,7 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
+        self.perf_test_result(time_diff, "multi_nonconsumable_resc", "sec")
 
     @timeout(3600)
     @tags('sched', 'scheduling_policy')
@@ -406,6 +408,7 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
+        self.perf_test_result(time_diff, "High_priority_preemption", "sec")
 
     @timeout(7200)
     def test_preemption_basic(self):
@@ -469,6 +472,7 @@ class TestPreemptPerformance(TestPerformance):
             self.logger.info('#' * 80)
             ncpus *= 3
             S_jobs += ncpus
+            self.perf_test_result(time_diff, "preemption_time", "sec")
 
     @timeout(3600)
     def test_preemption_with_unrelated_soft_limits(self):
@@ -627,6 +631,7 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
+        self.perf_test_result(time_diff, "preempt_time_soft_limits", "sec")
 
     def tearDown(self):
         TestPerformance.tearDown(self)

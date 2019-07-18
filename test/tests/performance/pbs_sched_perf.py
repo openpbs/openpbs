@@ -242,8 +242,10 @@ class TestSchedPerf(TestPerformance):
 
         cycle2 = self.scheduler.cycles(lastN=1)[0]
         cycle2_time = cycle2.end - cycle2.start
+        percentage = (cycle1_time / cycle2_time) * 100
 
         self.logger.info('Cycle 1: %f Cycle 2: %f Perc %.2f%%' % (
             cycle1_time, cycle2_time, (cycle1_time / cycle2_time) * 100))
         self.assertLess(cycle2_time, cycle1_time,
                         'Optimization was not faster')
+        self.perf_test_result(percentage, "optimized_%", "percentage")
