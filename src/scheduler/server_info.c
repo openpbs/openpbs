@@ -4131,13 +4131,13 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 		arr[0] = ptr;
 		arr[1] = NULL;
 	} else {
-		arr = realloc(ptr_arr, (cnt + 1));
+		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
 		if (arr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
 		}
-		arr[cnt] = ptr;
-		arr[cnt + 1] = NULL;
+		arr[cnt - 1] = ptr;
+		arr[cnt] = NULL;
 	}
 	return arr;
 }
