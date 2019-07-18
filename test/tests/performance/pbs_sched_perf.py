@@ -216,36 +216,3 @@ class TestSchedPerf(TestPerformance):
             cycle1_time, cycle2_time, (cycle1_time / cycle2_time) * 100))
         self.assertLess(cycle2_time, cycle1_time,
                         'Optimization was not faster')
-
-    @timeout(5000)
-    def test_sched_query(self):
-        """
-        Test scheduler's turnaround time with focus on querying the universe
-        """
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-
-        # We want to submit jobs with -V option
-        self.server.manager(MGR_CMD_SET, SERVER,
-                            {'default_qsub_arguments': '-V'})
-
-        # We have 10010 vnodes, submit 10050 jobs so that it can run almost
-        # all of them
-        a = {'Resource_List.select': '1:ncpus=1'}
-        self.submit_jobs(attribs=a, num=10050, step=0, wt_start=900)
-
-        # Kick a sched cycle which will run 10010 jobs
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        self.server.expect(JOB, {"job_state=R": 10010})
-
-        # Now kick 300 sched cycles to exercise the querying of universe
-        for _ in range(300):
-            self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-            self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-
-        cycles = self.scheduler.cycles(lastN=300)
-        sum_all_len = 0
-        for cycle in cycles:
-            sum_all_len += cycle.end - cycle.start
-        self.logger.info("Sum of sched cycle lengths for last 100 cycles: "
-                         + str(sum_all_len))
