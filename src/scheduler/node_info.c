@@ -2205,6 +2205,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	char				reason[MAX_LOG_SIZE] = {0};
 	int				i = 0;
 	static struct schd_error	*failerr = NULL;
+	nspec **tmp;
 
 	if (spec == NULL || ninfo_arr == NULL || resresv == NULL || placespec == NULL || nspec_arr == NULL)
 		return 0;
@@ -2266,7 +2267,12 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		if (rc == 0) {
 			free_nspecs(*nspec_arr);
 			*nspec_arr = NULL;
+		} else {
+			tmp = realloc(*nspec_arr, count_array((void **)*nspec_arr) * sizeof(nspec *) + 1);
+			if (tmp != NULL)
+				*nspec_arr = tmp;
 		}
+
 		if (pass_flags & EVAL_EXCLSET)
 			alloc_rest_nodepart(*nspec_arr, ninfo_arr);
 
@@ -2354,6 +2360,10 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	if (!rc) {
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
+	} else {
+		tmp = realloc(*nspec_arr, count_array((void **)*nspec_arr) * sizeof(nspec *) + 1);
+		if (tmp != NULL)
+			*nspec_arr = tmp;
 	}
 
 	if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
