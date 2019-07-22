@@ -49,7 +49,7 @@ class TestJobArrayComment(TestFunctional):
         are rejected by mom
         """
         attr = {'resources_available.ncpus': 10}
-        self.server.manager(MGR_CMD_SET, NODE, attr)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
         attr = {'job_history_enable': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         # create a mom hook that rejects and deletes subjob 0, 5, and 7
@@ -77,7 +77,6 @@ class TestJobArrayComment(TestFunctional):
             ATTR_J: '0-9',
             'Resource_List.select': 'ncpus=1'
         })
-        test_job_array.set_sleep_time(1)
         jid = self.server.submit(test_job_array)
         attr = {
             ATTR_state: 'B',
