@@ -198,7 +198,7 @@ class TestQsub_remove_files(TestFunctional):
         alter the job with -Roe and check whether it is
         reflecting in qstat -f output.
         """
-        mydate = int(time.time()) + 60
+        mydate = int(time.time()) + 120
         j = Job(TEST_USER)
         attribs = {
             ATTR_a: time.strftime(
