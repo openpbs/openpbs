@@ -83,6 +83,7 @@ class PTLTestLoader(Plugin):
         :param testgroup: Test group
         :param suites: Test suites to load
         :param excludes: Tests to exclude while running
+        :param testfiles: Flag to check if test is run by filename
         """
         if os.access(str(testgroup), os.R_OK):
             f = open(testgroup, 'r')
@@ -202,7 +203,8 @@ class PTLTestLoader(Plugin):
                                             "ptl", "tests")
                 user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
                 if user_test_dir is not None:
-                    tests_dir += [user_test_dir]
+                    if os.path.isdir(user_test_dir):
+                        tests_dir += [user_test_dir]
                 if os.path.isdir(ptl_test_dir):
                     tests_dir += [ptl_test_dir]
                 rv = old_loadTestsFromNames(tests_dir, module)

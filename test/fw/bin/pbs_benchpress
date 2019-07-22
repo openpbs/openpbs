@@ -433,8 +433,9 @@ if __name__ == '__main__':
         testsuites = 'PBSTestSuite'
         follow = True
 
+    loader = PTLTestLoader()
+
     if only_info:
-        loader = PTLTestLoader()
         testinfo = PTLTestInfo()
         loader.set_data(testgroup, testsuites, excludes, True,
                         testfiles)
@@ -442,13 +443,11 @@ if __name__ == '__main__':
                           showinfo, verbose, gen_ts_tree)
         plugins = (loader, testinfo)
     elif (tags_info or list_tags):
-        loader = PTLTestLoader()
         testtags = PTLTestTags()
         loader.set_data(testgroup, testsuites, excludes, True)
         testtags.set_data(tags, eval_tags, tags_info, list_tags, verbose)
         plugins = (loader, testtags)
     else:
-        loader = PTLTestLoader()
         testtags = PTLTestTags()
         runner = PTLTestRunner()
         db = PTLTestDb()
