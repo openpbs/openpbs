@@ -281,6 +281,7 @@ functionality of PBS Professional®.
 %setup
 
 %build
+[ -f configure ] || ./autogen.sh
 [ -d build ] && rm -rf build
 mkdir build
 cd build
