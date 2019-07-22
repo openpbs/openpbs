@@ -2196,15 +2196,16 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	node_info **ninfo_arr, node_partition **nodepart, resource_resv *resresv,
 	unsigned int flags, nspec ***nspec_arr, schd_error *err)
 {
-	int				tot_nodes = 0;
-	place				*pl;
-	int				can_fit = 0;
-	int				rc = 0;		/* 1 if resources are available, 0 if not */
-	char				logbuf[MAX_LOG_SIZE] = {0};
-	int				pass_flags = NO_FLAGS;
-	char				reason[MAX_LOG_SIZE] = {0};
-	int				i = 0;
-	static struct schd_error	*failerr = NULL;
+	int tot_nodes = 0;
+	place *pl;
+	int can_fit = 0;
+	int rc = 0;		/* 1 if resources are available, 0 if not */
+	int num_nspecs;
+	char logbuf[MAX_LOG_SIZE] = {0};
+	int pass_flags = NO_FLAGS;
+	char reason[MAX_LOG_SIZE] = {0};
+	int i = 0;
+	static struct schd_error *failerr = NULL;
 	nspec **tmp;
 
 	if (spec == NULL || ninfo_arr == NULL || resresv == NULL || placespec == NULL || nspec_arr == NULL)
@@ -2235,14 +2236,19 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	}
 
 	pl = placespec;
-	tot_nodes = count_array((void **) ninfo_arr);
 
 	if (flags != NO_FLAGS)
 		pass_flags = flags;
 
-	/* Worst case is that all nodes show up in every chunk */
-	if ((*nspec_arr = (nspec **) calloc(spec->total_chunks * tot_nodes + 1,
-		sizeof(nspec*))) == NULL) {
+	if (resresv->server->has_multi_vnode) {
+		/* Worst case is that split all chunks onto all nodes */
+		tot_nodes = count_array((void **)ninfo_arr);
+		num_nspecs = tot_nodes * spec->total_chunks;
+	}
+	else
+		num_nspecs = spec->total_chunks;
+
+	if ((*nspec_arr = (nspec **) calloc(num_nspecs + 1, sizeof(nspec*))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
@@ -2267,8 +2273,8 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		if (rc == 0) {
 			free_nspecs(*nspec_arr);
 			*nspec_arr = NULL;
-		} else {
-			tmp = realloc(*nspec_arr, count_array((void **)*nspec_arr) * sizeof(nspec *) + 1);
+		} else if (resresv->server->has_multi_vnode) {
+			tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
 			if (tmp != NULL)
 				*nspec_arr = tmp;
 		}
@@ -2360,8 +2366,8 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	if (!rc) {
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
-	} else {
-		tmp = realloc(*nspec_arr, count_array((void **)*nspec_arr) * sizeof(nspec *) + 1);
+	} else if (resresv->server->has_multi_vnode) {
+		tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
 		if (tmp != NULL)
 			*nspec_arr = tmp;
 	}
