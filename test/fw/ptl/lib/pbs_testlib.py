@@ -1827,6 +1827,9 @@ class BatchUtils(object):
                     _e = len(lines) - 1
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
+                elif not l[i].startswith(('\t', ' ')) and l[i].endswith(','):
+                    _e = len(lines) - 1
+                    lines[_e] = lines[_e] + l[i]
                 else:
                     lines.append(l[i])
         else:
