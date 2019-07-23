@@ -12176,6 +12176,10 @@ class Scheduler(PBSService):
             self.logger.error('error loading ptl.utils.pbs_logutils')
             return None
 
+        if self.id != "default":
+            day = time.strftime("%Y%m%d", time.localtime())
+            self.logfile = os.path.join(self.attributes['sched_log'], day)
+
         if start is not None or end is not None:
             analyze_path = os.path.dirname(self.logfile)
         else:
