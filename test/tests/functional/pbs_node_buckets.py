@@ -228,8 +228,8 @@ class TestNodeBuckets(TestFunctional):
              'Resource_List.walltime': '2:00:00'}
         j = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j)
-        self.server.expect(JOB, 'comment', op=SET, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'comment', op=SET, id=jid2, interval=1)
         self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
 
         chunk3 = '2:ncpus=1'
@@ -238,7 +238,7 @@ class TestNodeBuckets(TestFunctional):
              'Resource_List.walltime': '30:00'}
         j = Job(TEST_USER, attrs=a)
         jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3, interval=1)
         self.scheduler.log_match(jid3 + ';Chunk: ' + chunk3, n=10000)
 
         a = {'Resource_List.select': chunk3,
@@ -246,8 +246,8 @@ class TestNodeBuckets(TestFunctional):
              'Resource_List.walltime': '2:30:00'}
         j = Job(TEST_USER, attrs=a)
         jid4 = self.server.submit(j)
-        self.server.expect(JOB, 'comment', op=SET, id=jid4)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+        self.server.expect(JOB, 'comment', op=SET, id=jid4, interval=1)
         self.scheduler.log_match(jid4 + ';Chunk: ' + chunk3, n=10000)
 
     @timeout(450)
@@ -636,7 +636,8 @@ class TestNodeBuckets(TestFunctional):
         j2 = Job(TEST_USER, a)
         jid2 = self.server.submit(j2)
 
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
+        self.scheduler.log_match(
+            jid2 + ';Chunk: ' + chunk2, interval=1, n=10000)
         self.scheduler.log_match(jid2 + ';Job is a top job', n=10000)
 
         n = self.server.status(NODE, 'resources_available.shape')
@@ -652,7 +653,8 @@ class TestNodeBuckets(TestFunctional):
         j3 = Job(TEST_USER, a)
         jid3 = self.server.submit(j3)
 
-        self.scheduler.log_match(jid3 + ';Chunk: ' + chunk2, n=10000)
+        self.scheduler.log_match(
+            jid3 + ';Chunk: ' + chunk2, interval=1, n=10000)
         self.scheduler.log_match(jid3 + ';Job is a top job', n=10000)
 
         ev = self.server.status(JOB, 'estimated.exec_vnode', id=jid3)
