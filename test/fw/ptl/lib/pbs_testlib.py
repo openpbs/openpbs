@@ -4040,7 +4040,7 @@ class PBSService(PBSObject):
             from ptl.utils.pbs_logutils import PBSLogUtils
         except:
             _msg = 'error loading ptl.utils.pbs_logutils'
-            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+            raise ImportError(_msg)
 
         if self.logutils is None:
             self.logutils = PBSLogUtils()
