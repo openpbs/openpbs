@@ -1526,3 +1526,151 @@ class TestReservations(TestFunctional):
             self.server.expect(JOB, {'job_state': 'F', 'substate': '93',
                                      'queue': rid_q}, extend='xt',
                                attrop=PTL_AND, id=subjob)
+
+    def common_config(self):
+        """
+        This function contains common steps for test
+        "test_ASAP_resv_with_multivnode_job_array" and
+        "test_standing_resv_with_multivnode_job_array"
+        """
+        vn_attrs = {ATTR_rescavail + '.ncpus': 4}
+        self.server.create_vnodes("vnode1", vn_attrs, 2,
+                                  self.mom, fname="vnodedef1")
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+
+    def test_ASAP_resv_with_multivnode_job_array(self):
+        """
+        Test 2 multivnode job array converted to ASAP resv
+        having same start time run as per resources available and
+        doesn't crashes PBS daemons on completion of reservation.
+        """
+        self.common_config()
+        # Submit job array such that it consumes all the resources
+        # on both vnodes
+        attrs = {ATTR_J: '1-5',
+                 'Resource_List.select': '2:ncpus=1',
+                 'Resource_List.walltime': '10',
+                 'Resource_List.place': 'vscatter'}
+        j = Job(PBSROOT_USER)
+        j.set_sleep_time(10)
+        j.set_attributes(attrs)
+        jid = self.server.submit(j)
+        subjid = []
+        for i in range(1, 6):
+            subjid.append(j.create_subjob_id(jid, i))
+        self.server.expect(JOB, {'job_state=R': 4}, count=True,
+                           extend='t', id=jid)
+        self.server.expect(JOB, {'job_state=Q': 1}, count=True,
+                           extend='t', id=jid)
+        # Submit another job array and verify that all the subjobs in
+        # it are in Q state
+        j1 = Job(PBSROOT_USER)
+        j1.set_sleep_time(10)
+        j1.set_attributes(attrs)
+        jid2 = self.server.submit(j1)
+        subjid2 = []
+        for i in range(1, 6):
+            subjid2.append(j.create_subjob_id(jid2, i))
+        self.server.expect(JOB, {'job_state=Q': 6}, count=True,
+                           extend='t', id=jid2)
+        # Convert 2 job array's into ASAP reservation
+        now = int(time.time())
+        rid1 = self.submit_asap_reservation(PBSROOT_USER, jid)
+        rid1_q = rid1.split('.')[0]
+        rid2 = self.submit_asap_reservation(PBSROOT_USER, jid2)
+        rid2_q = rid2.split('.')[0]
+        # Check both the reservation starts running
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid1, offset=10)
+        self.server.expect(RESV, a, id=rid2)
+        # Verify subjobs initially in R state completed
+        self.server.expect(JOB, {'job_state=X': 4}, count=True,
+                           extend='xt', id=jid)
+        # Verify subjobs in Q state starts running as soon as resv starts
+        self.server.expect(JOB, {'job_state': 'R'}, subjid[4])
+        self.server.expect(JOB, {'job_state': 'R'}, subjid2[0])
+        # Wait for reservation to end
+        resv_queue = [rid1_q, rid2_q]
+        for queue in resv_queue:
+            msg = "Que;" + queue + ";deleted at request of pbs_server@"
+            self.server.log_match(msg, starttime=now, interval=10)
+        # Verify all the jobs are deleted once resv ends
+        jids = [jid, jid2]
+        for job in jids:
+            self.server.expect(JOB, 'queue', op=UNSET, id=job)
+        exp_attrib = {'job_state': 'F', 'substate': '91'}
+        jobs = [subjid[1], subjid2[1]]
+        for jid in jobs:
+            self.server.expect(JOB, exp_attrib, id=jid, extend='x')
+        # Verify all the PBS daemons are up and running upon resv completion
+        self.server.isUp()
+        self.mom.isUp()
+        self.scheduler.isUp()
+
+    def test_standing_resv_with_multivnode_job_array(self):
+        """
+        Test multivnode job array with standing reservation. Also
+        verify that subjobs with walltime exceeding the resv duration
+        are deleted once reservation ends
+        """
+        self.common_config()
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+
+        start = int(time.time()) + 10
+        end = int(time.time()) + 61
+        a = {'Resource_List.select': '2:ncpus=2',
+             ATTR_resv_rrule: 'FREQ=MINUTELY;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             'Resource_List.place': 'vscatter'}
+        r = Reservation(PBSROOT_USER, attrs=a)
+        rid = self.server.submit(r)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        resv_queue = rid.split(".")[0]
+        # Submit job requesting more walltime than the resv duration
+        attrs = {ATTR_q: resv_queue, ATTR_J: '1-5',
+                 'Resource_List.select': '2:ncpus=1',
+                 'Resource_List.place': 'vscatter'}
+        j = Job(PBSROOT_USER)
+        j.set_attributes(attrs)
+        jid = self.server.submit(j)
+        subjid = []
+        for i in range(1, 6):
+            subjid.append(j.create_subjob_id(jid, i))
+        exp_attrib = {'job_state': 'Q',
+                      'comment': (MATCH_RE, 'Queue not started')}
+        self.server.expect(JOB, exp_attrib, id=subjid[0])
+        # Wait for first instance of standing resv to start
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(JOB, {'job_state': 'B'}, id=jid)
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           extend='t', id=jid)
+        # Wait for second instance of standing resv to start
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'), 'reserve_index': 2}
+        self.server.expect(RESV, a, offset=60, id=rid)
+        # Verify running subjobs were terminated after the first
+        # instance of standing resv
+        jobs = [subjid[0], subjid[1]]
+        attrib = {'job_state': 'X', 'substate': '93'}
+        for jobid in jobs:
+            self.server.expect(JOB, attrib, id=jobid)
+        self.server.expect(JOB, {'job_state=R': 2}, count=True,
+                           extend='t', id=jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=subjid[4])
+        # Wait for reservation to end
+        self.server.log_match(resv_queue + ";deleted at request of pbs_server",
+                              id=rid, interval=10)
+        # Verify all the jobs are deleted once resv ends
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+        self.server.expect(JOB, {'job_state=F': 6}, count=True,
+                           extend='xt', id=jid)
