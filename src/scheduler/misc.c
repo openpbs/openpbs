@@ -1007,17 +1007,25 @@ clear_schd_error(schd_error *err)
 	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
 	err->rdef = NULL;
 
-	free(err->arg1);
-	err->arg1 = NULL;
+	if (err->arg1 != NULL) {
+		free(err->arg1);
+		err->arg1 = NULL;
+	}
 
-	free(err->arg2);
-	err->arg2 = NULL;
+	if (err->arg2 != NULL) {
+		free(err->arg2);
+		err->arg2 = NULL;
+	}
 
-	free(err->arg3);
-	err->arg3 = NULL;
+	if (err->arg3 != NULL) {
+		free(err->arg3);
+		err->arg3 = NULL;
+	}
 
-	free(err->specmsg);
-	err->specmsg = NULL;
+	if (err->specmsg != NULL) {
+		free(err->specmsg);
+		err->specmsg = NULL;
+	}
 }
 
 /**
