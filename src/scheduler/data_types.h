@@ -630,7 +630,7 @@ struct node_info
 	char *partition;		/* partition to which node belongs to */
 	time_t last_state_change_time;	/* Node state change at time stamp */
 	time_t last_used_time;		/* Node was last active at this time */
-	te_list *node_events;		/* list of events that affect the node */
+	te_list *node_events;		/* list of run events that affect the node */
 	int bucket_ind;			/* index in server's bucket array */
 	int node_ind;			/* node's index into sinfo->unordered_nodes */
 	node_partition **np_arr;	/* array of node partitions node is in */

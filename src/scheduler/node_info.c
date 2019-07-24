@@ -3330,7 +3330,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	 * Actually return an a real error */
 	if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
 		move_schd_error(err, failerr);
-	/* don't be so specific in the comment since it's only for a single node*/
+	/* don't be so specific in the comment since it's only for a single node */
 	free(err->arg1);
 	err->arg1 = NULL;
 	return 0;

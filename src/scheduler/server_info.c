@@ -1420,6 +1420,19 @@ create_resource(char *name, char *value, enum resource_fields field)
 	return nres;
 }
 
+/**
+ * @brief modify the resources_assigned values for a resource_list 
+ * 		(e.g. either A += B or A -= B) where
+ * 		A is a resource list and B is a resource_req list.
+ * 
+ * @param[in] res_list - The schd_resource list which is modified
+ * @param[in] req_list - What is modifing the schd_resource list
+ * @param[in] type - SCHD_INCR for += or SCHD_DECR for -=
+ * 
+ * @return int
+ * @retval 1 - success
+ * @retval 0 - failure
+ */
 int
 modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 {
@@ -1433,7 +1446,7 @@ modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 	for(cur_req = req_list; cur_req != NULL; cur_req = cur_req->next) {
 		if (cur_req->type.is_consumable) {
 			cur_res = find_resource(res_list, cur_req->def);
-			if (cur_res == NULL) {
+			if (cur_res == NULL && type == SCHD_INCR) {
 				if (end_res == NULL)
 					for (end_res = res_list; end_res->next != NULL; end_res = end_res->next)
 						;
@@ -1443,9 +1456,9 @@ modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 				end_res = end_res->next;
 			} else {
 				if (type == SCHD_INCR)
-					cur_res->avail += cur_req->amount;
+					cur_res->assigned += cur_req->amount;
 				else if (type == SCHD_DECR)
-					    cur_res->avail -= cur_req->amount;
+					    cur_res->assigned -= cur_req->amount;
 			}
 		}
 	}

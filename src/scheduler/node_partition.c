@@ -295,13 +295,14 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
 		return NULL;
 
 	cnt = count_array((void **)onp_arr);
-	if ((nnp_arr = calloc(cnt + 1, sizeof(node_partition *))) == NULL) {
+	if ((nnp_arr = malloc((cnt + 1) * sizeof(node_partition *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; i < cnt; i++)
 		nnp_arr[i] = find_node_partition_by_rank(new_nps, onp_arr[i]->rank);
+	nnp_arr[i] = NULL;
 
 	return nnp_arr;
 }
@@ -453,7 +454,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 			}
 			if (res != NULL) {
 				/* Incase of indirect resource, point it to the right place */
-			        if (res->indirect_res != NULL)
+				if (res->indirect_res != NULL)
 					res = res->indirect_res;
 				for (val_i = 0; res->str_avail[val_i] != NULL; val_i++) {
 					/* 2: 1 for '=' 1 for '\0' */
@@ -751,7 +752,7 @@ node_partition_update(status *policy, node_partition *np)
 
 	if (policy->node_sort[0].res_name != NULL && conf.node_sort_unused) {
 		/* Resort the nodes in the partition so that selection works correctly. */
-		qsort(np->ninfo_arr, np->tot_nodes, sizeof(node_info*),
+		qsort(np->ninfo_arr, np->tot_nodes, sizeof(node_info *),
 			multi_node_sort);
 	}
 
