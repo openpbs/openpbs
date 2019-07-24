@@ -166,7 +166,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	}
 
 	if ((qinfo_arr = (queue_info **) malloc(sizeof(queue_info *) * (num_queues + 1))) == NULL) {
-		log_err(errno, "query_queues", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		pbs_statfree(queues);
 		free_schd_error(sch_err);
 		return NULL;
@@ -532,7 +532,7 @@ new_queue_info(int limallocflag)
 	queue_info *qinfo;
 
 	if ((qinfo = malloc(sizeof(queue_info))) == NULL) {
-		log_err(errno, "new_queue_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -880,7 +880,7 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 
 	if ((new_queues = (queue_info **) malloc(
 		(nsinfo->num_queues + 1) * sizeof(queue_info*))) == NULL) {
-		log_err(errno, "dup_queues", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 

@@ -240,6 +240,7 @@ struct pbs_config
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
 	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
+	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
@@ -303,6 +304,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
 #define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
+#define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif

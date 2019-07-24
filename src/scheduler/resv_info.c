@@ -178,9 +178,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		cur_resv = cur_resv->next;
 	}
 
-	if ((resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *)
-		* (num_resv + 1))) == NULL) {
-		log_err(errno, "query_reservations", MEM_ERR_MSG);
+	if ((resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *) * (num_resv + 1))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		free_schd_error(err);
 		return NULL;
 	}
@@ -436,7 +435,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				/* Resize the reservations array to append each occurrence */
 				if ((tmp = (resource_resv **) realloc(resresv_arr,
 					sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
-					log_err(errno, "query_reservations", MEM_ERR_MSG);
+					log_err(errno, __func__, MEM_ERR_MSG);
 					free_resource_resv_array(resresv_arr);
 					free_execvnode_seq(tofree);
 					free(execvnodes_seq);
@@ -475,7 +474,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					if (j == 0)
 						resresv_ocr = resresv;
 					else {
-						resresv_ocr = dup_resource_resv(resresv, sinfo, NULL);
+						resresv_ocr = dup_resource_resv(resresv, sinfo, NULL, err);
 						if (resresv_ocr == NULL) {
 							log_err(errno,
 								"query_reservations",
@@ -746,7 +745,7 @@ new_resv_info()
 	resv_info *rinfo;
 
 	if ((rinfo = (resv_info *) malloc(sizeof(resv_info))) == NULL) {
-		log_err(errno, "new_resv_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -903,6 +902,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	int		occr_count =1;
 	int		i;
 	int		j;
+	schd_error *err;
 
 	if (sinfo == NULL)
 		return -1;
@@ -910,6 +910,10 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	/* If no reservations to check then return, this is not an error */
 	if (resvs == NULL)
 		return 0;
+
+	err = new_schd_error();
+	if (err == NULL)
+		return -1;
 
 	qsort(sinfo->resvs, sinfo->num_resvs, sizeof(resource_resv*), cmp_resv_state);
 
@@ -997,7 +1001,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					occr_execvnodes_arr = malloc(sizeof(char *));
 					if (occr_execvnodes_arr == NULL) {
 						free_server(nsinfo);
-						log_err(errno, "check_new_reservations", MEM_ERR_MSG);
+						log_err(errno, __func__, MEM_ERR_MSG);
 						return -1;
 					}
 					*occr_execvnodes_arr = nresv->resv->execvnodes_seq;
@@ -1036,7 +1040,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							/* For a new, unconfirmed, reservation, we duplicate the parent
 							 * reservation
 							 */
-							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL);
+							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL, err);
 							if (nresv_copy == NULL)
 								break;
 						}
@@ -1144,10 +1148,13 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			free_server(nsinfo);
 		}
 		/* Something went wrong with reservation confirmation, retry later */
-		if (pbsrc == RESV_CONFIRM_RETRY)
+		if (pbsrc == RESV_CONFIRM_RETRY) {
+			free_schd_error(err);
 			return -1;
+		}
 	}
 
+	free_schd_error(err);
 	return count;
 }
 
@@ -1270,9 +1277,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			occr_count = 1;
 	}
 
-	if ((occr_start_arr = (time_t *) calloc(sizeof(time_t), occr_count))
-		== NULL) {
-		log_err(errno, "confirm_reservation", MEM_ERR_MSG);
+	if ((occr_start_arr = (time_t *) calloc(sizeof(time_t), occr_count)) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return RESV_CONFIRM_FAIL;
 	}
 
@@ -1329,7 +1335,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nresv = nresv_copy;
 			}
 			else {
-				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL);
+				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL, err);
 
 				if (nresv_copy == NULL) {
 					rconf = RESV_CONFIRM_FAIL;

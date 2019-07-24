@@ -41,6 +41,7 @@ lib_LIBRARIES = libpbs_sched.a
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
+	-pthread \
 	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
 libpbs_sched_a_SOURCES = \
 	buckets.c \
@@ -64,6 +65,8 @@ libpbs_sched_a_SOURCES = \
 	limits.c \
 	misc.c \
 	misc.h \
+	multi_threading.c \
+	multi_threading.h \
 	node_info.c \
 	node_info.h \
 	node_partition.c \
@@ -76,6 +79,8 @@ libpbs_sched_a_SOURCES = \
 	prev_job_info.h \
 	prime.c \
 	prime.h \
+	queue.c \
+	queue.h \
 	queue_info.c \
 	queue_info.h \
 	range.c \

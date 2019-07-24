@@ -126,7 +126,7 @@ string_dup(char *str)
 		return NULL;
 
 	if ((newstr = (char *) malloc(strlen(str) + 1)) == NULL) {
-		log_err(errno, "string_dup", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -167,7 +167,7 @@ concat_str(char *str1, char *str2, char *str3 , int append)
 		len += strlen(str3);
 
 	if ((newstr = malloc(len + 1)) == NULL) {
-		log_err(errno, "concat_str", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -531,10 +531,10 @@ dup_string_array(char **ostrs)
 	int i;
 
 	if (ostrs != NULL) {
-		for (i = 0; ostrs[i] != NULL; i++);
+		i = count_array((void **) ostrs);
 
 		if ((nstrs = (char **)malloc((i + 1) * sizeof(char *))) == NULL) {
-			log_err(errno, "dup_string_array", "Error allocating memory");
+			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
 		}
 
@@ -619,15 +619,13 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
  *
  * @return	converted string stored in local static ptr (no need to free)
  *
- * @par MT-safe:	no
+ * @par MT-safe:	yes
  *
  */
 char *
 string_array_to_str(char **strarr)
 {
-	static char *arrbuf = NULL;
-	static int arrlen = 0;
-	char *tmp;
+	char *arrbuf = NULL;
 	int len = 0;
 	int i;
 
@@ -635,25 +633,17 @@ string_array_to_str(char **strarr)
 		return NULL;
 
 	if (strarr[0] == NULL)
-		return "";
+		return NULL;
 
 	for (i = 0; strarr[i] != NULL; i++)
 		len += strlen(strarr[i]);
-
 	len += i; /* added space for the commas */
 
-	if (arrlen <= len || arrbuf == NULL) {
-		tmp = realloc(arrbuf, arrlen + len + 1);
-		if (tmp != NULL) {
-			arrlen += len + 1;
-			arrbuf = tmp;
-		}
-		else {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return "";
-		}
+	arrbuf = malloc(len + 1);
+	if (arrbuf == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
 	}
-
 	arrbuf[0] = '\0';
 
 	for (i = 0; strarr[i] != NULL; i++) {
@@ -1395,8 +1385,9 @@ res_to_str(void *p, enum resource_fields fld)
 
 	if (resbuf == NULL) {
 		if ((resbuf = malloc(resbuf_size)) == NULL)
-			return "";
+		return "";
 	}
+
 	return res_to_str_re(p, fld, &resbuf, &resbuf_size, NO_FLAGS);
 
 }
@@ -1502,6 +1493,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	resource_req *req = NULL;
 	struct resource_type *rt;
 	char *str;
+	int free_str = 0;
 	sch_resource_t amount;
 
 	char localbuf[1024];
@@ -1566,6 +1558,10 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 				res = res->indirect_res;
 			rt = &(res->type);
 			str = string_array_to_str(res->str_avail);
+			if (str == NULL)
+				str = "";
+			else
+				free_str = 1;
 			amount = res->avail;
 			break;
 
@@ -1654,6 +1650,9 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		char resbuf[1024];
 		convert_duration_to_str((long) amount, resbuf, sizeof(resbuf));
 	}
+
+	if (free_str)
+		free(str);
 
 	if (ret == NULL)
 		return "";

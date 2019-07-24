@@ -696,6 +696,7 @@ query_server_dyn_res(server_info *sinfo)
 		if (res != NULL) {
 			int err;
 			char *filename = conf.dynamic_res[i].script_name;
+
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
@@ -760,6 +761,7 @@ query_server_dyn_res(server_info *sinfo)
 						"Error piping to program %s.", conf.dynamic_res[i].command_line);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
+
 			if (res->type.is_non_consumable)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
 					"%s = %s", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
@@ -1234,7 +1236,7 @@ new_server_info(int limallocflag)
 	server_info *sinfo;			/* the new server */
 
 	if ((sinfo = (server_info *) malloc(sizeof(server_info))) == NULL) {
-		log_err(errno, "new_server_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -1335,7 +1337,7 @@ new_resource()
 	schd_resource *resp;		/* the new resource */
 
 	if ((resp = calloc(1,  sizeof(schd_resource))) == NULL) {
-		log_err(errno, "new_resource", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -2689,7 +2691,7 @@ new_counts(void)
 	counts *cts;
 
 	if ((cts = malloc(sizeof(struct counts)))  == NULL) {
-		log_err(errno, "new_counts", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 

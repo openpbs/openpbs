@@ -38,6 +38,7 @@
 #include <pbs_config.h>
 
 #include <stdio.h>
+#include <pthread.h>
 #include "globals.h"
 #include "constant.h"
 #include "sort.h"
@@ -146,6 +147,20 @@ int pbs_rm_port;
 int got_sigpipe;
 
 int	second_connection;
+
+/* Stuff needed for multi-threading */
+pthread_mutex_t general_lock;
+pthread_mutex_t work_lock;
+pthread_mutex_t result_lock;
+pthread_cond_t work_cond;
+pthread_cond_t result_cond;
+ds_queue *work_queue = NULL;
+ds_queue *result_queue = NULL;
+pthread_t *threads = NULL;
+int threads_die = 0;
+int num_threads = 0;
+pthread_key_t th_id_key;
+pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 /* resource definitions from the server */
 
