@@ -590,6 +590,7 @@ new_queue_info(int limallocflag)
 	qinfo->ignore_nodect_sort	 = 0;
 #endif
 	qinfo->partition = NULL;
+	qinfo->preempt_bit = 0;
 	return qinfo;
 }
 
@@ -994,6 +995,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 			return NULL;
 		}
 	}
+	nqinfo->preempt_bit = oqinfo->preempt_bit;
 
 	return nqinfo;
 }

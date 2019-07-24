@@ -761,6 +761,40 @@ dup_resource_req_list(resource_req *oreq)
 
 /**
  * @brief
+ *		dup_resource_count_list - duplicate a resource_req list
+ *
+ * @param[in]	oreq	-	resource_count list to duplicate
+ *
+ * @return	duplicated resource_count list
+ *
+ */
+resource_count *dup_resource_count_list(resource_count *oreq)
+{
+	resource_count *req;
+	resource_count *nreq;
+	resource_count *head;
+	resource_count *prev;
+
+	head = NULL;
+	prev = NULL;
+	req = oreq;
+
+	while (req != NULL) {
+		if ((nreq = dup_resource_count(req)) != NULL) {
+			if (head == NULL)
+				head = nreq;
+			else
+				prev->next = nreq;
+			prev = nreq;
+		}
+		req = req->next;
+	}
+
+	return head;
+}
+
+/**
+ * @brief
  *		dup_selective_resource_req_list - duplicate a resource_req list
  *
  * @param[in]	oreq	-	resource_req list to duplicate
@@ -829,6 +863,34 @@ dup_resource_req(resource_req *oreq)
 
 /**
  * @brief
+ *		dup_resource_count - duplicate a resource_count struct
+ *
+ * @param[in]	oreq	-	the resource_count to duplicate
+ *
+ * @return	duplicated resource count
+ *
+ */
+resource_count *dup_resource_count(resource_count *oreq)
+{
+	resource_count *nreq;
+	if (oreq == NULL)
+		return NULL;
+
+	if ((nreq = new_resource_count()) == NULL)
+		return NULL;
+
+	nreq->def = oreq->def;
+	if(nreq->def)
+		nreq->name = nreq->def->name;
+
+	nreq->amount = oreq->amount;
+	nreq->preempt_bit = oreq->preempt_bit;
+
+	return nreq;
+}
+
+/**
+ * @brief
  *		new_resource_req - allocate and initalize new resource_req
  *
  * @return	the new resource_req
@@ -850,6 +912,31 @@ new_resource_req()
 	resreq->name = NULL;
 	resreq->res_str = NULL;
 	resreq->amount = 0;
+	resreq->def = NULL;
+	resreq->next = NULL;
+
+	return resreq;
+}
+
+/**
+ * @brief
+ *		new_resource_count - allocate and initalize new resource_count
+ *
+ * @return	the new resource_count
+ *
+ */
+resource_count *new_resource_count()
+{
+	resource_count *resreq;
+
+	if ((resreq = malloc(sizeof(resource_count))) == NULL) {
+		log_err(errno, "new_resource_count", MEM_ERR_MSG);
+		return NULL;
+	}
+
+	resreq->name = NULL;
+	resreq->amount = 0;
+	resreq->preempt_bit = 0;
 	resreq->def = NULL;
 	resreq->next = NULL;
 
@@ -906,7 +993,7 @@ create_resource_req(char *name, char *value)
  *		initialize a new resource_req also adds new one to the list
  *
  * @param[in]	reqlist	-	list to search
- * @param[in]	name	-	resource_req to find
+ * @param[in]	def	-	resource_req to find
  *
  * @return	resource_req *
  * @retval	found or newly allocated resource_req
@@ -938,6 +1025,44 @@ find_alloc_resource_req(resource_req *reqlist, resdef *def)
 
 	return req;
 }
+
+/**
+ * @brief
+ *		find resource_count by resource definition or allocate and
+ *		initialize a new resource_count also adds new one to the list
+ *
+ * @param[in]	reqlist	-	list to search
+ * @param[in]	def	-	resource_count to find
+ *
+ * @return	resource_count *
+ * @retval	found or newly allocated resource_count
+ *
+ */
+resource_count *find_alloc_resource_count(resource_count *reqlist, resdef *def)
+{
+	resource_count *req;		/* used to find or create resource_count */
+	resource_count *prev = NULL;	/* previous resource_count in list */
+
+	if (def == NULL)
+		return NULL;
+
+	for (req = reqlist; req != NULL && req->def != def; req = req->next) {
+		prev = req;
+	}
+
+	if (req == NULL) {
+		if ((req = new_resource_count()) == NULL)
+			return NULL;
+
+		req->def = def;
+		req->name = def->name;
+		if (prev != NULL)
+			prev->next = req;
+	}
+
+	return req;
+}
+
 
 /**
  * @brief
@@ -1025,6 +1150,54 @@ find_resource_req(resource_req *reqlist, resdef *def)
 
 /**
  * @brief
+ *		find a resource_count from a resource_count list by string name
+ *
+ * @param[in]	reqlist	-	the resource_count list
+ * @param[in]	name	-	resource name to look for
+ *
+ * @return	resource_count *
+ * @retval	found resource request
+ * @retval NULL	: if not found
+ *
+ */
+resource_count *
+find_resource_count_by_str(resource_count *reqlist, const char *name)
+{
+	resource_count *resreq;
+
+	resreq = reqlist;
+
+	while (resreq != NULL && strcmp(resreq->name, name))
+		resreq = resreq->next;
+
+	return resreq;
+}
+
+/**
+ * @brief
+ * 		find resource_count by resource definition
+ *
+ * @param	reqlist	-	resource_count list to search
+ * @param	def	-	resource definition to search for
+ *
+ * @return	found resource_req
+ * @retval	NULL	: if not found
+ */
+resource_count *
+find_resource_count(resource_count *reqlist, resdef *def)
+{
+	resource_count *resreq;
+
+	resreq = reqlist;
+
+	while (resreq != NULL && resreq->def != def)
+		resreq = resreq->next;
+
+	return resreq;
+}
+
+/**
+ * @brief
  *		set_resource_req - set the value and type of a resource req
  *
  * @param[out]	req		the resource_req to set
@@ -1064,7 +1237,6 @@ set_resource_req(resource_req *req, char *val)
 	return 1;
 }
 
-
 /**
  * @brief
  *		free_resource_req_list - frees memory used by a resource_req list
@@ -1088,6 +1260,27 @@ free_resource_req_list(resource_req *list)
 
 /**
  * @brief
+ *		free_resource_count_list - frees memory used by a resource_count list
+ *
+ * @param[in]	list	-	resource_count list
+ *
+ * @return	nothing
+ */
+void
+free_resource_count_list(resource_count *list)
+{
+	resource_count *resreq, *tmp;
+
+	resreq = list;
+	while (resreq != NULL) {
+		tmp = resreq;
+		resreq = resreq->next;
+		free_resource_count(tmp);
+	}
+}
+
+/**
+ * @brief
  *		free_resource_req - free memory used by a resource_req structure
  *
  * @param[in,out]	req	-	resource_req to free
@@ -1104,6 +1297,21 @@ free_resource_req(resource_req *req)
 	if (req->res_str != NULL)
 		free(req->res_str);
 
+	free(req);
+}
+
+/**
+ * @brief
+ *		free_resource_count - free memory used by a resource_count structure
+ *
+ * @param[in,out]	req	-	resource_count to free
+ *
+ * @return	nothing
+ *
+ */
+void
+free_resource_count(resource_count *req)
+{
 	free(req);
 }
 

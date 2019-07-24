@@ -3472,13 +3472,13 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 			}
 
 			if (node->max_user_run != SCHD_INFINITY &&
-			    node->max_user_run <= find_counts_elm(node->user_counts, resresv->user, NULL)) {
+			    node->max_user_run <= find_counts_elm(node->user_counts, resresv->user, NULL, NULL, NULL)) {
 				set_schd_error_codes(err, NOT_RUN, NODE_USER_LIMIT_REACHED);
 				return 0;
 			}
 
 			if (node->max_group_run != SCHD_INFINITY &&
-			    node->max_group_run <= find_counts_elm(node->group_counts, resresv->group, NULL)) {
+			    node->max_group_run <= find_counts_elm(node->group_counts, resresv->group, NULL, NULL, NULL)) {
 				set_schd_error_codes(err, NOT_RUN, NODE_GROUP_LIMIT_REACHED);
 				return 0;
 			}

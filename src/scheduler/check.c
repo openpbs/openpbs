@@ -1333,6 +1333,7 @@ sch_resource_t
 count_res_by_user(resource_resv **resresv_arr, char *user,
 	char *res, counts *cts_list)
 {
+	resource_count *res_c;			/* the resource count of the matching user and resource */
 	resource_req *req;			/* the resource of the current job */
 	sch_resource_t used = 0;
 	counts *cts;
@@ -1343,8 +1344,8 @@ count_res_by_user(resource_resv **resresv_arr, char *user,
 		return 0;
 
 	if ((cts = find_counts(cts_list, user)) != NULL) {
-		if ((req = find_resource_req_by_str(cts->rescts, res)) != NULL)
-			return req->amount;
+		if ((res_c = find_resource_count_by_str(cts->rescts, res)) != NULL)
+			return res_c->amount;
 	}
 
 	for (i = 0; resresv_arr[i] != NULL; i++) {
@@ -1365,26 +1366,31 @@ count_res_by_user(resource_resv **resresv_arr, char *user,
  *
  * @param[in]	cts_list	-	counts list to search
  * @param[in]	name	-	name of counts structure to find
- * @param[in]	res	-	resource to find or if NULL,
- *						return number of running
+ * @param[in]	rdef	-	resource definition to find or if NULL,
+ *				return number of running
+ * @param[out]  cnt	-	address of the counts structure found in the list
+ * @param[out]  rreq	-	address of matching resource count structure
  *
  * @return	resource amount
  */
 sch_resource_t
-find_counts_elm(counts *cts_list, char *name, char *res)
+find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resource_count **rreq)
 {
-	resource_req *req;
+	resource_count *req;
 	counts *cts;
 
 	if (cts_list == NULL || name == NULL)
 		return 0;
 
 	if ((cts = find_counts(cts_list, name)) != NULL) {
-
-		if (res == NULL)
+		if (cnt != NULL)
+			*cnt = cts;
+		if (rdef == NULL)
 			return cts->running;
 		else {
-			if ((req = find_resource_req_by_str(cts->rescts, res)) != NULL)
+			if ((req = find_resource_count(cts->rescts, rdef)) != NULL)
+				if (rreq != NULL)
+					*rreq = req;
 				return req->amount;
 		}
 	}

@@ -125,8 +125,10 @@ sch_resource_t dynamic_avail(schd_resource *res);
  *	name     - name of counts structure to find
  *	res      - resource to find or if NULL, return number of running
  *			resource amount
+ *	cnt	- output param for address of the matching counts structure
+ *	rreq	- output param for address of the matching resource_count structure
  */
-sch_resource_t find_counts_elm(counts *cts_list, char *name, char *res);
+sch_resource_t find_counts_elm(counts *cts_list, char *name, resdef *res, counts **cnt, resource_count **rreq);
 
 
 /*

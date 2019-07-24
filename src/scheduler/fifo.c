@@ -463,6 +463,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			resource_resv *resresv = sinfo->jobs[i];
 			if (resresv->job != NULL) {
 				if (policy->preempting) {
+					update_soft_limits(sinfo, resresv->job->queue, resresv);
 					set_preempt_prio(resresv, resresv->job->queue, sinfo);
 					if (resresv->job->is_running)
 						if (!resresv->job->can_not_preempt)
@@ -1683,6 +1684,14 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		update_queue_on_run(qinfo, rr, &old_state);
 
 		update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
+
+		/* update soft limits for jobs that are not in reservation */
+		if (rr->is_job && rr->job->resv_id == NULL) {
+			/* update the entity preempt bit */
+			update_soft_limits(sinfo, qinfo, resresv);
+			/* update the job preempt status */
+			set_preempt_prio(resresv, qinfo, sinfo);
+		}
 
 		/* update_preemption_on_run() must be called post queue/server update */
 		update_preemption_on_run(sinfo, rr);

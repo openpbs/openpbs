@@ -103,9 +103,19 @@ resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, char *nam
 resource_req *find_resource_req_by_str(resource_req *reqlist, const char *name);
 
 /*
+ *      find_resource_count_by_str - find a resource_count from a resource_count list
+ */
+resource_count *find_resource_count_by_str(resource_count *reqlist, const char *name);
+
+/*
  *	find resource_req by resource definition
  */
 resource_req *find_resource_req(resource_req *reqlist, resdef *def);
+
+/*
+ *	find resource_count by resource definition
+ */
+resource_count *find_resource_count(resource_count *reqlist, resdef *def);
 
 /*
  *      new_resource_req - allocate and initalize new resoruce_req
@@ -117,12 +127,22 @@ resource_req *new_resource_req();
 #endif /* localmod 005 */
 
 /*
+ * new_resource_count - allocate and initalize new resource_count
+ */
+resource_count *new_resource_count();
+
+/*
  * find_alloc_resource_req[_by_str] -
  * find resource_req by name/resource definition  or allocate and
  * initialize a new resource_req also adds new one to the list
  */
 resource_req *find_alloc_resource_req(resource_req *reqlist, resdef *def);
 resource_req *find_alloc_resource_req_by_str(resource_req *reqlist, char *name);
+
+/*
+ * find resource_count by resource definition or allocate
+ */
+resource_count *find_alloc_resource_count(resource_count *reqlist, resdef *def);
 
 /*
  *      free_resource_req_list - frees memory used by a resource_req list
@@ -133,6 +153,16 @@ void free_resource_req_list(resource_req *list);
  *	free_resource_req - free memory used by a resource_req structure
  */
 void free_resource_req(resource_req *req);
+
+/*
+ *      free_resource_count_list - frees memory used by a resource_count list
+ */
+void free_resource_count_list(resource_count *list);
+
+/*
+ *	free_resource_count - free memory used by a resource_count structure
+ */
+void free_resource_count(resource_count *req);
 
 /*
  *	set_resource_req - set the value and type of a resource req
@@ -149,9 +179,19 @@ resource_req *dup_selective_resource_req_list(resource_req *oreq, resdef **defli
 
 
 /*
+ *	dup_resource_count_list - duplicate a resource_req list
+ */
+resource_count *dup_resource_count_list(resource_count *oreq);
+
+/*
  *      dup_resource_req - duplicate a resource_req struct
  */
 resource_req *dup_resource_req(resource_req *oreq);
+
+/*
+ *	dup_resource_count - duplicate a resource_count struct
+ */
+resource_count *dup_resource_count(resource_count *oreq);
 
 /*
  *      update_resresv_on_run - update information kept in a resource_resv

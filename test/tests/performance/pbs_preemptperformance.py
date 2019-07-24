@@ -96,7 +96,7 @@ class TestPreemptPerformance(TestPerformance):
         sched_on = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, sched_on)
 
-        self.server.expect(JOB, {'substate=42': 1590},
+        self.server.expect(JOB, {'job_state=R': 1590},
                            offset=15, interval=20)
 
         a = {'Resource_List.select': '1:ncpus=90:mem=1350mb',
@@ -204,7 +204,7 @@ class TestPreemptPerformance(TestPerformance):
         jid = self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'substate=42': 3201}, interval=20,
+        self.server.expect(JOB, {'job_state=R': 3201}, interval=20,
                            offset=15)
 
         qname = 'highp'
@@ -294,7 +294,7 @@ class TestPreemptPerformance(TestPerformance):
         jid2 = self.server.submit(j2)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'substate=42': 3202}, interval=20,
+        self.server.expect(JOB, {'job_state=R': 3202}, interval=20,
                            offset=15)
 
         qname = 'highp'
@@ -370,7 +370,7 @@ class TestPreemptPerformance(TestPerformance):
         jid = self.server.submit(j)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'substate=42': 3201}, interval=20,
+        self.server.expect(JOB, {'job_state=R': 3201}, interval=20,
                            offset=15)
 
         qname = 'highp'
@@ -427,7 +427,7 @@ class TestPreemptPerformance(TestPerformance):
             self.server.submit(j)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'substate=42': 3200}, interval=20,
+        self.server.expect(JOB, {'job_state=R': 3200}, interval=20,
                            offset=15)
 
         qname = 'highp'
@@ -479,7 +479,7 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4,
              'resources_available.mem': '6400mb'}
-        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False)
+        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False, sharednode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
@@ -495,7 +495,7 @@ class TestPreemptPerformance(TestPerformance):
             j.set_sleep_time(3000)
             self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'substate=42': 2000}, interval=10, offset=5,
+        self.server.expect(JOB, {'job_state=R': 2000}, interval=10, offset=5,
                            max_attempts=100)
 
         qname = 'highp'
@@ -558,7 +558,7 @@ class TestPreemptPerformance(TestPerformance):
             j.set_sleep_time(3000)
             self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'substate=42': 2000}, interval=10, offset=5,
+        self.server.expect(JOB, {'job_state=R': 2000}, interval=10, offset=5,
                            max_attempts=100)
 
         qname = 'highp'
