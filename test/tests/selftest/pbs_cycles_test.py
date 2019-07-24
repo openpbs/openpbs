@@ -38,7 +38,7 @@
 from tests.selftest import *
 
 
-class Test_cycle(TestSelf):
+class PBSTestCycle(TestSelf):
     """
     Tests to check that the cycle function returns correct information
     for schedulers
