@@ -2469,6 +2469,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	int j = 0;
 	int cur_ind;
 	int len;
+	int rset_len;
 	resource_resv **resresvs;
 	resresv_set **rsets;
 	resresv_set **tmp_rset_arr;
@@ -2510,9 +2511,9 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
-	i = count_array((void **)rsets);
-	if (i > 0) {
-		snprintf(log_buffer, sizeof(log_buffer), "Number of job equivalence classes: %d", i);
+	rset_len = count_array((void **)rsets);
+	if (rset_len > 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "Number of job equivalence classes: %d", rset_len);
 		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, log_buffer);
 	}
 
