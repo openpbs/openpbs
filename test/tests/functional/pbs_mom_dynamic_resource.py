@@ -222,7 +222,7 @@ class TestMomDynRes(TestFunctional):
 
         # The job should run
         self.server.expect(JOB, {'job_state': 'R',
-                           'Resource_List.'+resc_name[0]: '2'},
+                                 'Resource_List.'+resc_name[0]: '2'},
                            id=jid, attrop=PTL_AND, interval=1)
 
     def test_multiple_res_valid_value(self):
@@ -283,7 +283,7 @@ class TestMomDynRes(TestFunctional):
 
         # The job shouldn't run
         c = "Can Never Run:"
-        c += " Insufficient amount of resource: foo1 (R: 1kb A: 0kb T: 0kb)"
+        c += " Insufficient amount of resource: foo1 (R: 1kb A: -2kb T: -2kb)"
         self.server.expect(JOB, {'job_state': 'Q', 'comment': c},
                            id=jid, attrop=PTL_AND)
 
@@ -379,9 +379,9 @@ class TestMomDynRes(TestFunctional):
         # give write permission to user only
         self.du.chmod(path=fp, mode=0744, sudo=True)
         if os.getuid() != 0:
-                self.check_access_log(fp, exist=True)
+            self.check_access_log(fp, exist=True)
         else:
-                self.check_access_log(fp, exist=False)
+            self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases.
