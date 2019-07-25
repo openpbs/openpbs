@@ -1391,7 +1391,7 @@ find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resour
 			if ((req = find_resource_count(cts->rescts, rdef)) != NULL)
 				if (rreq != NULL)
 					*rreq = req;
-				return req->amount;
+			return req->amount;
 		}
 	}
 
