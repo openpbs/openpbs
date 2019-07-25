@@ -207,7 +207,7 @@ simulate_events(status *policy, server_info *sinfo,
 		event = next_event(sinfo, ADVANCE);
 	}
 
-	if (cur_sim_time > calendar->first_run_event->event_time)
+	if (calendar->first_run_event == NULL || cur_sim_time > calendar->first_run_event->event_time)
 		calendar->first_run_event = find_init_timed_event(calendar->next_event, 0, TIMED_RUN_EVENT);
 
 	(*sim_time) = cur_sim_time;

@@ -166,13 +166,13 @@ class TestSchedPerf(TestPerformance):
         self.compare_normal_path_to_buckets('free', num_jobs)
 
     @timeout(3600)
-    def test_run_10000_jobs(self):
+    def test_run_many_jobs(self):
         """
-        Submit 10000 jobs and time the cycle that runs all of them.
+        Submit many jobs and time the cycle that runs all of them.
         """
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1'}
-        jids = self.submit_jobs(a, num_jobs)
+        jids = self.submit_jobs(a, num_jobs, wt_start=1000)
         t = self.run_cycle()
         self.server.expect(JOB, {'state=R': num_jobs})
         self.logger.info('#' * 80)

@@ -1311,7 +1311,7 @@ sort_all_nodepart(status *policy, server_info *sinfo)
 {
 	int i;
 
-	if (sinfo == NULL || sinfo->queues == NULL)
+	if (policy == NULL || sinfo == NULL || sinfo->queues == NULL)
 		return;
 
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)

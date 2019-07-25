@@ -1655,12 +1655,15 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 		if (ns != NULL) {
+			int update_nodepart = 0;
 			for (i = 0; ns[i] != NULL; i++) {
 				int j;
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
-					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++)
+					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
 						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+						update_nodepart = 1;
+					}
 				}
 				/* if the node is being provisioned, it's brought down in
 				 * update_node_on_run().  We need to add an event in the calendar to
@@ -1673,6 +1676,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					}
 				}
 			}
+			if (update_nodepart)
+				sort_all_nodepart(policy, sinfo);
 		}
 
 		update_queue_on_run(qinfo, rr, &old_state);
