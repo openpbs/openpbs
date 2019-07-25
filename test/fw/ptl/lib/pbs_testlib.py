@@ -10904,14 +10904,16 @@ class Scheduler(PBSService):
                             'scheduling': 'True'}, id=sched)
         self.log_match("Starting Scheduling",
                        starttime=tbefore)
-        self.log_match("Leaving Scheduling",
-                       starttime=tbefore, interval=1,
-                       max_attempts=1200)
 
-        # Restore original value of scheduling
         if old_val == 'False':
+            # This will also ensure that the sched cycle is over before
+            # returning
             self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
                                 id=sched)
+        else:
+            self.server.expect(SCHED, {'state': 'scheduling'}, op=NE,
+                               id=sched, interval=1, max_attempts=1200,
+                               trigger_sched_cycle=False)
 
     def pbs_version(self):
         """
