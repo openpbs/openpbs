@@ -2050,8 +2050,6 @@ new_resresv_set(void)
 	rset->req = NULL;
 	rset->select_spec = NULL;
 	rset->qinfo = NULL;
-	rset->resresv_arr = NULL;
-	rset->num_resresvs = 0;
 
 	return rset;
 }
@@ -2071,7 +2069,6 @@ free_resresv_set(resresv_set *rset) {
 	free_selspec(rset->select_spec);
 	free_place(rset->place_spec);
 	free_resource_req_list(rset->req);
-	free(rset->resresv_arr);
 	free(rset);
 }
 /**
@@ -2148,15 +2145,8 @@ dup_resresv_set(resresv_set *oset, server_info *nsinfo)
 		free_resresv_set(rset);
 		return NULL;
 	}
-	rset->resresv_arr = copy_resresv_array(oset->resresv_arr, nsinfo->all_resresv);
-	if (rset->resresv_arr == NULL) {
-		free_resresv_set(rset);
-		return NULL;
-	}
 	if(oset->qinfo != NULL)
 		rset->qinfo = find_queue_info(nsinfo->queues, oset->qinfo->name);
-
-	rset->num_resresvs = oset->num_resresvs;
 
 	return rset;
 }
@@ -2527,6 +2517,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	int j = 0;
 	int cur_ind;
 	int len;
+	int rset_len;
 	resource_resv **resresvs;
 	resresv_set **rsets;
 	resresv_set **tmp_rset_arr;
@@ -2556,38 +2547,21 @@ create_resresv_sets(status *policy, server_info *sinfo)
 				free_resresv_set_array(rsets);
 				return NULL;
 			}
-			cur_rset->resresv_arr = malloc((len + 1) * sizeof(resource_resv *));
-			if (cur_rset->resresv_arr == NULL) {
-				log_err(errno, __func__, MEM_ERR_MSG);
-				free_resresv_set_array(rsets);
-				free_resresv_set(cur_rset);
-				return NULL;
-			}
 			cur_ind = j;
 			rsets[j++] = cur_rset;
 			rsets[j] = NULL;
 		} else
 			cur_rset = rsets[cur_ind];
 
-		cur_rset->resresv_arr[cur_rset->num_resresvs] = resresvs[i];
-		cur_rset->resresv_arr[++cur_rset->num_resresvs] = NULL;
 		resresvs[i]->ec_index = cur_ind;
-	}
-
-	/* tidy up */
-	for (i = 0; rsets[i] != NULL; i++) {
-		resource_resv **tmp_arr;
-		tmp_arr = realloc(rsets[i]->resresv_arr, (rsets[i]->num_resresvs + 1) * sizeof(resource_resv *));
-		if (tmp_arr != NULL)
-			rsets[i]->resresv_arr = tmp_arr;
 	}
 
 	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
-
-	if (i > 0) {
-		snprintf(log_buffer, sizeof(log_buffer), "Number of job equivalence classes: %d", i);
+	rset_len = count_array((void **)rsets);
+	if (rset_len > 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "Number of job equivalence classes: %d", rset_len);
 		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, log_buffer);
 	}
 
@@ -2940,13 +2914,19 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 					job->job->is_susp_sched = 1;
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by suspension");
-					job->can_not_run = 1;
+					/* Since suspended job is not part of its current equivalence class,
+					 * break the job's association with its equivalence class.
+					 */
+					job->ec_index= UNSPECIFIED;
 				} else if (preempt_jobs_reply[i].order[0] == 'C') {
 					job->job->is_checkpointed = 1;
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 						job->name, "Job preempted by checkpointing");
-					job->can_not_run = 1;
+					/* Since checkpointed job is not part of its current equivalence class,
+					 * break the job's association with its equivalence class.
+					 */
+					job->ec_index = UNSPECIFIED;
 				} else if (preempt_jobs_reply[i].order[0] == 'Q') {
 					update_universe_on_end(policy, job, "Q", NO_FLAGS);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
