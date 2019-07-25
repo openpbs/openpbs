@@ -174,6 +174,7 @@ class TestSchedPerf(TestPerformance):
         a = {'Resource_List.select': '1:ncpus=1'}
         jids = self.submit_jobs(a, num_jobs)
         t = self.run_cycle()
+        self.server.expect(JOB, {'state=R': num_jobs})
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d normal jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
@@ -185,7 +186,11 @@ class TestSchedPerf(TestPerformance):
             self.server.rerunjob(j)
             self.server.alterjob(j, {'Resource_List.place': 'excl'})
 
+        self.server.expect(JOB, {'state=Q': num_jobs})
+
         t = self.run_cycle()
+
+        self.server.expect(JOB, {'state=R': num_jobs})
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d bucket jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
