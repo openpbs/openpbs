@@ -1216,7 +1216,7 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 		return 0;
 
 #ifdef NAS /* localmod 097 */
-	if (! si->has_soft_limit) {
+	if (!si->has_soft_limit) {
 		return rc;
 	}
 #endif /* localmod 097 */
@@ -1274,7 +1274,7 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((si == NULL) || (user == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
 
-	if (si->has_user_limit != 1)
+	if (!si->has_user_limit)
 	    return (0);
 
 	cts = sc->user;
@@ -1344,7 +1344,7 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((si == NULL) || (group == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
 
-	if (si->has_grp_limit != 1)
+	if (!si->has_grp_limit)
 	    return (0);
 
 	cts = sc->group;
@@ -1414,7 +1414,7 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((si == NULL) || (rr == NULL) ||(sc==NULL))
 		return (SCHD_ERROR);
 
-	if (si->has_user_limit != 1)
+	if (!si->has_user_limit)
 	    return (0);
 
 	cts = sc->user;
@@ -1473,7 +1473,7 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
 
-	if (si->has_grp_limit != 1)
+	if (!si->has_grp_limit)
 	    return (0);
 
 	cts = sc->group;
@@ -1533,7 +1533,7 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((qi == NULL) || (user == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	if (qi->has_user_limit != 1)
+	if (!qi->has_user_limit)
 	    return (0);
 
 	cts = qc->user;
@@ -1603,7 +1603,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((qi == NULL) || (group == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	if (qi->has_grp_limit != 1)
+	if (!qi->has_grp_limit)
 	    return (0);
 
 	cts = qc->group;
@@ -1672,7 +1672,7 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	if (qi->has_user_limit != 1)
+	if (!qi->has_user_limit)
 	    return (0);
 
 	cts = qc->user;
@@ -1731,7 +1731,7 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
-	if (qi->has_grp_limit != 1)
+	if (!qi->has_grp_limit)
 	    return (0);
 
 	cts = qc->group;
@@ -2089,7 +2089,7 @@ check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr
 	if ((qi == NULL) || (user == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (qi->has_user_limit != 1)
+	if (!qi->has_user_limit)
 	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
@@ -2164,7 +2164,7 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 	if ((qi == NULL) || (group == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (qi->has_grp_limit != 1)
+	if (!qi->has_grp_limit)
 	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
@@ -2232,7 +2232,7 @@ check_queue_max_user_res_soft(server_info *si, queue_info *qi, resource_resv *rr
 	if ((qi == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (qi->has_user_limit != 1)
+	if (!qi->has_user_limit)
 	    return (0);
 
 	return (check_max_user_res_soft(qi->running_jobs, rr, qi->user_counts,
@@ -2262,7 +2262,7 @@ check_queue_max_group_res_soft(server_info *si, queue_info *qi,
 	if ((qi == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (qi->has_grp_limit != 1)
+	if (!qi->has_grp_limit)
 	    return (0);
 
 	return (check_max_group_res_soft(rr, qi->group_counts,
@@ -2338,7 +2338,7 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	if ((si == NULL) || (user == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (si->has_user_limit != 1)
+	if (!si->has_user_limit)
 	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_USER, user)) == NULL)
@@ -2413,7 +2413,7 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	if ((si == NULL) || (group == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (si->has_grp_limit != 1)
+	if (!si->has_grp_limit)
 	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_GROUP, group)) == NULL)
@@ -2482,7 +2482,7 @@ check_server_max_user_res_soft(server_info *si, queue_info *qi,
 	if ((si == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (si->has_user_limit != 1)
+	if (!si->has_user_limit)
 	    return (0);
 
 	return (check_max_user_res_soft(si->running_jobs, rr, si->user_counts,
@@ -2512,7 +2512,7 @@ check_server_max_group_res_soft(server_info *si, queue_info *qi,
 	if ((si == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (si->has_grp_limit != 1)
+	if (!si->has_grp_limit)
 	    return (0);
 
 	return (check_max_group_res_soft(rr, si->group_counts,
@@ -3677,7 +3677,7 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (rr->project == NULL)
 		return 0;
 
-	if (si->has_proj_limit != 1)
+	if (!si->has_proj_limit)
 	    return (0);
 
 	cts = sc->project;
@@ -3739,7 +3739,7 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	if (rr->project == NULL)
 		return 0;
 
-	if (si->has_proj_limit != 1)
+	if (!si->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
@@ -3810,7 +3810,7 @@ check_server_max_project_res_soft(server_info *si, queue_info *qi,
 	if ((si == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (si->has_proj_limit != 1)
+	if (!si->has_proj_limit)
 	    return (0);
 
 	return (check_max_project_res_soft(rr, si->project_counts,
@@ -3850,7 +3850,7 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	if (rr->project == NULL)
 		return 0;
 
-	if (qi->has_proj_limit != 1)
+	if (!qi->has_proj_limit)
 	    return (0);
 
 	cts = qc->project;
@@ -3911,7 +3911,7 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 	if (rr->project == NULL)
 		return 0;
 
-	if (qi->has_proj_limit != 1)
+	if (!qi->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
@@ -3982,7 +3982,7 @@ check_queue_max_project_res_soft(server_info *si, queue_info *qi,
 	if ((qi == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	if (qi->has_proj_limit != 1)
+	if (!qi->has_proj_limit)
 	    return (0);
 
 	return (check_max_project_res_soft(rr, qi->project_counts,
@@ -4027,7 +4027,7 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if (rr->project == NULL)
 		return 0;
 
-	if (si->has_proj_limit != 1)
+	if (!si->has_proj_limit)
 	    return (0);
 
 	project = rr->project;
@@ -4105,7 +4105,7 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	if (project == NULL)
 		return 0;
 
-	if (qi->has_proj_limit != 1)
+	if (!qi->has_proj_limit)
 	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_PROJECT, project)) == NULL)

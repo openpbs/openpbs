@@ -553,7 +553,7 @@ class TestPreemptPerformance(TestPerformance):
         # submit a bunch of jobs as different users
         a = {ATTR_l + '.select=1:ncpus': 1}
         usr_list = [TEST_USER, TEST_USER2, TEST_USER3, TEST_USER4]
-        num_usr = 4
+        num_usr = len(usr_list)
         for ind in range(2000):
             j = Job(usr_list[ind % num_usr], attrs=a)
             j.set_sleep_time(3000)
