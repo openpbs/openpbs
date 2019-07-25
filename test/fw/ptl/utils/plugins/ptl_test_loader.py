@@ -206,9 +206,7 @@ class PTLTestLoader(Plugin):
                     tests_dir += [user_test_dir]
                 if os.path.isdir(ptl_test_dir):
                     tests_dir += [ptl_test_dir]
-                rv = old_loadTestsFromNames(tests_dir, module)
-            else:
-                rv = old_loadTestsFromNames(tests_dir, module)
+            rv = old_loadTestsFromNames(tests_dir, module)
             self.check_unknown()
             return rv
         loader.loadTestsFromNames = check_loadTestsFromNames
