@@ -1300,6 +1300,37 @@ create_placement_sets(status *policy, server_info *sinfo)
 	return is_success;
 }
 
+/**
+ * @brief sort all placement sets (server's psets, queue's psets, and hostsets)
+ * @param[in] policy - policy info
+ * @param[in] sinfo - server universe
+ * @return void
+ */
+void
+sort_all_nodepart(status *policy, server_info *sinfo)
+{
+	int i;
+
+	if (sinfo == NULL || sinfo->queues == NULL)
+		return;
+
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)
+		qsort(sinfo->nodepart, sinfo->num_parts,
+		      sizeof(node_partition *), cmp_placement_sets);
+
+	for (i = 0; sinfo->queues[i] != NULL; i++) {
+		queue_info *qinfo = sinfo->queues[i];
+
+		if (sinfo->node_group_enable && qinfo->node_group_key != NULL)
+			qsort(qinfo->nodepart, qinfo->num_parts,
+			      sizeof(node_partition *), cmp_placement_sets);
+	}
+	if (policy->node_sort[0].res_name != NULL &&
+	    conf.node_sort_unused && sinfo->hostsets != NULL) {
+		/* Resort the nodes in host sets to correctly reflect unused resources */
+		qsort(sinfo->hostsets, sinfo->num_hostsets, sizeof(node_partition *), multi_nodepart_sort);
+	}
+}
 
 /**
  *
@@ -1330,22 +1361,16 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	if(sinfo->allpart == NULL)
 		return;
 
-	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL)
 		node_partition_update_array(policy, sinfo->nodepart);
-		qsort(sinfo->nodepart, sinfo->num_parts,
-			sizeof(node_partition *), cmp_placement_sets);
-	}
 
 	/* Update and resort the placement sets on the queues */
 	for (i = 0; sinfo->queues[i] != NULL; i++) {
 		qinfo = sinfo->queues[i];
 
-		if (sinfo->node_group_enable && qinfo->node_group_key != NULL) {
+		if (sinfo->node_group_enable && qinfo->node_group_key != NULL)
 			node_partition_update_array(policy, qinfo->nodepart);
 
-			qsort(qinfo->nodepart, qinfo->num_parts,
-			   sizeof(node_partition *), cmp_placement_sets);
-		}
 		if ((flags & NO_ALLPART) == 0) {
 			if(qinfo->allpart != NULL && qinfo->allpart->res == NULL)
 				node_partition_update(policy, qinfo->allpart);
@@ -1354,15 +1379,11 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 
 	/* Update and resort the hostsets */
 	node_partition_update_array(policy, sinfo->hostsets);
-	if (policy->node_sort[0].res_name != NULL &&
-	    conf.node_sort_unused && sinfo->hostsets != NULL) {
-		/* Resort the nodes in host sets to correctly reflect unused resources */
-		qsort(sinfo->hostsets, sinfo->num_hostsets, sizeof(node_partition*), multi_nodepart_sort);
-	}
 
 	if ((flags & NO_ALLPART) == 0)
 			node_partition_update(policy, sinfo->allpart);
 
-	sinfo->pset_metadata_stale = 0;
+	sort_all_nodepart(policy, sinfo);
 
+	sinfo->pset_metadata_stale = 0;
 }

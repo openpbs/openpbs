@@ -1049,7 +1049,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
 				njob->name, "Job will never run with the resources currently configured in the complex");
 		}
-		if ((rc != SUCCESS) && njob->job->resv ==NULL) {
+		if ((rc != SUCCESS) && njob->job->resv == NULL) {
 			/* jobs in reservations are outside of the law... they don't cause
 			 * the rest of the system to idle waiting for them
 			 */

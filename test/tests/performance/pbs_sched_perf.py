@@ -170,22 +170,25 @@ class TestSchedPerf(TestPerformance):
         """
         Submit 10000 jobs and time the cycle that runs all of them.
         """
-
+        num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1'}
-        jids = self.submit_jobs(a, 10000)
+        jids = self.submit_jobs(a, num_jobs)
         t = self.run_cycle()
         self.logger.info('#' * 80)
-        m = 'Time taken in cycle to run 10000 normal jobs: %.2f'
-        self.logger.info(m % (t))
+        m = 'Time taken in cycle to run %d normal jobs: %.2f' % (num_jobs, t)
+        self.logger.info(m)
         self.logger.info('#' * 80)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
         for j in jids:
+            self.server.rerunjob(j)
             self.server.alterjob(j, {'Resource_List.place': 'excl'})
 
         t = self.run_cycle()
         self.logger.info('#' * 80)
-        m = 'Time taken in cycle to run 10000 bucket jobs: %.2f'
-        self.logger.info(m % (t))
+        m = 'Time taken in cycle to run %d bucket jobs: %.2f' % (num_jobs, t)
+        self.logger.info(m)
         self.logger.info('#' * 80)
 
     @timeout(3600)

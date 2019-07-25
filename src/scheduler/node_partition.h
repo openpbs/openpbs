@@ -221,6 +221,8 @@ int create_placement_sets(status *policy, server_info *sinfo);
 /* Update placement sets and allparts */
 void update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags);
 
+/* Sort all placement sets (server's psets, queue's psets, and hostsets) */
+void sort_all_nodepart(status *policy, server_info *sinfo);
 
 #ifdef	__cplusplus
 }
