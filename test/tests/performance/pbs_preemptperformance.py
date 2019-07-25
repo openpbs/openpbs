@@ -479,7 +479,8 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4,
              'resources_available.mem': '6400mb'}
-        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False, sharednode=False)
+        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False,
+                                  sharednode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
