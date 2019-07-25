@@ -198,22 +198,14 @@ class TestQsub_remove_files(TestFunctional):
         alter the job with -Roe and check whether it is
         reflecting in qstat -f output.
         """
-        mydate = int(time.time()) + 60
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         j = Job(TEST_USER)
-        attribs = {
-            ATTR_a: time.strftime(
-                '%m%d%H%M',
-                time.localtime(
-                    float(mydate)))}
-        j.set_attributes(attribs)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         attribs = {ATTR_R: 'oe'}
         try:
             self.server.alterjob(jid, attribs)
-            if self.server.expect(JOB, {'job_state': 'W'},
-                                  id=jid):
-                self.server.expect(JOB, attribs,
-                                   id=jid)
+            self.server.expect(JOB, attribs, id=jid)
         except PbsAlterError as e:
             print str(e)
 
