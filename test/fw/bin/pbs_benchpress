@@ -433,24 +433,26 @@ if __name__ == '__main__':
         testsuites = 'PBSTestSuite'
         follow = True
 
+    loader = PTLTestLoader()
+
     if only_info:
         testinfo = PTLTestInfo()
+        loader.set_data(testgroup, testsuites, excludes, True,
+                        testfiles)
         testinfo.set_data(testsuites, list_test,
                           showinfo, verbose, gen_ts_tree)
-        plugins = (testinfo,)
+        plugins = (loader, testinfo)
     elif (tags_info or list_tags):
-        loader = PTLTestLoader()
         testtags = PTLTestTags()
         loader.set_data(testgroup, testsuites, excludes, True)
         testtags.set_data(tags, eval_tags, tags_info, list_tags, verbose)
         plugins = (loader, testtags)
     else:
-        loader = PTLTestLoader()
         testtags = PTLTestTags()
         runner = PTLTestRunner()
         db = PTLTestDb()
         data = PTLTestData()
-        loader.set_data(testgroup, testsuites, excludes, follow)
+        loader.set_data(testgroup, testsuites, excludes, follow, testfiles)
         testtags.set_data(tags, eval_tags)
         runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
                         genhtml_bin, lcov_nosrc, lcov_baseurl,

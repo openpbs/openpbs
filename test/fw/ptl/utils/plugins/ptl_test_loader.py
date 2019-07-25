@@ -38,8 +38,10 @@
 import os
 import sys
 import logging
+import copy
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
+from ptl.utils.pbs_dshutils import DshUtils
 
 log = logging.getLogger('nose.plugins.PTLTestLoader')
 
@@ -50,7 +52,7 @@ class PTLTestLoader(Plugin):
     Load test cases from given parameter
     """
     name = 'PTLTestLoader'
-    score = sys.maxint - 2
+    score = sys.maxsize - 1
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -66,6 +68,7 @@ class PTLTestLoader(Plugin):
         self.__tests_list_copy = {self._only_ts: [], self._only_tc: []}
         self.__allowed_cls = []
         self.__allowed_method = []
+        self.testfiles = None
 
     def options(self, parser, env):
         """
@@ -73,13 +76,14 @@ class PTLTestLoader(Plugin):
         """
         pass
 
-    def set_data(self, testgroup, suites, excludes, follow):
+    def set_data(self, testgroup, suites, excludes, follow, testfiles=None):
         """
         Set the data required for loading test data
 
         :param testgroup: Test group
         :param suites: Test suites to load
         :param excludes: Tests to exclude while running
+        :param testfiles: Flag to check if test is run by filename
         """
         if os.access(str(testgroup), os.R_OK):
             f = open(testgroup, 'r')
@@ -90,6 +94,7 @@ class PTLTestLoader(Plugin):
         if excludes is not None:
             self.excludes.extend(excludes.split(','))
         self.follow = follow
+        self.testfiles = testfiles
 
     def configure(self, options, config):
         """
@@ -165,11 +170,12 @@ class PTLTestLoader(Plugin):
         Check for unknown test suite and test case
         """
         log.debug('check_unknown called')
-        only_ts = self.__tests_list_copy.pop(self._only_ts)
-        only_tc = self.__tests_list_copy.pop(self._only_tc)
+        tests_list_copy = copy.deepcopy(self.__tests_list_copy)
+        only_ts = tests_list_copy.pop(self._only_ts)
+        only_tc = tests_list_copy.pop(self._only_tc)
         msg = []
-        if len(self.__tests_list_copy) > 0:
-            for k, v in self.__tests_list_copy.items():
+        if len(tests_list_copy) > 0:
+            for k, v in tests_list_copy.items():
                 msg.extend(map(lambda x: k + '.' + x, v))
         if len(only_tc) > 0:
             msg.extend(only_tc)
@@ -190,7 +196,17 @@ class PTLTestLoader(Plugin):
         old_loadTestsFromNames = loader.loadTestsFromNames
 
         def check_loadTestsFromNames(names, module=None):
-            rv = old_loadTestsFromNames(names, module)
+            tests_dir = names
+            if not self.testfiles:
+                ptl_test_dir = __file__
+                ptl_test_dir = os.path.join(ptl_test_dir.split('ptl')[0],
+                                            "ptl", "tests")
+                user_test_dir = os.environ.get("PTL_TESTS_DIR", None)
+                if user_test_dir and os.path.isdir(user_test_dir):
+                    tests_dir += [user_test_dir]
+                if os.path.isdir(ptl_test_dir):
+                    tests_dir += [ptl_test_dir]
+            rv = old_loadTestsFromNames(tests_dir, module)
             self.check_unknown()
             return rv
         loader.loadTestsFromNames = check_loadTestsFromNames
