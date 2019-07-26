@@ -161,9 +161,9 @@ upgrade_pbs_schema_from_v1_3_0() {
 
 	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
 		
-		CREATE EXTENSION hstore SCHEMA pbs;
+		CREATE EXTENSION hstore SCHEMA public;
 		
-		ALTER TABLE pbs.job ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.job ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.job SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
@@ -172,7 +172,7 @@ upgrade_pbs_schema_from_v1_3_0() {
 		UPDATE pbs.job SET attributes='' WHERE attributes IS NULL;
 		ALTER TABLE pbs.job ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.node ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.node ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.node SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
@@ -181,7 +181,7 @@ upgrade_pbs_schema_from_v1_3_0() {
 		UPDATE pbs.node SET attributes='' WHERE attributes IS NULL;
 		ALTER TABLE pbs.node ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.queue ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.queue ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.queue SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
@@ -190,7 +190,7 @@ upgrade_pbs_schema_from_v1_3_0() {
 		UPDATE pbs.queue SET attributes='' WHERE attributes IS NULL;
 		ALTER TABLE pbs.queue ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.resv ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.resv ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.resv SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
@@ -199,7 +199,7 @@ upgrade_pbs_schema_from_v1_3_0() {
 		UPDATE pbs.resv SET attributes='' WHERE attributes IS NULL;
 		ALTER TABLE pbs.resv ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.scheduler ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.scheduler ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.scheduler SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
@@ -208,7 +208,7 @@ upgrade_pbs_schema_from_v1_3_0() {
 		UPDATE pbs.scheduler SET attributes='' WHERE attributes IS NULL;
 		ALTER TABLE pbs.scheduler ALTER COLUMN attributes SET NOT NULL;
 
-		ALTER TABLE pbs.server ADD attributes pbs.hstore DEFAULT ''::pbs.hstore;
+		ALTER TABLE pbs.server ADD attributes hstore DEFAULT ''::hstore;
 		UPDATE pbs.server SET attributes=(
 			SELECT hstore(array_agg(attr.key ), array_agg(attr.value))
 				FROM ( SELECT concat(attr_name, '.' , attr_resource) AS key,
