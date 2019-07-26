@@ -1144,6 +1144,7 @@ void move_schd_error(schd_error *err, schd_error *oerr)
 	oerr->arg3 = NULL;
 	oerr->specmsg = NULL;
 	oerr->next = NULL;
+	clear_schd_error(oerr);
 }
 
 /**

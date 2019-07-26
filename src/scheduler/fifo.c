@@ -1655,14 +1655,14 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 		if (ns != NULL) {
-			int update_nodepart = 0;
+			int sort_nodepart = 0;
 			for (i = 0; ns[i] != NULL; i++) {
 				int j;
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
 					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
 						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
-						update_nodepart = 1;
+						sort_nodepart = 1;
 					}
 				}
 				/* if the node is being provisioned, it's brought down in
@@ -1676,7 +1676,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					}
 				}
 			}
-			if (update_nodepart)
+			if (sort_nodepart)
 				sort_all_nodepart(policy, sinfo);
 		}
 
@@ -2381,7 +2381,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 				rjob = NULL;
 		}
 	} else { /* treat the entire system as one large queue */
-		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index);
+		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index + 1);
 		if(ind != -1) {
 			rjob = sinfo->jobs[ind];
 			last_job_index = ind;
