@@ -345,13 +345,14 @@ void update_preemption_on_run(server_info *sinfo, resource_resv *resresv);
  */
 int add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned int flags);
 
+int modify_resource_list(schd_resource *res_list, resource_req *req_list, int type);
+
 /*
  *	add_resource_value - add a resource value to another
  *				i.e. val1 += val2
  */
-void
-add_resource_value(sch_resource_t *val1, sch_resource_t *val2,
-	sch_resource_t default_val);
+void add_resource_value(sch_resource_t *val1, sch_resource_t *val2,
+			sch_resource_t default_val);
 
 /*
  *  add_resource_string_arr - add values from a string array to
@@ -451,7 +452,7 @@ int add_queue_to_list(queue_info **** qlhead, queue_info * qinfo);
  * append_to_queue_list - function that will reallocate and append
  *                        "add" to the list provided.
  */
-struct queue_info** append_to_queue_list(queue_info ***list, queue_info *add);
+struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add);
 
 /*
  * find_queue_list_by_priority - function finds out the array of queues
@@ -459,7 +460,7 @@ struct queue_info** append_to_queue_list(queue_info ***list, queue_info *add);
  *                               function. It returns the base address of matching
  *                               array.
  */
-struct queue_info *** find_queue_list_by_priority(queue_info ***list_head, int priority);
+struct queue_info ***find_queue_list_by_priority(queue_info ***list_head, int priority);
 
 /*
  * free_queue_list - to free two dimensional queue_list array
@@ -475,7 +476,7 @@ int compare_resource_avail(schd_resource *r1, schd_resource *r2);
 
 node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes);
 
-
+void *add_ptr_to_array(void *ptr_arr, void *ptr);
 
 #ifdef	__cplusplus
 }

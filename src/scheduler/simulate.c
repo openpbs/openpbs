@@ -207,6 +207,9 @@ simulate_events(status *policy, server_info *sinfo,
 		event = next_event(sinfo, ADVANCE);
 	}
 
+	if (calendar->first_run_event != NULL && cur_sim_time > calendar->first_run_event->event_time)
+		calendar->first_run_event = find_init_timed_event(calendar->next_event, 0, TIMED_RUN_EVENT);
+
 	(*sim_time) = cur_sim_time;
 
 	if (cmd == SIM_TIME) {
@@ -371,7 +374,7 @@ find_init_timed_event(timed_event *event, int ignore_disabled, unsigned int sear
 	for (e = event; e != NULL; e = e->next) {
 		if (ignore_disabled && e->disabled)
 			continue;
-		else if ((e->event_type & search_type_mask) ==0)
+		else if ((e->event_type & search_type_mask) == 0)
 			continue;
 		else
 			break;
@@ -621,27 +624,31 @@ perform_event(status *policy, timed_event *event)
 int
 exists_run_event(event_list *calendar, time_t end)
 {
-	timed_event *te;
-
-	if (calendar == NULL)
+	if (calendar == NULL || calendar->first_run_event == NULL)
 		return 0;
+	
+	if (calendar->first_run_event->event_time < end)
+		return 1;
+	return 0;
+}
 
-	te = get_next_event(calendar);
-
-	if (te == NULL) /* no events in our calendar */
+/**
+ * @brief
+ * 		returns 1 if there is a run event before the end time on a node
+ * @param[in]	ninfo - the node to check for
+ * @param[in]	search between now and end
+ */
+int
+exists_run_event_on_node(node_info *ninfo, time_t end)
+{
+	if (ninfo == NULL || ninfo->node_events == NULL)
 		return 0;
+	
+	/* node_events contains an ordered list of run events.  We only have the check the first one */
+	if (ninfo->node_events->event->event_time < end)
+		return 1;
 
-	te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, TIMED_RUN_EVENT);
-
-	if (te == NULL) /* no run event */
-		return 0;
-
-	/* there is a run event, but it's after end */
-	if (end != 0 && te->event_time > end)
-		return 0;
-
-	/* if we got here, we have a happy run event */
-	return 1;
+	return 0;
 }
 
 /**
@@ -662,8 +669,8 @@ exists_resv_event(event_list *calendar, time_t end)
 	if (calendar == NULL)
 		return 0;
 
-	te_list = get_next_event(calendar);
-	if (te_list == NULL) /* no events in our calendar */
+	te_list = calendar->first_run_event;
+	if (te_list == NULL) /* no run events in our calendar */
 		return 0;
 
 	for (te = te_list; te != NULL && te->event_time <= end;
@@ -833,6 +840,7 @@ create_event_list(server_info *sinfo)
 	elist->events = create_events(sinfo);
 
 	elist->next_event = elist->events;
+	elist->first_run_event = find_timed_event(elist->events, 0, NULL, TIMED_RUN_EVENT, 0);
 	elist->current_time = &sinfo->server_time;
 	add_dedtime_events(elist, sinfo->policy);
 
@@ -950,6 +958,7 @@ new_event_list()
 	elist->eol = 0;
 	elist->events = NULL;
 	elist->next_event = NULL;
+	elist->first_run_event = NULL;
 	elist->current_time = NULL;
 
 	return elist;
@@ -998,6 +1007,21 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED,
 				LOG_WARNING, oelist->next_event->name,
 				"can't find next event in duplicated list");
+			free_event_list(nelist);
+			return NULL;
+		}
+	}
+
+	if (oelist->first_run_event != NULL) {
+		nelist->first_run_event =
+		    find_timed_event(nelist->events, 0,
+				     oelist->first_run_event->name,
+				     TIMED_RUN_EVENT,
+				     oelist->first_run_event->event_time);
+		if (nelist->first_run_event == NULL) {
+			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED,
+				LOG_WARNING, oelist->first_run_event->name,
+				"can't find first run event event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
 		}
@@ -1347,6 +1371,11 @@ dup_timed_event_list(timed_event *ote_list, server_info *nsinfo)
 
 	for (ote = ote_list; ote != NULL; ote = ote->next) {
 		nte = dup_timed_event(ote, nsinfo);
+		if (nte->event_type & TIMED_RUN_EVENT)
+			((resource_resv *)nte->event_ptr)->run_event = nte;
+		if (nte->event_type & TIMED_END_EVENT)
+			((resource_resv *)nte->event_ptr)->end_event = nte;
+
 		if (nte_prev != NULL)
 			nte_prev->next = nte;
 		else
@@ -1424,6 +1453,11 @@ add_event(event_list *calendar, timed_event *te)
 
 	calendar->events = add_timed_event(calendar->events, te);
 
+	if (te->event_type & TIMED_RUN_EVENT)
+		((resource_resv *)te->event_ptr)->run_event = te;
+	else if (te->event_type & TIMED_END_EVENT)
+		((resource_resv *)te->event_ptr)->end_event = te;
+
 	/* empty event list - the new event is the only event */
 	if (events_is_null)
 		calendar->next_event = te;
@@ -1444,11 +1478,15 @@ add_event(event_list *calendar, timed_event *te)
 	/* if next_event == NULL, then we've simulated to the end. */
 	else if (te->event_time >= current_time)
 		calendar->next_event = te;
+	
+	if (te->event_type == TIMED_RUN_EVENT)
+		if (calendar->first_run_event == NULL || te->event_time < calendar->first_run_event->event_time)
+			calendar->first_run_event = te;
 
 	/* if we had previously run to the end of the list
 	 * and now we have more work to do, clear the eol bit
 	 */
-	if (calendar->eol && calendar->next_event !=NULL)
+	if (calendar->eol && calendar->next_event != NULL)
 		calendar->eol = 0;
 
 	return 1;
@@ -1544,8 +1582,14 @@ delete_event(server_info *sinfo, timed_event *e, unsigned int flags)
 		else
 			prev_e->next = cur_e->next;
 
-		if ((flags & DE_UNLINK) == 0)
+		if ((flags & DE_UNLINK) == 0) {
+			if (cur_e->event_type & TIMED_RUN_EVENT)
+				((resource_resv *)cur_e->event_ptr)->run_event = NULL;
+			else if (cur_e->event_type & TIMED_END_EVENT)
+				((resource_resv *)cur_e->event_ptr)->run_event = NULL;
+
 			free_timed_event(cur_e);
+		}
 
 		return 1;
 	}

@@ -1049,7 +1049,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
 				njob->name, "Job will never run with the resources currently configured in the complex");
 		}
-		if ((rc != SUCCESS) && njob->job->resv ==NULL) {
+		if ((rc != SUCCESS) && njob->job->resv == NULL) {
 			/* jobs in reservations are outside of the law... they don't cause
 			 * the rest of the system to idle waiting for them
 			 */
@@ -1655,24 +1655,32 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 		if (ns != NULL) {
+			int sort_nodepart = 0;
 			for (i = 0; ns[i] != NULL; i++) {
+				int j;
 				update_node_on_run(ns[i], rr, &old_state);
+				if (ns[i]->ninfo->np_arr != NULL) {
+					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
+						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+						sort_nodepart = 1;
+					}
+				}
 				/* if the node is being provisioned, it's brought down in
 				 * update_node_on_run().  We need to add an event in the calendar to
 				 * bring it back up.
 				 */
 				if (ns[i]->go_provision) {
-					if (add_prov_event(sinfo->calendar, sinfo->server_time + PROVISION_DURATION, ns[i]->ninfo)== 0) {
+					if (add_prov_event(sinfo->calendar, sinfo->server_time + PROVISION_DURATION, ns[i]->ninfo) == 0) {
 						set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 						return -1;
 					}
 				}
 			}
+			if (sort_nodepart)
+				sort_all_nodepart(policy, sinfo);
 		}
 
 		update_queue_on_run(qinfo, rr, &old_state);
-
-		sinfo->pset_metadata_stale = 1;
 
 		update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
 
@@ -2252,7 +2260,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		skip = SKIP_NOTHING;
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
-		last_job_index = 0;
+		last_job_index = -1; /* We search from last_job_index + 1 */
 		return NULL;
 	}
 
@@ -2264,19 +2272,19 @@ next_job(status *policy, server_info *sinfo, int flag)
 		}
 		return rjob;
 	}
-	if (skip != SKIP_RESERVATIONS) {
+	if (!(skip & SKIP_RESERVATIONS)) {
 		rjob = find_ready_resv_job(sinfo->resvs);
 		if (rjob != NULL)
 			return rjob;
 		else
-			skip = SKIP_RESERVATIONS;
+			skip |= SKIP_RESERVATIONS;
 	}
 
 	if ((sort_status != SORTED) || ((flag == MAY_RESORT_JOBS) && policy->fair_share)
 		|| (flag == MUST_RESORT_JOBS)) {
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
-		last_job_index = 0;
+		last_job_index = -1;
 	}
 	if (policy->round_robin) {
 		/* Below is a pictorial representation of how queue_list
@@ -2349,22 +2357,22 @@ next_job(status *policy, server_info *sinfo, int flag)
 			queues_finished = 0;
 		}
 	} else if (policy->by_queue) {
-		if (skip != SKIP_NON_NORMAL_JOBS) {
-			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index);
+		if (!(skip & SKIP_NON_NORMAL_JOBS)) {
+			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index + 1);
 			if (ind == -1) {
 				/* No more preempted jobs */
-				skip = SKIP_NON_NORMAL_JOBS;
-				last_job_index = 0;
+				skip |= SKIP_NON_NORMAL_JOBS;
+				last_job_index = -1;
 			} else {
 				rjob = sinfo->jobs[ind];
 				last_job_index = ind;
 			}
 		}
-		if (skip == SKIP_NON_NORMAL_JOBS) {
+		if (skip & SKIP_NON_NORMAL_JOBS) {
 			while(last_queue < sinfo->num_queues &&
-			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index)) == -1)) {
+			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index + 1)) == -1)) {
 				last_queue++;
-				last_job_index = 0;
+				last_job_index = -1;
 			}
 			if (last_queue < sinfo->num_queues && ind != -1) {
 				rjob = sinfo->queues[last_queue]->jobs[ind];
@@ -2373,7 +2381,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 				rjob = NULL;
 		}
 	} else { /* treat the entire system as one large queue */
-		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index);
+		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index + 1);
 		if(ind != -1) {
 			rjob = sinfo->jobs[ind];
 			last_job_index = ind;

@@ -1421,6 +1421,51 @@ create_resource(char *name, char *value, enum resource_fields field)
 }
 
 /**
+ * @brief modify the resources_assigned values for a resource_list 
+ * 		(e.g. either A += B or A -= B) where
+ * 		A is a resource list and B is a resource_req list.
+ * 
+ * @param[in] res_list - The schd_resource list which is modified
+ * @param[in] req_list - What is modifing the schd_resource list
+ * @param[in] type - SCHD_INCR for += or SCHD_DECR for -=
+ * 
+ * @return int
+ * @retval 1 - success
+ * @retval 0 - failure
+ */
+int
+modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
+{
+	schd_resource *cur_res;
+	resource_req *cur_req;
+	schd_resource *end_res = NULL;
+
+	if (res_list == NULL || req_list == NULL)
+		return 0;
+	
+	for(cur_req = req_list; cur_req != NULL; cur_req = cur_req->next) {
+		if (cur_req->type.is_consumable) {
+			cur_res = find_resource(res_list, cur_req->def);
+			if (cur_res == NULL && type == SCHD_INCR) {
+				if (end_res == NULL)
+					for (end_res = res_list; end_res->next != NULL; end_res = end_res->next)
+						;
+				end_res->next = create_resource(cur_req->name, cur_req->res_str, RF_AVAIL);
+				if (end_res->next == NULL)
+					return 0;
+				end_res = end_res->next;
+			} else {
+				if (type == SCHD_INCR)
+					cur_res->assigned += cur_req->amount;
+				else if (type == SCHD_DECR)
+					    cur_res->assigned -= cur_req->amount;
+			}
+		}
+	}
+	return 1;
+}
+
+/**
  * @brief
  * 		add_resource_list - add one resource list to another
  *		i.e. r1 += r2
@@ -1455,6 +1500,8 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		return 0;
 
 	for (cur_r2 = r2; cur_r2 != NULL; cur_r2 = cur_r2->next) {
+		if ((flags & NO_UPDATE_NON_CONSUMABLE) && cur_r2->def->type.is_non_consumable)
+			continue;
 		if ((flags & USE_RESOURCE_LIST)) {
 			if (!resdef_exists_in_array(policy->resdef_to_check, cur_r2->def) &&
 				!cur_r2->type.is_boolean)
@@ -2419,11 +2466,11 @@ dup_server_info(server_info *osinfo)
 	 */
 	for (i = 0; osinfo->nodes[i] != NULL; i++) {
 		nsinfo->nodes[i]->run_resvs_arr =
-			copy_resresv_array(osinfo->nodes[i]->run_resvs_arr,
-			nsinfo->resvs);
-		if(nsinfo->calendar != NULL)
+			copy_resresv_array(osinfo->nodes[i]->run_resvs_arr, nsinfo->resvs);
+		nsinfo->nodes[i]->np_arr = 
+			copy_node_partition_ptr_array(osinfo->nodes[i]->np_arr, nsinfo->nodepart);
+		if (nsinfo->calendar != NULL)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
-
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
 
@@ -3811,7 +3858,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
  * @retval	NULL	: when function is not able to find the array.
  *
  */
-struct queue_info *** find_queue_list_by_priority(queue_info *** list_head, int priority)
+struct queue_info ***find_queue_list_by_priority(queue_info *** list_head, int priority)
 {
 	int i;
 	if (list_head == NULL)
@@ -3836,7 +3883,7 @@ struct queue_info *** find_queue_list_by_priority(queue_info *** list_head, int 
  * @retval	NULL	: when realloc fails.
  *           			pointer to appended list.
  */
-struct queue_info** append_to_queue_list(queue_info ***list, queue_info *add)
+struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 {
 	int count = 0;
 	queue_info ** temp = NULL;
@@ -4069,4 +4116,41 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	new_unordered_nodes[ct1] = NULL;
 
 	return new_unordered_nodes;
+}
+
+/**
+ * @brief add pointer to NULL terminated pointer array
+ * @param[in] ptr_arr - pointer array to add to
+ * @param[in] ptr - pointer to add
+ * 
+ * @return void *
+ * @retval pointer array with new element added
+ * @retval NULL on error
+ */
+void *
+add_ptr_to_array(void *ptr_arr, void *ptr)
+{
+	void **arr;
+	int cnt;
+
+	cnt = count_array((void **)ptr_arr);
+
+	if (cnt == 0) {
+		arr = malloc(sizeof(void *) * 2);
+		if (arr == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			return NULL;
+		}
+		arr[0] = ptr;
+		arr[1] = NULL;
+	} else {
+		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
+		if (arr == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			return NULL;
+		}
+		arr[cnt - 1] = ptr;
+		arr[cnt] = NULL;
+	}
+	return arr;
 }

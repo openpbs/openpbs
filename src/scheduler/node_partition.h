@@ -102,6 +102,9 @@ node_partition **dup_node_partition_array(node_partition **onp_arr, server_info 
  */
 node_partition *dup_node_partition(node_partition *onp, server_info *nsinfo);
 
+/* copy a node partition array from pointers out of another.*/
+node_partition **copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps);
+
 /*
  *
  *      create_node_partitions - break apart nodes into partitions
@@ -116,9 +119,8 @@ node_partition *dup_node_partition(node_partition *onp, server_info *nsinfo);
  *
  *
  */
-node_partition **
-create_node_partitions(status *policy, node_info **nodes, char **resnames,
-	unsigned int flags, int *num_parts);
+node_partition **create_node_partitions(status *policy, node_info **nodes, char **resnames,
+					unsigned int flags, int *num_parts);
 
 /*
  *
@@ -219,6 +221,8 @@ int create_placement_sets(status *policy, server_info *sinfo);
 /* Update placement sets and allparts */
 void update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags);
 
+/* Sort all placement sets (server's psets, queue's psets, and hostsets) */
+void sort_all_nodepart(status *policy, server_info *sinfo);
 
 #ifdef	__cplusplus
 }

@@ -3049,7 +3049,6 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	schd_error *full_err = NULL;
 	schd_error *cur_err = NULL;
-	timed_event *te = NULL;
 
 	resource_req *preempt_targets_req = NULL;
 	char **preempt_targets_list = NULL;
@@ -3252,7 +3251,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		return NULL;
 	}
 
-	skipto=0;
+	skipto = 0;
 	while ((indexfound = select_index_to_preempt(npolicy, nhjob, rjobs_subset, skipto, err, fail_list)) != NO_JOB_FOUND) {
 		struct preempt_ordering *po;
 
@@ -3280,12 +3279,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
-		if (nsinfo->calendar != NULL) {
-			te = find_timed_event(nsinfo->calendar->events, 0, pjob->name, TIMED_END_EVENT, 0);
-			if (te != NULL) {
-				if (delete_event(nsinfo, te, DE_NO_FLAGS) == 0)
+		if (pjob->end_event != NULL) {
+				if (delete_event(nsinfo, pjob->end_event, DE_NO_FLAGS) == 0)
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name, "Failed to delete end event for job.");
-			}
 		}
 
 		pjobs[j] = pjob;

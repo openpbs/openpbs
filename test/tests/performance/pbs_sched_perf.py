@@ -166,6 +166,37 @@ class TestSchedPerf(TestPerformance):
         self.compare_normal_path_to_buckets('free', num_jobs)
 
     @timeout(3600)
+    def test_run_many_jobs(self):
+        """
+        Submit many jobs and time the cycle that runs all of them.
+        """
+        num_jobs = 10000
+        a = {'Resource_List.select': '1:ncpus=1'}
+        jids = self.submit_jobs(a, num_jobs, wt_start=1000)
+        t = self.run_cycle()
+        self.server.expect(JOB, {'state=R': num_jobs})
+        self.logger.info('#' * 80)
+        m = 'Time taken in cycle to run %d normal jobs: %.2f' % (num_jobs, t)
+        self.logger.info(m)
+        self.logger.info('#' * 80)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        for j in jids:
+            self.server.rerunjob(j)
+            self.server.alterjob(j, {'Resource_List.place': 'excl'})
+
+        self.server.expect(JOB, {'state=Q': num_jobs})
+
+        t = self.run_cycle()
+
+        self.server.expect(JOB, {'state=R': num_jobs})
+        self.logger.info('#' * 80)
+        m = 'Time taken in cycle to run %d bucket jobs: %.2f' % (num_jobs, t)
+        self.logger.info(m)
+        self.logger.info('#' * 80)
+
+    @timeout(3600)
     def test_pset_fuzzy_perf(self):
         """
         Test opt_backfill_fuzzy with placement sets.

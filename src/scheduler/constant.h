@@ -74,15 +74,15 @@ enum sort_status
 };
 
 
-/* enum used to find out what to skip while searching for the next job to schedule */
+/* enum used to find out what to skip while searching for the next job to schedule.  Values are bits in a bitfield */
 
 enum skip
 {
 	SKIP_NOTHING,
 	/* Value used to know whether reservations are already scheduled or not */
-	SKIP_RESERVATIONS,
+	SKIP_RESERVATIONS = 1,
 	/* Value used to know whether express, preempted, starving jobs are already scheduled or not */
-	SKIP_NON_NORMAL_JOBS
+	SKIP_NON_NORMAL_JOBS = 2
 };
 
 /* return value of select_index_to_preempt function */
@@ -360,6 +360,11 @@ enum add_resource_list_flags
 	ADD_AVAIL_ASSIGNED = 8,
 	ADD_ALL_BOOL = 16
 	/* next flag 32 */
+};
+
+enum incr_decr {
+	SCHD_INCR,
+	SCHD_DECR
 };
 
 /* run update resresv flags is a bitfield = 0, 1, 2, 4, 8, ...*/
