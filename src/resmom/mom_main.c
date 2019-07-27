@@ -361,6 +361,8 @@ pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
 pbs_list_head	svr_execjob_resize_hooks;
 pbs_list_head	svr_execjob_abort_hooks;
+pbs_list_head	svr_execjob_postsuspend_hooks;
+pbs_list_head	svr_execjob_preresume_hooks;
 
 /* the task lists */
 pbs_list_head	task_list_immed;
@@ -9182,6 +9184,8 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(svr_execjob_attach_hooks);
 	CLEAR_HEAD(svr_execjob_resize_hooks);
 	CLEAR_HEAD(svr_execjob_abort_hooks);
+	CLEAR_HEAD(svr_execjob_postsuspend_hooks);
+	CLEAR_HEAD(svr_execjob_preresume_hooks);
 
 	CLEAR_HEAD(task_list_immed);
 	CLEAR_HEAD(task_list_timed);
@@ -9541,6 +9545,8 @@ main(int argc, char *argv[])
 	print_hooks(HOOK_EVENT_EXECJOB_ATTACH);
 	print_hooks(HOOK_EVENT_EXECJOB_RESIZE);
 	print_hooks(HOOK_EVENT_EXECJOB_ABORT);
+	print_hooks(HOOK_EVENT_EXECJOB_POSTSUSPEND);
+	print_hooks(HOOK_EVENT_EXECJOB_PRERESUME);
 
 	/* cleanup the hooks work directory */
 	cleanup_hooks_workdir(0);

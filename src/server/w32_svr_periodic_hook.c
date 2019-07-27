@@ -178,6 +178,8 @@ pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
 pbs_list_head	svr_execjob_resize_hooks;
 pbs_list_head	svr_execjob_abort_hooks;
+pbs_list_head	svr_execjob_postsuspend_hooks;
+pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	task_list_immed;
 pbs_list_head	task_list_timed;
 pbs_list_head	task_list_event;

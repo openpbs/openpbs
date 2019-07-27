@@ -50,6 +50,8 @@ This hook services the following events:
 - execjob_launch
 - execjob_resize
 - execjob_abort
+- execjob_postsuspend
+- execjob_preresume
 """
 
 # NOTES:
@@ -692,6 +694,14 @@ class HookUtils(object):
                 'name': 'execjob_abort',
                 'handler': self._execjob_end_handler
             }
+            self.hook_events[pbs.EXECJOB_POSTSUSPEND] = {
+                'name': 'execjob_postsuspend',
+                'handler': self._execjob_postsuspend_handler
+            }
+            self.hook_events[pbs.EXECJOB_PRERESUME] = {
+                'name': 'execjob_preresume',
+                'handler': self._execjob_preresume_handler
+            }
             self.hook_events[pbs.MOM_EVENTS] = {
                 'name': 'mom_events',
                 'handler': None
@@ -1013,6 +1023,17 @@ class HookUtils(object):
             cgroup.write_job_env_file(event.job.id, env_list)
         return True
 
+    def _execjob_postsuspend_handler(self, event, cgroup, jobutil):
+        """
+        Handler for execjob_postsuspend events.
+        """
+        return True
+
+    def _execjob_preresume_handler(self, event, cgroup, jobutil):
+        """
+        Handler for execjob_preresume events.
+        """
+        return True
 
 #
 # CLASS JobUtils
@@ -2641,7 +2662,7 @@ class CgroupUtils(object):
                             assigned[jobid]['memsw']['limit_in_bytes'] = \
                                 int(desc.readline())
                     else:
-                        pbs.logmsg(pbs.EVENT_DEBUG, '%s: No such file: %s' %
+                        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: No such file: %s' %
                                    (caller_name(), filename))
                 elif key == 'hugetlb':
                     with open(self._cgroup_path(key, 'limit_in_bytes',
