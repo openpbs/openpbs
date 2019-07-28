@@ -393,18 +393,18 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 			continue;
 
 		if (user != NULL && mask != 0 && i == (k-2)) {
-			if (AddAccessAllowedAce(ndacl, ACL_REVISION, mask | 0x00100000, grp[i]) == 0) {
+			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask | 0x00100000, grp[i]) == 0) {
 				sprintf(logb, "failed to add %d to %s", mask, name);
 				log_err(-1, "create_secure_dacl2", logb);
 			}
 
 		} else if (user2 != NULL && mask2 != 0 && i == (k-1)) {
-			if (AddAccessAllowedAce(ndacl, ACL_REVISION, mask2 | 0x00100000, grp[i]) == 0) {
+			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask2 | 0x00100000, grp[i]) == 0) {
 				sprintf(logb, "failed to add %d to %s", mask2, name);
 				log_err(-1, "create_secure_dacl2", logb);
 			}
 		} else {
-			if (AddAccessAllowedAce(ndacl, ACL_REVISION,
+			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE,
 				READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL, grp[i]) == 0) {
 				sprintf(logb, "failed to add WRITES_MASK and READS_MASK to %s", name);
 				log_err(-1, "create_secure_dacl2", logb);
@@ -1326,6 +1326,9 @@ secure_server_datastore_files()
 	make_dir_files_service_account_read(path);
 
 	sprintf(path, "%s/datastore/pg_log", pbs_conf.pbs_home_path);
+	make_dir_files_service_account_read(path);
+
+	sprintf(path, "%s/datastore/pg_logical", pbs_conf.pbs_home_path);
 	make_dir_files_service_account_read(path);
 
 	sprintf(path, "%s/datastore/pg_multixact", pbs_conf.pbs_home_path);

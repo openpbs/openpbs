@@ -180,4 +180,6 @@ typedef	int		pid_t;
 /* Define that we have read-write pthread locks */
 #define RWLOCK_SUPPORT 1
 
+#define PBS_COMPRESSION_ENABLED 1
+
 #endif /* _PBS_CONFIG_H */
