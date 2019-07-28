@@ -202,6 +202,23 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R')
 
+    def test_preempt_requeue_exclhost(self):
+        """
+        Test that a job is preempted by requeue on node
+        where attribute share is set to force_exclhost
+        """
+        # set node share attribute to force_exclhost
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+        self.mom.delete_vnode_defs()
+        vnode_prefix = self.mom.shortname
+        a = {'resources_available.ncpus': '1',
+             'sharing': 'force_exclhost'}
+        vnodedef = self.mom.create_vnode_def(vnode_prefix, a, 0)
+        self.assertNotEqual(vnodedef, None)
+        self.mom.insert_vnode_def(vnodedef, 'vnode.def')
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.shortname)
+        self.submit_and_preempt_jobs(preempt_order='R')
+
     def test_preempt_requeue_ja(self):
         """
         Test that a subjob is preempted by requeue
@@ -268,9 +285,11 @@ exit 1
         Test that a job is preempted by requeue and the scheduler does not
         report the job as can never run
         """
+        start_time = int(time.time())
         self.submit_and_preempt_jobs(preempt_order='R')
         self.scheduler.log_match(
-            ";Job will never run", existence=False, max_attempts=5)
+            ";Job will never run", existence=False, starttime=start_time,
+            max_attempts=5)
 
     def test_preempt_multiple_jobs(self):
         """
