@@ -374,7 +374,7 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
-	int preempt_bit;		/* Overall preempt bit to mark server is over max run softlimits */
+	int soft_limit_preempt_bit;	/* Overall preempt bit to mark server is over max run softlimits */
 #ifdef NAS
 	/* localmod 049 */
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
@@ -438,11 +438,11 @@ struct queue_info
 	char **node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
 	struct node_partition *allpart;   /* partition w/ all nodes assoc with queue*/
-	int num_parts;		/* number of node partitions(node_group_key) */
-	int num_topjobs;	/* current number of top jobs in this queue */
-	int backfill_depth;	/* total allowable topjobs in this queue*/
-	char *partition;	/* partition to which queue belongs to */
-	int preempt_bit;	/* Overall preempt bit to mark queue is over max run softlimits */
+	int num_parts;			/* number of node partitions(node_group_key) */
+	int num_topjobs;		/* current number of top jobs in this queue */
+	int backfill_depth;		/* total allowable topjobs in this queue*/
+	char *partition;		/* partition to which queue belongs to */
+	int soft_limit_preempt_bit;	/* Overall preempt bit to mark queue is over max run softlimits */
 };
 
 struct job_info
@@ -797,10 +797,10 @@ struct mom_res
 
 struct counts
 {
-	char *name;		/* name of entitiy */
-	int running;		/* count of running jobs in object */
-	int preempt_bit;	/* Place to store preempt bit if entity is over limits */
-	resource_count *rescts;	/* resources used */
+	char *name;			/* name of entitiy */
+	int running;			/* count of running jobs in object */
+	int soft_limit_preempt_bit;	/* Place to store preempt bit if entity is over limits */
+	resource_count *rescts;		/* resources used */
 	counts *next;
 };
 
@@ -809,7 +809,7 @@ struct resource_count
 	char *name;		    /* resource name */
 	resdef *def;		    /* definition of resource */
 	sch_resource_t amount;	    /* amount of resource used */
-	int preempt_bit;	    /* Place to store preempt bit if resource of an entity is over limits */
+	int soft_limit_preempt_bit; /* Place to store preempt bit if resource of an entity is over limits */
 	struct resource_count *next;
 };
 

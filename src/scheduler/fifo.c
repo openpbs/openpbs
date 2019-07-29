@@ -458,12 +458,18 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 	 * 2. we need all the jobs to be created and up to date for soft run limits
 	 */
 
+	/* Before setting preempt priorities on all jobs, make sure that entity's preempt bit
+	 * is updated for all running jobs
+	 */
+	if ((sinfo->running_jobs != NULL) && (policy->preempting)) {
+		for (i = 0; sinfo->running_jobs[i] != NULL; i++)
+			update_soft_limits (sinfo, sinfo->running_jobs[i]->job->queue, sinfo->running_jobs[i]);
+	}
 	if (sinfo->jobs != NULL) {
 		for (i = 0; sinfo->jobs[i] != NULL; i++) {
 			resource_resv *resresv = sinfo->jobs[i];
 			if (resresv->job != NULL) {
 				if (policy->preempting) {
-					update_soft_limits(sinfo, resresv->job->queue, resresv);
 					set_preempt_prio(resresv, resresv->job->queue, sinfo);
 					if (resresv->job->is_running)
 						if (!resresv->job->can_not_preempt)
@@ -911,7 +917,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			if (rc != SCHD_ERROR) {
 				if(run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
 					rc = SUCCESS;
-					sort_again = MAY_RESORT_JOBS;
+					if (sinfo->has_soft_limit || qinfo->has_soft_limit)
+						sort_again = MUST_RESORT_JOBS;
+					else
+						sort_again = MAY_RESORT_JOBS;
 				} else {
 					/* if run_update_resresv() returns 0 and pbs_errno == PBSE_HOOKERROR,
 					 * then this job is required to be ignored in this scheduling cycle

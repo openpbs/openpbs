@@ -1320,7 +1320,7 @@ new_server_info(int limallocflag)
 	sinfo->num_hostsets = 0;
 	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
-	sinfo->preempt_bit = 0;
+	sinfo->soft_limit_preempt_bit = 0;
 
 	if ((limallocflag != 0))
 		sinfo->liminfo = lim_alloc_liminfo();
@@ -1907,7 +1907,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
 
-		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') &&
+		    (policy->rel_on_susp != NULL))
 			req = resresv->job->resreq_rel;
 		else
 			req = resresv->resreq;
@@ -2478,7 +2479,7 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
-	nsinfo->preempt_bit = osinfo->preempt_bit;
+	nsinfo->soft_limit_preempt_bit = osinfo->soft_limit_preempt_bit;
 
 	return nsinfo;
 }
@@ -2709,7 +2710,7 @@ new_counts(void)
 	cts->name = NULL;
 	cts->running = 0;
 	cts->rescts = NULL;
-	cts->preempt_bit = 0;
+	cts->soft_limit_preempt_bit = 0;
 	cts->next = NULL;
 
 	return cts;
@@ -2789,7 +2790,7 @@ dup_counts(counts *octs)
 			ncts->name = string_dup(octs->name);
 
 		ncts->running = octs->running;
-		ncts->preempt_bit = octs->preempt_bit;
+		ncts->soft_limit_preempt_bit = octs->soft_limit_preempt_bit;
 
 		ncts->rescts = dup_resource_count_list(octs->rescts);
 	}
@@ -3388,12 +3389,6 @@ update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}
-			}
-			qsort(sinfo->jobs, sinfo->sc.total,
-				sizeof(resource_resv *), cmp_sort);
-			for (i = 0; sinfo->queues[i] != NULL; i++) {
-				qsort(sinfo->queues[i]->jobs, sinfo->queues[i]->sc.total,
-					sizeof(resource_resv *), cmp_sort);
 			}
 
 			/* now that we've set all the preempt levels, we need to count them */

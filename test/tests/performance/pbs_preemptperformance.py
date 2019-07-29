@@ -495,6 +495,7 @@ class TestPreemptPerformance(TestPerformance):
             j = Job(TEST_USER2, attrs=a)
             j.set_sleep_time(3000)
             self.server.submit(j)
+        time.sleep(15)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state=R': 2000}, interval=10, offset=5,
                            max_attempts=100)
@@ -519,6 +520,19 @@ class TestPreemptPerformance(TestPerformance):
         # make sure 2000 jobs were suspended
         self.server.expect(JOB, {'job_state=S': 2000}, interval=10, offset=5,
                            max_attempts=100)
+
+        # check when server received the request
+        (_, req_svr) = self.server.log_match(";Type 93 request received",
+                                             starttime=epoch1)
+        date_time_svr = req_svr.split(";")[0]
+        epoch_svr = self.lu.convert_date_time(date_time_svr)
+        # check when scheduler gets first reply from server
+        (_, resp_sched) = self.scheduler.log_match(";Job preempted ",
+                                                   starttime=epoch1)
+        date_time_sched = resp_sched.split(";")[0]
+        epoch_sched = self.lu.convert_date_time(date_time_sched)
+        svr_delay = epoch_sched - epoch_svr
+
         # record the start time of high priority job
         (_, str2) = self.scheduler.log_match(hjid + ";Job run",
                                              n='ALL', interval=2)
@@ -527,7 +541,10 @@ class TestPreemptPerformance(TestPerformance):
         time_diff = epoch2 - epoch1
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
-        res_str = "RESULT: THE TIME TAKEN IS : " + str(time_diff) + " SECONDS"
+        res_str = "RESULT: TOTAL PREEMPTION TIME: " + \
+                  str(time_diff) + " SECONDS, SERVER TOOK: " + \
+                  str(svr_delay) + " , SCHED TOOK: " + \
+                  str(time_diff - svr_delay)
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
@@ -582,6 +599,19 @@ class TestPreemptPerformance(TestPerformance):
         # make sure 2000 jobs were suspended
         self.server.expect(JOB, {'job_state=S': 2000}, interval=10, offset=5,
                            max_attempts=100)
+
+        # check when server received the request
+        (_, req_svr) = self.server.log_match(";Type 93 request received",
+                                             starttime=epoch1)
+        date_time_svr = req_svr.split(";")[0]
+        epoch_svr = self.lu.convert_date_time(date_time_svr)
+        # check when scheduler gets first reply from server
+        (_, resp_sched) = self.scheduler.log_match(";Job preempted ",
+                                                   starttime=epoch1)
+        date_time_sched = resp_sched.split(";")[0]
+        epoch_sched = self.lu.convert_date_time(date_time_sched)
+        svr_delay = epoch_sched - epoch_svr
+
         # record the start time of high priority job
         (_, str2) = self.scheduler.log_match(hjid + ";Job run",
                                              n='ALL', interval=2)
@@ -590,7 +620,10 @@ class TestPreemptPerformance(TestPerformance):
         time_diff = epoch2 - epoch1
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
-        res_str = "RESULT: THE TIME TAKEN IS : " + str(time_diff) + " SECONDS"
+        res_str = "RESULT: TOTAL PREEMPTION TIME: " + \
+                  str(time_diff) + " SECONDS, SERVER TOOK: " + \
+                  str(svr_delay) + " , SCHED TOOK: " + \
+                  str(time_diff - svr_delay)
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)

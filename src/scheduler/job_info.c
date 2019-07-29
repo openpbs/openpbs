@@ -5215,6 +5215,8 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 		case QUEUE_BYPROJECT_JOB_LIMIT_REACHED:
 
 		case INSUFFICIENT_RESOURCE:
+		case INSUFFICIENT_QUEUE_RESOURCE:
+		case INSUFFICIENT_SERVER_RESOURCE:
 			arg.job = job;
 			arg.err = err;
 			temp = resource_resv_filter(arr, arr_length, cull_preemptible_jobs, &arg, 0);

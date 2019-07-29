@@ -1369,14 +1369,14 @@ count_res_by_user(resource_resv **resresv_arr, char *user,
  * @param[in]	rdef	-	resource definition to find or if NULL,
  *				return number of running
  * @param[out]  cnt	-	address of the counts structure found in the list
- * @param[out]  rreq	-	address of matching resource count structure
+ * @param[out]  rcount	-	address of matching resource count structure
  *
  * @return	resource amount
  */
 sch_resource_t
-find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resource_count **rreq)
+find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resource_count **rcount)
 {
-	resource_count *req;
+	resource_count *res_lim;
 	counts *cts;
 
 	if (cts_list == NULL || name == NULL)
@@ -1388,10 +1388,10 @@ find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resour
 		if (rdef == NULL)
 			return cts->running;
 		else {
-			if ((req = find_resource_count(cts->rescts, rdef)) != NULL)
-				if (rreq != NULL)
-					*rreq = req;
-			return req->amount;
+			if ((res_lim = find_resource_count(cts->rescts, rdef)) != NULL)
+				if (rcount != NULL)
+					*rcount = res_lim;
+			return res_lim->amount;
 		}
 	}
 

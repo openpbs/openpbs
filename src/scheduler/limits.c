@@ -1174,7 +1174,7 @@ void update_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  * @return	int
  * @retval	Accumulated preempt_bits matching the entity
  */
-int find_preempt_bit(counts *entity_counts, char *entity_name, resource_resv *rr)
+int find_preempt_bits(counts *entity_counts, char *entity_name, resource_resv *rr)
 {
 	counts *cnt = NULL;
 	resource_count *res_c;
@@ -1188,12 +1188,11 @@ int find_preempt_bit(counts *entity_counts, char *entity_name, resource_resv *rr
 	if (cnt == NULL)
 	    return rc;
 
-	rc |= cnt->preempt_bit;
+	rc |= cnt->soft_limit_preempt_bit;
 	for (res_c = cnt->rescts; res_c != NULL; res_c = res_c->next) {
-		req = NULL;
 		req = find_resource_req(rr->resreq, res_c->def);
 		if (req != NULL)
-			rc |= res_c->preempt_bit;
+			rc |= res_c->soft_limit_preempt_bit;
 	}
 	return rc;
 }
@@ -1221,22 +1220,22 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 	}
 #endif /* localmod 097 */
 	if (si->has_soft_limit) {
-		rc |= si->preempt_bit;
+		rc |= si->soft_limit_preempt_bit;
 		if (si->has_user_limit)
-			rc |= find_preempt_bit(si->user_counts, rr->user, rr);
+			rc |= find_preempt_bits(si->user_counts, rr->user, rr);
 		if (si->has_grp_limit)
-			rc |= find_preempt_bit(si->group_counts, rr->group, rr);
+			rc |= find_preempt_bits(si->group_counts, rr->group, rr);
 		if (si->has_proj_limit)
-			rc |= find_preempt_bit(si->project_counts, rr->project, rr);
+			rc |= find_preempt_bits(si->project_counts, rr->project, rr);
 	}
 	if (qi->has_soft_limit) {
-		rc |= qi->preempt_bit;
+		rc |= qi->soft_limit_preempt_bit;
 		if (qi->has_user_limit)
-			rc |= find_preempt_bit(qi->user_counts, rr->user, rr);
+			rc |= find_preempt_bits(qi->user_counts, rr->user, rr);
 		if (qi->has_grp_limit)
-			rc |= find_preempt_bit(qi->group_counts, rr->group, rr);
+			rc |= find_preempt_bits(qi->group_counts, rr->group, rr);
 		if (qi->has_proj_limit)
-			rc |= find_preempt_bit(qi->project_counts, rr->project, rr);
+			rc |= find_preempt_bits(qi->project_counts, rr->project, rr);
 	}
 
 	return (rc);
@@ -2052,10 +2051,10 @@ check_queue_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > qi->sc.running)) {
-		qi->preempt_bit = 0;
+		qi->soft_limit_preempt_bit = 0;
 		return (0);
 	} else {
-		qi->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+		qi->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 	}
 
@@ -2117,20 +2116,20 @@ check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 		} else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_genuser_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 	} else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }
@@ -2191,21 +2190,21 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 		}
 		else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_gengroup_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 	} else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }
@@ -2301,10 +2300,10 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > si->sc.running)) {
-		si->preempt_bit = 0;
+		si->soft_limit_preempt_bit = 0;
 		return (0);
 	} else {
-		si->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+		si->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 	}
 }
@@ -2366,20 +2365,20 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 		} else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_genuser_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 		return ((PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT)));
 	} else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }
@@ -2441,20 +2440,20 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 		} else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_gengroup_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 	} else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }
@@ -2577,11 +2576,11 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 				__func__, log_buffer);
 		if (max_res_soft < used) {
 			if (used_res != NULL)
-				used_res->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+				used_res->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 		} else {
 			if (used_res != NULL)
-				used_res->preempt_bit = 0;
+				used_res->soft_limit_preempt_bit = 0;
 		}
 	}
 
@@ -2647,11 +2646,11 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 				__func__, log_buffer);
 		if (max_res_soft < used) {
 			if (used_res != NULL)
-				used_res->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+				used_res->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 		} else {
 			if (used_res != NULL)
-				used_res->preempt_bit = 0;
+				used_res->soft_limit_preempt_bit = 0;
 		}
 	}
 
@@ -2807,16 +2806,16 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		if (max_group_res_soft != SCHD_INFINITY) {
 			if (max_group_res_soft < used) {
 				if (rescts != NULL)
-					rescts->preempt_bit = preempt_bit;
+					rescts->soft_limit_preempt_bit = preempt_bit;
 				return (preempt_bit);
 			} else {
 				if (rescts != NULL)
-					rescts->preempt_bit = 0;
+					rescts->soft_limit_preempt_bit = 0;
 				continue;	/* ignore a generic limit */
 			}
 		} else if (max_gengroup_res_soft < used) {
 			if (rescts != NULL)
-				rescts->preempt_bit = preempt_bit;
+				rescts->soft_limit_preempt_bit = preempt_bit;
 			return (preempt_bit);
 		}
 	}
@@ -2975,16 +2974,16 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		if (max_user_res_soft != SCHD_INFINITY) {
 			if (max_user_res_soft < used) {
 				if (rescts != NULL)
-					rescts->preempt_bit = preempt_bit;
+					rescts->soft_limit_preempt_bit = preempt_bit;
 				return (preempt_bit);
 			} else {
 				if (rescts != NULL)
-					rescts->preempt_bit = 0;
+					rescts->soft_limit_preempt_bit = 0;
 				continue;	/* ignore a generic limit */
 			}
 		} else if (max_genuser_res_soft < used) {
 			if (rescts != NULL)
-				rescts->preempt_bit = preempt_bit;
+				rescts->soft_limit_preempt_bit = preempt_bit;
 			return (preempt_bit);
 		}
 	}
@@ -3626,16 +3625,16 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		if (max_project_res_soft != SCHD_INFINITY) {
 			if (max_project_res_soft < used){
 				if (rescts != NULL)
-					rescts->preempt_bit = preempt_bit;
+					rescts->soft_limit_preempt_bit = preempt_bit;
 				return (preempt_bit);
 			} else {
 				if (rescts != NULL)
-					rescts->preempt_bit = 0;
+					rescts->soft_limit_preempt_bit = 0;
 				continue;	/* ignore a generic limit */
 			}
 		} else if (max_genproject_res_soft < used) {
 			if (rescts != NULL)
-				rescts->preempt_bit = preempt_bit;
+				rescts->soft_limit_preempt_bit = preempt_bit;
 			return (preempt_bit);
 		}
 	}
@@ -3769,20 +3768,20 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 		} else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_genproject_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 	} else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }
@@ -3939,21 +3938,21 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
 			if (cnt != NULL)
-				cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 		} else {
 			if (cnt != NULL)
-				cnt->preempt_bit = 0;
+				cnt->soft_limit_preempt_bit = 0;
 			return (0);	/* ignore a generic limit */
 		}
 	} else if (max_genproject_run_soft < used) {
 		if (cnt != NULL)
-			cnt->preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 	}
 	else {
 		if (cnt != NULL)
-			cnt->preempt_bit = 0;
+			cnt->soft_limit_preempt_bit = 0;
 		return (0);
 	}
 }

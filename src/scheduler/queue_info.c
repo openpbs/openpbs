@@ -590,7 +590,7 @@ new_queue_info(int limallocflag)
 	qinfo->ignore_nodect_sort	 = 0;
 #endif
 	qinfo->partition = NULL;
-	qinfo->preempt_bit = 0;
+	qinfo->soft_limit_preempt_bit = 0;
 	return qinfo;
 }
 
@@ -760,7 +760,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 		state_count_add(&(qinfo->sc), job_state, 1);
 	}
 
-	if ((job_state != NULL) && (*job_state == 'S'))
+	if ((job_state != NULL) && (*job_state == 'S') && (resresv->server->policy->rel_on_susp != NULL))
 		req = resresv->job->resreq_rel;
 	else
 		req = resresv->resreq;
@@ -995,7 +995,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 			return NULL;
 		}
 	}
-	nqinfo->preempt_bit = oqinfo->preempt_bit;
+	nqinfo->soft_limit_preempt_bit = oqinfo->soft_limit_preempt_bit;
 
 	return nqinfo;
 }
