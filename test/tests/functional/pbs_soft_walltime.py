@@ -934,8 +934,8 @@ done
 
         now = int(time.time())
 
-        a = {'Resource_List.ncpus': 1, 'reserve_start': now + 5,
-             'reserve_end': now + 10}
+        a = {'Resource_List.ncpus': 1, 'reserve_start': now + 10,
+             'reserve_end': now + 20}
         R = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(R)
         self.server.expect(RESV,
@@ -952,7 +952,7 @@ done
 
         # verify that the job gets deleted when reservation ends
         self.server.expect(
-            JOB, 'queue', op=UNSET, id=jid, offset=10, max_attempts=10)
+            JOB, 'queue', op=UNSET, id=jid, offset=20)
 
     def test_restart_server(self):
         """
