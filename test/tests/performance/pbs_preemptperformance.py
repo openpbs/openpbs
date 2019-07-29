@@ -241,7 +241,7 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
         self.perf_test_result(time_diff,
-         "preempt_time_nonconsumable_resc", "sec")
+                              "preempt_time_nonconsumable_resc", "sec")
 
     @timeout(3600)
     @tags('sched', 'scheduling_policy')
@@ -334,7 +334,8 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
         self.perf_test_result(time_diff,
-         "preempt_time_multiplenonconsumable_resc", "sec")
+                              "preempt_time_multiplenonconsumable_resc",
+                              "sec")
 
     @timeout(3600)
     @tags('sched', 'scheduling_policy')

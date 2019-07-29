@@ -118,7 +118,7 @@ class TestJobEquivClassPerf(TestPerformance):
         self.perf_test_result(cycle1_time, "different_equi_class", "sec")
         self.perf_test_result(cycle2_time, "single_equi_class", "sec")
         self.perf_test_result(time_diff,
-         " time_diff_bn_single_diff_equi_classes", "sec")
+                              "time_diff_bn_single_diff_equi_classes", "sec")
 
     @timeout(10000)
     def test_server_queue_limit(self):
