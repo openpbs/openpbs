@@ -48,7 +48,7 @@ if not defined ZLIB_VERSION (
 set ZLIB_DIR_NAME=zlib
 
 if exist "%BINARIESDIR%\%ZLIB_DIR_NAME%" (
-    echo "%BINARIESDIR%\%ZLIB_DIR_NAME% exist already!"
+    echo "%BINARIESDIR%\%ZLIB_DIR_NAME% already exists!"
     exit /b 0
 )
 
