@@ -627,9 +627,6 @@ rel_resc(job *pjob)
 		if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION)
 			conn = get_conn(pjob->ji_rerun_preq->rq_conn);
 
-		if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
-
 		reply_ack(pjob->ji_rerun_preq);
 
 		/* clear no-timeout flag on connection to prevent stale connections */
@@ -1493,6 +1490,9 @@ on_job_rerun(struct work_task *ptask)
 
 				}
 				rel_resc(pjob);		/* free resc assigned to job */
+				if (pjob->ji_pmt_preq != NULL)
+					reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
+
 				unset_extra_attributes(pjob);
 
 
