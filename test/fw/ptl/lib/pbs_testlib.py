@@ -12178,13 +12178,16 @@ class Scheduler(PBSService):
 
         if 'sched_log' in self.attributes:
             logdir = self.attributes['sched_log']
-            tm = time.strftime("%Y%m%d", time.localtime())
-            self.logfile = os.path.join(logdir, tm)
+        else:
+            logdir = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_logs')
+
+        tm = time.strftime("%Y%m%d", time.localtime())
+        log_file = os.path.join(logdir, tm)
 
         if start is not None or end is not None:
-            analyze_path = os.path.dirname(self.logfile)
+            analyze_path = os.path.dirname(log_file)
         else:
-            analyze_path = self.logfile
+            analyze_path = log_file
 
         sl = PBSSchedulerLog()
         sl.analyze(analyze_path, start, end, self.hostname)
