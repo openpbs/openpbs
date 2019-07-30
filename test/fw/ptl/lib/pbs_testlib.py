@@ -3570,9 +3570,6 @@ class PBSService(PBSObject):
         if elmt is None:
             return
 
-        if isinstance(self, Scheduler) and self.sc_name != "default":
-            elmt = elmt + "_" + self.sc_name
-
         if conf is not None and 'PBS_HOME' in conf:
             tm = time.strftime("%Y%m%d", time.localtime())
             self.logfile = os.path.join(conf['PBS_HOME'], elmt, tm)
@@ -10644,7 +10641,6 @@ class Scheduler(PBSService):
         self.server = None
         self.logger = logging.getLogger(__name__)
         self.db_access = None
-        self.sc_name = id
 
         if server is not None:
             self.server = server
@@ -10670,6 +10666,7 @@ class Scheduler(PBSService):
         self.pi = PBSInitServices(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
         self.pbs_conf = self.server.pbs_conf
+        self.sc_name = id
 
         self.dflt_sched_config_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                    'etc', 'pbs_sched_config')
