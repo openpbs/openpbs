@@ -193,6 +193,8 @@ extern "C" {
 #define ATTR_topjob_ineligible "topjob_ineligible"
 #define ATTR_history_timestamp	"history_timestamp"
 #define ATTR_create_resv_from	"create_resv_from"
+#define ATTR_allowed_start_time	"allowed_start_time"
+#define ATTR_job_timezone	"job_timezone"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
 #define ATTR_exit_status        "Exit_status"

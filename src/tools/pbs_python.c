@@ -830,6 +830,12 @@ job_set_wait(attribute *pattr, void *pjob, int mode)
 }
 
 int
+action_allowed_start_time(attribute *pattr, void *pjob, int mode)
+{
+	return (0);
+}
+
+int
 alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 {
 	return PBSE_NONE;

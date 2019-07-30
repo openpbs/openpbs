@@ -199,6 +199,7 @@ extern void resv_retry_handler(struct work_task *);
 static void correct_ct(pbs_queue *);
 #endif 	/* NDEBUG */
 
+int create_allowed_start_time_tasks(pbs_list_head *allowed_start_times_list);
 /**
  * @brief
  * 		clear the default resource from structures
@@ -1728,7 +1729,6 @@ job_set_wait(attribute *pattr, void *pjob, int mode)
 	((job *)pjob)->ji_qs.ji_svrflags |= JOB_SVFLG_HASWAIT;
 	return (0);
 }
-
 
 /**
  * @brief
@@ -6157,4 +6157,89 @@ recreate_exec_vnode_exit:
 	free(new_deallocated_execvnode);
 
 	return (rc);
+}
+
+/**
+ * @brief
+ * 		action_allowed_start_time - set up work tasks for making the job
+ *		ready for execution.
+ * @par
+ *		IMP: History jobs:
+ *	     If the SERVER is configured for history jobs and the job is
+ *	     in state JOB_STATE_MOVED or JOB_STATE_FINISHED, then do not
+ *	     create/schedule any further work task on this job which may
+ *	     modify the HISTORY jobs.
+ * @par
+ *		This is called as the at_action (see attribute.h) function associated
+ *		with the allowed-start-time job attribute.
+ * 		parameter pjob is a job * cast to a void *
+ * 		parameter mode is unused;  do it for all action modes
+ *
+ * @param[in]	pattr	-	execution-time job attribute.
+ * @param[in]	pjob	-	pjob is a job * cast to a void *
+ * @param[in]	pattr	-	mode is unused;  do it for all action modes
+ */
+
+int
+action_allowed_start_time(attribute *pattr, void *ptr, int mode)
+{
+	job *pjob = ptr;
+
+	/* Return 0 if it is history job */
+	if ((((job *)pjob)->ji_qs.ji_state == JOB_STATE_MOVED) ||
+		(((job *)pjob)->ji_qs.ji_state == JOB_STATE_FINISHED))
+		return (0);
+
+	if ((pattr->at_flags & ATR_VFLAG_SET) == 0)
+		return (0);
+
+	if (parse_allowed_start_time_value(pattr->at_val.at_str,
+				pjob->ji_wattr[JOB_ATR_timezone].at_val.at_str,
+				pjob->allowed_start_times, 7))
+		return PBSE_INVALID_ALLOWED_START_TIME;
+
+	create_allowed_start_time_tasks(pjob->allowed_start_times);
+
+	return (0);
+}
+
+int
+create_allowed_start_time_tasks(pbs_list_head *allowed_start_times_list)
+{
+	int temp;
+	int today;
+	time_t now;
+	int hhmm_now;
+	struct tm tm_now;
+	allowed_start_times *past;
+
+	time(&now);
+	tm_now = *localtime(&now);
+
+	today = tm_now.tm_wday;
+	hhmm_now = tm_now.tm_hour * 100 + tm_now.tm_min;
+	
+	i = today;
+	past = GET_NEXT(allowed_start_times_list[today]);
+	if (!past) {
+		/* We do not have times for today, find the nearest day for which we have the times. */
+		i = today + 1;
+		if (i > 6)
+			i = 0;
+		while (i != today) {
+			past = GET_NEXT(allowed_start_times_list[i]);
+			if (past)
+				break;
+			else
+				i++;
+
+			if (i > 6)
+				i = 0;
+		}
+	}
+	/* past now has today's or nearest day's times */
+	while (past) {
+	}
+	
+	return 0;
 }

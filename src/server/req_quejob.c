@@ -737,7 +737,7 @@ req_quejob(struct batch_request *preq)
 
 	/* perform any at_action routine declared for the attributes */
 
-	for (i=0; i<JOB_ATR_LAST; ++i) {
+	for (i = 0; i < JOB_ATR_LAST; ++i) {
 		pdef = &job_attr_def[i];
 		if ((pj->ji_wattr[i].at_flags & ATR_VFLAG_SET) &&
 			(pdef->at_action)) {
@@ -923,8 +923,8 @@ req_quejob(struct batch_request *preq)
 			}
 		}
 
-		if ((pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str==0) ||
-			(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str==0)) {
+		if ((pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str == 0) ||
+			(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str == 0)) {
 			job_purge(pj);
 			req_reject(PBSE_NOATTR, 0, preq);
 			return;

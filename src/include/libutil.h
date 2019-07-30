@@ -44,6 +44,7 @@ extern "C" {
 
 #include <time.h>
 #include <stdio.h>
+#include "list_link.h"
 
 /* misc_utils specific */
 
@@ -162,6 +163,11 @@ void display_occurrences(char *, time_t, char *, char *, int, int);
  * Set the zoneinfo directory
  */
 void set_ical_zoneinfo(char *path);
+
+/*
+ *
+ */
+int parse_allowed_start_time_value(char *, char *, pbs_list_head *, int);
 
 /*
  * values for the vnode 'sharing' attribute

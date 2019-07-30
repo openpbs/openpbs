@@ -275,6 +275,7 @@ static int N_opt = FALSE;
 static int P_opt = FALSE;
 static int R_opt = FALSE;
 static int S_opt = FALSE;
+static int t_opt = FALSE;
 static int V_opt = FALSE;
 static int Depend_opt = FALSE;
 static int Interact_opt = FALSE;
@@ -2347,13 +2348,15 @@ process_opts(int argc, char **argv, int passet)
 #endif
 	int ddash_index = -1;
 
+	char *tz;
+
 #ifdef WIN32
 #define GETOPT_ARGS "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
 #else
 #if !defined(PBS_NO_POSIX_VIOLATION)
-#define GETOPT_ARGS "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:"
+#define GETOPT_ARGS "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:t:u:v:VW:XzP:"
 #else
-#define GETOPT_ARGS "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
+#define GETOPT_ARGS "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:t:u:v:VW:zP:"
 #endif /* PBS_NO_POSIX_VIOLATION */
 #endif /* WIN32 */
 
@@ -2608,6 +2611,20 @@ process_opts(int argc, char **argv, int passet)
 				if_cmd_line(S_opt) {
 					S_opt = passet;
 					set_attr_error_exit(&attrib, ATTR_S, optarg);
+				}
+				break;
+			case 't':
+				tz = getenv("PBS_TZID");
+				if (tz != NULL)
+					set_attr_error_exit(&attrib, ATTR_job_timezone, tz);
+				else {
+					fprintf(stderr, "qsub error: a valid PBS_TZID timezone environment variable is required.\n");
+					exit(2);
+				}
+
+				if_cmd_line(t_opt) {
+					t_opt = passet;
+					set_attr_error_exit(&attrib, ATTR_allowed_start_time, optarg);
 				}
 				break;
 			case 'u':

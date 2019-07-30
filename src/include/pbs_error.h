@@ -260,7 +260,7 @@ extern "C" {
 
 #define PBSE_SOFTWT_STF		     15180 /* soft_walltime is incompatible with STF jobs */
 
-#define PBSE_RESVFROMRESVJOB	     15181		/* A reservation used to create a reservation */
+#define PBSE_RESVFROMRESVJOB	     15181 /* A reservation used to create a reservation */
 /*
  ** 	Resource monitor specific
  */
@@ -297,6 +297,7 @@ extern "C" {
 #define PBSE_SCHED_OP_NOT_PERMITTED 15223 /* Operation not permitted on default scheduler */
 #define PBSE_SCHED_PARTITION_ALREADY_EXISTS 15224 /* Partition already exists */
 #define PBSE_INVALID_MAX_JOB_SEQUENCE_ID 15225 /* Invalid max_job_sequence_id < 9999999, or > 999999999999 */
+#define PBSE_INVALID_ALLOWED_START_TIME 15226 /* Invalid JOB_ATR_allowed_start_time spec */
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

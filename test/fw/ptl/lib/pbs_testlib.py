@@ -1823,10 +1823,17 @@ class BatchUtils(object):
         if mergelines:
             lines = []
             for i in range(len(l)):
+                self.logger.info("=======================")
+                self.logger.info("l[i] = " + l[i])
+                self.logger.info("lines = " + str(lines))
+                self.logger.info("=======================")
                 if l[i].startswith('\t'):
                     _e = len(lines) - 1
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
+                    self.logger.info("=======================")
+                    self.logger.info("_e = " + str(_e))
+                    self.logger.info("=======================")
                 else:
                     lines.append(l[i])
         else:

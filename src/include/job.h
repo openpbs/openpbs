@@ -88,8 +88,8 @@ struct depend_job {
 	pbs_list_link dc_link;
 	short	dc_state;	/* released / ready to run (syncct)	 */
 	long	dc_cost;	/* cost of this child (syncct)		 */
-	char	dc_child[PBS_MAXSVRJOBID+1]; /* child (dependent) job	 */
-	char	dc_svr[PBS_MAXSERVERNAME+1]; /* server owning job	 */
+	char	dc_child[PBS_MAXSVRJOBID + 1]; /* child (dependent) job	 */
+	char	dc_svr[PBS_MAXSERVERNAME + 1]; /* server owning job	 */
 };
 
 /*
@@ -138,6 +138,15 @@ struct grpcache {
 	/* structure following here		 */
 };
 
+/*
+ *
+ */
+
+typedef struct allowed_start_times {
+	pbs_list_link ast_link;
+	int start_time_begin;
+	int start_time_end;
+} allowed_start_times;
 /*
  * Job attributes/resources are maintained in one of two ways.
  * Most of the attributes are maintained in a decoded or parsed form.
@@ -280,6 +289,8 @@ enum job_atr {
 	JOB_ATR_relnodes_on_stageout,
 	JOB_ATR_tolerate_node_failures,
 	JOB_ATR_create_resv_from,
+	JOB_ATR_allowed_start_time,
+	JOB_ATR_timezone,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -633,6 +644,7 @@ struct job {
 	struct preempt_ordering	*preempt_order;
 	int preempt_order_index;
 	int allow_job_conversion;
+	pbs_list_head allowed_start_times[7]; /* 1 for each day of the week */
 
 #endif					/* END SERVER ONLY */
 

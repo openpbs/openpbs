@@ -585,6 +585,7 @@ extern int action_resc_dflt_queue(attribute *pattr, void *pobj, int actmode);
 extern int action_queue_partition(attribute *pattr, void *pobj, int actmode);
 /* Extern functions (at_action) called  from resv_attr_def */
 extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
+extern int action_allowed_start_time(attribute *pattr, void *pobject, int actmode);
 
 /* Functions used to save and recover the attributes from the database */
 extern int encode_attr_db(struct attribute_def *padef, struct attribute *pattr,

@@ -64,11 +64,14 @@
 #include <libutil.h>
 
 #include "pbs_error.h"
+#include "job.h"
 #ifdef LIBICAL
 #include <libical/ical.h>
 #endif
 
 #define DATE_LIMIT (3*(60*60*24*365)) /* Limit to 3 years from now */
+
+int valid_time_hhmm(char *time_str);
 
 /**
  * @brief
@@ -200,7 +203,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 #else
 	icalerror_errors_are_fatal = 0;
 #endif
-    localzone = icaltimezone_get_builtin_timezone(tz);
+	localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
 		return -1;
@@ -371,7 +374,7 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 	first = next;
 	prev = first;
 
-	for (next=icalrecur_iterator_next(itr); !icaltime_is_null_time(next); next=icalrecur_iterator_next(itr), count++) {
+	for (next = icalrecur_iterator_next(itr); !icaltime_is_null_time(next); next = icalrecur_iterator_next(itr), count++) {
 		/* The interval duration between two occurrences
 		 * is the time between the end of an occurrence and the
 		 * start of the next one
@@ -587,6 +590,131 @@ set_ical_zoneinfo(char *path)
 	}
 #endif
 	return;
+}
+
+/**
+ *
+ */
+int
+valid_time_hhmm(char *time_str)
+{
+	int temp;
+	char temp_str[5];
+
+	strcpy(temp_str, time_str);
+
+	temp = atoi(&temp_str[2]);
+	if (!(temp >= 0 && temp <= 59))
+		return 0;
+	temp_str[2] = 0;
+
+	temp = atoi(temp_str);
+	if (!(temp >= 0 && temp <= 23))
+		return 0;
+
+	return 1;
+}
+
+/**
+ *
+ */
+int
+parse_allowed_start_time_value(char *spec, char *tz, pbs_list_head *allowed_start_times_list, int ast_len)
+{
+	int i;
+
+	char *pc;
+	char *save_ptr = NULL;
+	char spec_copy[300] = {0};
+
+	icaltimezone *localzone;
+	allowed_start_times *past;
+	struct icalrecurrencetype rt;
+
+	short have_byday = 0;
+
+	strncpy(spec_copy, spec, 300);
+
+	pc = strtok_r(spec_copy, " ", &save_ptr);
+	if (strstr(pc, "BYDAY")) {
+		have_byday = 1;
+		icalerror_clear_errno();
+
+		icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
+#ifdef LIBICAL_API2
+		icalerror_set_errors_are_fatal(0);
+#else
+		icalerror_errors_are_fatal = 0;
+#endif
+		localzone = icaltimezone_get_builtin_timezone(tz);
+
+		if (localzone == NULL)
+			return 0;
+	}
+
+	for (i = 0; i < ast_len; i++)
+		CLEAR_HEAD(allowed_start_times_list[i]);
+
+	while (pc != NULL) {
+		int j;
+		int k;
+		int len;
+		char *temp_ptr;
+		char end_str[5];   /* hhmm */
+		char start_str[5]; /* hhmm */
+
+		i = 0;
+		len = 0;
+		temp_ptr = pc;
+
+		while (temp_ptr[i] != '-' || temp_ptr[i] != 0)
+			len++;
+
+		if (temp_ptr[i] == 0 || len != 4)
+			return 1;
+
+		temp_ptr[i] = 0;
+		temp_ptr++;
+		i++;
+
+		strcpy(start_str, temp_ptr);
+		if (!valid_time_hhmm(start_str))
+			return 1;
+
+		while (end_str[i] != ';' || temp_ptr[i] != 0)
+			len++;
+
+		if (temp_ptr[i] == 0 || len != 4)
+			return 1;
+
+		temp_ptr[i] = 0;
+		temp_ptr++;
+		i++;
+
+		strcpy(end_str, temp_ptr);
+		if (!valid_time_hhmm(end_str))
+			return 1;
+
+		if (temp_ptr[i])
+			rt = icalrecurrencetype_from_string(temp_ptr);
+
+		j = 0;
+		while ((k = rt.by_day[j]) != 0 && k < ast_len) {
+			past = calloc(sizeof(allowed_start_times), 1);
+			past->start_time_end = atoi(end_str);
+			past->start_time_begin = atoi(start_str);
+			append_link(&allowed_start_times_list[k - 1], &past->ast_link, past);
+			j++;
+		}
+
+		pc = strtok_r(NULL, " ", &save_ptr);
+		if (have_byday && !strstr(pc, "BYDAY"))
+			return 1;
+		else if (!have_byday && strstr(pc, "BYDAY"))
+			return 1;
+	}
+
+	return 0;
 }
 
 #ifdef DEBUG
