@@ -109,6 +109,9 @@ if not defined TCL_VERSION (
 if not defined TK_VERSION (
     set TK_VERSION=8.6.6
 )
+if not defined ZLIB_VERSION (
+    set ZLIB_VERSION=1.2.11
+)
 
 set DO_DEBUG_BUILD=0
 if "%~1"=="debug" (
