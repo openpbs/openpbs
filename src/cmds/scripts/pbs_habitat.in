@@ -514,15 +514,7 @@ if [ -z "$PBS_HOME" ]; then
 	echo "*** PBS_HOME is not set"
 	exit 1
 fi
-
-update_home=0
-if [ ! -d "$PBS_HOME" ]; then
-        update_home=1
-else
-	# Check if PBS_HOME is empty.
-        [ ! "$(/bin/ls -A $PBS_HOME)" ] && update_home=1
-fi
-if [ $update_home -eq 1 ]; then
+if [ ! -d "$PBS_HOME" -o ! "$(/bin/ls -A $PBS_HOME)" ]; then
 	echo "*** WARNING: PBS_HOME not found in $PBS_HOME"
 	if [ -x "$PBS_EXEC/sbin/pbs_server" ]; then
 		component="server"
