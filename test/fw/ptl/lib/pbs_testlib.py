@@ -1822,14 +1822,19 @@ class BatchUtils(object):
 
         if mergelines:
             lines = []
+            count = 1
             for i in range(len(l)):
                 if l[i].startswith('\t'):
                     _e = len(lines) - 1
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
-                elif not l[i].startswith(('\t', ' ')) and l[i].endswith(','):
-                    _e = len(lines) - 1
+                elif not l[i].startswith(' ') and l[i-count].startswith('\t'):
+                    _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
+                    if not l[i].endswith(','):
+                        count += 1
+                    else:
+                        count = 1
                 else:
                     lines.append(l[i])
         else:
