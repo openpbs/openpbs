@@ -54,7 +54,6 @@
  *	is_ok_to_run()
  *	check_avail_resources()
  *	dynamic_avail()
- *	count_res_by_user()
  *	find_counts_elm()
  *	check_ded_time_boundary()
  *	dedtime_conflict()
@@ -1315,47 +1314,6 @@ dynamic_avail(schd_resource *res)
 		return 0;
 	else
 		return res->avail - res->assigned;
-}
-
-/**
- * @brief
- *		count_res_by_user - count a user's current running resource usage
- *
- * @param[in]	resresv_arr	-	the resource resvs to accumulate from
- * @param[in]	user	-	the user
- * @param[in]	res	-	the resource name
- * @param[in]	cts_list	-	the user counts list
- *
- * @return	the amount of the resource used by the user
- *
- */
-sch_resource_t
-count_res_by_user(resource_resv **resresv_arr, char *user,
-	char *res, counts *cts_list)
-{
-	resource_count *res_c;			/* the resource count of the matching user and resource */
-	resource_req *req;			/* the resource of the current job */
-	sch_resource_t used = 0;
-	counts *cts;
-
-	int i;
-
-	if (resresv_arr == NULL || user == NULL || res == NULL)
-		return 0;
-
-	if ((cts = find_counts(cts_list, user)) != NULL) {
-		if ((res_c = find_resource_count_by_str(cts->rescts, res)) != NULL)
-			return res_c->amount;
-	}
-
-	for (i = 0; resresv_arr[i] != NULL; i++) {
-		if (!strcmp(resresv_arr[i]->user, user)) {
-			req = find_resource_req_by_str(resresv_arr[i]->resreq, res);
-			if (req != NULL)
-				used += req->amount;
-		}
-	}
-	return used;
 }
 
 /**

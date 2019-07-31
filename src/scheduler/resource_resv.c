@@ -753,6 +753,10 @@ dup_resource_req_list(resource_req *oreq)
 				prev->next = nreq;
 			prev = nreq;
 		}
+		else {
+			free_resource_req_list(head);
+			return NULL;
+		}
 		req = req->next;
 	}
 
@@ -786,6 +790,10 @@ resource_count *dup_resource_count_list(resource_count *orcount)
 			else
 				prev->next = nrcount;
 			prev = nrcount;
+		}
+		else {
+			free_resource_count_list(head);
+			return NULL;
 		}
 		rcount = rcount->next;
 	}
@@ -1146,31 +1154,6 @@ find_resource_req(resource_req *reqlist, resdef *def)
 		resreq = resreq->next;
 
 	return resreq;
-}
-
-/**
- * @brief
- *		find a resource_count from a resource_count list by string name
- *
- * @param[in]	rcountlist	-	the resource_count list
- * @param[in]	name		-	resource name to look for
- *
- * @return	resource_count *
- * @retval	found resource count
- * @retval NULL	: if not found
- *
- */
-resource_count *
-find_resource_count_by_str(resource_count *rcountlist, const char *name)
-{
-	resource_count *rcount;
-
-	rcount = rcountlist;
-
-	while (rcount != NULL && strcmp(rcount->name, name))
-		rcount = rcount->next;
-
-	return rcount;
 }
 
 /**

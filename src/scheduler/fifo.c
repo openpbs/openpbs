@@ -462,8 +462,10 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 	 * is updated for all running jobs
 	 */
 	if ((sinfo->running_jobs != NULL) && (policy->preempting)) {
-		for (i = 0; sinfo->running_jobs[i] != NULL; i++)
-			update_soft_limits (sinfo, sinfo->running_jobs[i]->job->queue, sinfo->running_jobs[i]);
+		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+			if (sinfo->running_jobs[i]->job->resv_id == NULL)
+				update_soft_limits(sinfo, sinfo->running_jobs[i]->job->queue, sinfo->running_jobs[i]);
+		}
 	}
 	if (sinfo->jobs != NULL) {
 		for (i = 0; sinfo->jobs[i] != NULL; i++) {

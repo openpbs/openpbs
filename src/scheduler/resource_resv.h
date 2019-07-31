@@ -103,11 +103,6 @@ resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, char *nam
 resource_req *find_resource_req_by_str(resource_req *reqlist, const char *name);
 
 /*
- *      find_resource_count_by_str - find a resource_count from a resource_count list
- */
-resource_count *find_resource_count_by_str(resource_count *reqlist, const char *name);
-
-/*
  *	find resource_req by resource definition
  */
 resource_req *find_resource_req(resource_req *reqlist, resdef *def);

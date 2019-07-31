@@ -495,7 +495,6 @@ class TestPreemptPerformance(TestPerformance):
             j = Job(TEST_USER2, attrs=a)
             j.set_sleep_time(3000)
             self.server.submit(j)
-        time.sleep(15)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state=R': 2000}, interval=10, offset=5,
                            max_attempts=100)
@@ -558,7 +557,8 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4,
              'resources_available.mem': '6400mb'}
-        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False)
+        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False,
+                                  sharednode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
