@@ -4040,7 +4040,7 @@ class PBSService(PBSObject):
             from ptl.utils.pbs_logutils import PBSLogUtils
         except:
             _msg = 'error loading ptl.utils.pbs_logutils'
-            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+            raise ImportError(_msg)
 
         if self.logutils is None:
             self.logutils = PBSLogUtils()
@@ -6701,9 +6701,11 @@ class Server(PBSService):
                     sname = 'default'
                 else:
                     sname = id
+
                 # Default max cycle length is 1200 seconds (20m)
                 self.expect(SCHED, {'state': 'scheduling'}, op=NE, id=sname,
-                            interval=1, max_attempts=1200)
+                            interval=1, max_attempts=1200,
+                            trigger_sched_cycle=False)
         return rc
 
     def sigjob(self, jobid=None, signal=None, extend=None, runas=None,
@@ -10883,6 +10885,35 @@ class Scheduler(PBSService):
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
+
+    def run_scheduling_cycle(self):
+        """
+        Convenience method to start and finish a sched cycle
+        """
+        sched = self.attributes['id']
+        old_val = self.server.status(SCHED, 'scheduling', id=sched)[
+            0]['scheduling']
+
+        # Make sure that we aren't in a sched cycle already
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'scheduling': 'False'}, id=sched)
+
+        # Kick a new cycle
+        tbefore = time.time()
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'scheduling': 'True'}, id=sched)
+        self.log_match("Starting Scheduling",
+                       starttime=tbefore)
+
+        if old_val == 'False':
+            # This will also ensure that the sched cycle is over before
+            # returning
+            self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                                id=sched)
+        else:
+            self.server.expect(SCHED, {'state': 'scheduling'}, op=NE,
+                               id=sched, interval=1, max_attempts=1200,
+                               trigger_sched_cycle=False)
 
     def pbs_version(self):
         """

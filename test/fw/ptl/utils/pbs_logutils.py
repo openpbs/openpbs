@@ -234,7 +234,8 @@ class PBSLogUtils(object):
         :type dt: str or None
         :param fmt: Format to which datetime is to be converted
         :type fmt: str
-        :returns: None if conversion fails
+        :returns: timestamp in seconds since epoch,
+                or None if conversion fails
         """
         if dt is None:
             return None
