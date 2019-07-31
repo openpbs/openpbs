@@ -47,6 +47,7 @@ import socket
 import time
 import calendar
 import ptl
+from distutils.util import strtobool
 from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_cliutils import CliUtils
@@ -249,6 +250,40 @@ def requirements(*args, **kwargs):
     return wrap_obj
 
 
+def testparams(**kwargs):
+    """
+    Decorator to set or modify test specific parameters
+    """
+    def decorated(function):
+        function.__doc__ += "Test Params:" + "\n\t"
+        for key, value in kwargs.iteritems():
+            function.__doc__ += str(key) + ' : ' + str(value) + '\n\t'
+
+        def wrapper(self, *args):
+            for key, value in kwargs.iteritems():
+                keyname = type(self).__name__ + "." + key
+                if keyname not in self.conf.keys():
+                    self.conf[keyname] = value
+                    self.testconf[keyname] = value
+                else:
+                    self.testconf[keyname] = self.conf[keyname]
+                    t = type(value)
+                    if t == bool:
+                        if strtobool(self.conf[keyname]):
+                            self.conf[keyname] = True
+                        else:
+                            self.conf[keyname] = False
+                    else:
+                        # If value is not a boolean then typecast
+                        self.conf[keyname] = t(self.conf[keyname])
+
+            function(self, *args)
+        wrapper.__doc__ = function.__doc__
+        wrapper.__name__ = function.__name__
+        return wrapper
+    return decorated
+
+
 class PBSServiceInstanceWrapper(dict):
 
     """
@@ -435,6 +470,7 @@ class PBSTestSuite(unittest.TestCase):
     measurements = []
     additional_data = {}
     conf = {}
+    testconf = {}
     param = None
     du = DshUtils()
     _procmon = None
@@ -1526,6 +1562,8 @@ class PBSTestSuite(unittest.TestCase):
         verify that ``server`` and ``scheduler`` are up
         clean up jobs and reservations
         """
+        if self.conf:
+            self.set_test_measurements({'testconfig': self.testconf})
         if 'skip-teardown' in self.conf:
             return
         self.log_enter_teardown()
