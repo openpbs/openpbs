@@ -202,6 +202,23 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R')
 
+    def test_preempt_requeue_exclhost(self):
+        """
+        Test that a job is preempted by requeue on node
+        where attribute share is set to force_exclhost
+        """
+        # set node share attribute to force_exclhost
+        a = {'resources_available.ncpus': '1',
+             'sharing': 'force_exclhost'}
+        self.server.create_vnodes(name=self.mom.shortname, attrib=a, num=0,
+                                  mom=self.mom)
+        start_time = time.time()
+        self.submit_and_preempt_jobs(preempt_order='R')
+        self.scheduler.log_match(
+            "Failed to run: Resource temporarily unavailable (15044)",
+            existence=False, starttime=start_time,
+            max_attempts=5)
+
     def test_preempt_requeue_ja(self):
         """
         Test that a subjob is preempted by requeue
@@ -268,9 +285,11 @@ exit 1
         Test that a job is preempted by requeue and the scheduler does not
         report the job as can never run
         """
+        start_time = time.time()
         self.submit_and_preempt_jobs(preempt_order='R')
         self.scheduler.log_match(
-            ";Job will never run", existence=False, max_attempts=5)
+            ";Job will never run", existence=False, starttime=start_time,
+            max_attempts=5)
 
     def test_preempt_multiple_jobs(self):
         """

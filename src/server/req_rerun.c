@@ -122,8 +122,6 @@ post_rerun(struct work_task *pwt)
 				force_reque(pjob);
 			}
 		}
-		else if (pjob->ji_pmt_preq != NULL)
-			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
 	}
 
 	release_req(pwt);
