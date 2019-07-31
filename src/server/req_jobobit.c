@@ -1490,6 +1490,8 @@ on_job_rerun(struct work_task *ptask)
 
 				}
 				rel_resc(pjob);		/* free resc assigned to job */
+
+				/* Respond to pending preemption request from the scheduler, if any */
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_REQUEUE, pjob);
 
