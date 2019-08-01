@@ -1832,7 +1832,7 @@ class BatchUtils(object):
                         and l[i-count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
-                    if not l[i].endswith(','):
+                    if ((i+1) < len(l) and not l[i+1].startswith(('\t', ' '))):
                         count += 1
                     else:
                         count = 1
