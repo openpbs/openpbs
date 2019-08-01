@@ -93,7 +93,7 @@ class PBSTestCycle(TestSelf):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
-        cycles = self.scheds['sc'].cycles(start=st, lastN=1)
+        cycles = self.scheds['sc'].cycles(start=st, firstN=1)
         self.assertNotEqual(len(cycles), 0)
         cycle = cycles[0]
 
@@ -103,3 +103,6 @@ class PBSTestCycle(TestSelf):
 
         # Check that the cycle start time is after st
         self.assertGreater(cycle.start, st)
+
+        # check the first considered is jid1
+        self.assertEqual(firstconsidered, jid1.split('.')[0])
