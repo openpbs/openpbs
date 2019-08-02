@@ -117,51 +117,52 @@ class TestPythonRestartSettings(TestFunctional):
 
     def test_non_manager(self):
         """
-        Test that values are not set as operator or users
+        Test that hook values can not be set as operator or users.
         """
+        exp_err = "Cannot set attribute, read only or insufficient permission"
+        try:
+            self.server.manager(MGR_CMD_SET, SERVER,
+                                {'python_restart_max_hooks': 30},
+                                runas=OPER_USER, logerr=True)
+        except PbsManagerError, e:
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
+        try:
+            self.server.manager(MGR_CMD_SET, SERVER,
+                                {'python_restart_max_objects': 2000},
+                                runas=OPER_USER, logerr=True)
+        except PbsManagerError, e:
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
+        try:
+            self.server.manager(MGR_CMD_SET, SERVER,
+                                {'python_restart_min_interval': 10},
+                                runas=OPER_USER, logerr=True)
+        except PbsManagerError, e:
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
         exp_err = "Unauthorized Request"
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_hooks': 30},
-                                runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
-        try:
-            self.server.manager(MGR_CMD_SET, SERVER,
-                                {'python_restart_max_objects': 2000},
-                                runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
-        try:
-            self.server.manager(MGR_CMD_SET, SERVER,
-                                {'python_restart_min_interval': 10},
-                                runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
-        try:
-            self.server.manager(MGR_CMD_SET, SERVER,
-                                {'python_restart_max_hooks': 30},
                                 runas=TEST_USER, logerr=True)
         except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_objects': 2000},
                                 runas=TEST_USER, logerr=True)
         except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': 10},
                                 runas=TEST_USER, logerr=True)
         except PbsManagerError, e:
-            self.assertTrue(exp_err in e.msg[0],
-                            "Error message is not expected")
+            self.assertIn(exp_err, e.msg[0],
+                          "Error message is not expected")
 
     def test_log_message(self):
         """
