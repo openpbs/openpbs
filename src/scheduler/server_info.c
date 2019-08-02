@@ -1978,9 +1978,9 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job != NULL) {
-					int usrlim = resresv->job->queue->has_user_limit | sinfo->has_user_limit;
-					int grplim = resresv->job->queue->has_grp_limit | sinfo->has_grp_limit;
-					int projlim = resresv->job->queue->has_proj_limit | sinfo->has_proj_limit;
+					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
+					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
+					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
 					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
 					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
 					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
@@ -3380,9 +3380,9 @@ update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job !=NULL) {
-					int usrlim = resresv->job->queue->has_user_limit | sinfo->has_user_limit;
-					int grplim = resresv->job->queue->has_grp_limit | sinfo->has_grp_limit;
-					int projlim = resresv->job->queue->has_proj_limit | sinfo->has_proj_limit;
+					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
+					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
+					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
 					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
 					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
 					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
