@@ -137,7 +137,7 @@ class TestEligibleTime(TestFunctional):
             # calculated by PBS.
             # If the eligible_time value was off by > 5 seconds, test fails.
             match = self.server.log_match(m1)
-            e_time = re.search('(\d+) secs', match[1])
+            e_time = re.search(r'(\d+) secs', match[1])
             if e_time:
                 self.logger.info("Checking if log_match failed because "
                                  "the eligible_time value was off by "
@@ -148,3 +148,48 @@ class TestEligibleTime(TestFunctional):
                     raise PtlLogMatchError(rc=1, rv=False, msg=e.msg)
             else:
                 raise PtlLogMatchError(rc=1, rv=False, msg=e.msg)
+
+    def test_after_depend(self):
+        """
+        Make sure jobs accrue eligible time (or not) approprately with an
+        after dependency
+        """
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 2},
+                            id=self.mom.shortname)
+        J1 = Job(TEST_USER)
+        jid1 = self.server.submit(J1)
+        attribs = {'job_state': 'R', 'accrue_type': 3}
+        self.server.expect(JOB, attribs, id=jid1)
+
+        J2 = Job(TEST_USER, {'Resource_List.select': '1:ncpus=2'})
+        jid2 = self.server.submit(J2)
+        attribs = {'job_state': 'Q', 'accrue_type': 2}
+        self.server.expect(JOB, attribs, id=jid2)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             ATTR_depend: 'afterany:' + jid2}
+        J3 = Job(TEST_USER, a)
+        jid3 = self.server.submit(J3)
+        attribs = {'job_state': 'H', 'accrue_type': 1}
+        self.server.expect(JOB, attribs, id=jid3)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'max_run_res.ncpus': '[u:PBS_GENERIC=1]'})
+
+        # Make sure there are enough resources to run the job, so the reason
+        # the job can't run is the limit.  Otherwise, we'd accrue eligible time
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 3},
+                            id=self.mom.shortname)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        self.server.expect(JOB, {'accrue_type': 1}, id=jid2)
+
+        # force the server to reassess the accrue type
+        self.server.holdjob(jid2, 'u')
+        self.server.rlsjob(jid2, 'u')
+
+        self.server.expect(JOB, {'accrue_type': 1}, id=jid2)

@@ -4851,12 +4851,6 @@ determine_accruetype(job* pjob)
 			return newaccruetype;
 		}
 
-	/* handling qsub -Wdepend, state H with substate 22 ; accrue eligible_time */
-	if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET) {
-		newaccruetype = (long)JOB_ELIGIBLE;
-		return newaccruetype;
-	}
-
 	/* return */
 	return newaccruetype;
 }
