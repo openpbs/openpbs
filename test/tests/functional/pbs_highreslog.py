@@ -80,10 +80,24 @@ class TestHighResLogging(TestFunctional):
             ': High resolution time stamp found in log'
         self.logger.info(_msg)
 
+    def switch_microsecondlogging(self, hostname=None, highrestimestamp=1):
+        """
+        Set microsecond logging in pbs.conf
+        """
+        if hostname is None:
+            hostname = self.server.hostname
+        a = {'PBS_LOG_HIGHRES_TIMESTAMP': highrestimestamp}
+        self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
+        PBSInitServices().restart()
+        self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
+
     def test_disabled(self):
         """
-        Default High resolution should be disabled (logfile version)
+        Disable High res logging, and test that high res timestamp is not
+        there in the server logs lines
         """
+        self.switch_microsecondlogging(highrestimestamp=0)
+
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -103,8 +117,11 @@ class TestHighResLogging(TestFunctional):
 
     def test_disabled_tracejob(self):
         """
-        Default High resolution should be disabled (tracejob version)
+        Disable High res logging, and test that high res timestamp is not
+        there in the tracejob output
         """
+        self.switch_microsecondlogging(highrestimestamp=0)
+
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -130,10 +147,6 @@ class TestHighResLogging(TestFunctional):
         Enable High resolution logging, restart server
         and look for high resolution time stamp in server log
         """
-        a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
-        self.du.set_pbs_config(confs=a, append=True)
-        _msg = 'Failed to restart server: %s' % (self.server.shortname)
-        self.assertTrue(self.server.restart(), _msg)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -145,11 +158,6 @@ class TestHighResLogging(TestFunctional):
         Enable High resolution logging, restart PBS Daemons
         and look for high resolution time stamp in tracejob output
         """
-        a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
-        self.du.set_pbs_config(confs=a, append=True)
-        PBSInitServices().restart()
-        self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
-
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -171,11 +179,3 @@ class TestHighResLogging(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
         self.validate_server_log_lines()
         self.validate_trace_job_lines(jid=jid)
-
-    def tearDown(self):
-        confs = self.du.parse_pbs_config()
-        if 'PBS_LOG_HIGHRES_TIMESTAMP' in confs:
-            del confs['PBS_LOG_HIGHRES_TIMESTAMP']
-            self.du.set_pbs_config(confs=confs, append=False)
-            PBSInitServices().restart()
-        PBSTestSuite.tearDown(self)
