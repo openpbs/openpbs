@@ -129,13 +129,6 @@ class HookHelper(object):
             pbs.logmsg(pbs.EVENT_DEBUG,
                        'Unix socket file does not exist, skipping hook')
             pbs.event().accept()
-        alarm = pbs.event().alarm
-        if alarm < cls.get_config()['post_timeout']:
-            pbs.logmsg(pbs.EVENT_DEBUG,
-                       "Hook's alarm is shorter than post_timeout")
-        if alarm < cls.get_config()['delete_timeout']:
-            pbs.logmsg(pbs.EVENT_DEBUG,
-                       "Hook's alarm is shorter than delete_timeout")
 
     @classmethod
     def get_config(cls):
