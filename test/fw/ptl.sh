@@ -47,5 +47,25 @@ if [ "x${ptl_prefix_lib}" != "x" ]; then
 	prefix=$( dirname ${ptl_prefix_lib} )
 
 	export PATH=${prefix}/bin/:${PATH} 
-	export PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH 
+	export PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	unset python_dir
+	unset prefix
+	unset ptl_prefix_lib
+else
+	conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
+	if [ -r "${conf}" ]; then
+		# we only need PBS_EXEC from pbs.conf
+		__PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
+		if [ "X${__PBS_EXEC}" != "X" ]; then
+			# Define PATH and PYTHONPATH for the users
+			PTL_PREFIX=$( dirname ${__PBS_EXEC} )/ptl
+			python_dir=$( /bin/ls -1 ${PTL_PREFIX}/lib )/site-packages
+			[ -d "${PTL_PREFIX}/bin" ] && export PATH="${PATH}:${PTL_PREFIX}/bin"
+			[ -d "${PTL_PREFIX}/lib/${python_dir}" ] && export PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+		fi
+		unset __PBS_EXEC
+		unset PTL_PREFIX
+		unset conf
+		unset python_dir
+	fi
 fi

@@ -37,15 +37,43 @@
 
 # This file will set path variables in case of ptl installation
 
-if [ -f "/etc/debian_version" ]; then
-	ptl_prefix_lib=$( dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
+if ( -f "/etc/debian_version" ) then
+	set ptl_prefix_lib=`dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
 else
-	ptl_prefix_lib=$( rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
-fi
-if [ "x${ptl_prefix_lib}" != "x" ]; then
-	python_dir=$( /bin/ls -1 ${ptl_prefix_lib} )
-	prefix=$( dirname ${ptl_prefix_lib} )
+	set ptl_prefix_lib=`rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+endif
+if ( ! $?ptl_prefix_lib ) then
+	set python_dir=`/bin/ls -1 ${ptl_prefix_lib}`
+	set prefix=`dirname ${ptl_prefix_lib}`
 
 	setenv PATH=${prefix}/bin/:${PATH} 
-	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH 
-fi
+	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	unset python_dir
+	unset prefix
+	unset ptl_prefix_lib
+else
+	if ( $?PBS_CONF_FILE ) then
+		set conf = "$PBS_CONF_FILE"
+	else
+		set conf = /etc/pbs.conf
+	endif
+	if ( -r "${conf}" ) then
+		# we only need PBS_EXEC from pbs.conf
+		set __PBS_EXEC=`grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/'`
+		if ( "X${__PBS_EXEC}" != "X" ) then
+			# Define PATH and PYTHONPATH for the users
+			set PTL_PREFIX=`dirname ${__PBS_EXEC}`/ptl
+			set python_dir=`/bin/ls -1 ${PTL_PREFIX}/lib`/site-packages
+			if ( $?PATH && -d ${PTL_PREFIX}/bin ) then
+				setenv export PATH="${PATH}:${PTL_PREFIX}/bin"
+			endif
+			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then 
+				setenv PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+			endif
+		endif
+		unset __PBS_EXEC
+		unset PTL_PREFIX
+		unset conf
+		unset python_dir
+	endif
+endif
