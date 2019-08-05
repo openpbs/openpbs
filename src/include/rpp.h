@@ -79,6 +79,7 @@ struct tpp_config {
 	int    tcp_keep_idle;
 	int    tcp_keep_intvl;
 	int    tcp_keep_probes;
+	int    tcp_user_timeout;
 	int    buf_limit_per_conn; /* buffer limit per physical connection */
 	int    force_fault_tolerance; /* by default disabled */
 };
