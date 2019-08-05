@@ -1320,6 +1320,7 @@ new_server_info(int limallocflag)
 	sinfo->num_hostsets = 0;
 	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
+	sinfo->soft_limit_preempt_bit = 0;
 
 	if ((limallocflag != 0))
 		sinfo->liminfo = lim_alloc_liminfo();
@@ -1906,7 +1907,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
 
-		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') &&
+		    (policy->rel_on_susp != NULL))
 			req = resresv->job->resreq_rel;
 		else
 			req = resresv->resreq;
@@ -1975,10 +1977,14 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	if (cstat.preempting && resresv->is_job) {
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
-				if (sinfo->jobs[i]->job !=NULL) {
-					if (!strcmp(resresv->user, sinfo->jobs[i]->user) ||
-						!strcmp(resresv->group, sinfo->jobs[i]->group) ||
-						!strcmp(resresv->project, sinfo->jobs[i]->project))
+				if (sinfo->jobs[i]->job != NULL) {
+					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
+					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
+					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
+					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
+					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
+					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
+
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}
@@ -2473,6 +2479,7 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	nsinfo->soft_limit_preempt_bit = osinfo->soft_limit_preempt_bit;
 
 	return nsinfo;
 }
@@ -2703,6 +2710,7 @@ new_counts(void)
 	cts->name = NULL;
 	cts->running = 0;
 	cts->rescts = NULL;
+	cts->soft_limit_preempt_bit = 0;
 	cts->next = NULL;
 
 	return cts;
@@ -2728,7 +2736,7 @@ free_counts(counts *cts)
 		free(cts->name);
 
 	if (cts->rescts != NULL)
-		free_resource_req_list(cts->rescts);
+		free_resource_count_list(cts->rescts);
 
 	cts->next = NULL;
 
@@ -2782,8 +2790,9 @@ dup_counts(counts *octs)
 			ncts->name = string_dup(octs->name);
 
 		ncts->running = octs->running;
+		ncts->soft_limit_preempt_bit = octs->soft_limit_preempt_bit;
 
-		ncts->rescts = dup_resource_req_list(octs->rescts);
+		ncts->rescts = dup_resource_count_list(octs->rescts);
 	}
 
 	return ncts;
@@ -2913,7 +2922,7 @@ find_alloc_counts(counts *ctslist, char *name)
 void
 update_counts_on_run(counts *cts, resource_req *resreq)
 {
-	resource_req *ctsreq;			/* rescts to update */
+	resource_count *ctsreq;			/* rescts to update */
 	resource_req *req;			/* current in resreq */
 
 	if (cts == NULL)
@@ -2927,7 +2936,7 @@ update_counts_on_run(counts *cts, resource_req *resreq)
 	req = resreq;
 
 	while (req != NULL) {
-		ctsreq = find_alloc_resource_req(cts->rescts, req->def);
+		ctsreq = find_alloc_resource_count(cts->rescts, req->def);
 
 		if (ctsreq != NULL) {
 			if (cts->rescts == NULL)
@@ -2955,7 +2964,7 @@ update_counts_on_run(counts *cts, resource_req *resreq)
 void
 update_counts_on_end(counts *cts, resource_req *resreq)
 {
-	resource_req *ctsreq;			/* rescts to update */
+	resource_count *ctsreq;			/* rescts to update */
 	resource_req *req;			/* current in resreq */
 
 	if (cts == NULL || resreq == NULL)
@@ -2965,7 +2974,7 @@ update_counts_on_end(counts *cts, resource_req *resreq)
 
 	req = resreq;
 	while (req != NULL) {
-		ctsreq = find_resource_req(cts->rescts, req->def);
+		ctsreq = find_resource_count(cts->rescts, req->def);
 		if (ctsreq != NULL)
 			ctsreq->amount -= req->amount;
 
@@ -2994,8 +3003,8 @@ counts_max(counts *cmax, counts *new)
 	counts *cur;
 	counts *cur_fmax;
 	counts *cmax_head;
-	resource_req *cur_res;
-	resource_req *cur_res_max;
+	resource_count *cur_res;
+	resource_count *cur_res_max;
 
 	if (new == NULL)
 		return cmax;
@@ -3021,9 +3030,9 @@ counts_max(counts *cmax, counts *new)
 				cur_fmax->running = cur->running;
 
 			for (cur_res = cur->rescts; cur_res != NULL; cur_res = cur_res->next) {
-				cur_res_max = find_resource_req(cur_fmax->rescts, cur_res->def);
+				cur_res_max = find_resource_count(cur_fmax->rescts, cur_res->def);
 				if (cur_res_max == NULL) {
-					cur_res_max = dup_resource_req(cur_res);
+					cur_res_max = dup_resource_count(cur_res);
 					if (cur_res_max == NULL) {
 						free_counts_list(cmax_head);
 						return NULL;
@@ -3116,7 +3125,9 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
 
 	if (qinfo != NULL)
 		update_queue_on_end(qinfo, resresv, job_state);
-
+	/* update soft limits for jobs that are not in reservation */
+	if (resresv->is_job && resresv->job->resv_id == NULL)
+		update_soft_limits(sinfo, qinfo, resresv);
 	/* Mark the metadata stale.  It will be updated in the next call to is_ok_to_run() */
 	sinfo->pset_metadata_stale = 1;
 
@@ -3369,18 +3380,15 @@ update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
 		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
 			for (i = 0; sinfo->jobs[i] != NULL; i++) {
 				if (sinfo->jobs[i]->job !=NULL) {
-					if (!strcmp(resresv->user, sinfo->jobs[i]->user) ||
-						!strcmp(resresv->group, sinfo->jobs[i]->group) ||
-						!strcmp(resresv->project, sinfo->jobs[i]->project))
+					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
+					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
+					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
+					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
+					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
+					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
 						set_preempt_prio(sinfo->jobs[i],
 							sinfo->jobs[i]->job->queue, sinfo);
 				}
-			}
-			qsort(sinfo->jobs, sinfo->sc.total,
-				sizeof(resource_resv *), cmp_sort);
-			for (i = 0; sinfo->queues[i] != NULL; i++) {
-				qsort(sinfo->queues[i]->jobs, sinfo->queues[i]->sc.total,
-					sizeof(resource_resv *), cmp_sort);
 			}
 
 			/* now that we've set all the preempt levels, we need to count them */

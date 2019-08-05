@@ -2185,15 +2185,16 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
 /**
  * @brief should a resresv_set use the user
  * @param sinfo - server info
+ * @param qinfo - queue info
  * @retval 1 - yes
  * @retval 0 - no
  */
 int
-resresv_set_use_user(server_info *sinfo)
+resresv_set_use_user(server_info *sinfo, queue_info *qinfo)
 {
-	if (sinfo == NULL)
-		return 0;
-	if (sinfo->has_user_limit)
+	if ((sinfo != NULL) && (sinfo->has_user_limit))
+		return 1;
+	if ((qinfo != NULL) && (qinfo->has_user_limit))
 		return 1;
 
 
@@ -2203,15 +2204,16 @@ resresv_set_use_user(server_info *sinfo)
 /**
  * @brief should a resresv_set use the group
  * @param sinfo - server info
+ * @param qinfo - queue info
  * @retval 1 - yes
  * @retval 0 - no
  */
 int
-resresv_set_use_grp(server_info *sinfo)
+resresv_set_use_grp(server_info *sinfo, queue_info *qinfo)
 {
-	if (sinfo == NULL)
-		return 0;
-	if (sinfo->has_grp_limit)
+	if ((sinfo != NULL) && (sinfo->has_grp_limit))
+		return 1;
+	if ((qinfo != NULL) && (qinfo->has_grp_limit))
 		return 1;
 
 
@@ -2221,15 +2223,16 @@ resresv_set_use_grp(server_info *sinfo)
 /**
  * @brief should a resresv_set use the project
  * @param sinfo - server info
+ * @param qinfo - queue info
  * @retval 1 - yes
  * @retval 0 - no
  */
 int
-resresv_set_use_proj(server_info *sinfo)
+resresv_set_use_proj(server_info *sinfo, queue_info *qinfo)
 {
-	if (sinfo == NULL)
-		return 0;
-	if (sinfo->has_proj_limit)
+	if ((sinfo != NULL) && (sinfo->has_proj_limit))
+		return 1;
+	if ((qinfo != NULL) && (qinfo->has_proj_limit))
 		return 1;
 
 
@@ -2365,11 +2368,16 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 	if (rset == NULL)
 		return NULL;
 
-	if (resresv_set_use_user(sinfo))
+	if (resresv->is_job && resresv->job != NULL) {
+		if (resresv_set_use_queue(resresv->job->queue))
+			rset->qinfo = resresv->job->queue;
+	}
+
+	if (resresv_set_use_user(sinfo, rset->qinfo))
 		rset->user = string_dup(resresv->user);
-	if (resresv_set_use_grp(sinfo))
+	if (resresv_set_use_grp(sinfo, rset->qinfo))
 		rset->group = string_dup(resresv->group);
-	if (resresv_set_use_proj(sinfo))
+	if (resresv_set_use_proj(sinfo, rset->qinfo))
 		rset->project = string_dup(resresv->project);
 
 	if (resresv->is_job && resresv->job != NULL) {
@@ -2390,10 +2398,6 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 	/* rset->req may be NULL if the intersection of resresv->resreq and policy->equiv_class_resdef is the NULL set */
 	rset->req = dup_selective_resource_req_list(resresv->resreq, policy->equiv_class_resdef);
 
-	if (resresv->is_job && resresv->job != NULL) {
-		if (resresv_set_use_queue(resresv->job->queue))
-			rset->qinfo = resresv->job->queue;
-	}
 
 	return rset;
 }
@@ -2481,13 +2485,17 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	if (policy == NULL || rsets == NULL || resresv == NULL)
 		return -1;
 
-	if (resresv_set_use_user(resresv->server))
+	if (resresv->is_job && resresv->job != NULL)
+		if (resresv_set_use_queue(resresv->job->queue))
+			qinfo = resresv->job->queue;
+
+	if (resresv_set_use_user(resresv->server, qinfo))
 		user = resresv->user;
 
-	if (resresv_set_use_grp(resresv->server))
+	if (resresv_set_use_grp(resresv->server, qinfo))
 		grp = resresv->group;
 
-	if (resresv_set_use_proj(resresv->server))
+	if (resresv_set_use_proj(resresv->server, qinfo))
 		proj = resresv->project;
 
 	if (resresv->is_job && resresv->job != NULL) {
@@ -2496,10 +2504,6 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	}
 
 	sspec = resresv_set_which_selspec(resresv);
-
-	if (resresv->is_job && resresv->job != NULL)
-		if (resresv_set_use_queue(resresv->job->queue))
-			qinfo = resresv->job->queue;
 
 	return find_resresv_set(policy, rsets, user, grp, proj, partition, sspec, resresv->place_spec, resresv->resreq, qinfo);
 }
@@ -5211,6 +5215,8 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 		case QUEUE_BYPROJECT_JOB_LIMIT_REACHED:
 
 		case INSUFFICIENT_RESOURCE:
+		case INSUFFICIENT_QUEUE_RESOURCE:
+		case INSUFFICIENT_SERVER_RESOURCE:
 			arg.job = job;
 			arg.err = err;
 			temp = resource_resv_filter(arr, arr_length, cull_preemptible_jobs, &arg, 0);

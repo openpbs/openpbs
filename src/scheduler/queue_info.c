@@ -404,20 +404,20 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 		else if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, qinfo->liminfo);
 			if(strstr(attrp->value, "u:") != NULL)
-				sinfo->has_user_limit = 1;
+				qinfo->has_user_limit = 1;
 			if(strstr(attrp->value, "g:") != NULL)
-				sinfo->has_grp_limit = 1;
+				qinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
-				sinfo->has_proj_limit = 1;
+				qinfo->has_proj_limit = 1;
 		}
 		else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, qinfo->liminfo);
 			if(strstr(attrp->value, "u:") != NULL)
-				sinfo->has_user_limit = 1;
+				qinfo->has_user_limit = 1;
 			if(strstr(attrp->value, "g:") != NULL)
-				sinfo->has_grp_limit = 1;
+				qinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
-				sinfo->has_proj_limit = 1;
+				qinfo->has_proj_limit = 1;
 
 		}
 		else if (is_oldlimattr(attrp)) {
@@ -425,9 +425,9 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 			(void) lim_setlimits(attrp, LIM_OLD, qinfo->liminfo);
 
 			if(strstr(limname, "u:") != NULL)
-				sinfo->has_user_limit = 1;
+				qinfo->has_user_limit = 1;
 			if(strstr(limname, "g:") != NULL)
-				sinfo->has_grp_limit = 1;
+				qinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
 		}
 		else if (!strcmp(attrp->name, ATTR_p)) { /* priority */
@@ -550,6 +550,9 @@ new_queue_info(int limallocflag)
 	qinfo->has_hard_limit = 0;
 	qinfo->is_peer_queue = 0;
 	qinfo->has_resav_limit = 0;
+	qinfo->has_user_limit = 0;
+	qinfo->has_grp_limit = 0;
+	qinfo->has_proj_limit = 0;
 	init_state_count(&(qinfo->sc));
 	if ((limallocflag != 0))
 		qinfo->liminfo = lim_alloc_liminfo();
@@ -587,6 +590,7 @@ new_queue_info(int limallocflag)
 	qinfo->ignore_nodect_sort	 = 0;
 #endif
 	qinfo->partition = NULL;
+	qinfo->soft_limit_preempt_bit = 0;
 	return qinfo;
 }
 
@@ -756,7 +760,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 		state_count_add(&(qinfo->sc), job_state, 1);
 	}
 
-	if ((job_state != NULL) && (*job_state == 'S'))
+	if ((job_state != NULL) && (*job_state == 'S') && (resresv->server->policy->rel_on_susp != NULL))
 		req = resresv->job->resreq_rel;
 	else
 		req = resresv->resreq;
@@ -930,6 +934,9 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->has_hard_limit = oqinfo->has_hard_limit;
 	nqinfo->is_peer_queue = oqinfo->is_peer_queue;
 	nqinfo->has_resav_limit = oqinfo->has_resav_limit;
+	nqinfo->has_user_limit = oqinfo->has_user_limit;
+	nqinfo->has_grp_limit = oqinfo->has_grp_limit;
+	nqinfo->has_proj_limit = oqinfo->has_proj_limit;
 	nqinfo->sc = oqinfo->sc;
 	nqinfo->liminfo = lim_dup_liminfo(oqinfo->liminfo);
 	nqinfo->priority = oqinfo->priority;
@@ -988,6 +995,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 			return NULL;
 		}
 	}
+	nqinfo->soft_limit_preempt_bit = oqinfo->soft_limit_preempt_bit;
 
 	return nqinfo;
 }

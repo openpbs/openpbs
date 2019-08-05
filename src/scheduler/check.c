@@ -54,7 +54,6 @@
  *	is_ok_to_run()
  *	check_avail_resources()
  *	dynamic_avail()
- *	count_res_by_user()
  *	find_counts_elm()
  *	check_ded_time_boundary()
  *	dedtime_conflict()
@@ -1318,46 +1317,6 @@ dynamic_avail(schd_resource *res)
 }
 
 /**
- * @brief
- *		count_res_by_user - count a user's current running resource usage
- *
- * @param[in]	resresv_arr	-	the resource resvs to accumulate from
- * @param[in]	user	-	the user
- * @param[in]	res	-	the resource name
- * @param[in]	cts_list	-	the user counts list
- *
- * @return	the amount of the resource used by the user
- *
- */
-sch_resource_t
-count_res_by_user(resource_resv **resresv_arr, char *user,
-	char *res, counts *cts_list)
-{
-	resource_req *req;			/* the resource of the current job */
-	sch_resource_t used = 0;
-	counts *cts;
-
-	int i;
-
-	if (resresv_arr == NULL || user == NULL || res == NULL)
-		return 0;
-
-	if ((cts = find_counts(cts_list, user)) != NULL) {
-		if ((req = find_resource_req_by_str(cts->rescts, res)) != NULL)
-			return req->amount;
-	}
-
-	for (i = 0; resresv_arr[i] != NULL; i++) {
-		if (!strcmp(resresv_arr[i]->user, user)) {
-			req = find_resource_req_by_str(resresv_arr[i]->resreq, res);
-			if (req != NULL)
-				used += req->amount;
-		}
-	}
-	return used;
-}
-
-/**
  *	@brief
  *		find a element of a counts structure by name.
  *		  If res arg is NULL return 'running' element.
@@ -1365,27 +1324,32 @@ count_res_by_user(resource_resv **resresv_arr, char *user,
  *
  * @param[in]	cts_list	-	counts list to search
  * @param[in]	name	-	name of counts structure to find
- * @param[in]	res	-	resource to find or if NULL,
- *						return number of running
+ * @param[in]	rdef	-	resource definition to find or if NULL,
+ *				return number of running
+ * @param[out]  cnt	-	address of the counts structure found in the list
+ * @param[out]  rcount	-	address of matching resource count structure
  *
  * @return	resource amount
  */
 sch_resource_t
-find_counts_elm(counts *cts_list, char *name, char *res)
+find_counts_elm(counts *cts_list, char *name, resdef *rdef, counts **cnt, resource_count **rcount)
 {
-	resource_req *req;
+	resource_count *res_lim;
 	counts *cts;
 
 	if (cts_list == NULL || name == NULL)
 		return 0;
 
 	if ((cts = find_counts(cts_list, name)) != NULL) {
-
-		if (res == NULL)
+		if (cnt != NULL)
+			*cnt = cts;
+		if (rdef == NULL)
 			return cts->running;
 		else {
-			if ((req = find_resource_req_by_str(cts->rescts, res)) != NULL)
-				return req->amount;
+			if ((res_lim = find_resource_count(cts->rescts, rdef)) != NULL)
+				if (rcount != NULL)
+					*rcount = res_lim;
+			return res_lim->amount;
 		}
 	}
 

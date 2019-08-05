@@ -390,6 +390,42 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    def test_user_queue_without_limits(self):
+        """
+        Test that jobs from different users submitted to a queue without
+        a user limit set, will not create a multiple equivalence classes.
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'max_run': '[u:PBS_GENERIC=4]'}, id='workq')
+
+        # Eat up all the resources, this job will make first equiv class
+        a = {'Resource_List.select': '1:ncpus=8'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        # Create a new queue and submit jobs to this queue
+        a = {'queue_type': 'e', 'started': 'True', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_q: 'workq2'}
+        jids1 = self.submit_jobs(3, user=TEST_USER, attrs=a)
+        jids2 = self.submit_jobs(3, user=TEST_USER2, attrs=a)
+        a = {'Resource_List.select': '1:ncpus=1'}
+        J3 = Job(TEST_USER3, attrs=a)
+        self.server.submit(J3)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+
+        # Three equivalence classes.  One for the resource eating job and
+        # one for all jobs in workq2 and one for TEST_USER3
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 starttime=self.t)
+
     def test_user_queue_soft(self):
         """
         Test to see that jobs from different users fall into different
@@ -416,6 +452,39 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 starttime=self.t)
+
+    def test_user_queue_without_soft_limits(self):
+        """
+        Test that jobs from different users submitted to a queue without
+        a user soft limit set, will not create a multiple equivalence classes.
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'max_run_soft': '[u:PBS_GENERIC=4]'}, id='workq')
+
+        # Eat up all the resources, this job will make first equiv class
+        a = {'Resource_List.select': '1:ncpus=8'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        # Create a new queue and submit jobs to this queue
+        a = {'queue_type': 'e', 'started': 't', 'enabled': 't'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_q: 'workq2'}
+        jids1 = self.submit_jobs(3, user=TEST_USER, attrs=a)
+        jids2 = self.submit_jobs(3, user=TEST_USER2, attrs=a)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+
+        # Two equivalence classes.  One for the resource eating job and
+        # one for all jobs in workq2.
+        self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
     def test_group(self):
@@ -1577,6 +1646,9 @@ else:
              'enabled': 't', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
+        a = {'preempt_sort': 'min_time_since_start'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
         (jid1,) = self.submit_jobs(1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -1633,6 +1705,9 @@ else:
         a = {'queue_type': 'execution', 'started': 'true',
              'enabled': 'true', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
+
+        a = {'preempt_sort': 'min_time_since_start'}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
 
         # Submit 3 jobs with delay of 1 sec
         # Delay of 1 sec will preempt jid3 and then jid2.

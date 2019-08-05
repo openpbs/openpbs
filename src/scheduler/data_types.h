@@ -72,6 +72,7 @@ struct node_info;
 struct job_info;
 struct schd_resource;
 struct resource_req;
+struct resource_count;
 struct holiday;
 struct prev_job_info;
 struct group_info;
@@ -106,6 +107,7 @@ typedef struct job_info job_info;
 typedef struct node_info node_info;
 typedef struct schd_resource schd_resource;
 typedef struct resource_req resource_req;
+typedef struct resource_count resource_count;
 typedef struct usage_info usage_info;
 typedef struct group_info group_info;
 typedef struct prev_job_info prev_job_info;
@@ -372,6 +374,7 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
+	int soft_limit_preempt_bit;	/* Overall preempt bit to mark server is over max run softlimits */
 #ifdef NAS
 	/* localmod 049 */
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
@@ -393,7 +396,10 @@ struct queue_info
 	unsigned has_soft_limit:1;	/* queue has a soft user/grp limit set */
 	unsigned has_hard_limit:1;	/* queue has a hard user/grp limit set */
 	unsigned is_peer_queue:1;	/* queue is a peer queue */
-	unsigned has_resav_limit:1;		/* queue has resources_available limits */
+	unsigned has_resav_limit:1;	/* queue has resources_available limits */
+	unsigned has_user_limit:1;	/* queue has user hard or soft limit */
+	unsigned has_grp_limit:1;	/* queue has group hard or soft limit */
+	unsigned has_proj_limit:1;	/* queue has project hard or soft limit */
 	struct server_info *server;	/* server where queue resides */
 	char *name;			/* queue name */
 	state_count sc;			/* number of jobs in different states */
@@ -432,10 +438,11 @@ struct queue_info
 	char **node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
 	struct node_partition *allpart;   /* partition w/ all nodes assoc with queue*/
-	int num_parts;		/* number of node partitions(node_group_key) */
-	int num_topjobs;	/* current number of top jobs in this queue */
-	int backfill_depth;	/* total allowable topjobs in this queue*/
-	char *partition;	/* partition to which queue belongs to */
+	int num_parts;			/* number of node partitions(node_group_key) */
+	int num_topjobs;		/* current number of top jobs in this queue */
+	int backfill_depth;		/* total allowable topjobs in this queue*/
+	char *partition;		/* partition to which queue belongs to */
+	int soft_limit_preempt_bit;	/* Overall preempt bit to mark queue is over max run softlimits */
 };
 
 struct job_info
@@ -736,7 +743,6 @@ struct resource_type
 	unsigned is_time:1;
 };
 
-
 struct schd_resource
 {
 	char *name;			/* name of the resource - reference to the definition name */
@@ -791,10 +797,20 @@ struct mom_res
 
 struct counts
 {
-	char *name;		/* name of entitiy */
-	int running;		/* count of running jobs in object */
-	resource_req *rescts;	/* resources used */
+	char *name;			/* name of entitiy */
+	int running;			/* count of running jobs in object */
+	int soft_limit_preempt_bit;	/* Place to store preempt bit if entity is over limits */
+	resource_count *rescts;		/* resources used */
 	counts *next;
+};
+
+struct resource_count
+{
+	char *name;		    /* resource name */
+	resdef *def;		    /* definition of resource */
+	sch_resource_t amount;	    /* amount of resource used */
+	int soft_limit_preempt_bit; /* Place to store preempt bit if resource of an entity is over limits */
+	struct resource_count *next;
 };
 
 /* global data types */

@@ -226,7 +226,19 @@ extern void 	clear_limres(void);
  */
 extern schd_resource *query_limres(void);
 
+ /**
+  *  @brief check the soft limit using soft limit function.
+  *
+  *  @return void
+  */
+void update_soft_limits(server_info *, queue_info *, resource_resv *);
 
+/**
+ * @brief	find the value of preempt bit with matching entity and resource in
+ *		the counts structure
+ * @return	int
+ */
+int find_preempt_bits(counts *, char *, resource_resv *);
 #ifdef	__cplusplus
 }
 #endif
