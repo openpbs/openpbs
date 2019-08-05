@@ -48,8 +48,6 @@ import sys
 import os
 import json as JSON
 import urllib
-import signal
-import time
 import site
 import requests
 import requests_unixsocket
@@ -123,6 +121,17 @@ class HookHelper(object):
         cls.config = config
 
     @classmethod
+    def validate_config(cls):
+        """
+        Validate the config file
+        This will check if the unix_socket_file resolves to a file.
+        """
+        if not os.path.exists(cls.get_config['unix_socket_file']):
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       'Unix socket file does not exist, skipping hook')
+            cls.get_event().accept()
+
+    @classmethod
     def get_event(cls):
         """
         Fetch the event if it hasn't already been fetched.
@@ -140,6 +149,7 @@ class HookHelper(object):
         """
         if not cls.config:
             cls.load_config()
+            cls.validate_config()
         return cls.config
 
     @staticmethod
@@ -147,7 +157,7 @@ class HookHelper(object):
         """
         Given a jobid and a resource type build the path.
         If jobid is none, build a path to the collection
-        requests_unixsockets requires the socket path to be percent-encoded
+        requests_unixsockets requires the socket path to be percent - encoded
         """
         log_function_name()
         cfg = HookHelper.get_config()
@@ -174,10 +184,11 @@ def post(url, json=None, **kwargs):
     Logs before and after
     """
     pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending POST to %s' % url)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending JSON: %s' % JSON.dumps(json))
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending POST JSON: %s' % JSON.dumps(json))
     r = requests.post(url, json=json, **kwargs)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received status code = %s' % r.status_code)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received text %s' % r.text)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received POST status code = %s' %
+               r.status_code)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received POST text %s' % r.text)
     return r
 
 
@@ -189,10 +200,11 @@ def get(url, params=None, **kwargs):
     """
     pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending GET to %s' % url)
     if params:
-        pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending params: %s' % params)
+        pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending GET params: %s' % params)
     r = requests.get(url, params=params, **kwargs)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received status code = %s' % r.status_code)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received text %s' % r.text)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received GET status code = %s' %
+               r.status_code)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received GET text %s' % r.text)
     return r
 
 
@@ -204,8 +216,9 @@ def delete(url, **kwargs):
     """
     pbs.logmsg(pbs.EVENT_DEBUG2, 'Sending DELETE to %s' % url)
     r = requests.delete(url, **kwargs)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received status code = %s' % r.status_code)
-    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received text %s' % r.text)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received DELETE status code = %s' %
+               r.status_code)
+    pbs.logmsg(pbs.EVENT_DEBUG2, 'Received DELETE text %s' % r.text)
     return r
 
 
@@ -293,8 +306,8 @@ def handle_execjob_end():
         r = delete(url, timeout=timeout)
         r.raise_for_status()
     except requests.Timeout:
-        log_with_caller(pbs.EVENT_ERROR, 'POST timed out for job %s' % jid)
-        raise RejectError()
+        log_with_caller(pbs.EVENT_ERROR, 'DELETE timed out for job %s' % jid)
+        raise RejectError('Job delete timed out')
     except requests.HTTPError:
         log_with_caller(pbs.EVENT_ERROR, 'DELETE job failed')
         raise RejectError('Job delete failed')
@@ -324,16 +337,16 @@ def main():
     try:
         handler()
     except KeyboardInterrupt:
-        raise timeout_exc
+        raise timeout_exc('Handler timed out')
 
 
 if __name__ == '__builtin__':
     try:
         main()
-    except OfflineError:
+    except OfflineError as e:
         vnode = HookHelper.get_event().vnode_list[pbs.get_local_nodename()]
         vnode.state = pbs.ND_OFFLINE
-        vnode.comment = 'Node offlined due to Health Check Failure'
+        vnode.comment = 'Node offlined due to JACS timeout: %s' % e.message
         HookHelper.get_event().reject()
     except RejectError:
         HookHelper.get_event().reject()
