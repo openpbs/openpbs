@@ -81,7 +81,6 @@ class HookHelper(object):
     Helper to load config and event
     """
     config = None
-    event = None
 
     def __init__(self):
         raise Exception('Access class via static methods')
@@ -126,20 +125,17 @@ class HookHelper(object):
         Validate the config file
         This will check if the unix_socket_file resolves to a file.
         """
-        if not os.path.exists(cls.get_config['unix_socket_file']):
+        if not os.path.exists(cls.get_config()['unix_socket_file']):
             pbs.logmsg(pbs.EVENT_DEBUG,
                        'Unix socket file does not exist, skipping hook')
-            cls.get_event().accept()
-
-    @classmethod
-    def get_event(cls):
-        """
-        Fetch the event if it hasn't already been fetched.
-        Return the event
-        """
-        if not cls.event:
-            cls.event = pbs.event()
-        return cls.event
+            pbs.event().accept()
+        alarm = pbs.event().alarm
+        if alarm < cls.get_config()['post_timeout']:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       "Hook's alarm is shorter than post_timeout")
+        if alarm < cls.get_config()['delete_timeout']:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       "Hook's alarm is shorter than delete_timeout")
 
     @classmethod
     def get_config(cls):
@@ -233,7 +229,8 @@ def log_function_name():
     """
     Log the caller's name
     """
-    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name(2))
+    pbs.logmsg(pbs.EVENT_DEBUG4, '%s:%s: Method called' %
+               (pbs.event().hook_name, caller_name(2)))
 
 
 def log_with_caller(sev, mes):
@@ -272,7 +269,7 @@ def handle_execjob_begin():
     Handler for execjob_begin events.
     """
     log_function_name()
-    event = HookHelper.get_event()
+    event = pbs.event()
     jid = event.job.id
     uid = pwd.getpwnam(event.job.euser).pw_uid
     log_with_caller(pbs.EVENT_DEBUG4, 'UID is %d' % uid)
@@ -299,7 +296,7 @@ def handle_execjob_end():
     Handler for execjob_end events.
     """
     log_function_name()
-    jid = HookHelper.get_event().job.id
+    jid = pbs.event().job.id
     url = HookHelper.build_path(resource='job', jobid=jid)
     timeout = HookHelper.get_config()['delete_timeout']
     try:
@@ -322,7 +319,7 @@ def main():
     log_function_name()
     hostname = pbs.get_local_nodename()
     # Log the hook event type
-    event = HookHelper.get_event()
+    event = pbs.event()
 
     handlers = {
         pbs.EXECJOB_BEGIN: (handle_execjob_begin, RejectError),
@@ -344,9 +341,10 @@ if __name__ == '__builtin__':
     try:
         main()
     except OfflineError as e:
-        vnode = HookHelper.get_event().vnode_list[pbs.get_local_nodename()]
-        vnode.state = pbs.ND_OFFLINE
-        vnode.comment = 'Node offlined due to JACS timeout: %s' % e.message
-        HookHelper.get_event().reject()
+        for vnode in pbs.event().vnode_list.keys():
+            vnode.state = pbs.ND_OFFLINE
+            vnode.comment = '%s: Node offlined due to JACS timeout: %s' % (
+                pbs.event().hook_name, e.message)
+        pbs.event().reject()
     except RejectError:
-        HookHelper.get_event().reject()
+        pbs.event().reject()
