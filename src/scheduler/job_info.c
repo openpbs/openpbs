@@ -970,6 +970,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_estimated,
 			ATTR_c,
 			ATTR_r,
+			ATTR_depend,
 			NULL
 	};
 
@@ -1399,6 +1400,9 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			if (strcmp(attrp->value, ATR_FALSE) == 0)
 				resresv->job->can_requeue = 0;
 		}
+		else if (!strcmp(attrp->name, ATTR_depend)) {
+			resresv->job->depend_job_str = strdup(attrp->value);
+		}
 
 		attrp = attrp->next;
 	}
@@ -1475,6 +1479,8 @@ new_job_info()
 	jinfo->attr_updates = NULL;
 	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
+	jinfo->depend_job_str = NULL;
+	jinfo->dependent_jobs = NULL;
 
 
 	jinfo->formula_value = 0.0;
@@ -1552,6 +1558,9 @@ free_job_info(job_info *jinfo)
 	if (jinfo->schedsel)
 		free(jinfo->schedsel);
 #endif
+	free (jinfo->depend_job_str);
+
+	free(jinfo->dependent_jobs);
 
 	free(jinfo);
 }
@@ -5355,4 +5364,128 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 			return temp;
 	}
 	return NULL;
+}
+
+/**
+ * @brief   This function looks at the job's depend attribute string and creates
+ *	    an array of job ids having runone dependency.
+ * @param[in] depend_val - job's dependency string
+ *
+ * @return - char **
+ * @retval - a newly allocated list of jobs with runone dependeny
+ * @retval - NULL in case of error
+ */
+static char **parse_runone_job_list(char *depend_val) {
+	char *start;
+	char *depend_type = "runone";
+	int i, len = 0;
+	char *p, q;
+	char *r;
+	char *tok;
+	char **ret = NULL;
+	char  *depend_str = NULL;
+	char *p1,*p2;
+
+	if (depend_val == NULL)
+		return NULL;
+	else
+	    depend_str = string_dup(depend_val);
+
+	start = strstr(depend_str, depend_type);
+	if (start == NULL)
+		return NULL;
+	for (i = 0; start[i] != ',' &&  start[i] != '\0'; i++);
+	q = start[i];
+	p  = &start[i];
+	*p = '\0';
+	r = start + strlen(depend_type);
+	i = 0;
+	for (tok = strtok_r(r, ":", &p1); tok != NULL; tok = strtok_r(NULL, ":", &p1), i++) {
+		if (len == 0) {
+			ret = calloc((len +10), sizeof(char *));
+			if (ret == NULL) {
+				*p = q;
+				return NULL;
+			}
+			ret[0] = NULL;
+			len = 10;
+		}
+		if (i < len) {
+			tok = strtok_r(tok, "@", &p2);
+			ret[i] = strdup(tok);
+			if (ret[i] == NULL) {
+				int j;
+				for (j = 0; j<i; i++)
+					free(ret[j]);
+				free(ret);
+				free(depend_str);
+				return NULL;
+			}
+		} else {
+			char **tmp;
+			tmp = realloc(ret, (len +10)*sizeof(char *));
+			if (tmp == NULL) {
+				int j;
+				for (j = 0; j<i; i++)
+					free(ret[j]);
+				free(ret);
+				free(depend_str);
+				return NULL;
+			}
+			ret = tmp;
+			len += 10;
+			tok = strtok_r(tok, "@", &p2);
+			ret[i] = strdup(tok);
+			if (ret[i] == NULL) {
+				int j;
+				for (j = 0; j<i; i++)
+					free(ret[j]);
+				free(ret);
+				free(depend_str);
+				return NULL;
+			}
+		}
+	}
+	if (i > 0)
+		ret[i] = NULL;
+	free(depend_str);
+	return ret;
+}
+
+/**
+ * @brief   This function processes every job's depend attribute and
+ *	    associate the jobs with runone dependency to its dependent_jobs list.
+ * @param[in] sinfo - server info structure
+ *
+ * @return - void
+ */
+void associate_dependent_jobs(server_info *sinfo) {
+	int i;
+	char **job_arr = NULL;
+
+	if (sinfo == NULL)
+		return;
+	for (i=0; sinfo->jobs[i] != NULL; i++) {
+		if (sinfo->jobs[i]->job->depend_job_str != NULL) {
+			job_arr = parse_runone_job_list(sinfo->jobs[i]->job->depend_job_str);
+			if (job_arr != NULL) {
+				int j;
+				int len = count_array((void **)job_arr);
+				sinfo->jobs[i]->job->dependent_jobs = calloc((len +1),sizeof(resource_resv*));
+				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
+				for (j=0; job_arr[j] != NULL; j++) {
+					resource_resv *jptr = NULL;
+					jptr = find_resource_resv(sinfo->jobs, job_arr[j]);
+					if (jptr != NULL)
+						sinfo->jobs[i]->job->dependent_jobs[j] = jptr;
+					free(job_arr[j]);
+				}
+			}
+		}
+		if (job_arr != NULL) {
+			free(job_arr);
+			job_arr = NULL;
+		}
+	}
+	return;
 }

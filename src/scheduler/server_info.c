@@ -349,6 +349,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 #endif /* localmod 050 */
+	associate_dependent_jobs(sinfo);
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
