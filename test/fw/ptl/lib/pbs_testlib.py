@@ -13123,6 +13123,15 @@ class MoM(PBSService):
         else:
             return True
 
+    def is_shasta(self):
+        """
+        Returns True if the version of PBS used is installed on Shasta platform
+        """
+        if self.platform == 'shasta':
+            return True
+        else:
+            return False
+
     def is_cpuset_mom(self):
         """
         Check for cpuset mom

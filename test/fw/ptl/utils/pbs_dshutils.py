@@ -159,8 +159,8 @@ class DshUtils(object):
         """
         Get a local or remote platform info, essentially the value of
         Python's sys.platform, in case of Cray it will return a string
-        as "cray" for actual Cray cluster and "craysim" for Cray ALPS
-        simulator
+        as "cray" or "shasta" for actual Cray cluster and "craysim"
+        for Cray ALPS simulator
 
         :param hostname: The hostname to query for platform info
         :type hostname: str or None
@@ -183,6 +183,10 @@ class DshUtils(object):
                 splatform = 'cray'
             else:
                 splatform = 'craysim'
+            found_already = True
+        if self.isfile(hostname=hostname, path='/etc/cray/xname',
+                       level=logging.DEBUG2):
+            splatform = 'shasta'
             found_already = True
         if not self.is_localhost(hostname) and not found_already:
             if pyexec is None:
