@@ -140,7 +140,8 @@ class TestClientNagles(TestPerformance):
         self.logger.info(
             "qdel performance after setting manager: " + str(qdel_perf2))
         self.perf_test_result(float(qdel_perf), "qdel_perf", "sec")
-        self.perf_test_result(float(qdel_perf2), "qdel_perf_with_manager", "sec")
+        self.perf_test_result(float(qdel_perf2),
+                              "qdel_perf_with_manager", "sec")
 
     @timeout(600)
     def test_qsub_perf(self):
