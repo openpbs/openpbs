@@ -116,7 +116,7 @@ class HookHelper(object):
         except IOError:
             raise IOError('I/O error reading config file')
         config = merge_dict(config, constants)
-        pbs.logmsg(pbs.EVENT_DEBUG2, 'loaded config is: %s' % (str(config)))
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'loaded config is: %s' % (str(config)))
         cls.config = config
 
     @classmethod
@@ -163,7 +163,7 @@ class HookHelper(object):
             cfg['resources'][resource],
             ('/' + jobid) if jobid else ''
         )
-        log_with_caller(pbs.EVENT_DEBUG3, 'path is %s' % path)
+        log_with_caller(pbs.EVENT_DEBUG4, 'path is %s' % path)
         return path
 
 
@@ -241,11 +241,11 @@ def log_with_caller(sev, mes, caller=0, jobid=True):
     If jobid is true, add the jobid from the event to the log message
     """
     if jobid:
-        pbs.logmsg(sev, '%s: %s: %s: %s' %
-                   (pbs.event().hook_name, pbs.event().jobid,
+        pbs.logmsg(sev, '%s:%s:%s: %s' %
+                   (pbs.event().hook_name, pbs.event().job.id,
                     caller_name(2 + caller), mes))
     else:
-        pbs.logmsg(sev, '%s: %s: %s:' %
+        pbs.logmsg(sev, '%s:%s: %s' %
                    (pbs.event().hook_name, caller_name(2 + caller), mes))
 
 
