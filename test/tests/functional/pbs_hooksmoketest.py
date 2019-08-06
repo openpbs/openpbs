@@ -28,12 +28,13 @@ class TestHookSmokeTest(TestFunctional):
         TestFunctional.setUp(self)
         a = {'log_events': 2047, 'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.clean_hooks()
 
-    def get_file_paths(self, hook_name, existence=False):
+    hook_name = "test_hook"
+
+    def check_hk_file(self, hook_name, existence=False):
         """
-        This function returns the path of server's hook
-        directory, name of the .HK file, and path of HK file
+        This function to find the path of server's hook
+        directory, name of the .HK file and path of HK file
         """
         conf = self.du.parse_pbs_config()
         pbs_home = conf['PBS_HOME']
@@ -70,33 +71,17 @@ class TestHookSmokeTest(TestFunctional):
             time.sleep(1)
         self.assertEqual(rc, existence, _msg)
         self.logger.info(msg)
-        return server_hooks_dir, hk_file, hk_file_location
-
-    def clean_hooks(self):
-        """
-        Function to delete the hooks which got created during test run
-        """
-        try:
-            self.server.manager(MGR_CMD_LIST, HOOK)
-        except:
-            pass
-        del_hook = ['test_hook_queuejob',
-                    'test_hook_queuejob2', 'test_hook2', 'test_hook']
-        for i in del_hook:
-            if i in self.server.hooks:
-                self.server.manager(MGR_CMD_DELETE, HOOK, id=i)
+        return server_hooks_dir, hk_file
 
     def test_create_and_print_hook(self):
         """
         Test create and print a hook
         """
-        hook_name = "test_hook_queuejob"
         attrs = {'event': 'queuejob'}
         self.logger.info('Create hook test_hook_queuejob')
-        self.server.create_hook(hook_name, attrs)
-        (self.server_hooks_dir, self.hk_file,
-         self.hk_file_location) = self.get_file_paths(hook_name,
-                                                      existence=True)
+        self.server.create_hook(self.hook_name, attrs)
+        (self.server_hooks_dir,
+         self.hk_file) = self.check_hk_file(self.hook_name, existence=True)
         self.logger.info('Verified ' + self.hk_file + ' file hook exists in' +
                          self.server_hooks_dir + ' as expected')
 
@@ -105,16 +90,15 @@ class TestHookSmokeTest(TestFunctional):
                  'user': 'pbsadmin', 'fail_action': 'none'}
         self.logger.info('Verify hook values for test_hook_queuejob')
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs, id=hook_name)
+        rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
 
     def test_import_and_export_hook(self):
         """
         Test import and export hook
         """
-        hook_name = "test_hook_queuejob2"
         hook_body = """import pbs
 e = pbs.event()
 j = e.job
@@ -125,12 +109,16 @@ e.accept()"""
         imp_hook_body = hook_body.split('\n')
         exp_hook_body = imp_hook_body
         attrs = {'event': 'queuejob'}
-        self.server.create_import_hook(hook_name, attrs, hook_body)
+        self.server.create_import_hook(self.hook_name, attrs, hook_body)
         fn = self.du.create_temp_file()
         hook_attrs = 'application/x-config default %s' % fn
-        rc = self.server.manager(MGR_CMD_EXPORT, HOOK, hook_attrs, hook_name)
+        rc = self.server.manager(MGR_CMD_EXPORT, HOOK, hook_attrs,
+                                 self.hook_name)
         self.assertEqual(rc, 0)
-        cmd = "export h test_hook_queuejob2 application/x-python default"
+        if self.du.is_localhost(self.server.hostname):
+            cmd = "export h test_hook application/x-python default"
+        else:
+            cmd = "'export h test_hook application/x-python default'"
         export_cmd = [os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                    'qmgr'), '-c', cmd]
         ret = self.du.run_cmd(self.server.hostname, export_cmd, sudo=True)
@@ -141,74 +129,76 @@ e.accept()"""
         """
         Test enable and disable a hook
         """
-        hook_name = "test_hook"
-        rc = self.server.manager(MGR_CMD_CREATE, HOOK, None, hook_name)
+        rc = self.server.manager(MGR_CMD_CREATE, HOOK, None, self.hook_name)
         self.assertEqual(rc, 0)
-        self.server.manager(MGR_CMD_SET, HOOK, {'enabled': 0}, id=hook_name)
+        self.server.manager(MGR_CMD_SET, HOOK, {
+                            'enabled': 0}, id=self.hook_name)
         attrs = {'type': 'site', 'enabled': 'false', 'event': '""',
                  'alarm': 30, 'order': 1, 'debug': 'false',
                  'user': 'pbsadmin', 'fail_action': 'none'}
         self.logger.info('Verify hook values for test_hook')
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs, id=hook_name)
+        rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
-        self.server.manager(MGR_CMD_SET, HOOK, {'enabled': 1}, id=hook_name)
+        self.server.manager(MGR_CMD_SET, HOOK, {
+                            'enabled': 1}, id=self.hook_name)
         self.logger.info('Verify hook values for test_hook')
         attrs = {'type': 'site', 'enabled': 'true', 'event': '""',
                  'alarm': 30, 'order': 1, 'debug': 'false',
                  'user': 'pbsadmin', 'fail_action': 'none'}
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs, id=hook_name)
+        rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
 
     def test_modify_hook(self):
         """
         Test to modify a hook"
         """
-        hook_name = "test_hook2"
         attrs = {'event': 'queuejob', 'alarm': 60,
                  'enabled': 'false', 'order': 7}
         self.logger.info('Create hook test_hook2')
-        rv = self.server.create_hook(hook_name, attrs)
+        rv = self.server.create_hook(self.hook_name, attrs)
         self.assertTrue(rv)
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs, id=hook_name)
+        rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
         self.logger.info("Modify hook test_hook2 event")
         self.server.manager(MGR_CMD_SET, HOOK, {
-                            'event+': 'resvsub'}, id=hook_name)
+                            'event+': 'resvsub'}, id=self.hook_name)
         self.logger.info('Verify hook values for test_hook2')
         attrs2 = {'event': 'queuejob,resvsub',
                   'alarm': 60, 'enabled': 'false', 'order': 7}
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs2, id=hook_name)
+        rv = self.server.expect(HOOK, attrs2, id=self.hook_name)
         self.assertTrue(rv)
         self.server.manager(MGR_CMD_SET, HOOK, {
-                            'event-': 'resvsub'}, id=hook_name)
+                            'event-': 'resvsub'}, id=self.hook_name)
         self.logger.info('Verify hook values for test_hook2')
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
-                                 id=hook_name)
+                                 id=self.hook_name)
         self.assertEqual(rc, 0)
-        rv = self.server.expect(HOOK, attrs, id=hook_name)
+        rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
 
     def test_delete_hook(self):
         """
         Test delete a hook
         """
-        hook_name = "test_hook"
-        rc = self.server.manager(MGR_CMD_CREATE, HOOK, None, hook_name)
+        rc = self.server.manager(MGR_CMD_CREATE, HOOK, None, self.hook_name)
         self.assertEqual(rc, 0)
-        self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
-        cmd = "l h test_hook"
+        self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
+        if self.du.is_localhost(self.server.hostname):
+            cmd = "l h test_hook"
+        else:
+            cmd = "'l h test_hook'"
         export_cmd = [os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                    'qmgr'), '-c', cmd]
         ret = self.du.run_cmd(self.server.hostname, export_cmd, sudo=True)
@@ -218,13 +208,12 @@ e.accept()"""
         for i in err_msg:
             self.assertIn(i, ret['err'],
                           msg="Failed to get expected error message")
-        (self.server_hooks_dir, self.hk_file,
-         self.hk_file_location) = self.get_file_paths(hook_name)
+        (self.server_hooks_dir,
+         self.hk_file) = self.check_hk_file(self.hook_name)
         self.logger.info('Verified ' + self.hk_file + ' file not exists in' +
                          self.server_hooks_dir + ' as expected')
 
     def tearDown(self):
-        self.clean_hooks()
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
         PBSTestSuite.tearDown(self)
