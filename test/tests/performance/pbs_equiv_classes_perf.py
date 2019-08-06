@@ -115,10 +115,10 @@ class TestJobEquivClassPerf(TestPerformance):
                          (cycle1_time, cycle2_time, cycle1_time - cycle2_time))
         self.assertGreaterEqual(cycle1_time, cycle2_time)
         time_diff = cycle1_time - cycle2_time
-        self.perf_test_result(cycle1_time, "different_equi_class", "sec")
-        self.perf_test_result(cycle2_time, "single_equi_class", "sec")
+        self.perf_test_result(cycle1_time, "different_equiv_class", "sec")
+        self.perf_test_result(cycle2_time, "single_equiv_class", "sec")
         self.perf_test_result(time_diff,
-                              "time_diff_bn_single_diff_equi_classes", "sec")
+                              "time_diff_bn_single_diff_equiv_classes", "sec")
 
     @timeout(10000)
     def test_server_queue_limit(self):
