@@ -76,3 +76,5 @@ class TestQsubPerformance(TestPerformance):
         self.logger.info(
             "Submission time without env is %d and with env is %d sec"
             % (sub_time1, sub_time2))
+        self.perf_test_result(sub_time1, "submission_time_without_env", "sec")
+        self.perf_test_result(sub_time2, "submission_time_with_env", "sec")

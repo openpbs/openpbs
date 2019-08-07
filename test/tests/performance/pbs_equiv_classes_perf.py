@@ -114,6 +114,11 @@ class TestJobEquivClassPerf(TestPerformance):
         self.logger.info('Cycle 1: %d Cycle 2: %d Cycle time difference: %d' %
                          (cycle1_time, cycle2_time, cycle1_time - cycle2_time))
         self.assertGreaterEqual(cycle1_time, cycle2_time)
+        time_diff = cycle1_time - cycle2_time
+        self.perf_test_result(cycle1_time, "different_equiv_class", "sec")
+        self.perf_test_result(cycle2_time, "single_equiv_class", "sec")
+        self.perf_test_result(time_diff,
+                              "time_diff_bn_single_diff_equiv_classes", "sec")
 
     @timeout(10000)
     def test_server_queue_limit(self):
@@ -265,3 +270,11 @@ class TestJobEquivClassPerf(TestPerformance):
                          "\n700 classes is %d,"
                          "\n800 classes is %d"
                          % (cyc1, cyc2, cyc3, cyc4, cyc5, cyc6, cyc7, cyc8))
+        self.perf_test_result(cyc1, "100_class_time", "sec")
+        self.perf_test_result(cyc2, "200_class_time", "sec")
+        self.perf_test_result(cyc3, "300_class_time", "sec")
+        self.perf_test_result(cyc4, "400_class_time", "sec")
+        self.perf_test_result(cyc5, "500_class_time", "sec")
+        self.perf_test_result(cyc6, "600_class_time", "sec")
+        self.perf_test_result(cyc7, "700_class_time", "sec")
+        self.perf_test_result(cyc8, "800_class_time", "sec")

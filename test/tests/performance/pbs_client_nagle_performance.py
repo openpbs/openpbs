@@ -139,6 +139,9 @@ class TestClientNagles(TestPerformance):
         self.logger.info("qdel performance: " + str(qdel_perf))
         self.logger.info(
             "qdel performance after setting manager: " + str(qdel_perf2))
+        self.perf_test_result(float(qdel_perf), "qdel_perf", "sec")
+        self.perf_test_result(float(qdel_perf2),
+                              "qdel_perf_with_manager", "sec")
 
     @timeout(600)
     def test_qsub_perf(self):
@@ -174,3 +177,5 @@ class TestClientNagles(TestPerformance):
         elap_time2 = timeit.default_timer() - float(start_time)
         self.logger.info("Time taken by qsub -f is " + str(elap_time2) +
                          " and time taken by qsub is " + str(elap_time1))
+        self.perf_test_result(elap_time1, "qsub_-f_time", "sec")
+        self.perf_test_result(elap_time2, "qsub_time", "sec")

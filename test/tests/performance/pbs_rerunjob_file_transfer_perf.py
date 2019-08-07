@@ -87,6 +87,7 @@ class JobRerunFileTransferPerf(TestPerformance):
         now2 = int(time.time())
         self.logger.info("Job %s took %d seconds to start\n",
                          jid, (now2 - now1))
+        self.perf_test_result((now2 - now1), "job_start_time", "sec")
 
         # give a few seconds to job to create large spool file
         time.sleep(5)
@@ -99,3 +100,4 @@ class JobRerunFileTransferPerf(TestPerformance):
         now2 = int(time.time())
         self.logger.info("Job %s took %d seconds to rerun\n",
                          jid, (now2 - now1))
+        self.perf_test_result((now2 - now1), "job_return_time", "sec")

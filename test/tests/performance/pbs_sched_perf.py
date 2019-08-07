@@ -247,3 +247,5 @@ class TestSchedPerf(TestPerformance):
             cycle1_time, cycle2_time, (cycle1_time / cycle2_time) * 100))
         self.assertLess(cycle2_time, cycle1_time,
                         'Optimization was not faster')
+        self.perf_test_result(((cycle1_time / cycle2_time) * 100),
+                              "optimized_percentage", "percentage")

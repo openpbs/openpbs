@@ -102,3 +102,4 @@ class HistoryCleanupQuasihang(TestPerformance):
 
         self.logger.info("qstat took %d seconds to return\n",
                          (now2 - now1))
+        self.perf_test_result((now2 - now1), "qstat_return_time", "sec")

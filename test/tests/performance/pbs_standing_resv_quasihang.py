@@ -98,3 +98,4 @@ class StandingResvQuasihang(TestPerformance):
         now2 = int(time.time())
         self.logger.info("pbs_rstat took %d seconds to return\n",
                          (now2 - now1))
+        self.perf_test_result((now2 - now1), "pbs_rstat_return_time", "sec")
