@@ -60,15 +60,18 @@ class TestPbsExecjobSuspendResume(TestFunctional):
 e=pbs.event()
 
 def proc_status(pid):
-    for line in open("/proc/%d/status" % pid).readlines():
-        if line.startswith("State:"):
-            return line.split(":",1)[1].strip().split(' ')[0]
+    try:
+        for line in open("/proc/%d/status" % pid).readlines():
+            if line.startswith("State:"):
+                return line.split(":",1)[1].strip().split(' ')[0]
+    except:
+        pass
     return None
 
 def print_attribs(pbs_obj, header):
     for a in pbs_obj.attributes:
         v = getattr(pbs_obj, a)
-        if v and str(v) != "":
+        if v and str(v):
             pbs.logjobmsg(e.job.id, "%s: %s = %s" % (header, a, v))
             if a == "session_id":
                 st = proc_status(v)
@@ -88,14 +91,14 @@ for vn in e.vnode_list:
         self.postsuspend_hook_reject_body = """import pbs
 e=pbs.event()
 job=e.job
-e.reject("bad suspend")
+e.reject("bad suspend on ms")
 """
         # execjob_postsuspend hook, reject by sister only
         self.postsuspend_hook_sis_reject_body = """import pbs
 e=pbs.event()
 job=e.job
 if not e.job.in_ms_mom():
-    e.reject("bad suspend")
+    e.reject("bad suspend on sis")
 """
         # hook with an unhandled exception
         self.hook_error_body = """import pbs
@@ -116,15 +119,18 @@ if not job.in_ms_mom():
 e=pbs.event()
 
 def proc_status(pid):
-    for line in open("/proc/%d/status" % pid).readlines():
-        if line.startswith("State:"):
-            return line.split(":",1)[1].strip().split(' ')[0]
+    try:
+        for line in open("/proc/%d/status" % pid).readlines():
+            if line.startswith("State:"):
+                return line.split(":",1)[1].strip().split(' ')[0]
+    except:
+        pass
     return None
 
 def print_attribs(pbs_obj, header):
     for a in pbs_obj.attributes:
         v = getattr(pbs_obj, a)
-        if v and str(v) != "":
+        if v and str(v):
             pbs.logjobmsg(e.job.id, "%s: %s = %s" % (header, a, v))
             if a == "session_id":
                 st = proc_status(v)
@@ -145,14 +151,14 @@ for vn in e.vnode_list:
         self.preresume_hook_reject_body = """import pbs
 e=pbs.event()
 job=e.job
-e.reject("bad resumption")
+e.reject("bad resumption on ms")
 """
         # execjob_preresume hook, reject by sister only
         self.preresume_hook_sis_reject_body = """import pbs
 e=pbs.event()
 job=e.job
 if not e.job.in_ms_mom():
-    e.reject("bad resumption")
+    e.reject("bad resumption on sis")
 """
         # job used in the tests
         self.j = Job(self.du.get_current_user())
@@ -277,7 +283,7 @@ sleep 60
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
-        hook_msg = "bad suspend"
+        hook_msg = "bad suspend on ms"
         reject_msg = "%s hook rejected request: %s" % (hook_event, hook_msg)
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
@@ -312,7 +318,7 @@ sleep 60
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
-        hook_msg = "bad suspend"
+        hook_msg = "bad suspend on sis"
         reject_msg = "%s hook rejected request: %s" % (hook_event, hook_msg)
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
@@ -423,7 +429,7 @@ sleep 60
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
         self.server.sigjob(jobid=jid, signal="resume")
 
-        hook_msg = "bad resumption"
+        hook_msg = "bad resumption on ms"
         reject_msg = "%s hook rejected request: %s" % (hook_event, hook_msg)
         # Mom hook executes on momA and gets a rejection,
         # so a resume request is not sent to sister momB.
@@ -456,7 +462,7 @@ sleep 60
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
         self.server.sigjob(jobid=jid, signal="resume")
 
-        hook_msg = "bad resumption"
+        hook_msg = "bad resumption on sis"
         reject_msg = "%s hook rejected request: %s" % (hook_event, hook_msg)
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
