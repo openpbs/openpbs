@@ -273,6 +273,49 @@ def merge_dict(base, new):
     return merged
 
 
+def retry_post(data):
+    """
+    In the case where a POST fails due to a 400 error,
+    it could be because there is already a job on the cray side.
+    In that case, we should try to delete the existing job and
+    resubmit a new one.
+    """
+    event = pbs.event()
+    jid = event.job.id
+
+    joburl = HookHelper.build_path(resource='job', jobid=jid)
+    del_timeout = HookHelper.get_config()['delete_timeout']
+    try:
+        r2 = delete(joburl, timeout=del_timeout)
+        r2.raise_for_status()
+    except requests.Timeout:
+        log_with_caller(pbs.EVENT_ERROR, 'DELETE timed out')
+        raise OfflineError('Job delete timed out')
+    except requests.HTTPError:
+        # If 404, then maybe the job that was there is now gone,
+        # try posting again. Otherwise, raise an OfflineError
+        if r2.status_code != 404:
+            log_with_caller(pbs.EVENT_ERROR, 'DELETE job failed')
+            raise OfflineError('Job delete failed')
+
+    url = HookHelper.build_path(resource='job')
+    post_timeout = HookHelper.get_config()['post_timeout']
+    try:
+        r3 = post(url, json=data, timeout=post_timeout)
+        r3.raise_for_status()
+    except requests.Timeout:
+        log_with_caller(pbs.EVENT_ERROR, 'POST timed out')
+        raise OfflineError('Job POST timed out')
+    except requests.HTTPError:
+        log_with_caller(pbs.EVENT_ERROR,
+                        'Invalid status code %d' % r3.status_code)
+        raise OfflineError('Job POST encountered invalid status code')
+
+    # if we got here, we've successfully deleted and re-posted the job
+    log_with_caller(pbs.EVENT_DEBUG, 'Job %s registered' % jid)
+    return
+
+
 def handle_execjob_begin():
     """
     Handler for execjob_begin events.
@@ -290,13 +333,17 @@ def handle_execjob_begin():
     timeout = HookHelper.get_config()['post_timeout']
     try:
         r = post(url, json=data, timeout=timeout)
+        r.raise_for_status()
     except requests.Timeout:
-        log_with_caller(pbs.EVENT_ERROR, 'POST timed out for job %s' % jid)
+        log_with_caller(pbs.EVENT_ERROR, 'POST timed out')
         raise OfflineError('Job POST timed out')
-    if r.status_code != requests.codes['ok']:
-        log_with_caller(pbs.EVENT_ERROR, 'Invalid status code %d' %
-                        r.status_code)
-        raise OfflineError('Job POST encountered invalid status code')
+    except requests.HTTPError:
+        if r.status_code == 400:
+            retry_post(data)
+        else:
+            log_with_caller(pbs.EVENT_ERROR, 'Invalid status code %d' %
+                            r.status_code)
+            raise OfflineError('Job POST encountered invalid status code')
     log_with_caller(pbs.EVENT_DEBUG, 'Job %s registered' % jid)
 
 
@@ -312,7 +359,7 @@ def handle_execjob_end():
         r = delete(url, timeout=timeout)
         r.raise_for_status()
     except requests.Timeout:
-        log_with_caller(pbs.EVENT_ERROR, 'DELETE timed out for job %s' % jid)
+        log_with_caller(pbs.EVENT_ERROR, 'DELETE timed out')
         raise RejectError('Job delete timed out')
     except requests.HTTPError:
         log_with_caller(pbs.EVENT_ERROR, 'DELETE job failed')
@@ -350,7 +397,8 @@ if __name__ == '__builtin__':
     try:
         main()
     except OfflineError as e:
-        for vnode in pbs.event().vnode_list.keys():
+        for v in pbs.event().vnode_list.keys():
+            vnode = pbs.event().vnode_list[v]
             vnode.state = pbs.ND_OFFLINE
             vnode.comment = '%s: vnode set to offline: %s' % (
                 pbs.event().hook_name, e.message)
