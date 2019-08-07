@@ -147,12 +147,12 @@ class TestHookTimeout(TestFunctional):
                 exist = False
             m.log_match(
                 "test.HK;copy hook-related file request received",
-                regexp=True, max_attempts=3, interval=1,
+                regexp=True, max_attempts=10, interval=1,
                 existence=exist, starttime=start_time)
 
             m.log_match(
                 "test.PY;copy hook-related file request received",
-                regexp=True, max_attempts=3, interval=1,
+                regexp=True, max_attempts=10, interval=1,
                 existence=exist, starttime=start_time)
 
         # Ensure that hook send updates are retried for
