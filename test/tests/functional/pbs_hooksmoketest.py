@@ -33,7 +33,7 @@ class TestHookSmokeTest(TestFunctional):
 
     def check_hk_file(self, hook_name, existence=False):
         """
-        This function to find the path of server's hook
+        Function to check existence of server's hook
         directory, name of the .HK file and path of HK file
         """
         conf = self.du.parse_pbs_config()
@@ -142,9 +142,7 @@ e.accept()"""
         self.server.manager(MGR_CMD_SET, HOOK, {
                             'enabled': 1}, id=self.hook_name)
         self.logger.info('Verify hook values for test_hook')
-        attrs = {'type': 'site', 'enabled': 'true', 'event': '""',
-                 'alarm': 30, 'order': 1, 'debug': 'false',
-                 'user': 'pbsadmin', 'fail_action': 'none'}
+        attrs['enabled'] = 'true'
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
                                  id=self.hook_name)
         self.assertEqual(rc, 0)
