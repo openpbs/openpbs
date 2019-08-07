@@ -71,24 +71,20 @@ class TestHookSmokeTest(TestFunctional):
             time.sleep(1)
         self.assertEqual(rc, existence, _msg)
         self.logger.info(msg)
-        return server_hooks_dir, hk_file
 
     def test_create_and_print_hook(self):
         """
         Test create and print a hook
         """
         attrs = {'event': 'queuejob'}
-        self.logger.info('Create hook test_hook_queuejob')
+        self.logger.info('Create a queuejob hook')
         self.server.create_hook(self.hook_name, attrs)
-        (self.server_hooks_dir,
-         self.hk_file) = self.check_hk_file(self.hook_name, existence=True)
-        self.logger.info('Verified ' + self.hk_file + ' file hook exists in' +
-                         self.server_hooks_dir + ' as expected')
+        self.check_hk_file(self.hook_name, existence=True)
 
         attrs = {'type': 'site', 'enabled': 'true', 'event': 'queuejob',
                  'alarm': 30, 'order': 1, 'debug': 'false',
                  'user': 'pbsadmin', 'fail_action': 'none'}
-        self.logger.info('Verify hook values for test_hook_queuejob')
+        self.logger.info('Verify hook values for test_hook')
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
                                  id=self.hook_name)
         self.assertEqual(rc, 0)
@@ -115,6 +111,7 @@ e.accept()"""
         rc = self.server.manager(MGR_CMD_EXPORT, HOOK, hook_attrs,
                                  self.hook_name)
         self.assertEqual(rc, 0)
+        # For Cray PTL does not run on the server host
         if self.du.is_localhost(self.server.hostname):
             cmd = "export h test_hook application/x-python default"
         else:
@@ -160,7 +157,7 @@ e.accept()"""
         """
         attrs = {'event': 'queuejob', 'alarm': 60,
                  'enabled': 'false', 'order': 7}
-        self.logger.info('Create hook test_hook2')
+        self.logger.info('Create hook test_hook')
         rv = self.server.create_hook(self.hook_name, attrs)
         self.assertTrue(rv)
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
@@ -168,10 +165,10 @@ e.accept()"""
         self.assertEqual(rc, 0)
         rv = self.server.expect(HOOK, attrs, id=self.hook_name)
         self.assertTrue(rv)
-        self.logger.info("Modify hook test_hook2 event")
+        self.logger.info("Modify hook test_hook event")
         self.server.manager(MGR_CMD_SET, HOOK, {
                             'event+': 'resvsub'}, id=self.hook_name)
-        self.logger.info('Verify hook values for test_hook2')
+        self.logger.info('Verify hook values for test_hook')
         attrs2 = {'event': 'queuejob,resvsub',
                   'alarm': 60, 'enabled': 'false', 'order': 7}
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
@@ -181,7 +178,7 @@ e.accept()"""
         self.assertTrue(rv)
         self.server.manager(MGR_CMD_SET, HOOK, {
                             'event-': 'resvsub'}, id=self.hook_name)
-        self.logger.info('Verify hook values for test_hook2')
+        self.logger.info('Verify hook values for test_hook')
         rc = self.server.manager(MGR_CMD_LIST, HOOK,
                                  id=self.hook_name)
         self.assertEqual(rc, 0)
@@ -195,6 +192,7 @@ e.accept()"""
         rc = self.server.manager(MGR_CMD_CREATE, HOOK, None, self.hook_name)
         self.assertEqual(rc, 0)
         self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
+        # For Cray PTL does not run on the server host
         if self.du.is_localhost(self.server.hostname):
             cmd = "l h test_hook"
         else:
@@ -208,10 +206,7 @@ e.accept()"""
         for i in err_msg:
             self.assertIn(i, ret['err'],
                           msg="Failed to get expected error message")
-        (self.server_hooks_dir,
-         self.hk_file) = self.check_hk_file(self.hook_name)
-        self.logger.info('Verified ' + self.hk_file + ' file not exists in' +
-                         self.server_hooks_dir + ' as expected')
+        self.check_hk_file(self.hook_name)
 
     def tearDown(self):
         self.server.manager(MGR_CMD_SET, SERVER,
