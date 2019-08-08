@@ -48,6 +48,7 @@ class TestEligibleTime(TestFunctional):
         TestFunctional.setUp(self)
         a = {'eligible_time_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.accrue = {'ineligible': 1, 'eligible': 2, 'run': 3, 'exit': 4}
 
     def test_qsub_a(self):
         """
@@ -102,20 +103,21 @@ class TestEligibleTime(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid2, extend='t')
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=sjid3, extend='t')
 
-        # accrue_type = 2 is eligible_time
-        self.server.expect(JOB, {'accrue_type': 2}, id=jid)
+        self.server.expect(JOB, {'accrue_type': self.accrue['eligible']},
+                           id=jid)
 
         self.logger.info("subjobs 1 and 2 finished; subjob 3 must run now")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid3,
                            extend='t', offset=20)
-        self.server.expect(JOB, {'accrue_type': 1}, id=jid)
+        self.server.expect(JOB, {'accrue_type': self.accrue['ineligible']},
+                           id=jid)
 
         # Capture the time stamp when subjob 3 starts run. Accrue type changes
         # to ineligible time. eligible_time calculation is completed.
         msg2 = J1.create_subjob_id(jid, 3) + ";Job Run at request of Scheduler"
         m2 = self.server.log_match(msg2)
         t2 = logutils.convert_date_time(m2[1].split(';')[0])
-        eligible_time = t2 - t1
+        eligible_time = int(t2) - int(t1)
 
         m1 = jid + ";Accrue type has changed to ineligible_time, "
         m1 += "previous accrue type was eligible_time"
@@ -160,19 +162,19 @@ class TestEligibleTime(TestFunctional):
                             id=self.mom.shortname)
         J1 = Job(TEST_USER)
         jid1 = self.server.submit(J1)
-        attribs = {'job_state': 'R', 'accrue_type': 3}
+        attribs = {'job_state': 'R', 'accrue_type': self.accrue['run']}
         self.server.expect(JOB, attribs, id=jid1)
 
         J2 = Job(TEST_USER, {'Resource_List.select': '1:ncpus=2'})
         jid2 = self.server.submit(J2)
-        attribs = {'job_state': 'Q', 'accrue_type': 2}
+        attribs = {'job_state': 'Q', 'accrue_type': self.accrue['eligible']}
         self.server.expect(JOB, attribs, id=jid2)
 
         a = {'Resource_List.select': '1:ncpus=1',
              ATTR_depend: 'afterany:' + jid2}
         J3 = Job(TEST_USER, a)
         jid3 = self.server.submit(J3)
-        attribs = {'job_state': 'H', 'accrue_type': 1}
+        attribs = {'job_state': 'H', 'accrue_type': self.accrue['ineligible']}
         self.server.expect(JOB, attribs, id=jid3)
 
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -186,10 +188,12 @@ class TestEligibleTime(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'accrue_type': 1}, id=jid2)
+        self.server.expect(JOB, {'accrue_type': self.accrue['ineligible']},
+                           id=jid2)
 
         # force the server to reassess the accrue type
         self.server.holdjob(jid2, 'u')
         self.server.rlsjob(jid2, 'u')
 
-        self.server.expect(JOB, {'accrue_type': 1}, id=jid2)
+        self.server.expect(JOB, {'accrue_type': self.accrue['ineligible']},
+                           id=jid2)
