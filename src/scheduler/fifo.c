@@ -2280,7 +2280,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		skip = SKIP_NOTHING;
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
-		last_job_index = -1; /* We search from last_job_index + 1 */
+		last_job_index = 0;
 		return NULL;
 	}
 
@@ -2304,7 +2304,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		|| (flag == MUST_RESORT_JOBS)) {
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
-		last_job_index = -1;
+		last_job_index = 0;
 	}
 	if (policy->round_robin) {
 		/* Below is a pictorial representation of how queue_list
@@ -2378,11 +2378,11 @@ next_job(status *policy, server_info *sinfo, int flag)
 		}
 	} else if (policy->by_queue) {
 		if (!(skip & SKIP_NON_NORMAL_JOBS)) {
-			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index + 1);
+			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index);
 			if (ind == -1) {
 				/* No more preempted jobs */
 				skip |= SKIP_NON_NORMAL_JOBS;
-				last_job_index = -1;
+				last_job_index = 0;
 			} else {
 				rjob = sinfo->jobs[ind];
 				last_job_index = ind;
@@ -2390,9 +2390,9 @@ next_job(status *policy, server_info *sinfo, int flag)
 		}
 		if (skip & SKIP_NON_NORMAL_JOBS) {
 			while(last_queue < sinfo->num_queues &&
-			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index + 1)) == -1)) {
+			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index)) == -1)) {
 				last_queue++;
-				last_job_index = -1;
+				last_job_index = 0;
 			}
 			if (last_queue < sinfo->num_queues && ind != -1) {
 				rjob = sinfo->queues[last_queue]->jobs[ind];
@@ -2401,7 +2401,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 				rjob = NULL;
 		}
 	} else { /* treat the entire system as one large queue */
-		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index + 1);
+		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index);
 		if(ind != -1) {
 			rjob = sinfo->jobs[ind];
 			last_job_index = ind;
