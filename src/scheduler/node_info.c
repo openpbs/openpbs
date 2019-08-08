@@ -2359,7 +2359,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			else {
 				empty_nspec_array(*nspec_arr);
 				if (failerr->status_code == SCHD_UNKWN)
-					move_schd_error(failerr, err);
+					copy_schd_error(failerr, err);
 			}
 		}
 		else {
@@ -2379,7 +2379,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			set_schd_error_arg(err, ARG2, nodepart[i]->name);
 #endif /* localmod 031 */
 			if (failerr->status_code == SCHD_UNKWN)
-				move_schd_error(failerr, err);
+				copy_schd_error(failerr, err);
 		}
 
 		if (!can_fit && !rc &&
@@ -2402,7 +2402,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			set_schd_error_codes(err, NEVER_RUN, CANT_SPAN_PSET);
 			/* CANT_SPAN_PSET is more important than any other error we may have encountered -- keep it*/
 			clear_schd_error(failerr);
-			move_schd_error(failerr, err);
+			copy_schd_error(failerr, err);
 		}
 	}
 
@@ -2578,7 +2578,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				else {
 					empty_nspec_array(nsa);
 					if(failerr->status_code == SCHD_UNKWN)
-						move_schd_error(failerr, err);
+						copy_schd_error(failerr, err);
 					clear_schd_error(err);
 
 				}
@@ -2626,7 +2626,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							else {
 								empty_nspec_array(nsa);
 								if (failerr->status_code == SCHD_UNKWN)
-									move_schd_error(failerr, err);
+									copy_schd_error(failerr, err);
 								clear_schd_error(err);
 							}
 						}
@@ -3296,13 +3296,13 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 				else {
 					ninfo_arr[i]->nscr.visited = 1;
 					if (failerr->status_code == SCHD_UNKWN)
-						move_schd_error(failerr, err);
+						copy_schd_error(failerr, err);
 				}
 			}
 			else {
 				ninfo_arr[i]->nscr.visited = 1;
 				if (failerr->status_code == SCHD_UNKWN)
-					move_schd_error(failerr, err);
+					copy_schd_error(failerr, err);
 			}
 
 			if (licenses_allocated > 0)
