@@ -531,11 +531,11 @@ stop_pbs() {
     if [ -f ${redhat_subsys_filepath} ] ; then
 	  rm -f ${redhat_subsys_filepath}
     fi
-    # make sure the daemons have exited for up to 30 seconds
+    # make sure the daemons have exited for up to 180 seconds
     # if any still there, exit with message and error
     waitloop=1
     echo "Waiting for shutdown to complete" 
-    while [ ${waitloop} -lt 30 ]
+    while [ ${waitloop} -lt 180 ]
     do
 	sleep 1
 	something_running=""

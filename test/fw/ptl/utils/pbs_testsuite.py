@@ -35,24 +35,26 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import unittest
-import logging
-import subprocess
-import pwd
-import grp
-import os
-import sys
-import platform
-import socket
-import time
 import calendar
-import ptl
+import grp
+import logging
+import os
+import platform
+import pwd
+import socket
+import subprocess
+import sys
+import time
+import unittest
 from distutils.util import strtobool
-from ptl.utils.pbs_logutils import PBSLogAnalyzer
-from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.pbs_cliutils import CliUtils
-from ptl.utils.pbs_procutils import ProcMonitor
+
+import ptl
 from ptl.lib.pbs_testlib import *
+from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_logutils import PBSLogAnalyzer
+from ptl.utils.pbs_procutils import ProcMonitor
+
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
@@ -169,18 +171,7 @@ def timeout(val):
     """
     Decorator to set timeout value of test case
     """
-    logger = logging.getLogger(__name__)
-    old_val = None
-    if val < MINIMUM_TESTCASE_TIMEOUT:
-        old_val = val
-        val = MINIMUM_TESTCASE_TIMEOUT
-
     def wrapper(obj):
-        msg = 'for test ' + obj.func_name
-        msg += ' minimum-testcase-timeout updated to '
-        msg += str(val) + ' from ' + str(old_val)
-        if old_val:
-            logger.info(msg)
         setattr(obj, TIMEOUT_KEY, int(val))
         return obj
     return wrapper
@@ -637,11 +628,6 @@ class PBSTestSuite(unittest.TestCase):
         cls._validate_param('del-vnodes')
         cls._validate_param('revert-queues')
         cls._validate_param('revert-resources')
-        if 'default-testcase-timeout' not in cls.conf.keys():
-            cls.conf['default_testcase_timeout'] = MINIMUM_TESTCASE_TIMEOUT
-        else:
-            cls.conf['default_testcase_timeout'] = int(
-                cls.conf['default-testcase-timeout'])
 
     @classmethod
     def is_server_licensed(cls, server):
