@@ -1518,3 +1518,29 @@ class SmokeTest(PBSTestSuite):
             msg = "Successfully retrieved man page for"
             msg += " %s command" % pbs_cmd
             self.logger.info(msg)
+
+    def test_exclhost(self):
+        """
+        Test that a job requesting exclhost is not placed on another host
+        with a running job on it.
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vn', a, 8, sharednode=False,
+                                  vnodes_per_host=4, mom=self.mom)
+
+        J1 = Job(TEST_USER, {'Resource_List.select': '1:ncpus=1:vnode=vn[3]'})
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'exclhost'}
+        J2 = Job(TEST_USER, a)
+        jid2 = self.server.submit(J2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        st = self.server.status(JOB, 'exec_vnode', id=jid2)
+        vnodes = J2.get_vnodes(st[0]['exec_vnode'])
+        expected_vnodes = ['vn[4]', 'vn[5]', 'vn[6]', 'vn[7]']
+
+        for v in vnodes:
+            self.assertIn(v, expected_vnodes)

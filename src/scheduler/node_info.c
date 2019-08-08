@@ -5875,12 +5875,6 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 			clear_schd_error(err);
 			if (is_vnode_eligible(ninfo_arr[i], resresv, pl, err) == 0) {
 				ninfo_arr[i]->nscr.ineligible = 1;
-				if (err->status_code != SCHD_UNKWN) {
-					if (misc_err->status_code == SCHD_UNKWN)
-						move_schd_error(misc_err, err);
-					schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-						ninfo_arr[i]->name, NULL, err);
-				}
 				if (ninfo_arr[i]->hostset != NULL) {
 					if ((err->error_code == NODE_NOT_EXCL &&
 					    is_exclhost(pl, ninfo_arr[i]->sharing)) ||
@@ -5892,6 +5886,12 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 								n->name, exclerr_buf);
 						}
 					}
+				}
+				if (err->status_code != SCHD_UNKWN) {
+					if (misc_err->status_code == SCHD_UNKWN)
+						copy_schd_error(misc_err, err);
+					schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+						   ninfo_arr[i]->name, NULL, err);
 				}
 			}
 		}
