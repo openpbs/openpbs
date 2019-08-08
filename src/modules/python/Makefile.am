@@ -69,4 +69,7 @@ dist_pbshooks_DATA = \
 	pbs_hooks/PBS_alps_inventory_check.HK \
 	pbs_hooks/PBS_alps_inventory_check.PY \
 	pbs_hooks/PBS_xeon_phi_provision.HK \
-	pbs_hooks/PBS_xeon_phi_provision.PY 
+	pbs_hooks/PBS_xeon_phi_provision.PY \
+	pbs_hooks/PBS_cray_jacs.HK \
+	pbs_hooks/PBS_cray_jacs.PY \
+	pbs_hooks/PBS_cray_jacs.CF
