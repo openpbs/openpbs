@@ -306,7 +306,7 @@ pbs.event().accept()
         self.assertTrue(len(logs) > 1)
         log1 = logs[0][1]
         log2 = logs[1][1]
-        pattern = '%m/%d/%Y %H:%M:%S'
+        pattern = '%m/%d/%Y %H:%M:%S.%f'
         tmp = log1.split(';')
         # Convert the time into epoch time
         time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
