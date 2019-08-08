@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestPythonRestartSettings(TestFunctional):
@@ -48,6 +49,7 @@ class TestPythonRestartSettings(TestFunctional):
     This test suite is to validate the server attributes. Actual memory
     leak test is still manual
     """
+    logutils = PBSLogUtils()
 
     def test_non_integer(self):
         """
@@ -306,12 +308,11 @@ pbs.event().accept()
         self.assertTrue(len(logs) > 1)
         log1 = logs[0][1]
         log2 = logs[1][1]
-        pattern = '%m/%d/%Y %H:%M:%S.%f'
         tmp = log1.split(';')
         # Convert the time into epoch time
-        time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time1 = int(self.logutils.convert_date_time(tmp[0]))
         tmp = log2.split(';')
-        time2 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time2 = int(self.logutils.convert_date_time(tmp[0]))
         # Difference between log message should not be less than 3
         diff = time2 - time1
         self.logger.info("Time difference between log message is " +
