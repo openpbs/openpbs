@@ -12822,6 +12822,10 @@ class MoM(PBSService):
                                 '$vnodedef_additive': 0,
                                 '$alps_client': alps_client,
                                 '$usecp': '*:%s %s' % (usecp, usecp)}
+        elif self.platform == 'shasta':
+            usecp = os.path.realpath('/lus')
+            self.dflt_config = {'$clienthost': self.server.hostname,
+                                '$usecp': '*:%s %s' % (usecp, usecp)}
         else:
             self.dflt_config = {'$clienthost': self.server.hostname}
         self.version = None
