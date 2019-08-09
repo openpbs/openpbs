@@ -1314,9 +1314,32 @@ post_suspend(job *pjob, int err)
 
 		pjob->ji_polltime = 0;	/* don't check polling */
 		if (pjob->ji_qs.ji_substate < JOB_SUBSTATE_EXITING) {
+			mom_hook_input_t  hook_input;
+			mom_hook_output_t hook_output;
+			char		  hook_msg[HOOK_MSG_SIZE+1];
+			hook		  *last_phook = NULL;
+			unsigned int	hook_fail_action =  0;
+			int		reject_errcode = 0;
+
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
 			(void)job_save(pjob, SAVEJOB_QUICK);
+
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &reject_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+		
+			if (mom_process_hooks(HOOK_EVENT_EXECJOB_POSTSUSPEND,
+				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
+				&hook_output, hook_msg, sizeof(hook_msg), 1) == 0) {
+				snprintf(log_buffer, sizeof(log_buffer), 
+					"execjob_postsuspend hook rejected request: %s", hook_msg);
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			}
 		}
 		else
 		{
@@ -1653,6 +1676,32 @@ local_supres(job *pjob, int which, struct batch_request *preq)
 		which == SUSPEND ? "suspend" : "resume",
 		preq == NULL ? "no" : "with"))
 
+	if (which == RESUME) {
+		mom_hook_input_t  	hook_input;
+		mom_hook_output_t 	hook_output;
+		char 			hook_msg[HOOK_MSG_SIZE+1];
+		hook			*last_phook = NULL;
+		unsigned int		hook_fail_action =  0;
+		int			reject_errcode = 0;
+
+		mom_hook_input_init(&hook_input);
+		hook_input.pjob = pjob;
+
+		mom_hook_output_init(&hook_output);
+		hook_output.reject_errcode = &reject_errcode;
+		hook_output.last_phook = &last_phook;
+		hook_output.fail_action = &hook_fail_action;
+
+		if (mom_process_hooks(HOOK_EVENT_EXECJOB_PRERESUME,
+			PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
+			&hook_output, hook_msg, sizeof(hook_msg), 1) == 0) {
+			snprintf(log_buffer, sizeof(log_buffer), 
+					"execjob_preresume hook rejected request: %s", hook_msg);
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			errno = reject_errcode;
+			return (PBSE_MOMREJECT);
+		}
+	}
 	/*
 	 ** Check to see if something is already going on.
 	 */

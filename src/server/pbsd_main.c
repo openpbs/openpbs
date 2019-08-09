@@ -303,6 +303,8 @@ pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
 pbs_list_head	svr_execjob_resize_hooks;
 pbs_list_head	svr_execjob_abort_hooks;
+pbs_list_head	svr_execjob_postsuspend_hooks;
+pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	svr_allscheds;
 time_t		time_now;
 struct batch_request	*saved_takeover_req=NULL;
@@ -1289,6 +1291,8 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_execjob_attach_hooks);
 	CLEAR_HEAD(svr_execjob_resize_hooks);
 	CLEAR_HEAD(svr_execjob_abort_hooks);
+	CLEAR_HEAD(svr_execjob_postsuspend_hooks);
+	CLEAR_HEAD(svr_execjob_preresume_hooks);
 	CLEAR_HEAD(svr_allscheds);
 
 	/* initialize paths that we will need */
