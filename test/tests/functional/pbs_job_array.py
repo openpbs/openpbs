@@ -582,7 +582,8 @@ class TestJobArray(TestFunctional):
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER, attrs={
-            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1',
+            ATTR_k: 'oe'})
         j.set_sleep_time(5)
         j_id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, j_id, extend='x', offset=5)
