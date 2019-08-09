@@ -1335,8 +1335,7 @@ post_suspend(job *pjob, int err)
 		
 			if (mom_process_hooks(HOOK_EVENT_EXECJOB_POSTSUSPEND,
 				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-				&hook_output,
-					hook_msg, sizeof(hook_msg), 1) == 0) {
+				&hook_output, hook_msg, sizeof(hook_msg), 1) == 0) {
 				snprintf(log_buffer, sizeof(log_buffer), 
 					"execjob_postsuspend hook rejected request: %s", hook_msg);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
