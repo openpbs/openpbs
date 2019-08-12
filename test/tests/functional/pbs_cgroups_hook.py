@@ -309,7 +309,11 @@ else
 fi
 devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
 if [ -d "$devices_base/propbs" ]; then
-    devices_job="$devices_base/propbs/$PBS_JOBID"
+    if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
+        devices_job="$devices_base/propbs/$PBS_JOBID"
+    else
+        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+    fi
 else
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
@@ -317,25 +321,36 @@ echo ====
 ls -l $devices_base
 echo ====
 ls -l $devices_job
+ret=$?
+if [ $ret -eq 0 ] ; then
+    echo "cgroup devices dir exists"
+else
+    echo "cgroup devices dir does not exist"
+    exit $ret
+fi
 echo ====
 if [ -d $devices_job ]; then
     device_list=`cat $devices_job/devices.list`
     echo "${device_list}"
-    sysd=`systemctl --version | grep systemd | awk '{print $2}'`
-    if [ "$sysd" -ge 205 ]; then
-        if [ -d $cpuacct_job ]; then
-            check_file_diff $cpuacct_base/propbs.slice/ $cpuacct_job
-        fi
-        if [ -d $cpuset_job ]; then
-            check_file_diff $cpuset_base/propbs.slice/ $cpuset_job
-        fi
-        if [ -d $memory_job ] ; then
-            check_file_diff $memory_base/propbs.slice/ $memory_job
+    if type systemctl ; then
+        sysd=`systemctl --version | grep systemd | awk '{print $2}'`
+        if [ "$sysd" -ge 205 ]; then
+            if [ -d $cpuacct_job ]; then
+                check_file_diff $cpuacct_base/propbs.slice/ $cpuacct_job
+            fi
+            if [ -d $cpuset_job ]; then
+                check_file_diff $cpuset_base/propbs.slice/ $cpuset_job
+            fi
+            if [ -d $memory_job ] ; then
+                check_file_diff $memory_base/propbs.slice/ $memory_job
+            fi
+        else
+            if [ -d $cpuacct_job -o -d $cpuset_job -o -d $memory_job ]; then
+                echo "Disabled cgroup subsystems are populated with the job id"
+            fi
         fi
     else
-        if [ -d $cpuacct_job -o -d $cpuset_job -o -d $memory_job ]; then
-            echo "Disabled cgroup subsystems are populated with the job id"
-        fi
+        echo "systemctl command not found"
     fi
 else
     echo "Devices directory should be populated"
@@ -1352,6 +1367,8 @@ if %s e.job.in_ms_mom():
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
         scr = self.du.run_cmd(cmd=[self.check_dirs_script], as_script=True)
         scr_out = scr['out']
+        if 'cgroup devices dir does not exist' in scr_out:
+            self.skipTest('Test requires cgroup devices dir')
         check_devices = ['b *:* rwm',
                          'c 5:1 rwm',
                          'c 4:* rwm',
