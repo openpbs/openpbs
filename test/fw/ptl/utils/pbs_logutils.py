@@ -43,6 +43,7 @@ import logging
 import traceback
 import math
 from subprocess import Popen, PIPE
+import copy
 
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.lib.pbs_testlib import BatchUtils, Server, NODE, JOB, SET, EQ
@@ -295,7 +296,7 @@ class PBSLogUtils(object):
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
-                    cmd = ['sudo', 'cat', log]
+                    cmd = copy.copy(self.sudo_cmd) + ['cat', log]
                     self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
@@ -304,7 +305,7 @@ class PBSLogUtils(object):
             else:
                 cmd = ['ssh', hostname]
                 if sudo:
-                    cmd += ['sudo']
+                    cmd += self.du.sudo_cmd
                 cmd += ['cat', log]
                 self.logger.debug('running ' + " ".join(cmd))
                 p = Popen(cmd, stdout=PIPE)

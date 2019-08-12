@@ -14154,9 +14154,11 @@ class InteractiveJob(threading.Thread):
             current_user = pwd.getpwuid(os.getuid())[0]
             if current_user != job.username:
                 if hasattr(job, 'preserve_env') and job.preserve_env is True:
-                    cmd = ['sudo', '-E', '-u', job.username] + cmd
+                    cmd = (copy.copy(self.du.sudo_cmd) +
+                           ['-E', '-u', job.username] + cmd)
                 else:
-                    cmd = ['sudo', '-u', job.username] + cmd
+                    cmd = (copy.copy(self.du.sudo_cmd) +
+                           ['-u', job.username] + cmd)
 
             self.logger.debug(cmd)
 
@@ -14556,7 +14558,7 @@ class PBSInitServices(object):
                        sched, comm or all
         :type daemon: str
         """
-        init_cmd = ['sudo']
+        init_cmd = copy.copy(self.du.sudo_cmd)
         if daemon is not None and daemon != 'all':
             conf = self.du.parse_pbs_config(hostname, conf_file)
             dconf = {

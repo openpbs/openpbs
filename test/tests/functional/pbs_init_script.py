@@ -59,9 +59,10 @@ class TestPbsInitScript(TestFunctional):
         conf['PBS_START_MOM'] = '0'
         self.du.set_pbs_config(confs=conf)
 
-        cmd = ['sudo', 'PBS_START_SERVER=0', 'PBS_START_SCHED=0',
-               'PBS_START_COMM=0', 'PBS_START_MOM=1',
-               pbs_init, 'start']
+        cmd = copy.copy(self.du.sudo_cmd)
+        cmd += ['PBS_START_SERVER=0', 'PBS_START_SCHED=0',
+                'PBS_START_COMM=0', 'PBS_START_MOM=1',
+                pbs_init, 'start']
 
         rc = self.du.run_cmd(cmd=cmd, as_script=True)
         output = rc['out']

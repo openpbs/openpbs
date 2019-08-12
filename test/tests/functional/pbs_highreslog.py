@@ -172,7 +172,8 @@ class TestHighResLogging(TestFunctional):
         conf_path = self.du.parse_pbs_config()
         pbs_init = os.path.join(os.sep, conf_path['PBS_EXEC'],
                                 'libexec', 'pbs_init.d')
-        cmd = ['sudo', 'PBS_LOG_HIGHRES_TIMESTAMP=1', pbs_init, 'restart']
+        cmd = copy.copy(self.du.sudo_cmd)
+        cmd += ['PBS_LOG_HIGHRES_TIMESTAMP = 1', pbs_init, 'restart']
         self.du.run_cmd(cmd=cmd, as_script=True, wait_on_script=True)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
