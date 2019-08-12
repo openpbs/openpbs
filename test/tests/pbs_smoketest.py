@@ -329,18 +329,25 @@ class SmokeTest(PBSTestSuite):
     @skipOnCpuSet
     def test_finished_jobs(self):
         """
-        Test for finished jobs
+        Test for finished jobs and resource used for jobs.
         """
         a = {'resources_available.ncpus': '4'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'Resource_List.walltime': '10', ATTR_k: 'oe'}
-        j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
+        a = {'Resource_List.select': '1:ncpus=2:mem=20mb'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(15)
+        j.create_eatcpu_job(15)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=5,
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
+        a = {'resources_used.ncpus': 2, 'resources_used.cpupercent': 100,
+             'resources_used.cput': '00:00:15', 'Exit_status': '0'}
+        self.server.expect(JOB, a, id=jid, extend='x', attrop=PTL_AND)
+        a = {'resources_used.walltime': '00:00:00',
+             'resources_used.mem': '0kb'}
+        self.server.expect(JOB, a, id=jid, extend='x', op=NE, attrop=PTL_AND)
 
     def test_project_based_limits(self):
         """
