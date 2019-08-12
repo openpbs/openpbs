@@ -410,7 +410,7 @@ class _PtlTestResult(unittest.TestResult):
         self.logger.info('\n'.join(msg))
 
 
-class PtlTestRunner(TextTestRunner):
+class PtlTextTestRunner(TextTestRunner):
 
     """
     Test runner that uses ``PtlTestResult`` to enable errorClasses,
@@ -529,7 +529,7 @@ class PTLTestRunner(Plugin):
         """
         Prepare test runner
         """
-        return PtlTestRunner(verbosity=3, config=self.config)
+        return PtlTextTestRunner(verbosity=3, config=self.config)
 
     def prepareTestResult(self, result):
         """
