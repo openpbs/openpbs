@@ -5087,6 +5087,20 @@ class Server(PBSService):
                                           'lib', 'python', 'altair',
                                           'pbs_hooks',
                                           'PBS_translate_mpp.HK')
+        self.jacs_hk = os.path.join(self.pbs_conf['PBS_HOME'],
+                                    'server_priv', 'hooks',
+                                    'PBS_cray_jacs.HK')
+        self.dflt_jacs_hk = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                         'lib', 'python', 'altair',
+                                         'pbs_hooks',
+                                         'PBS_cray_jacs.HK')
+        self.jacs_cf = os.path.join(self.pbs_conf['PBS_HOME'],
+                                    'server_priv', 'hooks',
+                                    'PBS_cray_jacs.CF')
+        self.dflt_jacs_cf = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                         'lib', 'python', 'altair',
+                                         'pbs_hooks',
+                                         'PBS_cray_jacs.CF')
         if server_stat is None:
             server_stat = self.status(SERVER, level=logging.DEBUG)[0]
         for k in server_stat.keys():
@@ -5105,7 +5119,8 @@ class Server(PBSService):
         if self.platform == 'cray' or self.platform == 'craysim':
             setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
-            if self.platform == 'cray' or self.platform == 'craysim':
+            if (self.platform == 'cray' or self.platform == 'craysim' or
+               self.platform == 'shasta'):
                 reverthooks = True
             else:
                 reverthooks = False
@@ -5162,6 +5177,20 @@ class Server(PBSService):
                                self.mpp_hook, sudo=True) != 0:
                     self.du.run_copy(self.hostname, self.dflt_mpp_hook,
                                      self.mpp_hook, mode=0644, sudo=True)
+                    self.signal('-HUP')
+            if self.platform == 'shasta':
+                dohup = False
+                if (self.du.cmp(self.hostname, self.dflt_jacs_hk,
+                                self.jacs_hk, sudo=True) != 0):
+                    self.du.run_copy(self.hostname, self.dflt_jacs_hk,
+                                     self.jacs_hk, mode=0644, sudo=True)
+                    dohup = True
+                if self.du.cmp(self.hostname, self.dflt_jacs_cf,
+                               self.jacs_cf, sudo=True) != 0:
+                    self.du.run_copy(self.hostname, self.dflt_jacs_cf,
+                                     self.jacs_cf, mode=0644, sudo=True)
+                    dohup = True
+                if dohup:
                     self.signal('-HUP')
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
