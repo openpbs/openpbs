@@ -3252,6 +3252,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		free_server(nsinfo);
 		free(pjobs);
 		free(prjobs);
+		free_schd_error(err);
 		return NULL;
 	}
 
