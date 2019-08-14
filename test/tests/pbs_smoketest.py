@@ -331,27 +331,26 @@ class SmokeTest(PBSTestSuite):
         """
         Test for finished jobs and resource used for jobs.
         """
-        a = {'resources_available.ncpus': '4'}
+        a = {'resources_available.ncpus': '2'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'Resource_List.select': '1:ncpus=2:mem=20mb',
-             'Resource_List.walltime': '15'}
+        a = {'Resource_List.ncpus': 2}
         j = Job(TEST_USER, a)
+        j.set_sleep_time(15)
         j.create_eatcpu_job(15)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
-        expect_val = {}
-        expect_val[ATTR_used+'.ncpus'] = '2'
-        expect_val[ATTR_used+'.cpupercent'] = '100'
-        expect_val[ATTR_used+'.cput'] = '00:00:15'
-        expect_val[ATTR_exit_status] = '0'
-        for key in expect_val:
-            self.assertEquals(expect_val[key], jobs[0][key])
-        self.assertNotEquals(jobs[0][ATTR_used+'.walltime'], '00:00:00')
-        self.assertNotEquals(jobs[0][ATTR_used+'.mem'], '0kb')
+        exp_eq_val = {ATTR_used+'.ncpus': '2',
+                      ATTR_used+'.cput': '00:00:15', ATTR_exit_status: '0'}
+        for key in exp_eq_val:
+            self.assertEquals(exp_eq_val[key], jobs[0][key])
+        exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
+                         ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
+        for key in exp_noteq_val:
+            self.assertNotEquals(exp_noteq_val[key], jobs[0][key])
 
     def test_project_based_limits(self):
         """
