@@ -386,7 +386,7 @@ read_config(char *file)
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 #ifdef WIN32
-	if (chk_file_sec(file, 0, 0, WRITES_MASK, 0))
+	if (chk_file_sec(file, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0))
 #else
 	if (chk_file_sec(file, 0, 0, S_IWGRP|S_IWOTH, 1))
 #endif
@@ -1124,8 +1124,8 @@ main(int argc, char *argv[])
 #ifdef WIN32
 	/* For windows, do not check full path. Allow system to put in */
 	/* default permissions for top-level directories */
-	c  = chk_file_sec(log_buffer, 1, 0, WRITES_MASK, 0);
-	c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, WRITES_MASK, 0);
+	c  = chk_file_sec(log_buffer, 1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
+	c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0);
 #else
 	c  = chk_file_sec(log_buffer, 1, 0, S_IWGRP|S_IWOTH, 1);
 	c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
@@ -1747,9 +1747,10 @@ main(int argc, char *argv[])
 		int	i, j;
 
 		pap = create_arg_param();
-		if (pap == NULL)
+		if (pap == NULL) {
 			ErrorMessage("create_arg_param");
 			return 1;
+		}
 
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {

@@ -280,7 +280,7 @@ ruserok(const char *rhost, int superuser, const char *ruser, const char *luser)
 
 	/* check hosts.equiv file if luser is not superuser */
 	if( !superuser && \
-		chk_file_sec(hosts_equiv, 0, 0, WRITES_MASK, 0) == 0 && \
+		chk_file_sec(hosts_equiv, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0) == 0 && \
 		  match_hosts_equiv_entry(hosts_equiv, rhost, ruser, luser) )
 		return (0);
 
