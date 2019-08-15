@@ -60,6 +60,7 @@ from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
 from ptl.utils.pbs_fileutils import FILE_TAIL, FileUtils
 from ptl.utils.pbs_procutils import ProcUtils
+from ptl.utils.pbs_testusers import PbsUser
 
 try:
     import psycopg2
@@ -1143,115 +1144,6 @@ class PbsTypeJobId(str):
 
     def __str__(self):
         return str(self.value)
-
-
-class PbsUser(object):
-
-    """
-    The PbsUser type augments a PBS username to associate
-    it to groups to which the user belongs
-
-    :param name: The user name referenced
-    :type name: str
-    :param uid: uid of user
-    :type uid: int or None
-    :param groups: The list of PbsGroup objects the user
-                   belongs to
-    :type groups: List or None
-    """
-
-    def __init__(self, name, uid=None, groups=None):
-        self.name = name
-        if uid is not None:
-            self.uid = int(uid)
-        else:
-            self.uid = None
-        self.home = None
-        self.gid = None
-        self.shell = None
-        self.gecos = None
-
-        try:
-            _user = pwd.getpwnam(self.name)
-            self.uid = _user.pw_uid
-            self.home = _user.pw_dir
-            self.gid = _user.pw_gid
-            self.shell = _user.pw_shell
-            self.gecos = _user.pw_gecos
-        except:
-            pass
-
-        if groups is None:
-            self.groups = []
-        elif isinstance(groups, list):
-            self.groups = groups
-        else:
-            self.groups = groups.split(",")
-
-        for g in self.groups:
-            if isinstance(g, str):
-                self.groups.append(PbsGroup(g, users=[self]))
-            elif self not in g.users:
-                g.users.append(self)
-
-    def __repr__(self):
-        return str(self.name)
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __int__(self):
-        return int(self.uid)
-
-
-class PbsGroup(object):
-
-    """
-    The PbsGroup type augments a PBS groupname to associate it
-    to users to which the group belongs
-
-    :param name: The group name referenced
-    :type name: str
-    :param gid: gid of group
-    :type gid: int or None
-    :param users: The list of PbsUser objects the group belongs to
-    :type users: List or None
-    """
-
-    def __init__(self, name, gid=None, users=None):
-        self.name = name
-        if gid is not None:
-            self.gid = int(gid)
-        else:
-            self.gid = None
-
-        try:
-            _group = grp.getgrnam(self.name)
-            self.gid = _group.gr_gid
-        except:
-            pass
-
-        if users is None:
-            self.users = []
-        elif isinstance(users, list):
-            self.users = users
-        else:
-            self.users = users.split(",")
-
-        for u in self.users:
-            if isinstance(u, str):
-                self.users.append(PbsUser(u, groups=[self]))
-            elif self not in u.groups:
-                u.groups.append(self)
-
-    def __repr__(self):
-        return str(self.name)
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __int__(self):
-        return int(self.gid)
 
 
 class BatchUtils(object):

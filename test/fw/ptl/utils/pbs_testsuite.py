@@ -54,7 +54,7 @@ from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_procutils import ProcMonitor
-
+from ptl.utils.pbs_testusers import *
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
@@ -65,70 +65,6 @@ try:
 except ImportError:
     class SkipTest(Exception):
         pass
-
-
-# Test users/groups are expected to exist on the test systems
-# User running the tests and the test users should have passwordless sudo
-# access configured to avoid interrupted (queries for password) test runs
-
-# Groups
-TSTGRP0 = PbsGroup('tstgrp00', gid=1900)
-TSTGRP1 = PbsGroup('tstgrp01', gid=1901)
-TSTGRP2 = PbsGroup('tstgrp02', gid=1902)
-TSTGRP3 = PbsGroup('tstgrp03', gid=1903)
-TSTGRP4 = PbsGroup('tstgrp04', gid=1904)
-TSTGRP5 = PbsGroup('tstgrp05', gid=1905)
-TSTGRP6 = PbsGroup('tstgrp06', gid=1906)
-TSTGRP7 = PbsGroup('tstgrp07', gid=1907)
-GRP_PBS = PbsGroup('pbs', gid=901)
-GRP_AGT = PbsGroup('agt', gid=1146)
-ROOT_GRP = PbsGroup(grp.getgrgid(0).gr_name, gid=0)
-
-# Users
-# first group from group list is primary group of user
-TEST_USER = PbsUser('pbsuser', uid=4359, groups=[TSTGRP0])
-TEST_USER1 = PbsUser('pbsuser1', uid=4361, groups=[TSTGRP0, TSTGRP1, TSTGRP2])
-TEST_USER2 = PbsUser('pbsuser2', uid=4362, groups=[TSTGRP0, TSTGRP1, TSTGRP3])
-TEST_USER3 = PbsUser('pbsuser3', uid=4363, groups=[TSTGRP0, TSTGRP1, TSTGRP4])
-TEST_USER4 = PbsUser('pbsuser4', uid=4364, groups=[TSTGRP1, TSTGRP4, TSTGRP5])
-TEST_USER5 = PbsUser('pbsuser5', uid=4365, groups=[TSTGRP2, TSTGRP4, TSTGRP6])
-TEST_USER6 = PbsUser('pbsuser6', uid=4366, groups=[TSTGRP3, TSTGRP4, TSTGRP7])
-TEST_USER7 = PbsUser('pbsuser7', uid=4368, groups=[TSTGRP1])
-
-OTHER_USER = PbsUser('pbsother', uid=4358, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
-                                                   GRP_AGT])
-PBSTEST_USER = PbsUser('pbstest', uid=4355, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
-                                                    GRP_AGT])
-TST_USR = PbsUser('tstusr00', uid=11000, groups=[TSTGRP0])
-TST_USR1 = PbsUser('tstusr01', uid=11001, groups=[TSTGRP0])
-
-BUILD_USER = PbsUser('pbsbuild', uid=9000, groups=[TSTGRP0])
-DATA_USER = PbsUser('pbsdata', uid=4372, groups=[TSTGRP0])
-MGR_USER = PbsUser('pbsmgr', uid=4367, groups=[TSTGRP0])
-OPER_USER = PbsUser('pbsoper', uid=4356, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
-                                                 GRP_AGT])
-ADMIN_USER = PbsUser('pbsadmin', uid=4357, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
-                                                   GRP_AGT])
-PBSROOT_USER = PbsUser('pbsroot', uid=4371, groups=[TSTGRP0, TSTGRP2])
-
-ROOT_USER = PbsUser('root', uid=0, groups=[ROOT_GRP])
-
-PBS_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
-             TEST_USER5, TEST_USER6, TEST_USER7, OTHER_USER, PBSTEST_USER,
-             TST_USR, TST_USR1)
-
-PBS_GROUPS = (TSTGRP0, TSTGRP1, TSTGRP2, TSTGRP3, TSTGRP4, TSTGRP5, TSTGRP6,
-              TSTGRP7, GRP_PBS, GRP_AGT)
-
-PBS_OPER_USERS = (OPER_USER,)
-
-PBS_MGR_USERS = (MGR_USER, ADMIN_USER)
-
-PBS_DATA_USERS = (DATA_USER,)
-
-PBS_ROOT_USERS = (PBSROOT_USER, ROOT_USER)
-
-PBS_BUILD_USERS = (BUILD_USER,)
 
 SETUPLOG = 'setuplog'
 TEARDOWNLOG = 'teardownlog'
@@ -553,7 +489,11 @@ class PBSTestSuite(unittest.TestCase):
     def _set_user(cls, name, user_list):
         if name in cls.conf:
             for idx, u in enumerate(cls.conf[name].split(':')):
-                user_list[idx].__init__(u)
+                if '@' in u:
+                    user = u.split('@')
+                    user_list[idx].__init__({user[0]: user[1]})
+                else:
+                    user_list[idx].__init__(u)
 
     @classmethod
     def check_users_exist(cls):
@@ -562,7 +502,12 @@ class PBSTestSuite(unittest.TestCase):
         """
         testusersexist = True
         for u in [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]:
-            rv = cls.du.check_user_exists(str(u))
+            username = getattr(u, "name")
+            if type(username) is dict:
+                for _u, _h in username.items():
+                    rv = cls.du.check_user_exists(_u, _h)
+            else:
+                rv = cls.du.check_user_exists(str(u))
             if not rv:
                 _msg = 'User ' + str(u) + ' does not exist!'
                 raise setUpClassError(_msg)

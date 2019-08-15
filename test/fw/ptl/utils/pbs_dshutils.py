@@ -48,6 +48,7 @@ import tempfile
 import pwd
 import grp
 import platform
+from ptl.utils.pbs_testusers import *
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -842,6 +843,18 @@ class DshUtils(object):
                 self._tempdir[hostname] = '/tmp'
         return self._tempdir[hostname]
 
+    def get_user_hosts(self):
+        """
+        returns: Dictionary of "username" and "hostname+port" pair
+                 Default is empty
+        """
+        users = [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]
+        user_hosts = {}
+        for u in users:
+            if type(u) is dict:
+                user_hosts.update(u)
+        return user_hosts
+
     def run_cmd(self, hosts=None, cmd=None, sudo=False, stdin=None,
                 stdout=PIPE, stderr=PIPE, input=None, cwd=None, env=None,
                 runas=None, logerr=True, as_script=False, wait_on_script=True,
@@ -919,7 +932,24 @@ class DshUtils(object):
 
         ret = {'out': '', 'err': '', 'rc': 0}
 
+        user_hosts = self.get_user_hosts()
+        check_runas = False
+        if runas is not None:
+            if runas in user_hosts.keys():
+                for h in user_hosts.values():
+                    hostname_port = h.split('+')
+                    hostname = hostname_port[0]
+                    if len(hostname_port) > 1:
+                        port = hostname_port[1]
+                check_runas = True
+
         for hostname in hosts:
+            if not check_runas:
+                hostname_port = hostname.split('+')
+                hostname = hostname_port[0]
+                port = None
+                if len(hostname_port) > 1:
+                    port = hostname_port[1]
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
@@ -928,11 +958,19 @@ class DshUtils(object):
                 ret['rc'] = 1
                 continue
             if not islocal:
-                rshcmd = self.rsh_cmd + [hostname]
-            if sudo or ((runas is not None) and (runas != _user)):
-                sudocmd = copy.copy(self.sudo_cmd)
-                if runas is not None:
-                    sudocmd += ['-u', runas]
+                if port:
+                    if runas is None:
+                        user = _user
+                    else:
+                        user = runas
+                    rshcmd = self.rsh_cmd + ['-p', port, user + '@' + hostname]
+                else:
+                    rshcmd = self.rsh_cmd + [hostname]
+            if self.get_platform() != "shasta":
+                if sudo or ((runas is not None) and (runas != _user)):
+                    sudocmd = copy.copy(self.sudo_cmd)
+                    if runas is not None:
+                        sudocmd += ['-u', runas]
 
             # Initialize information to return
             ret = {'out': None, 'err': None, 'rc': None}
