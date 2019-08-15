@@ -210,10 +210,10 @@ schedinit(void)
 	path = PySys_GetObject("path");
 
 	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	PyList_Insert(path, 0, PyString_FromString(buf));
 
 	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	PyList_Insert(path, 0, PyString_FromString(buf));
 
 	PySys_SetObject("path", path);
 
