@@ -522,6 +522,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c)
 			int alen;
 
 			/* send a TPP_CTL_AUTH message */
+			memset(&ahdr, 0, sizeof(tpp_auth_pkt_hdr_t)); /* only to satisfy valgrind */
 			ahdr.type = TPP_CTL_AUTH;
 			ahdr.auth_type = tpp_conf->auth_type;
 			if (tpp_conf->get_ext_auth_data == NULL) {
@@ -554,6 +555,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c)
 		}
 
 		/* send a TPP_CTL_JOIN message */
+		memset(&hdr, 0, sizeof(tpp_join_pkt_hdr_t)); /* only to satisfy valgrind */
 		hdr.type = TPP_CTL_JOIN;
 		hdr.node_type = tpp_conf->node_type;
 		hdr.hop = 1;
@@ -2199,6 +2201,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int len, unsigned int full_len, un
 #endif
 
 	/* header data */
+	memset(&mhdr, 0, sizeof(tpp_mcast_pkt_hdr_t)); /* only to satisfy valgrind */
 	mhdr.type = TPP_MCAST_DATA;
 	mhdr.hop = 0;
 	mhdr.data_cmprsd_len = htonl(cmprsd_len);
@@ -2820,6 +2823,7 @@ shelve_mcast_pkt(tpp_mcast_pkt_hdr_t *mcast_hdr, int sd, int seq, tpp_packet_t *
 	if (!strm)
 		return -1;
 
+	memset(&indiv_dhdr, 0, sizeof(tpp_data_pkt_hdr_t)); /* only to satisfy valgrind */
 	indiv_dhdr.type = TPP_DATA;
 	indiv_dhdr.src_sd = htonl(strm->sd);
 	indiv_dhdr.src_magic = htonl(strm->src_magic);

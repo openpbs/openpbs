@@ -506,6 +506,7 @@ router_post_connect_handler(int tfd, void *data, void *c)
 			int alen;
 
 			/* send a TPP_CTL_AUTH message */
+			memset(&ahdr, 0, sizeof(tpp_auth_pkt_hdr_t)); /* only to satisfy valgrind */
 			ahdr.type = TPP_CTL_AUTH;
 			ahdr.auth_type = tpp_conf->auth_type;
 			if (tpp_conf->get_ext_auth_data == NULL) {
@@ -539,6 +540,7 @@ router_post_connect_handler(int tfd, void *data, void *c)
 		}
 
 		/* send a TPP_CTL_JOIN message */
+		memset(&hdr, 0, sizeof(tpp_join_pkt_hdr_t)); /* only to satisfy valgrind */
 		hdr.type = TPP_CTL_JOIN;
 		hdr.node_type = TPP_ROUTER_NODE;
 		hdr.hop = 1;
@@ -624,6 +626,8 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 		TPP_DBPRT(("tfd = %d, No context, leaving", tfd));
 		return 0;
 	}
+
+	memset(&hdr, 0, sizeof(tpp_leave_pkt_hdr_t)); /* only to satisfy valgrind */
 
 	if (ctx->type == TPP_LEAF_NODE || ctx->type == TPP_LEAF_NODE_LISTEN) {
 
@@ -997,6 +1001,7 @@ router_timer_handler(time_t now)
 	if (send_update == 1) {
 		int len;
 
+		memset(&hdr, 0, sizeof(tpp_ctl_pkt_hdr_t)); /* only to satisfy valgrind */
 		hdr.type = TPP_CTL_MSG;
 		hdr.code = TPP_MSG_UPDATE;
 
@@ -1527,6 +1532,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 			tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 
 			/* set common things here */
+			memset(&shdr, 0, sizeof(tpp_data_pkt_hdr_t)); /* only to satisfy valgrind */
 			shdr.type = TPP_DATA;
 			shdr.ack_seq = htonl(UNINITIALIZED_INT);
 			shdr.dup = 0;
