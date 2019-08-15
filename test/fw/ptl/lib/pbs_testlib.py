@@ -35,25 +35,31 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import sys
-import os
-import socket
-import pwd
+import copy
+import cPickle
+import datetime
 import grp
 import logging
-import time
-import re
+import os
+import pwd
 import random
+import re
+import socket
 import string
+import sys
 import tempfile
-import cPickle
-import copy
-import datetime
-import traceback
 import threading
-from operator import itemgetter
+import time
+import traceback
 from collections import OrderedDict
 from distutils.version import LooseVersion
+from operator import itemgetter
+
+from ptl.lib.pbs_api_to_cli import api_to_cli
+from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
+from ptl.utils.pbs_fileutils import FILE_TAIL, FileUtils
+from ptl.utils.pbs_procutils import ProcUtils
 
 try:
     import psycopg2
@@ -73,12 +79,6 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.pbs_api_to_cli import api_to_cli
-from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_cliutils import CliUtils
-from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
-from ptl.utils.pbs_dshutils import PtlUtilError
 
 # suppress logging exceptions
 logging.raiseExceptions = False
@@ -242,17 +242,17 @@ class PtlConfig(object):
             'PTL_SUDO_CMD': 'sudo -H',
             'PTL_RSH_CMD': 'ssh',
             'PTL_CP_CMD': 'scp -p',
-            'PTL_EXPECT_MAX_ATTEMPTS': 60,
-            'PTL_EXPECT_INTERVAL': 0.5,
+            'PTL_MAX_ATTEMPTS': 60,
+            'PTL_ATTEMPT_INTERVAL': 0.5,
             'PTL_UPDATE_ATTRIBUTES': True,
         }
         self.handlers = {
             'PTL_SUDO_CMD': DshUtils.set_sudo_cmd,
             'PTL_RSH_CMD': DshUtils.set_rsh_cmd,
             'PTL_CP_CMD': DshUtils.set_copy_cmd,
-            'PTL_EXPECT_MAX_ATTEMPTS': Server.set_expect_max_attempts,
-            'PTL_EXPECT_INTERVAL': Server.set_expect_interval,
-            'PTL_UPDATE_ATTRIBUTES': Server.set_update_attributes
+            'PTL_MAX_ATTEMPTS': PBSObject.set_max_attempts,
+            'PTL_ATTEMPT_INTERVAL': PBSObject.set_attempt_interval,
+            'PTL_UPDATE_ATTRIBUTES': PBSObject.set_update_attributes
         }
         if conf is None:
             conf = os.environ.get('PTL_CONF_FILE', '/etc/ptl.conf')
@@ -272,6 +272,25 @@ class PtlConfig(object):
                 self.options[k] = v
             except:
                 self.logger.error('Error parsing line ' + line)
+        # below two if block are for backword compatibility
+        if 'PTL_EXPECT_MAX_ATTEMPTS' in self.options:
+            _o = self.options['PTL_EXPECT_MAX_ATTEMPTS']
+            _m = self.options['PTL_MAX_ATTEMPTS']
+            _e = os.environ.get('PTL_EXPECT_MAX_ATTEMPTS', _m)
+            del self.options['PTL_EXPECT_MAX_ATTEMPTS']
+            self.options['PTL_MAX_ATTEMPTS'] = max([_o, _m, _e])
+            _msg = 'PTL_EXPECT_MAX_ATTEMPTS is deprecated,'
+            _msg += ' use PTL_MAX_ATTEMPTS instead'
+            self.logger.warn(_msg)
+        if 'PTL_EXPECT_INTERVAL' in self.options:
+            _o = self.options['PTL_EXPECT_INTERVAL']
+            _m = self.options['PTL_ATTEMPT_INTERVAL']
+            _e = os.environ.get('PTL_EXPECT_INTERVAL', _m)
+            del self.options['PTL_EXPECT_INTERVAL']
+            self.options['PTL_ATTEMPT_INTERVAL'] = max([_o, _m, _e])
+            _msg = 'PTL_EXPECT_INTERVAL is deprecated,'
+            _msg += ' use PTL_ATTEMPT_INTERVAL instead'
+            self.logger.warn(_msg)
         for k, v in self.options.items():
             if k in os.environ:
                 v = os.environ[k]
@@ -3345,6 +3364,23 @@ class PBSObject(object):
     """
     Generic PBS Object encapsulating attributes and defaults
 
+    The ptl_conf dictionary holds general configuration for the
+    framework's operations, specifically, one can control:
+
+    mode: set to ``PTL_CLI`` to operate in ``CLI`` mode or
+    ``PTL_API`` to operate in ``API`` mode
+
+    max_attempts: the default maximum number of attempts
+    to be used by different methods like expect, log_match.
+    Defaults to 60
+
+    attempt_interval: the default time interval (in seconds)
+    between each requests. Defaults to 0.5
+
+    update_attributes: the default on whether Object attributes
+    should be updated using a list of dictionaries. Defaults
+    to True
+
     :param name: The name associated to the object
     :type name: str
     :param attrs: Dictionary of attributes to set on object
@@ -3354,8 +3390,16 @@ class PBSObject(object):
     :type defaults: Dictionary
     """
 
+    logger = logging.getLogger(__name__)
     utils = BatchUtils()
     platform = sys.platform
+
+    ptl_conf = {
+        'mode': PTL_API,
+        'max_attempts': 60,
+        'attempt_interval': 0.5,
+        'update_attributes': True,
+    }
 
     def __init__(self, name, attrs={}, defaults={}):
         self.attributes = OrderedDict()
@@ -3366,6 +3410,34 @@ class PBSObject(object):
         self.ctime = int(time.time())
 
         self.set_attributes(attrs)
+
+    @classmethod
+    def set_update_attributes(cls, val):
+        """
+        Set update attributes
+        """
+        cls.logger.info('setting update attributes ' + str(val))
+        if val or (val.isdigit() and int(val) == 1) or val[0] in ('t', 'T'):
+            val = True
+        else:
+            val = False
+        cls.ptl_conf['update_attributes'] = val
+
+    @classmethod
+    def set_max_attempts(cls, val):
+        """
+        Set max attempts
+        """
+        cls.logger.info('setting max attempts ' + str(val))
+        cls.ptl_conf['max_attempts'] = int(val)
+
+    @classmethod
+    def set_attempt_interval(cls, val):
+        """
+        Set attempt interval
+        """
+        cls.logger.info('setting attempt interval ' + str(val))
+        cls.ptl_conf['attempt_interval'] = float(val)
 
     def set_attributes(self, a={}):
         """
@@ -4054,9 +4126,9 @@ class PBSService(PBSObject):
         if self.logutils is None:
             self.logutils = PBSLogUtils()
         if max_attempts is None:
-            max_attempts = 60
+            max_attempts = self.ptl_conf['max_attempts']
         if interval is None:
-            interval = 0.5
+            interval = self.ptl_conf['attempt_interval']
         rv = (None, None)
         attempt = 1
         lines = None
@@ -4067,6 +4139,10 @@ class PBSService(PBSObject):
             infomsg += ' - using regular expression '
         if allmatch:
             infomsg += ' - on all matches '
+        if existence:
+            infomsg += ' - with existence'
+        else:
+            infomsg += ' - with non-existence'
         attemptmsg = ' - No match'
         while attempt <= max_attempts:
             if attempt > 1:
@@ -4076,6 +4152,9 @@ class PBSService(PBSObject):
             rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
                                          regexp=regexp, starttime=starttime,
                                          endtime=endtime)
+            if rv is None and not existence:
+                self.logger.log(level, infomsg + attemptmsg + '... OK')
+                break
             if rv:
                 self.logger.log(level, infomsg + '... OK')
                 break
@@ -4342,7 +4421,6 @@ class Comm(PBSService):
 
     def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
-        self.logger = logging.getLogger(__name__)
         if server is not None:
             self.server = server
             if snap is None and self.server.snap is not None:
@@ -4371,7 +4449,7 @@ class Comm(PBSService):
         """
         Check for comm up
         """
-        for _ in range(10):
+        for _ in range(self.ptl_conf['max_attempts']):
             rv = super(Comm, self)._isUp(self)
             if rv:
                 break
@@ -4525,22 +4603,6 @@ class Server(PBSService):
     see functions, for ``example: revert_to_defaults,
     init_logging, expect, counter.``
 
-    The ptl_conf dictionary holds general configuration for the
-    framework's operations, specifically, one can control:
-
-    mode: set to ``PTL_CLI`` to operate in ``CLI`` mode or
-    ``PTL_API`` to operate in ``API`` mode
-
-    expect_max_attempts: the default maximum number of attempts
-    to be used\ by expect. Defaults to 60
-
-    expect_interval: the default time interval (in seconds)
-    between expect\ requests. Defaults to 0.5
-
-    update_attributes: the default on whether Object attributes
-    should be\ updated using a list of dictionaries. Defaults
-    to True
-
     :param name: The hostname of the server. Defaults to
                  calling pbs_default()
     :type name: str
@@ -4573,8 +4635,6 @@ class Server(PBSService):
     :type stat: bool
     """
 
-    logger = logging.getLogger(__name__)
-
     dflt_attributes = {
         ATTR_dfltque: "workq",
         ATTR_nodefailrq: "310",
@@ -4584,12 +4644,6 @@ class Server(PBSService):
 
     dflt_sched_name = 'default'
 
-    ptl_conf = {
-        'mode': PTL_API,
-        'expect_max_attempts': 60,
-        'expect_interval': 0.5,
-        'update_attributes': True,
-    }
     # this pattern is a bit relaxed to match common developer build numbers
     version_tag = re.compile("[a-zA-Z_]*(?P<version>[\d\.]+.[\w\d\.]*)[\s]*")
 
@@ -4692,34 +4746,6 @@ class Server(PBSService):
                 self.version = LooseVersion(v)
         self.logger.info(self.logprefix + 'version ' +
                          self.attributes[ATTR_version])
-
-    @classmethod
-    def set_update_attributes(cls, val):
-        """
-        Set update attributes
-        """
-        cls.logger.info('setting update attributes ' + str(val))
-        if val == 1 or val[0] in ('t', 'T'):
-            val = True
-        else:
-            val = False
-        cls.ptl_conf['update_attributes'] = val
-
-    @classmethod
-    def set_expect_max_attempts(cls, val):
-        """
-        Set expect max attempts
-        """
-        cls.logger.info('setting expect max attempts ' + str(val))
-        cls.ptl_conf['expect_max_attempts'] = int(val)
-
-    @classmethod
-    def set_expect_interval(cls, val):
-        """
-        Set expect interval
-        """
-        cls.logger.info('setting expect interval ' + str(val))
-        cls.ptl_conf['expect_interval'] = float(val)
 
     def set_client(self, name=None):
         """
@@ -4863,7 +4889,7 @@ class Server(PBSService):
         op_mode = self.get_op_mode()
         if ((op_mode == PTL_API) and (self._conn is not None)):
             self._disconnect(self._conn, force=True)
-        while i < 20:
+        while i < self.ptl_conf['max_attempts']:
             rv = False
             try:
                 if op_mode == PTL_CLI:
@@ -8107,10 +8133,9 @@ class Server(PBSService):
                         called
         :type attempt: int
         :param max_attempts: The maximum number of attempts to
-                             perform.C{param_max_attempts}: 5
+                             perform
         :type max_attempts: int or None
-        :param interval: The interval time btween attempts.
-                         C{param_interval}: 1s
+        :param interval: The interval time between attempts.
         :param count: If True, attrib will be accumulated using
                       function counter
         :type count: bool
@@ -8146,10 +8171,10 @@ class Server(PBSService):
             max_attempts = 3
 
         if max_attempts is None:
-            max_attempts = int(self.ptl_conf['expect_max_attempts'])
+            max_attempts = self.ptl_conf['max_attempts']
 
         if interval is None:
-            interval = self.ptl_conf['expect_interval']
+            interval = self.ptl_conf['attempt_interval']
 
         if attempt >= max_attempts:
             _msg = "expected on " + self.logprefix + msg
@@ -10416,7 +10441,6 @@ class EquivClass(PBSObject):
         self.name = name
         self.attributes = attributes
         self.entities = entities
-        self.logger = logging.getLogger(__name__)
 
     def add_entity(self, entity):
         """
@@ -10679,7 +10703,6 @@ class Scheduler(PBSService):
         self.resource_group = None
         self.holidays_obj = None
         self.server = None
-        self.logger = logging.getLogger(__name__)
         self.db_access = None
 
         if server is not None:
@@ -10769,7 +10792,7 @@ class Scheduler(PBSService):
         """
         Check for PBS scheduler up
         """
-        for _ in range(10):
+        for _ in range(self.ptl_conf['max_attempts']):
             rv = super(Scheduler, self)._isUp(self)
             if rv:
                 break
@@ -11168,8 +11191,8 @@ class Scheduler(PBSService):
             self.signal('-HUP')
             try:
                 self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
-                               n=10, starttime=reconfig_time)
-                self.log_match("Error reading line", n=10, max_attempts=2,
+                               starttime=reconfig_time)
+                self.log_match("Error reading line", max_attempts=2,
                                starttime=reconfig_time, existence=False)
             except PtlLogMatchError:
                 _msg = 'Error in validating sched_config changes'
@@ -12503,8 +12526,8 @@ class Scheduler(PBSService):
             self.signal('-HUP')
             try:
                 self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
-                               n=10, starttime=reconfig_time)
-                self.log_match("fairshare;resgroup: error ", n=10,
+                               starttime=reconfig_time)
+                self.log_match("fairshare;resgroup: error ",
                                starttime=reconfig_time, existence=False,
                                max_attempts=2)
             except PtlLogMatchError:
@@ -12513,7 +12536,7 @@ class Scheduler(PBSService):
                                           msg=_msg)
         return rc
 
-    def job_formula(self, jobid=None, starttime=None, max_attempts=5):
+    def job_formula(self, jobid=None, starttime=None, max_attempts=None):
         """
         Extract formula value out of scheduler log
 
@@ -12539,9 +12562,11 @@ class Scheduler(PBSService):
 
         formula_pat = (".*Job;" + jobid +
                        ".*;Formula Evaluation = (?P<fval>.*)")
-
+        if max_attempts is None:
+            max_attempts = self.ptl_conf['max_attempts']
         rv = self.log_match(formula_pat, regexp=True, starttime=starttime,
-                            n='ALL', allmatch=True, max_attempts=5)
+                            n='ALL', allmatch=True,
+                            max_attempts=max_attempts)
         ret = {}
         if rv:
             for _, l in rv:
@@ -12812,9 +12837,6 @@ class MoM(PBSService):
 
     def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
-
-        self.logger = logging.getLogger(__name__)
-
         if server is not None:
             self.server = server
             if snap is None and self.server.snap is not None:
@@ -12860,11 +12882,13 @@ class MoM(PBSService):
         self.version = None
         self._is_cpuset_mom = None
 
-    def isUp(self, max_attempts=20):
+    def isUp(self, max_attempts=None):
         """
         Check for PBS mom up
         """
         # Poll for few seconds to see if mom is up and node is free
+        if max_attempts is None:
+            max_attempts = self.ptl_conf['max_attempts']
         for _ in range(max_attempts):
             rv = super(MoM, self)._isUp(self)
             if rv:
@@ -13704,7 +13728,6 @@ class Hook(PBSObject):
     dflt_attributes = {}
 
     def __init__(self, name=None, attrs={}, server=None):
-        self.logger = logging.getLogger(__name__)
         PBSObject.__init__(self, name, attrs, self.dflt_attributes)
         self.server = server
 
@@ -13819,7 +13842,6 @@ class Job(ResourceResv):
         ATTR_k: 'oe',
     }
     runtime = 100
-    logger = logging.getLogger(__name__)
     du = DshUtils()
 
     def __init__(self, username=None, attrs={}, jobname=None):
@@ -14242,7 +14264,6 @@ class Queue(PBSObject):
     dflt_attributes = {}
 
     def __init__(self, name=None, attrs={}, server=None):
-        self.logger = logging.getLogger(__name__)
         PBSObject.__init__(self, name, attrs, self.dflt_attributes)
 
         self.server = server

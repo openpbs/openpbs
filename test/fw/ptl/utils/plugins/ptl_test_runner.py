@@ -35,34 +35,35 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import os
-import sys
-import logging
 import datetime
-import unittest
-import tempfile
+import logging
+import os
 import platform
-import socket
 import pwd
-import signal
-import ptl
 import re
+import signal
+import socket
+import sys
+import tempfile
+import unittest
 from logging import StreamHandler
 from traceback import format_exception
 from types import ModuleType
+
 from nose.core import TextTestRunner
-from nose.util import isclass
 from nose.plugins.base import Plugin
 from nose.plugins.skip import SkipTest
 from nose.suite import ContextSuite
-from ptl.utils.pbs_testsuite import PBSTestSuite
-from ptl.utils.pbs_testsuite import TIMEOUT_KEY
-from ptl.utils.pbs_testsuite import REQUIREMENTS_KEY
-from ptl.utils.pbs_testsuite import MINIMUM_TESTCASE_TIMEOUT
-from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.plugins.ptl_test_info import get_effective_reqs
+from nose.util import isclass
+
+import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
 from ptl.utils.pbs_covutils import LcovUtils
+from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
+                                     REQUIREMENTS_KEY, TIMEOUT_KEY)
+from ptl.utils.plugins.ptl_test_info import get_effective_reqs
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -540,7 +541,7 @@ class PTLTestRunner(Plugin):
     def startContext(self, context):
         context.param = self.param
         context.start_time = datetime.datetime.now()
-        if isclass(context) and issubclass(context, PBSTestSuite):
+        if isclass(context) and issubclass(context, unittest.TestCase):
             self.result.logger.info(self.result.separator1)
             self.result.logger.info('suite name: ' + context.__name__)
             doc = context.__doc__
@@ -551,20 +552,25 @@ class PTLTestRunner(Plugin):
             self.__failed_tc_count_msg = False
 
     def __get_timeout(self, test):
-        try:
-            method = getattr(test.test, getattr(test.test, '_testMethodName'))
-            return getattr(method, TIMEOUT_KEY)
-        except AttributeError:
-            testcase_timeout = MINIMUM_TESTCASE_TIMEOUT
-            if hasattr(test, 'test'):
-                if hasattr(test.test, 'conf'):
-                    __conf = getattr(test.test, 'conf')
-                    testcase_timeout = __conf['default_testcase_timeout']
-            elif hasattr(test, 'context'):
-                if hasattr(test.context, 'conf'):
-                    __conf = getattr(test.context, 'conf')
-                    testcase_timeout = __conf['default_testcase_timeout']
-            return testcase_timeout
+        _test = None
+        if hasattr(test, 'test'):
+            _test = test.test
+        elif hasattr(test, 'context'):
+            _test = test.context
+        if _test is None:
+            return MINIMUM_TESTCASE_TIMEOUT
+        dflt_timeout = int(getattr(_test,
+                                   'conf',
+                                   {}).get('default-testcase-timeout',
+                                           MINIMUM_TESTCASE_TIMEOUT))
+        tc_timeout = getattr(getattr(_test,
+                                     getattr(_test,
+                                             '_testMethodName',
+                                             ''),
+                                     None),
+                             TIMEOUT_KEY,
+                             0)
+        return max([dflt_timeout, tc_timeout])
 
     def __set_test_end_data(self, test, err=None):
         if not hasattr(test, 'start_time'):
@@ -702,7 +708,6 @@ class PTLTestRunner(Plugin):
             self.logger.error(_msg)
             self.__failed_tc_count_msg = True
             raise TCThresholdReached
-        timeout = self.__get_timeout(test)
         rv = self.__are_requirements_matching(self.param_dict, test)
         if rv is False:
             # Below method call is needed in order to get the test case
@@ -713,6 +718,7 @@ class PTLTestRunner(Plugin):
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
+        timeout = self.__get_timeout(test)
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         setattr(test, 'old_sigalrm_handler', old_handler)
         signal.alarm(timeout)
