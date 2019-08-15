@@ -875,6 +875,7 @@ tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned i
 	/* send a packet back to where the original packet came from
 	 * basically reverse src and dest
 	 */
+	memset(&lhdr, 0, sizeof(tpp_ctl_pkt_hdr_t)); /* only to satisfy valgrind */
 	lhdr.type = TPP_CTL_MSG;
 	lhdr.code = code;
 	lhdr.src_sd = htonl(src_sd);
