@@ -612,7 +612,7 @@ pbsd_init(int type)
 #ifdef WIN32
 	/* For windows, DO NOT check full path - allow Windows system */
 	/* to put in appropriate defaults for permission */
-	rc  = chk_file_sec(path_jobs,   1, 0, WRITES_MASK, 0);
+	rc  = chk_file_sec(path_jobs,   1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
 
 	/* my version of lstat() using Windows call is more reliable */
 	if (lstat(path_users, &statbuf) != 0) {
@@ -620,12 +620,12 @@ pbsd_init(int type)
 		secure_file(path_users, NULL, 0);
 	}
 
-	rc |= chk_file_sec(path_users,  1, 0, WRITES_MASK, 0);
-	rc |= chk_file_sec(path_hooks,  1, 0, WRITES_MASK, 0);
-	rc |= chk_file_sec(path_hooks_workdir,  1, 0, WRITES_MASK, 0);
+	rc |= chk_file_sec(path_users,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
+	rc |= chk_file_sec(path_hooks,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
+	rc |= chk_file_sec(path_hooks_workdir,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
 	rc |= chk_file_sec(path_spool,  1, 1, 0, 0);	/* allows others to write */
-	rc |= chk_file_sec(path_acct,	1, 1, WRITES_MASK, 0);
-	rc |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, WRITES_MASK, 0);
+	rc |= chk_file_sec(path_acct,	1, 1, WRITES_MASK^FILE_WRITE_EA, 0);
+	rc |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0);
 #else
 	rc  = chk_file_sec(path_jobs,   1, 0, S_IWGRP|S_IWOTH, 1);
 	if (stat(path_users, &statbuf) != 0)
@@ -1204,7 +1204,7 @@ pbsd_init(int type)
 #ifdef WIN32
 	secure_file(path_track, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 	setmode(fd, O_BINARY);
-	if (chk_file_sec(path_track,  0, 0, WRITES_MASK, 0) != 0)
+	if (chk_file_sec(path_track,  0, 0, WRITES_MASK^FILE_WRITE_EA, 0) != 0)
 #else
 	if (chk_file_sec(path_track,  0, 0, S_IWGRP|S_IWOTH, 0) != 0)
 #endif
@@ -1276,7 +1276,7 @@ pbsd_init(int type)
 #ifdef WIN32
 	secure_file(path_prov_track, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 	setmode(fd, O_BINARY);
-	if (chk_file_sec(path_prov_track,  0, 0, WRITES_MASK, 0) != 0)
+	if (chk_file_sec(path_prov_track,  0, 0, WRITES_MASK^FILE_WRITE_EA, 0) != 0)
 #else
 	if (chk_file_sec(path_prov_track,  0, 0, S_IWGRP|S_IWOTH, 0) != 0)
 #endif

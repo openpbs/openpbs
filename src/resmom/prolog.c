@@ -276,7 +276,7 @@ int   pe_io_type;
 			return (pelog_err(pjob, pelog, errno, "cannot stat"));
 	}
 #ifdef WIN32
-	else if (chk_file_sec(pelog, 0, 0, WRITES_MASK, 0))
+	else if (chk_file_sec(pelog, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0))
 #else
 	else if ((sbuf.st_uid != 0) ||
 		(! S_ISREG(sbuf.st_mode)) ||
