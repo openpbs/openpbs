@@ -54,7 +54,12 @@ from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_procutils import ProcMonitor
+<<<<<<< HEAD
 from ptl.utils.pbs_testusers import *
+=======
+from ptl.lib.pbs_testlib import *
+from ptl.utils.pbs_testusers import PBS_TEST_USERS
+>>>>>>> Addressing Hiren's comments
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
@@ -489,11 +494,7 @@ class PBSTestSuite(unittest.TestCase):
     def _set_user(cls, name, user_list):
         if name in cls.conf:
             for idx, u in enumerate(cls.conf[name].split(':')):
-                if '@' in u:
-                    user = u.split('@')
-                    user_list[idx].__init__({user[0]: user[1]})
-                else:
-                    user_list[idx].__init__(u)
+                user_list[idx].__init__(u)
 
     @classmethod
     def check_users_exist(cls):
@@ -501,11 +502,9 @@ class PBSTestSuite(unittest.TestCase):
         Check whether the user is exist or not
         """
         testusersexist = True
-        for u in [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]:
-            username = getattr(u, "name")
-            if type(username) is dict:
-                for _u, _h in username.items():
-                    rv = cls.du.check_user_exists(_u, _h)
+        for u in PBS_TEST_USERS:
+            if getattr(u, "port", None) and getattr(u, "host", None):
+                rv = cls.du.check_user_exists(u.name, u.host, u.port)
             else:
                 rv = cls.du.check_user_exists(str(u))
             if not rv:

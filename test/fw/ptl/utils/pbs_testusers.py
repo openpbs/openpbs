@@ -37,6 +37,7 @@
 
 
 import grp
+import pwd
 
 
 class PbsGroup(object):
@@ -110,6 +111,13 @@ class PbsUser(object):
             self.uid = int(uid)
         else:
             self.uid = None
+        if "@" in name:
+            user = name.split('@')
+            self.name = user[0]
+            host_port = user[1].split('+')
+            self.host = host_port[0]
+            if len(host_port) > 1:
+                self.port = host_port[1]
         self.home = None
         self.gid = None
         self.shell = None
@@ -209,3 +217,8 @@ PBS_DATA_USERS = (DATA_USER,)
 PBS_ROOT_USERS = (PBSROOT_USER, ROOT_USER)
 
 PBS_BUILD_USERS = (BUILD_USER,)
+
+REQUIRED_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3)
+
+PBS_ALL_USERS = PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS + PBS_DATA_USERS +
+                PBS_ROOT_USERS + PBS_BUILD_USERS

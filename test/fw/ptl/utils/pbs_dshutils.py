@@ -48,7 +48,7 @@ import tempfile
 import pwd
 import grp
 import platform
-from ptl.utils.pbs_testusers import *
+from ptl.utils.pbs_testusers import PBS_ALL_USERS
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -693,7 +693,7 @@ class DshUtils(object):
         self._current_user = pwd.getpwuid(os.getuid())[0]
         return self._current_user
 
-    def check_user_exists(self, username=None, hostname=None):
+    def check_user_exists(self, username=None, hostname=None, port=None):
         """
         Check if user exist  or not
 
@@ -706,7 +706,7 @@ class DshUtils(object):
         if hostname is None:
             hostname = socket.gethostname()
 
-        ret = self.run_cmd(hostname, ['id', username])
+        ret = self.run_cmd(hostname, ['id', username], port=port)
         if ret['rc'] == 0:
             return True
         return False
@@ -843,22 +843,10 @@ class DshUtils(object):
                 self._tempdir[hostname] = '/tmp'
         return self._tempdir[hostname]
 
-    def get_user_hosts(self):
-        """
-        returns: Dictionary of "username" and "hostname+port" pair
-                 Default is empty
-        """
-        users = [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]
-        user_hosts = {}
-        for u in users:
-            if type(u) is dict:
-                user_hosts.update(u)
-        return user_hosts
-
     def run_cmd(self, hosts=None, cmd=None, sudo=False, stdin=None,
                 stdout=PIPE, stderr=PIPE, input=None, cwd=None, env=None,
                 runas=None, logerr=True, as_script=False, wait_on_script=True,
-                level=logging.INFOCLI2):
+                level=logging.INFOCLI2, port=None):
         """
         Run a command on a host or list of hosts.
 
@@ -894,6 +882,9 @@ class DshUtils(object):
         :param wait_on_script: If True (default) waits on process
                                launched as script to return.
         :type wait_on_script: boolean
+        :type port: str
+        :param port: port number used with remote host IP address
+                     for ssh
         :returns: error, output, return code as a dictionary:
                   ``{'out':...,'err':...,'rc':...}``
         """
@@ -932,24 +923,10 @@ class DshUtils(object):
 
         ret = {'out': '', 'err': '', 'rc': 0}
 
-        user_hosts = self.get_user_hosts()
-        check_runas = False
-        if runas is not None:
-            if runas in user_hosts.keys():
-                for h in user_hosts.values():
-                    hostname_port = h.split('+')
-                    hostname = hostname_port[0]
-                    if len(hostname_port) > 1:
-                        port = hostname_port[1]
-                check_runas = True
-
         for hostname in hosts:
-            if not check_runas:
-                hostname_port = hostname.split('+')
-                hostname = hostname_port[0]
-                port = None
-                if len(hostname_port) > 1:
-                    port = hostname_port[1]
+            if (runas is not None) and (runas in PBS_ALL_USERS):
+                    hostname = runas.host
+                    port = runas.port
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
