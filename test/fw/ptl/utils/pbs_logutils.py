@@ -296,7 +296,7 @@ class PBSLogUtils(object):
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
-                    cmd = copy.copy(self.sudo_cmd) + ['cat', log]
+                    cmd = copy.copy(self.du.sudo_cmd) + ['cat', log]
                     self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
