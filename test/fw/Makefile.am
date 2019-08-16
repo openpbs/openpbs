@@ -59,6 +59,10 @@ ptlpkg_pylib_pluginsdir = $(ptlpkg_pylib_utilsdir)/plugins
 
 dist_ptlpkg_pylib_plugins_PYTHON = $(wildcard $(srcdir)/ptl/utils/plugins/*.py)
 
+ptlpkg_pylib_jobsdir = $(ptlpkg_pylib_utilsdir)/jobs
+
+dist_ptlpkg_pylib_jobs_PYTHON = $(wildcard $(srcdir)/ptl/utils/jobs/*.py)
+
 sysprofiledir = /etc/profile.d
 
 dist_sysprofile_DATA = \
