@@ -45,7 +45,7 @@ dist_ptlpkg_bin_SCRIPTS = $(wildcard $(srcdir)/bin/*)
 
 ptlpkg_pylib_topdir = ${ptl_prefix}/lib/python$(PYTHON_VERSION)/site-packages/ptl
 
-dist_ptlpkg_pylib_top_PYTHON = $(wildcard $(srcdir)/ptl/*.py)
+dist_ptlpkg_pylib_top_PYTHON = ptl/__init__.py
 
 ptlpkg_pylib_libdir = $(ptlpkg_pylib_topdir)/lib
 
