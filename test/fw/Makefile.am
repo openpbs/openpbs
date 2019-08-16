@@ -45,7 +45,7 @@ dist_ptlpkg_bin_SCRIPTS = $(wildcard $(srcdir)/bin/*)
 
 ptlpkg_pylib_topdir = ${ptl_prefix}/lib/python$(PYTHON_VERSION)/site-packages/ptl
 
-dist_ptlpkg_pylib_top_PYTHON = $(wildcard $(srcdir)/ptl/*.py)
+dist_ptlpkg_pylib_top_PYTHON = $(wildcard $(srcdir)/ptl/*.py $(builddir)/ptl/*.py)
 
 ptlpkg_pylib_libdir = $(ptlpkg_pylib_topdir)/lib
 
@@ -58,6 +58,10 @@ dist_ptlpkg_pylib_utils_PYTHON = $(wildcard $(srcdir)/ptl/utils/*.py)
 ptlpkg_pylib_pluginsdir = $(ptlpkg_pylib_utilsdir)/plugins
 
 dist_ptlpkg_pylib_plugins_PYTHON = $(wildcard $(srcdir)/ptl/utils/plugins/*.py)
+
+ptlpkg_pylib_jobsdir = $(ptlpkg_pylib_utilsdir)/jobs
+
+dist_ptlpkg_pylib_jobs_PYTHON = $(wildcard $(srcdir)/ptl/utils/jobs/*.py)
 
 sysprofiledir = /etc/profile.d
 
