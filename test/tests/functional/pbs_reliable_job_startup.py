@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 def convert_time(fmt, tm, fixdate=False):
@@ -76,6 +77,7 @@ class TestPbsReliableJobStartup(TestFunctional):
     Custom parameters:
     moms: colon-separated hostnames of five MoMs
     """
+    logutils = PBSLogUtils()
 
     def pbs_nodefile_match_exec_host(self, jid, exec_host,
                                      schedselect=None):
@@ -1665,12 +1667,11 @@ pbs_tmrsh %s hostname
             "Executing prolo",
             allmatch=True, starttime=stime, max_attempts=8)
         log2 = logs[0][1]
-        pattern = '%m/%d/%Y %H:%M:%S'
         tmp = log1.split(';')
         # Convert the time into epoch time
-        time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time1 = int(self.logutils.convert_date_time(tmp[0]))
         tmp = log2.split(';')
-        time2 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time2 = int(self.logutils.convert_date_time(tmp[0]))
 
         diff = time2 - time1
         self.logger.info(
@@ -1693,12 +1694,11 @@ pbs_tmrsh %s hostname
             "Executing launch",
             allmatch=True, starttime=stime, max_attempts=8)
         log2 = logs[0][1]
-        pattern = '%m/%d/%Y %H:%M:%S'
         tmp = log1.split(';')
         # Convert the time into epoch time
-        time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time1 = int(self.logutils.convert_date_time(tmp[0]))
         tmp = log2.split(';')
-        time2 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time2 = int(self.logutils.convert_date_time(tmp[0]))
 
         diff = time2 - time1
         self.logger.info("Time diff between prolo hook and launch hook is " +
@@ -2027,12 +2027,11 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
             "Executing prolo1",
             allmatch=True, starttime=stime, max_attempts=8)
         log2 = logs[0][1]
-        pattern = '%m/%d/%Y %H:%M:%S'
         tmp = log1.split(';')
         # Convert the time into epoch time
-        time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time1 = int(self.logutils.convert_date_time(tmp[0]))
         tmp = log2.split(';')
-        time2 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time2 = int(self.logutils.convert_date_time(tmp[0]))
 
         diff = time2 - time1
         self.logger.info(
@@ -2058,12 +2057,11 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
             "Executing launch",
             allmatch=True, starttime=stime, max_attempts=8)
         log2 = logs[0][1]
-        pattern = '%m/%d/%Y %H:%M:%S'
         tmp = log1.split(';')
         # Convert the time into epoch time
-        time1 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time1 = int(self.logutils.convert_date_time(tmp[0]))
         tmp = log2.split(';')
-        time2 = int(time.mktime(time.strptime(tmp[0], pattern)))
+        time2 = int(self.logutils.convert_date_time(tmp[0]))
 
         diff = time2 - time1
         self.logger.info(
