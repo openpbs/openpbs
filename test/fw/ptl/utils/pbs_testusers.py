@@ -155,6 +155,7 @@ class PbsUser(object):
     def __int__(self):
         return int(self.uid)
 
+
 # Test users/groups are expected to exist on the test systems
 # User running the tests and the test users should have passwordless sudo
 # access configured to avoid interrupted (queries for password) test runs
@@ -220,5 +221,5 @@ PBS_BUILD_USERS = (BUILD_USER,)
 
 REQUIRED_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3)
 
-PBS_ALL_USERS = PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS + PBS_DATA_USERS +
-                PBS_ROOT_USERS + PBS_BUILD_USERS
+PBS_ALL_USERS = PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS + \
+                PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS

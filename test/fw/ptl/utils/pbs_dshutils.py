@@ -701,12 +701,17 @@ class DshUtils(object):
         :type username: str or None
         :param hostname: Machine hostname
         :type hostname: str or None
+        :param port: port used to ssh other host
+        :type port: str or None
         :returns: True if exist else return False
         """
         if hostname is None:
             hostname = socket.gethostname()
-
-        ret = self.run_cmd(hostname, ['id', username], port=port)
+        if self.get_platform() == "shasta":
+            runas = username
+        else:
+            runas = None
+        ret = self.run_cmd(hostname, ['id', username], port=port, runas=runas)
         if ret['rc'] == 0:
             return True
         return False
@@ -924,9 +929,11 @@ class DshUtils(object):
         ret = {'out': '', 'err': '', 'rc': 0}
 
         for hostname in hosts:
-            if (runas is not None) and (runas in PBS_ALL_USERS):
-                    hostname = runas.host
-                    port = runas.port
+            if self.get_platform() == "shasta":
+                if (runas is not None) and isinstance(runas, PbsUser):
+                    if runas in PBS_ALL_USERS:
+                        hostname = runas.host
+                        port = runas.port
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
