@@ -1512,8 +1512,12 @@ if %s e.job.in_ms_mom():
         enabled system when ncpus_are_cores is set to true.
         """
         # Check that system has hyperthreading enabled and has two processors
-        pcpus = 0; sibs = 0; cores = 0
-        pval = 0; phys = 1; prev = 0
+        pcpus = 0
+        sibs = 0
+        cores = 0
+        pval = 0
+        phys = 1
+        prev = 0
         with open('/proc/cpuinfo', 'r') as desc:
             for line in desc:
                 if re.match('^processor', line):
