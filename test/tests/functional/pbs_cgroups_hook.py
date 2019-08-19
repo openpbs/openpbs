@@ -1524,7 +1524,7 @@ if %s e.job.in_ms_mom():
                     pcpus += 1
                 sibs_match = re.search(r'siblings	: ([1-9]+)', line)
                 cores_match = re.search(r'cpu cores	: ([1-9]+)', line)
-                phys_match = re.search(r'physical id    : ([1-9]+)', line)
+                phys_match = re.search(r'physical id	: ([1-9]+)', line)
                 if sibs_match:
                     sibs = int(sibs_match.groups()[0])
                 if cores_match:
