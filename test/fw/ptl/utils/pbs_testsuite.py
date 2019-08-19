@@ -54,7 +54,7 @@ from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_procutils import ProcMonitor
-from ptl.utils.pbs_testusers import REQUIRED_USERS
+from ptl.utils.pbs_testusers import *
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
