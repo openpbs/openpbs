@@ -716,6 +716,57 @@ sleep 300
     }
 }
 """
+        self.cfg8 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [%s],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : true,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [%s]
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "96MB",
+            "reserve_amount"  : "50MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [%s]
+        },
+        "memsw":
+        {
+            "enabled"         : %s,
+            "default"         : "96MB",
+            "reserve_amount"  : "45MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [%s]
+        }
+    }
+}
+"""
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
@@ -1454,6 +1505,50 @@ if %s e.job.in_ms_mom():
         self.assertNotEqual(cpuid1, cpuid2,
                             'Processes should be assigned to different CPUs')
         self.logger.info('CpuIDs check passed')
+
+    def test_cgroup_cpuset_ncpus_are_cores(self):
+        """
+        Test to verify that correct number of jobs run on a hyperthread
+        enabled system when ncpus_are_cores is set to true.
+        """
+        # Check that system has hyperthreading enabled and has two processors
+        pcpus = 0
+        sibs = 0
+        cores = 0
+        with open('/proc/cpuinfo', 'r') as desc:
+            for line in desc:
+                if re.match('^processor', line):
+                    pcpus += 1
+                sibs_match = re.search(r'siblings	: ([1-9])', line)
+                cores_match = re.search(r'cpu cores	: ([1-9])', line)
+                if sibs_match:
+                    sibs = int(sibs_match.groups()[0])
+                if cores_match:
+                    cores = int(cores_match.groups()[0])
+        self.assertTrue(sibs > 0 and cores > 0)
+        if pcpus < 2:
+            self.skipTest('This test requires at least two processors.')
+        if sibs/cores == 1:
+            self.skipTest('This test requires hyperthreading to be enabled.')
+        name = 'CGROUP18'
+        self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
+        # Submit N jobs, where N is number of 'cpu cores', expect them to run
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.hosts_list[0], ATTR_N: name + 'a'}
+        for j in range(cores):
+            j = Job(TEST_USER, attrs=a)
+            j.create_script(self.cpuset_mem_script)
+            jid = self.server.submit(j)
+            a1 = {'job_state': 'R'}
+            self.server.expect(JOB, a1, jid, max_attempts=10)
+        # Submit another job, expect in Q state
+        b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.hosts_list[0], ATTR_N: name + 'b'}
+        j2 = Job(TEST_USER, attrs=b)
+        j2.create_script(self.cpuset_mem_script)
+        jid2 = self.server.submit(j2)
+        b1 = {'job_state': 'Q'}
+        self.server.expect(JOB, b1, jid2, max_attempts=10)
 
     def test_cgroup_enforce_memory(self):
         """
