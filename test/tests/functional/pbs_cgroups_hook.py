@@ -1512,30 +1512,38 @@ if %s e.job.in_ms_mom():
         enabled system when ncpus_are_cores is set to true.
         """
         # Check that system has hyperthreading enabled and has two processors
-        pcpus = 0
-        sibs = 0
-        cores = 0
+        pcpus = 0; sibs = 0; cores = 0
+        pval = 0; phys = 1; prev = 0
         with open('/proc/cpuinfo', 'r') as desc:
             for line in desc:
                 if re.match('^processor', line):
                     pcpus += 1
-                sibs_match = re.search(r'siblings	: ([1-9])', line)
-                cores_match = re.search(r'cpu cores	: ([1-9])', line)
+                sibs_match = re.search(r'siblings	: ([1-9]+)', line)
+                cores_match = re.search(r'cpu cores	: ([1-9]+)', line)
+                phys_match = re.search(r'physical id    : ([1-9]+)', line)
                 if sibs_match:
                     sibs = int(sibs_match.groups()[0])
                 if cores_match:
                     cores = int(cores_match.groups()[0])
-        self.assertTrue(sibs > 0 and cores > 0)
+                if phys_match:
+                    pval = int(phys_match.groups()[0])
+                    if pval != prev:
+                        prev = pval
+                        phys += 1
+        if (sibs == 0 or cores == 0):
+            self.skipTest('Insufficient information about the processors.')
         if pcpus < 2:
             self.skipTest('This test requires at least two processors.')
         if sibs/cores == 1:
             self.skipTest('This test requires hyperthreading to be enabled.')
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
-        # Submit N jobs, where N is number of 'cpu cores', expect them to run
+        # Submit M*N jobs, where M is the amount of physical processors and
+        # N is number of 'cpu cores' per M. Expect them to run.
+        njobs = phys * cores
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
-        for j in range(cores):
+        for j in range(njobs):
             j = Job(TEST_USER, attrs=a)
             j.create_script(self.cpuset_mem_script)
             jid = self.server.submit(j)
