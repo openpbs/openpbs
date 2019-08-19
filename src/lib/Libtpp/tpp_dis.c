@@ -900,7 +900,7 @@ set_tpp_config(struct pbs_config *pbs_conf,
 	if ((s = getenv(PBS_TCP_KEEPALIVE))) {
 		/*
 		 * The format is a comma separated list of values in order, for the following variables,
-		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes
+		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes,tcp_user_timeout
 		 */
 		tpp_conf->tcp_keepalive = 0;
 		t = strtok_r(s, ",", &ctx);
