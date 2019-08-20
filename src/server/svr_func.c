@@ -4940,16 +4940,12 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 								return -1;
 							}
 						} else {
-							aoe = malloc(strlen(((pkvp + k)->kv_val)) + 1);
+							aoe = strdup((pkvp + k)->kv_val);
 							if (aoe == NULL) {
 								free(sbuf);
 								free(pbuf);
-								if (*aoe_name)
-									free(*aoe_name);
 								return -1;
 							}
-							strcpy(aoe, ((pkvp + k)->kv_val));
-							aoe[strlen((pkvp + k)->kv_val)] = '\0';
 							(*aoe_name) = aoe;
 						}
 						DBPRT(("%s: %s\n", __func__, (*aoe_name)))
@@ -5051,7 +5047,7 @@ static struct prov_vnode_info * find_prov_vnode(struct pbsnode * pnode)
 void
 free_prov_vnode(struct pbsnode * pnode)
 {
-	struct prov_vnode_info * prov_vnode_info = NULL;
+	struct prov_vnode_info *prov_vnode_info = NULL;
 
 	if (pnode->nd_state & INUSE_WAIT_PROV) {
 		if ((prov_vnode_info = find_prov_vnode(pnode))) {

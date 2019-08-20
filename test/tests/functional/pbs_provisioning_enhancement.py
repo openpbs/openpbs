@@ -448,9 +448,6 @@ e.reject()
         rv = self.server.create_import_hook(
             'fake_prov_hook', a, self.fake_prov_hook, overwrite=True)
 
-        # delete all nodes
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-
         a = {'max_concurrent_provision': 1}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.aoe': 'App1,osimage1',
