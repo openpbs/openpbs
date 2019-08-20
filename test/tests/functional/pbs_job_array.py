@@ -48,7 +48,7 @@ class TestJobArray(TestFunctional):
         Check that an arrayjob's E record's 'start' value is not set to 0
         """
         j = Job(TEST_USER, attrs={
-            ATTR_J: '1-2',
+            ATTR_J: '1-2', ATTR_k: 'oe',
             'Resource_List.select': 'ncpus=1'
         })
         j.set_sleep_time(1)
