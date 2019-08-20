@@ -1739,8 +1739,8 @@ class BatchUtils(object):
                     _e = len(lines) - 1
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
-                elif (not l[i].startswith(' ') and i > count
-                        and l[i-count].startswith('\t')):
+                elif (not l[i].startswith(' ') and i > count and
+                      l[i-count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
                     if ((i+1) < len(l) and not l[i+1].startswith(('\t', ' '))):
@@ -12791,8 +12791,9 @@ class MoM(PBSService):
             try:
                 nodes = self.server.status(NODE, id=self.shortname)
                 if nodes:
-                    self.server.expect(NODE, {'state': 'free'},
-                                       id=self.shortname)
+                    self.server.expect(NODE, {'state': 'free',
+                                              'state': 'provisioning'},
+                                       id=self.shortname, attrop=PTL_OR)
             # Ignore PbsStatusError if mom daemon is up but there aren't
             # any mom nodes
             except PbsStatusError:
