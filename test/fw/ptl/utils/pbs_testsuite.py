@@ -497,7 +497,7 @@ class PBSTestSuite(unittest.TestCase):
         Check whether the user is exist or not
         """
         testusersexist = True
-        for u in PBS_TEST_USERS:
+        for u in REQUIRED_USERS:
             if getattr(u, "port", None) and getattr(u, "host", None):
                 rv = cls.du.check_user_exists(u.name, u.host, u.port)
             else:
