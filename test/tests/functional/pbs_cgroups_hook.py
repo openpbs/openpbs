@@ -1522,9 +1522,9 @@ if %s e.job.in_ms_mom():
             for line in desc:
                 if re.match('^processor', line):
                     pcpus += 1
-                sibs_match = re.search(r'siblings	: ([1-9]+)', line)
-                cores_match = re.search(r'cpu cores	: ([1-9]+)', line)
-                phys_match = re.search(r'physical id	: ([1-9]+)', line)
+                sibs_match = re.search(r'siblings	: ([0-9]+)', line)
+                cores_match = re.search(r'cpu cores	: ([0-9]+)', line)
+                phys_match = re.search(r'physical id	: ([0-9]+)', line)
                 if sibs_match:
                     sibs = int(sibs_match.groups()[0])
                 if cores_match:
@@ -1547,7 +1547,7 @@ if %s e.job.in_ms_mom():
         njobs = phys * cores
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
-        for j in range(njobs):
+        for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
             j.create_script(self.cpuset_mem_script)
             jid = self.server.submit(j)
