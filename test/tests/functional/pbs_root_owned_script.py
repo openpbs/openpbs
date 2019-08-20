@@ -59,6 +59,10 @@ class Test_RootOwnedScript(TestFunctional):
         self.sleep_5 = """#!/bin/bash
         sleep 5
         """
+        # Make sure local mom is ready to run jobs
+        a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
+        self.server.expect(VNODE, a, count=True,
+                           max_attempts=10, interval=2)
 
     def test_root_owned_script(self):
         """
@@ -67,10 +71,38 @@ class Test_RootOwnedScript(TestFunctional):
         """
         j = Job(ROOT_USER)
         j.create_script(self.sleep_5)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.server.runjob(jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=2)
         _comment = 'Not Running: PBS Error: Execution server rejected request'
         self.server.expect(JOB, {'comment': _comment}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
+        _comment = 'job held, too many failed attempts to run'
+        self.server.expect(JOB, {'comment': _comment}, id=jid)
+
+    def test_root_owned_job_array_script(self):
+        """
+        Like test_root_owned_script, except job array is used.
+        """
+        a = {ATTR_J: '1-3'}
+        j = Job(ROOT_USER, a)
+        j.create_script(self.sleep_5)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        jid = self.server.submit(j)
+        sjid = j.create_subjob_id(jid, 1)
+        self.server.runjob(sjid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=2)
+        _comment = 'Not Running: PBS Error: Execution server rejected request'
+        self.server.expect(JOB, {'comment': _comment}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
+        _comment = 'job held, too many failed attempts to run'
+        self.server.expect(JOB, {'comment': _comment}, id=sjid)
+        ja_comment = "Job Array Held, too many failed attempts to run subjob"
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
+                           ja_comment)}, attrop=PTL_AND, id=jid)
 
     def test_non_root_script(self):
         """
