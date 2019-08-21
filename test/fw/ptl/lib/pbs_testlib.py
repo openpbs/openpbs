@@ -12791,9 +12791,8 @@ class MoM(PBSService):
             try:
                 nodes = self.server.status(NODE, id=self.shortname)
                 if nodes:
-                    self.server.expect(NODE, {'state': 'free',
-                                              'state': 'provisioning'},
-                                       id=self.shortname, attrop=PTL_OR)
+                    attr = {'state': (MATCH_RE, 'free|provisioning')}
+                    self.server.expect(NODE, attr, id=self.shortname)
             # Ignore PbsStatusError if mom daemon is up but there aren't
             # any mom nodes
             except PbsStatusError:
