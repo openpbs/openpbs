@@ -59,6 +59,7 @@
  *	where_to_runjob()
  *	assign_hosts()
  *	req_defschedreply()
+ *	check_failed_attempts()
  *
  */
 
@@ -1285,10 +1286,16 @@ parse_hook_rejectmsg(char *reject_msg, char *hook_name, int hook_name_size)
  *
  * @return	void
  */
-static void
+void
 check_failed_attempts(job *jobp)
 {
-	if (jobp->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long > PBS_MAX_HOPCOUNT + PBS_MAX_HOPCOUNT) {
+	if (jobp->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long >
+#ifdef NAS /* localmod 083 */
+		PBS_MAX_HOPCOUNT
+#else
+		PBS_MAX_HOPCOUNT + PBS_MAX_HOPCOUNT
+#endif /* localmod 083 */
+	) {
 		jobp->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
 		jobp->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 		job_attr_def[(int)JOB_ATR_Comment].at_decode(&jobp->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, "job held, too many failed attempts to run");

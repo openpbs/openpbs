@@ -2116,38 +2116,7 @@ RetryJob:
 					/* and requeue job				*/
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN2;
 				}
-				if (pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long >
-#ifdef NAS /* localmod 083 */
-					PBS_MAX_HOPCOUNT
-#else
-					PBS_MAX_HOPCOUNT + PBS_MAX_HOPCOUNT
-#endif /* localmod 083 */
-				) {
-					pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |=
-						ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-					job_attr_def[(int)JOB_ATR_Comment].at_decode(
-						&pjob->ji_wattr[(int)JOB_ATR_Comment],
-						NULL, NULL,
-						"job held, too many failed attempts to run");
-
-					if (pjob->ji_parentaj) {
-						char comment_buf[100 + PBS_MAXSVRJOBID];
-						svr_setjobstate(pjob->ji_parentaj, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
-						pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
-						      at_val.at_long |= HOLD_s;
-						pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
-							at_flags |=
-							ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-						sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s",
-								pjob->ji_qs.ji_jobid);
-						job_attr_def[(int)JOB_ATR_Comment].\
-						at_decode(\
-							&pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_Comment],
-							NULL, NULL,
-							comment_buf);
-					}
-				}
+				check_failed_attempts(pjob);
 				break;
 
 			case JOB_EXEC_BADRESRT:
