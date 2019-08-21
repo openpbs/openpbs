@@ -1554,16 +1554,17 @@ delete_event(server_info *sinfo, timed_event *e)
 
 	if (calendar->next_event == e)
 		calendar->next_event = e->next;
+	
+	if (calendar->first_run_event == e)
+		calendar->first_run_event = find_timed_event(calendar->events, 0, NULL, TIMED_RUN_EVENT, 0);
 
-	if (e->prev == NULL) {
+	if (e->prev == NULL)
 		calendar->events = e->next;
-		if (e->next != NULL)
-			e->next->prev = NULL;
-	} else {
+	else
 		e->prev->next = e->next;
-		if (e->next != NULL)
-			e->next->prev = e->prev;
-	}
+
+	if (e->next != NULL)
+		e->next->prev = e->prev;
 
 	free_timed_event(e);
 }
