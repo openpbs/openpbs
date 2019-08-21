@@ -38,7 +38,8 @@
 from tests.selftest import *
 
 
-@requirements(num_servers=2, num_comms=2)
+@requirements(num_servers=1, num_comms=1, min_mom_ram=500,
+              min_mom_disk=500, min_server_ram=500, min_server_disk=500)
 class TestRequirementsDecorator(TestSelf):
 
     """
