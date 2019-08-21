@@ -284,6 +284,13 @@ free_resource_resv(resource_resv *resresv)
 	if (resresv->node_set != NULL)
 		free(resresv->node_set);
 
+	/* Avoid dangling pointers inside the calendar */
+	if (resresv->run_event != NULL)
+		delete_event(resresv->server, resresv->run_event);
+
+	if (resresv->end_event != NULL)
+		delete_event(resresv->server, resresv->end_event);
+
 	free(resresv);
 }
 
@@ -2329,8 +2336,8 @@ in_runnable_state(resource_resv *resresv)
 		if (resresv->job->is_susp_sched)
 			return 1;
 	}
-	else if (resresv->is_resv && resresv->resv !=NULL) {
-		if (resresv->resv->resv_state ==RESV_CONFIRMED)
+	else if (resresv->is_resv && resresv->resv != NULL) {
+		if (resresv->resv->resv_state == RESV_CONFIRMED)
 			return 1;
 	}
 

@@ -3284,10 +3284,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
-		if (pjob->end_event != NULL) {
-				if (delete_event(nsinfo, pjob->end_event, DE_NO_FLAGS) == 0)
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name, "Failed to delete end event for job.");
-		}
+		if (pjob->end_event != NULL)
+			delete_event(nsinfo, pjob->end_event);
 
 		pjobs[j] = pjob;
 		j++;
