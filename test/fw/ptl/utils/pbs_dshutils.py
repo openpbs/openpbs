@@ -912,7 +912,7 @@ class DshUtils(object):
                 # must be as PbsUser object
                 runas = str(runas)
 
-        if (platform == "shasta") and (runas is not None):
+        if (platform == "shasta") and runas:
             _runas_user = PbsUser.get_user(runas)
 
         if isinstance(cmd, str):
@@ -933,12 +933,9 @@ class DshUtils(object):
         ret = {'out': '', 'err': '', 'rc': 0}
 
         for hostname in hosts:
-            if (platform == "shasta") and \
-                    (runas is not None) and isinstance(_runas_user, PbsUser):
-                    if _runas_user in PBS_ALL_USERS:
-                        if _runas_user.host:
-                            hostname = _runas_user.host
-                        port = _runas_user.port
+            if (platform == "shasta") and _runas_user:
+                hostname = _runas_user.host if _runas_user.host else hostname
+                port = _runas_user.port
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on

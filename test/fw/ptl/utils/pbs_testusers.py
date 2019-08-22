@@ -124,7 +124,7 @@ class PbsUser(object):
             if user in PBS_ALL_USERS:
                 return user
         return None
-    
+
     def __init__(self, name, uid=None, groups=None):
         self.name = name
         self.home = None
