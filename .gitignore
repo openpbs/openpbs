@@ -95,6 +95,7 @@ pip-delete-this-directory.txt
 
 # Build directory
 target/
+target-*/
 
 #PyCharm project directory
 .idea/
@@ -124,6 +125,15 @@ Makefile.in
 Makefile
 *.deps
 buildutils/pbs_mkdirs
+buildutils/ar-lib
+buildutils/compile
+buildutils/depcomp
+buildutils/install-sh
+buildutils/missing
+buildutils/py-compile
+buildutils/exclude_script
+buildutils/makedepend-sh
+buildutils/ylwrap
 
 # Generated binaries
 
@@ -256,4 +266,3 @@ pbspro.spec
 *.cpio
 *.rpm
 *.deb
-
