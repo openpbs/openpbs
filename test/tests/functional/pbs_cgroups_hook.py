@@ -1325,6 +1325,10 @@ if %s e.job.in_ms_mom():
                         vmem_usage = int(match.groups()[0])
                         if vmem_usage > 400000:
                             break
+            if cput_usage > 1.0 and mem_usage > 400000:
+                if self.swapctl == 'true' and vmem_usage > 400000:
+                    break
+                break
         self.assertGreater(cput_usage, 1.0)
         self.assertGreater(mem_usage, 400000)
         if self.swapctl == 'true':
