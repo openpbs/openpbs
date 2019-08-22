@@ -59,6 +59,10 @@
 #include "credential.h"
 #include "ticket.h"
 
+#if defined(PBS_PASS_CREDENTIALS)
+#include <openssl/evp.h>
+#endif
+
 int quiet = 0;
 int	cred_type;
 size_t	cred_len;

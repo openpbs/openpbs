@@ -45,13 +45,14 @@ from socket import gethostname
 from string import Template
 from shutil import copyfile
 from shutil import copytree
+from shutil import rmtree
 
 pbs_conf_path = None
 pbs_exec = None
 pbs_home = None
 pbs_bin = None
 pbs_sbin = None
-installtype = 'server'
+installtype = 'client'
 server = None
 
 pbs_conf_t = Template(r"""
@@ -63,95 +64,6 @@ PBS_START_COMM=${pbs_start_comm}
 PBS_START_MOM=${pbs_start_mom}
 PBS_START_SCHED=${pbs_start_sched}
 """)
-
-createdb_t = Template(r"""
-@echo off
-
-"${pbs_exec}\pgsql\bin\initdb.exe" -D "${pbs_home}\datastore" -E SQL_ASCII --locale=C
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-call "${pbs_exec}\sbin\pbs_dataservice" start
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_exec}\pgsql\bin\createdb.exe" -p 15007 pbs_datastore
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_exec}\pgsql\bin\psql.exe" -p 15007 -d pbs_datastore -f "${pbs_exec}\etc\pbs_db_schema.sql"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_exec}\pgsql\bin\psql.exe" -p 15007 -d pbs_datastore -c "create user \"${pg_user}\" SUPERUSER LOGIN"
-"${pbs_exec}\sbin\pbs_ds_password.exe" -r
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-call "${pbs_exec}\sbin\pbs_dataservice" stop
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-exit /b 0
-
-:ERR
-call "${pbs_exec}\sbin\pbs_dataservice" stop
-exit /b 1
-
-""")
-
-svrdflts_t = Template(r"""
-@echo off
-
-net stop pbs_server
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_sbin}\pbs_server.exe" -C
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-net start pbs_server
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "create queue workq"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set queue workq queue_type = Execution"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set queue workq enabled = True"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set queue workq started = True"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server default_queue = workq"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server single_signon_password_enable = True"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server scheduling = True"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server log_events = 511"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server mail_from = adm"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server query_other_jobs = True"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server scheduler_iteration = 600"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "set server resources_default.ncpus = 1"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-"${pbs_bin}\qmgr.exe" -c "create node ${nodename}"
-IF %ERRORLEVEL% NEQ 0 GOTO ERR
-
-exit /b 0
-
-:ERR
-exit /b %ERRORLEVEL%
-
-""")
-
 
 def __log_err(msg):
     sys.stderr.write(msg + '\n')
@@ -181,36 +93,10 @@ def validate_cred(username, password):
     else:
         __log_info('Successfully validated given username and password')
 
-
-def install_vcredist():
-    __log_info('Installing Visual C++ redistributable')
-    cmd = [os.path.join(pbs_exec, 'etc', 'vcredist_x86.exe')]
-    cmd += ['/q', '/norestart']
-    ret = __run_cmd(cmd)
-    if ret > 0:
-        if ret == 5100:
-            msg = 'Newer version of Visual C++ redistributable is already'
-            msg += 'installed, ignoring this installation'
-            __log_info(msg)
-        else:
-            __log_err('Failed to install Visual C++ redistributable')
-            sys.exit(6)
-    else:
-        __log_info('Successfully installed Visual C++ redistributable')
-
-
 def create_pbs_conf():
     __log_info('Creating PBSPro configuration at %s' % pbs_conf_path)
     with open(pbs_conf_path, 'w+') as fp:
-        if installtype == 'server':
-            pbs_conf_data = pbs_conf_t.substitute(pbs_server=gethostname(),
-                                                  pbs_exec=pbs_exec,
-                                                  pbs_home=pbs_home,
-                                                  pbs_start_server=1,
-                                                  pbs_start_comm=1,
-                                                  pbs_start_mom=1,
-                                                  pbs_start_sched=1)
-        elif installtype == 'execution':
+        if installtype == 'execution':
             pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
                                                   pbs_exec=pbs_exec,
                                                   pbs_home=pbs_home,
@@ -226,14 +112,6 @@ def create_pbs_conf():
                                                   pbs_start_comm=0,
                                                   pbs_start_sched=0,
                                                   pbs_start_mom=0)
-        elif installtype == 'comm':
-            pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
-                                                  pbs_exec=pbs_exec,
-                                                  pbs_home=pbs_home,
-                                                  pbs_start_server=0,
-                                                  pbs_start_sched=0,
-                                                  pbs_start_mom=0,
-                                                  pbs_start_comm=1)
         fp.write(pbs_conf_data.lstrip())
     __log_info('Successfully created PBSPro configuration')
 
@@ -251,13 +129,6 @@ def create_home():
     os.makedirs(os.path.join(pbs_home, 'undelivered'))
     os.makedirs(os.path.join(pbs_home, 'auxiliary'))
     os.makedirs(os.path.join(pbs_home, 'checkpoint'))
-    os.makedirs(os.path.join(pbs_home, 'server_logs'))
-    os.makedirs(os.path.join(pbs_home, 'server_priv', 'accounting'))
-    os.makedirs(os.path.join(pbs_home, 'server_priv', 'jobs'))
-    os.makedirs(os.path.join(pbs_home, 'server_priv', 'users'))
-    os.makedirs(os.path.join(pbs_home, 'sched_logs'))
-    os.makedirs(os.path.join(pbs_home, 'sched_priv'))
-    os.makedirs(os.path.join(pbs_home, 'comm_logs'))
     os.makedirs(os.path.join(pbs_home, 'mom_logs'))
     os.makedirs(os.path.join(pbs_home, 'mom_priv', 'jobs'))
     os.makedirs(os.path.join(pbs_home, 'mom_priv', 'hooks', 'tmp'))
@@ -283,106 +154,7 @@ def create_home():
     with open(os.path.join(pbs_home, 'pbs_environment'), 'w+') as fp:
         fp.write('\n'.join(pbs_env) + '\n')
     with open(os.path.join(pbs_home, 'mom_priv', 'config'), 'w+') as fp:
-        fp.write('$clienthost %s%s' % (gethostname(), '\n'))
-    src_file = os.path.join(pbs_exec, 'etc', 'pbs_dedicated')
-    dst_file = os.path.join(pbs_home, 'sched_priv', 'dedicated_time')
-    copyfile(src_file, dst_file)
-    src_file = os.path.join(pbs_exec, 'etc', 'pbs_holidays')
-    dst_file = os.path.join(pbs_home, 'sched_priv', 'holidays')
-    copyfile(src_file, dst_file)
-    src_file = os.path.join(pbs_exec, 'etc', 'pbs_resource_group')
-    dst_file = os.path.join(pbs_home, 'sched_priv', 'resource_group')
-    copyfile(src_file, dst_file)
-    src_file = os.path.join(pbs_exec, 'etc', 'pbs_sched_config')
-    dst_file = os.path.join(pbs_home, 'sched_priv', 'sched_config')
-    copyfile(src_file, dst_file)
-    src = os.path.join(pbs_exec, 'lib', 'python', 'altair', 'pbs_hooks')
-    dst = os.path.join(pbs_home, 'server_priv', 'hooks')
-    if os.path.isdir(src):
-        copytree(src, dst)
-
-
-def init_db(username, password):
-    __log_info('Initializing PBSPro database')
-    dbuserfile = os.path.join(pbs_home, 'server_priv', 'db_user')
-    with open(dbuserfile, 'w') as db:
-        db.write(username)
-    createdbfile = os.path.join(pbs_exec, 'etc', 'createdb.bat')
-    with open(createdbfile, 'w') as fp:
-        createdb_data = createdb_t.substitute(pbs_conf_path=pbs_conf_path,
-                                              pbs_exec=pbs_exec,
-                                              pbs_home=pbs_home,
-                                              pg_user=username)
-        fp.write(createdb_data.lstrip())
-    if __run_cmd([createdbfile]) > 0:
-        __log_err('Failed to initialize PBSPro database')
-        sys.exit(7)
-    pg_conf = os.path.join(pbs_home, 'datastore', 'postgresql.conf')
-    lines = ''
-    with open(pg_conf, 'r') as fp:
-        lines = fp.read()
-    old_str = '#checkpoint_segments = 3'
-    new_str = 'checkpoint_segments = 20'
-    lines = lines.replace(old_str, new_str)
-    old_str = '#port = 5432'
-    new_str = 'port = 15007'
-    lines = lines.replace(old_str, new_str)
-    old_str = "#listen_addresses = 'localhost'"
-    new_str = "listen_addresses = '*'"
-    lines = lines.replace(old_str, new_str)
-    old_str = '#standard_conforming_strings = on'
-    new_str = 'standard_conforming_strings = on'
-    lines = lines.replace(old_str, new_str)
-    old_str = '#logging_collector = off'
-    new_str = 'logging_collector = on'
-    lines = lines.replace(old_str, new_str)
-    old_str = "#log_directory = 'pg_log'"
-    new_str = "log_directory = 'pg_log'"
-    lines = lines.replace(old_str, new_str)
-    old_str = "#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'"
-    new_str = "log_filename = 'pbs_dataservice_log.%a'"
-    lines = lines.replace(old_str, new_str)
-    old_str = '#log_truncate_on_rotation = off'
-    new_str = 'log_truncate_on_rotation = on'
-    lines = lines.replace(old_str, new_str)
-    old_str = '#log_rotation_age = 1d'
-    new_str = 'log_rotation_age = 1440'
-    lines = lines.replace(old_str, new_str)
-    old_str = "#log_line_prefix = ''"
-    new_str = "log_line_prefix = '%t'"
-    lines = lines.replace(old_str, new_str)
-    with open(pg_conf, 'w+') as fp:
-        fp.write(lines)
-    pg_hba_conf = os.path.join(pbs_home, 'datastore', 'pg_hba.conf')
-    lines = ''
-    with open(pg_hba_conf, 'r') as fp:
-        lines = fp.read()
-    m = re.finditer('#.*TYPE.*DATABASE.*USER.*ADDRESS.*METHOD', lines)
-    lines = lines[:next(m).end(0)]
-    lines += '\n# IPv4 local connections:\n'
-    lines += 'host    all             all             0.0.0.0/0          md5\n'
-    lines += 'host    all             all             127.0.0.1/32      md5\n'
-    lines += '# IPv6 local connections:\n'
-    lines += 'host    all             all             ::1/128            md5\n'
-    with open(pg_hba_conf, 'w+') as fp:
-        fp.write(lines)
-    __log_info('Successfully initialized PBSPro database')
-
-
-def set_svr_defaults():
-    __log_info('Setting PBSPro default configuration')
-    svrdflt_file = os.path.join(pbs_exec, 'etc', 'create_svr_defaults.bat')
-    with open(svrdflt_file, 'w+') as fp:
-        svrdflts_data = svrdflts_t.substitute(pbs_bin=pbs_bin,
-                                              pbs_sbin=pbs_sbin,
-                                              nodename=gethostname())
-        fp.write(svrdflts_data.lstrip())
-    if __run_cmd([svrdflt_file]) > 0:
-        __log_err('Failed to set PBSPro default configuration')
-        sys.exit(8)
-    else:
-        __log_info('Successfully configured PBSPro defaults')
-
+        fp.write('$clienthost %s%s' % (server, '\n'))
 
 def __svc_helper(svc, username, password):
     svc_name = os.path.basename(svc).replace('.exe', '').upper()
@@ -408,19 +180,7 @@ def __svc_helper(svc, username, password):
 
 
 def register_and_start_services(username, password):
-    if installtype == 'server':
-        __svc_helper(os.path.join(pbs_sbin, 'pbs_sched.exe'),
-                     username, password)
-        __svc_helper(os.path.join(pbs_sbin, 'pbs_server.exe'),
-                     username, password)
-        set_svr_defaults()
-    if installtype in ('server', 'comm'):
-        __svc_helper(os.path.join(pbs_sbin, 'pbs_comm.exe'),
-                     username, password)
-    if installtype in ('server', 'execution'):
-        rshd_path = os.path.join(pbs_sbin, 'pbs_rshd.exe')
-        if os.path.isfile(rshd_path):
-            __svc_helper(rshd_path, username, password)
+    if installtype == 'execution':
         __svc_helper(os.path.join(pbs_sbin, 'pbs_mom.exe'), username, password)
 
 
@@ -433,11 +193,11 @@ def usage():
     _msg += ['    -p|--passwd=<password>\t- ']
     _msg += ['specify PBS Service/database user\'s password\n']
     _msg += ['    -t|--type=<type>\t\t- specify PBS installation type \n']
-    _msg += ['\t\t\t\t  (server/execution/client/comm)\n']
+    _msg += ['\t\t\t\t  (execution/client)\n']
     _msg += ['    -s|--server=<server>\t- ']
     _msg += ['specify PBS Server value\n']
     _msg += ['    -h|--help\t\t\t- print help message\n']
-    print "".join(_msg)
+    print("".join(_msg))
 
 
 def main():
@@ -457,7 +217,7 @@ def main():
         largs = ['help', 'user=', 'passwd=', 'type=', 'server=']
         opts, _ = getopt.getopt(sys.argv[1:], 'hu:p:t:s:', largs)
     except getopt.GetoptError as e:
-        print e
+        print(e)
         usage()
         sys.exit(3)
     for opt, arg in opts:
@@ -469,7 +229,7 @@ def main():
         elif opt in ('-p', '--passwd'):
             password = arg
         elif opt in ('-t', '--type'):
-            if arg not in ('server', 'execution', 'client', 'comm'):
+            if arg not in ('execution', 'client'):
                 usage()
                 sys.exit(3)
             installtype = arg
@@ -483,11 +243,10 @@ def main():
         __log_err('No username and/or password provided!')
         usage()
         sys.exit(4)
-    if installtype != 'server':
-        if server is None:
-            __log_err('\nProvide PBS_SERVER info value using -s|--server \n')
-            usage()
-            sys.exit(4)
+    if server is None:
+        __log_err('\nProvide PBS_SERVER info value using -s|--server \n')
+        usage()
+        sys.exit(4)
 
     if not ctypes.windll.shell32.IsUserAnAdmin():
         __log_err('Only user with Administrators privileges can run this script!')
@@ -513,16 +272,13 @@ def main():
     pbs_home = os.path.join(os.path.dirname(pbs_conf_path), 'home')
     validate_cred(username, password)
     create_pbs_conf()
-    if installtype != 'client':
-        create_home()
-    if installtype == 'server':
-        install_vcredist()
-        init_db(username, password)
-    __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe')])
+    if installtype == 'execution':
+        create_home()		
+    __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe'), 'mom'])
     cmd = ['mklink', '/H']
     cmd += ['"' + os.path.join(pbs_bin, 'pbs-sleep.exe') + '"']
     cmd += ['"' + os.path.join(pbs_bin, 'pbs_sleep.exe') + '"']
-    cmd = string.join(cmd, " ")
+    cmd = " ".join(cmd)
     os.system(cmd)
     register_and_start_services(username, password)
     __log_info('Successfully completed post installation process')

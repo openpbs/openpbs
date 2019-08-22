@@ -168,7 +168,7 @@ svr_recov_fs(char *svrfile)
 		if (server.sv_attr[i].at_type == ATR_TYPE_ACL) {
 			recov_acl(&server.sv_attr[i], &svr_attr_def[i],
 				PBS_SVRACL, svr_attr_def[i].at_name);
-			if (svr_attr_def[i].at_action != (int (*)())0)
+			if (svr_attr_def[i].at_action != NULL_FUNC)
 				svr_attr_def[i].at_action(&server.sv_attr[i],
 					&server,
 					ATR_ACTION_RECOV);

@@ -359,7 +359,7 @@ expand_resc_array(char *rname, int rtype, int rflag)
 	pnew->rs_set    = p_resc_type_map->rtm_set;
 	pnew->rs_comp   = p_resc_type_map->rtm_comp;
 	pnew->rs_free   = p_resc_type_map->rtm_free;
-	pnew->rs_action = NULL_FUNC;
+	pnew->rs_action = NULL_FUNC_RESC;
 	pnew->rs_flags = rflag;
 	pnew->rs_type  = rtype;
 	pnew->rs_entlimflg = 0;

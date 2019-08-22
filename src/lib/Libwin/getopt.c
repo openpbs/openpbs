@@ -51,8 +51,8 @@ int	opterr = 1;
 int	optopt = 0;
 
 int
-getopt(int __argc,
-	char **__argv,
+getopt(int argc,
+	char **argv,
 	const char *__shortopts)/* valid option list */
 {
 	static	int	nextchar = 1;
@@ -65,18 +65,18 @@ getopt(int __argc,
 		nextchar = 1;
 	}
 
-	for (i=nextchar; i < __argc; i++) {
-		if( (strcmp(__argv[i], "-") != 0) && \
-		    	(strcmp(__argv[i], "--") != 0) && \
-					__argv[i][0] == '-' ) {
+	for (i=nextchar; i < argc; i++) {
+		if( (strcmp(argv[i], "-") != 0) && \
+		    	(strcmp(argv[i], "--") != 0) && \
+					argv[i][0] == '-' ) {
 
 			/* match an option in valid option list */
-			if ((nextopt=strchr(__shortopts, __argv[i][1])) != NULL) { /* a valid option */
+			if ((nextopt=strchr(__shortopts, argv[i][1])) != NULL) { /* a valid option */
 				curr_opt = *nextopt;
 				if (*(nextopt+1) == ':') { /* option requires  arg */
-					optarg = &(__argv[i][2]);
+					optarg = &(argv[i][2]);
 					if (strlen(optarg) == 0) {
-						optarg = __argv[++i];
+						optarg = argv[++i];
 						if (optarg == NULL) {
 							if (opterr) {
 								fprintf(stderr,
@@ -92,22 +92,22 @@ getopt(int __argc,
 					optind = i+1;
 					nextchar = optind;
 				} else {	/* option requires no argument */
-					n = strlen(__argv[i]);
+					n = strlen(argv[i]);
 					if (n == 2) {
 						optind = i+1;
 						nextchar = optind;
 					} else { /* we have a combined option as in -Bf */
 						for (j=1; j < n; j++)
-							__argv[i][j] = __argv[i][j+1];
-						__argv[i][j] = '\0';
+							argv[i][j] = argv[i][j+1];
+						argv[i][j] = '\0';
 					}
 				}
 				return (curr_opt);
 			} else {
 				if (opterr) {
 					fprintf(stderr, "Unknown option %c!\n",
-						__argv[i][1]);
-					optopt = __argv[i][1];
+						argv[i][1]);
+					optopt = argv[i][1];
 				}
 				optind = ++i;
 				nextchar = optind;
@@ -115,7 +115,7 @@ getopt(int __argc,
 			}
 
 		} else { /* no more option characters */
-			char *s = __argv[i];
+			char *s = argv[i];
 			if (((s != NULL) && (s[0] == '-') && (s[1] == '-') &&
 				(s[2] == '\0'))) {
 				/*

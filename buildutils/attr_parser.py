@@ -898,21 +898,21 @@ def main(argv):
         sys.exit(1)
 
     try:
-        m_file = open(MASTER_FILE)
+        m_file = open(MASTER_FILE, encoding='utf-8')
     except IOError as err:
         print(str(err))
         print('Cannot Open Master File!')
         sys.exit(1)
 
     try:
-        s_file = open(SVR_FILE, 'w')
+        s_file = open(SVR_FILE, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
         print('Cannot Open Server File!')
         sys.exit(1)
 
     try:
-        e_file = open(ECL_FILE, 'w')
+        e_file = open(ECL_FILE, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
         print('Cannot Open Ecl File!')

@@ -181,7 +181,7 @@ PDH_profile mom_prof;
  * @return      void
  **/
 void
-IsProcessInJob(HANDLE hProc, HANDLE hJob, BOOL *p_is_process_in_job)
+PBS_IsProcessInJob(HANDLE hProc, HANDLE hJob, BOOL *p_is_process_in_job)
 {
 	int			                nps = 0;
 	DWORD			                i = 0;
@@ -634,7 +634,11 @@ mem_sum(job *pjob)
 		/* account only if the process is not part of Windows the job object */
 		if ((ptask->ti_hProc != NULL) &&
 			(ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
+#if (_WIN32_WINNT < 0x0501)
+			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#endif
 			/* account for processes that are not part of the Windows job object */
 			if (is_process_in_job == FALSE) {
 				(void)QueryWorkingSet(ptask->ti_hProc, &nwspages, sizeof(nwspages));
@@ -680,7 +684,11 @@ cput_sum(job *pjob)
 	for (ptask = (task *)GET_NEXT(pjob->ji_tasks); ptask; ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
 		FILETIME  ftCreation, ftExit, ftKernel, ftUser;
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
+#if (_WIN32_WINNT < 0x0501)
+			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#endif
 			/*
 			 * check if the processes is not part of the Windows job object due to pbs_attach
 			 */
@@ -1175,7 +1183,11 @@ cput_job(char *jobid)
 	while (ptask) {
 		FILETIME  ftCreation, ftExit, ftKernel, ftUser;
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
+#if (_WIN32_WINNT < 0x0501)
+			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
+#endif
 			/*
 			 * check if the processes is not part of the job object due to pbs_attach,
 			 */

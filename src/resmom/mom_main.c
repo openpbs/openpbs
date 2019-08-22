@@ -8294,6 +8294,14 @@ main(int argc, char *argv[])
 			return (1);
 		}
 	}
+#endif
+
+	/* set single threaded mode */
+	pbs_client_thread_set_single_threaded_mode();
+	/* disable attribute verification */
+	set_no_attribute_verification();
+
+#ifdef WIN32
 
 	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 	/* load the pbs conf file */
@@ -8325,11 +8333,6 @@ main(int argc, char *argv[])
 	}
 #endif
 #endif	/* WIN32 */
-
-	/* set single threaded mode */
-	pbs_client_thread_set_single_threaded_mode();
-	/* disable attribute verification */
-	set_no_attribute_verification();
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
@@ -9021,12 +9024,9 @@ main(int argc, char *argv[])
 		(void)fclose(stdin);
 		(void)fclose(stdout);
 		(void)fclose(stderr);
-		dummyfile = fopen("NUL:", "r");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-		dummyfile = fopen("NUL:", "w");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-		dummyfile = fopen("NUL:", "w");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 2));
+		freopen("nul", "r", stdin);
+		freopen("nul", "w", stdout);
+		freopen("nul", "w", stderr);
 	}
 
 #else	/* DEBUG */
@@ -10384,12 +10384,12 @@ main(int argc, char *argv[])
 			ErrorMessage("OpenSCManager");
 			return 1;
 		}
+		printf("Inside if(reg/unreg). Value of schManager %s\n", schManager);
 
 		if (reg) {
 			GetModuleFileName(0, szFileName,
 				sizeof(szFileName)/sizeof(*szFileName));
 
-			printf("Installing service %s\n", g_PbsMomName);
 			schSelf =
 				CreateService(schManager, g_PbsMomName,
 				__TEXT("PBS_MOM"),
@@ -10435,13 +10435,11 @@ main(int argc, char *argv[])
 
 		struct arg_param *pap;
 		int	i, j;
-
 		pap = create_arg_param();
 		if (pap == NULL) {
 			ErrorMessage("create_arg_param");
 			return 1;
 		}
-
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {
 			if (i == 1)
@@ -10465,7 +10463,6 @@ main(int argc, char *argv[])
 			{ 0 }
 		};
 
-
 		if (getenv("PBS_CONF_FILE") == NULL) {
 			char conf_path[80];
 			char conf_env[80];
@@ -10483,7 +10480,6 @@ main(int argc, char *argv[])
 				}
 			}
 		}
-
 		hStop = CreateMutex(NULL, TRUE, NULL);
 		if (!StartServiceCtrlDispatcher(ServiceTable)) {
 			log_err(-1, "main", "StartServiceCtrlDispatcher");
