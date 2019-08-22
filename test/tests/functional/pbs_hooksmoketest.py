@@ -24,12 +24,21 @@ class TestHookSmokeTest(TestFunctional):
     """
     Hooks Smoke Test
     """
+    hook_name = "test_hook"
+
+    scr = []
+
     def setUp(self):
         TestFunctional.setUp(self)
         a = {'log_events': 2047, 'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-
-    hook_name = "test_hook"
+        self.scr = []
+        self.scr += ['echo Hello World\n']
+        self.scr += ['/bin/sleep 5\n']
+        if self.du.get_platform() == "cray" or \
+           self.du.get_platform() == "craysim":
+            self.scr += ['#PBS -l mppwidth=1\n']
+            self.scr += ['aprun -b -B /bin/sleep 10']
 
     def check_hk_file(self, hook_name, existence=False):
         """
@@ -205,6 +214,251 @@ e.accept()"""
             self.assertIn(i, ret['err'],
                           msg="Failed to get expected error message")
         self.check_hk_file(self.hook_name)
+
+    def test_queuejob_hook(self):
+        """
+        Test queuejob hook
+        """
+        # Create a hook with event queuejob
+        hook_body = """import pbs
+import time
+
+e = pbs.event()
+
+if (e.type == pbs.QUEUEJOB):
+        j = e.job
+if (e.type == pbs.QUEUEJOB) and not j.Resource_List["walltime"]:
+        e.reject("No walltime specified. Master does not approve! ;o)")
+        # select resource
+        sel = pbs.select("1:ncpus=2")
+        s = repr(sel)
+else:
+        e.accept()"""
+
+        attrs = {'event': 'queuejob', 'enabled': 'True'}
+        rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
+        self.assertTrue(rv)
+        # As a user submit a job requesting walltime
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        a = {'Resource_List.mppwidth': 1, 'Resource_List.walltime': 30}
+        j1 = Job(TEST_USER, a)
+        j1.create_script(self.scr)
+        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        # As a user submit a job without requesting walltime
+        # Job is denied with the message
+        _msg = "qsub: No walltime specified. Master does not approve! ;o)"
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER1)
+        a = {'Resource_List.mppwidth': 1}
+        j2 = Job(TEST_USER1, a)
+        j2.create_script(self.scr)
+        try:
+            jid2 = self.server.submit(j2, submit_dir=sub_dir)
+        except PbsSubmitError, e:
+            self.assertEqual(
+                e.msg[0], _msg, msg="Did not get expected qsub err message")
+            self.logger.info("Got expected qsub err message as %s", e.msg[0])
+            pass
+        # As a user submit aother job requesting walltime and -V
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER1)
+        self.ATTR_V = 'Full_Variable_List'
+        api_to_cli.setdefault(self.ATTR_V, 'V')
+        a = {self.ATTR_V: None, 'Resource_List.mppwidth': 1,
+             'Resource_List.walltime': 30}
+        j3 = Job(TEST_USER1, a)
+        j3.create_script(self.scr)
+        jid3 = self.server.submit(j3, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        # Verify pbs_server is up
+        if not self.server.isUp():
+            self.fail("Server is not up")
+        self.server.delete([jid1])
+        self.server.delete([jid3])
+
+    def test_modifyjob_hook(self):
+        """
+        Test modifyjob hook
+        """
+        # Create a hook with event modifyjob
+        hook_body = """import pbs
+
+try:
+ e = pbs.event()
+ r = e.resv
+
+except pbs.EventIncompatibleError:
+ e.reject( "Event is incompatible")"""
+
+        a = {'eligible_time_enable': 'True', 'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        attrs = {'event': 'modifyjob', 'enabled': 'True'}
+        rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
+        self.assertTrue(rv)
+        # As user submit a job j1
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER2)
+        a = {'Resource_List.mppwidth': 1}
+        j1 = Job(TEST_USER2, a)
+        j1.create_script(self.scr)
+        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # qalter the job, qalter will fail with error
+        _msg = "qalter: Event is incompatible " + jid1
+        try:
+            self.server.alterjob(jid1, {ATTR_p: '5'})
+        except PbsAlterError, e:
+            self.assertEqual(
+                e.msg[0], _msg, msg="Did not get expected qalter err message")
+            self.logger.info("Got expected qalter err message as %s", e.msg[0])
+            pass
+        self.server.delete([jid1])
+
+    def test_resvsub_hook(self):
+        """
+        Test resvsub hook
+        """
+        # Create a hook with event resvsub
+        hook_body = """import pbs
+e = pbs.event()
+r = e.resv
+
+r.Resource_List["place"] = pbs.place("pack:freed")"""
+
+        attrs = {'event': 'resvsub', 'enabled': 'True'}
+        rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
+        self.assertTrue(rv)
+        # Submit a reservation
+        now = int(time.time())
+        a = {'reserve_start': now + 10,
+             'reserve_end': now + 120}
+        r = Reservation(TEST_USER3, attrs=a)
+        # The reservation gets an error as
+        _msg = "pbs_rsub: request rejected as filter hook " + "'" + \
+            self.hook_name + "'" + \
+            " encountered an exception. Please inform Admin"
+        try:
+            rid = self.server.submit(r)
+        except PbsSubmitError, e:
+            self.assertEqual(
+                e.msg[0], _msg,
+                msg="Did not get expected pbs_rsub err message")
+            self.logger.info(
+                "Got expected pbs_rsub err message as %s", e.msg[0])
+            pass
+
+    def test_movejob_hook(self):
+        """
+        Test movejob hook
+        """
+        # Create testq
+        qname = 'testq'
+        try:
+            self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
+        except PbsManagerError:
+            pass
+        a = {'queue_type': 'Execution', 'enabled': 'True', 'started': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
+        # Create a hook with event movejob
+        hook_body = """import pbs
+e = pbs.event()
+j = e.job
+
+if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
+ e.reject("testq requires job to have mppmem spec")"""
+        attrs = {'event': 'movejob', 'enabled': 'True'}
+        rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
+        self.assertTrue(rv)
+        # submit a job j1 to default queue
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER4)
+        a = {ATTR_h: None, 'Resource_List.mppwidth': 1,
+             'Resource_List.mppmem': '30mb'}
+        j1 = Job(TEST_USER4, a)
+        j1.create_script(self.scr)
+        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid1)
+        # qmove the job to queue testq
+        self.server.movejob(jid1, "testq")
+        self.server.expect(
+            JOB, {'job_state': 'H', ATTR_queue: 'testq'},
+            attrop=PTL_AND, id=jid1)
+        # Submit a job j2
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER5)
+        a = {ATTR_h: None, 'Resource_List.mppwidth': 1}
+        j2 = Job(TEST_USER5, a)
+        j2.create_script(self.scr)
+        jid2 = self.server.submit(j2, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid2)
+        # qmove the job j2 to queue testq
+        # Qmove will fail with an error
+        _msg = "qmove: testq requires job to have mppmem spec " + jid2
+        try:
+            self.server.movejob(jid2, "testq")
+        except PbsMoveError as e:
+            self.assertEqual(
+                e.msg[0], _msg, msg="Did not get expected qmove err message")
+            self.logger.info("Got expected qmove err message as %s", e.msg[0])
+            pass
+        # Delete the jobs and delete queue testq
+        self.server.delete([jid1, jid2])
+        self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
+
+    def test_runjob_hook(self):
+        """
+        Test runjob hook
+        """
+        # Create a hook with event runjob
+        hook_body = """import pbs
+
+def print_attribs(pbs_obj):
+
+ pbs.logmsg(pbs.LOG_DEBUG, "Printing a PBS object of type %s" % (type(pbs_obj)
+))
+ for a in pbs_obj.attributes:
+  v = getattr(pbs_obj, a)
+  if v and str(v) != "":
+   pbs.logmsg(pbs.LOG_DEBUG, "%s = %s" % (a,v))
+
+e = pbs.event()
+
+print_attribs(e)
+
+j = e.job
+print_attribs(j)"""
+        now = int(time.time())
+        attrs = {'event': 'runjob', 'enabled': 'True'}
+        rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
+        self.assertTrue(rv)
+        # Set scheduling false
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+        # submit job j1
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER7)
+        # submit job j1
+        j1 = Job(TEST_USER7)
+        j1.create_script(self.scr)
+        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        # qrun job j1
+        self.server.runjob(jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # Get exec_vnode for job j1
+        ret = self.server.status(JOB, {'exec_vnode'}, id=jid1)
+        ev = ret[0]['exec_vnode']
+        # Verify server logs
+        self.logger.info("Verifying logs in server")
+        msg_1 = "Server@%s;Hook;%s;started" % \
+                (self.server.shortname, self.hook_name)
+        msg_2 = "Hook;Server@%s;requestor = Scheduler" % \
+                self.server.shortname
+        msg_3 = "Hook;Server@%s;hook_name = %s" % \
+                (self.server.shortname, self.hook_name)
+        msg_4 = "Hook;Server@%s;exec_vnode = %s" % \
+                (self.server.shortname, ev)
+        msg_5 = "Server@%s;Hook;%s;finished" % \
+                (self.server.shortname, self.hook_name)
+        msg = [msg_1, msg_2, msg_3, msg_4, msg_5]
+        for i in msg:
+            self.server.log_match(i, starttime=now)
+            self.logger.info("Got expected logs in server as %s", i)
 
     def tearDown(self):
         self.server.manager(MGR_CMD_SET, SERVER,
