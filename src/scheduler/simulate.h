@@ -320,7 +320,7 @@ int add_event(event_list *calendar, timed_event *te);
 /*
  *	delete_event - delete a timed event from an event list
  */
-int delete_event(server_info *sinfo, timed_event *e, unsigned int flags);
+void delete_event(server_info *sinfo, timed_event *e);
 
 /*
  *      create_event - create a timed_event with the passed in arguemtns

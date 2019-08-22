@@ -253,7 +253,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 		resresv->duration = resresv->resv->req_duration;
 		resresv->hard_duration = resresv->duration;
-		if (resresv->resv->resv_state !=RESV_UNCONFIRMED) {
+		if (resresv->resv->resv_state != RESV_UNCONFIRMED) {
 			resresv->start = resresv->resv->req_start;
 			if(resresv->resv->resv_state == RESV_BEING_DELETED ||
 			   resresv->start + resresv->duration <= sinfo->server_time) {

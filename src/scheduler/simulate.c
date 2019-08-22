@@ -1080,6 +1080,11 @@ new_timed_event()
 /**
  * @brief
  * 		dup_timed_event() - timed_event copy constructor
+ * 
+ * @par
+ * 		dup_timed_event() modifies the run_event and end_event memebers of the resource_resv.
+ * 		If dup_timed_event() is not called as part of dup_server_info(), the resource_resvs of
+ * 		the main server_info will be modified, even if server_info->calendar is not.
  *
  * @param[in]	ote 	- timed_event to copy
  * @param[in] 	nsinfo 	- "new" universe where to find the event_ptr
@@ -1091,31 +1096,16 @@ timed_event *
 dup_timed_event(timed_event *ote, server_info *nsinfo)
 {
 	timed_event *nte;
+	event_ptr_t *event_ptr;
 
 	if (ote == NULL || nsinfo == NULL)
 		return NULL;
 
-	nte = new_timed_event();
-
-	if (nte == NULL)
+	event_ptr = find_event_ptr(ote, nsinfo);
+	if (event_ptr == NULL)
 		return NULL;
 
-	nte->disabled = ote->disabled;
-	nte->event_type = ote->event_type;
-	nte->event_time = ote->event_time;
-	nte->event_func = ote->event_func;
-	nte->event_func_arg = ote->event_func_arg;
-	nte->event_ptr = find_event_ptr(ote, nsinfo);
-
-	if (nte->event_ptr == NULL) {
-		free_timed_event(nte);
-		return NULL;
-	}
-
-	if (determine_event_name(nte) == 0) {
-		free_timed_event(nte);
-		return NULL;
-	}
+	nte = create_event(ote->event_type, ote->event_time, event_ptr, ote->event_func, ote->event_func_arg);
 
 	return nte;
 }
@@ -1371,15 +1361,12 @@ dup_timed_event_list(timed_event *ote_list, server_info *nsinfo)
 
 	for (ote = ote_list; ote != NULL; ote = ote->next) {
 		nte = dup_timed_event(ote, nsinfo);
-		if (nte->event_type & TIMED_RUN_EVENT)
-			((resource_resv *)nte->event_ptr)->run_event = nte;
-		if (nte->event_type & TIMED_END_EVENT)
-			((resource_resv *)nte->event_ptr)->end_event = nte;
 
 		if (nte_prev != NULL)
 			nte_prev->next = nte;
 		else
 			nte_head = nte;
+		nte->prev = nte_prev;
 
 		nte_prev = nte;
 	}
@@ -1398,6 +1385,12 @@ free_timed_event(timed_event *te)
 {
 	if (te == NULL)
 		return;
+	if (te->event_ptr != NULL) {
+		if (te->event_type & TIMED_RUN_EVENT)
+			((resource_resv *)te->event_ptr)->run_event = NULL;
+		if (te->event_type & TIMED_END_EVENT)
+			((resource_resv *)te->event_ptr)->end_event = NULL;
+	}
 
 	free(te);
 }
@@ -1452,11 +1445,6 @@ add_event(event_list *calendar, timed_event *te)
 		events_is_null = 1;
 
 	calendar->events = add_timed_event(calendar->events, te);
-
-	if (te->event_type & TIMED_RUN_EVENT)
-		((resource_resv *)te->event_ptr)->run_event = te;
-	else if (te->event_type & TIMED_END_EVENT)
-		((resource_resv *)te->event_ptr)->end_event = te;
 
 	/* empty event list - the new event is the only event */
 	if (events_is_null)
@@ -1530,6 +1518,7 @@ add_timed_event(timed_event *events, timed_event *te)
 
 	if (eloop_prev == NULL) {
 		te->next = events;
+		events->prev = te;
 		te->prev = NULL;
 		return te;
 	}
@@ -1537,6 +1526,8 @@ add_timed_event(timed_event *events, timed_event *te)
 	te->next = eloop;
 	eloop_prev->next = te;
 	te->prev = eloop_prev;
+	if (eloop != NULL)
+		eloop->prev = te;
 
 	return events;
 }
@@ -1547,54 +1538,35 @@ add_timed_event(timed_event *events, timed_event *te)
  *
  * @param[in] sinfo    - sinfo which contains calendar to delete from
  * @param[in] e        - event to delete
- * @param[in] flags    - flag bitfield
- *						 DE_UNLINK - unlink event and don't free
  *
- * @return int
- * @retval 1 event was successfully deleted
- * @retval 0 failure
+ * @return void
  */
 
-int
-delete_event(server_info *sinfo, timed_event *e, unsigned int flags)
+void
+delete_event(server_info *sinfo, timed_event *e)
 {
-	timed_event *cur_e;
-	timed_event *prev_e = NULL;
 	event_list *calendar;
 
 	if (sinfo == NULL || e == NULL)
-		return 0;
+		return;
 
 	calendar = sinfo->calendar;
 
+	if (calendar->next_event == e)
+		calendar->next_event = e->next;
+	
+	if (calendar->first_run_event == e)
+		calendar->first_run_event = find_timed_event(calendar->events, 0, NULL, TIMED_RUN_EVENT, 0);
 
-	for (cur_e = calendar->events; cur_e != e && cur_e != NULL;
-		prev_e = cur_e, cur_e = cur_e->next)
-			;
+	if (e->prev == NULL)
+		calendar->events = e->next;
+	else
+		e->prev->next = e->next;
 
-	/* found our event to delete */
-	if (cur_e != NULL) {
-		if (calendar->next_event == cur_e)
-			calendar->next_event = cur_e->next;
+	if (e->next != NULL)
+		e->next->prev = e->prev;
 
-		if (prev_e == NULL)
-			calendar->events = cur_e->next;
-		else
-			prev_e->next = cur_e->next;
-
-		if ((flags & DE_UNLINK) == 0) {
-			if (cur_e->event_type & TIMED_RUN_EVENT)
-				((resource_resv *)cur_e->event_ptr)->run_event = NULL;
-			else if (cur_e->event_type & TIMED_END_EVENT)
-				((resource_resv *)cur_e->event_ptr)->run_event = NULL;
-
-			free_timed_event(cur_e);
-		}
-
-		return 1;
-	}
-
-	return 0;
+	free_timed_event(e);
 }
 
 
@@ -1629,6 +1601,11 @@ create_event(enum timed_event_types event_type,
 	te->event_ptr = event_ptr;
 	te->event_func = event_func;
 	te->event_func_arg = event_func_arg;
+
+	if (event_type & TIMED_RUN_EVENT)
+		((resource_resv *)event_ptr)->run_event = te;
+	if (event_type & TIMED_END_EVENT)
+		((resource_resv *)event_ptr)->end_event = te;
 
 	if (determine_event_name(te) == 0) {
 		free_timed_event(te);
