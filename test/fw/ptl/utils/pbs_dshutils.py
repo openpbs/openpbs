@@ -1280,6 +1280,12 @@ class DshUtils(object):
         if ipaddr in iplist:
             self._h2l[host] = True
             return True
+        # on a shasta machine, the name returned by `hostname` (pbs-host) is
+        # different than the one we tell PTL to use (pbs-service-nmn).
+        if (self.get_platform() == 'shasta' and host == 'pbs-service-nmn' and
+           localhost == 'pbs-host'):
+            self._h2l[host] = True
+            return True
         self._h2l[host] = False
         return False
 
