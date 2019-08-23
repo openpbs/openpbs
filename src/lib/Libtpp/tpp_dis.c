@@ -85,6 +85,7 @@
 #define DEFAULT_TCP_KEEPALIVE_TIME 30
 #define DEFAULT_TCP_KEEPALIVE_INTVL 10
 #define DEFAULT_TCP_KEEPALIVE_PROBES 3
+#define DEFAULT_TCP_USER_TIMEOUT 60000
 
 #define PBS_TCP_KEEPALIVE "PBS_TCP_KEEPALIVE" /* environment string to search for */
 
@@ -893,12 +894,13 @@ set_tpp_config(struct pbs_config *pbs_conf,
 	tpp_conf->tcp_keep_idle = DEFAULT_TCP_KEEPALIVE_TIME;
 	tpp_conf->tcp_keep_intvl = DEFAULT_TCP_KEEPALIVE_INTVL;
 	tpp_conf->tcp_keep_probes = DEFAULT_TCP_KEEPALIVE_PROBES;
+	tpp_conf->tcp_user_timeout = DEFAULT_TCP_USER_TIMEOUT;
 
 	/* if set, read them from environment variable PBS_TCP_KEEPALIVE */
 	if ((s = getenv(PBS_TCP_KEEPALIVE))) {
 		/*
 		 * The format is a comma separated list of values in order, for the following variables,
-		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes
+		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes,tcp_user_timeout
 		 */
 		tpp_conf->tcp_keepalive = 0;
 		t = strtok_r(s, ",", &ctx);
@@ -923,10 +925,15 @@ set_tpp_config(struct pbs_config *pbs_conf,
 					tpp_conf->tcp_keep_probes = (int) atol(t);
 				}
 
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/*tcp_user_timeout */
+					tpp_conf->tcp_user_timeout = (int) atol(t);
+				}
+
 				/* emit a log depicting what we are going to use as keepalive */
 				snprintf(log_buffer, TPP_LOGBUF_SZ,
-						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d",
-						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes);
+						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
+						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
 			} else {
 				snprintf(log_buffer, TPP_LOGBUF_SZ, "tcp keepalive disabled");
 			}
