@@ -45,17 +45,9 @@ class TestJobRouting(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        self.momA = self.moms.values()[0]
-        self.momA.delete_vnode_defs()
-
-        self.hostA = self.momA.shortname
-
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
         a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
 
