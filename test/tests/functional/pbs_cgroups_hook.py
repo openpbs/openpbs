@@ -1285,46 +1285,56 @@ if %s e.job.in_ms_mom():
         # Allow some time to pass for values to be updated
         begin = int(time.time())
         self.logger.info('Waiting for periodic hook to update usage data.')
-        time.sleep(15)
-        if self.paths['cpuacct']:
-            lines = self.moms_list[0].log_match(
-                '%s;update_job_usage: CPU usage:' %
-                jid, allmatch=True, starttime=begin)
-            usage = 0.0
-            for line in lines:
-                match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
-                if not match:
-                    continue
-                usage = float(match.groups()[0])
-                if usage > 1.0:
-                    break
-            self.assertGreater(usage, 1.0)
-        if self.paths['memory']:
-            lines = self.moms_list[0].log_match(
-                '%s;update_job_usage: Memory usage: mem=' % jid,
-                allmatch=True, max_attempts=5, starttime=begin)
-            usage = 0
-            for line in lines:
-                match = re.search(r'mem=(\d+)kb', line[1])
-                if not match:
-                    continue
-                usage = int(match.groups()[0])
-                if usage > 400000:
-                    break
-            self.assertGreater(usage, 400000, 'Max memory usage: %dkb' % usage)
-            if self.swapctl == 'true':
+        # loop to check if cput, mem, vmem are expected values
+        cput_usage = 0.0
+        mem_usage = 0
+        vmem_usage = 0
+        for count in range(3):
+            # Faster systems might have expected usage after 8 seconds
+            time.sleep(8)
+            if self.paths['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
-                    '%s;update_job_usage: Memory usage: vmem=' % jid,
-                    allmatch=True, max_attempts=5, starttime=begin)
-                usage = 0
+                    '%s;update_job_usage: CPU usage:' %
+                    jid, allmatch=True, starttime=begin)
                 for line in lines:
-                    match = re.search(r'vmem=(\d+)kb', line[1])
+                    match = re.search(r'CPU usage: ([0-9.]+) secs', line[1])
                     if not match:
                         continue
-                    usage = int(match.groups()[0])
-                    if usage > 400000:
+                    cput_usage = float(match.groups()[0])
+                    if cput_usage > 1.0:
                         break
-                self.assertGreater(usage, 400000)
+            if self.paths['memory'] and mem_usage <= 400000:
+                lines = self.moms_list[0].log_match(
+                    '%s;update_job_usage: Memory usage: mem=' % jid,
+                    allmatch=True, starttime=begin)
+                for line in lines:
+                    match = re.search(r'mem=(\d+)kb', line[1])
+                    if not match:
+                        continue
+                    mem_usage = int(match.groups()[0])
+                    if mem_usage > 400000:
+                        break
+                if self.swapctl == 'true' and vmem_usage <= 400000:
+                    lines = self.moms_list[0].log_match(
+                        '%s;update_job_usage: Memory usage: vmem=' % jid,
+                        allmatch=True, starttime=begin)
+                    for line in lines:
+                        match = re.search(r'vmem=(\d+)kb', line[1])
+                        if not match:
+                            continue
+                        vmem_usage = int(match.groups()[0])
+                        if vmem_usage > 400000:
+                            break
+            if cput_usage > 1.0 and mem_usage > 400000:
+                if self.swapctl == 'true':
+                    if vmem_usage > 400000:
+                        break
+                else:
+                    break
+        self.assertGreater(cput_usage, 1.0)
+        self.assertGreater(mem_usage, 400000)
+        if self.swapctl == 'true':
+            self.assertGreater(vmem_usage, 400000)
 
     def test_cgroup_cpuset_and_memory(self):
         """
