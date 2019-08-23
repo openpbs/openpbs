@@ -26,19 +26,17 @@ class TestHookSmokeTest(TestFunctional):
     """
     hook_name = "test_hook"
 
-    scr = []
-
     def setUp(self):
         TestFunctional.setUp(self)
         a = {'log_events': 2047, 'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.scr = []
-        self.scr += ['echo Hello World\n']
-        self.scr += ['/bin/sleep 5\n']
+
+        self.script = []
+        self.script += ['echo Hello World\n']
+        self.script += ['/bin/sleep 5\n']
         if self.du.get_platform() == "cray" or \
            self.du.get_platform() == "craysim":
-            self.scr += ['#PBS -l mppwidth=1\n']
-            self.scr += ['aprun -b -B /bin/sleep 10']
+            self.script += ['aprun -b -B /bin/sleep 10']
 
     def check_hk_file(self, hook_name, existence=False):
         """
@@ -224,10 +222,9 @@ e.accept()"""
 import time
 
 e = pbs.event()
+j = e.job
+if not j.Resource_List["walltime"]:
 
-if (e.type == pbs.QUEUEJOB):
-        j = e.job
-if (e.type == pbs.QUEUEJOB) and not j.Resource_List["walltime"]:
         e.reject("No walltime specified. Master does not approve! ;o)")
         # select resource
         sel = pbs.select("1:ncpus=2")
@@ -239,41 +236,27 @@ else:
         rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
         self.assertTrue(rv)
         # As a user submit a job requesting walltime
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
-        a = {'Resource_List.mppwidth': 1, 'Resource_List.walltime': 30}
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        a = {'Resource_List.walltime': 30}
         j1 = Job(TEST_USER, a)
-        j1.create_script(self.scr)
-        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         # As a user submit a job without requesting walltime
         # Job is denied with the message
         _msg = "qsub: No walltime specified. Master does not approve! ;o)"
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER1)
-        a = {'Resource_List.mppwidth': 1}
-        j2 = Job(TEST_USER1, a)
-        j2.create_script(self.scr)
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER1)
+        j2 = Job(TEST_USER1)
+        j2.create_script(self.script)
         try:
-            jid2 = self.server.submit(j2, submit_dir=sub_dir)
-        except PbsSubmitError, e:
+            jid2 = self.server.submit(j2, submit_dir=submit_dir)
+        except PbsSubmitError as e:
             self.assertEqual(
                 e.msg[0], _msg, msg="Did not get expected qsub err message")
             self.logger.info("Got expected qsub err message as %s", e.msg[0])
-            pass
-        # As a user submit aother job requesting walltime and -V
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER1)
-        self.ATTR_V = 'Full_Variable_List'
-        api_to_cli.setdefault(self.ATTR_V, 'V')
-        a = {self.ATTR_V: None, 'Resource_List.mppwidth': 1,
-             'Resource_List.walltime': 30}
-        j3 = Job(TEST_USER1, a)
-        j3.create_script(self.scr)
-        jid3 = self.server.submit(j3, submit_dir=sub_dir)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
-        # Verify pbs_server is up
-        if not self.server.isUp():
-            self.fail("Server is not up")
+        # To handle delay in  ALPS reservation cancelation on cray simulator
+        # Deleting job explicitly
         self.server.delete([jid1])
-        self.server.delete([jid3])
 
     def test_modifyjob_hook(self):
         """
@@ -295,21 +278,21 @@ except pbs.EventIncompatibleError:
         rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
         self.assertTrue(rv)
         # As user submit a job j1
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER2)
-        a = {'Resource_List.mppwidth': 1}
-        j1 = Job(TEST_USER2, a)
-        j1.create_script(self.scr)
-        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER2)
+        j1 = Job(TEST_USER2)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         # qalter the job, qalter will fail with error
         _msg = "qalter: Event is incompatible " + jid1
         try:
             self.server.alterjob(jid1, {ATTR_p: '5'})
-        except PbsAlterError, e:
+        except PbsAlterError as e:
             self.assertEqual(
                 e.msg[0], _msg, msg="Did not get expected qalter err message")
             self.logger.info("Got expected qalter err message as %s", e.msg[0])
-            pass
+        # To handle delay in  ALPS reservation cancelation on cray simulator
+        # Deleting job explicitly
         self.server.delete([jid1])
 
     def test_resvsub_hook(self):
@@ -337,13 +320,12 @@ r.Resource_List["place"] = pbs.place("pack:freed")"""
             " encountered an exception. Please inform Admin"
         try:
             rid = self.server.submit(r)
-        except PbsSubmitError, e:
+        except PbsSubmitError as e:
             self.assertEqual(
                 e.msg[0], _msg,
                 msg="Did not get expected pbs_rsub err message")
             self.logger.info(
                 "Got expected pbs_rsub err message as %s", e.msg[0])
-            pass
 
     def test_movejob_hook(self):
         """
@@ -351,10 +333,17 @@ r.Resource_List["place"] = pbs.place("pack:freed")"""
         """
         # Create testq
         qname = 'testq'
+        err_msg = []
+        err_msg.append("qmgr obj=testq svr=default: Unknown queue")
+        err_msg.append("qmgr: Error (15018) returned from server")
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
-        except PbsManagerError:
-            pass
+        except PbsManagerError as e:
+            for i in err_msg:
+                self.assertIn(i, e.msg,
+                              msg="Failed to get expected error message")
+            self.logger.info("Got expected qmgr err message as %s", e.msg)
+
         a = {'queue_type': 'Execution', 'enabled': 'True', 'started': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
         # Create a hook with event movejob
@@ -368,12 +357,11 @@ if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
         rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
         self.assertTrue(rv)
         # submit a job j1 to default queue
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER4)
-        a = {ATTR_h: None, 'Resource_List.mppwidth': 1,
-             'Resource_List.mppmem': '30mb'}
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER4)
+        a = {ATTR_h: None, 'Resource_List.mppmem': '30mb'}
         j1 = Job(TEST_USER4, a)
-        j1.create_script(self.scr)
-        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
         self.server.expect(JOB, {'job_state': 'H'}, id=jid1)
         # qmove the job to queue testq
         self.server.movejob(jid1, "testq")
@@ -381,11 +369,11 @@ if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
             JOB, {'job_state': 'H', ATTR_queue: 'testq'},
             attrop=PTL_AND, id=jid1)
         # Submit a job j2
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER5)
-        a = {ATTR_h: None, 'Resource_List.mppwidth': 1}
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER5)
+        a = {ATTR_h: None}
         j2 = Job(TEST_USER5, a)
-        j2.create_script(self.scr)
-        jid2 = self.server.submit(j2, submit_dir=sub_dir)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2, submit_dir=submit_dir)
         self.server.expect(JOB, {'job_state': 'H'}, id=jid2)
         # qmove the job j2 to queue testq
         # Qmove will fail with an error
@@ -396,14 +384,13 @@ if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
             self.assertEqual(
                 e.msg[0], _msg, msg="Did not get expected qmove err message")
             self.logger.info("Got expected qmove err message as %s", e.msg[0])
-            pass
         # Delete the jobs and delete queue testq
         self.server.delete([jid1, jid2])
         self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
 
     def test_runjob_hook(self):
         """
-        Test runjob hook
+        Test runjob hook using qrun
         """
         # Create a hook with event runjob
         hook_body = """import pbs
@@ -431,11 +418,11 @@ print_attribs(j)"""
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
         # submit job j1
-        sub_dir = self.du.create_temp_dir(asuser=TEST_USER7)
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER7)
         # submit job j1
         j1 = Job(TEST_USER7)
-        j1.create_script(self.scr)
-        jid1 = self.server.submit(j1, submit_dir=sub_dir)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         # qrun job j1
         self.server.runjob(jid1)
