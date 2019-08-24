@@ -351,14 +351,14 @@ r.Resource_List["place"] = pbs.place("pack:freed")"""
 e = pbs.event()
 j = e.job
 
-if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
- e.reject("testq requires job to have mppmem spec")"""
+if j.queue.name == "testq" and not j.Resource_List["mem"]:
+ e.reject("testq requires job to have mem")"""
         attrs = {'event': 'movejob', 'enabled': 'True'}
         rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
         self.assertTrue(rv)
         # submit a job j1 to default queue
         submit_dir = self.du.create_temp_dir(asuser=TEST_USER4)
-        a = {ATTR_h: None, 'Resource_List.mppmem': '30mb'}
+        a = {ATTR_h: None, 'Resource_List.mem': '30mb'}
         j1 = Job(TEST_USER4, a)
         j1.create_script(self.script)
         jid1 = self.server.submit(j1, submit_dir=submit_dir)
@@ -377,7 +377,7 @@ if j.queue.name == "testq" and not j.Resource_List["mppmem"]:
         self.server.expect(JOB, {'job_state': 'H'}, id=jid2)
         # qmove the job j2 to queue testq
         # Qmove will fail with an error
-        _msg = "qmove: testq requires job to have mppmem spec " + jid2
+        _msg = "qmove: testq requires job to have mem " + jid2
         try:
             self.server.movejob(jid2, "testq")
         except PbsMoveError as e:
