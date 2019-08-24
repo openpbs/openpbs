@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestAllPart(TestFunctional):
+class TestSchedAllPart(TestFunctional):
     """
     Test the scheduler's allpart optimization
     """
@@ -87,6 +87,10 @@ class TestAllPart(TestFunctional):
         self.server.expect(JOB, a, id=jid2)
 
     def test_vscatter2(self):
+        """
+        Test that we can determine a job can never run if it is requesting
+        more nodes than is in the complex via vscatter
+        """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'vscatter'}
@@ -99,7 +103,7 @@ class TestAllPart(TestFunctional):
 
     def test_rassn(self):
         """
-        Test rassn resource (ncpus) is empty and the comment is shown
+        Test rassn resource (ncpus) is unavailable and the comment is shown
         with a RAT line
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
