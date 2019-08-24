@@ -59,6 +59,7 @@
  *	where_to_runjob()
  *	assign_hosts()
  *	req_defschedreply()
+ *	check_failed_attempts()
  *
  */
 
@@ -1278,6 +1279,40 @@ parse_hook_rejectmsg(char *reject_msg, char *hook_name, int hook_name_size)
 
 /**
  * @brief
+ *		Check and put a hold on a job if it has already been run
+ *		too many times.
+ *
+ * @param[in,out]	pjob	-	job pointer
+ *
+ * @return	void
+ */
+void
+check_failed_attempts(job *jobp)
+{
+	if (jobp->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long >
+#ifdef NAS /* localmod 083 */
+		PBS_MAX_HOPCOUNT
+#else
+		PBS_MAX_HOPCOUNT + PBS_MAX_HOPCOUNT
+#endif /* localmod 083 */
+	) {
+		jobp->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
+		jobp->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		job_attr_def[(int)JOB_ATR_Comment].at_decode(&jobp->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, "job held, too many failed attempts to run");
+
+		if (jobp->ji_parentaj) {
+			char comment_buf[100 + PBS_MAXSVRJOBID];
+			svr_setjobstate(jobp->ji_parentaj, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+			jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
+			jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s", jobp->ji_qs.ji_jobid);
+			job_attr_def[(int)JOB_ATR_Comment].at_decode(&jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, comment_buf);
+		}
+	}
+}
+
+/**
+ * @brief
  * 		post_sendmom - clean up action for child started in send_job
  *		which was sending a job "home" to MOM
  * @par
@@ -1459,6 +1494,9 @@ post_sendmom(struct work_task *pwt)
 			/* if the job is a normal job or a subjob */
 			set_attr_svr(&(jobp->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment], log_buffer);
 
+			if (pbs_errno == PBSE_MOM_REJECT_ROOT_SCRIPTS)
+				check_failed_attempts(jobp);
+
 		}
 
 		/* in the case of hook error we parse the hook_name and hook msg */
@@ -1591,39 +1629,7 @@ post_sendmom(struct work_task *pwt)
 				} else if ((r == SEND_JOB_HOOKERR) ||
 					(r == SEND_JOB_HOOK_REJECT) ||
 					(r == SEND_JOB_HOOK_REJECT_RERUNJOB)) {
-
-					if (jobp->ji_wattr[(int)JOB_ATR_runcount].\
-				     at_val.at_long >
-						PBS_MAX_HOPCOUNT + PBS_MAX_HOPCOUNT) {
-						jobp->ji_wattr[(int)JOB_ATR_hold].\
-						      at_val.at_long |= HOLD_s;
-						jobp->ji_wattr[(int)JOB_ATR_hold].\
-							at_flags |=
-							ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-						job_attr_def[(int)JOB_ATR_Comment].\
-						at_decode(\
-							&jobp->ji_wattr[(int)JOB_ATR_Comment],
-							NULL, NULL,
-							"job held, too many failed attempts to run");
-
-						if (jobp->ji_parentaj) {
-							char comment_buf[100 + PBS_MAXSVRJOBID];
-							svr_setjobstate(jobp->ji_parentaj, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
-							jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
-							      at_val.at_long |= HOLD_s;
-							jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_hold].\
-								at_flags |=
-								ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-							sprintf(comment_buf, "Job Array Held, too many failed attempts to run subjob %s",
-									jobp->ji_qs.ji_jobid);
-							job_attr_def[(int)JOB_ATR_Comment].\
-							at_decode(\
-								&jobp->ji_parentaj->ji_wattr[(int)JOB_ATR_Comment],
-								NULL, NULL,
-								comment_buf);
-						}
-					}
-
+					check_failed_attempts(jobp);
 					if (r == SEND_JOB_HOOKERR) {
 						hook	*phook;
 						phook = find_hook(hook_name);

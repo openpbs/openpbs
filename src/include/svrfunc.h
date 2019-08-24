@@ -204,6 +204,7 @@ extern char *form_attr_comment(const char *template, const char *execvnode);
 extern void complete_running(job *);
 extern void am_jobs_add(job *);
 extern int  was_job_alteredmoved(job *);
+extern void check_failed_attempts(job *);
 #endif
 #ifdef	_QUEUE_H
 extern int   check_entity_ct_limit_max(job *pjob, pbs_queue *pque);
