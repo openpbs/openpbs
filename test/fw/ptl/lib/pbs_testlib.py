@@ -58,7 +58,6 @@ from operator import itemgetter
 from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
-from ptl.utils.pbs_fileutils import FILE_TAIL, FileUtils
 from ptl.utils.pbs_procutils import ProcUtils
 
 try:
@@ -4016,19 +4015,9 @@ class PBSService(PBSObject):
                     day = firstday_obj.strftime("%Y%m%d")
                     filename = os.path.join(logdir, day)
                     if n == 'ALL':
-                        if self._is_local and not sudo:
-                            with open(filename) as f:
-                                day_lines = f.readlines()
-                        else:
-                            day_lines = self.du.cat(
-                                self.hostname, filename, sudo=sudo,
-                                level=logging.DEBUG2)['out']
-                    elif self._is_local and not sudo:
-                        if tail:
-                            futils = FileUtils(filename, FILE_TAIL)
-                        else:
-                            futils = FileUtils(filename)
-                        day_lines = futils.next(n)
+                        day_lines = self.du.cat(
+                            self.hostname, filename, sudo=sudo,
+                            level=logging.DEBUG2)['out']
                     else:
                         if tail:
                             cmd = ['/usr/bin/tail']
@@ -4049,7 +4038,7 @@ class PBSService(PBSObject):
                         break
         except:
             self.logger.error('error in log_lines ')
-            traceback.print_exc()
+            self.logger.error(traceback.print_exc())
             return None
 
         return lines
