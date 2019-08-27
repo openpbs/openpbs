@@ -1674,6 +1674,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				if (ns[i]->ninfo->np_arr != NULL) {
 					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
 						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+						if (!ns[i]->ninfo->is_free)
+							ns[i]->ninfo->np_arr[j]->free_nodes--;
 						sort_nodepart = 1;
 					}
 				}
