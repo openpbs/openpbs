@@ -261,7 +261,7 @@ class PBSLogUtils(object):
             t -= epoch_datetime
             # get epoch time from timedelta object
             tm = t.total_seconds() - offsetdiff.total_seconds()
-        except:
+        except ValueError:
             cls.logger.debug("could not convert date time: " + str(dt))
             return None
 

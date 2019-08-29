@@ -1401,8 +1401,7 @@ class PBSTestSuite(unittest.TestCase):
             mom.restart()
         else:
             mom.signal('-HUP')
-        rv = mom.isUp()
-        if not rv:
+        if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
