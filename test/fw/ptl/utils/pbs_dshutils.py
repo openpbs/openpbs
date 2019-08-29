@@ -897,6 +897,7 @@ class DshUtils(object):
         rshcmd = []
         sudocmd = []
         platform = self.get_platform()
+        _runas_user = None
 
         if level is None:
             level = self.logger.level
