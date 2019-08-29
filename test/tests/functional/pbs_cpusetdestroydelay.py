@@ -55,7 +55,7 @@ class TestCpusetDestroyDelay(TestFunctional):
         self.server.expect(SERVER, {'pbs_version': (GE, '13.0')},
                            max_attempts=2)
         self.server.set_op_mode(PTL_CLI)
-        self.server.cleanup_jobs(extend='force')
+        self.server.cleanup_jobs()
         if not self.mom.is_cpuset_mom():
             self.skipTest("Not running cpuset mom")
         self.resilient_job_script = """

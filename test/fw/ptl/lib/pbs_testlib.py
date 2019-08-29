@@ -5027,7 +5027,7 @@ class Server(PBSService):
             setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
             if (self.platform == 'cray' or self.platform == 'craysim' or
-               self.platform == 'shasta'):
+                    self.platform == 'shasta'):
                 reverthooks = True
             else:
                 reverthooks = False
@@ -6087,6 +6087,7 @@ class Server(PBSService):
             prefix += ', '.join(id)
         self.logger.info(prefix)
         c = None
+        rc = 0
         if self.get_op_mode() == PTL_CLI:
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qdel')]
             if extend is not None:
@@ -6096,8 +6097,6 @@ class Server(PBSService):
                 pcmd += ['-W']
                 if attr_W != PTL_NOARG:
                     pcmd += [attr_W]
-            if id is not None:
-                pcmd += id
             if not self.default_client_pbs_conf:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
                 as_script = True
@@ -6106,13 +6105,26 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
-                                  as_script=as_script, logerr=logerr,
-                                  level=logging.INFOCLI)
-            rc = ret['rc']
-            if ret['err'] != ['']:
-                self.last_error = ret['err']
-            self.last_rc = rc
+            if id is not None:
+                chunks = [id[i:i + 2000] for i in range(0, len(id), 2000)]
+                for chunk in chunks:
+                    ret = self.du.run_cmd(self.client, pcmd + chunk,
+                                          runas=runas, as_script=as_script,
+                                          logerr=logerr, level=logging.INFOCLI)
+                    rc = ret['rc']
+                    if ret['err'] != ['']:
+                        self.last_error = ret['err']
+                    self.last_rc = rc
+                    if rc != 0:
+                        break
+            else:
+                ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+                                      as_script=as_script, logerr=logerr,
+                                      level=logging.INFOCLI)
+                rc = ret['rc']
+                if ret['err'] != ['']:
+                    self.last_error = ret['err']
+                self.last_rc = rc
         elif runas is not None:
             rc = self.pbs_api_as('deljob', id, user=runas, extend=extend)
         else:
@@ -6133,7 +6145,7 @@ class Server(PBSService):
                     del self.jobs[j]
         if c:
             self._disconnect(c)
-        if wait:
+        if wait and id is not None:
             for oid in id:
                 self.expect(JOB, 'queue', id=oid, op=UNSET, runas=runas,
                             level=logging.DEBUG)
@@ -6168,11 +6180,10 @@ class Server(PBSService):
             prefix += ', '.join(id)
         self.logger.info(prefix)
         c = None
+        rc = 0
         if self.get_op_mode() == PTL_CLI:
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
                                  'pbs_rdel')]
-            if id is not None:
-                pcmd += id
             if not self.default_client_pbs_conf:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
                 as_script = True
@@ -6181,13 +6192,26 @@ class Server(PBSService):
                 as_script = True
             else:
                 as_script = False
-            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
-                                  as_script=as_script, logerr=logerr,
-                                  level=logging.INFOCLI)
-            rc = ret['rc']
-            if ret['err'] != ['']:
-                self.last_error = ret['err']
-            self.last_rc = rc
+            if id is not None:
+                chunks = [id[i:i + 2000] for i in range(0, len(id), 2000)]
+                for chunk in chunks:
+                    ret = self.du.run_cmd(self.client, pcmd + chunk,
+                                          runas=runas, as_script=as_script,
+                                          logerr=logerr, level=logging.INFOCLI)
+                    rc = ret['rc']
+                    if ret['err'] != ['']:
+                        self.last_error = ret['err']
+                    self.last_rc = rc
+                    if rc != 0:
+                        break
+            else:
+                ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+                                      as_script=as_script, logerr=logerr,
+                                      level=logging.INFOCLI)
+                rc = ret['rc']
+                if ret['err'] != ['']:
+                    self.last_error = ret['err']
+                self.last_rc = rc
         elif runas is not None:
             rc = self.pbs_api_as('delresv', id, user=runas, extend=extend)
         else:
@@ -6206,7 +6230,7 @@ class Server(PBSService):
                     del self.reservations[j]
         if c:
             self._disconnect(c)
-        if wait:
+        if wait and id is not None:
             for oid in id:
                 self.expect(RESV, 'queue', id=oid, op=UNSET, runas=runas,
                             level=logging.DEBUG)
@@ -8293,7 +8317,7 @@ class Server(PBSService):
             return True
         return False
 
-    def cleanup_jobs(self, extend=None, runas=None):
+    def cleanup_jobs(self, schedoff=True):
         """
         Helper function to delete all jobs.
         By default this method will determine whether
@@ -8301,8 +8325,8 @@ class Server(PBSService):
         jobs. Specifying an extend parameter could override
         this behavior.
 
-        :param runas: Clean the job as
-        :type runas: str or None
+        :param schedoff: Make all scheduling off before deleting jobs
+        :type schedoff: bool
         """
         delete_xt = 'force'
         select_xt = None
@@ -8314,86 +8338,51 @@ class Server(PBSService):
         # Turn off scheduling so jobs don't start when trying to
         # delete. Restore the orignial scheduling state
         # once jobs are deleted.
-        sched_state = {}
-        for sc in self.schedulers:
-            sched_state[sc] = self.status(
-                SCHED, {'scheduling'},
-                id=self.schedulers[sc].sc_name)[0]['scheduling']
-            # runas is required here because some tests remove current user
-            # from managers list
-            self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
-                         id=self.schedulers[sc].sc_name, runas='root')
-        num_jobs = len(job_ids)
-        if num_jobs >= 100:
-            self._cleanup_large_num_jobs(job_ids, runas=runas)
-
-        if num_jobs > 0 and num_jobs < 100:
-            try:
-                self.deljob(id=job_ids, extend=delete_xt, runas=runas,
-                            wait=True)
-            except:
-                pass
+        sched_state = []
+        if schedoff:
+            scheds = self.status(SCHED)
+            for sc in scheds:
+                if sc['scheduling'] == 'True':
+                    sched_state.append(sc['id'])
+                    # runas is required here because some tests remove
+                    # current user from managers list
+                    self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                                 id=sc['id'], runas='root')
+        try:
+            self.deljob(id=job_ids, extend=delete_xt, runas='root', wait=False)
+        except PbsDeljobError:
+            pass
         rv = self.expect(JOB, {'job_state': 0}, count=True, op=SET)
         if not rv:
-            return self.cleanup_jobs(extend=extend, runas=runas)
+            rv = self.cleanup_jobs(schedoff=False)
 
         # restore 'scheduling' state
-        for sc in self.schedulers:
-            self.manager(MGR_CMD_SET, SCHED,
-                         {'scheduling': sched_state[sc]},
-                         id=self.schedulers[sc].sc_name,
-                         runas='root')
+        for sc in sched_state:
+            self.manager(MGR_CMD_SET, SCHED, {'scheduling': True},
+                         id=sc, runas='root')
         return rv
 
-    def cleanup_reservations(self, extend=None, runas=None):
+    def cleanup_reservations(self):
         """
         Helper function to delete all reservations
         """
-        reservations = self.status(RESV, level=logging.DEBUG)
-        while reservations is not None and len(reservations) != 0:
+        reservations = self.status(RESV, runas='root')
+        while reservations:
             resvs = [r['id'] for r in reservations]
             if len(resvs) > 0:
                 try:
-                    self.delresv(resvs, logerr=False, runas=runas)
+                    self.delresv(resvs, runas='root')
                 except:
                     pass
-                reservations = self.status(RESV, level=logging.DEBUG)
+                reservations = self.status(RESV)
 
-    def cleanup_jobs_and_reservations(self, extend='forcedeletehist'):
+    def cleanup_jobs_and_reservations(self):
         """
         Helper function to delete all jobs and reservations
-
-        :param extend: Optional extend parameter that is passed
-                       to delete. It defaults to 'deletehist' which
-                       is used in qdel and pbs_deljob() to force
-                       delete all jobs, including history jobs
-        :param extend: str
         """
-        rv = self.cleanup_jobs(extend)
+        rv = self.cleanup_jobs()
         self.cleanup_reservations()
         return rv
-
-    def _cleanup_large_num_jobs(self, job_ids=None, runas=None):
-        """
-        Helper function to cleanup large number of jobs.
-        Job processes are killed manually. Jobs are then deleted
-        using qdel -Wforce
-        """
-        status_list = self.status(JOB,
-                                  attrib=[{'job_state': 'R'}, ATTR_session])
-
-        for s in status_list:
-            if 'session_id' in s:
-                sess_id = s[ATTR_session]
-                self.logger.info('Killing pid [%s]' % sess_id)
-                cmd = 'kill -9 ' + sess_id
-                self.du.run_cmd(self.hostname, cmd, sudo=True,
-                                runas=runas)
-        # Delete jobs from server, if any
-        try:
-            self.delete(id=job_ids, extend='force', wait=True, runas=runas)
-        except PbsDeleteError:
-            pass
 
     def update_attributes(self, obj_type, bs):
         """

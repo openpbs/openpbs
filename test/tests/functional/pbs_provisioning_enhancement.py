@@ -332,7 +332,7 @@ e.reject()
         # This was needed since sometime the above job takes longer
         # to finish and release the resources. This causes delay for
         # the next job to start and can probably fail the test.
-        self.server.cleanup_jobs(extend='force')
+        self.server.cleanup_jobs()
 
         # Below job will run on two node with placement set to scatter.
         # even though single node can satisfy both the requested chunks.
