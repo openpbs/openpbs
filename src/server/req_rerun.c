@@ -114,13 +114,6 @@ post_rerun(struct work_task *pwt)
 
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(preq->rq_reply.brp_code, PREEMPT_METHOD_REQUEUE, pjob);
-
-			if ((preq->rq_reply.brp_code == PBSE_UNKJOBID) &&
-			    (preq->rq_extra == 0)) {
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-				discard_job(pjob, "Force rerun", 1);
-				force_reque(pjob);
-			}
 		}
 	}
 
@@ -417,15 +410,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	time_t  rerun_to;
 	conn_t	*conn;
 	int rc;
-	int is_mgr = 0;
-	void *force_rerun = NULL;
 
 	if (preq->rq_extend && (strcmp(preq->rq_extend, "force") == 0))
 		force = 1;
-
-	/* See if the request is coming from a manager */
-	if (preq->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR))
-		is_mgr = 1;
 
 	/* the job must be rerunnable or force must be on */
 
@@ -450,22 +437,16 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	 * and it would have a JOB_SUBSTATE_PRERUN substate.
 	 */
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
-            (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
+	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
-	/* Set the flag for post_rerun only when
-	 * force is set and request is from manager 
-	 */
-	if (force == 1 && is_mgr == 1)
-		force_rerun = (void *)1;
-
 	/* ask MOM to kill off the job */
 
-	rc = issue_signal(pjob, SIG_RERUN, post_rerun, force_rerun);
+	rc = issue_signal(pjob, SIG_RERUN, post_rerun, NULL);
 
 	/*
 	 * If force is set and request is from a PBS manager,
@@ -475,11 +456,13 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	 * server sends a discard message to mom and job is
 	 * then deleted from mom as well.
 	 */
-	if ((rc || is_mgr) && force == 1) {
+	if (force == 1) {
 
 		/* Mom is down and issue signal failed or
 		 * request is from a manager and "force" is on,
 		 * force the requeue */
+		if (pjob->ji_pmt_preq != NULL)
+			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 		discard_job(pjob, "Force rerun", 1);
