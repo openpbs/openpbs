@@ -374,7 +374,7 @@ class TestMultipleSchedulers(TestFunctional):
     def test_preemption_highp_queue(self):
         """
         Test preemption occures only within queues which are assigned
-        to same partition and check for equivalence classes
+        to same partition
         """
         self.common_setup()
         prio = {'Priority': 150, 'partition': 'P1'}
@@ -383,14 +383,12 @@ class TestMultipleSchedulers(TestFunctional):
                                    'Resource_List.select': '1:ncpus=2'})
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        t = int(time.time())
+
+        t = time.time()
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
                                    'Resource_List.select': '1:ncpus=2'})
         jid2 = self.server.submit(j)
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 1",
-                                     max_attempts=10, starttime=t)
+
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
                                    'Resource_List.select': '1:ncpus=2'})
@@ -401,9 +399,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].log_match(
             jid1 + ';Job preempted by suspension',
             max_attempts=10, starttime=t)
-        # Two equivalence class one for suspended and one for remaining jobs
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
-                                     max_attempts=10, starttime=t)
 
     def test_preemption_two_sched(self):
         """
