@@ -100,6 +100,14 @@ exit 0
                 self.n = m.split('=')[0]
                 continue
 
+        # Client commands full path
+        self.qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                      'bin', 'qstat')
+        self.qmgr_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                     'bin', 'qmgr')
+        self.pbsnodes_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                         'bin', 'pbsnodes')
+
     def create_and_submit_job(self, user=None, attribs=None, content=None,
                               content_interactive=None, preserve_env=False):
         """
@@ -134,6 +142,16 @@ exit 0
         self.assertEqual(job_output, chk_var)
         self.logger.info('job output has: %s' % chk_var)
 
+    def check_qstatout(self, chk_var, jid):
+        """
+        Check if escaped variable is in qstat -f output
+        """
+        cmd = [self.qstat_cmd, '-f', jid]
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        qstat_out = '\n'.join(ret['out'])
+        self.assertIn(chk_var, qstat_out)
+        self.logger.info('qstat -f output has: %s' % chk_var)
+
     def test_nonprint_character_qsubv(self):
         """
         Using each of the non-printable ASCII characters, except NULL
@@ -156,10 +174,7 @@ exit 0
             script += ['env | grep var1']
             jid = self.create_and_submit_job(attribs=a, content=script)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Check if job output contains the character as is
             qstat = self.server.status(JOB, ATTR_o, id=jid)
             job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -188,10 +203,7 @@ exit 0
             script += ['env | grep var1']
             jid = self.create_and_submit_job(content=script)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Check if job output contains the character
             qstat = self.server.status(JOB, ATTR_o, id=jid)
             job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -222,10 +234,7 @@ exit 0
             j.create_script(body=script)
             jid = self.server.submit(j)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Check if job output contains the character
             qstat = self.server.status(JOB, ATTR_o, id=jid)
             job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -257,10 +266,7 @@ exit 0
             j.create_script(body=script)
             jid = self.server.submit(j)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Check if job output contains the character
             qstat = self.server.status(JOB, ATTR_o, id=jid)
             job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -296,10 +302,7 @@ exit 0
             script += ['sleep 5']
             jid = self.create_and_submit_job(content=script)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Check if job output contains the character
             qstat = self.server.status(JOB, ATTR_o, id=jid)
             job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -318,10 +321,7 @@ exit 0
         script += ['sleep 5']
         jid = self.create_and_submit_job(attribs=a, content=script)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -343,10 +343,7 @@ exit 0
         script += ['sleep 5']
         jid = self.create_and_submit_job(content=script)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -369,10 +366,7 @@ exit 0
         j.create_script(body=script)
         jid = self.server.submit(j)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -396,10 +390,7 @@ exit 0
         j.create_script(body=script)
         jid = self.server.submit(j)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -426,10 +417,7 @@ exit 0
         script += ['sleep 5']
         jid = self.create_and_submit_job(content=script)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -442,8 +430,10 @@ exit 0
         Find msg in tracejob output of jid.
         """
         rc = 0
-        cmd = ['tracejob', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+        tracejob_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                    'bin', 'tracejob')
+        cmd = [tracejob_cmd, jid]
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
         self.assertEqual(ret['rc'], 0)
         for m in ret['out']:
             if m.find(msg) != -1:
@@ -460,8 +450,10 @@ exit 0
         rc = 0
         jbfile = os.path.join(self.mom.pbs_conf['PBS_HOME'], 'mom_priv',
                               'jobs', jid + '.JB')
-        cmd = ['printjob', jbfile]
-        ret = self.du.run_cmd(self.mom.hostname, cmd, sudo=True)
+        printjob_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                    'bin', 'printjob')
+        cmd = [printjob_cmd, jbfile]
+        ret = self.du.run_cmd(self.mom.hostname, cmd=cmd, sudo=True)
         self.assertEqual(ret['rc'], 0)
         for m in ret['out']:
             if m.find(msg) != -1:
@@ -536,14 +528,10 @@ exit 0
         """
         rc = 0
         if cmd == 'qstat':
-            qstat_cmd_json = os.path.join(
-                self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat') + \
-                ' -f -F json ' + str(jid)
+            qstat_cmd_json = self.qstat_cmd + ' -f -F json ' + str(jid)
             ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
         elif cmd == 'nodes':
-            nodes_cmd_json = os.path.join(
-                self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbsnodes') + \
-                ' -av -F json'
+            nodes_cmd_json = self.pbsnodes_cmd + ' -av -F json'
             ret = self.du.run_cmd(self.server.hostname, cmd=nodes_cmd_json)
         ret_out = "\n".join(ret['out'])
         try:
@@ -622,9 +610,7 @@ exit 0
             a = {ATTR_v: "var1=\'AB%sCD\'" % ch}
             script = ['env | grep var1']
             jid = self.create_and_submit_job(attribs=a, content=script)
-            qstat_cmd_dsv = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                         'bin', 'qstat') + \
-                ' -f -F dsv ' + str(jid)
+            qstat_cmd_dsv = self.qstat_cmd + ' -f -F dsv ' + str(jid)
             ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_dsv)
             qstat_out = "\n".join(ret['out'])
             match = 'var1=AB%sCD' % self.npcat[ch]
@@ -641,9 +627,7 @@ exit 0
         a = {ATTR_v: "var1=\'%s%sXY%s\'" % (self.bold, self.red, self.reset)}
         script = ['env | grep var1']
         jid = self.create_and_submit_job(attribs=a, content=script)
-        qstat_cmd_dsv = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                     'bin', 'qstat') + \
-            ' -f -F dsv ' + str(jid)
+        qstat_cmd_dsv = self.qstat_cmd + ' -f -F dsv ' + str(jid)
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_dsv)
         qstat_out = "\n".join(ret['out'])
         match = 'var1=%s%sXY%s' % (self.bold_esc, self.red_esc, self.reset_esc)
@@ -678,10 +662,8 @@ exit 0
             # Check if qstat -f output contains the escaped character
             ja = [jid, subj1, subj2]
             for j in ja:
-                cmd = ['qstat', '-f', j]
-                ret = self.du.run_cmd(self.server.hostname, cmd)
-                qstat_out = '\n'.join(ret['out'])
-                self.assertIn(chk_var, qstat_out)
+                # Check if qstat -f output contains the escaped character
+                self.check_qstatout(chk_var, j)
             qstat1 = self.server.status(JOB, ATTR_o, id=subj1)
             job_outfile1 = qstat1[0][ATTR_o].split(':')[1]
             if job_outfile1.split('.')[2] == '^array_index^':
@@ -711,10 +693,8 @@ exit 0
         # Check if qstat -f output contains the escaped character
         ja = [jid, subj1, subj2]
         for j in ja:
-            cmd = ['qstat', '-f', j]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            # Check if qstat -f output contains the escaped character
+            self.check_qstatout(chk_var, j)
         qstat1 = self.server.status(JOB, ATTR_o, id=subj1)
         job_outfile1 = qstat1[0][ATTR_o].split(':')[1]
         if job_outfile1.split('.')[2] == '^array_index^':
@@ -757,10 +737,7 @@ exit 0
                 content_interactive=interactive_script,
                 preserve_env=True)
             # Check if qstat -f output contains the escaped character
-            cmd = ['qstat', '-f', jid]
-            ret = self.du.run_cmd(self.server.hostname, cmd)
-            qstat_out = '\n'.join(ret['out'])
-            self.assertIn(chk_var, qstat_out)
+            self.check_qstatout(chk_var, jid)
             # Once all commands sent and matched, job exits
             self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
             # Check for the non-printable character in the output file
@@ -802,10 +779,7 @@ exit 0
             content_interactive=interactive_script,
             preserve_env=True)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Once all commands sent and matched, job exits
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
         # Parse for the non-printable character in the output file
@@ -877,10 +851,7 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         # Submit a job with hooks in the system
         jid = self.create_and_submit_job(attribs=a, content=script)
         # Check if qstat -f output contains the escaped character
-        cmd = ['qstat', '-f', jid]
-        ret = self.du.run_cmd(self.server.hostname, cmd)
-        qstat_out = '\n'.join(ret['out'])
-        self.assertIn(chk_var, qstat_out)
+        self.check_qstatout(chk_var, jid)
         # Check for the non-printable character in the job output file
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
@@ -912,15 +883,15 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         """
         # Print hook displays escaped nonprinting characters
         phook = 'create hook %s' % hook_name_esc
-        cmd = ['qmgr', '-c', 'print hook']
-        ret = self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+        cmd = [self.qmgr_cmd, '-c', 'print hook']
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
         self.assertEqual(ret['rc'], 0)
         if phook in ret['out']:
             self.logger.info('Found \"%s\" in print hook output' % phook)
         # List hook displays escaped nonprinting characters
         lhook = 'Hook %s' % hook_name_esc
-        cmd = ['qmgr', '-c', 'list hook']
-        ret = self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+        cmd = [self.qmgr_cmd, '-c', 'list hook']
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
         self.assertEqual(ret['rc'], 0)
         if lhook in ret['out']:
             self.logger.info('Found \"%s\" in list hook output' % lhook)
@@ -931,21 +902,22 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         'print hook' and 'list hook' displays the escaped nonprint character.
         """
         hook_name = "h%s%sd" % (self.bold, self.red)
-        create_hook = ['qmgr', '-c', 'create hook %s' % hook_name]
-        delete_hook = ['qmgr', '-c', 'delete hook %s' % hook_name]
-        list_hook = ['qmgr', '-c', 'list hook %s' % hook_name]
+        create_hook = [self.qmgr_cmd, '-c', 'create hook %s' % hook_name]
+        delete_hook = [self.qmgr_cmd, '-c', 'delete hook %s' % hook_name]
+        list_hook = [self.qmgr_cmd, '-c', 'list hook %s' % hook_name]
         # Delete hook if hook already exists
-        ret = self.du.run_cmd(self.server.hostname, list_hook, sudo=True)
+        ret = self.du.run_cmd(self.server.hostname, cmd=list_hook, sudo=True)
         if ret['rc'] == 0:
-            ret = self.du.run_cmd(self.server.hostname, delete_hook, sudo=True)
+            ret = self.du.run_cmd(self.server.hostname,
+                                  cmd=delete_hook, sudo=True)
             self.assertEqual(ret['rc'], 0)
         # Create hook. Qmgr print,list hook output will have escaped chars
-        ret = self.du.run_cmd(self.server.hostname, create_hook, sudo=True)
+        ret = self.du.run_cmd(self.server.hostname, cmd=create_hook, sudo=True)
         self.assertEqual(ret['rc'], 0)
         hook_name_esc = "h%s%sd" % (self.bold_esc, self.red_esc)
         self.check_print_list_hook(hook_name, hook_name_esc)
         # Delete the hook
-        ret = self.du.run_cmd(self.server.hostname, delete_hook, sudo=True)
+        ret = self.du.run_cmd(self.server.hostname, cmd=delete_hook, sudo=True)
         self.assertEqual(ret['rc'], 0)
         # Reset the terminal
         self.logger.info('%sReset terminal' % self.reset)
@@ -1023,23 +995,23 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         valid json and escaped representation id displayed correctly.
         """
         comment = 'h%s%sd%s' % (self.bold, self.red, self.reset)
-        cmd = ['pbsnodes', '-C', '%s' % comment, self.mom.shortname]
-        self.du.run_cmd(self.server.hostname, cmd)
+        cmd = [self.pbsnodes_cmd, '-C', '%s' % comment, self.mom.shortname]
+        self.du.run_cmd(self.server.hostname, cmd=cmd)
         # Check json output
         comm1 = 'h%s%sd%s' % (self.bold_esc, self.red_esc, self.reset_esc)
         rc = self.find_in_json_valid('nodes', comm1, None)
         self.assertGreaterEqual(rc, 2)
         # Check qmgr -c 'list node @default' output
         comm2 = '    comment = %s' % comm1
-        cmd = ['qmgr', '-c', 'list node @default']
-        ret = self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+        cmd = [self.qmgr_cmd, '-c', 'list node @default']
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
         self.assertEqual(ret['rc'], 0)
         if comm2 in ret['out']:
             self.logger.info('Found \"%s\" in qmgr list node output' % comm2)
         # Check pbsnodes -a output
         comm3 = '     comment = %s' % comm1
-        cmd = ['pbsnodes', '-a']
-        ret = self.du.run_cmd(self.server.hostname, cmd)
+        cmd = [self.pbsnodes_cmd, '-a']
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertEqual(ret['rc'], 0)
         if comm3 in ret['out']:
             self.logger.info('Found \"%s\" in pbsnodes -a output' % comm3)
@@ -1058,8 +1030,8 @@ e.env["LAUNCH_NONPRINT"] = "CD"
                 self.logger.info('##### excluded char: %s' % repr(ch))
                 continue
             comment = 'h%sd' % ch
-            cmd = ['pbsnodes', '-C', '%s' % comment, self.mom.shortname]
-            self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+            cmd = [self.pbsnodes_cmd, '-C', '%s' % comment, self.mom.shortname]
+            self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
             comm1 = 'h%sd' % self.npcat[ch]
             if ch in self.npch_asis:
                 comm1 = 'h%sd' % ch
@@ -1076,15 +1048,15 @@ e.env["LAUNCH_NONPRINT"] = "CD"
             self.assertGreaterEqual(rc, 2)
             # Check qmgr -c 'list node @default' output
             comm2 = '    comment = %s' % comm1
-            cmd = ['qmgr', '-c', 'list node @default']
-            ret = self.du.run_cmd(self.server.hostname, cmd, sudo=True)
+            cmd = [self.qmgr_cmd, '-c', 'list node @default']
+            ret = self.du.run_cmd(self.server.hostname, cmd=cmd, sudo=True)
             self.assertEqual(ret['rc'], 0)
             if comm2 in ret['out']:
                 self.logger.info('Found \"%s\" in qmgr list node out' % comm2)
             # Check pbsnodes -a output
             comm3 = '     comment = %s' % comm1
-            cmd = ['pbsnodes', '-a']
-            ret = self.du.run_cmd(self.server.hostname, cmd)
+            cmd = [self.pbsnodes_cmd, '-a']
+            ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
             self.assertEqual(ret['rc'], 0)
             if comm3 in ret['out']:
                 self.logger.info('Found \"%s\" in pbsnodes -a output' % comm3)
