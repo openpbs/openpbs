@@ -8358,8 +8358,8 @@ class Server(PBSService):
                 # current user from managers list
                 a = {'scheduling': 'False'}
                 self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
-                            runas='root')
-                self.expect(SCHED, a , id=sc['id'])
+                             runas='root')
+                self.expect(SCHED, a, id=sc['id'])
         try:
             self.deljob(id=job_ids, extend=delete_xt, runas='root', wait=False)
         except PbsDeljobError:
@@ -8376,7 +8376,7 @@ class Server(PBSService):
             _msg += 'Job Obit notice received has error 15001'
             try:
                 self.log_match(_msg, starttime=st, interval=10,
-                            max_attempts=10)
+                               max_attempts=10)
             except PtlLogMatchError:
                 # don't fail on log match error as here purpose
                 # of log match is to allow mom to catch up with
@@ -8389,7 +8389,7 @@ class Server(PBSService):
         for sc in sched_state:
             a = {'scheduling': 'True'}
             self.manager(MGR_CMD_SET, SCHED, a, id=sc, runas='root')
-            self.expect(SCHED, a , id=sc)
+            self.expect(SCHED, a, id=sc)
         return rv
 
     def cleanup_reservations(self):
