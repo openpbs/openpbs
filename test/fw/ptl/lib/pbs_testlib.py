@@ -2320,10 +2320,11 @@ class BatchUtils(object):
             if isinstance(attrs, list):
                 for a in attrs:
                     if 'force' in a:
-                        _c.append('-W')
-                        _c.append('force')
+                        _c.append('-Wforce')
                     if 'deletehist' in a:
                         _c.append('-x')
+                    if 'nomail' in a:
+                        _c.append('-Wsuppress_email=-1')
             return _c
 
         elif op == IFL_TERMINATE:
@@ -8317,49 +8318,78 @@ class Server(PBSService):
             return True
         return False
 
-    def cleanup_jobs(self, schedoff=True):
+    def cleanup_jobs(self):
         """
         Helper function to delete all jobs.
         By default this method will determine whether
         job_history_enable is on and will cleanup all history
         jobs. Specifying an extend parameter could override
         this behavior.
-
-        :param schedoff: Make all scheduling off before deleting jobs
-        :type schedoff: bool
         """
-        delete_xt = 'force'
+        delete_xt = 'nomailforce'
         select_xt = None
         if self.is_history_enabled():
             delete_xt += 'deletehist'
             select_xt = 'x'
-        job_ids = self.select(extend=select_xt)
+        jobs = self.status(JOB, extend=select_xt)
+        job_ids = sorted(list(set([x['id'] for x in jobs])))
+        host_pid_map = {}
+        for job in jobs:
+            if 'exec_host2' in job:
+                exec_host = job['exec_host2']
+            else:
+                exec_host = job.get('exec_host', None)
+            if not exec_host or 'session_id' not in job:
+                continue
+            _host = exec_host.split('/')[0].split(':')[0]
+            if _host not in host_pid_map:
+                host_pid_map.setdefault(_host, [])
+            host_pid_map[_host].append(job['session_id'])
 
         # Turn off scheduling so jobs don't start when trying to
         # delete. Restore the orignial scheduling state
         # once jobs are deleted.
         sched_state = []
-        if schedoff:
-            scheds = self.status(SCHED)
-            for sc in scheds:
-                if sc['scheduling'] == 'True':
-                    sched_state.append(sc['id'])
-                    # runas is required here because some tests remove
-                    # current user from managers list
-                    self.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
-                                 id=sc['id'], runas='root')
+        scheds = self.status(SCHED)
+        for sc in scheds:
+            if sc['scheduling'] == 'True':
+                sched_state.append(sc['id'])
+                # runas is required here because some tests remove
+                # current user from managers list
+                a = {'scheduling': 'False'}
+                self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
+                            runas='root')
+                self.expect(SCHED, a , id=sc['id'])
         try:
             self.deljob(id=job_ids, extend=delete_xt, runas='root', wait=False)
         except PbsDeljobError:
             pass
+        st = int(time.time())
+        if len(job_ids) > 100:
+            for host, pids in host_pid_map.items():
+                pids = list(set(pids))
+                chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
+                for chunk in chunks:
+                    self.du.run_cmd(host, ['kill', '-9'] + chunk,
+                                    runas='root', logerr=False)
+            _msg = job_ids[-1] + ';'
+            _msg += 'Job Obit notice received has error 15001'
+            try:
+                self.log_match(_msg, starttime=st, interval=10,
+                            max_attempts=10)
+            except PtlLogMatchError:
+                # don't fail on log match error as here purpose
+                # of log match is to allow mom to catch up with
+                # sigchild but we don't want to wait too long
+                # so limit max attempts to 10 ~ total 100 sec
+                # of wait
+                pass
         rv = self.expect(JOB, {'job_state': 0}, count=True, op=SET)
-        if not rv:
-            rv = self.cleanup_jobs(schedoff=False)
-
         # restore 'scheduling' state
         for sc in sched_state:
-            self.manager(MGR_CMD_SET, SCHED, {'scheduling': True},
-                         id=sc, runas='root')
+            a = {'scheduling': 'True'}
+            self.manager(MGR_CMD_SET, SCHED, a, id=sc, runas='root')
+            self.expect(SCHED, a , id=sc)
         return rv
 
     def cleanup_reservations(self):
