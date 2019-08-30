@@ -4036,7 +4036,7 @@ class PBSService(PBSObject):
                     n = n - len(day_lines)
                     if n <= 0:
                         break
-        except (BaseException, IOError, PtlLogMatchError):
+        except (Exception, IOError, PtlLogMatchError):
             self.logger.error('error in log_lines ')
             self.logger.error(traceback.print_exc())
             return None
