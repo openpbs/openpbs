@@ -1697,7 +1697,10 @@ free_server(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return;
-
+	/* We need to free the sinfo first to free the calendar. 
+	 * When the calendar is freed, the job events modify the jobs.  We can't
+	 * free the jobs before then.
+	 */
 	free_server_info(sinfo);
 
 	free_queues(sinfo->queues);
