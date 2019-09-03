@@ -1261,12 +1261,10 @@ if %s e.job.in_ms_mom():
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         # Scouring the logs for initial values takes too long
-        resc_list = ['resources_used.cput', 'resources_used.mem']
+        resc_list = ['resources_used.mem']
         if self.swapctl == 'true':
             resc_list.append('resources_used.vmem')
         qstat = self.server.status(JOB, resc_list, id=jid)
-        cput = qstat[0]['resources_used.cput']
-        self.assertEqual(cput, '00:00:00')
         mem = qstat[0]['resources_used.mem']
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
