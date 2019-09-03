@@ -48,6 +48,7 @@ import tempfile
 import pwd
 import grp
 import platform
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -692,7 +693,7 @@ class DshUtils(object):
         self._current_user = pwd.getpwuid(os.getuid())[0]
         return self._current_user
 
-    def check_user_exists(self, username=None, hostname=None):
+    def check_user_exists(self, username=None, hostname=None, port=None):
         """
         Check if user exist  or not
 
@@ -700,12 +701,17 @@ class DshUtils(object):
         :type username: str or None
         :param hostname: Machine hostname
         :type hostname: str or None
+        :param port: port used to ssh other host
+        :type port: str or None
         :returns: True if exist else return False
         """
         if hostname is None:
             hostname = socket.gethostname()
-
-        ret = self.run_cmd(hostname, ['id', username])
+        if self.get_platform() == "shasta":
+            runas = username
+        else:
+            runas = None
+        ret = self.run_cmd(hostname, ['id', username], port=port, runas=runas)
         if ret['rc'] == 0:
             return True
         return False
@@ -845,7 +851,7 @@ class DshUtils(object):
     def run_cmd(self, hosts=None, cmd=None, sudo=False, stdin=None,
                 stdout=PIPE, stderr=PIPE, input=None, cwd=None, env=None,
                 runas=None, logerr=True, as_script=False, wait_on_script=True,
-                level=logging.INFOCLI2):
+                level=logging.INFOCLI2, port=None):
         """
         Run a command on a host or list of hosts.
 
@@ -881,12 +887,17 @@ class DshUtils(object):
         :param wait_on_script: If True (default) waits on process
                                launched as script to return.
         :type wait_on_script: boolean
+        :type port: str
+        :param port: port number used with remote host IP address
+                     for ssh
         :returns: error, output, return code as a dictionary:
                   ``{'out':...,'err':...,'rc':...}``
         """
 
         rshcmd = []
         sudocmd = []
+        platform = self.get_platform()
+        _runas_user = None
 
         if level is None:
             level = self.logger.level
@@ -901,6 +912,9 @@ class DshUtils(object):
             elif not isinstance(runas, str):
                 # must be as PbsUser object
                 runas = str(runas)
+
+        if (platform == "shasta") and runas:
+            _runas_user = PbsUser.get_user(runas)
 
         if isinstance(cmd, str):
             cmd = cmd.split()
@@ -920,6 +934,9 @@ class DshUtils(object):
         ret = {'out': '', 'err': '', 'rc': 0}
 
         for hostname in hosts:
+            if (platform == "shasta") and _runas_user:
+                hostname = _runas_user.host if _runas_user.host else hostname
+                port = _runas_user.port
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
@@ -928,11 +945,19 @@ class DshUtils(object):
                 ret['rc'] = 1
                 continue
             if not islocal:
-                rshcmd = self.rsh_cmd + [hostname]
-            if sudo or ((runas is not None) and (runas != _user)):
-                sudocmd = copy.copy(self.sudo_cmd)
-                if runas is not None:
-                    sudocmd += ['-u', runas]
+                if port and platform == "shasta":
+                    if runas is None:
+                        user = _user
+                    else:
+                        user = _runas_user.name
+                    rshcmd = self.rsh_cmd + ['-p', port, user + '@' + hostname]
+                else:
+                    rshcmd = self.rsh_cmd + [hostname]
+            if platform != "shasta":
+                if sudo or ((runas is not None) and (runas != _user)):
+                    sudocmd = copy.copy(self.sudo_cmd)
+                    if runas is not None:
+                        sudocmd += ['-u', runas]
 
             # Initialize information to return
             ret = {'out': None, 'err': None, 'rc': None}
