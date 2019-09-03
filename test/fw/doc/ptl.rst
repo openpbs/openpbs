@@ -40,11 +40,6 @@ pbs_dshutils
 
 .. automodule:: ptl.utils.pbs_dshutils
 
-pbs_fileutils
--------------
-
-.. automodule:: ptl.utils.pbs_fileutils
-
 pbs_logutils
 ------------
 

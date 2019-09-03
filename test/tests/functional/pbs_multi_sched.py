@@ -35,8 +35,9 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from tests.functional import *
 import resource
+
+from tests.functional import *
 
 
 class TestMultipleSchedulers(TestFunctional):
@@ -969,7 +970,7 @@ class TestMultipleSchedulers(TestFunctional):
             allmatch=True, endtime=t_end)
 
         # job 1 runs second as it's run by an entity with usage = 100
-        self.assertTrue(jid1 in job_list[0][1])
+        self.assertTrue(jid1 in job_list[-1][1])
 
         self.server.deljob(id=jid1, wait=True)
         self.server.deljob(id=jid2, wait=True)
@@ -1007,7 +1008,7 @@ class TestMultipleSchedulers(TestFunctional):
             'Considering job to run', starttime=t_start,
             allmatch=True, endtime=t_end)
 
-        self.assertTrue(jid2 in job_list[0][1])
+        self.assertTrue(jid2 in job_list[-1][1])
 
     def submit_jobs(self, num_jobs=1, attrs=None, user=TEST_USER):
         """

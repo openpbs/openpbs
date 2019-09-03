@@ -1307,7 +1307,6 @@ class PBSTestSuite(unittest.TestCase):
     def revert_mom(self, mom, force=False):
         """
         Revert the values set for mom
-
         :param mom: the MoM object whose values are to be reverted
         :type mom: MoM object
         :param force: Option to reverse forcibly
@@ -1320,54 +1319,29 @@ class PBSTestSuite(unittest.TestCase):
             msg = 'Failed to restart mom ' + mom.hostname
             self.assertTrue(mom.isUp(), msg)
         mom.pbs_version()
+        restart = False
         if ((self.revert_to_defaults and self.mom_revert_to_defaults) or
                 force):
-            rv = mom.revert_to_defaults(delvnodedefs=self.del_vnodes)
-            _msg = 'Failed to revert mom %s' % (mom.hostname)
-            self.assertTrue(rv, _msg)
-            if 'clienthost' in self.conf:
-                mom.add_config({'$clienthost': self.conf['clienthost']})
-            a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
-            nodes = self.server.counter(NODE, a, attrop=PTL_AND,
-                                        level=logging.DEBUG)
-            if not nodes:
-                try:
-                    self.server.manager(MGR_CMD_DELETE, NODE, None, '')
-                except:
-                    pass
+            # no need to delete vnodes as it is already deleted in
+            # server revert_to_defaults
+            mom.delete_pelog()
+            if mom.has_vnode_defs():
                 mom.delete_vnode_defs()
-                mom.delete_vnodes()
-                mom.restart()
-                self.logger.info('server: no nodes defined, creating one')
-                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
-        name = mom.shortname
-        if mom.platform == 'cray' or mom.platform == 'craysim':
-            # delete all nodes(@default) on first call of revert_mom
-            # and create all nodes specified by self.moms one by one
-            try:
-                if self.del_all_nodes:
-                    self.server.manager(MGR_CMD_DELETE, NODE, None, '')
-                    self.del_all_nodes = False
-            except:
-                pass
-            self.server.manager(MGR_CMD_CREATE, NODE, None, name)
+                restart = True
+            mom.config = {}
+            conf = mom.dflt_config
+            if 'clienthost' in self.conf:
+                conf.update({'$clienthost': self.conf['clienthost']})
+            mom.apply_config(conf=conf, hup=False, restart=False)
+        if restart:
+            mom.restart()
         else:
-            try:
-                self.server.status(NODE, id=name)
-            except PbsStatusError:
-                # server doesn't have node with shortname
-                # check with hostname
-                name = mom.hostname
-                try:
-                    self.server.status(NODE, id=name)
-                except PbsStatusError:
-                    # server doesn't have node for this mom yet
-                    # so create with shortname
-                    name = mom.shortname
-                    self.server.manager(MGR_CMD_CREATE, NODE, None,
-                                        mom.shortname)
-        self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=name,
-                           interval=1)
+            mom.signal('-HUP')
+        if not mom.isUp():
+            self.logger.error('mom ' + mom.shortname + ' is down after revert')
+        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
+        self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
     def analyze_logs(self):

@@ -35,20 +35,19 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import re
-import time
-import sys
-from datetime import tzinfo, timedelta, datetime
-import logging
-import traceback
-import math
-from subprocess import Popen, PIPE
 import copy
+import logging
+import math
+import re
+import sys
+import time
+import traceback
+from datetime import datetime, timedelta, tzinfo
+from subprocess import PIPE, Popen
 
+from ptl.lib.pbs_testlib import (EQ, JOB, NODE, SET, BatchUtils, ResourceResv,
+                                 Server)
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.lib.pbs_testlib import BatchUtils, Server, NODE, JOB, SET, EQ
-from ptl.lib.pbs_testlib import ResourceResv
-from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
 
 """
 Analyze ``server``, ``scheduler``, ``MoM``, and ``accounting`` logs.
@@ -262,8 +261,8 @@ class PBSLogUtils(object):
             t -= epoch_datetime
             # get epoch time from timedelta object
             tm = t.total_seconds() - offsetdiff.total_seconds()
-        except:
-            cls.logger.debug("could not convert date time: " + str(datetime))
+        except ValueError:
+            cls.logger.debug("could not convert date time: " + str(dt))
             return None
 
         if micro is True:
@@ -296,7 +295,7 @@ class PBSLogUtils(object):
         try:
             if hostname is None or self.du.is_localhost(hostname):
                 if sudo:
-                    cmd = copy.copy(self.sudo_cmd) + ['cat', log]
+                    cmd = copy.copy(self.du.sudo_cmd) + ['cat', log]
                     self.logger.info('running ' + " ".join(cmd))
                     p = Popen(cmd, stdout=PIPE)
                     f = p.stdout
@@ -311,7 +310,7 @@ class PBSLogUtils(object):
                 p = Popen(cmd, stdout=PIPE)
                 f = p.stdout
         except:
-            traceback.print_exc()
+            self.logger.error(traceback.print_exc())
             self.logger.error('Problem processing file ' + log)
             f = None
 
@@ -2057,7 +2056,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
         if m:
             d = {}
             if m.group('type') == 'E':
-                if hasattr(self, 'jobid') and self.jobid != m.group('id'):
+                if getattr(self, 'jobid', None) != m.group('id'):
                     return PARSER_OK_CONTINUE
                 if not hasattr(self, 'job_info_res'):
                     self.job_info_res = {}
@@ -2067,59 +2066,6 @@ class PBSAccountingLog(PBSLogAnalyzer):
                 self.job_info_res[m.group('id')] = d
 
         return PARSER_OK_CONTINUE
-
-    def finished_jobs_nodes(self, last=None, tm_range=None):
-        """
-        :param tm_range: a tuple of time where the first item is the
-                         start time
-        :param last: If tm_range is None and last is specified, a
-                     time range from now till 'last' seconds from
-                     now is used as a range of time to consider and
-                     the second item is the end time to consider
-        :returns: A dictionary of jobs that ended in the time range
-                  as keys,and nodes (hostnames) on which those jobs
-                  were running as values.
-        """
-        if self.filename is None:
-            self.logger.error('A filename is required, exiting')
-            return
-
-        if tm_range is None and last is not None:
-            tm_range = (time.time(), time.time() - last)
-
-        if len(tm_range) != 2:
-            self.logger.error(
-                'tm_range must be a tuple of start and end times')
-            return
-
-        job_nodes = {}
-        f = FileUtils(self.filename, FILE_TAIL)
-
-        # the file is being tailed so we look at the start and end record
-        # in the 'opposite' range
-        start = tm_range[1]
-        end = tm_range[0]
-
-        while True:
-            records = f.next()
-            if records is None:
-                break
-            for rec in records:
-                r = self.record_tag.match(rec)
-                if r:
-                    tm = self.logutils.convert_date_time(r.group('date') +
-                                                         ' ' + r.group('time'))
-                    if not self.logutils.in_range(tm, start, end):
-                        continue
-                    rec_type = r.group('type')
-                    if rec_type == 'E':
-                        jobid = r.group('id')
-                        m = self.sub_record_tag.match(r.group('msg'))
-                        if m and self.utils:
-                            ehost = m.group('exechost')
-                            nodes = ResourceResv.get_hosts(ehost)
-                            job_nodes[jobid] = nodes
-        return job_nodes
 
     def summary(self):
         """

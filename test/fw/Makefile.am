@@ -98,7 +98,6 @@ dist_ptlmoduleutils_PYTHON = \
 	ptl/utils/pbs_cliutils.py \
 	ptl/utils/pbs_logutils.py \
 	ptl/utils/pbs_testsuite.py \
-	ptl/utils/pbs_fileutils.py \
 	ptl/utils/pbs_anonutils.py \
 	ptl/utils/pbs_snaputils.py \
 	ptl/utils/__init__.py

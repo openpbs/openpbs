@@ -35,22 +35,23 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import os
-import ptl
-import sys
-import pwd
-import logging
-import platform
-import traceback
-import time
 import datetime
 import json
+import logging
+import os
+import platform
+import pwd
+import sys
+import time
+import traceback
+
+import ptl
 import ptl.utils.pbs_logutils as lu
 from ptl.lib.pbs_testlib import PbsTypeDuration
-from ptl.utils.plugins.ptl_test_tags import TAGKEY
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.utils.plugins.ptl_report_json import PTLJsonData
 from ptl.utils.pbs_testsuite import default_requirements
+from ptl.utils.plugins.ptl_report_json import PTLJsonData
+from ptl.utils.plugins.ptl_test_tags import TAGKEY
 
 # Following dance require because PTLTestDb().process_output() from this file
 # is used in pbs_loganalyzer script which is shipped with PBS package
@@ -185,7 +186,7 @@ class PostgreSQLDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             import psycopg2
-        except:
+        except ImportError:
             _msg = 'psycopg2 require for %s type database!' % (self.dbtype)
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
@@ -193,7 +194,7 @@ class PostgreSQLDb(DBType):
             creds = ' '.join(map(lambda n: n.strip(), f.readlines()))
             f.close()
             self.__dbobj = psycopg2.connect(creds)
-        except Exception, e:
+        except Exception as e:
             _msg = 'Failed to connect to database:\n%s\n' % (str(e))
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         self.__username = pwd.getpwuid(os.getuid())[0]
@@ -241,7 +242,7 @@ class PostgreSQLDb(DBType):
             stmt = ['CREATE TABLE %s (' % (_DBVER_TN)]
             stmt += ['version TEXT);']
             c.execute(''.join(stmt))
-        except:
+        except Exception:
             stmt = 'SELECT version from %s;' % (_DBVER_TN)
             version = c.execute(stmt).fetchone()[0]
             self.__upgrade_db(version)
@@ -583,16 +584,16 @@ class SQLiteDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             import sqlite3 as db
-        except:
+        except ImportError:
             try:
                 from pysqlite2 import dbapi2 as db
-            except:
+            except ImportError:
                 _msg = 'Either sqlite3 or pysqlite2 module require'
                 _msg += ' for %s type database!' % (self.dbtype)
                 raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             self.__dbobj = db.connect(self.dbpath)
-        except Exception, e:
+        except Exception as e:
             _msg = 'Failed to connect to database:\n%s\n' % (str(e))
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         self.__username = pwd.getpwuid(os.getuid())[0]
@@ -640,7 +641,7 @@ class SQLiteDb(DBType):
             stmt = ['CREATE TABLE %s (' % (_DBVER_TN)]
             stmt += ['version TEXT);']
             c.execute(''.join(stmt))
-        except:
+        except Exception:
             stmt = 'SELECT version from %s;' % (_DBVER_TN)
             version = c.execute(stmt).fetchone()[0]
             self.__upgrade_db(version)
@@ -1696,7 +1697,7 @@ class PTLTestDb(Plugin):
             self.__dbconn = self.__dbmapping[self.__dbtype](self.__dbtype,
                                                             self.__dbpath,
                                                             self.__dbaccess)
-        except PTLDbError, e:
+        except PTLDbError as e:
             self.logger.error(str(e) + '\n')
             sys.exit(1)
         self.enabled = True
@@ -1842,8 +1843,8 @@ class PTLTestDb(Plugin):
                 data = {'metrics_data': {logtype: info}}
                 self.__dbconn.write(data, os.path.basename(name))
                 self.finalize(None)
-            except Exception, e:
-                traceback.print_exc()
+            except Exception as e:
+                sys.stderr.write(str(traceback.print_exc()))
                 sys.stderr.write('Error processing output ' + str(e))
             return
 
