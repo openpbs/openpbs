@@ -1933,13 +1933,20 @@ class DshUtils(object):
             else:
                 os.write(fd, body)
         os.close(fd)
+
+        if self.get_platform() == 'shasta' and not hostname and asuser:
+            asuser = PbsUser.get_user(asuser)
+            if asuser.host:
+                self.logger.info('set hostname to userhost')
+                hostname = asuser.host
+
         # if temp file to be created on remote host
         if not self.is_localhost(hostname):
             if asuser is not None:
                 # by default mkstemp creates file with 0600 permission
                 # to create file as different user first change the file
                 # permission to 0644 so that other user has read permission
-                self.chmod(hostname, tmpfile, mode=0644)
+                self.chmod(tmpfile, mode=0644)
                 # copy temp file created  on local host to remote host
                 # as different user
                 self.run_copy(hostname, tmpfile, tmpfile, runas=asuser,
@@ -1948,8 +1955,8 @@ class DshUtils(object):
                 # copy temp file created on localhost to remote as current user
                 self.run_copy(hostname, tmpfile, tmpfile,
                               preserve_permission=False, level=level)
-            # remove local temp file
-            os.unlink(tmpfile)
+                # remove local temp file
+                os.unlink(tmpfile)
         if asuser is not None:
             # by default mkstemp creates file with 0600 permission
             # to create file as different user first change the file
