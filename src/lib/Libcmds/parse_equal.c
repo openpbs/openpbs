@@ -118,7 +118,7 @@ char **value;
 		return (-1);	/* should have found a = as first non blank */
 	*pc++ = '\0';
 
-	/* that follows is the value string, skip leading white space */
+	/* what follows is the value string, skip leading white space */
 
 	while (isspace((int)*pc) && *pc)
 		pc++;
@@ -138,7 +138,7 @@ char **value;
 		while ((*pc != (char)quoting) && *pc)	/* look for matching */
 			pc++;
 		if (*pc)
-			*pc = ' ';	/* change close quote to space */
+			memmove(pc, pc + 1, strlen(pc));/* squash out quote */
 		else
 			return (-1);
 	}

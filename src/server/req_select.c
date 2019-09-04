@@ -338,9 +338,9 @@ req_selectjobs(struct batch_request *preq)
 	pbs_sched	   *psched;
 
 	/*
-	 * if the letter T (or t) is in the extend string,  select subjobs
-	 * if the letter S is in the extend string,  select real jobs,
-	 * regualar and running subjobs (whatever has a job structure.  This
+	 * if the letter T (or t) is in the extend string, select subjobs
+	 * if the letter S is in the extend string, select real jobs,
+	 * regular and running subjobs (whatever has a job structure). This
 	 * is for the Scheduler.
 	 */
 	if ((preq->rq_extend != NULL) && strchr(preq->rq_extend, 'T'))
@@ -424,13 +424,13 @@ req_selectjobs(struct batch_request *preq)
 					preq->rq_reply.brp_auxcode +=
 						add_select_array_entries(pjob, dosubjobs, pstate, &pselx, selistp);
 
-				} else if (((pjob->ji_qs.ji_svrflags&JOB_SVFLG_SubJob)==0) || (dosubjobs == 2)) {
+				} else if (((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) || (dosubjobs == 2)) {
 
 					/* Select-Status  Reply */
 
 					plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
 					if ((dosubjobs == 1) && pjob->ji_ajtrk) {
-						for (i=0; i<pjob->ji_ajtrk->tkm_ct; ++i) {
+						for (i = 0; i < pjob->ji_ajtrk->tkm_ct; ++i) {
 							if ((pstate == 0) || chk_job_statenum(pjob->ji_ajtrk->tkm_tbl[i].trk_status, pstate)) {
 								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad);
 								if (rc && (rc != PBSE_PERM))

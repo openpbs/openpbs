@@ -546,9 +546,9 @@ struct job_info
 
 	unsigned can_not_preempt:1;	/* this job can not be preempted */
 
-	unsigned can_checkpoint:1;    /* this job can be checkpointed */
-	unsigned can_requeue:1;       /* this job can be requeued */
-	unsigned can_suspend:1;       /* this job can be suspended */
+	unsigned can_checkpoint:1;	/* this job can be checkpointed */
+	unsigned can_requeue:1;		/* this job can be requeued */
+	unsigned can_suspend:1;		/* this job can be suspended */
 
 	unsigned is_starving:1;		/* job has waited passed starvation time */
 	unsigned is_array:1;		/* is the job a job array object */
@@ -557,6 +557,7 @@ struct job_info
 	unsigned is_provisioning:1;	/* job is provisioning */
 	unsigned is_preempted:1;	/* job is preempted */
 	unsigned topjob_ineligible:1;	/* Job is ineligible to be a top job */
+	unsigned window_enabled:1;	/* Job window is enabled */
 
 	char *job_name;			/* job name attribute (qsub -N) */
 	char *comment;			/* comment field of job */
@@ -569,6 +570,10 @@ struct job_info
 	time_t stime;			/* the time the job was started */
 	time_t est_start_time;		/* scheduler estimated start time of job */
 	time_t time_preempted;		/* time when the job was preempted */
+	time_t window_start;		/* time when the job window starts */
+	time_t window_end;		/* time when the job window ends */
+	char window_days[8];		/* time window enabled on these days */
+	char *timezone;			/* used for calculation of future time window */
 	char *est_execvnode;		/* scheduler estimated execvnode of job */
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
 	int preempt;			/* preempt priority */
@@ -587,7 +592,7 @@ struct job_info
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
 
-	struct attrl *attr_updates;	/* used to federate all attr updates to server*/
+	struct attrl *attr_updates;	/* used to federate all attr updates to server */
 	float formula_value;		/* evaluated job sort formula value */
 	nspec **resreleased;		/* list of resources released by the job on each node */
 	resource_req *resreq_rel;	/* list of resources released */
@@ -598,15 +603,15 @@ struct job_info
 	/* localmod 045 */
 	int		NAS_pri;	/* NAS version of priority */
 	/* localmod 034 */
-	sh_amt	*sh_amts;	/* Amount of each type job is requesting */
-	share_info	*sh_info;	/* Info about share group job belongs to */
+	sh_amt *sh_amts;		/* Amount of each type job is requesting */
+	share_info *sh_info;		/* Info about share group job belongs to */
 	sch_resource_t accrue_rate;	/* rate at which job uses share resources */
 	/* localmod 040 */
-	int		nodect;		/* Node count for sorting jobs by */
+	int nodect;			/* Node count for sorting jobs by */
 	/* localmod 031 */
-	char		*schedsel;	/* schedselect field of job */
+	char *schedsel;			/* schedselect field of job */
 	/* localmod 053 */
-	site_user_info *u_info;	/* User associated with job */
+	site_user_info *u_info;		/* User associated with job */
 #endif
 };
 
@@ -938,8 +943,8 @@ struct group_info
 };
 
 /**
- * Set of equivalent resresvs.  It is used to keep track if one can't run, the rest cannot.
- * The set is defined by a number of attributes of the resresv.  If the attributes do
+ * Set of equivalent resresvs. It is used to keep track if one can't run, the rest cannot.
+ * The set is defined by a number of attributes of the resresv. If the attributes do
  * not matter, they won't be used and set to NULL
  * @see create_resresv_set_by_resresv() for reasons why members can be NULL
  */
@@ -954,6 +959,8 @@ struct resresv_set
 	place *place_spec;		/* place spec of set */
 	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */
 	queue_info *qinfo;		/* The queue the resresv is in if the queue has nodes associated */
+	int time_window_start;
+	int time_window_end;
 };
 
 struct node_partition

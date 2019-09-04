@@ -2571,23 +2571,21 @@ in_runnable_state(resource_resv *resresv)
 	if (resresv == NULL)
 		return 0;
 
-	if (resresv->is_job && resresv->job !=NULL) {
+	if (resresv->is_job && resresv->job != NULL) {
 		if (resresv->job->is_array) {
 			if (range_next_value(resresv->job->queued_subjobs, -1) >= 0 ) {
 				if(resresv->job->is_begin || resresv->job->is_queued)
 					return 1;
-			}
-			else
+			} else
 				return 0;
 		}
 
-		if (resresv->job  ->is_queued)
+		if (resresv->job->is_queued)
 			return 1;
 
 		if (resresv->job->is_susp_sched)
 			return 1;
-	}
-	else if (resresv->is_resv && resresv->resv != NULL) {
+	} else if (resresv->is_resv && resresv->resv != NULL) {
 		if (resresv->resv->resv_state == RESV_CONFIRMED)
 			return 1;
 	}

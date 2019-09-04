@@ -4221,8 +4221,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 						resc_resv->nspec_arr[i]->ninfo->rank != ninfo->rank; i++)
 						;
 					ns = resc_resv->nspec_arr[i];
-				}
-				else {
+				} else {
 					ns = NULL;
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
 						"Event %s is a run/end event w/o nspec array, ignoring event", event->name);
@@ -4821,8 +4820,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 					else
 						invalid = 1;
 				}
-			}
-			else {
+			} else {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, node_name,
 					"Exechost contains a node that does not exist.");
 				invalid = 1;

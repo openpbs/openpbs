@@ -828,8 +828,8 @@ make_limcounts(counts *user, counts *group, counts *project, counts *all)
  * @param[in]	rr	-	resource_resv structure to use for limit evaluation
  * @param[out]	err	-	sched_error structure to return error information
  * @param[in]	flags	-	CHECK_LIMITS - check real limits
- *                      CHECK_CUMULATIVE_LIMIT - check limits against total counts
- *                      RETURN_ALL_ERR - check all limits and return an err for all failed limits *
+ *                      	CHECK_CUMULATIVE_LIMIT - check limits against total counts
+ *                      	RETURN_ALL_ERR - check all limits and return an err for all failed limits *
  *
  * @return	integer indicating failing limit test if limit is exceeded,
  *				along with error 'err'.

@@ -343,7 +343,7 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 	/* Require that either a COUNT or UNTIL be passed. But not both. */
 	if ((rt.count == 0 && icaltime_is_null_time(rt.until)) ||
 		(rt.count != 0 && !icaltime_is_null_time(rt.until))) {
-		*err_code = PBSE_BAD_RRULE_SYNTAX2; /* Undefined iCalendar synax. A valid COUNT or UNTIL is required */
+		*err_code = PBSE_BAD_RRULE_SYNTAX2; /* Undefined iCalendar syntax. A valid COUNT or UNTIL is required */
 		return 0;
 	}
 
@@ -575,7 +575,7 @@ set_ical_zoneinfo(char *path)
 #ifdef LIBICAL
 	static int called = 0;
 	if (path != NULL) {
-		if(called)
+		if (called)
 			free_zone_directory();
 
 		set_zone_directory(path);
@@ -585,6 +585,164 @@ set_ical_zoneinfo(char *path)
 	return;
 }
 
+/**
+ * @brief
+ * 	Find day of week based on timezone and seconds since epoch
+ *
+ * @param[in] seconds - seconds since epoch
+ * @param[in] zone    - timezone to be used
+ *
+ * @return	int
+ * @retval	1 - Sunday
+ * 		2 - Monday
+ * 		3 - Tuesday
+ * 		4 - Wednesday
+ * 		5 - Thursday
+ * 		6 - Friday
+ * 		7 - Saturday
+ */
+int
+find_day_of_week(time_t seconds, char *zone)
+{
+#ifdef LIBICAL
+	icaltimezone *ical_zone;
+	struct icaltimetype icaltime_s;
+
+	ical_zone = icaltimezone_get_builtin_timezone(zone);
+	icaltime_s = icaltime_from_timet_with_zone(seconds, 0, NULL);
+	icaltimezone_convert_time(&icaltime_s, icaltimezone_get_utc_timezone(), ical_zone);
+
+	return (icaltime_day_of_week(icaltime_s));
+#else
+	return -1;
+#endif
+}
+
+/**
+ * @brief
+ * 	Calculate window start and end times based on duration and window_rrule.
+ *      window_rrule only supports BYDAY construct, other constructs
+ *      even if present, will be ignored.
+ *
+ * @par	Note that the PBS_TZID environment variable HAS to be set for the
+ *      tasks' time to be correctly computed.
+ *
+ * @param[in] rrule    - The window_rrule to process
+ * @param[in] start    - initial start time
+ * @param[in] duration - window_duration
+ * @param[in] tz       - timezone
+ * @param[out] start_task_time - time for the window_start's task
+ * @param[out] end_task_time - time for the window_end's task
+ * @param[out] window_days - days on which the window will be active
+ * @param[out] err_code - error code if there is a problem
+ *
+ * @return	int
+ * @retval	0 - if times are calculated properly.
+ *              1 - in case there is a problem in calculation.
+ *
+ */
+int
+calculate_window_times(char *rrule, long *start, long *end, long *duration, char *tz, char *window_days, int *err_code)
+{
+
+#ifdef LIBICAL
+	int i;
+	icaltimezone *clientzone;
+	struct icalrecurrencetype rt;
+	struct icaltimetype ical_start;
+	struct icaltimetype ical_now;
+	time_t client_now_t;
+
+	*err_code = 0;
+
+	int count;
+
+	if (tz == NULL)
+		return 1;
+
+	clientzone = icaltimezone_get_builtin_timezone(tz);
+	/* If the timezone info directory is not accessible
+	 * then bail
+	 */
+	if (clientzone == NULL) {
+		*err_code = PBSE_BAD_ICAL_TZ;
+		return 1;
+	}
+
+	icalerror_clear_errno();
+
+	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
+#ifdef LIBICAL_API2
+	icalerror_set_errors_are_fatal(0);
+#else
+	icalerror_errors_are_fatal = 0;
+#endif
+
+	for (i = 0; i < 8; i++)
+		window_days[i] = '0';
+
+	if (rrule) {
+		if (!strstr(rrule, "BYDAY")) {
+			*err_code = PBSE_BAD_RRULE_SYNTAX;
+			return 1;
+		}
+		rt = icalrecurrencetype_from_string(rrule);
+
+		/* Check if by_day rules are defined and valid
+		 * the first item in the array of by_* rule
+		 * determines whether the item exists or not.
+		 */
+		for (i = 0; rt.by_day[i] < 8; i++) {
+			if (rt.by_day[i] <= 0) {
+				*err_code = PBSE_BAD_RRULE_SYNTAX;
+				return 1;
+			} else
+				window_days[rt.by_day[i]] = '1';
+		}
+	} else
+		for (i = 1; i < 8; i++)
+			window_days[i] = '1';
+
+	*duration = ((*duration / 100) * 3600 + (*duration % 100) * 60);
+	*end = *start + *duration;
+
+	ical_start = icaltime_from_timet_with_zone(*start, 0, NULL);
+	icaltimezone_convert_time(&ical_start, icaltimezone_get_utc_timezone(), clientzone);
+	ical_now = icaltime_current_time_with_zone(clientzone);
+	client_now_t = icaltime_as_timet_with_zone(ical_now, clientzone);
+	i = icaltime_day_of_week(ical_start);
+	/* Find if we are within the window */
+	if (((*start - 86400) < client_now_t) && (client_now_t < (*end - 86400))) {
+		*start -= 86400;
+		*end -= 86400;
+		i -= 1;
+		if (i == 0)
+			i = 7;
+	}
+	if (rrule) {
+		count = 0;
+		while (count < 7) {
+			if (window_days[i] - '0') {
+				*start += count * 86400;
+				*end += count * 86400;
+				window_days[i] = '2';
+				break;
+			} else {
+				i++;
+				if (i == 8)
+					i = 1;
+				count++;
+			}
+		}
+	} else
+		window_days[i] = '2';
+	return 0;
+
+#else
+	*err_code = PBSE_BAD_RRULE_SYNTAX; /* iCalendar is undefined */
+	return 1;
+#endif
+}
 #ifdef DEBUG
 /**
  * @brief

@@ -162,13 +162,16 @@ simulate_events(status *policy, server_info *sinfo,
 	if (cmd == SIM_TIME && arg == NULL)
 		return TIMED_ERROR;
 
+	if (cmd == SIM_TIME_WINDOW && arg == NULL)
+		return TIMED_ERROR;
+
 	if (cmd == SIM_NONE)
 		return TIMED_NOEVENT;
 
 	if (sinfo->calendar == NULL)
 		return TIMED_NOEVENT;
 
-	if (sinfo->calendar->current_time ==NULL)
+	if (sinfo->calendar->current_time == NULL)
 		return TIMED_ERROR;
 
 	calendar = sinfo->calendar;
@@ -188,11 +191,10 @@ simulate_events(status *policy, server_info *sinfo,
 
 	if (cmd == SIM_NEXT_EVENT) {
 		long t = 0;
-		if(arg != NULL)
+		if (arg != NULL)
 			t = *((long *) arg);
 		event_time = event->event_time + t;
-	}
-	else if (cmd == SIM_TIME)
+	} else if (cmd == SIM_TIME || cmd == SIM_TIME_WINDOW)
 		event_time = *((time_t *) arg);
 
 	while (event != NULL && event->event_time <= event_time) {
@@ -569,8 +571,7 @@ perform_event(status *policy, timed_event *event)
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					event->name, "Simulation: Event failed to be run");
 				ret = 0;
-			}
-			else {
+			} else {
 				sprintf(logbuf, "%s start point",
 					resresv->is_job ? "job": "reservation");
 			}
@@ -716,13 +717,20 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	unsigned int ok_flags = NO_ALLPART;
 	queue_info *qinfo = NULL;
 
+	short is_job_with_time_window = 0;
+	char *window_days;
+
 	if (name == NULL || sinfo == NULL)
 		return (time_t) -1;
 
-	event_time = sinfo->server_time;
 	calendar = sinfo->calendar;
 
 	resresv = find_resource_resv(sinfo->all_resresv, name);
+
+	if ((flags & SIM_RUN_JOB) && (resresv->is_job && resresv->job && resresv->job->window_start))
+		is_job_with_time_window = 1;
+
+	event_time = sinfo->server_time;
 
 	if (!is_resource_resv_valid(resresv, NULL))
 		return (time_t) -1;
@@ -735,30 +743,71 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	}
 
 	err = new_schd_error();
-	if(err == NULL)
+	if (err == NULL)
 		return (time_t) 0;
 
-	do {
-		/* policy is used from sinfo instead of being passed into calc_run_time()
-		 * because it's being simulated/updated in simulate_events()
-		 */
+	if (is_job_with_time_window) {
+		int day;
+		time_t next_window_end = resresv->job->window_end;
+		time_t next_window_start = resresv->job->window_start;
+		time_t upto;
+		if (resresv->job->est_start_time != UNSPECIFIED && resresv->job->est_start_time != 0)
+			upto = resresv->job->window_start;
+		else
+			upto = resresv->job->window_end;
 
-		desc = describe_simret(ret);
-		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
+		window_days = resresv->job->window_days;
+		day = find_day_of_week(resresv->job->window_start, resresv->job->timezone);
+
+		do {
+			ret = simulate_events(sinfo->policy, sinfo, SIM_TIME_WINDOW, &upto, &event_time);
+
+			if (event_time <= next_window_start)
+				event_time = next_window_start;
+
 			clear_schd_error(err);
 			ns = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
-		}
 
-		if (ns == NULL) /* event can not run */
-			ret = simulate_events(sinfo->policy, sinfo, SIM_NEXT_EVENT, &(sinfo->opt_backfill_fuzzy_time), &event_time);
+			if (ns == NULL && (err->error_code != JOB_WINDOW_NOT_STARTED)) {
+				do {
+					upto += 86400;
+					next_window_end += 86400;
+					next_window_start += 86400;
+					day++;
+					if (day == 8)
+						day = 1;
+
+				} while (!(window_days[day] - '0'));
+			}
 
 #ifdef NAS /* localmod 030 */
-		if (check_for_cycle_interrupt(0)) {
-			break;
-		}
+			if (check_for_cycle_interrupt(0)) {
+				break;
+			}
 #endif /* localmod 030 */
-	} while (ns == NULL && !(ret & (TIMED_NOEVENT|TIMED_ERROR)));
+		} while ((err->error_code != JOB_WINDOW_NOT_STARTED) && !(ret & (TIMED_NOEVENT | TIMED_ERROR)));
+	} else {
+		do {
+			/* policy is used from sinfo instead of being passed into calc_run_time()
+			* because it's being simulated/updated in simulate_events()
+			*/
 
+			desc = describe_simret(ret);
+			if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
+				clear_schd_error(err);
+				ns = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
+			}
+
+			if (ns == NULL) /* event can not run */
+				ret = simulate_events(sinfo->policy, sinfo, SIM_NEXT_EVENT, &(sinfo->opt_backfill_fuzzy_time), &event_time);
+
+#ifdef NAS /* localmod 030 */
+			if (check_for_cycle_interrupt(0)) {
+				break;
+			}
+#endif /* localmod 030 */
+		} while (ns == NULL && !(ret & (TIMED_NOEVENT | TIMED_ERROR)));
+	}
 #ifdef NAS /* localmod 030 */
 	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
 #else
@@ -770,12 +819,49 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		return -1;
 	}
 
-	/* we can't run the job, but there are no timed events left to process */
-	if (ns == NULL && (ret & TIMED_NOEVENT)) {
-		schdlogerr(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
-				"Can't find start time estimate", err);
-		free_schd_error(err);
-		return 0;
+	if (ret & TIMED_NOEVENT) {
+		if (is_job_with_time_window) {
+		/*
+			if ((resresv->job->est_start_time == UNSPECIFIED) || (event_time < resresv->job->est_start_time)) {
+				if (event_time < resresv->job->window_start)
+					event_time = resresv->job->window_start;
+				else if (event_time > resresv->job->window_end) {
+					int day_calculated;
+					int et_hhmm;
+					int ws_hhmm;
+
+					window_days = resresv->job->window_days;
+					day_calculated = find_day_of_week(event_time, resresv->job->timezone);
+
+					ws_hhmm = resresv->job->window_start % 86400;
+					et_hhmm = event_time % 86400;
+
+					if (et_hhmm > ws_hhmm)
+						day_calculated++;
+
+					event_time += (ws_hhmm - et_hhmm);
+
+					*//* is the window enabled on the calculated day?
+					 * if not, find the next day on which the window
+					 * will be enabled */
+					/*while (!window_days[day_calculated]) {
+						day_calculated++;
+						if (day_calculated == 8)
+							day_calculated = 1;
+
+						event_time += 86400;
+					}
+				}
+			} else
+				*//* We will not move the est_start_time forward */
+				//event_time = resresv->job->est_start_time;
+		} else if (ns == NULL) {
+			/* we can't run the job, but there are no timed events left to process */
+			schdlogerr(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
+					"Can't find start time estimate", err);
+			free_schd_error(err);
+			return 0;
+		}
 	}
 
 	/* err is no longer needed, we've reported it. */
@@ -1950,7 +2036,7 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 /**
  * @brief
  * 		takes a bitfield returned by simulate_events and will determine if
- *      the amount resources have gone up down, or are unchanged.  If events
+ *      	the amount resources have gone up down, or are unchanged. If events
  *	  	caused resources to be both freed and used, we err on the side of
  *	  	caution and say there are more resources.
  *

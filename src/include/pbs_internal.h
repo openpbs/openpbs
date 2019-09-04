@@ -97,27 +97,27 @@ extern "C" {
 #define ATR_TYPE_LIST		7	/* list type:  dependencies, unkn, etc */
 #define ATR_TYPE_ACL		8	/* Access Control Lists */
 #define ATR_TYPE_LL		9	/* Long (64 bit) integer */
-#define ATR_TYPE_SHORT	10	/* short integer    */
+#define ATR_TYPE_SHORT		10	/* short integer    */
 #define ATR_TYPE_BOOL		11	/* boolean	    */
-#define ATR_TYPE_JINFOP	13	/* struct jobinfo*  */
-#define ATR_TYPE_FLOAT	14	/* Float  */
-#define ATR_TYPE_ENTITY	15	/* FGC Entity Limit */
+#define ATR_TYPE_JINFOP		13	/* struct jobinfo*  */
+#define ATR_TYPE_FLOAT		14	/* Float  */
+#define ATR_TYPE_ENTITY		15	/* FGC Entity Limit */
 /* WARNING: adding anther WILL overflow the type field in the attribut_def */
 
 /* Defines for  Flag field in attribute_def */
 
 #define ATR_DFLAG_USRD   0x01	/* User client can read (status) attribute */
-#define ATR_DFLAG_USWR   0x02	/* User client can write (set)   attribute */
-#define ATR_DFLAG_OPRD   0x04	/* Operator client can read   attribute */
-#define ATR_DFLAG_OPWR   0x08	/* Operator client can write  attribute */
-#define ATR_DFLAG_MGRD   0x10	/* Manager client can read  attribute */
+#define ATR_DFLAG_USWR   0x02	/* User client can write (set) attribute */
+#define ATR_DFLAG_OPRD   0x04	/* Operator client can read attribute */
+#define ATR_DFLAG_OPWR   0x08	/* Operator client can write attribute */
+#define ATR_DFLAG_MGRD   0x10	/* Manager client can read attribute */
 #define ATR_DFLAG_MGWR   0x20	/* Manager client can write attribute */
 #define ATR_DFLAG_OTHRD	 0x40	/* Reserved */
 #define ATR_DFLAG_Creat	 0x80	/* Can be set on create only */
 #define ATR_DFLAG_SvRD	 0x100	/* job attribute is sent to server on move */
 #define ATR_DFLAG_SvWR	 0x200	/* job attribute is settable by server/Sch */
 #define ATR_DFLAG_MOM    0x400	/* attr/resc sent to MOM "iff" set	   */
-#define ATR_DFLAG_RDACC  0x515	/* Read access mask  */
+#define ATR_DFLAG_RDACC  0x515	/* Read access mask */
 #define ATR_DFLAG_WRACC  0x6AA	/* Write access mask */
 #define ATR_DFLAG_ACCESS 0x7ff	/* Mask access flags */
 

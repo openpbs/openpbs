@@ -2074,8 +2074,8 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 /**
  * @brief
  * 		create_server_arrays - create a large server resresv array
- *		of all jobs on the system by coping all the jobs from the
- *		queue job arrays.  Also create an array of both jobs and
+ *		of all jobs on the system by copying all the jobs from the
+ *		queue job arrays. Also create an array of both jobs and
  *		reservations.
  *
  * @param[in]	sinfo	-	the server

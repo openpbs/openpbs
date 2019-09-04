@@ -234,8 +234,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 						/* Locally-peered queues reuse the scheduler's connection */
 						if (conf.peer_queues[j].remote_server == NULL) {
 							peer_sd = pbs_sd;
-						}
-						else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
+						} else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
 							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
 							 * failover reasons (see bz3002)
 							 */

@@ -829,7 +829,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	int sort_again = DONT_SORT_JOBS;
 	schd_error *err;
 	schd_error *chk_lim_err;
-
+	
+	time_t sim_time;
+	unsigned int simrc = TIMED_NOEVENT;
+	server_info *nsinfo;
 
 	if (policy == NULL || sinfo == NULL || rerr == NULL)
 		return -1;
@@ -839,10 +842,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	cycle_end_time = cycle_start_time + sinfo->sched_cycle_len;
 
 	chk_lim_err = new_schd_error();
-	if(chk_lim_err == NULL)
+	if (chk_lim_err == NULL)
 		return -1;
 	err = new_schd_error();
-	if(err == NULL) {
+	if (err == NULL) {
 		free_schd_error(chk_lim_err);
 		return -1;
 	}
@@ -879,17 +882,35 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			njob->name, "Considering job to run");
 
 		should_use_buckets = job_should_use_buckets(njob);
-		if(should_use_buckets)
+		if (should_use_buckets)
 			flags = USE_BUCKETS;
 
-		if (njob->is_shrink_to_fit) {
-			/* Pass the suitable heuristic for shrinking */
-			ns_arr = is_ok_to_run_STF(policy, sinfo, qinfo, njob, flags, err, shrink_job_algorithm);
-		} else
-			ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
+		if (njob->job->window_start) {
+			nsinfo = dup_server_info(sinfo);
+			simrc = simulate_events(policy, nsinfo, SIM_TIME, (void *) &njob->job->window_start, &sim_time);
+		}
 
+		if (!(simrc & TIMED_ERROR)) {
+			if (njob->is_shrink_to_fit) {
+				/* Pass the suitable heuristic for shrinking */
+				ns_arr = is_ok_to_run_STF(policy, sinfo, qinfo, njob, flags, err, shrink_job_algorithm);
+			} else
+				ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
+		} else
+			/* log that we could not simulate events */
+			continue;
+		
 		if (err->status_code == NEVER_RUN)
 			njob->can_never_run = 1;
+
+		if (err->error_code == JOB_WINDOW_NOT_STARTED) {
+			if (ns_arr != NULL) {
+				free_nspecs(ns_arr);
+				ns_arr = NULL;
+			}
+			rc = JOB_WINDOW_NOT_STARTED;
+			sort_again = SORTED;
+		}
 
 		if (ns_arr != NULL) { /* success! */
 			resource_resv *tj;
@@ -903,7 +924,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				tj = njob;
 
 			if (rc != SCHD_ERROR) {
-				if(run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
+				if (run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
 					rc = SUCCESS;
 					if (sinfo->has_soft_limit || qinfo->has_soft_limit)
 						sort_again = MUST_RESORT_JOBS;
@@ -918,13 +939,11 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				}
 			} else
 				free_nspecs(ns_arr);
-		}
-		else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
+		} else if (policy->preempting && in_runnable_state(njob) && (!njob->can_never_run) && (err->error_code != JOB_WINDOW_NOT_STARTED)) {
 			if (find_and_preempt_jobs(policy, sd, njob, sinfo, err) > 0) {
 				rc = SUCCESS;
 				sort_again = MUST_RESORT_JOBS;
-			}
-			else
+			} else
 				sort_again = SORTED;
 		}
 
@@ -943,8 +962,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		if (rc == SCHD_ERROR || rc == PBSE_PROTOCOL || got_sigpipe) {
 			end_cycle = 1;
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle because of an internal error.");
-		}
-		else if (rc != SUCCESS && rc != RUN_FAILURE) {
+		} else if (rc != SUCCESS && rc != RUN_FAILURE) {
 			int cal_rc;
 #ifdef NAS /* localmod 034 */
 			int bf_rc;
@@ -984,8 +1002,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 							qinfo->num_topjobs++;
 					}
 #endif /* localmod 034 */
-				}
-				else if (cal_rc == -1) { /* recycle */
+				} else if (cal_rc == -1) { /* recycle */
 					end_cycle = 1;
 					rc = -1;
 					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
@@ -1012,7 +1029,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 						update_accrue_err = chk_lim_err;
 					}
 					/* Update total_*_counts in server_info and queue_info
-					 * based on number of jobs that are either running  or
+					 * based on number of jobs that are either running or
 					 * are considered to run.
 					 */
 					update_total_counts(sinfo, qinfo, njob, ALL);
@@ -1032,8 +1049,8 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, njob->name, log_msg);
 
-			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
-			if(sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED) {
+			/* If this job couldn't run, then mark the equiv class so the rest of the jobs are discarded quickly.*/
+			if (sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED) {
 				resresv_set *ec = sinfo->equiv_classes[njob->ec_index];
 				if (rc != RUN_FAILURE &&  !ec->can_not_run) {
 					ec->can_not_run = 1;
@@ -1103,8 +1120,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 #ifdef NAS /* localmod 030 */
 		if (check_for_cycle_interrupt(0)) {
 			consecutive_interrupted_cycles++;
-		}
-		else {
+		} else {
 			consecutive_interrupted_cycles = 0;
 		}
 #endif /* localmod 030 */
@@ -1277,8 +1293,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 		 * and we just updated some attributes just above.  Send Now.
 		 */
 		send_job_updates(pbs_sd, job);
-	}
-	else
+	} else
 		ret = 0;
 
 	return ret;
@@ -1501,8 +1516,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				set_schd_error_arg(err, ARG2, buf);
 
 			}
-		}
-		else
+		} else
 			ret = 1;
 
 		rr = resresv;
@@ -1510,15 +1524,14 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		/* we didn't use nspec_arr, we need to free it */
 		free_nspecs(ns_arr);
 		ns_arr = NULL;
-	}
-	else {
+	} else {
 		if (resresv->is_job && resresv->job->is_subjob) {
 			array = find_resource_resv(sinfo->jobs, resresv->job->array_id);
 			rr = resresv;
 		} else if (resresv->is_job && resresv->job->is_array) {
 			array = resresv;
 			rr = queue_subjob(resresv, sinfo, qinfo);
-			if(rr == NULL) {
+			if (rr == NULL) {
 				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 				return -1;
 			}
@@ -1612,18 +1625,15 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				}
 				else
 					ret = 1;
-			}
-			else
+			} else
 				/* if we're simulating, resresvs can't fail to run */
 				ret = 1;
-		}
-		else  { /* should never happen */
+		} else  { /* should never happen */
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rr->name,
 				"Could not find node solution in run_update_resresv()");
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			ret = 0;
 		}
-
 	}
 
 #ifdef NAS_CLUSTER /* localmod 125 */
@@ -1727,9 +1737,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		site_update_on_run(sinfo, qinfo, resresv, ns);
 #endif /* localmod 057 */
 
-
-	}
-	else	 { /* resresv failed to start (server rejected) -- cleanup */
+	} else { /* resresv failed to start (server rejected) -- cleanup */
 		/*
 		 * nspec freeage:
 		 * 1) ns_arr is passed in and ours to free.  We need to free it.
@@ -1771,7 +1779,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
  * @param[in]	resresv	-	the resource resv to simulate running
  * @param[in]	ns_arr  -	node solution of where a job/resv should run
  * @param[in]	flags	-	flags to modify procedure
- *							RURR_ADD_END_EVENT - add an end event to calendar for this job
+ *				RURR_ADD_END_EVENT - add an end event to calendar for this job
  *
  * @retval	1	: success
  * @retval	0	: failure
@@ -1785,7 +1793,7 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	queue_info *qinfo = NULL;
 	static schd_error *err = NULL;
 
-	if(err == NULL)
+	if (err == NULL)
 		err = new_schd_error();
 
 	if (resresv == NULL)
@@ -1874,7 +1882,7 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 		return 1;
 
 	/* Admin settable flag - don't add to calendar */
-	if(resresv->job->topjob_ineligible)
+	if (resresv->job->topjob_ineligible)
 		return 0;
 
 	if (policy->strict_ordering)
@@ -1920,11 +1928,12 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	resource_resv *tjob;		/* temporary job pointer for job arrays */
 	time_t start_time;		/* calculated start time of topjob */
 	char *exec;			/* used to hold execvnode for topjob */
-	timed_event *te_start;	/* start event for topjob */
+	timed_event *te_start;		/* start event for topjob */
 	timed_event *te_end;		/* end event for topjob */
 	timed_event *nexte;
 	char log_buf[MAX_LOG_SIZE];
 	int i;
+	int have_est_values = 0;
 
 	if (policy == NULL || sinfo == NULL ||
 		topjob == NULL || topjob->job == NULL)
@@ -1946,7 +1955,9 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		return 0;
 	}
 
-
+	if (njob->is_job && njob->job && njob->job->window_start && njob->job->est_start_time != UNSPECIFIED)
+		have_est_values = 1;
+	
 #ifdef NAS /* localmod 031 */
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		   topjob->name, "Estimating the start time for a top job (q=%s schedselect=%.1000s).", topjob->job->queue->name, topjob->job->schedsel);
@@ -1954,7 +1965,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		topjob->name, "Estimating the start time for a top job.");
 #endif /* localmod 031 */
-	if(use_buckets)
+	if (use_buckets)
 		start_time = calc_run_time(njob->name, nsinfo, SIM_RUN_JOB|USE_BUCKETS);
 	else
 		start_time = calc_run_time(njob->name, nsinfo, SIM_RUN_JOB);
@@ -1986,9 +1997,11 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		} else
 			bjob = topjob;
 
+		if (have_est_values)
+			exec = string_dup(njob->job->est_execvnode);
+		else
+			exec = create_execvnode(njob->nspec_arr);
 
-
-		exec = create_execvnode(njob->nspec_arr);
 		if (exec != NULL) {
 #ifdef NAS /* localmod 068 */
 			/* debug dpr - Log vnodes reserved for job */
@@ -2023,7 +2036,6 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			return 0;
 		}
 
-
 		if (bjob->job->est_execvnode != NULL)
 			free(bjob->job->est_execvnode);
 		bjob->job->est_execvnode = string_dup(exec);
@@ -2050,7 +2062,6 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 				bjob->name, "Failed to update estimated attrs.");
 		}
-
 
 		for (i = 0; bjob->nspec_arr[i] != NULL; i++) {
 			int ind = bjob->nspec_arr[i]->ninfo->node_ind;
@@ -2352,7 +2363,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 			queue_index_size = count_array((void **) sinfo->queue_list[i]);
 			for (j = last_queue; j < queue_index_size; j++) {
 				ind = find_runnable_resresv_ind(sinfo->queue_list[i][j]->jobs, 0);
-				if(ind != -1)
+				if (ind != -1)
 					rjob = sinfo->queue_list[i][j]->jobs[ind];
 				else
 					rjob = NULL;
@@ -2413,7 +2424,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		}
 	} else { /* treat the entire system as one large queue */
 		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index);
-		if(ind != -1) {
+		if (ind != -1) {
 			rjob = sinfo->jobs[ind];
 			last_job_index = ind;
 		}

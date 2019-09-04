@@ -714,14 +714,15 @@ nspec **
 is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
-	int		rc = 0;			/* Return Code */
-	schd_resource	*res = NULL;		/* resource list to check */
-	int		endtime = 0;		/* end time of job if started now */
-	nspec		**ns_arr = NULL;	/* node solution of where request will run */
-	node_partition	*allpart = NULL;	/* all partition to use (queue's or servers) */
-	schd_error	*prev_err = NULL;
-	schd_error	*err;
-	resource_req	*resreq = NULL;
+	int rc = 0;			/* Return Code */
+	schd_resource *res = NULL;	/* resource list to check */
+	int endtime = 0;		/* end time of job if started now */
+	nspec **ns_arr = NULL;		/* node solution of where request will run */
+	node_partition *allpart = NULL;	/* all partition to use (queue's or servers) */
+	schd_error *prev_err = NULL;
+	schd_error *err;
+	resource_req *resreq = NULL;
+	int window_enabled = 0;
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
 		return NULL;
@@ -731,7 +732,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	err = perr;
 
-	if(resresv->is_job && sinfo->equiv_classes != NULL &&
+	if (resresv->is_job && sinfo->equiv_classes != NULL &&
 	   !(flags & (IGNORE_EQUIV_CLASS | RETURN_ALL_ERR)) &&
 	   resresv->ec_index != UNSPECIFIED &&
 	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
@@ -783,6 +784,17 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
+	if (resresv->is_job) {
+		if (resresv->job && resresv->job->is_subjob) {
+			resource_resv *array = NULL;
+			array = find_resource_resv(sinfo->jobs, resresv->job->array_id);
+			if (array)
+				window_enabled = array->job->window_enabled;
+		} else
+			window_enabled = resresv->job->window_enabled;
+	} else
+		window_enabled = 1;
+
 	/* If the pset metadata is stale, update it now for the allpart */
 	if (sinfo->pset_metadata_stale && !(flags & NO_ALLPART))
 		update_all_nodepart(policy, sinfo, NO_FLAGS);
@@ -807,12 +819,12 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			schd_error *toterr;
 			toterr = new_schd_error();
 			if (toterr == NULL) {
-				if(err != perr)
+				if (err != perr)
 					free_schd_error(err);
 				return NULL;
 			}
 			/* We can't fit now, lets see if we can ever fit */
-			if (resresv_can_fit_nodepart(policy, allpart, resresv, flags|COMPARE_TOTAL, toterr) == 0) {
+			if (resresv_can_fit_nodepart(policy, allpart, resresv, flags | COMPARE_TOTAL, toterr) == 0) {
 				move_schd_error(err, toterr);
 				err->status_code = NEVER_RUN;
 			}
@@ -885,7 +897,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 			if ((rc = check_nonprime_queue(policy, qinfo))) {
 				enum schd_err_status scode;
-				if(policy->prime_status_end == SCHD_INFINITY) /* only primetime and we're in a non-prime queue*/
+				if (policy->prime_status_end == SCHD_INFINITY) /* only primetime and we're in a non-prime queue*/
 					scode = NEVER_RUN;
 				else
 					scode = NOT_RUN;
@@ -924,9 +936,8 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
-
 	if ((sinfo->has_nonCPU_licenses == 0) &&
-		(resresv->select->total_cpus  >  sinfo->flt_lic)) {
+		(resresv->select->total_cpus > sinfo->flt_lic)) {
 		char errbuf[MAX_LOG_SIZE];
 		set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
 		if (resresv->is_job && resresv->job !=NULL) {
@@ -936,16 +947,14 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				(resresv->job->is_suspended?"resume":"run"),
 				resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
-		}
-		else if (resresv->is_resv && resresv->resv !=NULL) {
+		} else if (resresv->is_resv && resresv->resv !=NULL) {
 			sprintf(errbuf,
 				"Could not confirm reservation - nodes are not licensed or"
 				" unable to obtain %d cpu licenses at requested time."
 				" avail_licenses=%d", resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
 
-		}
-		else
+		} else
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 
 		add_err(&prev_err, err);
@@ -1005,7 +1014,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				struct schd_error *toterr;
 				toterr = new_schd_error();
 				if(toterr == NULL) {
-					if(err != perr)
+					if (err != perr)
 						free_schd_error(err);
 					return NULL;
 				}
@@ -1029,7 +1038,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
-	/* Don't check the server resources if a job is in a reservation.  This is
+	/* Don't check the server resources if a job is in a reservation. This is
 	 * because the server resources_assigned will already reflect the entire
 	 * resource amount for the reservation
 	 */
@@ -1073,6 +1082,11 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
+	if (resresv->is_job && resresv->job && !window_enabled && ns_arr != NULL) {
+		set_schd_error_codes(err, NOT_RUN, JOB_WINDOW_NOT_STARTED);
+		set_schd_error_arg(err, SPECMSG, "Job Window has not started");
+	}
+
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1083,7 +1097,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 * didn't end up using it.  We have to check against perr, so we don't
 	 * free the caller's memory.
 	 */
-	if(err->status_code == SCHD_UNKWN && err != perr)
+	if (err->status_code == SCHD_UNKWN && err != perr)
 		free_schd_error(err);
 
 	return ns_arr;
@@ -1092,27 +1106,25 @@ is_ok_to_run(status *policy, server_info *sinfo,
 /**
  *
  * @brief
- * 		This function will calculate the number of
- *		multiples of the requested resources in reqlist
- *		which can be satisfied by the resources
- *		available in the reslist for the resources in checklist
+ * This function will calculate the number of multiples of the requested
+ * resources in reqlist	which can be satisfied by the resources
+ * available in the reslist for the resources in checklist
  *
- * @param[in]	reslist	-	resources list
- * @param[in]	reqlist	-	the list of resources requested
- * @param[in]	flags	-	valid flags:
- *							CHECK_ALL_BOOLS - always check all boolean resources
- *							UNSET_RES_ZERO - a resource which is unset defaults to 0
- *							COMPARE_TOTAL - do comparisons against resource total rather
- *							than what is currently available
- *	        				ONLY_COMP_NONCONS - only compare non-consumable resources
- *							ONLY_COMP_CONS - only compare consumable resources
- * @param[in]	checklist	-	array of resources to check
- *                         		If NULL, all resources are checked.
- * @param[in]	fail_code	-	error code if resource request is rejected
- *	@param[out]	perr	-	if not NULL the the reason request is not
- *			  				satisfiable (i.e. the resource there is not
- *			   				enough of).  If err is NULL, no error reason is
- *			  				 returned.
+ * @param[in]	reslist	- resources list
+ * @param[in]	reqlist	- the list of resources requested
+ * @param[in]	flags	- valid flags:
+ *				CHECK_ALL_BOOLS - always check all boolean resources
+ *				UNSET_RES_ZERO - a resource which is unset defaults to 0
+ *				COMPARE_TOTAL - do comparisons against resource total rather
+ *						than what is currently available
+ *        			ONLY_COMP_NONCONS - only compare non-consumable resources
+ *						ONLY_COMP_CONS - only compare consumable resources
+ * @param[in]	checklist - array of resources to check
+ *                         	If NULL, all resources are checked.
+ * @param[in]	fail_code - error code if resource request is rejected
+ * @param[out]	perr	  - if not NULL the the reason request is not satisfiable
+ * 			    (i.e. the resource there is not enough of).  If err is
+ * 			    NULL, no error reason is returned.
  *
  * @return	int
  * @retval	number of chunks which can be allocated

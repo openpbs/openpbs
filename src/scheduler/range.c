@@ -588,11 +588,11 @@ range_intersection(range *r1, range *r2)
  *		Additional returns which are valid only if zero is returned are:
  *
  * @param[in]	pc	-	subjob index.
- * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line
+ * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line)
  * @param[out]	px	-	first number of range
  * @param[out]	py	-	maximum value in range
  * @param[out]	pz	-	stepping factor
- * @param[out]	pct -	number of entries in this section of the range
+ * @param[out]	pct 	-	number of entries in this section of the range
  *
  * @return	0/1
  * @retval	0	: returned as the function value if no error was detected.

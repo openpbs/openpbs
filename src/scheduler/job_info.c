@@ -427,7 +427,7 @@ static struct fc_translation_table fctt[] = {
 		"can't fit in the largest placement set, and can't span psets",
 		"Can't fit in the largest placement set, and can't span placement sets"
 	},
-	{   /* NO_FREE_NODES */
+	{	/* NO_FREE_NODES */
 		"Not enough free nodes available",
 		"Not enough free nodes available"
 	},
@@ -474,6 +474,10 @@ static struct fc_translation_table fctt[] = {
 	{	/* JOB_UNDER_THRESHOLD */
 		"Job is under job_sort_formula threshold value",
 		"Job is under job_sort_formula threshold value"
+	},
+	{	/* JOB_WINDOW_NOT_STARTED */
+		"Job window has not started",
+		"Job window has not started"
 #ifdef NAS
 	},
 	/* localmod 034 */
@@ -754,8 +758,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 			if (resresv->server->fairshare !=NULL) {
 				resresv->job->ginfo =
 					find_alloc_ginfo(qinfo->name, resresv->server->fairshare->root);
-			}
-			else
+			} else
 				resresv->job->ginfo = NULL;
 		}
 
@@ -1201,8 +1204,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->job->ginfo = find_alloc_ginfo(attrp->value,
 					sinfo->fairshare->root);
 #endif /* localmod 059 */
-			}
-			else
+			} else
 				resresv->job->ginfo = NULL;
 		}
 		if (!strcmp(attrp->name, ATTR_p)) { /* priority */
@@ -1214,36 +1216,31 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 #ifdef NAS /* localmod 045 */
 			resresv->job->NAS_pri = resresv->job->priority;
 #endif /* localmod 045 */
-		}
-		else if (!strcmp(attrp->name, ATTR_qtime)) { /* queue time */
+		} else if (!strcmp(attrp->name, ATTR_qtime)) { /* queue time */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->qtime = count;
 			else
 				resresv->qtime = -1;
-		}
-		else if (!strcmp(attrp->name, ATTR_qrank)) { /* queue rank */
+		} else if (!strcmp(attrp->name, ATTR_qrank)) { /* queue rank */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->qrank = count;
 			else
 				resresv->qrank = -1;
-		}
-		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
+		} else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->job->etime = count;
 			else
 				resresv->job->etime = -1;
-		}
-		else if (!strcmp(attrp->name, ATTR_stime)) { /* job start time */
+		} else if (!strcmp(attrp->name, ATTR_stime)) { /* job start time */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->job->stime = count;
 			else
 				resresv->job->stime = -1;
-		}
-		else if (!strcmp(attrp->name, ATTR_N))		/* job name (qsub -N) */
+		} else if (!strcmp(attrp->name, ATTR_N))		/* job name (qsub -N) */
 			resresv->job->job_name = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_state)) { /* state of job */
 			if (set_job_state(attrp->value, resresv->job) == 0) {
@@ -1251,21 +1248,18 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				set_schd_error_arg(err, SPECMSG, "Job is in an invalid state");
 				resresv->is_invalid = 1;
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_substate)) {
+		} else if (!strcmp(attrp->name, ATTR_substate)) {
 			if (!strcmp(attrp->value, SUSP_BY_SCHED_SUBSTATE))
 				resresv->job->is_susp_sched = 1;
 			if (!strcmp(attrp->value, PROVISIONING_SUBSTATE))
 				resresv->job->is_provisioning = 1;
-		}
-		else if (!strcmp(attrp->name, ATTR_sched_preempted)) {
+		} else if (!strcmp(attrp->name, ATTR_sched_preempted)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0') {
 				resresv->job->time_preempted = count;
 				resresv->job->is_preempted = 1;
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_comment))	/* job comment */
+		} else if (!strcmp(attrp->name, ATTR_comment))	/* job comment */
 			resresv->job->comment = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_released)) /* resources_released */
 			resresv->job->resreleased = parse_execvnode(attrp->value, sinfo, NULL);
@@ -1296,8 +1290,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		else if (!strcmp(attrp->name, ATTR_array)) { /* array */
 			if (!strcmp(attrp->value, ATR_TRUE))
 				resresv->job->is_array = 1;
-		}
-		else if (!strcmp(attrp->name, ATTR_array_index)) { /* array_index */
+		} else if (!strcmp(attrp->name, ATTR_array_index)) { /* array_index */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->job->array_index = count;
@@ -1305,13 +1298,10 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->job->array_index = -1;
 
 			resresv->job->is_subjob = 1;
-		}
-		else if (!strcmp(attrp->name, ATTR_topjob_ineligible)) {
+		} else if (!strcmp(attrp->name, ATTR_topjob_ineligible)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				resresv->job->topjob_ineligible = 1;
-		}
-		/* array_indices_remaining */
-		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
+		} else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_execvnode))
 			execvnode = attrp->value;
@@ -1376,22 +1366,42 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			if (!strcmp(attrp->resource, "start_time")) {
 				resresv->job->est_start_time =
 					(time_t) res_to_num(attrp->value, NULL);
-			}
-			else if (!strcmp(attrp->resource, "execvnode"))
+			} else if (!strcmp(attrp->resource, "exec_vnode"))
 				resresv->job->est_execvnode = string_dup(attrp->value);
-		}
-		else if (!strcmp(attrp->name, ATTR_c)) { /* checkpoint allowed? */
+		} else if (!strcmp(attrp->name, ATTR_c)) { /* checkpoint allowed? */
 			if (strcmp(attrp->value, "n") == 0)
 				resresv->job->can_checkpoint = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_r)) { /* reque allowed ? */
+		} else if (!strcmp(attrp->name, ATTR_r)) { /* reque allowed ? */
 			if (strcmp(attrp->value, ATR_FALSE) == 0)
 				resresv->job->can_requeue = 0;
 		}
 		else if (!strcmp(attrp->name, ATTR_depend)) {
 			resresv->job->depend_job_str = string_dup(attrp->value);
+		} else if (!strcmp(attrp->name, ATTR_job_window_enabled)) {
+			if (strcmp(attrp->value, "1"))
+				resresv->job->window_enabled = 0;
+			else
+				resresv->job->window_enabled = 1;
+		} else if (!strcmp(attrp->name, ATTR_window_start)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				resresv->job->window_start = count;
+			else
+				resresv->job->window_start = 0;
+		} else if (!strcmp(attrp->name, ATTR_window_end)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				resresv->job->window_end = count;
+			else
+				resresv->job->window_end = 0;
+		} else if (!strcmp(attrp->name, ATTR_job_window_days)) {
+			int i;
+			for (i = 0; i < 8; i++)
+				/* It is not a string! */
+				resresv->job->window_days[i] = attrp->value[i];
+		} else if (!strcmp(attrp->name, ATTR_job_timezone)) {
+			resresv->job->timezone = string_dup(attrp->value);
 		}
-
 		attrp = attrp->next;
 	}
 
@@ -1479,6 +1489,10 @@ new_job_info()
 	jinfo->depend_job_str = NULL;
 	jinfo->dependent_jobs = NULL;
 
+	jinfo->window_enabled = 0;
+	jinfo->window_start = 0;
+	jinfo->window_end = 0;
+	jinfo->timezone = NULL;
 
 	jinfo->formula_value = 0.0;
 
@@ -2042,6 +2056,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case NO_TOTAL_NODES:
 		case INVALID_RESRESV:
 		case JOB_UNDER_THRESHOLD:
+		case JOB_WINDOW_NOT_STARTED:
 #ifdef NAS
 			/* localmod 034 */
 		case GROUP_CPU_SHARE:
@@ -2543,6 +2558,13 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 	/* rset->req may be NULL if the intersection of resresv->resreq and policy->equiv_class_resdef is the NULL set */
 	rset->req = dup_selective_resource_req_list(resresv->resreq, policy->equiv_class_resdef);
 
+	if (resresv->is_job && resresv->job != NULL) {
+		rset->time_window_start = resresv->job->window_start;
+		rset->time_window_end = resresv->job->window_end;
+	} else {
+		rset->time_window_start = 0;
+		rset->time_window_end = 0;
+	}
 
 	return rset;
 }
@@ -2564,7 +2586,7 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
  * @retval -1 if not found or on error
  */
 int
-find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo)
+find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo, time_t time_window_start, time_t time_window_end)
 {
 	int i;
 
@@ -2598,6 +2620,10 @@ find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, c
 			continue;
 		if (compare_resource_req_list(rsets[i]->req, req, policy->equiv_class_resdef) == 0)
 			continue;
+		if (time_window_start != rsets[i]->time_window_start)
+			continue;
+		if (time_window_end != rsets[i]->time_window_end)
+			continue;
 		/* If we got here, we have found our set */
 		return i;
 	}
@@ -2620,6 +2646,8 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	char *proj = NULL;
 	queue_info *qinfo = NULL;
 	selspec *sspec;
+	time_t time_window_start = 0;
+	time_t time_window_end = 0;
 
 	if (policy == NULL || rsets == NULL || resresv == NULL)
 		return -1;
@@ -2639,7 +2667,12 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 
 	sspec = resresv_set_which_selspec(resresv);
 
-	return find_resresv_set(policy, rsets, user, grp, proj, sspec, resresv->place_spec, resresv->resreq, qinfo);
+	if (resresv->is_job && resresv->job != NULL) {
+		time_window_start = resresv->job->window_start;
+		time_window_end = resresv->job->window_end;
+	}
+
+	return find_resresv_set(policy, rsets, user, grp, proj, sspec, resresv->place_spec, resresv->resreq, qinfo, time_window_start, time_window_end);
 }
 
 /**
@@ -2721,6 +2754,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 job_info *
 dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 {
+	int i;
 	job_info *njinfo;
 
 	if ((njinfo = new_job_info()) == NULL)
@@ -2748,8 +2782,15 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->is_provisioning = ojinfo->is_provisioning;
 
 	njinfo->can_checkpoint = ojinfo->can_checkpoint;
-	njinfo->can_requeue    = ojinfo->can_requeue;
-	njinfo->can_suspend    = ojinfo->can_suspend;
+	njinfo->can_requeue = ojinfo->can_requeue;
+	njinfo->can_suspend = ojinfo->can_suspend;
+
+	njinfo->window_end = ojinfo->window_end;
+	njinfo->window_start = ojinfo->window_start;
+	njinfo->window_enabled = ojinfo->window_enabled;
+	njinfo->timezone = string_dup(ojinfo->timezone);
+	for (i = 0; i < 8; i++)
+		njinfo->window_days[i] = ojinfo->window_days[i];
 
 	njinfo->priority = ojinfo->priority;
 	njinfo->etime = ojinfo->etime;
@@ -2783,8 +2824,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	if (nqinfo->server->fairshare !=NULL) {
 		njinfo->ginfo = find_group_info(ojinfo->ginfo->name,
 			nqinfo->server->fairshare->root);
-	}
-	else
+	} else
 		njinfo->ginfo = NULL;
 
 	njinfo->depend_job_str = string_dup(njinfo->depend_job_str);
@@ -4384,7 +4424,7 @@ make_ineligible(int pbs_sd, resource_resv *resresv)
 {
 	if (resresv == NULL || resresv->job == NULL)
 		return;
-	if (resresv->job->accrue_type !=JOB_INELIGIBLE) {
+	if (resresv->job->accrue_type != JOB_INELIGIBLE) {
 		update_job_attr(pbs_sd, resresv, ATTR_accrue_type, NULL, ACCRUE_INEL, NULL, UPDATE_LATER);
 		resresv->job->accrue_type = JOB_INELIGIBLE;
 	}
@@ -4484,6 +4524,7 @@ update_accruetype(int pbs_sd, server_info *sinfo,
 		case QUEUE_PROJECT_RES_LIMIT_REACHED:
 		case NODE_GROUP_LIMIT_REACHED:
 		case JOB_UNDER_THRESHOLD:
+		case JOB_WINDOW_NOT_STARTED:
 			make_ineligible(pbs_sd, resresv);
 			break;
 
@@ -4730,7 +4771,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 	if (job == NULL)
 		return -1;
 
-	if (job->is_job && job->job ==NULL)
+	if (job->is_job && job->job == NULL)
 		return -1;
 
 	if (!force) {
@@ -4746,8 +4787,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 				return -1;
 		}
 		aflags = UPDATE_LATER;
-	}
-	else {
+	} else {
 		aflags = UPDATE_NOW;
 		if (job->job->array_id !=NULL)
 			array = find_resource_resv(job->server->jobs, job->job->array_id);

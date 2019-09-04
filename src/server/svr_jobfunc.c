@@ -4877,9 +4877,9 @@ long
 determine_accruetype(job* pjob)
 {
 	struct pbs_queue *pque;
-	long	temphold;
+	long temphold;
 	long newaccruetype = -1;
-
+	int window_enabled = pjob->ji_wattr[JOB_ATR_window_enabled].at_val.at_long;
 
 	/* have to determine accrue type */
 
@@ -4919,7 +4919,10 @@ determine_accruetype(job* pjob)
 			&& (temphold & HOLD_s)) {
 			newaccruetype = (long)JOB_INELIGIBLE;
 		} else {
-			newaccruetype = (long)JOB_ELIGIBLE;
+			if (window_enabled)
+				newaccruetype = (long)JOB_ELIGIBLE;
+			else
+				newaccruetype = (long)JOB_INELIGIBLE;
 		}
 		return newaccruetype;
 	}
@@ -4940,7 +4943,10 @@ determine_accruetype(job* pjob)
 	pque = find_queuebyname(pjob->ji_qs.ji_queue);
 	if (pque != NULL)
 		if (pque->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0) {
-			newaccruetype = (long)JOB_ELIGIBLE;
+			if (window_enabled)
+				newaccruetype = (long)JOB_ELIGIBLE;
+			else
+				newaccruetype = (long)JOB_INELIGIBLE;
 			return newaccruetype;
 		}
 
