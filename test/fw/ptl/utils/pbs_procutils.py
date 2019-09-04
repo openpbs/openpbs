@@ -173,7 +173,7 @@ class ProcUtils(object):
             platform = sys.platform
 
         try:
-            if platform.startswith('linux'):
+            if platform.startswith('linux') or platform.startswith('shasta'):
                 cmd = ['ps', '-o', 'stat', '-p', str(pid), '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
                 return rv['out'][0][0]
@@ -202,7 +202,7 @@ class ProcUtils(object):
 
             childlist = []
 
-            if platform.startswith('linux'):
+            if platform.startswith('linux') or platform.startswith('shasta'):
                 cmd = ['ps', '-o', 'pid', '--ppid:%s' % ppid, '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd)
                 children = rv['out'][:-1]
@@ -292,6 +292,7 @@ class ProcMonitor(threading.Thread):
         """
         self._go = False
         self._Thread__stop()
+
 
 if __name__ == '__main__':
     pm = ProcMonitor(name='.*pbs_server.*|.*pbs_sched.*', regexp=True,
