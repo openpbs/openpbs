@@ -1229,7 +1229,7 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_LOG_HIGHRES_TIMESTAMP": None
         }
 
-        server_vals_to_set = vals_to_set
+        server_vals_to_set = copy.deepcopy(vals_to_set)
 
         if primary_server.platform == 'shasta':
             server_vals_to_set["PBS_PUBLIC_HOST_NAME"] = None

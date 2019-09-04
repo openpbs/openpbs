@@ -327,6 +327,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, a, attrop=PTL_AND)
 
     @skipOnCpuSet
+    @skip('This test is broken for oss')
     def test_finished_jobs(self):
         """
         Test for finished jobs and resource used for jobs.
