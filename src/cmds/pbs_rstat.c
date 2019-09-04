@@ -46,6 +46,11 @@
 #include <time.h>
 #include "cmds.h"
 #include "pbs_ifl.h"
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 
 #define DISP_RESV_FULL		0x01	/* -F,-f option - full verbose description */
@@ -303,6 +308,11 @@ main(int argc, char *argv[])
 				handle_resv(resv_id_out, server_out, how);
 		}
 	}
+#ifdef WIN32
+	Sleep(200);
+#else
+	usleep(200000);
+#endif
 	CS_close_app();
 	exit(errflg);
 }

@@ -61,6 +61,11 @@
 #include "pbs_json.h"
 #include "pbs_internal.h"
 #include "libutil.h"
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -3174,7 +3179,11 @@ svr_no_args:
 	 */
 	if (any_failed == PBSE_JOBHISTNOTSET)
 		any_failed = 0;
-
+#ifdef WIN32
+	Sleep(200);
+#else
+	usleep(200000);
+#endif
 	exit(any_failed);
 }
 
