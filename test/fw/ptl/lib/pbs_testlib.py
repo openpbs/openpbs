@@ -13901,6 +13901,8 @@ class Job(ResourceResv):
                          be created
         :type hostname: str or None
         """
+        shasta_set_host = False
+
         if body is None:
             return None
 
@@ -13930,6 +13932,12 @@ class Job(ResourceResv):
                     body[i] = " ".join(line_arr)
             body = '\n'.join(body)
 
+        if self.platform == 'shasta' and self.username:
+            user = PbsUser.get_user(self.username)
+            if user.host:
+                hostname = user.host
+                shasta_set_host = True
+
         self.script_body = body
         if self.du is None:
             self.du = DshUtils()
@@ -13937,9 +13945,10 @@ class Job(ResourceResv):
         # its mode once the current user has written to it
         fn = self.du.create_temp_file(hostname, prefix='PtlPbsJobScript',
                                       asuser=asuser, body=body)
-
         self.du.chmod(hostname, fn, mode=0755)
-        if not self.du.is_localhost(hostname):
+        # on shasta, if we have already set the hostname,
+        # it does not need to be copied again
+        if not self.du.is_localhost(hostname) and not shasta_set_host:
             self.du.run_copy(hostname, fn, fn)
         self.script = fn
         return fn
