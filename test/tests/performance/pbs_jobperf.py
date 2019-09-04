@@ -70,7 +70,7 @@ class TestJobPerf(TestPerformance):
         """
         Submit jobs with provided arguments and job
         """
-        job = 'sudo -u ' + user + ' ' + \
+        job = 'sudo -u ' + str(user) + ' ' + \
               str(os.path.join(
                   self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub'))
         if qsub_exec_arg is None:
@@ -105,7 +105,7 @@ class TestJobPerf(TestPerformance):
         qdel = qdel + ' -W force'
         cmd = qdel + " `" + str(os.path.join(bin_path, 'qselect'))
         for u in range(0, num_users):
-            qdel_cmd = cmd + " -u" + users[u] + " `"
+            qdel_cmd = cmd + " -u" + str(users[u]) + " `"
             subprocess.call(qdel_cmd, shell=True)
 
     @timeout(3600)
@@ -148,9 +148,9 @@ class TestJobPerf(TestPerformance):
         sclg = PBSLogAnalyzer()
         while j < config['No_of_tries']:
             i = 0
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -239,9 +239,9 @@ class TestJobPerf(TestPerformance):
         while j < self.config['No_of_tries']:
             i = 0
             log_start = time.time()
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'job_history_enable': True}
@@ -331,9 +331,9 @@ class TestJobPerf(TestPerformance):
         j = 0
         while j < config['No_of_tries']:
             i = 0
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -407,9 +407,9 @@ class TestJobPerf(TestPerformance):
                 self.config['No_of_moms'] - counts['state=free'], self.mom)
         while j < self.config['No_of_tries']:
             i = 0
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -467,9 +467,9 @@ class TestJobPerf(TestPerformance):
         j = 0
         while j < config['No_of_tries']:
             i = 0
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -545,9 +545,9 @@ class TestJobPerf(TestPerformance):
         qdel_time = []
         j = 0
         while j < config['No_of_tries']:
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -605,9 +605,9 @@ class TestJobPerf(TestPerformance):
                 'mom', a,
                 self.config['No_of_moms'] - counts['state=free'], self.mom)
         while j < self.config['No_of_tries']:
-            users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                     'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                     'pbsroot', 'pbsadmin']
+            users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
+                     TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
+                     ROOT_USER, ADMIN_USER]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
