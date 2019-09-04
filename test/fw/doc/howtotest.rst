@@ -109,7 +109,7 @@ their functionality by overriding the setUp and/or tearDown methods in your
 own class, for example
 
 ::
-   
+
       class TestMyFix(PBSTestSuite):
 
             def setUp(self):
@@ -119,7 +119,7 @@ own class, for example
 For detailed test directory structure one can refer to below link:
 
 https://pbspro.atlassian.net/wiki/display/DG/PTL+Directory+Structure+and+Naming+Conventions
- 
+
 Writing a test suite
 --------------------
 
@@ -153,6 +153,11 @@ it needs to be skipped.
 
   Tests that inherit from PBSTestSuite inherit a method called ``skipOnCray`` that
   is used to skip tests on Cray platform.
+
+.. topic:: skipOnShasta:
+
+  Tests that inherit from PBSTestSuite inherit a method called ``skipOnShasta`` that
+  is used to skip tests on Cray Shasta platform.
 
 How to add a new attribute to the library
 -----------------------------------------

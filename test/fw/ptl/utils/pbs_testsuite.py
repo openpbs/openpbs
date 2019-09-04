@@ -148,6 +148,21 @@ def skipOnCray(function):
     return wrapper
 
 
+def skipOnShasta(function):
+    """
+    Decorator to skip a test on a ``Cray Shasta`` system
+    """
+
+    def wrapper(self, *args, **kwargs):
+        if self.mom.is_shasta():
+            self.skipTest(reason='capability not supported on Cray Shasta')
+        else:
+            function(self, *args, **kwargs)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
+    return wrapper
+
+
 def skipOnCpuSet(function):
     """
     Decorator to skip a test on a CpuSet system

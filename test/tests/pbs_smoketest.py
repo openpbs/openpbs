@@ -588,6 +588,7 @@ class SmokeTest(PBSTestSuite):
         self.assertEqual(_f1, _f2)
         self.logger.info(str(_f1) + " = " + str(_f2) + " ... OK")
 
+    @skipOnShasta
     def test_staging(self):
         """
         Test for file staging
@@ -1498,6 +1499,7 @@ class SmokeTest(PBSTestSuite):
         self.assertEqual(fs4.usage, 3)
 
     @checkModule("pexpect")
+    @skipOnShasta
     def test_interactive_job(self):
         """
         Submit an interactive job
