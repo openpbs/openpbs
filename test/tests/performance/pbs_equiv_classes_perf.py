@@ -134,8 +134,9 @@ class TestJobEquivClassPerf(TestPerformance):
 
         # Set queue limit
         a = {
-            'max_run': '[o:PBS_ALL=100],[g:PBS_GENERIC=20],\
-                       [u:PBS_GENERIC=20],[g:tstgrp01 = 8],[u:%s=10]' % str(TEST_USER1)}
+            'max_run': ('[o:PBS_ALL=100],[g:PBS_GENERIC=20],'
+                        '[u:PBS_GENERIC=20],[g:tstgrp01 = 8],[u:%s=10]'
+                        % str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, QUEUE,
                             a, id='workq2')
 

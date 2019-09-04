@@ -979,7 +979,8 @@ class DshUtils(object):
                     # TODO: get a valid remote temporary file rather than
                     # assume that the remote host has a similar file
                     # system layout
-                    self.run_copy(hostname, _script, _script, level=level)
+                    self.run_copy(hostname, _script, _script,
+                                  runas=runas, level=level)
                     os.remove(_script)
                 runcmd = rshcmd + sudocmd + [_script]
             else:
@@ -1019,7 +1020,7 @@ class DshUtils(object):
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
                 self.rm(hostname, path=_script, as_script=False,
-                        level=level)
+                        level=level, runas=runas)
 
             # handle the case where stdout is not a PIPE
             if o is not None:
@@ -1111,6 +1112,9 @@ class DshUtils(object):
         if sudo is True and not self.sudo_cmd:
             sudo = False
 
+        if runas:
+            _runas_user = PbsUser.get_user(runas)
+
         for targethost in hosts:
             islocal = self.is_localhost(targethost)
             if sudo and not islocal:
@@ -1148,6 +1152,9 @@ class DshUtils(object):
                 cmd += copy_cmd
                 if recursive:
                     cmd += ['-r']
+                if (self.get_platform() == 'shasta' and _runas_user and
+                   _runas_user.port):
+                    cmd += ['-P', _runas_user.port]
                 cmd += [src]
                 if islocal:
                     cmd += [dest]

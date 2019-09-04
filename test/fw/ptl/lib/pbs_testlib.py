@@ -13937,6 +13937,7 @@ class Job(ResourceResv):
             if user.host:
                 hostname = user.host
                 shasta_set_host = True
+                asuser = user.name
 
         self.script_body = body
         if self.du is None:
