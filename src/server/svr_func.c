@@ -4874,7 +4874,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 		if (*p == '+')
 			num_of_exec_vnodes++;
 	}
-	/* Allocate tempory memory to hold execvnod attribute */
+	/* Allocate temporary memory to hold execvnod attribute */
 	sbuf = strdup(execvnod);
 	if (sbuf == NULL)
 		return -1;
@@ -4931,15 +4931,23 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 					DBPRT(("%s: %s\n", __func__, (*prov_vnodes)[i]))
 					++i;
 					if (aoe_name != NULL) {
-						aoe = malloc(strlen(((pkvp + k)->kv_val)) + 1);
-						if (aoe == NULL) {
-							free(sbuf);
-							free(pbuf);
-							return -1;
+						if (*aoe_name) {
+							if (strcmp(*aoe_name, ((pkvp + k)->kv_val)) != 0) {
+								/* Aoe name can not be different across chunks, it's an error */
+								free(sbuf);
+								free(pbuf);
+								free(*aoe_name);
+								return -1;
+							}
+						} else {
+							aoe = strdup((pkvp + k)->kv_val);
+							if (aoe == NULL) {
+								free(sbuf);
+								free(pbuf);
+								return -1;
+							}
+							(*aoe_name) = aoe;
 						}
-						strcpy(aoe, ((pkvp + k)->kv_val));
-						aoe[strlen((pkvp + k)->kv_val)] = '\0';
-						(*aoe_name) = aoe;
 						DBPRT(("%s: %s\n", __func__, (*aoe_name)))
 					}
 					break;
@@ -5039,11 +5047,13 @@ static struct prov_vnode_info * find_prov_vnode(struct pbsnode * pnode)
 void
 free_prov_vnode(struct pbsnode * pnode)
 {
-	struct prov_vnode_info * prov_vnode_info = NULL;
+	struct prov_vnode_info *prov_vnode_info = NULL;
 
 	if (pnode->nd_state & INUSE_WAIT_PROV) {
-		if ((prov_vnode_info = find_prov_vnode(pnode)))
+		if ((prov_vnode_info = find_prov_vnode(pnode))) {
 			delete_link(&prov_vnode_info->al_link);
+			free_pvnfo(prov_vnode_info);
+		}
 
 		set_vnode_state(pnode, ~INUSE_WAIT_PROV, Nd_State_And);
 	}

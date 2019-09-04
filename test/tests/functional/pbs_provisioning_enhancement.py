@@ -94,9 +94,6 @@ e.reject()
         # Remove all nodes
         self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
-        # Restart PBS
-        self.server.restart()
-
         # Create node
         self.server.manager(MGR_CMD_CREATE, NODE, None, self.hostA)
         self.server.manager(MGR_CMD_CREATE, NODE, None, self.hostB)
@@ -438,3 +435,44 @@ e.reject()
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         job_state = self.server.status(JOB, id=jid3)
         self.assertEqual(job_state[0]['exec_vnode'], solution)
+
+    def test_multinode_provisioning(self):
+        """
+        Test the effect of max_concurrent_provision
+        If set to 1 and job requests a 4 node provision, the provision should
+        occur 1 node at a time
+        """
+
+        # Setup provisioning hook with smaller alarm.
+        a = {'event': 'provision', 'enabled': 'True', 'alarm': '5'}
+        rv = self.server.create_import_hook(
+            'fake_prov_hook', a, self.fake_prov_hook, overwrite=True)
+
+        a = {'max_concurrent_provision': 1}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.aoe': 'App1,osimage1',
+             'current_aoe': 'App1',
+             'provision_enable': 'True',
+             'resources_available.ncpus': 1}
+        rv = self.server.create_vnodes('vnode', a, 4, self.momA,
+                                       sharednode=False)
+        self.assertTrue(rv)
+        j = Job(TEST_USER,
+                attrs={'Resource_List.select': '4:ncpus=1:aoe=osimage1'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R',
+                           'substate': 71}, attrop=PTL_AND, id=jid)
+        exp_msg = "Provisioning vnode vnode\[[0-3]\] with AOE osimage1 started"
+        logs = self.server.log_match(msg=exp_msg, regexp=True, allmatch=True)
+
+        # since max_concurrent_provision is 1, there should be only one
+        # log
+        self.assertEqual(len(logs), 1)
+
+        # A node in provisioning state cannot be deleted. In order to make
+        # sure that cleanup happens properly do the following -
+        # sleep for a few seconds so that provisin timesout and the node
+        # is marked offline and then delete all the nodes
+        time.sleep(8)
+        # delete all nodes
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
