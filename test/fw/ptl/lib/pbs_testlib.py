@@ -59,7 +59,7 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
 from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_testusers import PbsUser
+from ptl.utils.pbs_testusers import PbsUser, TEST_USER
 
 try:
     import psycopg2
@@ -13726,7 +13726,7 @@ class Job(ResourceResv):
     runtime = 100
     du = DshUtils()
 
-    def __init__(self, username=None, attrs={}, jobname=None):
+    def __init__(self, username=TEST_USER, attrs={}, jobname=None):
         self.platform = self.du.get_platform()
         self.server = {}
         self.script = None
@@ -13971,7 +13971,7 @@ class Reservation(ResourceResv):
 
     dflt_attributes = {}
 
-    def __init__(self, username=None, attrs=None, hosts=None):
+    def __init__(self, username=TEST_USER, attrs=None, hosts=None):
         self.server = {}
         self.script = None
 
