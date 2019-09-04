@@ -1139,6 +1139,10 @@ req_quejob(struct batch_request *preq)
 			decode_str(&pj->ji_wattr[JOB_ATR_window_start_str], ATTR_window_start, NULL, temp_str);
 			strftime(temp_str, 100, "%D %H:%M", localtime(&pj->ji_window_end_time));
 			decode_str(&pj->ji_wattr[JOB_ATR_window_end_str], ATTR_window_start, NULL, temp_str);
+		} else {
+			job_purge(pj);
+			req_reject(PBSE_BAD_RRULE_SYNTAX, 0, preq);
+			return;
 		}
 	} else
 		pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;

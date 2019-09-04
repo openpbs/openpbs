@@ -654,6 +654,10 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 	}
 
 	if (rrule) {
+		if (!strstr(rrule, "BYDAY")) {
+			*err_code = PBSE_BAD_RRULE_SYNTAX;
+			return 1;
+		}
 		rt = icalrecurrencetype_from_string(rrule);
 
 		/* Check if by_day rules are defined and valid
@@ -663,7 +667,7 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 		for (i = 0; rt.by_day[i] < 8; i++) {
 			if (rt.by_day[i] <= 0) {
 				*err_code = PBSE_BAD_RRULE_SYNTAX;
-				return 0;
+				return 1;
 			} else
 				window_days[rt.by_day[i]] = 1;
 		}

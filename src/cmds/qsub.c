@@ -2830,6 +2830,8 @@ process_opts(int argc, char **argv, int passet)
 						set_attr_error_exit(&attrib, keyword, valuewd);
 					}
 					i = parse_equal_string(NULL, &keyword, &valuewd);
+					if ((i == -1) && (strcmp(keyword, ATTR_window_rrule) == 0))
+						i = 1;
 				} /* bottom of long while loop */
 				if (i == -1) {
 					fprintf(stderr, "%s", BAD_W);
