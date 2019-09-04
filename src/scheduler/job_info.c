@@ -424,7 +424,7 @@ static struct fc_translation_table fctt[] = {
 		"can't fit in the largest placement set, and can't span psets",
 		"Can't fit in the largest placement set, and can't span placement sets"
 	},
-	{   /* NO_FREE_NODES */
+	{	/* NO_FREE_NODES */
 		"Not enough free nodes available",
 		"Not enough free nodes available"
 	},
@@ -471,6 +471,10 @@ static struct fc_translation_table fctt[] = {
 	{	/* JOB_UNDER_THRESHOLD */
 		"Job is under job_sort_formula threshold value",
 		"Job is under job_sort_formula threshold value"
+	},
+	{	/* JOB_WINDOW_NOT_STARTED */
+		"Job window has not started",
+		"Job window has not started"
 #ifdef NAS
 	},
 	/* localmod 034 */
@@ -596,6 +600,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_estimated,
 			ATTR_c,
 			ATTR_r,
+			ATTR_job_window_enabled,
 			NULL
 	};
 
@@ -1239,6 +1244,12 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		else if (!strcmp(attrp->name, ATTR_r)) { /* reque allowed ? */
 			if (strcmp(attrp->value, ATR_FALSE) == 0)
 				resresv->job->can_requeue = 0;
+		}
+		else if (!strcmp(attrp->name, ATTR_job_window_enabled)) {
+			if (strcmp(attrp->value, "1") == 0)
+				resresv->job->window_enabled = 1;
+			else
+				resresv->job->window_enabled = 0;
 		}
 
 		attrp = attrp->next;
@@ -1885,6 +1896,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case NO_TOTAL_NODES:
 		case INVALID_RESRESV:
 		case JOB_UNDER_THRESHOLD:
+		case JOB_WINDOW_NOT_STARTED:
 #ifdef NAS
 			/* localmod 034 */
 		case GROUP_CPU_SHARE:

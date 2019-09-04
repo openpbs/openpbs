@@ -224,6 +224,7 @@ extern void fail_vnode_job(struct prov_vnode_info *, int);
 extern struct prov_tracking * get_prov_record_by_vnode(char *);
 extern int parse_prov_vnode(char *,exec_vnode_listtype *);
 extern vnpool_mom_t *vnode_pool_mom_list;
+extern void delete_window_tasks(job *);
 
 static void check_and_set_multivnode(struct pbsnode *);
 int write_single_node_mom_attr(struct pbsnode *np);
@@ -2467,6 +2468,8 @@ stat_update(int stream)
 					/* this causes a save of the job */
 					svr_setjobstate(pjob, JOB_STATE_RUNNING,
 						JOB_SUBSTATE_RUNNING);
+
+					delete_window_tasks(pjob);
 					/*
 					 * If JOB_DEPEND_TYPE_BEFORESTART dependency is set for the current job
 					 * then release the after dependency for its childs as the current job

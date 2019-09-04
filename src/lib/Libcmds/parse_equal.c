@@ -116,7 +116,7 @@ char **value;
 		return (-1);	/* should have found a = as first non blank */
 	*pc++ = '\0';
 
-	/* that follows is the value string, skip leading white space */
+	/* what follows is the value string, skip leading white space */
 
 	while (isspace((int)*pc) && *pc)
 		pc++;
@@ -142,6 +142,12 @@ char **value;
 	}
 	while ((*pc != '=') && *pc)
 		pc++;
+
+	/* Temporary hack, should be replaced with a better solution
+	 * skip this '=' and find the next one */
+	if (!strcmp(*name, "window_rrule"))
+		while ((*pc != '=') && *pc)
+			pc++;
 
 	if (*pc == '\0') {
 		while (isspace((int)*--pc));

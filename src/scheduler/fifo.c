@@ -845,6 +845,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	schd_error *err;
 	schd_error *chk_lim_err;
 	
+	resource_resv *tj;
 
 	if (policy == NULL || sinfo == NULL || rerr == NULL)
 		return -1;
@@ -906,7 +907,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			njob->can_never_run = 1;
 
 		if (ns_arr != NULL) { /* success! */
-			resource_resv *tj;
 			if (njob->job->is_array) {
 				tj = queue_subjob(njob, sinfo, qinfo);
 				if (tj == NULL) {
@@ -917,28 +917,38 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				tj = njob;
 
 			if (rc != SCHD_ERROR) {
-				if(run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
-					rc = SUCCESS;
-					if (sinfo->has_soft_limit || qinfo->has_soft_limit)
-						sort_again = MUST_RESORT_JOBS;
-					else
-						sort_again = MAY_RESORT_JOBS;
-				} else {
-					/* if run_update_resresv() returns 0 and pbs_errno == PBSE_HOOKERROR,
-					 * then this job is required to be ignored in this scheduling cycle
-					 */
-					rc = err->error_code;
+				if (!(tj->job->window_enabled)) {
+					rc = JOB_WINDOW_NOT_STARTED;
 					sort_again = SORTED;
+					set_schd_error_codes(err, NOT_RUN, JOB_WINDOW_NOT_STARTED);
+					set_schd_error_arg(err, SPECMSG, "Job Window has not started");
+				} else {
+					if (run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
+						rc = SUCCESS;
+						if (sinfo->has_soft_limit || qinfo->has_soft_limit)
+							sort_again = MUST_RESORT_JOBS;
+						else
+							sort_again = MAY_RESORT_JOBS;
+					} else {
+						/* if run_update_resresv() returns 0 and pbs_errno == PBSE_HOOKERROR,
+					 	* then this job is required to be ignored in this scheduling cycle
+					 	*/
+						rc = err->error_code;
+						sort_again = SORTED;
+					}
 				}
 			} else
 				free_nspecs(ns_arr);
-		}
-		else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
-			if (find_and_preempt_jobs(policy, sd, njob, sinfo, err) > 0) {
+		} else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
+			if (!tj->job->window_enabled) {
+				rc = JOB_WINDOW_NOT_STARTED;
+				sort_again = SORTED;
+				set_schd_error_codes(err, NOT_RUN, JOB_WINDOW_NOT_STARTED);
+				set_schd_error_arg(err, SPECMSG, "Job Window has not started");
+			} else if (find_and_preempt_jobs(policy, sd, njob, sinfo, err) > 0) {
 				rc = SUCCESS;
 				sort_again = MUST_RESORT_JOBS;
-			}
-			else
+			} else
 				sort_again = SORTED;
 		}
 
@@ -957,8 +967,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		if (rc == SCHD_ERROR || rc == PBSE_PROTOCOL || got_sigpipe) {
 			end_cycle = 1;
 			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle because of an internal error.");
-		}
-		else if (rc != SUCCESS && rc != RUN_FAILURE) {
+		} else if (rc != SUCCESS && rc != RUN_FAILURE) {
 			int cal_rc;
 #ifdef NAS /* localmod 034 */
 			int bf_rc;

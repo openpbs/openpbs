@@ -279,6 +279,13 @@ enum job_atr {
 	JOB_ATR_resc_released_list,
 	JOB_ATR_relnodes_on_stageout,
 	JOB_ATR_tolerate_node_failures,
+	JOB_ATR_window_start,
+	JOB_ATR_window_duration,
+	JOB_ATR_window_rrule,
+	JOB_ATR_timezone,
+	JOB_ATR_window_enabled,
+	JOB_ATR_window_start_str,
+	JOB_ATR_window_end_str,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -630,7 +637,10 @@ struct job {
 	int             ji_etlimit_decr_queued;
 
 	struct preempt_ordering	*preempt_order;
-	int			preempt_order_index;
+	int preempt_order_index;
+	int window_days[8];
+	time_t ji_window_end_time;
+	time_t ji_window_start_time;
 
 #endif					/* END SERVER ONLY */
 
@@ -909,6 +919,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
+#define JOB_SVFLG_HAS_WINDOW 0x400000 /* Job is suspended for maintenance */
 
 
 /*

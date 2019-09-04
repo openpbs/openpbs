@@ -347,7 +347,7 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 	/* Require that either a COUNT or UNTIL be passed. But not both. */
 	if ((rt.count == 0 && icaltime_is_null_time(rt.until)) ||
 		(rt.count != 0 && !icaltime_is_null_time(rt.until))) {
-		*err_code = PBSE_BAD_RRULE_SYNTAX2; /* Undefined iCalendar synax. A valid COUNT or UNTIL is required */
+		*err_code = PBSE_BAD_RRULE_SYNTAX2; /* Undefined iCalendar syntax. A valid COUNT or UNTIL is required */
 		return 0;
 	}
 
@@ -589,6 +589,135 @@ set_ical_zoneinfo(char *path)
 	return;
 }
 
+/**
+ * @brief
+ * 	Calculate window start and end times based on duration and window_rrule.
+ *      window_rrule only supports BYDAY construct, other constructs
+ *      even if present, will be ignored.
+ *
+ * @par	Note that the PBS_TZID environment variable HAS to be set for the
+ *      tasks' time to be correctly computed.
+ *
+ * @param[in] rrule    - The window_rrule to process
+ * @param[in] start    - window_start
+ * @param[in] duration - window_duration
+ * @param[in] tz       - timezone
+ * @param[out] start_task_time - time for the window_start's task
+ * @param[out] end_task_time - time for the window_end's task
+ * @param[out] window_days - days on which the window will be active
+ * @param[out] err_code - error code if there is a problem
+ *
+ * @return	int
+ * @retval	0 - if times are calcualted properly.
+ *              1 - in case there is a problem in calculation.
+ *
+ */
+int
+calculate_window_times(char *rrule, long start, long duration, char *tz, time_t *start_task_time, time_t *end_task_time, int *window_days, int *diff, int *err_code)
+{
+
+#ifdef LIBICAL
+	int i;
+	icaltimezone *localzone;
+	struct icalrecurrencetype rt;
+	struct icaltimetype ical_start;
+
+	*err_code = 0;
+	icalerror_clear_errno();
+
+	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
+#ifdef LIBICAL_API2
+	icalerror_set_errors_are_fatal(0);
+#else
+	icalerror_errors_are_fatal = 0;
+#endif
+	int start_time_seconds;
+	int duration_seconds;
+
+	time_t now;
+	time_t today_seconds;
+	time_t today_start;
+	time_t initial_value;
+
+	int count;
+
+	if (tz == NULL)
+		return 1;
+
+	localzone = icaltimezone_get_builtin_timezone(tz);
+	/* If the timezone info directory is not accessible
+	 * then bail
+	 */
+	if (localzone == NULL) {
+		*err_code = PBSE_BAD_ICAL_TZ;
+		return 1;
+	}
+
+	if (rrule) {
+		rt = icalrecurrencetype_from_string(rrule);
+
+		/* Check if by_day rules are defined and valid
+	 	* the first item in the array of by_* rule
+	 	* determines whether the item exists or not.
+	 	*/
+		for (i = 0; rt.by_day[i] < 8; i++) {
+			if (rt.by_day[i] <= 0) {
+				*err_code = PBSE_BAD_RRULE_SYNTAX;
+				return 0;
+			} else
+				window_days[rt.by_day[i]] = 1;
+		}
+	} else
+		for (i = 0; i < 8; i++)
+			window_days[i] = 1;
+
+	now = time(NULL);
+	ical_start = icaltime_current_time_with_zone(localzone);
+	*diff = now - icaltime_as_timet(ical_start);
+
+	start_time_seconds = (((start / 100) * 60 * 60) + ((start % 100) * 60));
+	duration_seconds = (((duration / 100) * 60 * 60) + ((duration % 100) * 60));
+
+	i = icaltime_day_of_week(ical_start);
+
+	today_seconds = now % 86400;
+	today_start = now - today_seconds;
+
+	count = 0;
+	*start_task_time = initial_value = (time_t)(today_start + start_time_seconds + *diff);
+	while (count <= 7) {
+		if (window_days[i]) {
+			*start_task_time += count * 86400;
+			*end_task_time = (time_t)(*start_task_time + duration_seconds);
+
+			if (now >= *start_task_time) {
+				if (now >= *end_task_time) {
+					/* We are past today's window, find the next */
+					*end_task_time = 0;
+					*start_task_time = initial_value;
+				} else {
+					window_days[i] = 2;
+					break;
+				}
+			} else {
+				window_days[i] = 2;
+				break;
+			}
+		}
+		i++;
+		if (i == 8)
+			i = 0;
+		count++;
+	}
+
+	return 0;
+
+#else
+
+	*err_code = PBSE_BAD_RRULE_SYNTAX; /* iCalendar is undefined */
+	return 1;
+#endif
+}
 #ifdef DEBUG
 /**
  * @brief

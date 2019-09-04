@@ -196,6 +196,9 @@ static	void	handle_qmgr_reply_to_resvQcreate(struct work_task *);
 static	int	get_queue_for_reservation(resc_resv *);
 static	int	ignore_attr(char *);
 static	int	validate_place_req_of_job_in_reservation(job *pj);
+static void start_window_task(struct work_task *ptask);
+static void end_window_task(struct work_task *ptask);
+void delete_window_tasks(job *pjob);
 
 /* To generate the job/resv id's locally */
 static long long get_next_svr_sequence_id(void);
@@ -287,39 +290,42 @@ validate_perm_res_in_select(char *val)
 void
 req_quejob(struct batch_request *preq)
 {
-	int             created_here = 0;
-	int             index;
-	char            *jid;
-	attribute_def   *pdef;
-	job             *pj;
-	svrattrl        *psatl;
-	int             rc;
-	int             sock = preq->rq_conn;
-	int             resc_access_perm_save;
+	int created_here = 0;
+	int index;
+	char *jid;
+	attribute_def *pdef;
+	job *pj;
+	svrattrl *psatl;
+	int rc;
+	int sock = preq->rq_conn;
+	int resc_access_perm_save;
 #ifndef PBS_MOM
-	int              set_project = 0;
-	int		 i;
-	attribute	 tempattr;
-	char		 jidbuf[PBS_MAXSVRJOBID+1];
-	pbs_queue	*pque;
-	char		*qname;
-	char            *result;
-	resource_def	*prdefnod;
-	resource_def	*prdefsel;
-	resource_def	*prdefplc;
-	resource	*presc;
-	conn_t		*conn;
+	int set_project = 0;
+	int i;
+	attribute tempattr;
+	char jidbuf[PBS_MAXSVRJOBID+1];
+	pbs_queue *pque;
+	char *qname;
+	char *result;
+	resource_def *prdefnod;
+	resource_def *prdefsel;
+	resource_def *prdefplc;
+	resource *presc;
+	conn_t *conn;
+	struct work_task *task;
+	char temp_str[100];
+	int diff;
 #else
-	mom_hook_input_t  hook_input;
+	mom_hook_input_t hook_input;
 	mom_hook_output_t hook_output;
-	char		namebuf[MAXPATHLEN+1];
-	int		hook_errcode = 0;
-	int		hook_rc = 0;
-	char		hook_buf[HOOK_MSG_SIZE];
-	hook		*last_phook = NULL;
-	unsigned int	hook_fail_action = 0;
+	char namebuf[MAXPATHLEN+1];
+	int hook_errcode = 0;
+	int hook_rc = 0;
+	char hook_buf[HOOK_MSG_SIZE];
+	hook *last_phook = NULL;
+	unsigned int hook_fail_action = 0;
 #endif
-	char		hook_msg[HOOK_MSG_SIZE];
+	char hook_msg[HOOK_MSG_SIZE];
 
 	/* set basic (user) level access permission */
 
@@ -724,7 +730,7 @@ req_quejob(struct batch_request *preq)
 
 	/* perform any at_action routine declared for the attributes */
 
-	for (i=0; i<JOB_ATR_LAST; ++i) {
+	for (i = 0; i < JOB_ATR_LAST; ++i) {
 		pdef = &job_attr_def[i];
 		if ((pj->ji_wattr[i].at_flags & ATR_VFLAG_SET) &&
 			(pdef->at_action)) {
@@ -910,8 +916,8 @@ req_quejob(struct batch_request *preq)
 			}
 		}
 
-		if ((pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str==0) ||
-			(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str==0)) {
+		if ((pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str == 0) ||
+			(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str == 0)) {
 			job_purge(pj);
 			req_reject(PBSE_NOATTR, 0, preq);
 			return;
@@ -1099,6 +1105,45 @@ req_quejob(struct batch_request *preq)
 		req_reject(PBSE_BADTSPEC, 0, preq);
 		return;
 	}
+
+	if (pj->ji_wattr[(int)JOB_ATR_window_start].at_flags & ATR_VFLAG_SET) {
+		int err_code;
+
+		pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 0;
+
+		if (!calculate_window_times(pj->ji_wattr[(int)JOB_ATR_window_rrule].at_val.at_str,
+				pj->ji_wattr[(int)JOB_ATR_window_start].at_val.at_long,
+				pj->ji_wattr[(int)JOB_ATR_window_duration].at_val.at_long,
+				pj->ji_wattr[(int)JOB_ATR_timezone].at_val.at_str,
+				&pj->ji_window_start_time,
+				&pj->ji_window_end_time,
+				pj->window_days,
+				&diff,
+				&err_code)) {
+			pj->ji_qs.ji_svrflags |= JOB_SVFLG_HAS_WINDOW;
+
+			time_now = time(NULL) - diff;
+			if (time_now > pj->ji_window_start_time && time_now < pj->ji_window_end_time)
+				pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
+			else {
+				task = set_task(WORK_Timed, pj->ji_window_start_time, start_window_task, (void *)pj);
+				append_link(&pj->ji_svrtask, &task->wt_linkobj, task);
+			}
+			task = set_task(WORK_Timed, pj->ji_window_end_time, end_window_task, (void *)pj);
+			append_link(&pj->ji_svrtask, &task->wt_linkobj, task);
+			/* Copy the start and end times to their string equivalents */
+			pj->ji_wattr[JOB_ATR_window_start_str].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			pj->ji_wattr[JOB_ATR_window_end_str].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+
+			strftime(temp_str, 100, "%D %H:%M", localtime(&pj->ji_window_start_time));
+			decode_str(&pj->ji_wattr[JOB_ATR_window_start_str], ATTR_window_start, NULL, temp_str);
+			strftime(temp_str, 100, "%D %H:%M", localtime(&pj->ji_window_end_time));
+			decode_str(&pj->ji_wattr[JOB_ATR_window_end_str], ATTR_window_start, NULL, temp_str);
+		}
+	} else
+		pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
+
+	pj->ji_wattr[JOB_ATR_window_enabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	Update_Resvstate_if_resv(pj);
 	if (add_resc_resv_if_resvJob(pj) != 0) {
@@ -2300,7 +2345,7 @@ req_resvSub(struct batch_request *preq)
 
 	/* invoke any defined attribute at_action routines */
 
-	for (i=0; i<RESV_ATR_LAST; ++i) {
+	for (i = 0; i < RESV_ATR_LAST; ++i) {
 		pdef = &resv_attr_def[i];
 		if ((presv->ri_wattr[i].at_flags & ATR_VFLAG_SET) &&
 			(pdef->at_action)) {
@@ -3261,4 +3306,79 @@ void reset_svr_sequence_window(void)
 	(void)svr_save_db(&server, SVR_SAVE_QUICK);
 }
 
+static void
+start_window_task(struct work_task *ptask)
+{
+	job *pjob;
+
+	assert(ptask->wt_parm1 != NULL);
+	pjob = (job *) ptask->wt_parm1;
+
+	pjob->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
+	pjob->ji_wattr[JOB_ATR_window_enabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
+}
+
+static void
+end_window_task(struct work_task *ptask)
+{
+	int i;
+	job *pjob;
+	int count = 1;
+	struct work_task *task;
+	char temp_str[100];
+
+	assert(ptask->wt_parm1 != NULL);
+	pjob = (job *) ptask->wt_parm1;
+
+	pjob->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
+	pjob->ji_wattr[JOB_ATR_window_enabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+
+	for (i = 1; ((i < 8) && (pjob->window_days[i] != 2)); i++);
+
+	pjob->window_days[i] = 1;
+	i++;
+	if (i == 8)
+		i = 0;
+
+	while (count <= 7) {
+		if (pjob->window_days[i]) {
+			pjob->ji_window_start_time += count * 86400;
+			pjob->ji_window_end_time += count * 86400;
+			pjob->window_days[i] = 2;
+			break;
+		}
+		i++;
+		if (i == 8)
+			i = 0;
+		count++;
+	}
+	task = set_task(WORK_Timed, pjob->ji_window_start_time, start_window_task, (void *)pjob);
+	append_link(&pjob->ji_svrtask, &task->wt_linkobj, task);
+	task = set_task(WORK_Timed, pjob->ji_window_end_time, end_window_task, (void *)pjob);
+	append_link(&pjob->ji_svrtask, &task->wt_linkobj, task);
+	
+	strftime(temp_str, 100, "%D %H:%M", localtime(&pjob->ji_window_start_time));
+	decode_str(&pjob->ji_wattr[JOB_ATR_window_start_str], ATTR_window_start, NULL, temp_str);
+	strftime(temp_str, 100, "%D %H:%M", localtime(&pjob->ji_window_end_time));
+	decode_str(&pjob->ji_wattr[JOB_ATR_window_end_str], ATTR_window_start, NULL, temp_str);
+}
+
+void
+delete_window_tasks(job *pjob)
+{
+	struct work_task *ptask;
+
+	if (((job *)pjob)->ji_qs.ji_svrflags & JOB_SVFLG_HAS_WINDOW) {
+		while ((ptask = (struct work_task *)GET_NEXT(pjob->ji_svrtask)) != NULL) {
+			if ((ptask->wt_type == WORK_Timed) &&
+				((ptask->wt_func == start_window_task) || (ptask->wt_func == end_window_task)) &&
+				(ptask->wt_parm1 == pjob)) {
+				delete_task(ptask);
+			}
+			ptask = (struct work_task *)GET_NEXT(ptask->wt_linkobj);
+		}
+		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HAS_WINDOW;
+	}
+}
 #endif	/*SERVER ONLY*/

@@ -293,6 +293,9 @@ static int cred_opt = FALSE;
 static int block_opt = FALSE;
 static int relnodes_on_stageout_opt = FALSE;
 static int tolerate_node_failures_opt = FALSE;
+static int Windowstart_opt = FALSE;
+static int Windowduration_opt = FALSE;
+static int Windowrrule_opt = FALSE;
 static int roptarg_inter = FALSE;
 
 /* for saving option booleans */
@@ -2666,6 +2669,8 @@ process_opts(int argc, char **argv, int passet)
 					valuewd = NULL;
 				}
 #endif
+				if ((i == -1) && (strcmp(optarg, ATTR_window_rrule) == 0))
+					i = 1;
 
 				while (i == 1) {
 					if (strcmp(keyword, ATTR_depend) == 0) {
@@ -2805,6 +2810,22 @@ process_opts(int argc, char **argv, int passet)
 							tolerate_node_failures_opt = passet;
 							set_attr_error_exit(&attrib, ATTR_tolerate_node_failures, valuewd);
 						}
+					} else if (strcmp(keyword, ATTR_window_start) == 0) {
+						if_cmd_line(Windowstart_opt) {
+							Windowstart_opt = passet;
+							set_attr_error_exit(&attrib, ATTR_window_start, valuewd);
+						}
+					} else if (strcmp(keyword, ATTR_window_duration) == 0) {
+						if_cmd_line(Windowduration_opt) {
+							Windowduration_opt = passet;
+							set_attr_error_exit(&attrib, ATTR_window_duration, valuewd);
+						}
+					} else if (strcmp(keyword, ATTR_window_rrule) == 0) {
+						if_cmd_line(Windowrrule_opt) {
+							Windowrrule_opt = passet;
+							set_attr_error_exit(&attrib, ATTR_window_rrule, valuewd);
+							parse_equal_string(NULL, &keyword, &valuewd);
+						}
 					} else {
 						set_attr_error_exit(&attrib, keyword, valuewd);
 					}
@@ -2850,6 +2871,23 @@ process_opts(int argc, char **argv, int passet)
 		fprintf(stderr, "qsub: X11 Forwarding possible only for "
 			"interactive jobs\n");
 		exit_qsub(1);
+	}
+	if (((Windowstart_opt) && (!Windowduration_opt)) || ((!Windowstart_opt) && (Windowduration_opt))) {
+		fprintf(stderr, "qsub: Both window_start and window_duration must be used\n");
+		exit_qsub(1);
+	} else {
+		if ((pc = getenv("PBS_TZID")))
+			set_attr_error_exit(&attrib, ATTR_job_timezone, pc);
+		else {
+			fprintf(stderr, "qsub error: a valid PBS_TZID timezone environment variable is required.\n");
+			exit(2);
+		}
+	}
+	if (Windowrrule_opt) {
+		if (!Windowstart_opt) {
+			fprintf(stderr, "qsub: window_rrule cannot be used without window_start and window_duration\n");
+			exit_qsub(1);
+		}
 	}
 #ifdef WIN32
 	if ((gui_opt == CMDLINE) && (Interact_opt == FALSE)) {
@@ -4244,7 +4282,7 @@ send_opts(void *s)
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
-		"%d %d %d %d %d %d ",
+		"%d %d %d %d %d %d %d %d",
 		a_opt, c_opt, e_opt, h_opt, j_opt,
 		k_opt, l_opt, m_opt, o_opt, p_opt,
 		q_opt, r_opt, u_opt, v_opt, z_opt,
@@ -4252,7 +4290,8 @@ send_opts(void *s)
 		S_opt, V_opt, Depend_opt, Interact_opt, Stagein_opt,
 		Stageout_opt, Sandbox_opt, Grouplist_opt, Resvstart_opt,
 		Resvend_opt, pwd_opt, cred_opt, block_opt, P_opt,
-			relnodes_on_stageout_opt, tolerate_node_failures_opt);
+			relnodes_on_stageout_opt, tolerate_node_failures_opt,
+			Windowstart_opt, Windowduration_opt);
 
 	return (send_string(s, daemon_buf));
 }

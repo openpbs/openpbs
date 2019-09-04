@@ -473,6 +473,7 @@ struct job_info
 	unsigned is_provisioning:1;	/* job is provisioning */
 	unsigned is_preempted:1;	/* job is preempted */
 	unsigned topjob_ineligible:1;	/* Job is ineligible to be a top job */
+	unsigned window_enabled:1;	/* Job window is enabled */
 
 	char *job_name;			/* job name attribute (qsub -N) */
 	char *comment;			/* comment field of job */
@@ -504,7 +505,7 @@ struct job_info
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
 
-	struct attrl *attr_updates;	/* used to federate all attr updates to server*/
+	struct attrl *attr_updates;	/* used to federate all attr updates to server */
 	float formula_value;		/* evaluated job sort formula value */
 	nspec **resreleased;		/* list of resources released by the job on each node */
 	resource_req *resreq_rel;	/* list of resources released */
