@@ -1088,6 +1088,8 @@ class DshUtils(object):
         :returns: {'out':<outdata>, 'err': <errdata>, 'rc':<retcode>}
                   upon and None if no source file specified
         """
+        _runas_user = None
+
         if src is None:
             self.logger.warning('no source file specified')
             return None
@@ -1150,7 +1152,10 @@ class DshUtils(object):
                 if islocal:
                     cmd += [dest]
                 else:
-                    cmd += [targethost + ':' + dest]
+                    if self.get_platform() == 'shasta' and runas:
+                        cmd += [str(runas) + '@' + targethost + ':' + dest]
+                    else:
+                        cmd += [targethost + ':' + dest]
             else:
                 cmd += [self.which(targethost, 'cp', level=level)]
                 if preserve_permission:
@@ -1160,9 +1165,12 @@ class DshUtils(object):
                 cmd += [src]
                 cmd = cmd + [dest]
 
-            ret = self.run_cmd(socket.gethostname(), cmd, env=env, runas=runas,
-                               logerr=logerr, level=level)
-
+            if self.get_platform() == 'shasta':
+                ret = self.run_cmd(socket.gethostname(), cmd, env=env,
+                                   logerr=logerr, level=level)
+            else:
+                ret = self.run_cmd(socket.gethostname(), cmd, env=env,
+                                   runas=runas, logerr=logerr, level=level)
             if ret['rc'] != 0:
                 self.logger.error(ret['err'])
             elif sudo_save_dest:
