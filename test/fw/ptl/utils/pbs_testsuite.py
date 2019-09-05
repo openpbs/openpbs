@@ -81,7 +81,7 @@ default_requirements = {
     'num_moms': 1,
     'num_comms': 1,
     'num_clients': 1,
-    'min_mom_ram': 1
+    'min_mom_ram': 1,
     'min_mom_disk': 5,
     'min_server_ram': 1,
     'min_server_disk': 5,
