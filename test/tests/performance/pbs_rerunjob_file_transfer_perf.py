@@ -38,6 +38,7 @@
 from tests.performance import *
 
 
+@requirements(num_moms=2)
 class JobRerunFileTransferPerf(TestPerformance):
     """
     This test suite is for testing the performance of job script
