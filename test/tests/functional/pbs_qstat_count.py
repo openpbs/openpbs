@@ -248,14 +248,14 @@ class TestqstatStateCount(TestFunctional):
         self.server.expect(JOB, {'job_state': 'W'}, id=jid,
                            offset=30, interval=2)
 
-        jid = self.submit_waiting_job(7)
-        j = Job(TEST_USER)
-        jid1 = self.server.submit(j)
+        jid1 = self.submit_waiting_job(7)
         j = Job(TEST_USER)
         jid2 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        j = Job(TEST_USER)
+        jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=7)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1, offset=10)
         self.server.restart()
         self.verify_count()
 
