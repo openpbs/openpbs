@@ -80,10 +80,10 @@ class TestqstatStateCount(TestFunctional):
         counts['all_state_count'] = all_state_count
         counts['total_jobs'] = int(qstat[0]['total_jobs'])
         # Find queued count from output of qstat
-        counts['expected_queued_count'] = (counts['total_jobs']
-                                           - counts['Held']
-                                           - counts['Waiting']
-                                           - counts['Running'])
+        counts['expected_queued_count'] = (counts['total_jobs'] -
+                                           counts['Held'] -
+                                           counts['Waiting'] -
+                                           counts['Running'])
         return counts
 
     def verify_count(self):
@@ -248,12 +248,14 @@ class TestqstatStateCount(TestFunctional):
         self.server.expect(JOB, {'job_state': 'W'}, id=jid,
                            offset=30, interval=2)
 
-        jid = self.submit_waiting_job(3)
+        jid = self.submit_waiting_job(7)
         j = Job(TEST_USER)
-        self.server.submit(j)
+        jid1 = self.server.submit(j)
         j = Job(TEST_USER)
-        self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=3)
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=7)
         self.server.restart()
         self.verify_count()
 
