@@ -35,11 +35,9 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import os
-import subprocess
-import sys
 import datetime
 import logging
+import os
 import platform
 import pwd
 import re
@@ -60,7 +58,6 @@ from nose.util import isclass
 
 import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
-from ptl.lib.pbs_testlib import Server
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
@@ -414,40 +411,27 @@ class _PtlTestResult(unittest.TestResult):
         self.logger.info('\n'.join(msg))
 
 
-class system_availability:
-    def __init__(self, hostname=None):
-        # getting RAM size
-        ssh = subprocess.Popen(['ssh', hostname, 'cat', '/proc/meminfo'],
-                               stdout=subprocess.PIPE)
-        meminfo = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
-                       for i in ssh.stdout)
-        self.system_ram = meminfo['MemAvailable'] / (2**10)
+class SystemInfo:
+    """
+        used to get system's ram size and disk size information.
 
-        # for home and exec size
-        home_disk = []
-        pbsconf_home = Server().pbs_conf['PBS_HOME']
-        pbsconf_exec = Server().pbs_conf['PBS_EXEC']
-        # getting mounte point for pbs home
-        home_info = subprocess.Popen(['ssh', hostname, 'df -k', pbsconf_home],
-                                     stdout=subprocess.PIPE)
-        home_disk.extend((i.split())
-                         for i in home_info.stdout)
-        home_size = home_disk[1][3]
-        home_mount = home_disk[1][5]
-        # getting mounte point for pbs exec
-        exec_disk = []
-        exec_info = subprocess.Popen(['ssh', hostname, 'df -k', pbsconf_exec],
-                                     stdout=subprocess.PIPE)
-        exec_disk.extend((i.split())
-                         for i in exec_info.stdout)
-        exec_size = exec_disk[1][3]
-        exec_mount = exec_disk[1][5]
-        # total free size of home and exec
-        if exec_mount == home_mount:
-            result = float(home_size)
-        else:
-            result = float(home_size) + float(exec_size)
-        self.system_disk = result / (2**20)
+        :system_ram: ram of the test running machine
+        :system_disk: disk size of the test running machine
+    """
+    def __init__(self, hostname=None):
+        du = DshUtils()
+        # getting RAM size in gb
+        ssh = du.cat(hostname, "/proc/meminfo")
+        meminfo = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
+                       for i in ssh['out'])
+        self.system_ram = meminfo['MemAvailable'] / (2**20)
+        # getting disk size in gb
+        pbs_conf_file = du.parse_pbs_config(hostname)
+        home_info = du.run_cmd(hostname, cmd=['df', '-k',
+                               pbs_conf_file['PBS_HOME']])
+        disk_info = home_info['out']
+        home_disk = disk_info[1].split()
+        self.system_disk = float(home_disk[3]) / (2**20)
 
 
 class PtlTextTestRunner(TextTestRunner):
@@ -683,7 +667,6 @@ class PTLTestRunner(Plugin):
         ts_requirements = {}
         tc_requirements = {}
         param_count = {}
-        sys_avail = {}
         shortname = (socket.gethostname()).split('.', 1)[0]
         if test is None:
             return None
@@ -705,20 +688,16 @@ class PTLTestRunner(Plugin):
             if param_count[pk] < eff_tc_req[pk]:
                 return False
         for hostname in param_dic['moms']:
-            pi = system_availability(hostname)
-            sys_avail['min_mom_ram'] = pi.system_ram
-            if eff_tc_req['min_mom_ram'] > sys_avail['min_mom_ram']:
+            pi = SystemInfo(hostname)
+            if eff_tc_req['min_mom_ram'] >= pi.system_ram:
                 return False
-            sys_avail['min_mom_disk'] = pi.system_disk
-            if eff_tc_req['min_mom_disk'] > sys_avail['min_mom_disk']:
+            if eff_tc_req['min_mom_disk'] >= pi.system_disk:
                 return False
         for hostname in param_dic['servers']:
-            pi = system_availability(hostname)
-            sys_avai['min_server_ram'] = pi.system_ram
-            if eff_tc_req['min_server_ram'] > sys_avail['min_server_ram']:
+            pi = SystemInfo(hostname)
+            if eff_tc_req['min_server_ram'] >= pi.system_ram:
                 return False
-            sys_avai['min_server_disk'] = pi.system_disk
-            if eff_tc_req['min_server_disk'] > sys_avail['min_server_disk']:
+            if eff_tc_req['min_server_disk'] >= pi.system_disk:
                 return False
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
