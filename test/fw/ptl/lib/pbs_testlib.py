@@ -8335,10 +8335,7 @@ class Server(PBSService):
         job_ids = sorted(list(set([x['id'] for x in jobs])))
         host_pid_map = {}
         for job in jobs:
-            if 'exec_host2' in job:
-                exec_host = job['exec_host2']
-            else:
-                exec_host = job.get('exec_host', None)
+            exec_host = job.get('exec_host', None)
             if not exec_host or 'session_id' not in job:
                 continue
             _host = exec_host.split('/')[0].split(':')[0]
