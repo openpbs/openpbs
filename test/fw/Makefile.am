@@ -100,6 +100,7 @@ dist_ptlmoduleutils_PYTHON = \
 	ptl/utils/pbs_testsuite.py \
 	ptl/utils/pbs_anonutils.py \
 	ptl/utils/pbs_snaputils.py \
+	ptl/utils/pbs_testusers.py \
 	ptl/utils/__init__.py
 
 ptlmoduleutilspluginsdir = $(ptlmoduleutilsdir)/plugins
