@@ -40,6 +40,7 @@ from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
 
+@requirements(num_moms=3)
 class TestPbsExecjobSuspendResume(TestFunctional):
     """
     Tests the hook events execjob_postsuspend, execjob_preresume which are
