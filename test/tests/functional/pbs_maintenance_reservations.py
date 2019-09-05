@@ -362,6 +362,7 @@ class TestMaintenanceReservations(TestFunctional):
                     'reserve_substate': 2}
         self.server.expect(RESV, exp_attr, id=rid1)
 
+    @requirements(num_moms=2)
     def test_maintenance_two_hosts(self):
         """
         Test if the maintenance reservation is confirmed on multiple hosts.
@@ -406,6 +407,7 @@ class TestMaintenanceReservations(TestFunctional):
                     'Resource_List.place': 'exclhost'}
         self.server.expect(RESV, exp_attr, id=rid)
 
+    @requirements(num_moms=2)
     def test_maintenance_reconfirm_reservation_and_run(self):
         """
         Test if the overlapping reservation is reconfirmed correctly.
@@ -479,6 +481,7 @@ class TestMaintenanceReservations(TestFunctional):
                     'exec_vnode': "(%s:ncpus=1)" % self.momA.shortname}
         self.server.expect(JOB, exp_attr, id=jid2)
 
+    @requirements(num_moms=2)
     def test_maintenance_progressive_degrade_reservation(self):
         """
         Test if the reservation is partially degraded by overlapping

@@ -179,6 +179,7 @@ class TestPbsExecjobEnd(TestFunctional):
         self.mom.log_match("Job;%s;execjob_end hook ended" % jid2,
                            n=100, max_attempts=10, interval=2)
 
+    @requirements(num_moms=2)
     def test_execjob_end_non_blocking_multi_node(self):
         """
         Test to make sure sister mom is unblocked
@@ -227,6 +228,7 @@ class TestPbsExecjobEnd(TestFunctional):
                 "exechost_periodic at: %s and execjob_end hook ended at: %s" %
                 (date_time1, date_time2, date_time3))
 
+    @requirements(num_moms=2)
     def test_execjob_end_delete_request(self):
         """
         Test to make sure execjob_end hook is running
@@ -258,6 +260,7 @@ class TestPbsExecjobEnd(TestFunctional):
             msg = "Got expected log_msg on host:%s" % host
             self.logger.info(msg)
 
+    @requirements(num_moms=2)
     def test_execjob_end_reject_request(self):
         """
         Test to make sure hook job reject message should appear in mom log

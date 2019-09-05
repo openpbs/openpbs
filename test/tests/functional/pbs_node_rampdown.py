@@ -54,7 +54,7 @@ def convert_time(fmt, tm, fixdate=False):
         rv = ' '.join(rv)
     return rv
 
-
+@requirements(num_moms=3)
 class TestPbsNodeRampDown(TestFunctional):
 
     """

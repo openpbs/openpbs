@@ -39,6 +39,7 @@ from tests.functional import *
 
 
 @tags('hooks')
+@requirements(num_moms=2)
 class TestPbsHookCrossLinkMom(TestFunctional):
     """
     When a hook updates attributes of vnodes not belonging to MoM on which

@@ -64,6 +64,7 @@ def create_subjob_id(job_array_id, subjob_index):
     return job_array_id[:idx + 1] + str(subjob_index) + job_array_id[idx + 1:]
 
 
+@requirements(num_moms=5)
 class TestPbsReliableJobStartup(TestFunctional):
 
     """

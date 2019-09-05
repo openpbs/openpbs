@@ -38,6 +38,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
     """

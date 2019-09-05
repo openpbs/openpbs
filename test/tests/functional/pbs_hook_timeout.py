@@ -39,6 +39,7 @@ import os
 from tests.functional import *
 
 
+@requirements(num_moms=3)
 class TestHookTimeout(TestFunctional):
 
     """
