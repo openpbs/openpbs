@@ -1019,8 +1019,12 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                self.rm(hostname, path=_script, as_script=False,
-                        level=level, runas=runas)
+                if platform == 'shasta' and not runas:
+                    self.rm(hostname, path=_script, as_script=False,
+                            level=level, runas=runas)
+                else:
+                    self.rm(hostname, path=_script, as_script=False,
+                            level=level)
 
             # handle the case where stdout is not a PIPE
             if o is not None:
