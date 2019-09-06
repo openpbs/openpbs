@@ -59,7 +59,7 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
 from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_testusers import PbsUser, TEST_USER
+from ptl.utils.pbs_testusers import ROOT_USER, TEST_USER, PbsUser
 
 try:
     import psycopg2
@@ -8355,20 +8355,20 @@ class Server(PBSService):
                 # current user from managers list
                 a = {'scheduling': 'False'}
                 self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
-                             runas='root')
+                             runas=ROOT_USER)
                 self.expect(SCHED, a, id=sc['id'])
         try:
-            self.deljob(id=job_ids, extend=delete_xt, runas='root', wait=False)
+            self.deljob(id=job_ids, extend=delete_xt,
+                        runas=ROOT_USER, wait=False)
         except PbsDeljobError:
             pass
         st = int(time.time())
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
-                pids = list(set(pids))
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
-                                    runas='root', logerr=False)
+                                    runas=ROOT_USER, logerr=False)
             _msg = job_ids[-1] + ';'
             _msg += 'Job Obit notice received has error 15001'
             try:
@@ -8385,7 +8385,7 @@ class Server(PBSService):
         # restore 'scheduling' state
         for sc in sched_state:
             a = {'scheduling': 'True'}
-            self.manager(MGR_CMD_SET, SCHED, a, id=sc, runas='root')
+            self.manager(MGR_CMD_SET, SCHED, a, id=sc, runas=ROOT_USER)
             self.expect(SCHED, a, id=sc)
         return rv
 
@@ -8393,12 +8393,12 @@ class Server(PBSService):
         """
         Helper function to delete all reservations
         """
-        reservations = self.status(RESV, runas='root')
+        reservations = self.status(RESV, runas=ROOT_USER)
         while reservations:
             resvs = [r['id'] for r in reservations]
             if len(resvs) > 0:
                 try:
-                    self.delresv(resvs, runas='root')
+                    self.delresv(resvs, runas=ROOT_USER)
                 except:
                     pass
                 reservations = self.status(RESV)
