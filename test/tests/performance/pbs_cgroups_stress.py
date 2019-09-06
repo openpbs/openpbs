@@ -112,7 +112,7 @@ class TestCgroupsStress(TestPerformance):
             self.skipTest('cpuset or memory cgroup subsystem not mounted')
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
-        self.server.cleanup_jobs(extend='force')
+        self.server.cleanup_jobs()
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Configure the scheduler to schedule using vmem
         a = {'resources': 'ncpus,mem,vmem,host,vnode'}

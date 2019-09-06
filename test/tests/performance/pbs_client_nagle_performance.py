@@ -64,7 +64,7 @@ class TestClientNagles(TestPerformance):
         """
 
         TestPerformance.tearDown(self)
-        self.server.cleanup_jobs(runas=ROOT_USER)
+        self.server.cleanup_jobs()
 
     def compute_qdel_time(self):
         """

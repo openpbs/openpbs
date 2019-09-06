@@ -284,7 +284,7 @@ class TestPbsNodeRampDown(TestFunctional):
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'
 
-        self.server.cleanup_jobs(extend="force")
+        self.server.cleanup_jobs()
 
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]

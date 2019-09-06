@@ -130,7 +130,7 @@ class TestOfflineVnode(TestFunctional):
         TestFunctional.tearDown(self)
 
         # Restore original node setup for future test cases.
-        self.server.cleanup_jobs(extend='force')
+        self.server.cleanup_jobs()
         self.server.manager(MGR_CMD_DELETE, NODE, id="@default")
         for m in self.moms.values():
             self.server.manager(MGR_CMD_CREATE, NODE,

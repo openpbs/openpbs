@@ -24,6 +24,5 @@ before_install:
 install:
   - '[ "x${BUILD_MODE}" == "xsanitize" ] && ${DOCKER_EXEC} .travis/do_sanitize_mode.sh || true'
   - '[ "x${BUILD_MODE}" != "xsanitize" ] && ${DOCKER_EXEC} .travis/do.sh || true'
-  - docker exec -it testdev /bin/bash -lc 'pbs_config --make-ug'
   - docker exec -it -w $(pwd)/test/tests testdev /bin/bash -lc 'pbs_benchpress --tags=smoke'
 script: true
