@@ -248,7 +248,7 @@ class TestqstatStateCount(TestFunctional):
         self.server.expect(JOB, {'job_state': 'W'}, id=jid,
                            offset=30, interval=2)
 
-        jid1 = self.submit_waiting_job(7)
+        jid1 = self.submit_waiting_job(10)
         j = Job(TEST_USER)
         jid2 = self.server.submit(j)
         j = Job(TEST_USER)
