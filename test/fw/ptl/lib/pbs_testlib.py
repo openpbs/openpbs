@@ -8401,7 +8401,7 @@ class Server(PBSService):
                     self.delresv(resvs, runas=ROOT_USER)
                 except:
                     pass
-                reservations = self.status(RESV)
+                reservations = self.status(RESV, runas=ROOT_USER)
 
     def cleanup_jobs_and_reservations(self):
         """
