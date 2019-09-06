@@ -38,6 +38,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestMomHookSync(TestFunctional):
     """
     This test suite tests to make sure a hook does not disappear in

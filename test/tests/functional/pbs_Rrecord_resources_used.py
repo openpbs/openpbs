@@ -39,6 +39,7 @@ from tests.functional import *
 import re
 
 
+@requirements(num_moms=2)
 class Test_Rrecord_with_resources_used(TestFunctional):
 
     """

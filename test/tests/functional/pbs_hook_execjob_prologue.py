@@ -37,6 +37,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=3)
 class TestPbsExecutePrologue(TestFunctional):
     """
     This tests the feature in PBS that allows execjob_prologue hook to

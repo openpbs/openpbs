@@ -38,6 +38,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestJobRequeueTimeoutErrorMsg(TestFunctional):
     """
     This test suite is for testing the new job_requeue_timeout error

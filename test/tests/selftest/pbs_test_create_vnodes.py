@@ -38,6 +38,7 @@
 from tests.selftest import *
 
 
+@requirements(num_moms=2)
 class Test_create_vnodes(TestSelf):
     """
     Tests to test Server().create_vnodes()

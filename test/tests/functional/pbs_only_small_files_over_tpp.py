@@ -38,6 +38,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestOnlySmallFilesOverTPP(TestFunctional):
     """
     This test suite is for testing that only smaller job files (.OU/.ER/.CK)

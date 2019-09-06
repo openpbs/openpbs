@@ -1097,6 +1097,7 @@ if %s e.job.in_ms_mom():
             log1 = "'" + host2 + "'"
         return mom1, log1
 
+    @requirements(num_moms=2)
     def test_cgroup_vntype_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
@@ -1153,6 +1154,7 @@ if %s e.job.in_ms_mom():
         cpath = self.get_cgroup_job_dir('memory', jid2, self.hosts_list[1])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
+    @requirements(num_moms=2)
     def test_cgroup_host_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
@@ -1193,6 +1195,7 @@ if %s e.job.in_ms_mom():
         cpath = self.get_cgroup_job_dir('memory', jid2, self.hosts_list[1])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
+    @requirements(num_moms=2)
     def test_cgroup_exclude_vntype_mem(self):
         """
         Test to verify that cgroups are not enforced on nodes
@@ -1740,6 +1743,7 @@ if %s e.job.in_ms_mom():
                                id=host, interval=3)
         self.assertTrue(passed)
 
+    @requirements(num_moms=2)
     def test_cgroup_cpuset_host_excluded(self):
         """
         Test to verify that cgroups subsystems are not enforced on nodes
@@ -1781,6 +1785,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('Checking for %s on %s' % (cpath, self.moms_list[1]))
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
+    @requirements(num_moms=2)
     def test_cgroup_run_on_host(self):
         """
         Test to verify that the cgroup hook only runs on nodes
@@ -1920,6 +1925,7 @@ if %s e.job.in_ms_mom():
         self.assertEqual(mem_resv.value, 51200)
         self.assertEqual(mem_resv.unit, 'kb')
 
+    @requirements(num_moms=2)
     def test_cgroup_multi_node(self):
         """
         Test multi-node jobs with cgroups
@@ -2005,6 +2011,7 @@ if %s e.job.in_ms_mom():
         cpath = self.get_cgroup_job_dir('memory', subj2, ehost1)
         self.assertFalse(self.is_dir(cpath, ehost1))
 
+    @requirements(num_moms=2)
     def test_cgroup_cleanup(self):
         """
         Test that cgroups files are cleaned up after qdel
@@ -2546,6 +2553,7 @@ event.accept()
             return 1
         return 0
 
+    @requirements(num_moms=2)
     def test_cgroup_release_nodes(self):
         """
         Verify that exec_vnode values are trimmed
@@ -2605,6 +2613,7 @@ event.accept()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
+    @requirements(num_moms=2)
     def test_cgroup_sismom_resize_fail(self):
         """
         Verify that exec_vnode values are trimmed
@@ -2679,6 +2688,7 @@ event.accept()
         # Check that job got requeued.
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
 
+    @requirements(num_moms=2)
     def test_cgroup_msmom_resize_fail(self):
         """
         Verify that exec_vnode values are trimmed
@@ -2747,6 +2757,7 @@ event.accept()
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
 
+    @requirements(num_moms=2)
     def test_cgroup_msmom_nodes_only(self):
         """
         Verify that exec_vnode values are trimmed
@@ -2820,6 +2831,7 @@ event.accept()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
+    @requirements(num_moms=3)
     def test_cgroups_abort(self):
         """
         Verify that if one of the sister mom is down then

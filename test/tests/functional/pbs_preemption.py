@@ -448,6 +448,7 @@ exit 3
         # node state should be free now
         self.server.expect(NODE, {'state': 'free'}, id='vnode[4]')
 
+    @requirements(num_moms=2)
     def test_host_resource_contention(self):
         """
         Test to make sure that preemption happens when the resource in

@@ -40,6 +40,7 @@ from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
 
+@requirements(num_moms=3)
 class TestPbsExecjobAbort(TestFunctional):
     """
     Tests the hook event execjob_abort for when a job prematurely exits

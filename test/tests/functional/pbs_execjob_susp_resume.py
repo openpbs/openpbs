@@ -40,6 +40,7 @@ from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
 
+@requirements(num_moms=2)
 class TestPbsExecjobSuspendResume(TestFunctional):
     """
     Tests the hook events execjob_postsuspend, execjob_preresume which are
@@ -49,7 +50,7 @@ class TestPbsExecjobSuspendResume(TestFunctional):
 
     def setUp(self):
         if len(self.moms) != 2:
-            self.skipTest('test requires three MoMs as input, ' +
+            self.skipTest('test requires two MoMs as input, ' +
                           'use -p moms=<mom1>:<mom2>')
         TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
