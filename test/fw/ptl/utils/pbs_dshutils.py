@@ -1019,7 +1019,7 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                if platform == 'shasta' and not runas:
+                if platform == 'shasta' and runas:
                     self.rm(hostname, path=_script, as_script=False,
                             level=level, runas=runas)
                 else:
@@ -1116,8 +1116,7 @@ class DshUtils(object):
         if sudo is True and not self.sudo_cmd:
             sudo = False
 
-        if runas:
-            _runas_user = PbsUser.get_user(runas)
+        runas = PbsUser.get_user(runas)
 
         for targethost in hosts:
             islocal = self.is_localhost(targethost)
@@ -1156,9 +1155,8 @@ class DshUtils(object):
                 cmd += copy_cmd
                 if recursive:
                     cmd += ['-r']
-                if (self.get_platform() == 'shasta' and _runas_user and
-                   _runas_user.port):
-                    cmd += ['-P', _runas_user.port]
+                if self.get_platform() == 'shasta' and runas and runas.port:
+                    cmd += ['-P', runas.port]
                 cmd += [src]
                 if islocal:
                     cmd += [dest]
@@ -1300,7 +1298,8 @@ class DshUtils(object):
             self._h2l[host] = True
             return True
         # on a shasta machine, the name returned by `hostname` (pbs-host) is
-        # different than the one we tell PTL to use (pbs-service-nmn).
+        # different than the one we tell PTL to use (pbs-service-nmn). This
+        # causes a name mismatch, so we should just set it to be True
         if (self.get_platform() == 'shasta' and host == 'pbs-service-nmn' and
            localhost == 'pbs-host'):
             self._h2l[host] = True
@@ -1945,10 +1944,9 @@ class DshUtils(object):
                 os.write(fd, body)
         os.close(fd)
 
-        if self.get_platform() == 'shasta' and not hostname and asuser:
+        if not hostname and asuser:
             asuser = PbsUser.get_user(asuser)
             if asuser.host:
-                self.logger.info('set hostname to userhost')
                 hostname = asuser.host
 
         # if temp file to be created on remote host

@@ -8010,7 +8010,7 @@ class Server(PBSService):
         operation.
 
         :param obj_type: The type of object to query, JOB, SERVER,
-                         SCHEDULER, QUEUE NODE
+                         SCHEDULER, QUEUE, NODE
         :type obj_type: str
         :param attrib: Attributes to query, can be a string, a list,
                        or a dict
@@ -13932,6 +13932,8 @@ class Job(ResourceResv):
                     body[i] = " ".join(line_arr)
             body = '\n'.join(body)
 
+        # If the user has a userhost, the job will run from there
+        # so the script should be made there
         if self.platform == 'shasta' and self.username:
             user = PbsUser.get_user(self.username)
             if user.host:
@@ -13947,10 +13949,6 @@ class Job(ResourceResv):
         fn = self.du.create_temp_file(hostname, prefix='PtlPbsJobScript',
                                       asuser=asuser, body=body)
         self.du.chmod(hostname, fn, mode=0755)
-        # on shasta, if we have already set the hostname,
-        # it does not need to be copied again
-        if not self.du.is_localhost(hostname) and not shasta_set_host:
-            self.du.run_copy(hostname, fn, fn)
         self.script = fn
         return fn
 
