@@ -1554,3 +1554,23 @@ class SmokeTest(PBSTestSuite):
 
         for v in vnodes:
             self.assertIn(v, expected_vnodes)
+
+    def test_jobscript_max_size(self):
+        """
+        Test that if jobscript_max_size attribute is set, users can not
+        submit jobs with job script size exceeding the limit.
+        """
+        scr = []
+        scr += ['echo "This is a very long line, it will exceed 20 bytes"']
+
+        j = Job()
+        j.create_script(scr)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'jobscript_max_size': 10})
+        try:
+            self.server.submit(j)
+        except PbsSubmitError as e:
+            self.assertIn("jobscript size exceeded the jobscript_max_size",
+                          e.msg[0])
+        self.server.log_match("Req;req_reject;Reject reply code=15175",
+                              max_attempts=5)
