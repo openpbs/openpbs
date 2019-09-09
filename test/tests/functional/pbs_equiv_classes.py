@@ -1495,30 +1495,33 @@ else:
         # Set queue limit
         a = {
             'max_run': '[o:PBS_ALL=100],[g:PBS_GENERIC=20],\
-                       [u:PBS_GENERIC=20],[g:tstgrp01 = 8],[u:%s=10]' %
-                       str(TEST_USER1)}
+                       [u:PBS_GENERIC=20],[g:%s = 8],[u:%s=10]' %
+                       (str(TSTGRP1), str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, QUEUE,
                             a, id='workq2')
 
         a = {'max_run_res.ncpus':
              '[o:PBS_ALL=100],[g:PBS_GENERIC=50],\
-             [u:PBS_GENERIC=20],[g:tstgrp01=13],[u:%s=12]' % str(TEST_USER1)}
+             [u:PBS_GENERIC=20],[g:%s=13],[u:%s=12]' %
+             (str(TSTGRP1), str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq2')
 
         a = {'max_run_res_soft.ncpus':
              '[o:PBS_ALL=100],[g:PBS_GENERIC=30],\
-             [u:PBS_GENERIC=10],[g:tstgrp01=10],[u:%s=10]' % str(TEST_USER1)}
+             [u:PBS_GENERIC=10],[g:%s=10],[u:%s=10]' %
+             (str(TSTGRP1), str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq2')
 
         # Create server limits
         a = {
             'max_run': '[o:PBS_ALL=100],[g:PBS_GENERIC=50],\
-            [u:PBS_GENERIC=20],[g:tstgrp01=13],[u:%s=13]' % str(TEST_USER1)}
+            [u:PBS_GENERIC=20],[g:%s=13],[u:%s=13]' %
+            (str(TSTGRP1), str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'max_run_soft':
              '[o:PBS_ALL=50],[g:PBS_GENERIC=25],[u:PBS_GENERIC=10],\
-             [g:tstgrp01=10],[u:%s=10]' % str(TEST_USER1)}
+             [g:%s=10],[u:%s=10]' % (str(TSTGRP1), str(TEST_USER1))}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Turn scheduling off

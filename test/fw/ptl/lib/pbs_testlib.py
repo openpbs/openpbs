@@ -13901,7 +13901,6 @@ class Job(ResourceResv):
                          be created
         :type hostname: str or None
         """
-        shasta_set_host = False
 
         if body is None:
             return None
@@ -13938,7 +13937,6 @@ class Job(ResourceResv):
             user = PbsUser.get_user(self.username)
             if user.host:
                 hostname = user.host
-                shasta_set_host = True
                 asuser = user.name
 
         self.script_body = body

@@ -1093,7 +1093,6 @@ class DshUtils(object):
         :returns: {'out':<outdata>, 'err': <errdata>, 'rc':<retcode>}
                   upon and None if no source file specified
         """
-        _runas_user = None
 
         if src is None:
             self.logger.warning('no source file specified')
