@@ -38,6 +38,7 @@
 from tests.functional import *
 
 
+@requirements(no_mom_on_server=True)
 class Test_power_provisioning_sgi(TestFunctional):
 
     """
