@@ -1347,7 +1347,7 @@ int acct_facility_active;
 int acct_facility_wkmgt_recs;
 int acct_facility_wkmgt_active;
 int acct_facility_csa_active;
-int acct_dmd_wkmg;		/* valued in abi_correction() */
+int acct_dmd_wkmg;
 jid_t	(*jc_create)();
 jid_t	(*jc_getjid)();
 #endif
@@ -1355,46 +1355,6 @@ jid_t	(*jc_getjid)();
 #if MOM_CSA
 int	(*p_csa_check)(struct csa_check_req *);
 int	(*p_csa_wracct)(struct csa_wra_req *);
-
-/**
- * @brief
- *	abi_correction - This function adjusts the value of acct_dmd_wkmg.
- * 	Since CSA's ABI has redefined the enumeration constant ACCT_DMD_WKMG
- * 	in PP5 it causes the value used at compile time to not be a correct
- * 	value to use during runtime - if PBS built on a PP4 machine is installed
- * 	on PP5  machine.  This function adjusts for that situation.
- *
- * @return Void
- *
- */
-static	void
-abi_correction(void)
-{
-	int  ver;
-	char *ssp;
-	char buffer [ 128 ];
-	FILE *fp = fopen("/etc/sgi-release", "r");
-
-	acct_dmd_wkmg =  ACCT_DMD_WKMG;
-	if (fp != NULL) {
-		fgets(buffer, sizeof(buffer), fp);
-		if ((ssp = strstr(buffer, "ProPack ")) != NULL  ) {
-			if (sscanf(ssp, "ProPack %d", &ver) == 1) {
-
-				/*see if PBS built on ProPack < 5 machine
-				 *but installed on a machine with ProPack >=5
-				 */
-				if (ver > 4)
-					if (acct_dmd_wkmg > 2)
-						/* running on ProPack >=5 and compile-time
-						 * ACCT_DMD_WKMG not right for this ProPack
-						 */
-						acct_dmd_wkmg = 2;
-			}
-		}
-		pclose(fp);
-	}
-}
 
 /**
  * @brief
@@ -1572,7 +1532,7 @@ ck_acct_facility_present(void)
 	if (acct_facility_present) {
 
 		/* next function call copes with unexpected ABI change */
-		abi_correction();
+		acct_dmd_wkmg =  ACCT_DMD_WKMG;
 
 		check_req.ck_stat.am_id = acct_dmd_wkmg;
 		req_status = (*p_csa_check)(&check_req);

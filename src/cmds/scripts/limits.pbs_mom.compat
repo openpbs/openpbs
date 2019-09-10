@@ -1,11 +1,9 @@
 #	This file will be sourced by the PBS startup script, pbs_init.d.
 #	It is here only for binary compatibility with previous releases.
 #	Feel free to replace its contents.
-if [ -f /etc/sgi-release -o -f /etc/sgi-compute-node-release ] ; then
-    MEMLOCKLIM=`ulimit -l`
-    NOFILESLIM=`ulimit -n`
-    STACKLIM=`ulimit -s`
-    ulimit -l unlimited
-    ulimit -n 16384
-    ulimit -s unlimited
-fi
+MEMLOCKLIM=`ulimit -l`
+NOFILESLIM=`ulimit -n`
+STACKLIM=`ulimit -s`
+ulimit -l unlimited
+ulimit -n 16384
+ulimit -s unlimited
