@@ -415,23 +415,29 @@ class SystemInfo:
     """
         used to get system's ram size and disk size information.
 
-        :system_ram: ram of the test running machine
-        :system_disk: disk size of the test running machine
+        :system_ram: Available ram(in GB) of the test running machine
+        :system_disk: Available disk size(in GB) of the test running machine
     """
+    logger = logging.getLogger(__name__)
+
     def __init__(self, hostname=None):
         du = DshUtils()
         # getting RAM size in gb
-        ssh = du.cat(hostname, "/proc/meminfo")
-        meminfo = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
-                       for i in ssh['out'])
-        self.system_ram = meminfo['MemAvailable'] / (2**20)
+        mem_info = du.cat(hostname, "/proc/meminfo")
+        if mem_info['rc'] != 0:
+            self.logger.error('failed to get content of /proc/meminfo')
+        ram_info = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
+                        for i in mem_info['out'])
+        self.system_ram = float(ram_info['MemAvailable']) / (2**20)
         # getting disk size in gb
-        pbs_conf_file = du.parse_pbs_config(hostname)
-        home_info = du.run_cmd(hostname, cmd=['df', '-k',
-                               pbs_conf_file['PBS_HOME']])
-        disk_info = home_info['out']
-        home_disk = disk_info[1].split()
-        self.system_disk = float(home_disk[3]) / (2**20)
+        pbs_conf = du.parse_pbs_config(hostname)
+        pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
+                                   pbs_conf['PBS_HOME']])
+        if mem_info['rc'] != 0:
+            self.logger.error('failed to get output of df -k command')
+        disk_info = pbs_home_info['out']
+        disk_size = disk_info[1].split()
+        self.system_disk = float(disk_size[3]) / (2**20)
 
 
 class PtlTextTestRunner(TextTestRunner):
@@ -688,16 +694,16 @@ class PTLTestRunner(Plugin):
             if param_count[pk] < eff_tc_req[pk]:
                 return False
         for hostname in param_dic['moms']:
-            pi = SystemInfo(hostname)
-            if eff_tc_req['min_mom_ram'] >= pi.system_ram:
+            si = SystemInfo(hostname)
+            if eff_tc_req['min_mom_ram'] >= si.system_ram:
                 return False
-            if eff_tc_req['min_mom_disk'] >= pi.system_disk:
+            if eff_tc_req['min_mom_disk'] >= si.system_disk:
                 return False
         for hostname in param_dic['servers']:
-            pi = SystemInfo(hostname)
-            if eff_tc_req['min_server_ram'] >= pi.system_ram:
+            si = SystemInfo(hostname)
+            if eff_tc_req['min_server_ram'] >= si.system_ram:
                 return False
-            if eff_tc_req['min_server_disk'] >= pi.system_disk:
+            if eff_tc_req['min_server_disk'] >= si.system_disk:
                 return False
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:

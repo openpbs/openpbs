@@ -49,7 +49,8 @@ class TestRequirementsDecorator(TestSelf):
     of this decorator
 
     """
-    @requirements(num_servers=1, num_comms=1)
+    @requirements(num_servers=1, num_comms=1, min_mom_ram=2,
+                  min_mom_disk=5, min_server_ram=2, min_server_disk=5)
     def test_tc_run(self):
         """
         Test to verify test run when requirements are satisfied
