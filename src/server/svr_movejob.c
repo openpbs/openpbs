@@ -66,10 +66,12 @@
 #include <windows.h>
 #include <io.h>
 #include "win.h"
+#include <sys/timeb.h>
 #else
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <netdb.h>
@@ -238,6 +240,12 @@ local_move(job *jobp, struct batch_request *req)
 	int	   mtype;
 	attribute *pattr;
 	long	newtype = -1;
+	long	time_msec;
+#ifdef	WIN32
+	struct	_timeb	tval;
+#else
+	struct timeval	tval;
+#endif
 
 
 	/* search for destination queue */
@@ -281,7 +289,15 @@ local_move(job *jobp, struct batch_request *req)
 	strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME);
 	jobp->ji_qs.ji_queue[PBS_MAXQUEUENAME] = '\0';
 
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_now;
+#ifdef WIN32
+	_ftime_s(&tval);
+	time_msec = (tval.time * 1000L) + tval.millitm;
+#else
+	gettimeofday(&tval, NULL);
+	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+#endif
+
+	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
 
 	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];
