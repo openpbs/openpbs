@@ -426,18 +426,20 @@ class SystemInfo:
         mem_info = du.cat(hostname, "/proc/meminfo")
         if mem_info['rc'] != 0:
             self.logger.error('failed to get content of /proc/meminfo')
-        ram_info = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
-                        for i in mem_info['out'])
-        self.system_ram = float(ram_info['MemAvailable']) / (2**20)
+        else:
+            ram_info = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
+                            for i in mem_info['out'])
+            self.system_ram = float(ram_info['MemAvailable']) / (2**20)
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
                                    pbs_conf['PBS_HOME']])
-        if mem_info['rc'] != 0:
+        if pbs_home_info['rc'] != 0:
             self.logger.error('failed to get output of df -k command')
-        disk_info = pbs_home_info['out']
-        disk_size = disk_info[1].split()
-        self.system_disk = float(disk_size[3]) / (2**20)
+        else:
+            disk_info = pbs_home_info['out']
+            disk_size = disk_info[1].split()
+            self.system_disk = float(disk_size[3]) / (2**20)
 
 
 class PtlTextTestRunner(TextTestRunner):
@@ -695,15 +697,27 @@ class PTLTestRunner(Plugin):
                 return False
         for hostname in param_dic['moms']:
             si = SystemInfo(hostname)
-            if eff_tc_req['min_mom_ram'] >= si.system_ram:
+            Available_sys_ram = getattr(si, 'system_ram', None)
+            if Available_sys_ram is None:
                 return False
-            if eff_tc_req['min_mom_disk'] >= si.system_disk:
+            elif eff_tc_req['min_mom_ram'] >= Available_sys_ram:
+                return False
+            Available_sys_disk = getattr(si, 'system_disk', None)
+            if Available_sys_disk is None:
+                return False
+            elif eff_tc_req['min_mom_disk'] >= Available_sys_disk:
                 return False
         for hostname in param_dic['servers']:
             si = SystemInfo(hostname)
-            if eff_tc_req['min_server_ram'] >= si.system_ram:
+            Available_sys_ram = getattr(si, 'system_ram', None)
+            if Available_sys_ram is None:
                 return False
-            if eff_tc_req['min_server_disk'] >= si.system_disk:
+            elif eff_tc_req['min_server_ram'] >= Available_sys_ram:
+                return False
+            Available_sys_disk = getattr(si, 'system_disk', None)
+            if Available_sys_disk is None:
+                return False
+            elif eff_tc_req['min_server_disk'] >= Available_sys_disk:
                 return False
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
