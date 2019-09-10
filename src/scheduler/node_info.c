@@ -3921,7 +3921,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	 * need to check for timed conflicts if the current object is a job inside a
 	 * reservation.
 	 */
-	if (min_chunks > 0 && exists_run_event_on_node(ninfo, end_time)
+	if (min_chunks > 0 && exists_run_event(calendar, end_time)
 		&& !(resresv->job != NULL && resresv->job->resv != NULL)) {
 		/* Check for possible conflicts with timed events by walking the sorted
 		 * event list that was created in eval_selspec. This runs a simulation
