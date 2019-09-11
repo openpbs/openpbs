@@ -1950,7 +1950,7 @@ class DshUtils(object):
                 # by default mkstemp creates file with 0600 permission
                 # to create file as different user first change the file
                 # permission to 0644 so that other user has read permission
-                self.chmod(tmpfile, mode=0644)
+                self.chmod(path=tmpfile, mode=0644)
                 # copy temp file created  on local host to remote host
                 # as different user
                 self.run_copy(hostname, tmpfile, tmpfile, runas=asuser,
