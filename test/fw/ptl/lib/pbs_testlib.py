@@ -13933,7 +13933,7 @@ class Job(ResourceResv):
 
         # If the user has a userhost, the job will run from there
         # so the script should be made there
-        if self.platform == 'shasta' and self.username:
+        if self.username:
             user = PbsUser.get_user(self.username)
             if user.host:
                 hostname = user.host

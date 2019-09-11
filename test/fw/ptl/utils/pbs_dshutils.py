@@ -913,7 +913,7 @@ class DshUtils(object):
                 # must be as PbsUser object
                 runas = str(runas)
 
-        if (platform == "shasta") and runas:
+        if runas:
             _runas_user = PbsUser.get_user(runas)
 
         if isinstance(cmd, str):
@@ -1019,12 +1019,8 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                if platform == 'shasta' and runas:
-                    self.rm(hostname, path=_script, as_script=False,
-                            level=level, runas=runas)
-                else:
-                    self.rm(hostname, path=_script, as_script=False,
-                            level=level)
+                self.rm(hostname, path=_script, as_script=False,
+                        level=level, runas=runas)
 
             # handle the case where stdout is not a PIPE
             if o is not None:
@@ -1154,7 +1150,7 @@ class DshUtils(object):
                 cmd += copy_cmd
                 if recursive:
                     cmd += ['-r']
-                if self.get_platform() == 'shasta' and runas and runas.port:
+                if runas and runas.port:
                     cmd += ['-P', runas.port]
                 cmd += [src]
                 if islocal:
