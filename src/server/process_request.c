@@ -289,6 +289,9 @@ process_request(int sfds)
 	int		      rc;
 	struct batch_request *request;
 	conn_t		     *conn;
+#ifndef PBS_MOM
+	int		     access_by_krb;
+#endif
 
 
 	time_now = time(NULL);
@@ -412,7 +415,7 @@ process_request(int sfds)
 	}
 #endif
 
-	int access_by_krb = 0;
+	access_by_krb = 0;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
