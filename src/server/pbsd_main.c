@@ -306,7 +306,7 @@ pbs_list_head	svr_execjob_abort_hooks;
 pbs_list_head	svr_execjob_postsuspend_hooks;
 pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	svr_allscheds;
-pbs_list_head	svr_creds_cache; /* all credentials available to send */
+extern pbs_list_head	svr_creds_cache; /* all credentials available to send */
 time_t		time_now;
 struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
