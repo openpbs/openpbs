@@ -2459,6 +2459,13 @@ sched_settings_frm_svr(struct batch_status *status)
 			} else if (!strcmp(attr->name, ATTR_comment)) {
 				if ((tmp_comment = string_dup(attr->value)) == NULL)
 					goto cleanup;
+			} else if (!strcmp(attr->name, ATTR_logevents)) {
+				char *endp;
+				long mask;
+				mask = strtol(attr->value, &endp, 10);
+				if (*endp != '\0')
+					goto cleanup;
+				*log_event_mask = mask;
 			}
 		}
 		attr = attr->next;

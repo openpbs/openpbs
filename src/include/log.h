@@ -127,37 +127,39 @@ extern int  setup_env(char *filename);
 
 /* Event types */
 
-#define PBSEVENT_ERROR		0x0001		/* internal errors	      */
-#define PBSEVENT_SYSTEM		0x0002		/* system (server) events     */
-#define PBSEVENT_ADMIN		0x0004		/* admin events		      */
-#define PBSEVENT_JOB		0x0008		/* job related events	      */
-#define PBSEVENT_JOB_USAGE	0x0010		/* End of Job accounting      */
-#define PBSEVENT_SECURITY	0x0020		/* security violation events  */
-#define PBSEVENT_SCHED		0x0040		/* scheduler events	      */
-#define PBSEVENT_DEBUG		0x0080		/* common debug messages      */
+#define PBSEVENT_ERROR		0x0001		/* internal errors */
+#define PBSEVENT_SYSTEM		0x0002		/* system (server) events */
+#define PBSEVENT_ADMIN		0x0004		/* admin events */
+#define PBSEVENT_JOB		0x0008		/* job related events */
+#define PBSEVENT_JOB_USAGE	0x0010		/* End of Job accounting */
+#define PBSEVENT_SECURITY	0x0020		/* security violation events */
+#define PBSEVENT_SCHED		0x0040		/* scheduler events */
+#define PBSEVENT_DEBUG		0x0080		/* common debug messages */
 #define PBSEVENT_DEBUG2		0x0100		/* less needed debug messages */
-#define PBSEVENT_RESV		0x0200		/* reservation related msgs   */
+#define PBSEVENT_RESV		0x0200		/* reservation related msgs */
 #define PBSEVENT_DEBUG3		0x0400		/* less needed debug messages */
-#define PBSEVENT_DEBUG4		0x0800		/* rarely needed debugging    */
-#define PBSEVENT_FORCE		0x8000		/* set to force a messag      */
+#define PBSEVENT_DEBUG4		0x0800		/* rarely needed debugging */
+#define PBSEVENT_FORCE		0x8000		/* set to force a message */
 #define SVR_LOG_DFLT		PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB \
 				| PBSEVENT_JOB_USAGE | PBSEVENT_SECURITY | PBSEVENT_SCHED \
 				| PBSEVENT_DEBUG | PBSEVENT_DEBUG2
+#define SCHED_LOG_DFLT		PBSEVENT_ERROR | PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_JOB | PBSEVENT_JOB_USAGE \
+				| PBSEVENT_SECURITY | PBSEVENT_SCHED | PBSEVENT_DEBUG | PBSEVENT_RESV
 
-/* Event Object Classes, see array class_names[] in ../lib/Liblog/pbs_log.c   */
+/* Event Object Classes, see array class_names[] in ../lib/Liblog/pbs_log.c */
 
-#define PBS_EVENTCLASS_SERVER	1	/* The server itself	*/
-#define PBS_EVENTCLASS_QUEUE	2	/* Queues		*/
-#define PBS_EVENTCLASS_JOB	3	/* Jobs			*/
-#define PBS_EVENTCLASS_REQUEST	4	/* Batch Requests	*/
-#define PBS_EVENTCLASS_FILE	5	/* A Job related File	*/
-#define PBS_EVENTCLASS_ACCT	6	/* Accounting info	*/
-#define PBS_EVENTCLASS_NODE	7	/* Nodes		*/
-#define PBS_EVENTCLASS_RESV	8	/* Reservations		*/
-#define PBS_EVENTCLASS_SCHED	9	/* Scheduler		*/
-#define PBS_EVENTCLASS_HOOK	10	/* Hook			*/
-#define PBS_EVENTCLASS_RESC	11	/* Resource		*/
-#define PBS_EVENTCLASS_TPP 	12	/* TPP                  */
+#define PBS_EVENTCLASS_SERVER	1	/* The server itself */
+#define PBS_EVENTCLASS_QUEUE	2	/* Queues */
+#define PBS_EVENTCLASS_JOB	3	/* Jobs	 */
+#define PBS_EVENTCLASS_REQUEST	4	/* Batch Requests */
+#define PBS_EVENTCLASS_FILE	5	/* A Job related File */
+#define PBS_EVENTCLASS_ACCT	6	/* Accounting info */
+#define PBS_EVENTCLASS_NODE	7	/* Nodes */
+#define PBS_EVENTCLASS_RESV	8	/* Reservations */
+#define PBS_EVENTCLASS_SCHED	9	/* Scheduler */
+#define PBS_EVENTCLASS_HOOK	10	/* Hook	 */
+#define PBS_EVENTCLASS_RESC	11	/* Resource */
+#define PBS_EVENTCLASS_TPP 	12	/* TPP */
 
 /* Logging Masks */
 

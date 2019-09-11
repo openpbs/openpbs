@@ -459,6 +459,24 @@
 	<ECL>verify_value_preempt_sort</ECL>
 	</member_verify_function>
    </attributes>
+   <attributes>
+   /* SCHED_ATR_log_events */
+        <member_name><both>ATTR_logevents</both></member_name>          <!-- "log_events" -->
+        <member_at_decode>decode_l</member_at_decode>
+        <member_at_encode>encode_l</member_at_encode>
+        <member_at_set>set_l</member_at_set>
+        <member_at_comp>comp_l</member_at_comp>
+        <member_at_free>free_null</member_at_free>
+        <member_at_action>action_sched_log_events</member_at_action>
+        <member_at_flags><both>NO_USER_SET</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+        <member_verify_function>
+        <ECL>verify_datatype_long</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+   </attributes>
+
     <tail>
      <SVR>
          #include "site_sched_attr_def.h"

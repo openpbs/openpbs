@@ -401,8 +401,8 @@ void
 schdlog(int event, int class, int sev, const char *name, const char *text)
 {
 	struct tm *ptm;
-	if (!(conf.log_filter & event) && text[0] != '\0') {
-		log_record(event, class, sev, name, text);
+	if (text[0] != '\0') {
+		log_event(event, class, sev, name, text);
 		if (conf.logstderr) {
 			time_t logtime;
 
@@ -411,7 +411,7 @@ schdlog(int event, int class, int sev, const char *name, const char *text)
 			ptm = localtime(&logtime);
 			if (ptm != NULL) {
 				fprintf(stderr, "%02d/%02d/%04d %02d:%02d:%02d;%s;%s\n",
-					ptm->tm_mon+1, ptm->tm_mday, ptm->tm_year+1900,
+					ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
 					ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
 					name, text);
 			}
@@ -444,7 +444,7 @@ schdlogerr(int event, int class, int sev, char *name, char *text,
 	if (err == NULL)
 		return;
 
-	if (!(conf.log_filter & event)) {
+	if (will_log_event(event)) {
 		translate_fail_code(err, NULL, logbuf);
 		if (text == NULL)
 			schdlog(event, class, sev, name, logbuf);
