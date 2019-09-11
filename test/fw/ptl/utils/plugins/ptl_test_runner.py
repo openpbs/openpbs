@@ -697,27 +697,27 @@ class PTLTestRunner(Plugin):
                 return False
         for hostname in param_dic['moms']:
             si = SystemInfo(hostname)
-            Available_sys_ram = getattr(si, 'system_ram', None)
-            if Available_sys_ram is None:
+            available_sys_ram = getattr(si, 'system_ram', None)
+            if available_sys_ram is None:
                 return False
-            elif eff_tc_req['min_mom_ram'] >= Available_sys_ram:
+            elif eff_tc_req['min_mom_ram'] >= available_sys_ram:
                 return False
-            Available_sys_disk = getattr(si, 'system_disk', None)
-            if Available_sys_disk is None:
+            available_sys_disk = getattr(si, 'system_disk', None)
+            if available_sys_disk is None:
                 return False
-            elif eff_tc_req['min_mom_disk'] >= Available_sys_disk:
+            elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
                 return False
         for hostname in param_dic['servers']:
             si = SystemInfo(hostname)
-            Available_sys_ram = getattr(si, 'system_ram', None)
-            if Available_sys_ram is None:
+            available_sys_ram = getattr(si, 'system_ram', None)
+            if available_sys_ram is None:
                 return False
-            elif eff_tc_req['min_server_ram'] >= Available_sys_ram:
+            elif eff_tc_req['min_server_ram'] >= available_sys_ram:
                 return False
-            Available_sys_disk = getattr(si, 'system_disk', None)
-            if Available_sys_disk is None:
+            available_sys_disk = getattr(si, 'system_disk', None)
+            if available_sys_disk is None:
                 return False
-            elif eff_tc_req['min_server_disk'] >= Available_sys_disk:
+            elif eff_tc_req['min_server_disk'] >= available_sys_disk:
                 return False
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
