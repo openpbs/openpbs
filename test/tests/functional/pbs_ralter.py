@@ -143,7 +143,7 @@ class TestPbsResvAlter(TestFunctional):
                 acct_msg += " timezone=" + re.escape(self.tzone)
 
             self.server.accounting_match(acct_msg, interval=2, regexp=True,
-                                         max_attempts=30)
+                                         max_attempts=30, n='ALL')
         else:
             msg = "Resv;" + rid + ";Reservation denied"
             self.server.log_match(msg, interval=2,
@@ -380,7 +380,7 @@ class TestPbsResvAlter(TestFunctional):
                     acct_msg += " count=" + count
 
                 self.server.accounting_match(acct_msg, regexp=True, interval=2,
-                                             max_attempts=30)
+                                             max_attempts=30, n='ALL')
 
                 # Check if reservation reports new start time
                 # and updated duration.
@@ -977,7 +977,6 @@ class TestPbsResvAlter(TestFunctional):
 
         self.server.status(RESV, 'resv_nodes', id=rid1)
         resv_node = self.server.reservations[rid1].get_vnodes()[0]
-
         select = "1:vnode=" + resv_node + ":ncpus=4"
         rid2 = self.submit_and_confirm_reservation(
             offset2, duration, select=select)[0]
@@ -1145,7 +1144,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         duration = 30
         shift = 5
-        offset = 5
+        offset = 100
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration)
@@ -1166,7 +1165,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         duration = 30
         shift = 5
-        offset = 5
+        offset = 100
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, standing=True)
@@ -1187,7 +1186,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         duration = 30
         shift = 5
-        offset = 60
+        offset = 200
 
         rid1, start1, end1 = self.submit_and_confirm_reservation(
             offset, duration, select="1:ncpus=2")
