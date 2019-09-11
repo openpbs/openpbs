@@ -88,7 +88,8 @@ class PTLJsonData(object):
             if data['testparam']:
                 for param in data['testparam'].split(','):
                     par = param.split('=', 1)
-                    data_json['test_conf'][par[0]] = par[1]
+                    if '=' in par:
+                        data_json['test_conf'][par[0]] = par[1]
         else:
             data_json = prev_data
         tsname = data['suite']
