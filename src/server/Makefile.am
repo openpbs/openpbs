@@ -44,6 +44,7 @@ pbs_server_bin_CPPFLAGS = \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \
+	@libundolr_inc@ \
 	@PYTHON_INCLUDES@
 
 pbs_server_bin_LDADD = \
@@ -62,6 +63,7 @@ pbs_server_bin_LDADD = \
 	@database_lib@ \
 	@expat_lib@ \
 	@libz_lib@ \
+	@libundolr_lib@ \
 	@libical_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
@@ -133,12 +135,14 @@ pbs_server_bin_SOURCES = \
 	svr_recov_db.c \
 	svr_resccost.c \
 	user_func.c \
-	vnparse.c
+	vnparse.c \
+	undolr.c
 
 pbs_comm_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	-I$(top_srcdir)/src/lib/Libtpp \
-	@libz_inc@
+	@libz_inc@ \
+	@libundolr_inc@
 
 pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -147,7 +151,8 @@ pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
 	@libz_lib@ \
+	@libundolr_lib@ \
 	@socket_lib@
 
-pbs_comm_SOURCES = pbs_comm.c
+pbs_comm_SOURCES = pbs_comm.c undolr.c
 

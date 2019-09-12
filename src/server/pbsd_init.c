@@ -48,6 +48,7 @@
  *	pbsd_init_job()
  *	pbsd_init_reque()
  *	catch_child()
+ *	catch_sigusr1()
  *	change_logs()
  *	stop_me()
  *	chk_save_file()
@@ -219,6 +220,7 @@ extern job * job_recov_db_spl(pbs_db_job_info_t *dbjob);
 /* Private functions in this file */
 
 static void  catch_child(int);
+static void  catch_sigusr1(int);
 static void  init_abt_job(job *);
 static void  change_logs(int);
 int   chk_save_file(char *filename);
@@ -596,14 +598,20 @@ pbsd_init(int type)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
+	if (sigaction(SIGUSR2, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR2");
+		return (2);
+	}	
+
+#ifdef PBS_UNDOLR_ENABLED	
+	act.sa_handler = catch_sigusr1;
+#endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
-	if (sigaction(SIGUSR2, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR2");
-		return (2);
-	}
+
+
 #endif 	/* WIN32 */
 
 	/* 2. check security and set up various global variables we need */
@@ -1978,6 +1986,23 @@ catch_child(int sig)
 	extern int reap_child_flag;
 
 	reap_child_flag = 1;
+}
+
+/**
+ * @brief
+ * 		catch_sigusr1() - the signal handler for  SIGUSR1.
+ *		Set a flag for the main loop to know that a sigusr1 processes
+ *
+ * @param[in]	sig	- not used in fun.
+ *
+ * @return	void
+ */
+static void
+catch_sigusr1(int sig)
+{
+	extern int sigusr1_flag;
+
+	sigusr1_flag = 1;
 }
 
 /**

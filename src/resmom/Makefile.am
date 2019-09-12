@@ -45,6 +45,7 @@ pbs_mom_CPPFLAGS = \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
 	@libz_inc@ \
+	@libundolr_inc@ \
 	@PYTHON_INCLUDES@
 
 pbs_mom_LDADD = \
@@ -60,6 +61,7 @@ pbs_mom_LDADD = \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@mom_mach_libs@ \
+	@libundolr_lib@ \
 	@libz_lib@ \
 	-lssl \
 	-lcrypto
@@ -78,6 +80,7 @@ pbs_mom_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/vnparse.c \
 	$(top_srcdir)/src/server/setup_resc.c \
+	$(top_srcdir)/src/server/undolr.c \
 	${PBS_MACH}/mom_mach.c \
 	${PBS_MACH}/mom_mach.h \
 	${PBS_MACH}/mom_start.c \

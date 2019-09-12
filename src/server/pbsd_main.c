@@ -157,6 +157,7 @@ extern int chk_and_update_db_svrhost();
 
 extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
+extern void undolr();
 
 /* External data items */
 extern  pbs_list_head svr_requests;
@@ -2147,6 +2148,10 @@ try_db_again:
 
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
+
+		extern int 	sigusr1_flag;
+		if (sigusr1_flag)
+			undolr();
 #endif /* WIN32 */
 
 		if (*state == SV_STATE_SHUTSIG)
