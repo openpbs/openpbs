@@ -77,6 +77,7 @@
  *
  */
 
+#include <Python.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -92,7 +93,6 @@
 #include <assert.h>
 #include <dirent.h>
 #include <grp.h>
-#include <Python.h>
 #include "cmds.h"
 #include "pbs_version.h"
 #include "pbs_ifl.h"
