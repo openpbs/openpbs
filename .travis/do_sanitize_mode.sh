@@ -4,7 +4,7 @@ yum clean all
 yum -y update
 yum -y install yum-utils epel-release rpmdevtools libasan llvm
 rpmdev-setuptree
-yum -y install python-pip sudo which net-tools man-db time.x86_64
+yum -y install python36-pip sudo which net-tools man-db time.x86_64
 yum-builddep -y ./pbspro.spec
 ./autogen.sh
 rm -rf target-sanitize

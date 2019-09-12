@@ -17,7 +17,9 @@ env:
 before_install:
   - .github/runchecks
   - docker pull ${OS_TYPE}
-  - '[ "${OS_TYPE}" == "ubuntu:18.04" -o "${OS_TYPE}" == "debian:9" ] && export DOCKER_EXTRA_ARG="-e DEBIAN_FRONTEND=noninteractive" || true'
+  - '[ "${OS_TYPE}" == "ubuntu:18.04" -o "${OS_TYPE}" == "debian:9" ] && export DOCKER_EXTRA_ARG="-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8" || true'
+  - '[ "${OS_TYPE}" == "centos:7" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8" || true'
+  - '[ "${OS_TYPE}" == "opensuse/leap:15" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=C.utf8" || true'
   - docker run -it -d -h testdev.pbspro.org --name testdev -v $(pwd):$(pwd) --privileged -w $(pwd) ${DOCKER_EXTRA_ARG} ${OS_TYPE} /bin/bash
   - docker ps -a
   - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} --privileged testdev"
