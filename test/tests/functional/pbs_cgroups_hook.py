@@ -2901,6 +2901,7 @@ event.accept()
             self.remove_vntype()
         for mom in self.moms_list:
             mom.delete_vnode_defs()
+            mom.restart()
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
