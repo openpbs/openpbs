@@ -5096,12 +5096,12 @@ class Server(PBSService):
                 if (self.du.cmp(self.hostname, self.dflt_jacs_hk,
                                 self.jacs_hk, sudo=True) != 0):
                     self.du.run_copy(self.hostname, self.dflt_jacs_hk,
-                                     self.jacs_hk, mode=0644, sudo=True)
+                                     self.jacs_hk, mode=0o644, sudo=True)
                     dohup = True
                 if self.du.cmp(self.hostname, self.dflt_jacs_cf,
                                self.jacs_cf, sudo=True) != 0:
                     self.du.run_copy(self.hostname, self.dflt_jacs_cf,
-                                     self.jacs_cf, mode=0644, sudo=True)
+                                     self.jacs_cf, mode=0o644, sudo=True)
                     dohup = True
                 if dohup:
                     self.signal('-HUP')
