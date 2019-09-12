@@ -1019,7 +1019,7 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                if platform == 'shasta' and not runas:
+                if platform == 'shasta' and runas:
                     self.rm(hostname, path=_script, as_script=False,
                             level=level, runas=runas)
                 else:
