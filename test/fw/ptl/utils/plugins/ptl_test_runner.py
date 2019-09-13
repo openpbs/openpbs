@@ -421,12 +421,6 @@ class SystemInfo:
     logger = logging.getLogger(__name__)
 
     def get_system_info(self, hostname=None):
-        """
-        used to get system's ram size and disk size information.
-
-        :system_ram: Available ram(in GB) of the test running machine
-        :system_disk: Available disk size(in GB) of the test running machine
-        """
         du = DshUtils()
         # getting RAM size in gb
         mem_info = du.cat(hostname, "/proc/meminfo")
