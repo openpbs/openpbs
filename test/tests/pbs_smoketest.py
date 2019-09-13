@@ -1389,7 +1389,6 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.set_sched_config(a)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 4095})
 
-
     @skipOnCpuSet
     def test_fairshare_enhanced(self):
         """
