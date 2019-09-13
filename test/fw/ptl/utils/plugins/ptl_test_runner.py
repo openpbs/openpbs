@@ -412,6 +412,7 @@ class _PtlTestResult(unittest.TestResult):
 
 
 class SystemInfo:
+
     """
         used to get system's ram size and disk size information.
 
@@ -421,12 +422,6 @@ class SystemInfo:
     logger = logging.getLogger(__name__)
 
     def get_system_info(self, hostname=None):
-        """
-        used to get system's ram size and disk size information.
-
-        :system_ram: Available ram(in GB) of the test running machine
-        :system_disk: Available disk size(in GB) of the test running machine
-        """
         du = DshUtils()
         # getting RAM size in gb
         mem_info = du.cat(hostname, "/proc/meminfo")
@@ -449,7 +444,6 @@ class SystemInfo:
             disk_info = pbs_home_info['out']
             disk_size = disk_info[1].split()
             self.system_disk = float(disk_size[3]) / (2**20)
-
 
 
 class PtlTextTestRunner(TextTestRunner):
