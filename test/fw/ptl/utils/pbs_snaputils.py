@@ -582,11 +582,11 @@ class PBSSnapUtils(object):
     This makes sure that we do necessay cleanup before destroying objects
     """
 
-    def __init__(self, out_dir, only_conf=None, acct_logs=None,
+    def __init__(self, out_dir, basic=None, acct_logs=None,
                  daemon_logs=None, create_tar=False, log_path=None,
                  with_sudo=False):
         self.out_dir = out_dir
-        self.only_conf = only_conf
+        self.basic = basic
         self.acct_logs = acct_logs
         self.srvc_logs = daemon_logs
         self.create_tar = create_tar
@@ -595,7 +595,7 @@ class PBSSnapUtils(object):
         self.utils_obj = None
 
     def __enter__(self):
-        self.utils_obj = _PBSSnapUtils(self.out_dir, self.only_conf,
+        self.utils_obj = _PBSSnapUtils(self.out_dir, self.basic,
                                        self.acct_logs, self.srvc_logs,
                                        self.create_tar, self.log_path,
                                        self.with_sudo)
@@ -614,7 +614,7 @@ class _PBSSnapUtils(object):
     PBS snapshot utilities
     """
 
-    def __init__(self, out_dir, only_conf=None, acct_logs=None,
+    def __init__(self, out_dir, basic=None, acct_logs=None,
                  daemon_logs=None, create_tar=False, log_path=None,
                  with_sudo=False):
         """
@@ -622,8 +622,8 @@ class _PBSSnapUtils(object):
 
         :param out_dir: path to the directory where snapshot will be created
         :type out_dir: str
-        :param only_conf: only capture PBS configuration & state data?
-        :type only_conf: bool
+        :param basic: only capture basic PBS configuration & state data?
+        :type basic: bool
         :param acct_logs: number of accounting logs to capture
         :type acct_logs: int or None
         :param daemon_logs: number of daemon logs to capture
@@ -637,7 +637,7 @@ class _PBSSnapUtils(object):
         """
         self.logger = logging.getLogger(__name__)
         self.du = DshUtils()
-        self.only_conf = only_conf
+        self.basic = basic
         self.server_info = {}
         self.job_info = {}
         self.node_info = {}
@@ -737,7 +737,7 @@ class _PBSSnapUtils(object):
             self.server_info[QSTAT_BF_OUT] = value
             value = (QSTAT_QF_PATH, [QSTAT_CMD, "-Qf"])
             self.server_info[QSTAT_QF_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (QSTAT_B_PATH, [QSTAT_CMD, "-B"])
                 self.server_info[QSTAT_B_OUT] = value
                 value = (QMGR_PS_PATH, [QMGR_CMD, "-c", "p s"])
@@ -752,7 +752,7 @@ class _PBSSnapUtils(object):
             # Job information
             value = (QSTAT_F_PATH, [QSTAT_CMD, "-f"])
             self.job_info[QSTAT_F_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (QSTAT_PATH, [QSTAT_CMD])
                 self.job_info[QSTAT_OUT] = value
                 value = (QSTAT_T_PATH, [QSTAT_CMD, "-t"])
@@ -775,7 +775,7 @@ class _PBSSnapUtils(object):
             # Node information
             value = (PBSNODES_VA_PATH, [PBSNODES_CMD, "-va"])
             self.node_info[PBSNODES_VA_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (PBSNODES_A_PATH, [PBSNODES_CMD, "-a"])
                 self.node_info[PBSNODES_A_OUT] = value
                 value = (PBSNODES_AVSJ_PATH, [PBSNODES_CMD, "-avSj"])
@@ -798,21 +798,21 @@ class _PBSSnapUtils(object):
             # Hook information
             value = (QMGR_LPBSHOOK_PATH, [QMGR_CMD, "-c", "l pbshook"])
             self.hook_info[QMGR_LPBSHOOK_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (QMGR_PH_PATH, [QMGR_CMD, "-c", "p h @default"])
                 self.hook_info[QMGR_PH_OUT] = value
 
             # Reservation information
             value = (PBS_RSTAT_F_PATH, [PBS_RSTAT_CMD, "-f"])
             self.resv_info[PBS_RSTAT_F_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (PBS_RSTAT_PATH, [PBS_RSTAT_CMD])
                 self.resv_info[PBS_RSTAT_OUT] = value
 
             # Scheduler information
             value = (QMGR_LSCHED_PATH, [QMGR_CMD, "-c", "l sched"])
             self.sched_info[QMGR_LSCHED_OUT] = value
-            if not self.only_conf:
+            if not self.basic:
                 value = (QMGR_PSCHED_PATH, [QMGR_CMD, "-c", "p sched"])
                 self.sched_info[QMGR_PSCHED_OUT] = value
 
@@ -857,7 +857,7 @@ class _PBSSnapUtils(object):
             self.core_info[CORE_SCHED] = value
 
         # System information
-        if not self.only_conf:
+        if not self.basic:
             value = (PBS_PROBE_PATH, [PBS_PROBE_CMD, "-v"])
             self.sys_info[PBS_PROBE_OUT] = value
             # We'll append hostname to this later (see capture_system_info)
@@ -1374,7 +1374,7 @@ quit()
                                           sudo=self.with_sudo)
 
         if self.server_info_avail:
-            if self.only_conf:
+            if self.basic:
                 # Only copy over the resourcedef file
                 snap_rscdef = os.path.join(self.snapdir, RSCDEF_PATH)
                 pbs_rscdef = os.path.join(self.pbs_home, RSCDEF_PATH)
@@ -1460,7 +1460,7 @@ quit()
 
         # Collect mom logs and priv
         if self.mom_info_avail:
-            if not self.only_conf:
+            if not self.basic:
                 # Capture mom_priv info
                 self.__capture_mom_priv()
 
@@ -1488,7 +1488,7 @@ quit()
 
         # If not already capturing server information, copy over server_priv
         # as pbs_comm runs out of it
-        if not self.server_info_avail and not self.only_conf:
+        if not self.server_info_avail and not self.basic:
             pbs_server_priv = os.path.join(self.pbs_home, "server_priv")
             snap_server_priv = os.path.join(self.snapdir, SVR_PRIV_PATH)
             core_dir = os.path.join(self.snapdir, CORE_SERVER_PATH)
@@ -1709,7 +1709,7 @@ quit()
         """
         self.logger.info("capturing system information")
 
-        if self.only_conf:
+        if self.basic:
             return
 
         sudo_cmds = [PBS_PROBE_OUT, LSOF_PBS_OUT, DMESG_OUT]

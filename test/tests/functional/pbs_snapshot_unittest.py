@@ -151,7 +151,7 @@ class TestPBSSnapshot(TestFunctional):
 
     def take_snapshot(self, acct_logs=None, daemon_logs=None,
                       obfuscate=None, with_sudo=True, hosts=None,
-                      primary_host=None, only_config=None):
+                      primary_host=None, basic=None):
         """
         Take a snapshot using pbs_snapshot command
 
@@ -167,7 +167,7 @@ class TestPBSSnapshot(TestFunctional):
         :type list
         :param primary_host: hostname of the primary host to capture (-H)
         :type primary_host: str
-        :param only_config: use --only-config option
+        :param basic: use --basic option
         :type bool
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
@@ -193,8 +193,8 @@ class TestPBSSnapshot(TestFunctional):
             snap_cmd.append("--additional-hosts=" + hosts_str)
         if primary_host is not None:
             snap_cmd.append("-H " + primary_host)
-        if only_config is not None:
-            snap_cmd.append("--only-config")
+        if basic is not None:
+            snap_cmd.append("--basic")
 
         ret = self.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
         self.assertEquals(ret['rc'], 0)
@@ -907,14 +907,14 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                               " was not obfuscated. Real values:\n" +
                               str(real_values))
 
-    def test_only_config_basic(self):
+    def test_basic_option(self):
         """
-        Test pbs_snapshot --only-config
+        Test pbs_snapshot --basic
         """
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        _, snap_dir = self.take_snapshot(only_config=True)
+        _, snap_dir = self.take_snapshot(basic=True)
 
         # Check that the output tarball was created
         self.assertTrue(os.path.isdir(snap_dir))
