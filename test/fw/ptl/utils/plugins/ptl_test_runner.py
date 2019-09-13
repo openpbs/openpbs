@@ -420,26 +420,37 @@ class SystemInfo:
     """
     logger = logging.getLogger(__name__)
 
-    def __init__(self, hostname=None):
+    def get_system_info(self, hostname=None):
+        """
+        used to get system's ram size and disk size information.
+
+        :system_ram: Available ram(in GB) of the test running machine
+        :system_disk: Available disk size(in GB) of the test running machine
+        """
         du = DshUtils()
         # getting RAM size in gb
         mem_info = du.cat(hostname, "/proc/meminfo")
         if mem_info['rc'] != 0:
-            self.logger.error('failed to get content of /proc/meminfo')
+            _msg = 'failed to get content of /proc/meminfo of host: '
+            self.logger.error(_msg + hostname)
         else:
-            ram_info = dict((i.split()[0].rstrip(':'), int(i.split()[1]))
-                            for i in mem_info['out'])
-            self.system_ram = float(ram_info['MemAvailable']) / (2**20)
+            ram_dict = {}
+            for i in mem_info['out']:
+                ram_info = i.split()
+                ram_dict[ram_info[0].rstrip(':')] = ram_info[1]
+            self.system_ram = float(ram_dict['MemAvailable']) / (2**20)
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
                                    pbs_conf['PBS_HOME']])
         if pbs_home_info['rc'] != 0:
-            self.logger.error('failed to get output of df -k command')
+            _msg = 'failed to get output of df -k command of host: '
+            self.logger.error(_msg + hostname)
         else:
             disk_info = pbs_home_info['out']
             disk_size = disk_info[1].split()
             self.system_disk = float(disk_size[3]) / (2**20)
+
 
 
 class PtlTextTestRunner(TextTestRunner):
@@ -696,7 +707,8 @@ class PTLTestRunner(Plugin):
             if param_count[pk] < eff_tc_req[pk]:
                 return False
         for hostname in param_dic['moms']:
-            si = SystemInfo(hostname)
+            si = SystemInfo()
+            si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
             if available_sys_ram is None:
                 return False
@@ -708,7 +720,8 @@ class PTLTestRunner(Plugin):
             elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
                 return False
         for hostname in param_dic['servers']:
-            si = SystemInfo(hostname)
+            si = SystemInfo()
+            si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
             if available_sys_ram is None:
                 return False
