@@ -5469,7 +5469,7 @@ class Server(PBSService):
                         jobid=id)
                 }
             if not int(_prev_filter) & 256:
-                self.manager(MGR_CMD_SET, SCHED, {'log_events': _prev_events}, 
+                self.manager(MGR_CMD_SET, SCHED, {'log_events': _prev_events},
                              id=self.dflt_schd_name)
             if len(bsl) == 0:
                 bsl = [{'id': id}]
