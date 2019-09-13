@@ -421,6 +421,12 @@ class SystemInfo:
     logger = logging.getLogger(__name__)
 
     def get_system_info(self, hostname=None):
+        """
+        used to get system's ram size and disk size information.
+
+        :system_ram: Available ram(in GB) of the test running machine
+        :system_disk: Available disk size(in GB) of the test running machine
+        """
         du = DshUtils()
         # getting RAM size in gb
         mem_info = du.cat(hostname, "/proc/meminfo")
@@ -428,11 +434,10 @@ class SystemInfo:
             _msg = 'failed to get content of /proc/meminfo of host: '
             self.logger.error(_msg + hostname)
         else:
-            ram_dict = {}
             for i in mem_info['out']:
-                ram_info = i.split()
-                ram_dict[ram_info[0].rstrip(':')] = ram_info[1]
-            self.system_ram = float(ram_dict['MemAvailable']) / (2**20)
+                if "MemAvailable" in i:
+                    self.system_ram = float(i.split()[1]) / (2**20)
+                    break
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
@@ -444,6 +449,7 @@ class SystemInfo:
             disk_info = pbs_home_info['out']
             disk_size = disk_info[1].split()
             self.system_disk = float(disk_size[3]) / (2**20)
+
 
 
 class PtlTextTestRunner(TextTestRunner):
