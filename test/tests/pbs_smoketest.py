@@ -588,6 +588,7 @@ class SmokeTest(PBSTestSuite):
         self.assertEqual(_f1, _f2)
         self.logger.info(str(_f1) + " = " + str(_f2) + " ... OK")
 
+    @skipOnShasta
     def test_staging(self):
         """
         Test for file staging
@@ -1376,13 +1377,13 @@ class SmokeTest(PBSTestSuite):
                                              validate=False)
         self.scheduler.add_to_resource_group('grp2', 200, 'root', 40,
                                              validate=False)
-        self.scheduler.add_to_resource_group('pbsuser1', 101, 'grp1', 40,
+        self.scheduler.add_to_resource_group(TEST_USER1, 101, 'grp1', 40,
                                              validate=False)
-        self.scheduler.add_to_resource_group('pbsuser2', 102, 'grp1', 20,
+        self.scheduler.add_to_resource_group(TEST_USER2, 102, 'grp1', 20,
                                              validate=False)
-        self.scheduler.add_to_resource_group('pbsuser3', 201, 'grp2', 30,
+        self.scheduler.add_to_resource_group(TEST_USER3, 201, 'grp2', 30,
                                              validate=False)
-        self.scheduler.add_to_resource_group('pbsuser4', 202, 'grp2', 10,
+        self.scheduler.add_to_resource_group(TEST_USER4, 202, 'grp2', 10,
                                              validate=True)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduler_iteration': 7})
         a = {'fair_share': 'True', 'fairshare_decay_time': '24:00:00',
@@ -1498,6 +1499,7 @@ class SmokeTest(PBSTestSuite):
         self.assertEqual(fs4.usage, 3)
 
     @checkModule("pexpect")
+    @skipOnShasta
     def test_interactive_job(self):
         """
         Submit an interactive job

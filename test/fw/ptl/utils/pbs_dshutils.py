@@ -913,7 +913,7 @@ class DshUtils(object):
                 # must be as PbsUser object
                 runas = str(runas)
 
-        if (platform == "shasta") and runas:
+        if runas:
             _runas_user = PbsUser.get_user(runas)
 
         if isinstance(cmd, str):
@@ -979,7 +979,8 @@ class DshUtils(object):
                     # TODO: get a valid remote temporary file rather than
                     # assume that the remote host has a similar file
                     # system layout
-                    self.run_copy(hostname, _script, _script, level=level)
+                    self.run_copy(hostname, _script, _script,
+                                  runas=runas, level=level)
                     os.remove(_script)
                 runcmd = rshcmd + sudocmd + [_script]
             else:
@@ -1018,8 +1019,12 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                self.rm(hostname, path=_script, as_script=False,
-                        level=level)
+                if platform == 'shasta' and runas:
+                    self.rm(hostname, path=_script, as_script=False,
+                            level=level, runas=runas)
+                else:
+                    self.rm(hostname, path=_script, as_script=False,
+                            level=level)
 
             # handle the case where stdout is not a PIPE
             if o is not None:
@@ -1088,6 +1093,7 @@ class DshUtils(object):
         :returns: {'out':<outdata>, 'err': <errdata>, 'rc':<retcode>}
                   upon and None if no source file specified
         """
+
         if src is None:
             self.logger.warning('no source file specified')
             return None
@@ -1108,6 +1114,8 @@ class DshUtils(object):
         # If PTL_SUDO_CMD were to be unset we should assume no sudo
         if sudo is True and not self.sudo_cmd:
             sudo = False
+
+        runas = PbsUser.get_user(runas)
 
         for targethost in hosts:
             islocal = self.is_localhost(targethost)
@@ -1146,11 +1154,16 @@ class DshUtils(object):
                 cmd += copy_cmd
                 if recursive:
                     cmd += ['-r']
+                if runas and runas.port:
+                    cmd += ['-P', runas.port]
                 cmd += [src]
                 if islocal:
                     cmd += [dest]
                 else:
-                    cmd += [targethost + ':' + dest]
+                    if self.get_platform() == 'shasta' and runas:
+                        cmd += [str(runas) + '@' + targethost + ':' + dest]
+                    else:
+                        cmd += [targethost + ':' + dest]
             else:
                 cmd += [self.which(targethost, 'cp', level=level)]
                 if preserve_permission:
@@ -1160,9 +1173,12 @@ class DshUtils(object):
                 cmd += [src]
                 cmd = cmd + [dest]
 
-            ret = self.run_cmd(socket.gethostname(), cmd, env=env, runas=runas,
-                               logerr=logerr, level=level)
-
+            if self.get_platform() == 'shasta':
+                ret = self.run_cmd(socket.gethostname(), cmd, env=env,
+                                   logerr=logerr, level=level)
+            else:
+                ret = self.run_cmd(socket.gethostname(), cmd, env=env,
+                                   runas=runas, logerr=logerr, level=level)
             if ret['rc'] != 0:
                 self.logger.error(ret['err'])
             elif sudo_save_dest:
@@ -1278,6 +1294,13 @@ class DshUtils(object):
             self.logger.error('could not resolve local host name')
             return False
         if ipaddr in iplist:
+            self._h2l[host] = True
+            return True
+        # on a shasta machine, the name returned by `hostname` (pbs-host) is
+        # different than the one we tell PTL to use (pbs-service-nmn). This
+        # causes a name mismatch, so we should just set it to be True
+        if (self.get_platform() == 'shasta' and host == 'pbs-service-nmn' and
+           localhost == 'pbs-host'):
             self._h2l[host] = True
             return True
         self._h2l[host] = False
@@ -1919,13 +1942,19 @@ class DshUtils(object):
             else:
                 os.write(fd, body)
         os.close(fd)
+
+        if not hostname and asuser:
+            asuser = PbsUser.get_user(asuser)
+            if asuser.host:
+                hostname = asuser.host
+
         # if temp file to be created on remote host
         if not self.is_localhost(hostname):
             if asuser is not None:
                 # by default mkstemp creates file with 0600 permission
                 # to create file as different user first change the file
                 # permission to 0644 so that other user has read permission
-                self.chmod(hostname, tmpfile, mode=0644)
+                self.chmod(path=tmpfile, mode=0644)
                 # copy temp file created  on local host to remote host
                 # as different user
                 self.run_copy(hostname, tmpfile, tmpfile, runas=asuser,
@@ -1934,8 +1963,8 @@ class DshUtils(object):
                 # copy temp file created on localhost to remote as current user
                 self.run_copy(hostname, tmpfile, tmpfile,
                               preserve_permission=False, level=level)
-            # remove local temp file
-            os.unlink(tmpfile)
+                # remove local temp file
+                os.unlink(tmpfile)
         if asuser is not None:
             # by default mkstemp creates file with 0600 permission
             # to create file as different user first change the file

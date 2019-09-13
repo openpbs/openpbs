@@ -148,6 +148,21 @@ def skipOnCray(function):
     return wrapper
 
 
+def skipOnShasta(function):
+    """
+    Decorator to skip a test on a ``Cray Shasta`` system
+    """
+
+    def wrapper(self, *args, **kwargs):
+        if self.mom.is_shasta():
+            self.skipTest(reason='capability not supported on Cray Shasta')
+        else:
+            function(self, *args, **kwargs)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
+    return wrapper
+
+
 def skipOnCpuSet(function):
     """
     Decorator to skip a test on a CpuSet system
@@ -877,6 +892,11 @@ class PBSTestSuite(unittest.TestCase):
                 return scppath
         elif conf == "PBS_LOG_HIGHRES_TIMESTAMP":
             return "1"
+        elif conf == "PBS_PUBLIC_HOST_NAME":
+            if hostobj.platform == "shasta" and hosttype == "server":
+                return socket.gethostname()
+            else:
+                return None
 
         return None
 
@@ -1126,6 +1146,13 @@ class PBSTestSuite(unittest.TestCase):
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
                 restart_pbs = True
 
+            # if shasta, set PBS_PUBLIC_HOST_NAME
+            if server.platform == 'shasta':
+                localhost = socket.gethostname()
+                if new_pbsconf["PBS_PUBLIC_HOST_NAME"] != localhost:
+                    new_pbsconf["PBS_PUBLIC_HOST_NAME"] = localhost
+                    restart_pbs = True
+
             # Check if existing pbs.conf has more/less entries than the
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
@@ -1202,7 +1229,12 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_LOG_HIGHRES_TIMESTAMP": None
         }
 
-        self._revert_pbsconf_server(vals_to_set)
+        server_vals_to_set = copy.deepcopy(vals_to_set)
+
+        if primary_server.platform == 'shasta':
+            server_vals_to_set["PBS_PUBLIC_HOST_NAME"] = None
+
+        self._revert_pbsconf_server(server_vals_to_set)
 
         self._revert_pbsconf_mom(primary_server, vals_to_set)
 
@@ -1258,7 +1290,7 @@ class PBSTestSuite(unittest.TestCase):
         except PbsManagerError as e:
             self.logger.error(e.msg)
         a = {ATTR_managers: (INCR, current_user + '@*,' +
-             str(MGR_USER) + '@*')}
+                             str(MGR_USER) + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
 
         a1 = {ATTR_operators: (INCR, str(OPER_USER) + '@*')}
