@@ -48,7 +48,7 @@ class TestJobEquivClassPerf(TestPerformance):
 
     def setUp(self):
         TestPerformance.setUp(self)
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # Create vnodes
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}

@@ -56,7 +56,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].start()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1")
-        self.scheds['sc1'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047}, id='sc1')
 
     def setup_sc2(self):
         dir_path = os.path.join(os.sep, 'var', 'spool', 'pbs', 'sched_dir')
@@ -1059,7 +1059,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_sc1()
         self.setup_sc2()
         self.setup_queues_nodes()
-        self.scheds['sc2'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047}, id='sc2')
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc1")
@@ -1875,7 +1875,8 @@ class TestMultipleSchedulers(TestFunctional):
         and check whether they are actually be effective
         """
         self.setup_sc3()
-        self.scheds['sc3'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047}, id='sc3')
+
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc3")
 
@@ -1905,9 +1906,8 @@ class TestMultipleSchedulers(TestFunctional):
         and check whether they are actually be effective
         """
         self.setup_sc3()
-        self.scheds['sc3'].set_sched_config({'log_filter': 2048})
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'False'}, id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False',
+                            'log_events': 2047}, id="sc3")
 
         # create and set-up a new priv directory for sc3
         new_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],

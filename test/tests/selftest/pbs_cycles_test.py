@@ -72,7 +72,7 @@ class PBSTestCycle(TestSelf):
         self.scheds['sc'].start()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc")
-        self.scheds['sc'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047}, id='sc')
 
         # Turn off scheduling for all the scheds.
         for name in self.scheds:
