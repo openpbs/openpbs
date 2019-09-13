@@ -452,7 +452,6 @@ class SystemInfo:
             self.system_disk = float(disk_size[3]) / (2**20)
 
 
-
 class PtlTextTestRunner(TextTestRunner):
 
     """
