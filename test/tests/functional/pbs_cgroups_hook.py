@@ -2899,8 +2899,6 @@ event.accept()
         self.load_default_config()
         if not self.iscray:
             self.remove_vntype()
-        for mom in self.moms_list:
-            mom.delete_vnode_defs()
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
