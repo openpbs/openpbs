@@ -341,9 +341,9 @@ action_sched_log_events(attribute *pattr, void *pobj, int actmode)
 	psched = (pbs_sched *) pobj;
 
 	if (actmode != ATR_ACTION_RECOV)
-		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
-	
-	return PBSE_NONE;
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+
+		    return PBSE_NONE;
 }
 
 /**

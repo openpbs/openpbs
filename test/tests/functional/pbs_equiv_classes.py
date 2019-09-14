@@ -48,7 +48,7 @@ class TestEquivClass(TestFunctional):
         TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 8}
         self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
-        self.server.managers(MGR_CMD_SET, SCHED, {'log_events': 2047})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         # capture the start time of the test for log matching
         self.t = int(time.time())
 

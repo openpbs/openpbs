@@ -608,7 +608,7 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 		 * Note: A) usually SCH_QUIT is sent directly and not via here
 		 *       B) if we ever add a 3rd high prio command, we can lose them
 		 */
-		if (flag == SCH_CONFIGURE || flag == SCH_QUIT) {
+		if (flag == SCH_CONFIGURE || flag == SCH_ATTRS_CONFIGURE || flag == SCH_QUIT) {
 			if (psched->svr_do_sched_high == SCH_QUIT)
 				return; /* keep only SCH_QUIT */
 

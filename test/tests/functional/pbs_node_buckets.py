@@ -396,7 +396,7 @@ class TestNodeBuckets(TestFunctional):
 
         self.scheduler.revert_to_defaults()
         self.scheduler.add_resource('color')
-        self.scheduler.set_sched_config(schd_attr)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # the bucket codepath requires excl
         self.logger.info('Test different place specs')
