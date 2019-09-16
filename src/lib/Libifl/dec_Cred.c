@@ -48,7 +48,7 @@
  *
  * @par	Data items are:
  *			char		job id
- *			char		principal
+ *			char		credential id (e.g. principal)
  *			int	credential type
  *			counted string	the message
  *			long		credential validity
@@ -89,7 +89,7 @@ decode_DIS_Cred(int sock, struct batch_request *preq)
 	if (rc)
 		return rc;
 
-	rc = disrfst(sock, PBS_MAXUSER + 1, preq->rq_ind.rq_cred.rq_princ);
+	rc = disrfst(sock, PBS_MAXUSER + 1, preq->rq_ind.rq_cred.rq_credid);
 	if (rc)
 		return rc;
 

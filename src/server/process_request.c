@@ -428,7 +428,7 @@ process_request(int sfds)
 			"", log_buffer);
 
 		if (server.sv_attr[(int)SRV_ATR_acl_krb_realm_enable].at_val.at_long) {
-			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], conn->cn_principal, ACL_Host) == 0) {
+			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {
 				req_reject(PBSE_PERM, 0, request);
 				close_client(sfds);
 				return;

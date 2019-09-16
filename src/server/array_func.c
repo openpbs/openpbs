@@ -155,7 +155,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_run_version,
 	JOB_ATR_tolerate_node_failures,
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	JOB_ATR_krb_princ,
+	JOB_ATR_cred_id,
 #endif
 	JOB_ATR_submit_host,
 	JOB_ATR_LAST		/* This MUST be LAST	*/

@@ -129,6 +129,14 @@ void pbs_gss_set_log_handlers(void (*log_gss_status)(const char *msg, OM_uint32 
 	void (*logerror)(const char *func_name, const char* msg),
 	void (*logdebug)(const char *func_name, const char* msg));
 
+/* TCP related */
+int tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz);
+extern int DIS_tcp_gss_wflush(int fd);
+extern void DIS_gss_funcs(void);
+extern int DIS_tcp_gss_set(int fd, gss_extra_t *gss_extra);
+extern struct gssdis_chan *(*gss_get_chan)(int stream);
+
+
 #endif
 
 #ifdef __cplusplus

@@ -52,6 +52,4 @@ extern int (*transport_rskip)(int stream, size_t nskips);
 extern int (*transport_rcommit)(int stream, int commit);
 extern int (*transport_wcommit)(int stream, int commit);
 extern int (*transport_read)(int fd);
-
-extern struct gssdis_chan *(*gss_get_chan)(int stream);
 #endif

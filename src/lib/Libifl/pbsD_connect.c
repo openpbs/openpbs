@@ -73,9 +73,6 @@
 #include "pbs_gss.h"
 
 extern void DIS_tcp_release(int fd);
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-extern int tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz);
-#endif
 
 extern struct connect_handle connection[NCONNECTS];
 

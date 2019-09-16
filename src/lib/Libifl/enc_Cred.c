@@ -59,14 +59,14 @@
  *
  * @par	Data items are:\n
  *		char		job id
- *		char		principal
+ *		char		cred id (e.g principal)
  *		int	credential type
  *		counted string	the message
  *		long		credential validity
  *
  * @param[in] sock - socket descriptor
  * @param[in] jobid - job id
- * @param[in] owner - cred principal
+ * @param[in] owner - cred id (e.g. principal)
  * @param[in] type - cred type
  * @param[in] data - credential
  * @param[in] size - length of credential
@@ -78,12 +78,12 @@
  */
 
 int
-encode_DIS_Cred(int sock, char *jobid, char *owner, int type, char *data, size_t size, long validity)
+encode_DIS_Cred(int sock, char *jobid, char *credid, int type, char *data, size_t size, long validity)
 {
 	int   rc;
 
 	if ((rc = diswst(sock, jobid) != 0) ||
-		(rc = diswst(sock, owner) != 0) ||
+		(rc = diswst(sock, credid) != 0) ||
 		(rc = diswui(sock, type) != 0) ||
 		(rc = diswcs(sock, data, size) != 0) ||
 		(rc = diswul(sock, validity) != 0))

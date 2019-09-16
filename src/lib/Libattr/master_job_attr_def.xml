@@ -2683,9 +2683,9 @@
       </member_verify_function>
    </attributes>
    <attributes>
-      /* "krb_princ" */
+      /* "Submit_Host" */
       <member_name>
-         <both>ATTR_krb_princ</both>
+         <both>ATTR_submit_host</both>
       </member_name>
       <member_at_decode>decode_str</member_at_decode>
       <member_at_encode>encode_str</member_at_encode>
@@ -2706,9 +2706,9 @@
       </member_verify_function>
    </attributes>
    <attributes>
-      /* "Submit_Host" */
+      /* "cred_id" */
       <member_name>
-         <both>ATTR_submit_host</both>
+         <both>ATTR_cred_id</both>
       </member_name>
       <member_at_decode>decode_str</member_at_decode>
       <member_at_encode>encode_str</member_at_encode>

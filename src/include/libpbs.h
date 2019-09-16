@@ -405,7 +405,7 @@ extern int engage_external_authentication(int out, char *server_name, int auth_t
 extern char *PBSD_modify_resv(int connect, char *resv_id,
 	struct attropl *attrib, char *extend);
 
-extern int PBSD_cred(int c, char *princ, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid);
+extern int PBSD_cred(int c, char *rq_credid, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid);
 #ifdef	__cplusplus
 }
 #endif

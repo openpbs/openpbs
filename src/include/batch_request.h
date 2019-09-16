@@ -297,11 +297,11 @@ struct rq_momrestart {
 
 struct rq_cred {
 	char	  rq_jobid[PBS_MAXSVRJOBID+1];
-	char	  rq_princ[PBS_MAXUSER+1];
-	long	  rq_validity;
-	int	  rq_type;
-	char	  *rq_data;
-	size_t	  rq_size;
+	char	  rq_credid[PBS_MAXUSER+1]; /* contains id specific for the used security mechanism */
+	long	  rq_validity; /* validity of provided credentials */
+	int	  rq_type; /* type of credentials like CRED_KRB5, CRED_TLS ... */
+	char	  *rq_data; /* credentials in base64 */
+	size_t	  rq_size; /* size of credentials */
 };
 
 struct rqfpair {

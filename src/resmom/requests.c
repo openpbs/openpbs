@@ -5094,7 +5094,7 @@ req_cred(struct batch_request *preq) /* ptr to the decoded request   */
 
 	data_base64 = strdup(preq->rq_ind.rq_cred.rq_data);
 
-	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_princ, preq->rq_ind.rq_cred.rq_type, data, data_base64, preq->rq_ind.rq_cred.rq_validity);
+	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_credid, preq->rq_ind.rq_cred.rq_type, data, data_base64, preq->rq_ind.rq_cred.rq_validity);
 
 	/* renew ticket for the job*/
 	if ((pjob = find_job(preq->rq_ind.rq_cred.rq_jobid)) != NULL) {

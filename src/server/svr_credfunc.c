@@ -89,8 +89,8 @@ svr_renew_job_cred(struct work_task *pwt)
 		if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING)
 			return;
 
-		/* job without principal */
-		if ((pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) == 0)
+		/* job without cred id */
+		if ((pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) == 0)
 			return;
 
 		rc = send_cred(pjob);
@@ -143,7 +143,7 @@ svr_renew_creds(struct work_task *pwt)
 		/* save the next job */
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) &&
+		if ((pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) &&
 			pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
 
 			if ((pjob->ji_wattr[(int)JOB_ATR_cred_validity].at_flags & ATR_VFLAG_SET) &&

@@ -190,8 +190,8 @@ extern "C" {
 #define ATTR_sample_starttime	"sample_starttime"
 #define ATTR_job_kill_delay	"job_kill_delay"
 #define ATTR_topjob_ineligible "topjob_ineligible"
-#define ATTR_krb_princ		"krb_princ"
 #define ATTR_submit_host	"Submit_Host"
+#define ATTR_cred_id		"credential_id"
 #define ATTR_cred_validity	"credential_validity"
 #define ATTR_history_timestamp	"history_timestamp"
 /* Added for finished jobs RFE */

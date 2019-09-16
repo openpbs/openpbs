@@ -1003,7 +1003,7 @@ svr_startjob(job *pjob, struct batch_request *preq)
 		(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) {
+	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
 		rc = send_cred(pjob);
 		if (rc != 0) {
 			return rc; /* do not start job without credentials */

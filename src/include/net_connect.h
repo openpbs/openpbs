@@ -225,7 +225,7 @@ struct connection {
 	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        char            *cn_principal;
+        char            *cn_credid;
         char            cn_physhost[PBS_MAXHOSTNAME+1];
 #endif
 };

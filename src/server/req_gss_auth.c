@@ -56,7 +56,7 @@
 
 /* @brief
  *	This should be called on a socket after obtaining client_name via
- *	gss_accept_sec_context. It copies the principal from the client_name
+ *	gss_accept_sec_context. It copies the credid from the client_name
  *	structure to conn_credent.
  *
  * @param[in] s - tcp socket
@@ -68,7 +68,7 @@
 int
 gss_set_conn(int s)
 {
-	char *principal;
+	char *credid;
 	int i, length;
         conn_t *conn;
 	gss_extra_t *gss_extra = NULL;
@@ -79,28 +79,28 @@ gss_set_conn(int s)
 
 		conn = get_conn(s);
 
-		free(conn->cn_principal);
-		conn->cn_principal = strdup(gss_extra->clientname);
-		if (conn->cn_principal == NULL) {
+		free(conn->cn_credid);
+		conn->cn_credid = strdup(gss_extra->clientname);
+		if (conn->cn_credid == NULL) {
 			log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "malloc failure");
 			return -1;
 		}
 
-		principal = conn->cn_principal;
-		if (!principal) {
+		credid = conn->cn_credid;
+		if (!credid) {
 			log_err(-1, __func__, "couldn't get client_name");
 			return -1;
 		}
 
-		for (i = 0; principal[i] != '\0' && i < PBS_MAXUSER; i++) {
-			if (principal[i] == '@') {break;}
+		for (i = 0; credid[i] != '\0' && i < PBS_MAXUSER; i++) {
+			if (credid[i] == '@') {break;}
 		}
 
-		length = strlen(principal);
-		strncpy(conn->cn_username, principal, i);
+		length = strlen(credid);
+		strncpy(conn->cn_username, credid, i);
 		conn->cn_username[i] = '\0';
 
-		strncpy(conn->cn_hostname, principal + i + 1, length - i -1);
+		strncpy(conn->cn_hostname, credid + i + 1, length - i -1);
 		conn->cn_hostname[length - i -1] = '\0';
 
 		snprintf(log_buffer, LOG_BUF_SIZE, "Entered encrypted communication with %s@%s", conn->cn_username, conn->cn_hostname);

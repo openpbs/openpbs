@@ -110,7 +110,7 @@ pbs_list_head	svr_allcreds;	/* all credentials received from server */
 struct svrcred_data {
 	pbs_list_link	cr_link;
 	char		*cr_jobid;
-	char		*cr_princ;
+	char		*cr_credid;
 	int		cr_type;
 	krb5_data	*cr_data;
 	char		*cr_data_base64; /* used for sending to sis moms*/
@@ -566,8 +566,8 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 	size_t len;
 	char *ccname = NULL;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET)
-		principal = strdup(pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET)
+		principal = strdup(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 	else {
 		log_err(-1, __func__, "No ticket found on job.");
 		return PBS_KRB5_ERR_NO_KRB_PRINC;
@@ -799,13 +799,13 @@ renew_job_cred(job *pjob)
  * 	store_or_update_cred - save received credentials into mom's memory
  *
  * @param[in] jobid - Job ID
- * @param[in] princ - principal - owner of the job
+ * @param[in] princ - cred id (e.g. principal)
  * @param[in] data - the credentials itself
  * @param[in] data_base64 - the credentials in base64
  *
  */
 void
-store_or_update_cred(char *jobid, char *princ, int cred_type, krb5_data *data, char *data_base64, long validity)
+store_or_update_cred(char *jobid, char *credid, int cred_type, krb5_data *data, char *data_base64, long validity)
 {
 	svrcred_data *cred_data;
 
@@ -834,7 +834,7 @@ store_or_update_cred(char *jobid, char *princ, int cred_type, krb5_data *data, c
 	CLEAR_LINK(cred_data->cr_link);
 
 	cred_data->cr_jobid = strdup(jobid);
-	cred_data->cr_princ = strdup(princ);
+	cred_data->cr_credid = strdup(credid);
 	cred_data->cr_type = cred_type;
 	cred_data->cr_data = data;
 	cred_data->cr_data_base64 = data_base64;
@@ -860,7 +860,7 @@ delete_cred(char *jobid)
 	while (cred_data) {
 		if (strcmp(cred_data->cr_jobid, jobid) == 0) {
 			free(cred_data->cr_jobid);
-			free(cred_data->cr_princ);
+			free(cred_data->cr_credid);
 			free(cred_data->cr_data->data);
 			free(cred_data->cr_data);
 			if (cred_data->cr_data_base64)
@@ -1013,7 +1013,7 @@ im_cred_read(job *pjob, hnodent *np, int stream)
 		"credentials from superior mom received");
 
 	store_or_update_cred(pjob->ji_qs.ji_jobid,
-		pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str,
+		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str,
 		cred_type,
 		data,
 		NULL,

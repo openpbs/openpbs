@@ -61,7 +61,7 @@
  *	 encode a Job Credential Batch Request
  *
  * @param[in] c - socket descriptor
- * @param[in] princ - credential principal
+ * @param[in] credid - credential id (e.g. principal)
  * @param[in] jobid - job id
  * @param[in] data - credentials
  * @param[in] validity - credential validity
@@ -74,7 +74,7 @@
  *
  */
 int
-PBSD_cred(int c, char *princ, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid)
+PBSD_cred(int c, char *credid, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid)
 {
 	int			rc;
 	int			sock;
@@ -89,7 +89,7 @@ PBSD_cred(int c, char *princ, char *jobid, int cred_type, char *data, long valid
 	}
 
 	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_Cred, pbs_current_user)) ||
-		(rc = encode_DIS_Cred(sock, jobid, princ, cred_type, data, strlen(data), validity)) ||
+		(rc = encode_DIS_Cred(sock, jobid, credid, cred_type, data, strlen(data), validity)) ||
 		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		if (!rpp) {
 			connection[c].ch_errtxt = strdup(dis_emsg[rc]);

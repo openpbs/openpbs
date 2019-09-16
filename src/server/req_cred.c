@@ -68,7 +68,7 @@ extern long svr_cred_renew_cache_period;
 
 struct cred_cache {
 	pbs_list_link	cr_link;
-	char	  princ[PBS_MAXUSER+1];
+	char	  credid[PBS_MAXUSER+1];
 	long	  validity;
 	int	  type;
 	char	  *data; /* credentials in base64 */
@@ -77,7 +77,7 @@ struct cred_cache {
 typedef struct cred_cache cred_cache;
 
 /* @brief
- *	First, this function checks whether the credentials for principal of the
+ *	First, this function checks whether the credentials for credid (e.g. principal) of the
  *	job are stored in server's memory cache and whether the credentials are
  *	not too old. Such credentials are returned. If they are not present
  *	in cache or are too old new credentials are requested with the 
@@ -107,7 +107,7 @@ static struct cred_cache
 	while (cred) {
 		nxcred = (cred_cache *)GET_NEXT(cred->cr_link);
 
-		if (strcmp(cred->princ, pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str) == 0 &&
+		if (strcmp(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str) == 0 &&
 			cred->validity - svr_cred_renew_cache_period >  time_now) {
 			/* valid credential found */
 			return cred;
@@ -135,13 +135,13 @@ static struct cred_cache
 	sprintf(log_buffer, "using %s '%s' to acquire credentials for user: %s",
 		ATTR_cred_renew_tool,
 		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
-		pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 		LOG_DEBUG, msg_daemonname, log_buffer);
 
         sprintf(cmd, "%s %s",
 		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
-		pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 
 	if ((fp = popen(cmd, "r")) == NULL) {
 		sprintf(log_buffer, "%s failed to open pipe, command: '%s'",
@@ -175,7 +175,7 @@ static struct cred_cache
 	if (buf == NULL || strlen(buf) <= 1 || validity < time_now) {
 		sprintf(log_buffer, "%s command '%s' returned invalid credentials for %s",
 			ATTR_cred_renew_tool, cmd,
-			pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+			pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
 
@@ -187,7 +187,7 @@ static struct cred_cache
 		return NULL;
 	}
 
-	strcpy(cred->princ, pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+	strcpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 	cred->type = cred_type;
 	cred->validity = validity;
 	cred->size = strlen(buf);
@@ -210,7 +210,7 @@ static struct cred_cache
 
 /* @brief
  *	Prepare batch request structure for sending credentials to superior mom
- *	and fill in the structure with data like credentials or principal.
+ *	and fill in the structure with data like credentials or credid.
  *
  * @param[in] preq - batch request
  * @param[in] pjob - pointer to job
@@ -238,7 +238,7 @@ setup_cred(struct batch_request *preq, job  *pjob)
 		return NULL;
 	}
 
-	strcpy(preq->rq_ind.rq_cred.rq_princ, pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str);
+	strcpy(preq->rq_ind.rq_cred.rq_credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 	strcpy(preq->rq_ind.rq_cred.rq_jobid, pjob->ji_qs.ji_jobid);
 	preq->rq_ind.rq_cred.rq_type = cred->type;
 	preq->rq_ind.rq_cred.rq_validity = cred->validity;

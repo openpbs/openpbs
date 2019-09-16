@@ -279,8 +279,8 @@ enum job_atr {
 	JOB_ATR_resc_released_list,
 	JOB_ATR_relnodes_on_stageout,
 	JOB_ATR_tolerate_node_failures,
-	JOB_ATR_krb_princ,
 	JOB_ATR_submit_host,
+	JOB_ATR_cred_id,
 	JOB_ATR_cred_validity,
 #include "site_job_attr_enum.h"
 
@@ -1167,7 +1167,7 @@ extern int   job_or_resv_save_db(void *, int, int);
 #define job_or_resv_recov job_or_resv_recov_db
 /* server uses the db versions so just redefine - saves lots of code changes */
 
-extern char *get_job_principal(char *jobid);
+extern char *get_job_credid(char *jobid);
 
 #endif
 

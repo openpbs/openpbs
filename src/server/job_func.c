@@ -222,7 +222,7 @@ tasks_free(job *pj)
 }
 #else	/* PBS_MOM */
 
-char *get_job_principal(char *jobid)
+char *get_job_credid(char *jobid)
 {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	job *pjob;
@@ -230,8 +230,8 @@ char *get_job_principal(char *jobid)
 	if ((pjob = find_job(jobid)) == NULL)
 		return NULL;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) {
-		return pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str;
+	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
+		return pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str;
 	}
 #endif
 

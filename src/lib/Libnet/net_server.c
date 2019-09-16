@@ -963,8 +963,8 @@ cleanup_conn(int idx)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	svr_conn[idx]->cn_physhost[0] = '\0';
-	free(svr_conn[idx]->cn_principal);
-	svr_conn[idx]->cn_principal = NULL;
+	free(svr_conn[idx]->cn_credid);
+	svr_conn[idx]->cn_credid = NULL;
 #endif
 
 	/* Free the connection memory */

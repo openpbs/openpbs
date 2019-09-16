@@ -87,7 +87,7 @@ int cred_by_job(job *pjob, int cred_action);
 void renew_job_cred(job *pjob);
 
 /* storage functions */
-void store_or_update_cred(char *jobid, char *princ, int cred_type, krb5_data *data, char *data_base64, long validity);
+void store_or_update_cred(char *jobid, char *credid, int cred_type, krb5_data *data, char *data_base64, long validity);
 void delete_cred(char *jobid);
 
 void send_cred_sisters(job *pjob);

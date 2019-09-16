@@ -742,13 +742,13 @@ req_quejob(struct batch_request *preq)
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* save gssapi/krb5 creds for this job */
 	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
-		sprintf(log_buffer, "saving creds.  conn is %d, princ %s", preq->rq_conn, conn->cn_principal);
+		sprintf(log_buffer, "saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
 
-		(void)job_attr_def[(int)JOB_ATR_krb_princ].at_decode(&pj->ji_wattr[(int)JOB_ATR_krb_princ], NULL, NULL, conn->cn_principal);
+		(void)job_attr_def[(int)JOB_ATR_cred_id].at_decode(&pj->ji_wattr[(int)JOB_ATR_cred_id], NULL, NULL, conn->cn_credid);
 
 		if (server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms].at_flags & ATR_VFLAG_SET) {
-			if (!acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms], conn->cn_principal, ACL_Host)) {
+			if (!acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms], conn->cn_credid, ACL_Host)) {
 				job_purge(pj);
 				req_reject(PBSE_PERM, 0, preq);
 				return;

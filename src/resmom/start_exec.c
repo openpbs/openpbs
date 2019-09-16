@@ -3461,7 +3461,7 @@ finish_exec(job *pjob)
 #endif	/* SHELL_INVOKE */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		if (pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) {
+		if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
 			send_cred_sisters(pjob);
 		}
 
