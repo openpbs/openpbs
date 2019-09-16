@@ -736,7 +736,7 @@ else:
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
         foo_str_dict_out = eval(foo_str_dict_out_str)
-        self.assertEquals(foo_str_dict_in, foo_str_dict_out)
+        self.assertEqual(foo_str_dict_in, foo_str_dict_out)
 
     def test_reservation(self):
         """
@@ -906,7 +906,7 @@ else:
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
         foo_str_dict_out = eval(foo_str_dict_out_str)
-        self.assertEquals(foo_str_dict_in, foo_str_dict_out)
+        self.assertEqual(foo_str_dict_in, foo_str_dict_out)
 
     def test_mom_down(self):
         """
