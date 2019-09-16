@@ -50,12 +50,10 @@ AC_DEFUN([PBS_AC_WITH_LIBUNDOLR],
   # Using developer installed libundolr
   AS_IF([test -r "$libundolr_dir/undolr.h"],
     [libundolr_include="$libundolr_dir"],
-    AC_MSG_ERROR([libundolr header not found.])
   )
   libundolr_inc="-I$libundolr_include"
   AS_IF([test -r "${libundolr_dir}/libundolr_pic_x64.a"],
     [libundolr_lib="${libundolr_dir}/libundolr_pic_x64.a"],
-      AC_MSG_ERROR([libundolr not found.])
   )
   AC_MSG_RESULT([$libundolr_dir])
   AC_SUBST(libundolr_inc)

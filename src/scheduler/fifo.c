@@ -132,6 +132,8 @@ extern void win_toolong(void);
 
 extern int	second_connection;
 extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
+extern int 	sigusr1_flag;
+extern void undolr();
 
 /**
  * @brief
@@ -694,6 +696,9 @@ scheduling_cycle(int sd, char *jobid)
 		  "", "Starting Scheduling Cycle");
 
 	update_cycle_status(&cstat, 0);
+
+	if (sigusr1_flag)
+		undolr();
 
 #ifdef NAS /* localmod 030 */
 	do_soft_cycle_interrupt = 0;

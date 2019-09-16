@@ -264,6 +264,7 @@ char	       *pbs_server_name;
 char		server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
 char		server_host[PBS_MAXHOSTNAME+1];	  /* host_name of this svr */
 int		reap_child_flag = 0;
+extern int 	sigusr1_flag ;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
 pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
@@ -2149,7 +2150,6 @@ try_db_again:
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
 
-		extern int 	sigusr1_flag;
 		if (sigusr1_flag)
 			undolr();
 #endif /* WIN32 */

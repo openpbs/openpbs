@@ -1230,10 +1230,17 @@ main(int argc, char *argv[])
 	sigaddset(&allsigs, SIGHUP);    /* remember to block these */
 	sigaddset(&allsigs, SIGINT);    /* during critical sections */
 	sigaddset(&allsigs, SIGTERM);   /* so we don't get confused */
+	sigaddset(&allsigs, SIGUSR1);
 	act.sa_mask = allsigs;
 
 	act.sa_handler = restart;       /* do a restart on SIGHUP */
 	sigaction(SIGHUP, &act, NULL);
+
+#ifdef PBS_UNDOLR_ENABLED	
+	extern void  catch_sigusr1(int);
+	act.sa_handler = catch_sigusr1;
+	sigaction(SIGUSR1, &act, NULL);
+#endif
 
 #ifdef NAS /* localmod 030 */
 	act.sa_handler = soft_cycle_interrupt; /* do a cycle interrupt on */

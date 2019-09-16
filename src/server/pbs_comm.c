@@ -92,11 +92,13 @@
 char daemonname[PBS_MAXHOSTNAME+8];
 extern char	*msg_corelimit;
 extern char	*msg_init_chdir;
+extern int 	sigusr1_flag;
 int lockfds;
 int already_forked = 0;
 #define PBS_COMM_LOGDIR "comm_logs"
 
 static void log_tppmsg(int level, const char *id, char *mess);
+extern void undolr();
 
 char	        server_host[PBS_MAXHOSTNAME+1];   /* host_name of server */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
@@ -1138,12 +1140,16 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
-	if (sigaction(SIGUSR1, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR1");
-		return (2);
-	}
 	if (sigaction(SIGUSR2, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR2");
+		return (2);
+	}
+#ifdef PBS_UNDOLR_ENABLED	
+	extern void  catch_sigusr1(int);
+	act.sa_handler = catch_sigusr1;
+#endif
+	if (sigaction(SIGUSR1, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
 #endif 	/* WIN32 */
@@ -1183,6 +1189,8 @@ main(int argc, char **argv)
 				tpp_set_logmask(*log_event_mask);
 			}
 		}
+		if (sigusr1_flag)
+			undolr();
 
 		sleep(3);
 	}
