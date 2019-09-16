@@ -11052,7 +11052,7 @@ class Scheduler(PBSService):
         reconfig_time = int(time.time())
         try:
             fn = self.du.create_temp_file()
-            with open(fn, "w") as fd:
+            with open(fn, "w", encoding="utf-8") as fd:
                 for k in self._config_order:
                     if k in config:
                         if k in self._sched_config_comments:
