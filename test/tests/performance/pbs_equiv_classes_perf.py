@@ -54,7 +54,7 @@ class TestJobEquivClassPerf(TestPerformance):
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
         self.server.create_vnodes('vnode', a, 10000, self.mom, expect=False,
                                   sharednode=False)
-	self.server.expect(NODE, {'state=free': 10001})
+        self.server.expect(NODE, {'state=free': 10001})
 
     def run_n_get_cycle_time(self):
         """
