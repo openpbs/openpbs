@@ -88,7 +88,7 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
                                       INFOCLI2, DEBUG, DEBUG2, WARNING, ERROR
                                       or FATAL
     -h, --help                        display this usage message
-    --basic                           Capture only basic configuration & state data
+    --basic                           Capture only basic config & state data
     --daemon-logs=<num days>          number of daemon logs to collect
     --accounting-logs=<num days>      number of accounting logs to collect
     --additional-hosts=<hostname>     collect data from additional hosts
@@ -213,8 +213,8 @@ if __name__ == '__main__':
     out_dir = None
     primary_host = None
     log_level = "INFOCLI2"
-    acct_logs = 0
-    daemon_logs = 0
+    acct_logs = None
+    daemon_logs = None
     additional_hosts = None
     map_file = None
     obfuscate = False
@@ -290,9 +290,9 @@ if __name__ == '__main__':
     if not basic:
         # Capture 5 days of daemon logs and 30 days of accounting logs
         # by default
-        if daemon_logs == 0:
+        if daemon_logs is None:
             daemon_logs = 5
-        if acct_logs == 0:
+        if acct_logs is None:
             acct_logs = 30
 
     fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
