@@ -988,14 +988,14 @@ create_resource_req(char *name, char *value)
 
 			if (value != NULL) {
 				if (set_resource_req(resreq, value) != 1) {
-					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
 						"Bad requested resource data");
 					return NULL;
 				}
 			}
 		}
 	} else {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, "Resource definition does not exist, resource may be invalid");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, "Resource definition does not exist, resource may be invalid");
 		return NULL;
 	}
 
@@ -1479,7 +1479,6 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 	queue_info *resv_queue;
 	resource_resv *next_occr = NULL;
 	time_t next_occr_time;
-	char logbuf[MAX_LOG_SIZE];
 	int ret;
 	int i;
 
@@ -1562,13 +1561,9 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 								}
 							}
 						}
-						else {
-							snprintf(logbuf, MAX_LOG_SIZE,
-								"Can't find occurrence of standing reservation at time %ld",
-								next_occr_time);
-							schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-								resresv->name, logbuf);
-						}
+						else
+							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, resresv->name, 
+								"Can't find occurrence of standing reservation at time %ld", next_occr_time);
 					}
 				}
 			}
@@ -1604,13 +1599,13 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 	int i, j = 0;
 
 	if (filter_func == NULL) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-			"resource_resv_filter", "NULL filter function passed in.");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+			__func__, "NULL filter function passed in.");
 		return NULL;
 	}
 	if (resresv_arr == NULL && size != 0) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-			"resource_resv_filter", "NULL input array with non-zero size.");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+			__func__, "NULL input array with non-zero size.");
 		return NULL;
 	}
 
@@ -1619,7 +1614,7 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 	 */
 
 	if ((new_resresvs = malloc((size + 1) * sizeof(resource_resv *))) == NULL) {
-		log_err(errno, "resource_resv_filter", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -1634,7 +1629,7 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 		if ((tmp = realloc(new_resresvs, (j+1) *
 			sizeof(resource_resv *))) == NULL) {
 			free(new_resresvs);
-			log_err(errno, "resource_resv_filter", "Error allocating memory");
+			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
 		}
 		else
@@ -1765,8 +1760,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 	new_resresv_arr =
 		(resource_resv **) malloc((size + 1) * sizeof(resource_resv *));
 	if (new_resresv_arr == NULL) {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			"copy_resresv_array",  "not enough memory.");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,  "not enough memory.");
 		return NULL;
 	}
 
@@ -2170,7 +2164,7 @@ compare_res_to_str(schd_resource *res, char *str , enum resval_cmpflag cmpflag)
 				return 1;
 		}
 		else {
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_NOTICE, res->name, "Incorrect flag for comparison.");
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_NOTICE, res->name, "Incorrect flag for comparison.");
 			return 0;
 		}
 	}

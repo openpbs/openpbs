@@ -274,7 +274,7 @@ parse_group(char *fname, group_info *root)
 	if ((fp = fopen(fname, "r")) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer), "Error opening file %s", fname);
 		log_err(errno, __func__, log_buffer);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", "Warning: resource group file error, fair share will not work");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", "Warning: resource group file error, fair share will not work");
 		return 0;
 	}
 
@@ -296,7 +296,7 @@ parse_group(char *fname, group_info *root)
 				error = 1;
 				sprintf(log_buffer, "entity %s is not unique", nametok);
 				fprintf(stderr, "%s\n", log_buffer);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 					"fairshare", log_buffer);
 			}
 			else {
@@ -328,7 +328,7 @@ parse_group(char *fname, group_info *root)
 					error = 1;
 					sprintf(log_buffer, "Parent ginfo of %s doesnt exist.", nametok);
 					fprintf(stderr, "%s\n", log_buffer);
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+					log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 						"fairshare", log_buffer);
 				}
 			}
@@ -336,7 +336,7 @@ parse_group(char *fname, group_info *root)
 			if (error) {
 				sprintf(log_buffer, "resgroup: error on line %d.", linenum);
 				fprintf(stderr, "%s\n", log_buffer);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 					"fairshare", log_buffer);
 			}
 
@@ -499,8 +499,8 @@ update_usage_on_run(resource_resv *resresv)
 		}
 	}
 	else
-		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
-			"Job doesn't have a group_info ptr set, usage not updated.\n");
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
+			"Job doesn't have a group_info ptr set, usage not updated.");
 }
 
 /**
@@ -700,8 +700,8 @@ read_usage(char *filename, int flags, fairshare_head *fhead)
 		filename = USAGE_FILE;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "fairshare usage",
-			"Creating usage database for fairshare");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "fairshare usage",
+			  "Creating usage database for fairshare");
 		fprintf(stderr, "Creating usage database for fairshare.\n");
 		return;
 	}
@@ -724,8 +724,9 @@ read_usage(char *filename, int flags, fairshare_head *fhead)
 				error = 1;
 
 			if (error)
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
-					"fairshare usage", "Invalid usage file header");
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
+					  "fairshare usage", "Invalid usage file header");
+
 		}
 		else	 { /* original headerless usage file */
 			rewind(fp);
@@ -776,8 +777,8 @@ read_usage_v1(FILE *fp, group_info *root)
 			}
 		}
 		else
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
-				"fairshare usage", "Invalid entity");
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
+				  "fairshare usage", "Invalid entity");
 	}
 
 	return 1;
@@ -830,9 +831,8 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 			}
 		}
 		else
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
-				"fairshare usage", "Invalid entity");
-
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
+				  "fairshare usage", "Invalid entity");
 	}
 
 	return 1;

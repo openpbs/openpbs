@@ -427,6 +427,63 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 
 /**
  * @brief
+ * 	Internal helper function for pbs_asprintf() to determine the length of post-formatted string
+ * 
+ * @param[in] fmt - printf format string
+ * @param[in] args - va_list arguments from pbs_asprintf()
+ * 
+ * @return int
+ * @retval length of post-formatted string
+ */
+int
+pbs_asprintf_len(const char *fmt, va_list args) 
+{
+	int len;
+#ifdef WIN32
+	len = _vscprintf(fmt, args);
+#else
+	{
+		va_list dupargs;
+		char c;
+
+		va_copy(dupargs, args);
+		len = vsnprintf(&c, 0, fmt, dupargs);
+		va_end(dupargs);
+	}
+#endif
+	return len;
+}
+
+/**
+ * @brief
+ * 	Internal helper function for pbs_asprintf() to allocate memory and format the string
+ * 
+ * @param[in] len - length of post-formatted string
+ * @param[in] fmt - format for printed string
+ * @param[in] args - va_list arguments from pbs_asprintf()
+ * 
+ * @return char *
+ * @retval formatted string in allocated buffer
+ */
+
+char *
+pbs_asprintf_format(int len, const char *fmt, va_list args)
+{
+	char *buf;
+	int rc;
+	buf = malloc(len + 1);
+	if (!buf)
+		return NULL;
+	rc = vsnprintf(buf, len + 1, fmt, args);
+	if (rc != len) {
+		free(buf);
+		return NULL;
+	}
+	return buf;
+}
+
+/**
+ * @brief
  *	Internal asprintf() implementation for use on all platforms
  *
  * @param[in, out] dest - character pointer that will point to allocated
@@ -442,7 +499,7 @@ int
 pbs_asprintf(char **dest, const char *fmt, ...)
 {
 	va_list args;
-	int len, rc = -1;
+	int len;
 	char *buf = NULL;
 
 	if (!dest)
@@ -451,43 +508,25 @@ pbs_asprintf(char **dest, const char *fmt, ...)
 	if (!fmt)
 		return -1;
 	va_start(args, fmt);
-#ifdef WIN32
-	len = _vscprintf(fmt, args);
-#else
-	{
-		va_list dupargs;
-		char c;
-
-		va_copy(dupargs, args);
-		len = vsnprintf(&c, 0, fmt, dupargs);
-		va_end(dupargs);
-	}
-#endif
+	len = pbs_asprintf_len(fmt, args);
 	if (len < 0)
 		goto pbs_asprintf_exit;
-	buf = malloc(len + 1);
-	if (!buf)
+
+	buf = pbs_asprintf_format(len, fmt, args);
+	if (buf == NULL)
 		goto pbs_asprintf_exit;
-	rc = vsnprintf(buf, len + 1, fmt, args);
-	if (rc != len) {
-		rc = -1;
-		goto pbs_asprintf_exit;
-	}
 	*dest = buf;
 pbs_asprintf_exit:
 	va_end(args);
-	if (rc < 0) {
-		char *tmp;
-
-		tmp = realloc(buf, 1);
-		if (tmp)
-			buf = tmp;
+	if (buf == NULL) {
+		buf = malloc(1);
 		if (buf) {
 			*buf = '\0';
 			*dest = buf;
+			return -1;
 		}
 	}
-	return rc;
+	return len;
 }
 
 /**

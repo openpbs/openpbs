@@ -101,7 +101,6 @@ parse_config(char *fname)
 	FILE *fp;			/* file pointer to config file */
 	char *buf = NULL;
 	int buf_size = 0;
-	char logbuf[256];		/* used to write out log errors */
 	char buf2[8192];		/* general purpose buffer */
 	char errbuf[1024];		/* buffer for reporting errors */
 	char *config_name;		/* parse first word of line */
@@ -138,8 +137,8 @@ parse_config(char *fname)
 	struct resource_type type = {0};
 
 	if ((fp = fopen(fname, "r")) == NULL) {
-		sprintf(logbuf, "Can not open file: %s", fname);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, logbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, 
+			fname, "Can not open file: %s", fname);
 		return 0;
 	}
 
@@ -460,12 +459,10 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && npkey_num > MAX_SORTS)) {
-						sprintf(logbuf,
-							"Too many %s sorts.  %s sort ignored.  %d max sorts",
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+							"Too many %s sorts.  %s sort ignored.  %d max sorts", 
 							prime_value, config_value, MAX_SORTS);
-						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, logbuf);
-					}
-					else {
+					} else {
 						tok = strtok(config_value, DELIM);
 						sort_res_name = string_dup(tok);
 
@@ -526,11 +523,9 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && node_pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && node_npkey_num > MAX_SORTS)) {
-						sprintf(logbuf,
-							"Too many %s node sorts.  %s sort ignored.  %d max sorts",
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+							"Too many %s node sorts.  %s sort ignored.  %d max sorts", 
 							prime_value, config_value, MAX_SORTS);
-						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-							fname, logbuf);
 					}
 					else {
 						tok = strtok(config_value, DELIM);
@@ -802,20 +797,17 @@ parse_config(char *fname)
 				error = 1;
 		}
 
-		if (error) {
-			char *msgbuf;
-
-			pbs_asprintf(&msgbuf, "Error reading line %d: %s", linenum, errbuf);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, msgbuf);
-			free(msgbuf);
-		}
+		if (error)
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+				"Error reading line %d: %s", linenum, errbuf);
 
 		if (obsolete[0] != NULL) {
 			if (obsolete[1] != NULL)
-			sprintf(logbuf, "Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+					"Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
 			else
-				sprintf(logbuf, "Obsolete config name %s", obsolete[0]);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, logbuf);
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+					"Obsolete config name %s", obsolete[0]);
 		}
 	}
 	fclose(fp);
@@ -846,12 +838,12 @@ valid_config()
 
 	if ((conf.prime_smp_dist != SMP_NODE_PACK ||
 		conf.non_prime_smp_dist != SMP_NODE_PACK) && conf.node_sort_unused) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "", "smp_cluster_dist and node sorting by unused/assigned resources are not compatible.  The smp_cluster_dist option is being set to pack.");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "", "smp_cluster_dist and node sorting by unused/assigned resources are not compatible.  The smp_cluster_dist option is being set to pack.");
 		conf.prime_smp_dist = conf.non_prime_smp_dist = SMP_NODE_PACK;
 	}
 
 	if ((conf.prime_lb || conf.non_prime_lb) && conf.node_sort_unused) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "", "Load balancing and sorting by unused/assigned resources are not compatible.  Load balancing will be disabled.");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "", "Load balancing and sorting by unused/assigned resources are not compatible.  Load balancing will be disabled.");
 		conf.prime_lb = conf.non_prime_lb = 0;
 	}
 	return valid;
