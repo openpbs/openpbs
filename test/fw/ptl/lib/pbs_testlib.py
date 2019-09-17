@@ -9711,6 +9711,79 @@ class Server(PBSService):
 
         return ret
 
+    def import_hook_config(self, hook_name, hook_conf, hook_type,
+                           level=logging.INFO):
+        """
+        Helper function to import hook config body into hook by name.
+        The hook must have been created prior to calling this
+        function.
+
+        :param hook_name: The name of the hook to import body to
+        :type name: str
+        :param hook_conf: The body of the hook config as a string.
+        :type hook_conf: str
+        :param hook_type: The hook type "site" or "pbshook"
+        :type hook_type: str
+        :returns: True on success.
+        :raises: PbsManagerError
+        """
+        if hook_type == "site":
+            hook_t = HOOK
+        else:
+            hook_t = PBS_HOOK
+
+        fn = self.du.create_temp_file(body=hook_conf)
+
+        if not self._is_local:
+            tmpdir = self.du.get_tempdir(self.hostname)
+            rfile = os.path.join(tmpdir, os.path.basename(fn))
+            self.du.run_copy(self.hostname, fn, rfile)
+        else:
+            rfile = fn
+
+        a = {'content-type': 'application/x-config',
+             'content-encoding': 'default',
+             'input-file': rfile}
+
+        self.manager(MGR_CMD_IMPORT, hook_t, a, hook_name)
+
+        os.remove(rfile)
+        if not self._is_local:
+            self.du.rm(self.hostname, rfile)
+        self.logger.log(level, 'server ' + self.shortname +
+                        ': imported hook config\n---\n' +
+                        hook_conf + '---')
+        return True
+
+    def export_hook_config(self, hook_name, hook_type):
+        """
+        Helper function to export hook config body.
+        The hook must have been created prior to calling this
+        function.
+
+        :param hook_name: The name of the hook to import body to
+        :type name: str
+        :param hook_type: The hook type "site" or "pbshook"
+        :type hook_type: str
+        :returns: Dictionary on success False on failure
+        """
+        if hook_type == "site":
+            hook_t = "hook"
+        else:
+            hook_t = "pbshook"
+        cmd = ["export", hook_t, hook_name]
+        cmd += ["application/x-config", "default"]
+        cmd = " ".join(cmd)
+        pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr'),
+                '-c', cmd]
+        ret = self.du.run_cmd(self.hostname, pcmd, sudo=True)
+        if ret['rc'] == 0:
+            config_out = ''.join(ret['out'])
+            config_dict = json.loads(config_out)
+            return config_dict
+        else:
+            self.fail("Failed to export hook config, %s", ret['err'])
+
     def evaluate_formula(self, jobid=None, formula=None, full=True,
                          include_running_jobs=False, exclude_subjobs=True):
         """
