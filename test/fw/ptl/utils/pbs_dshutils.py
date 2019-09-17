@@ -191,7 +191,13 @@ class DshUtils(object):
             found_already = True
         if not self.is_localhost(hostname) and not found_already:
             if pyexec is None:
-                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+                pbs_conf = self.parse_pbs_config(hostname)
+                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+                if os.path.exists(py_path):
+                    pyexec = py_path
+                else:
+                    pyexec = self.which(hostname, 'python3',
+                                        level=logging.DEBUG2)
             cmd = [pyexec, '-c', '"import sys; print(sys.platform)"']
             ret = self.run_cmd(hostname, cmd=cmd)
             if ret['rc'] != 0 or len(ret['out']) == 0:
@@ -223,7 +229,13 @@ class DshUtils(object):
             return self._h2pu[hostname]
         if not self.is_localhost(hostname):
             if pyexec is None:
-                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+                pbs_conf = self.parse_pbs_config(hostname)
+                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+                if os.path.exists(py_path):
+                    pyexec = py_path
+                else:
+                    pyexec = self.which(hostname, 'python3',
+                                        level=logging.DEBUG2)
             _cmdstr = '"import platform;'
             _cmdstr += 'print(\' \'.join(platform.uname()))"'
             cmd = [pyexec, '-c', _cmdstr]
