@@ -162,9 +162,10 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
         a = {'resv_enable': False}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
-        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[0]')
-        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[1]')
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.mom.shortname, runas=TEST_USER)
+        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[0]', runas=TEST_USER)
+        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[1]', runas=TEST_USER)
 
         a = {'reserve_start': now + 3600,
              'reserve_end': now + 7200}
