@@ -88,6 +88,11 @@ env | grep foo
 unset -f foo
 exit 0
 """
+        self.script = """#PBS -V
+env | grep -A2 foo
+foo
+sleep 5
+"""
         fn = self.du.create_temp_file(body=foo_scr)
         self.du.chmod(path=fn, mode=0755)
         foo_msg = 'Failed to run foo_scr'
@@ -136,6 +141,9 @@ exit 0
         Check if unescaped variable is in job output
         """
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
+        ret = self.du.cat(filename=job_outfile)
+        job_out = '\n'.join(ret['out'])
+        self.logger.info('job output from %s:\n%s' % (job_outfile, job_out))
         job_output = ""
         with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
@@ -296,11 +304,7 @@ exit 0
                 chk_var = self.n + '=() { a=%s; echo XX${a}YY}; }' % ch
             out = self.n + \
                 '=() {  a=%s;\n echo XX${a}YY}\n}\nXX%sYY}' % (ch, ch)
-            script = ['#PBS -V']
-            script += ['env | grep -A 3 foo\n']
-            script += ['foo\n']
-            script += ['sleep 5']
-            jid = self.create_and_submit_job(content=script)
+            jid = self.create_and_submit_job(content=self.script)
             # Check if qstat -f output contains the escaped character
             self.check_qstatout(chk_var, jid)
             # Check if job output contains the character
@@ -411,11 +415,7 @@ exit 0
             self.bold_esc, self.red_esc)
         out = self.n + '=() {  a=$(%s; %s);\n echo XX${a}YY\n}\nXXYY' % (
             self.bold, self.red)
-        script = ['#PBS -V']
-        script += ['env | grep -A 3 foo\n']
-        script += ['foo\n']
-        script += ['sleep 5']
-        jid = self.create_and_submit_job(content=script)
+        jid = self.create_and_submit_job(content=self.script)
         # Check if qstat -f output contains the escaped character
         self.check_qstatout(chk_var, jid)
         # Check if job output contains the character
