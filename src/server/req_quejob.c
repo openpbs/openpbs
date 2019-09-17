@@ -313,8 +313,6 @@ req_quejob(struct batch_request *preq)
 	resource *presc;
 	conn_t *conn;
 	struct work_task *task;
-	char temp_str[100];
-	int diff;
 #else
 	mom_hook_input_t hook_input;
 	mom_hook_output_t hook_output;
@@ -1107,38 +1105,35 @@ req_quejob(struct batch_request *preq)
 	}
 
 	if (pj->ji_wattr[(int)JOB_ATR_window_start].at_flags & ATR_VFLAG_SET) {
+		int ret;
 		int err_code;
+		long *end = &pj->ji_wattr[(int)JOB_ATR_window_end].at_val.at_long;
+		long *start = &pj->ji_wattr[(int)JOB_ATR_window_start].at_val.at_long;
 
 		pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 0;
 
-		if (!calculate_window_times(pj->ji_wattr[(int)JOB_ATR_window_rrule].at_val.at_str,
-				pj->ji_wattr[(int)JOB_ATR_window_start].at_val.at_long,
-				pj->ji_wattr[(int)JOB_ATR_window_duration].at_val.at_long,
+		ret = calculate_window_times(pj->ji_wattr[(int)JOB_ATR_window_rrule].at_val.at_str,
+				start,
+				end,
+				&pj->ji_wattr[(int)JOB_ATR_window_duration].at_val.at_long,
 				pj->ji_wattr[(int)JOB_ATR_timezone].at_val.at_str,
-				&pj->ji_window_start_time,
-				&pj->ji_window_end_time,
 				pj->window_days,
-				&diff,
-				&err_code)) {
+				&err_code);
+		if (!ret) {
+			pj->ji_wattr[JOB_ATR_window_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			pj->ji_wattr[JOB_ATR_window_end].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 			pj->ji_qs.ji_svrflags |= JOB_SVFLG_HAS_WINDOW;
 
-			time_now = time(NULL) - diff;
-			if (time_now > pj->ji_window_start_time && time_now < pj->ji_window_end_time)
+			time_now = time(NULL);
+			if (time_now > *start && time_now < *end)
 				pj->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
 			else {
-				task = set_task(WORK_Timed, pj->ji_window_start_time, start_window_task, (void *)pj);
+				task = set_task(WORK_Timed, *start, start_window_task, (void *)pj);
 				append_link(&pj->ji_svrtask, &task->wt_linkobj, task);
 			}
-			task = set_task(WORK_Timed, pj->ji_window_end_time, end_window_task, (void *)pj);
+			task = set_task(WORK_Timed, *end, end_window_task, (void *)pj);
 			append_link(&pj->ji_svrtask, &task->wt_linkobj, task);
 			/* Copy the start and end times to their string equivalents */
-			pj->ji_wattr[JOB_ATR_window_start_str].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-			pj->ji_wattr[JOB_ATR_window_end_str].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-
-			strftime(temp_str, 100, "%D %H:%M", localtime(&pj->ji_window_start_time));
-			decode_str(&pj->ji_wattr[JOB_ATR_window_start_str], ATTR_window_start, NULL, temp_str);
-			strftime(temp_str, 100, "%D %H:%M", localtime(&pj->ji_window_end_time));
-			decode_str(&pj->ji_wattr[JOB_ATR_window_end_str], ATTR_window_start, NULL, temp_str);
 		} else {
 			job_purge(pj);
 			req_reject(PBSE_BAD_RRULE_SYNTAX, 0, preq);
@@ -3330,42 +3325,44 @@ end_window_task(struct work_task *ptask)
 	job *pjob;
 	int count = 1;
 	struct work_task *task;
-	char temp_str[100];
+
+	long *end;
+	long *start;
 
 	assert(ptask->wt_parm1 != NULL);
 	pjob = (job *) ptask->wt_parm1;
 
-	pjob->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 1;
+	pjob->ji_wattr[JOB_ATR_window_enabled].at_val.at_long = 0;
 	pjob->ji_wattr[JOB_ATR_window_enabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	pjob->ji_wattr[JOB_ATR_window_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	pjob->ji_wattr[JOB_ATR_window_end].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+
+	end = &pjob->ji_wattr[JOB_ATR_window_end].at_val.at_long;
+	start = &pjob->ji_wattr[JOB_ATR_window_start].at_val.at_long;
 
 	for (i = 1; ((i < 8) && (pjob->window_days[i] != 2)); i++);
 
 	pjob->window_days[i] = 1;
 	i++;
 	if (i == 8)
-		i = 0;
+		i = 1;
 
 	while (count <= 7) {
 		if (pjob->window_days[i]) {
-			pjob->ji_window_start_time += count * 86400;
-			pjob->ji_window_end_time += count * 86400;
+			*start += count * 86400;
+			*end += count * 86400;
 			pjob->window_days[i] = 2;
 			break;
 		}
 		i++;
 		if (i == 8)
-			i = 0;
+			i = 1;
 		count++;
 	}
-	task = set_task(WORK_Timed, pjob->ji_window_start_time, start_window_task, (void *)pjob);
+	task = set_task(WORK_Timed, *start, start_window_task, (void *)pjob);
 	append_link(&pjob->ji_svrtask, &task->wt_linkobj, task);
-	task = set_task(WORK_Timed, pjob->ji_window_end_time, end_window_task, (void *)pjob);
+	task = set_task(WORK_Timed, *end, end_window_task, (void *)pjob);
 	append_link(&pjob->ji_svrtask, &task->wt_linkobj, task);
-	
-	strftime(temp_str, 100, "%D %H:%M", localtime(&pjob->ji_window_start_time));
-	decode_str(&pjob->ji_wattr[JOB_ATR_window_start_str], ATTR_window_start, NULL, temp_str);
-	strftime(temp_str, 100, "%D %H:%M", localtime(&pjob->ji_window_end_time));
-	decode_str(&pjob->ji_wattr[JOB_ATR_window_end_str], ATTR_window_start, NULL, temp_str);
 }
 
 void

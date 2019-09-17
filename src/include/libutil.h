@@ -151,7 +151,7 @@ time_t get_occurrence(char *, time_t, char *, int);
  */
 int check_rrule(char *, time_t, time_t, char *, int *);
 
-int calculate_window_times(char *rrule, long start, long duration, char *tz, time_t *start_task_time, time_t *end_task_time, int *window_days, int *diff, int *err_code);
+int calculate_window_times(char *rrule, long *start, long *end, long *duration, char *tz, int *window_days, int *err_code);
 
 /*
  * Displays the occurrences in a two-column format:

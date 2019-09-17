@@ -1357,6 +1357,8 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						strcmp(a->name, ATTR_resv_end) == 0 ||
 						(strcmp(a->name, ATTR_estimated) == 0 &&
 						strcmp(a->resource, "start_time") == 0) ||
+						strcmp(a->name, ATTR_window_start) == 0 ||
+						strcmp(a->name, ATTR_window_end) == 0 ||
 						strcmp(a->name, ATTR_a) == 0) {
 						epoch = (time_t) atol(a->value);
 						if (epoch == 0 &&
@@ -1369,8 +1371,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 							 */
 							char noval[] = "UNKNOWN";
 							prt_attr(a->name, a->resource, noval, alt_opt & ALT_DISPLAY_w);
-						} else
-						{
+						} else {
 							char time_buffer[32];
 							strcpy(time_buffer,ctime(&epoch));
 							time_buffer[strlen(time_buffer)-1]='\0';

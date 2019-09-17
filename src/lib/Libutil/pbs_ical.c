@@ -200,7 +200,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 #else
 	icalerror_errors_are_fatal = 0;
 #endif
-    localzone = icaltimezone_get_builtin_timezone(tz);
+        localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
 		return -1;
@@ -599,7 +599,7 @@ set_ical_zoneinfo(char *path)
  *      tasks' time to be correctly computed.
  *
  * @param[in] rrule    - The window_rrule to process
- * @param[in] start    - window_start
+ * @param[in] start    - initial start time
  * @param[in] duration - window_duration
  * @param[in] tz       - timezone
  * @param[out] start_task_time - time for the window_start's task
@@ -608,21 +608,45 @@ set_ical_zoneinfo(char *path)
  * @param[out] err_code - error code if there is a problem
  *
  * @return	int
- * @retval	0 - if times are calcualted properly.
+ * @retval	0 - if times are calculated properly.
  *              1 - in case there is a problem in calculation.
  *
  */
 int
-calculate_window_times(char *rrule, long start, long duration, char *tz, time_t *start_task_time, time_t *end_task_time, int *window_days, int *diff, int *err_code)
+calculate_window_times(char *rrule, long *start, long *end, long *duration, char *tz, int *window_days, int *err_code)
 {
 
 #ifdef LIBICAL
 	int i;
-	icaltimezone *localzone;
+	icaltimezone *clientzone;
 	struct icalrecurrencetype rt;
 	struct icaltimetype ical_start;
+	struct icaltimetype ical_now;
+	time_t client_now_t;
 
 	*err_code = 0;
+	//int start_time_seconds;
+	//int duration_seconds;
+
+	//time_t now;
+	//time_t today_seconds;
+	//time_t today_start;
+	//time_t initial_value;
+
+	int count;
+
+	if (tz == NULL)
+		return 1;
+
+	clientzone = icaltimezone_get_builtin_timezone(tz);
+	/* If the timezone info directory is not accessible
+ 	* then bail
+ 	*/
+	if (clientzone == NULL) {
+		*err_code = PBSE_BAD_ICAL_TZ;
+		return 1;
+	}
+
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
@@ -631,28 +655,6 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 #else
 	icalerror_errors_are_fatal = 0;
 #endif
-	int start_time_seconds;
-	int duration_seconds;
-
-	time_t now;
-	time_t today_seconds;
-	time_t today_start;
-	time_t initial_value;
-
-	int count;
-
-	if (tz == NULL)
-		return 1;
-
-	localzone = icaltimezone_get_builtin_timezone(tz);
-	/* If the timezone info directory is not accessible
-	 * then bail
-	 */
-	if (localzone == NULL) {
-		*err_code = PBSE_BAD_ICAL_TZ;
-		return 1;
-	}
-
 	if (rrule) {
 		if (!strstr(rrule, "BYDAY")) {
 			*err_code = PBSE_BAD_RRULE_SYNTAX;
@@ -672,11 +674,45 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 				window_days[rt.by_day[i]] = 1;
 		}
 	} else
-		for (i = 0; i < 8; i++)
+		for (i = 1; i < 8; i++)
 			window_days[i] = 1;
 
+	*duration = ((*duration / 100) * 3600 + (*duration % 100) * 60);
+	*end = *start + *duration;
+
+	ical_start = icaltime_from_timet_with_zone(*start, 0, NULL);
+	icaltimezone_convert_time(&ical_start, icaltimezone_get_utc_timezone(), clientzone);
+	ical_now = icaltime_current_time_with_zone(clientzone);
+	client_now_t = icaltime_as_timet_with_zone(ical_now, clientzone);
+	i = icaltime_day_of_week(ical_start);
+	/* Find if we are within the window */
+	if (((*start - 86400) < client_now_t) && (client_now_t < (*end - 86400))) {
+		*start -= 86400;
+		*end -= 86400;
+		i -= 1;
+		if (i == 0)
+			i = 7;
+	}
+	if (rrule) {
+		count = 0;
+		while (count < 7) {
+			if (window_days[i]) {
+				*start += count * 86400;
+				*end += count * 86400;
+				window_days[i] = 2;
+				break;
+			} else {
+				i++;
+				if (i == 8)
+					i = 1;
+				count++;
+			}
+		}
+	} else
+		window_days[i] = 2;
+	/*
 	now = time(NULL);
-	ical_start = icaltime_current_time_with_zone(localzone);
+	ical_start = icaltime_current_time_with_zone(clientzone);
 	*diff = now - icaltime_as_timet(ical_start);
 
 	start_time_seconds = (((start / 100) * 60 * 60) + ((start % 100) * 60));
@@ -695,8 +731,9 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 			*end_task_time = (time_t)(*start_task_time + duration_seconds);
 
 			if (now >= *start_task_time) {
-				if (now >= *end_task_time) {
+				if (now >= *end_task_time) { */
 					/* We are past today's window, find the next */
+/*
 					*end_task_time = 0;
 					*start_task_time = initial_value;
 				} else {
@@ -714,10 +751,10 @@ calculate_window_times(char *rrule, long start, long duration, char *tz, time_t 
 		count++;
 	}
 
+*/
 	return 0;
 
 #else
-
 	*err_code = PBSE_BAD_RRULE_SYNTAX; /* iCalendar is undefined */
 	return 1;
 #endif

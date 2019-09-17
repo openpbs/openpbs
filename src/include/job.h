@@ -280,12 +280,11 @@ enum job_atr {
 	JOB_ATR_relnodes_on_stageout,
 	JOB_ATR_tolerate_node_failures,
 	JOB_ATR_window_start,
+	JOB_ATR_window_end,
 	JOB_ATR_window_duration,
 	JOB_ATR_window_rrule,
 	JOB_ATR_timezone,
 	JOB_ATR_window_enabled,
-	JOB_ATR_window_start_str,
-	JOB_ATR_window_end_str,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -639,9 +638,6 @@ struct job {
 	struct preempt_ordering	*preempt_order;
 	int preempt_order_index;
 	int window_days[8];
-	time_t ji_window_end_time;
-	time_t ji_window_start_time;
-
 #endif					/* END SERVER ONLY */
 
 	/*

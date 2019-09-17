@@ -152,6 +152,7 @@ extern "C" {
 #define ATTR_relnodes_on_stageout	"release_nodes_on_stageout"
 #define ATTR_tolerate_node_failures	"tolerate_node_failures"
 #define ATTR_window_start	"window_start"
+#define ATTR_window_end		"window_end"
 #define ATTR_window_duration	"window_duration"
 #define ATTR_window_rrule	"window_rrule"
 #define ATTR_job_timezone	"timezone"

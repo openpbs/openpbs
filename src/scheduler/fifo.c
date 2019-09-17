@@ -940,7 +940,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			} else
 				free_nspecs(ns_arr);
 		} else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
-			if (!tj->job->window_enabled) {
+			if (!njob->job->window_enabled) {
 				rc = JOB_WINDOW_NOT_STARTED;
 				sort_again = SORTED;
 				set_schd_error_codes(err, NOT_RUN, JOB_WINDOW_NOT_STARTED);
