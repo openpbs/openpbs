@@ -141,8 +141,7 @@ sleep 5
         Check if unescaped variable is in job output
         """
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
-        cmd = ['cat', job_outfile]
-        ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        ret = self.du.cat(filename=job_outfile)
         job_out = '\n'.join(ret['out'])
         self.logger.info('job output from %s:\n%s' % (job_outfile, job_out))
         job_output = ""
