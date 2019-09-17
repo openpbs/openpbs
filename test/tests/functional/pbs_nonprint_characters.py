@@ -89,11 +89,6 @@ unset -f foo
 exit 0
 """
         self.script = """#PBS -V
-for e in $(env | grep -v BASH_FUNC_foo | grep BASH_FUNC_ | \
-sed 's/BASH_FUNC_//' | sed 's/[%(].*//')
-do
-    unset -f $e
-done
 env | grep -A2 foo
 foo
 sleep 5
@@ -146,6 +141,10 @@ sleep 5
         Check if unescaped variable is in job output
         """
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
+        cmd = ['cat', job_outfile]
+        ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        job_out = '\n'.join(ret['out'])
+        self.logger.info('job output from %s:\n%s' % (job_outfile, job_out))
         job_output = ""
         with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
