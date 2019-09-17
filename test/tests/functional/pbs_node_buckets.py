@@ -78,7 +78,7 @@ class TestNodeBuckets(TestFunctional):
 
         self.scheduler.add_resource('color')
 
-        self.scheduler.set_sched_config({'log_filter': '2048'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
     def cust_attr_func(self, name, totalnodes, numnode, attribs):
         """
@@ -370,14 +370,14 @@ class TestNodeBuckets(TestFunctional):
         # Running a 10010 cpu job through the normal code path spams the log.
         # We don't care about it, so there is no reason to increase
         # the log size by so much.
-        self.scheduler.set_sched_config({'log_filter': '3328'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 767})
         # Run a job on all nodes leaving 1 cpus available on each node
         j = Job(TEST_USER, {'Resource_List.select': '10010:ncpus=1',
                             'Resource_List.place': 'scatter'})
         j.set_sleep_time(600)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.set_sched_config({'log_filter': '2048'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # Node sorting via unused resources uses the standard code path
         self.logger.info('Test node_sort_key with unused resources')
@@ -386,8 +386,7 @@ class TestNodeBuckets(TestFunctional):
         self.check_normal_path()
 
         self.scheduler.revert_to_defaults()
-        schd_attr = {'log_filter': '2048'}
-        self.scheduler.set_sched_config(schd_attr)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # provisioning_policy: avoid_provisioning uses the standard code path
         self.logger.info('Test avoid_provision')
@@ -397,7 +396,7 @@ class TestNodeBuckets(TestFunctional):
 
         self.scheduler.revert_to_defaults()
         self.scheduler.add_resource('color')
-        self.scheduler.set_sched_config(schd_attr)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # the bucket codepath requires excl
         self.logger.info('Test different place specs')

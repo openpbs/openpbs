@@ -93,7 +93,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -120,7 +120,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -149,7 +149,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         formula = 'pow(2,-(fairshare_tree_usage/fairshare_perc))'
 
@@ -185,7 +185,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         formula = 'fairshare_factor'
 
@@ -222,7 +222,8 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        a = {'log_filter': 2048, 'fair_share': "True ALL"}
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
+        a = {'fair_share': "True ALL"}
         self.scheduler.set_sched_config(a)
 
         formula = 'fairshare_factor'
@@ -261,7 +262,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         formula = 'fairshare_factor + (walltime/ncpus)'
 
@@ -355,7 +356,7 @@ class TestFairshare(TestFunctional):
         Test that fairshare decay doesn't reduce the usage below 1
         """
         self.scheduler.set_sched_config({'fair_share': 'True'})
-        self.scheduler.set_sched_config({'log_filter': 0})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 4095})
         self.scheduler.add_to_resource_group(TEST_USER, 10, 'root', 50)
         self.scheduler.set_fairshare_usage(TEST_USER, 1)
         self.scheduler.set_sched_config({"fairshare_decay_time": "00:00:02"})

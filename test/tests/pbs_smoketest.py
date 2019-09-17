@@ -395,8 +395,7 @@ class SmokeTest(PBSTestSuite):
         """
         Test for preemption
         """
-        a = {'log_filter': 2048}
-        self.scheduler.set_sched_config(a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         a = {'resources_available.ncpus': '1'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         self.server.status(QUEUE)
@@ -573,7 +572,7 @@ class SmokeTest(PBSTestSuite):
         """
         a = {'resources_available.ncpus': 8}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        self.scheduler.set_sched_config({'log_filter': '2048'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         a = {'job_sort_formula': 'ncpus'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         # purposely submitting a job that is highly unlikely to run so
@@ -944,7 +943,7 @@ class SmokeTest(PBSTestSuite):
         """
         Test job_sort_formula_threshold basic behavior
         """
-        self.scheduler.set_sched_config({'log_filter': '2048'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_sort_formula':
@@ -1387,9 +1386,9 @@ class SmokeTest(PBSTestSuite):
                                              validate=True)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduler_iteration': 7})
         a = {'fair_share': 'True', 'fairshare_decay_time': '24:00:00',
-             'fairshare_decay_factor': 0.5, 'fairshare_usage_res': formula,
-             'log_filter': '0'}
+             'fairshare_decay_factor': 0.5, 'fairshare_usage_res': formula}
         self.scheduler.set_sched_config(a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 4095})
 
     @skipOnCpuSet
     def test_fairshare_enhanced(self):

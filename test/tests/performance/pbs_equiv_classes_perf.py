@@ -48,12 +48,13 @@ class TestJobEquivClassPerf(TestPerformance):
 
     def setUp(self):
         TestPerformance.setUp(self)
-        self.scheduler.set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         # Create vnodes
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
-        self.server.create_vnodes('vnode', a, 10000, self.mom,
+        self.server.create_vnodes('vnode', a, 10000, self.mom, expect=False,
                                   sharednode=False)
+        self.server.expect(NODE, {'state=free': 10001})
 
     def run_n_get_cycle_time(self):
         """

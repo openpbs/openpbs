@@ -478,18 +478,3 @@ preemptive_sched: true	ALL
 #	NO PRIME OPTION
 dedicated_prefix: ded
 
-#### MISC OPTIONS
-
-#
-# log_filter
-#
-#	Bit field of log levels to have the scheduler NOT write to its log file.
-#
-# 	256 are DEBUG2 messages 
-#	1024 are DEBUG3 messages (the most prolific messages)
-#	1280 is the combination of these two
-#
-#	NO PRIME OPTION
-
-log_filter: 3328
-

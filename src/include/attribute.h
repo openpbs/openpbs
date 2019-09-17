@@ -571,6 +571,7 @@ extern int check_for_bgl_nodes(attribute *patr,  void *pobject,  int actmode);
 extern int action_sched_iteration(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_priv(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_log(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_log_events(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_user(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_port(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_host(attribute *pattr, void *pobj, int actmode);

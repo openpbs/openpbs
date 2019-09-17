@@ -91,6 +91,7 @@ enum sched_atr {
 	SCHED_ATR_preempt_prio,
 	SCHED_ATR_preempt_order,
 	SCHED_ATR_preempt_sort,
+	SCHED_ATR_log_events,
 #include "site_sched_attr_enum.h"
 	/* This must be last */
 	SCHED_ATR_LAST

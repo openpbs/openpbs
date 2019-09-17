@@ -2450,22 +2450,26 @@ sched_settings_frm_svr(struct batch_status *status)
 	while (attr != NULL) {
 
 		if (attr->name != NULL && attr->value != NULL) {
-			if (!strcmp(attr->name, ATTR_sched_priv)) {
+			if (!strcmp(attr->name, ATTR_sched_priv) && !dflt_sched) {
 				if ((tmp_priv_dir = string_dup(attr->value)) == NULL)
 					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_sched_log)) {
+			} else if (!strcmp(attr->name, ATTR_sched_log) && !dflt_sched) {
 				if ((tmp_log_dir = string_dup(attr->value)) == NULL)
 					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_comment)) {
+			} else if (!strcmp(attr->name, ATTR_comment) && !dflt_sched) {
 				if ((tmp_comment = string_dup(attr->value)) == NULL)
 					goto cleanup;
+			} else if (!strcmp(attr->name, ATTR_logevents)) {
+				char *endp;
+				long mask;
+				mask = strtol(attr->value, &endp, 10);
+				if (*endp != '\0')
+					goto cleanup;
+				*log_event_mask = mask;
 			}
 		}
 		attr = attr->next;
 	}
-
-	if (tmp_priv_dir == NULL || tmp_log_dir == NULL)
-		goto cleanup;
 
 	if (!dflt_sched) {
 		int err;
@@ -2738,9 +2742,9 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	patt->next = NULL;
 
 	err = pbs_manager(connector,
-		MGR_CMD_SET, MGR_OBJ_SCHED,
-		sc_name, attribs, NULL);
-	if (err == 0 && svr_knows_me == 0)
+			  MGR_CMD_SET, MGR_OBJ_SCHED,
+			  sc_name, attribs, NULL);
+	if (err == 0)
 		svr_knows_me = 1;
 
 	free(attribs);

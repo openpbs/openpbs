@@ -5452,14 +5452,13 @@ class Server(PBSService):
             if self.schedulers[self.dflt_sched_name] is None:
                 self.schedulers[self.dflt_sched_name] = Scheduler(
                     self.hostname)
-            if 'log_filter' in self.schedulers[
-                    self.dflt_sched_name].sched_config:
-                _prev_filter = self.schedulers[
-                    self.dflt_sched_name].sched_config[
-                    'log_filter']
-                if int(_prev_filter) & 2048:
-                    self.schedulers[self.dflt_sched_name].set_sched_config(
-                        {'log_filter': 2048})
+            _prev_events = self.status(SCHED, 'log_events',
+                                       id=self.dflt_schd_name)[0]['log_events']
+
+            # Job sort formula events are logged at DEBUG2 (256)
+            if not int(_prev_events) & 256:
+                self.manager(MGR_CMD_SET, SCHED, {'log_events': 2047},
+                             id=self.dflt_schd_name)
             self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
             if id is None:
                 _formulas = self.schedulers[self.dflt_sched_name].job_formula()
@@ -5469,10 +5468,9 @@ class Server(PBSService):
                         self.dflt_sched_name].job_formula(
                         jobid=id)
                 }
-            if not int(_prev_filter) & 2048:
-                self.schedulers[self.dflt_sched_name].set_sched_config(
-                    {'log_filter': int(_prev_filter)})
-
+            if not int(_prev_filter) & 256:
+                self.manager(MGR_CMD_SET, SCHED, {'log_events': _prev_events},
+                             id=self.dflt_schd_name)
             if len(bsl) == 0:
                 bsl = [{'id': id}]
             for _b in bsl:
@@ -10520,8 +10518,6 @@ class Scheduler(PBSService):
         "by_queue": "True                ALL",
         "preemptive_sched": "true        ALL",
         "resources": "\"ncpus, mem, arch, host, vnode, aoe\"",
-        "log_filter": "3328 ",
-
     }
 
     sched_config_options = ["node_group_key",
@@ -10531,7 +10527,6 @@ class Scheduler(PBSService):
                             "resource_unset_infinite",
                             "sync_time",
                             "unknown_shares",
-                            "log_filter",
                             "dedicated_prefix",
                             "load_balancing",
                             "help_starving_jobs",

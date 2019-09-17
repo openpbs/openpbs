@@ -93,8 +93,6 @@ class TestPBSSnapshot(TestFunctional):
         :type sched_priv: str
         :param sched_log: 'sched_log' (full path) for the scheduler
         :type sched_log: str
-        :param log_filter: log filter value for the scheduler
-        :type log_filter: int
         """
         a = {'partition': partition,
              'sched_host': self.server.hostname,

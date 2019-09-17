@@ -62,7 +62,7 @@ class TestHolidays(TestFunctional):
         TestFunctional.setUp(self)
 
         # Enable DEBUG2 sched log messages
-        self.scheduler.set_sched_config({'log_filter': 3072})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 1023})
 
     def test_missing_days(self):
         """
@@ -298,8 +298,8 @@ class TestHolidays(TestFunctional):
         Test that for a commented out holidays file, scheduler doesn't
         add policy change events to the calendar
         """
-        self.scheduler.set_sched_config({'log_filter': 2048,
-                                         'strict_ordering': "true    all"})
+        self.scheduler.set_sched_config({'strict_ordering': "true    all"})
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
 
         self.scheduler.holidays_delete_entry('a')
 

@@ -326,6 +326,27 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 }
 
 /**
+ * @brief action function for 'log_events' sched attribute
+ * 
+ * @param[in]	pattr		attribute being set
+ * @param[in]	pobj		Object on which the attribute is being set
+ * @param[in]	actmode		the mode of setting
+ * 
+ * @return error code
+ */
+int
+action_sched_log_events(attribute *pattr, void *pobj, int actmode)
+{
+	pbs_sched *psched;
+	psched = (pbs_sched *) pobj;
+
+	if (actmode != ATR_ACTION_RECOV)
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+
+		    return PBSE_NONE;
+}
+
+/**
  * @brief
  * 		action routine for the sched's "sched_iteration" attribute
  *
@@ -586,6 +607,12 @@ set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_log]), &sched_attr_def[(int) SCHED_ATR_sched_log],
 				dir_path);
 	}
+	if ((psched->sch_attr[(int)SCHED_ATR_log_events].at_flags & ATR_VFLAG_SET) == 0) {
+		psched->sch_attr[SCHED_ATR_log_events].at_val.at_long = SCHED_LOG_DFLT;
+		psched->sch_attr[SCHED_ATR_log_events].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
+		flag = 1;
+	}
+
 	if (!(psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_val.at_long = PBS_PREEMPT_QUEUE_PRIO_DEFAULT;
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;

@@ -367,8 +367,10 @@ parse_config(char *fname)
 					obsolete[0] = PARSE_NODE_GROUP_KEY;
 					obsolete[1] = "nothing - set via qmgr";
 				}
-				else if (!strcmp(config_name, PARSE_LOG_FILTER))
-					conf.log_filter = num;
+				else if (!strcmp(config_name, PARSE_LOG_FILTER)) {
+					obsolete[0] = PARSE_LOG_FILTER;
+					obsolete[1] = "nothing - set log_events via qmgr";
+				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_QUEUE_PRIO)) {
 					obsolete[0] = PARSE_PREEMPT_QUEUE_PRIO;
 					obsolete[1] = "nothing - set via qmgr";

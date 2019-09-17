@@ -1084,7 +1084,6 @@ struct config
 	int num_holidays;			/* number of actual holidays */
 	struct timegap ded_time[MAX_DEDTIME_SIZE];/* dedicated times */
 	int unknown_shares;			/* unknown group shares */
-	int log_filter;				/* what events to filter out */
 	int preempt_queue_prio;			/* Queue prio that defines an express queue */
 	int max_preempt_attempts;		/* max num of preempt attempts per cyc*/
 	int max_jobs_to_check;			/* max number of jobs to check in cyc*/
