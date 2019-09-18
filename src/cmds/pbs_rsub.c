@@ -806,7 +806,7 @@ main(int argc, char *argv[], char *envp[])
 				if (ncpus_str != NULL)
 					ncpus = strtol(ncpus_str, &endp, 0);
 				
-				if (*endp != '\0' || ncpus_str == NULL) {
+				if (*endp != '\0') {
 					fprintf(stderr, "pbs_rsub: Attribute value error\n");
 					CS_close_app();
 					exit(2);

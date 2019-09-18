@@ -183,6 +183,41 @@ class TestMaintenanceReservations(TestFunctional):
                     'resv_nodes': '(vn[0]:ncpus=2)+(vn[1]:ncpus=2)'}
         self.server.expect(RESV, exp_attr, id=rid)
 
+    def test_maintenance_delete(self):
+        """
+        Test if the maintenance can not be deleted by common user.
+        Test if the maintenance reservation can be deleted by a manager.
+        """
+        now = int(time.time())
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': '%s@*' % TEST_USER})
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = [self.mom.shortname]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        rid = self.server.submit(r)
+
+        self.assertTrue(rid.startswith('M'))
+
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'managers')
+
+        msg = ""
+
+        try:
+            self.server.delete(rid, runas=TEST_USER)
+        except PbsDeleteError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEquals("pbs_rdel: Unauthorized Request  " + rid, msg)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': '%s@*' % TEST_USER})
+
+        self.server.delete(rid, runas=TEST_USER)
+
     def test_maintenance_degrade_reservation_overlap1(self):
         """
         Test if the reservation is degraded by overlapping
