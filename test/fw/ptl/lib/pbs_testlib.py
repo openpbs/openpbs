@@ -7191,7 +7191,7 @@ class Server(PBSService):
 
         return rc
 
-    def runjob(self, jobid=None, location=None, async=False, extend=None,
+    def runjob(self, jobid=None, location=None, run_async=False, extend=None,
                runas=None, logerr=False):
         """
         Run a job on given nodes. Raises ``PbsRunError`` on error.
@@ -7200,9 +7200,9 @@ class Server(PBSService):
         :type jobid: str or list
         :param location: An execvnode on which to run the job
         :type location: str or None
-        :param async: If true the call will return immediately
+        :param run_async: If true the call will return immediately
                       assuming success.
-        :type async: bool
+        :type run_async: bool
         :param extend: extend options
         :param runas: run as user
         :type runas: str or None
@@ -7210,7 +7210,7 @@ class Server(PBSService):
         :type logerr: bool
         :raises: PbsRunError
         """
-        if async:
+        if run_async:
             prefix = 'Async run on ' + self.shortname
         else:
             prefix = 'run on ' + self.shortname
@@ -7231,7 +7231,7 @@ class Server(PBSService):
         c = None
         if self.get_op_mode() == PTL_CLI:
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qrun')]
-            if async:
+            if run_async:
                 pcmd += ['-a']
             if location is not None:
                 pcmd += ['-H']
@@ -7260,7 +7260,7 @@ class Server(PBSService):
                 return c
             rc = 0
             for ajob in jobid:
-                if async:
+                if run_async:
                     tmp_rc = pbs_asyrunjob(c, ajob, location, extend)
                 else:
                     tmp_rc = pbs_runjob(c, ajob, location, extend)
