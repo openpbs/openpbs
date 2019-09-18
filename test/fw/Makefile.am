@@ -43,6 +43,10 @@ ptlpkg_bindir = ${ptl_prefix}/bin
 
 dist_ptlpkg_bin_SCRIPTS = $(wildcard $(srcdir)/bin/*)
 
+ptlpkg_fwdir = ${ptl_prefix}/fw
+
+dist_ptlpkg_fw_DATA =  $(srcdir)/requirements.txt
+
 ptlpkg_pylib_topdir = ${ptl_prefix}/lib/python$(PYTHON_VERSION)/site-packages/ptl
 
 dist_ptlpkg_pylib_top_PYTHON = $(wildcard $(builddir)/ptl/*.py)

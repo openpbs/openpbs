@@ -261,14 +261,6 @@ HPC clusters, clouds and supercomputers.
 %package %{pbs_ptl}
 Summary: PBS Test Lab for testing PBS Professional
 Group: System Environment/Base
-Requires: python-nose
-Requires: python-beautifulsoup4
-%if 0%{?rhel}
-Requires: pexpect
-%else
-Requires: python-pexpect
-%endif
-Requires: python-defusedxml
 Prefix: %{ptl_prefix}
 
 %description %{pbs_ptl}
@@ -553,6 +545,36 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{ptl_prefix}/*
 %{_sysconfdir}/profile.d/ptl.csh
 %{_sysconfdir}/profile.d/ptl.sh
+
+%post %{pbs_ptl}
+installed_pkg="$(pip3 list)"
+IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
+declare -a uninstall_pkg
+for i in "${required_pkg[@]}"; do
+    if [[ "$installed_pkg" =~ "$i" ]]; then
+        continue
+    else
+        uninstall_pkg+=("$i")
+        pip3 install "$i"
+        if [ $? -eq 0 ]; then
+            echo "$i installed successfully"
+        else
+            echo "Failed to install thirdparty package $i required by PTL failed to install. \
+                  Install it before running pbs_benchpress"
+        fi
+    fi
+done
+
+%preun %{pbs_ptl}
+installed_pkg="$(pip3 list)"
+IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
+for i in "${required_pkg[@]}"; do
+    if [[ "$installed_pkg" =~ "$i" ]]; then
+        pip3 uninstall --yes "$i"
+    else
+        continue
+    fi
+done
 %endif
 
 %changelog
