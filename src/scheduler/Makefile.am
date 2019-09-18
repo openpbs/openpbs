@@ -41,7 +41,6 @@ lib_LIBRARIES = libpbs_sched.a
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
-	@libundolr_inc@ \
 	@PYTHON_INCLUDES@
 libpbs_sched_a_SOURCES = \
 	buckets.c \
@@ -97,8 +96,7 @@ libpbs_sched_a_SOURCES = \
 	state_count.h \
 	site_code.c \
 	site_code.h \
-	site_data.h \
-	$(top_srcdir)/src/server/undolr.c
+	site_data.h
 
 sbin_PROGRAMS = pbs_sched pbsfs
 
@@ -118,7 +116,6 @@ common_libs = \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
-	@libundolr_lib@ \
 	@libical_lib@
 
 pbs_sched_CPPFLAGS = ${common_cppflags}
@@ -135,4 +132,10 @@ dist_sysconf_DATA = \
 	pbs_holidays.2017 \
 	pbs_resource_group \
 	pbs_sched_config
+
+if UNDOLR_ENABLED
+pbs_sched_CPPFLAGS += -DPBS_UNDOLR_ENABLED=1 @libundolr_inc@
+pbs_sched_LDADD += @libundolr_lib@
+pbs_sched_SOURCES += $(top_srcdir)/src/server/undolr.c
+endif
 

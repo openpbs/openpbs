@@ -123,6 +123,7 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
+#include "pbs_undolr.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -231,7 +232,6 @@ static int   Rmv_if_resv_not_possible(job *);
 static int   attach_queue_to_reservation(resc_resv *);
 static void  call_log_license(struct work_task *);
 extern int create_resreleased(job *pjob);
-extern void  catch_sigusr1(int);
 
 extern pbs_sched *sched_alloc(char *sched_name);
 /* private data */

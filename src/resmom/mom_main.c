@@ -107,6 +107,7 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
+#include	"pbs_undolr.h"
 #if	defined(MOM_CPUSET)
 #include	"mom_vnode.h"
 #endif	/* MOM_CPUSET */
@@ -517,7 +518,6 @@ static handler_ret_t	wallmult(char *);
 static handler_ret_t	set_spoolsize(char *);
 #endif /* localmod 015 */
 
-extern int 	sigusr1_flag;
 #if defined(__sgi)
 extern handler_ret_t	set_checkpoint_upgrade(char *);
 #endif /* __sgi */
@@ -659,8 +659,6 @@ extern	void	dep_cleanup(void);
 extern	void	catch_child(int);
 extern	void	init_abort_jobs(int);
 extern	void	scan_for_exiting(void);
-extern	void	catch_sigusr1(int);
-extern	void	undolr();
 #ifdef NAS /* localmod 015 */
 extern	int	to_size(char *, struct size_value *);
 #endif /* localmod 015 */
@@ -6557,8 +6555,10 @@ finish_loop(time_t waittime)
 		wait_request(1, NULL);
 	}
 #else
+#if PBS_UNDOLR_ENABLED
 	if (sigusr1_flag)
 		undolr();
+#endif
 	if (do_debug_report)
 		debug_report();
 	if (termin_child) {

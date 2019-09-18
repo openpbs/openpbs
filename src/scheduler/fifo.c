@@ -116,6 +116,7 @@
 #include "limits_if.h"
 #include "pbs_version.h"
 #include "buckets.h"
+#include "pbs_undolr.h"
 
 
 #ifdef NAS
@@ -132,8 +133,6 @@ extern void win_toolong(void);
 
 extern int	second_connection;
 extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
-extern int 	sigusr1_flag;
-extern void undolr();
 
 /**
  * @brief
@@ -697,8 +696,10 @@ scheduling_cycle(int sd, char *jobid)
 
 	update_cycle_status(&cstat, 0);
 
+#if PBS_UNDOLR_ENABLED
 	if (sigusr1_flag)
 		undolr();
+#endif
 
 #ifdef NAS /* localmod 030 */
 	do_soft_cycle_interrupt = 0;

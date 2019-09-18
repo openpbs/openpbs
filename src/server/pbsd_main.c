@@ -140,6 +140,7 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
+#include "pbs_undolr.h"
 
 /* External functions called */
 
@@ -157,7 +158,6 @@ extern int chk_and_update_db_svrhost();
 
 extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
-extern void undolr();
 
 /* External data items */
 extern  pbs_list_head svr_requests;
@@ -264,7 +264,6 @@ char	       *pbs_server_name;
 char		server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
 char		server_host[PBS_MAXHOSTNAME+1];	  /* host_name of this svr */
 int		reap_child_flag = 0;
-extern int 	sigusr1_flag ;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
 pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
@@ -2150,8 +2149,10 @@ try_db_again:
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
 
+#ifdef PBS_UNDOLR_ENABLED
 		if (sigusr1_flag)
 			undolr();
+#endif
 #endif /* WIN32 */
 
 		if (*state == SV_STATE_SHUTSIG)
