@@ -10384,7 +10384,6 @@ main(int argc, char *argv[])
 			ErrorMessage("OpenSCManager");
 			return 1;
 		}
-		printf("Inside if(reg/unreg). Value of schManager %s\n", schManager);
 
 		if (reg) {
 			GetModuleFileName(0, szFileName,

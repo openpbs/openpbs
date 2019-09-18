@@ -52,7 +52,7 @@ pbs_exec = None
 pbs_home = None
 pbs_bin = None
 pbs_sbin = None
-installtype = 'client'
+installtype = 'execution'
 server = None
 
 pbs_conf_t = Template(r"""

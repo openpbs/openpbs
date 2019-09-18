@@ -167,84 +167,6 @@ typedef struct {
 
 PDH_profile mom_prof;
 
-#if (_WIN32_WINNT < 0x0501)
-/**
- *
- * @brief
- *	Is the process part of Windows job object.
- *
- * @param[in]	hProc - handle to process
- * @param[in]	hJob - handle to job
- * @param[out]	p_is_process_in_job - pointer to store a bool value indicating
- *              whether the process is part of the Windows job object
- *
- * @return      void
- **/
-void
-PBS_IsProcessInJob(HANDLE hProc, HANDLE hJob, BOOL *p_is_process_in_job)
-{
-	int			                nps = 0;
-	DWORD			                i = 0;
-	DWORD			                pidlistsize = 0;
-	DWORD                                   pid = 0;
-	PJOBOBJECT_BASIC_PROCESS_ID_LIST	pProcessList;
-	JOBOBJECT_BASIC_ACCOUNTING_INFORMATION	ji;
-
-	if (hJob == INVALID_HANDLE_VALUE || hJob == NULL
-		|| hProc == INVALID_HANDLE_VALUE || hProc == NULL) {
-		*p_is_process_in_job = FALSE;
-		return;
-	}
-
-	/* Get the number of processes embedded in the job */
-	if (QueryInformationJobObject(hJob,
-		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL)) {
-		nps = ji.TotalProcesses;
-	}
-
-	if (nps == 0) {
-		*p_is_process_in_job = FALSE;
-		return;
-	}
-
-	/* Compute the size of pid list */
-	pidlistsize = sizeof(JOBOBJECT_BASIC_PROCESS_ID_LIST) +
-		(nps-1) * sizeof(DWORD);
-
-	pProcessList = (PJOBOBJECT_BASIC_PROCESS_ID_LIST) malloc(pidlistsize);
-	if (pProcessList == NULL) {
-		*p_is_process_in_job = FALSE;
-		return;
-	}
-
-	pProcessList->NumberOfAssignedProcesses = nps;
-	pProcessList->NumberOfProcessIdsInList = 0;
-
-	/* Get the pid list */
-	if (FALSE == QueryInformationJobObject(hJob,
-		JobObjectBasicProcessIdList,
-		pProcessList, pidlistsize, NULL))
-		return;
-
-	/*
-	 * Traverse through each process and find the
-	 * memory used by that process during its execution.
-	 */
-	pid = GetProcessId(hProc);
-	for (i = 0; i < (pProcessList->NumberOfProcessIdsInList); i++) {
-		if (pProcessList->ProcessIdList[i] == pid) {
-			free(pProcessList);
-			*p_is_process_in_job = TRUE;
-			return;
-		}
-	}
-	free(pProcessList);
-	*p_is_process_in_job = FALSE;
-	return;
-}
-#endif /* _WIN32_WINNT < 0x0501 */
-
 /**
  * @brief
  *	opens profile .
@@ -634,11 +556,7 @@ mem_sum(job *pjob)
 		/* account only if the process is not part of Windows the job object */
 		if ((ptask->ti_hProc != NULL) &&
 			(ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
-#if (_WIN32_WINNT < 0x0501)
-			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#endif
 			/* account for processes that are not part of the Windows job object */
 			if (is_process_in_job == FALSE) {
 				(void)QueryWorkingSet(ptask->ti_hProc, &nwspages, sizeof(nwspages));
@@ -684,11 +602,7 @@ cput_sum(job *pjob)
 	for (ptask = (task *)GET_NEXT(pjob->ji_tasks); ptask; ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
 		FILETIME  ftCreation, ftExit, ftKernel, ftUser;
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
-#if (_WIN32_WINNT < 0x0501)
-			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#endif
 			/*
 			 * check if the processes is not part of the Windows job object due to pbs_attach
 			 */
@@ -1183,11 +1097,7 @@ cput_job(char *jobid)
 	while (ptask) {
 		FILETIME  ftCreation, ftExit, ftKernel, ftUser;
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
-#if (_WIN32_WINNT < 0x0501)
-			PBS_IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#else
 			IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
-#endif
 			/*
 			 * check if the processes is not part of the job object due to pbs_attach,
 			 */
