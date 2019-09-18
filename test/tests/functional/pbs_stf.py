@@ -547,7 +547,7 @@ class TestSTF(TestFunctional):
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
-        attr = {'Resource_List.walltime': (LE, '00:01:00')}
+        attr = {'Resource_List.walltime': (LE, '00:15:00')}
         self.server.expect(JOB, attr, id=jid3)
 
     def test_t_5_1_1(self):
