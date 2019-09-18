@@ -125,6 +125,7 @@
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
 #include	"pbs_reliable.h"
+#include	<arpa/inet.h>
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
@@ -8212,6 +8213,8 @@ main(int argc, char *argv[])
 	char				path_hooks_rescdef[MAXPATHLEN+1];
 	int					sock_bind_rm;
 	int					sock_bind_mom;
+	struct				sockaddr_in check_ip;
+	int				is_mom_host_ip;
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
@@ -8873,9 +8876,10 @@ main(int argc, char *argv[])
 	}
 	(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
 	mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
-		*ptr = '\0';  /* terminate shortname at first dot */
-
+	is_mom_host_ip = inet_pton(AF_INET, mom_host, &(check_ip.sin_addr));
+	if (!(is_mom_host_ip > 0))
+		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
+			*ptr = '\0';  /* terminate shortname at first dot */
 	/*
 	 * Now get mom_host, which determines resources_available.host
 	 * and also the interface used to register to pbs_comm if
