@@ -58,6 +58,7 @@ AC_DEFUN([PBS_AC_WITH_LIBUNDOLR],
   AC_MSG_RESULT([$libundolr_dir])
   AC_SUBST(libundolr_inc)
   AC_SUBST(libundolr_lib)
-  #AC_DEFINE([PBS_UNDOLR_ENABLED], [], [Defined when libundolr is available])
   AM_CONDITIONAL([UNDOLR_ENABLED], [test "x$with_libundolr" != "x"])
+  AS_IF([test "x$with_libundolr" != "x"],
+    AC_DEFINE(PBS_UNDOLR_ENABLED, [], [Defined when libundolr is available]))
 ])

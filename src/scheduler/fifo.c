@@ -696,7 +696,7 @@ scheduling_cycle(int sd, char *jobid)
 
 	update_cycle_status(&cstat, 0);
 
-#if PBS_UNDOLR_ENABLED
+#ifdef PBS_UNDOLR_ENABLED
 	if (sigusr1_flag)
 		undolr();
 #endif

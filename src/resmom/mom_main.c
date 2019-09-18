@@ -6555,7 +6555,7 @@ finish_loop(time_t waittime)
 		wait_request(1, NULL);
 	}
 #else
-#if PBS_UNDOLR_ENABLED
+#ifdef PBS_UNDOLR_ENABLED
 	if (sigusr1_flag)
 		undolr();
 #endif

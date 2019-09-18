@@ -1187,7 +1187,7 @@ main(int argc, char **argv)
 				tpp_set_logmask(*log_event_mask);
 			}
 		}
-#if PBS_UNDOLR_ENABLED
+#ifdef PBS_UNDOLR_ENABLED
 		if (sigusr1_flag)
 			undolr();
 #endif

@@ -42,7 +42,6 @@
  * 
  */
 
-#ifdef PBS_UNDOLR_ENABLED
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
@@ -71,11 +70,11 @@ static char recording_file [MAXPATHLEN + 1] = {0};
 void
 catch_sigusr1(int sig)
 {
+    /*
+        */
     sprintf(log_buffer, "%s caught signal %d", __func__, sig);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
-
-	//extern int sigusr1_flag;
 	sigusr1_flag = 1;
 }
 
@@ -191,4 +190,3 @@ void undolr()
 	}
 	sigusr1_flag = 0;
 }
-#endif
