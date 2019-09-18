@@ -149,7 +149,7 @@ class TestPBSSnapshot(TestFunctional):
 
     def take_snapshot(self, acct_logs=None, daemon_logs=None,
                       obfuscate=None, with_sudo=True, hosts=None,
-                      primary_host=None):
+                      primary_host=None, basic=None):
         """
         Take a snapshot using pbs_snapshot command
 
@@ -165,6 +165,8 @@ class TestPBSSnapshot(TestFunctional):
         :type list
         :param primary_host: hostname of the primary host to capture (-H)
         :type primary_host: str
+        :param basic: use --basic option
+        :type bool
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
         """
@@ -189,6 +191,8 @@ class TestPBSSnapshot(TestFunctional):
             snap_cmd.append("--additional-hosts=" + hosts_str)
         if primary_host is not None:
             snap_cmd.append("-H " + primary_host)
+        if basic is not None:
+            snap_cmd.append("--basic")
 
         ret = self.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
         self.assertEquals(ret['rc'], 0)
@@ -900,6 +904,33 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                 self.assertIn(ret["out"], ["", None, []], str(val) +
                               " was not obfuscated. Real values:\n" +
                               str(real_values))
+
+    def test_basic_option(self):
+        """
+        Test pbs_snapshot --basic
+        """
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
+
+        _, snap_dir = self.take_snapshot(basic=True)
+
+        # Check that the output tarball was created
+        self.assertTrue(os.path.isdir(snap_dir))
+
+        # Check that only the following was captured:
+        target_files = ["server/qstat_Bf.out", "server/qstat_Qf.out",
+                        "scheduler/qmgr_lsched.out", "node/pbsnodes_va.out",
+                        "reservation/pbs_rstat_f.out", "job/qstat_f.out",
+                        "hook/qmgr_lpbshook.out", "server_priv/resourcedef",
+                        "pbs.conf", "pbs_snapshot.log", "ctime"]
+        target_files = [os.path.join(snap_dir, f) for f in target_files]
+        sched_priv_dir = os.path.join(snap_dir, "sched_priv")
+        for (root, dirs, files) in os.walk(snap_dir):
+            for fname in files:
+                fpath = os.path.join(root, fname)
+                if fpath not in target_files:
+                    if not fpath.startswith(sched_priv_dir):
+                        self.fail("Unexpected file " + fpath + " captured")
 
     @classmethod
     def tearDownClass(self):
