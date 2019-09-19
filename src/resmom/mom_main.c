@@ -10389,6 +10389,7 @@ main(int argc, char *argv[])
 			GetModuleFileName(0, szFileName,
 				sizeof(szFileName)/sizeof(*szFileName));
 
+			printf("Installing service %s\n", g_PbsMomName);
 			schSelf =
 				CreateService(schManager, g_PbsMomName,
 				__TEXT("PBS_MOM"),
