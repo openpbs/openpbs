@@ -436,7 +436,7 @@ class ObfuscateSnapshot(object):
         :type filepath - str
         """
         fout = self.du.create_temp_file()
-        with open(fpath, "r", encoding="latin-1") as fd,\
+        with open(fpath, "r", encoding="latin-1") as fd, \
                 open(fout, "w") as fdout:
             alltext = fd.read()
             otext = re.sub(r'\b' + key + r'\b', val, alltext)

@@ -65,13 +65,13 @@ getopt(int argc,
 		nextchar = 1;
 	}
 
-	for (i=nextchar; i < argc; i++) {
-		if( (strcmp(argv[i], "-") != 0) && \
+	for (i = nextchar; i < argc; i++) {
+		if ( (strcmp(argv[i], "-") != 0) && \
 		    	(strcmp(argv[i], "--") != 0) && \
 					argv[i][0] == '-' ) {
 
 			/* match an option in valid option list */
-			if ((nextopt=strchr(__shortopts, argv[i][1])) != NULL) { /* a valid option */
+			if ((nextopt = strchr(__shortopts, argv[i][1])) != NULL) { /* a valid option */
 				curr_opt = *nextopt;
 				if (*(nextopt+1) == ':') { /* option requires  arg */
 					optarg = &(argv[i][2]);

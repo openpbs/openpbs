@@ -547,26 +547,24 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{_sysconfdir}/profile.d/ptl.sh
 
 %post %{pbs_ptl}
-installed_pkg="$(pip3 list)"
+installed_pkg="$(pip3 list --format=legacy)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 declare -a uninstall_pkg
 for i in "${required_pkg[@]}"; do
     if [[ "$installed_pkg" =~ "$i" ]]; then
         continue
     else
-        uninstall_pkg+=("$i")
         pip3 install "$i"
         if [ $? -eq 0 ]; then
             echo "$i installed successfully"
         else
-            echo "Failed to install thirdparty package $i required by PTL failed to install. \
-                  Install it before running pbs_benchpress"
+            echo "Failed to install thirdparty package $i required by PTL"
         fi
     fi
 done
 
 %preun %{pbs_ptl}
-installed_pkg="$(pip3 list)"
+installed_pkg="$(pip3 list --format=legacy)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 for i in "${required_pkg[@]}"; do
     if [[ "$installed_pkg" =~ "$i" ]]; then

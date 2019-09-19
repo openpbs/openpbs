@@ -135,7 +135,6 @@ class PTLTestInfo(Plugin):
     def _get_hierarchy(self, cls, level=0):
         delim = '    ' * level
         msg = [delim + cls.__name__]
-        self.logger.info(dir(cls))
         subclses = cls.__subclasses__()
         for subcls in subclses:
             msg.extend(self._get_hierarchy(subcls, level + 1))

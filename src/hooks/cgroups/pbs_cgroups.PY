@@ -259,7 +259,7 @@ def convert_time(value, units='s'):
 
     Pattern matching or conversion may result in exceptions.
     """
-    multipliers = {'':  1, 'ns': 10 ** -9, 'us': 10 ** -6,
+    multipliers = {'': 1, 'ns': 10 ** -9, 'us': 10 ** -6,
                    'ms': 10 ** -3, 's': 1, 'min': 60, 'hr': 3600}
     new = units.lower()
     if new not in multipliers:
@@ -293,7 +293,7 @@ def decode_list(data):
     ret = []
     for item in data:
         if isinstance(item, (bytes, bytearray)):
-            item = str(item,'utf-8')    
+            item = str(item, 'utf-8')
         elif isinstance(item, list):
             item = decode_list(item)
         elif isinstance(item, dict):
@@ -309,9 +309,9 @@ def decode_dict(data):
     ret = {}
     for key, value in list(data.items()):
         if isinstance(key, (bytes, bytearray)):
-            key = str(key,'utf-8')
+            key = str(key, 'utf-8')
         if isinstance(value, (bytes, bytearray)):
-            value = str(value,'utf-8')
+            value = str(value, 'utf-8')
         elif isinstance(value, list):
             value = decode_list(value)
         elif isinstance(value, dict):
@@ -1038,6 +1038,8 @@ class HookUtils(object):
 #
 # CLASS JobUtils
 #
+
+
 class JobUtils(object):
     """
     Job utility methods
@@ -1263,7 +1265,8 @@ class NodeUtils(object):
             exclude = expand_list(self.cfg['cgroup']['cpuset']['exclude_cpus'])
             with open(os.path.join(node, 'cpulist'), 'r') as desc:
                 avail = expand_list(desc.readline())
-                numa_nodes[num]['cpus'] = [x for x in avail if x not in exclude]
+                numa_nodes[num]['cpus'] = [
+                    x for x in avail if x not in exclude]
             with open(os.path.join(node, 'meminfo'), 'r') as desc:
                 for line in desc:
                     # Each line will contain four or five fields. Examples:
@@ -1373,7 +1376,8 @@ class NodeUtils(object):
             devices[dclass][inst]['minor'] = None
             if os.path.isfile(filename):
                 with open(filename, 'r') as desc:
-                    major, minor = list(map(int, desc.readline().strip().split(':')))
+                    major, minor = list(
+                        map(int, desc.readline().strip().split(':')))
                     devices[dclass][inst]['major'] = int(major)
                     devices[dclass][inst]['minor'] = int(minor)
             numa_node = -1
@@ -2156,7 +2160,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: OS does not support cgroups' %
                        caller_name())
             raise CgroupConfigError('OS type not supported')
-        rel = list(map(int,(platform.release().split('-')[0].split('.'))))
+        rel = list(map(int, (platform.release().split('-')[0].split('.'))))
         pbs.logmsg(pbs.EVENT_DEBUG4,
                    '%s: Detected Linux kernel version %d.%d.%d' %
                    (caller_name(), rel[0], rel[1], rel[2]))
@@ -2789,7 +2793,7 @@ class CgroupUtils(object):
             if (length - i) > 3 and buf[i] == '\\' and buf[i + 1] == 'x' and \
                 buf[i + 2] in '0123456789abcdef' and \
                     buf[i + 3] in '0123456789abcdef':
-                ret += bytes.fromhex(buf[(i + 2):(i + 4)]).decode('utf-8') 
+                ret += bytes.fromhex(buf[(i + 2):(i + 4)]).decode('utf-8')
                 i += 4
                 continue
             if buf[i] == '-':

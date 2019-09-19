@@ -8201,7 +8201,7 @@ main(int argc, char *argv[])
 	char				*configscriptaction = NULL;
 	char				*inputfile = NULL;
 	char				*scriptname = NULL;
-	char 				pbs_python_home[MAXPATHLEN+1];
+	char 				pbs_python_home[MAXPATHLEN + 1];
 	resource			*prscput;
 	resource			*prswall;
 	char				*getopt_str;
@@ -9563,7 +9563,7 @@ main(int argc, char *argv[])
 
         /* Setting PYTHONHOME */
         Py_IgnoreEnvironmentFlag = 1;
-        memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
+        memset((char *)pbs_python_home, '\0', MAXPATHLEN + 1);
         snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
                 pbs_conf.pbs_exec_path);
         if (file_exists(pbs_python_home)) {

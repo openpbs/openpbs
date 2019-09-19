@@ -212,14 +212,14 @@ schedinit(void)
 
 	/* Setting PYTHONHOME */
 	Py_IgnoreEnvironmentFlag = 1;
-        char pbs_python_home[MAXPATHLEN+1];
-        memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
+        char pbs_python_home[MAXPATHLEN + 1];
+        memset((char *)pbs_python_home, '\0', MAXPATHLEN + 1);
         snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
                 pbs_conf.pbs_exec_path);
         if (file_exists(pbs_python_home)) {
-                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
-                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
-                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+                wchar_t tmp_pbs_python_home[MAXPATHLEN + 1];
+                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN + 1);
+                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN + 1);
                 Py_SetPythonHome(tmp_pbs_python_home);
         }
 
@@ -231,13 +231,13 @@ schedinit(void)
 	strncpy(py_version, Py_GetVersion(), 3);
         py_version[3] = '\0';
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python%s", pbs_conf.pbs_exec_path, py_version);
+	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
         retval = PyUnicode_FromString(buf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python%s/lib-dynload", pbs_conf.pbs_exec_path, py_version);
+	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
         retval = PyUnicode_FromString(buf);
         if (retval != NULL)
                 PyList_Append(path, retval);

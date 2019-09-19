@@ -3194,7 +3194,7 @@ main(int argc, char *argv[], char *envp[])
 			wchar_t *tmp_argv[2];
 
 			tmp_argv[0] = Py_DecodeLocale(argv[0], NULL);
-			if (tmp_argv[0] == NULL){
+			if (tmp_argv[0] == NULL) {
 				fprintf(stderr, "Fatal error: cannot decode script name\n");
 				exit(2);
 			}

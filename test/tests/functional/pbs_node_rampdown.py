@@ -55,10 +55,6 @@ def convert_time(fmt, tm, fixdate=False):
     return rv
 
 
-def cmp(a, b):
-    return (a > b) - (a < b)
-
-
 @requirements(num_moms=3)
 class TestPbsNodeRampDown(TestFunctional):
 
@@ -148,7 +144,7 @@ class TestPbsNodeRampDown(TestFunctional):
                 ehost1.append(h[0])
             j += 1
 
-        if cmp(ehost1, ehost2) != 0:
+        if ((ehost1 > ehost2) - (ehost1 < ehost2)) != 0:
             return False
         return True
 

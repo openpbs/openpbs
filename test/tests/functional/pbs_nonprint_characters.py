@@ -104,13 +104,6 @@ sleep 5
             if m.find(msg) != -1:
                 self.n = m.split('=')[0]
                 continue
-        pbs_conf = self.server.pbs_conf
-        if 'PBS_EXEC' in pbs_conf:
-            self.pbs_exec = pbs_conf['PBS_EXEC']
-        else:
-            raise "PBS EXEC does not exist."
-        self.qmgr = os.path.join(self.pbs_exec, 'bin', 'qmgr')
-        self.pbsnodes = os.path.join(self.pbs_exec, 'bin', 'pbsnodes')
 
         # Client commands full path
         self.qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
