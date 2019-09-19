@@ -107,7 +107,6 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
-#include	"pbs_undolr.h"
 #if	defined(MOM_CPUSET)
 #include	"mom_vnode.h"
 #endif	/* MOM_CPUSET */
@@ -318,6 +317,12 @@ unsigned long	spoolsize = 0; /* default spoolsize = unlimited */
 static  char    quiesce_mom_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/quiesce_mom";
 int             mom_should_quiesce = 0;
 #endif /* localmod 153 */
+
+#ifdef PBS_UNDOLR_ENABLED
+extern int 	sigusr1_flag;
+extern void  catch_sigusr1(int);
+extern void undolr();
+#endif
 
 #ifdef NAS_UNKILL /* localmod 011 */
 #define KP_WAIT_TIME	60		/* number of seconds to wait for kill

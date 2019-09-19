@@ -140,9 +140,14 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
-#include "pbs_undolr.h"
 
 /* External functions called */
+
+#ifdef PBS_UNDOLR_ENABLED
+extern int 	sigusr1_flag;
+extern void  catch_sigusr1(int);
+extern void undolr();
+#endif
 
 extern int  pbsd_init(int);
 extern void shutdown_ack();

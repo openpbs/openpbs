@@ -116,8 +116,11 @@
 #include "limits_if.h"
 #include "pbs_version.h"
 #include "buckets.h"
-#include "pbs_undolr.h"
 
+#ifdef PBS_UNDOLR_ENABLED
+extern int 	sigusr1_flag;
+extern void undolr();
+#endif
 
 #ifdef NAS
 #include "site_code.h"

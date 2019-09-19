@@ -35,10 +35,13 @@
  * trademark licensing policies.
  *
  */
+
 /**
- * @file    undolr.c
+ * @file	undolr.c
  * @brief
- * 		The undolr api calls to integrate with PBSPro.
+ *	The Undo Recording API calls to integrate with PBSPro.
+ *	It allows our daemons to create an Undo Recording of itself running, which can
+ *	then be opened using the Undo Debugger/Player (UndoDB).
  * 
  */
 
@@ -136,7 +139,10 @@ void undolr()
 		log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, 
 				PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
 
-		/* Undo API call to start recording. */
+		/**
+		 * Undo API call to start recording.
+		 * Attaches Live Recorder to the process, and starts recording it.
+		 */
 		e = undolr_start(&err);
 		if (e)
 		{
@@ -160,7 +166,10 @@ void undolr()
 		recording = 1;
 	} else 
 	{
-		/* Undo API call to stop recording. */
+		/**
+		 * Undo API call to stop recording.
+		 * Detaches Live Recorder from the process.
+		 */
 		e = undolr_stop (&lr_ctx);
 		if (e)
 		{
@@ -175,7 +184,7 @@ void undolr()
 				LOG_INFO, msg_daemonname, log_buffer);
 
 		/* Undo API call to save recording. */
-		e = undolr_save_async( lr_ctx, recording_file);
+		e = undolr_save_async(lr_ctx, recording_file);
 		if (e)
 		{
 			sprintf(log_buffer,
@@ -187,6 +196,18 @@ void undolr()
 		sprintf(log_buffer, "Have created Undo live recording at: %s\n", recording_file);
 		log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 				LOG_INFO, msg_daemonname, log_buffer);
+
+		/**
+		 * Recording state that is currently held in memory is freed.
+		 */
+		e = undolr_discard(lr_ctx);
+		if (e)
+		{
+			sprintf(log_buffer,
+				"undolr_dicard() failed: errno=%i\n", errno);
+			log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+				LOG_ERR, msg_daemonname, log_buffer);
+		}
 	}
 	sigusr1_flag = 0;
 }

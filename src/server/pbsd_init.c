@@ -123,7 +123,6 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
-#include "pbs_undolr.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -210,6 +209,12 @@ extern int	stalone;
 #endif
 
 /* External Functions Called */
+
+#ifdef PBS_UNDOLR_ENABLED
+extern int 	sigusr1_flag;
+extern void  catch_sigusr1(int);
+extern void undolr();
+#endif
 
 extern void   on_job_exit(struct work_task *);
 extern void   on_job_rerun(struct work_task *);
