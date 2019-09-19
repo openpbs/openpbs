@@ -503,6 +503,10 @@ class PbsResvAlterError(PtlException):
     pass
 
 
+class PbsSystemError(PtlException):
+    pass
+
+
 class PbsTypeSize(str):
 
     """
