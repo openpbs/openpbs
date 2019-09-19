@@ -13111,6 +13111,11 @@ class MoM(PBSService):
         raa = ATTR_rescavail + '.arch'
         a = {raa: None}
         try:
+            a = {'state': 'free'}
+            self.server.expect(NODE, a, id=self.shortname, interval=1)
+        except PtlExpectError:
+            return False
+        try:
             rv = self.server.status(NODE, a, id=self.shortname)
         except PbsStatusError:
             try:
@@ -13120,7 +13125,7 @@ class MoM(PBSService):
                     return False
                 else:
                     raise e
-        if rv[0][raa] == 'linux_cpuset':
+        if len(rv) > 0 and raa in rv[0] and rv[0][raa] == 'linux_cpuset':
             self._is_cpuset_mom = True
         else:
             self._is_cpuset_mom = False
