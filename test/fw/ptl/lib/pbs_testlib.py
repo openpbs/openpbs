@@ -279,7 +279,7 @@ class PtlConfig(object):
             _m = self.options['PTL_MAX_ATTEMPTS']
             _e = os.environ.get('PTL_EXPECT_MAX_ATTEMPTS', _m)
             del self.options['PTL_EXPECT_MAX_ATTEMPTS']
-            self.options['PTL_MAX_ATTEMPTS'] = max([_o, _m, _e])
+            self.options['PTL_MAX_ATTEMPTS'] = max([int(_o), int(_m), int(_e)])
             _msg = 'PTL_EXPECT_MAX_ATTEMPTS is deprecated,'
             _msg += ' use PTL_MAX_ATTEMPTS instead'
             self.logger.warn(_msg)
@@ -288,7 +288,8 @@ class PtlConfig(object):
             _m = self.options['PTL_ATTEMPT_INTERVAL']
             _e = os.environ.get('PTL_EXPECT_INTERVAL', _m)
             del self.options['PTL_EXPECT_INTERVAL']
-            self.options['PTL_ATTEMPT_INTERVAL'] = max([_o, _m, _e])
+            self.options['PTL_ATTEMPT_INTERVAL'] = \
+                max([int(_o), int(_m), int(_e)])
             _msg = 'PTL_EXPECT_INTERVAL is deprecated,'
             _msg += ' use PTL_ATTEMPT_INTERVAL instead'
             self.logger.warn(_msg)

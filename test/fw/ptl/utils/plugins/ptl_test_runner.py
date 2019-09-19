@@ -596,13 +596,11 @@ class PTLTestRunner(Plugin):
                                    'conf',
                                    {}).get('default-testcase-timeout',
                                            MINIMUM_TESTCASE_TIMEOUT))
-        tc_timeout = getattr(getattr(_test,
-                                     getattr(_test,
-                                             '_testMethodName',
-                                             ''),
-                                     None),
-                             TIMEOUT_KEY,
-                             0)
+        tc_timeout = int(getattr(getattr(_test,
+                                 getattr(_test, '_testMethodName', ''),
+                                 None),
+                         TIMEOUT_KEY,
+                         0))
         return max([dflt_timeout, tc_timeout])
 
     def __set_test_end_data(self, test, err=None):
