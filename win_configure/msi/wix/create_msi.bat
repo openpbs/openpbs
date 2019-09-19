@@ -53,6 +53,11 @@ if "%BUILD_TYPE%"=="debug" (
 )
 cd win_build
 
+if not exist "%PBS_EXECDIR%\etc\vc_redist.x86.exe" (	
+    echo Could not find "%PBS_EXECDIR%\etc\vc_redist.x86.exe"	
+    exit /b 1	
+)
+
 if not exist "%CD%\msi" (
     mkdir "%CD%\msi"
 )

@@ -93,6 +93,22 @@ def validate_cred(username, password):
     else:
         __log_info('Successfully validated given username and password')
 
+def install_vcredist():	
+    __log_info('Installing Visual C++ redistributable')	
+    cmd = [os.path.join(pbs_exec, 'etc', 'vc_redist.x86.exe')]	
+    cmd += ['/q', '/norestart']	
+    ret = __run_cmd(cmd)	
+    if ret > 0:	
+        if ret == 5100:	
+            msg = 'Newer version of Visual C++ redistributable is already'	
+            msg += 'installed, ignoring this installation'	
+            __log_info(msg)	
+        else:	
+            __log_err('Failed to install Visual C++ redistributable')	
+            sys.exit(6)	
+    else:	
+        __log_info('Successfully installed Visual C++ redistributable')
+
 def create_pbs_conf():
     __log_info('Creating PBSPro configuration at %s' % pbs_conf_path)
     with open(pbs_conf_path, 'w+') as fp:
@@ -274,6 +290,7 @@ def main():
     create_pbs_conf()
     if installtype == 'execution':
         create_home()		
+    install_vcredist()
     __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe'), 'mom'])
     cmd = ['mklink', '/H']
     cmd += ['"' + os.path.join(pbs_bin, 'pbs-sleep.exe') + '"']
