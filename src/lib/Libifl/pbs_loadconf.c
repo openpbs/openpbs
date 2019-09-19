@@ -564,7 +564,6 @@ __pbs_loadconf(int reload)
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
 				free(pbs_conf.pbs_lr_save_path);
-				//pbs_conf.pbs_lr_save_path = shorten_and_cleanup_path(conf_value);
 				pbs_conf.pbs_lr_save_path = strdup(conf_value);
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
