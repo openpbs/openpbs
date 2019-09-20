@@ -95,6 +95,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char dur_buf[800];
 	char badw[] = "pbs_rsub: illegal -W value\n";
 	int opt_re_flg = FALSE;
+	int opt_res_req_flg = FALSE;
 #ifdef WIN32
 	struct attrl *ap = NULL;
 	short nSizeofHostName = 0;
@@ -143,6 +144,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'l':
+				opt_res_req_flg = TRUE;
 				if ((i = set_resources(&attrib, optarg, 0, &erp)) != 0) {
 					if (i > 1) {
 						pbs_prt_parse_err("pbs_rsub: illegal -l value\n", optarg,
@@ -274,6 +276,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 	if (opt_re_flg == TRUE && qmoveflg ==TRUE) {
 		fprintf(stderr, "pbs_rsub: -Wqmove is not compatible with -R or -E option\n");
+		errflg++;
+	}
+
+	if (opt_res_req_flg && is_maintenance_resv) {
+		fprintf(stderr, "pbs_rsub: can't use -l with --hosts\n");
 		errflg++;
 	}
 
