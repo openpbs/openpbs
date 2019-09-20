@@ -270,7 +270,12 @@ class DshUtils(object):
             return self._h2osinfo[hostname]
 
         if pyexec is None:
-            pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+            pbs_conf = self.parse_pbs_config(hostname)
+            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+            if os.path.exists(py_path):
+                pyexec = py_path
+            else:
+                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
 
         cmd = [pyexec, '-c',
                '"import platform; print(platform.platform())"']
@@ -376,6 +381,7 @@ class DshUtils(object):
         :returns: Path to pbs conf file
         """
         dflt_conf = '/etc/pbs.conf'
+        dflt_python = '/opt/pbs/python/bin/python'
 
         if hostname is None:
             hostname = socket.gethostname()
@@ -389,7 +395,11 @@ class DshUtils(object):
         else:
             pc = ('"import os;print([False, os.environ[\'PBS_CONF_FILE\']]'
                   '[\'PBS_CONF_FILE\' in os.environ])"')
-            cmd = ['python3', '-c', pc]
+            if os.path.exists(dflt_python):
+                pyexec = dflt_python
+            else:
+                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+            cmd = [pyexec, '-c', pc]
             ret = self.run_cmd(hostname, cmd, logerr=False)
             if ((ret['rc'] != 0) and (len(ret['out']) > 0) and
                     (ret['out'][0] != 'False')):
@@ -850,7 +860,13 @@ class DshUtils(object):
         if self.is_localhost(hostname):
             self._tempdir[hostname] = tempfile.gettempdir()
         else:
-            cmd = ['python3', '-c',
+            pbs_conf = self.parse_pbs_config(hostname)
+            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+            if os.path.exists(py_path):
+                pyexec = py_path
+            else:
+                pyexec = 'python3'
+            cmd = [pyexec, '-c',
                    '"import tempfile; print(tempfile.gettempdir())"']
             ret = self.run_cmd(hostname, cmd, level=logging.DEBUG)
             if ret['rc'] == 0:
@@ -1135,7 +1151,14 @@ class DshUtils(object):
                 # to avoid a file copy as root, we copy it as current user
                 # and move it remotely to the desired path/name.
                 # First, get a remote temporary filename
-                cmd = ['python3', '-c',
+                pbs_conf = self.parse_pbs_config(targethost)
+                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+                if os.path.exists(py_path):
+                    pyexec = py_path
+                else:
+                    pyexec = self.which(hostname, 'python3',
+                                        level=logging.DEBUG2)
+                cmd = [pyexec, '-c',
                        '"import tempfile;print(' +
                        'tempfile.mkstemp(\'PtlPbstmpcopy\')[1])"']
                 # save original destination
@@ -1418,8 +1441,14 @@ class DshUtils(object):
             py_cmd = 'import os; print(os.path.getmtime(\'%s\'))' % (path)
             if not self.is_localhost(hostname):
                 py_cmd = '\"' + py_cmd + '\"'
-
-            cmd = [self.which(hostname, 'python3', level=level), '-c', py_cmd]
+            pbs_conf = self.parse_pbs_config(hostname)
+            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
+            if os.path.exists(py_path):
+                pyexec = py_path
+            else:
+                pyexec = self.which(hostname, 'python3',
+                                    level=logging.DEBUG2)
+            cmd = [pyexec, '-c', py_cmd]
             ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, runas=runas,
                                logerr=False, level=level)
             if ((ret['rc'] == 0) and (len(ret['out']) == 1) and
