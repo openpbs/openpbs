@@ -97,6 +97,7 @@ extern char	*path_svrlive;
 #ifndef PBS_MOM
 extern char *pbs_server_name;
 extern pbs_db_conn_t	*svr_db_conn;
+extern void sched_free(pbs_sched *psched);
 #endif
 
 #ifdef NAS /* localmod 005 */
@@ -192,7 +193,7 @@ db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 
 	if ((decode_attr_db(ps, &pdbsvr->attr_list, svr_attr_def,
 		ps->sv_attr,
-		(int) SRV_ATR_LAST, 0)) != 0)
+		(int) SRV_ATR_LAST, 0, "server")) != 0)
 		return -1;
 
 	return 0;
@@ -239,7 +240,7 @@ db_to_svr_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 	/* since we dont need the sched_name and sched_sv_name free here */
 	if ((decode_attr_db(ps, &pdbsched->attr_list, sched_attr_def,
 		ps->sch_attr,
-		(int) SCHED_ATR_LAST, 0)) != 0)
+		(int) SCHED_ATR_LAST, 0, pdbsched->sched_name)) != 0)
 		return -1;
 
 	return 0;
@@ -419,7 +420,7 @@ sched_recov_db(char *sname)
 db_err:
 	log_err(-1, "sched_recov", "read of scheddb failed");
 	if (ps)
-		free(ps);
+		sched_free(ps);
 	return NULL;
 }
 

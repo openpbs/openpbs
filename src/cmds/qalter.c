@@ -69,7 +69,7 @@ print_usage()
 	static char usag2[]="       qalter --version\n";
 	static char usage[]=
 		"usage: qalter [-a date_time] [-A account_string] [-c interval] [-e path]\n"
-	"\t[-h hold_list] [-j y|n] [-k keep] [-J X-Y[:Z]] [-l resource_list]\n"
+	"\t[-h hold_list] [-j y|n] [-k keep] [-l resource_list]\n"
 	"\t[-m mail_options] [-M user_list] [-N jobname] [-o path] [-p priority]\n"
 	"\t[-R o|e|oe] [-r y|n] [-S path] [-u user_list] [-W dependency_list]\n"
 	"\t[-P project_name] job_identifier...\n";

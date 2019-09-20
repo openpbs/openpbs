@@ -139,7 +139,7 @@ db_to_svr_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 	pque->qu_qs.qu_mtime = pdbque->qu_mtime;
 
 	if ((decode_attr_db(pque, &pdbque->attr_list, que_attr_def,
-		pque->qu_attr, (int) QA_ATR_LAST, 0)) != 0)
+		pque->qu_attr, (int) QA_ATR_LAST, 0, pdbque->qu_name)) != 0)
 		return -1;
 
 	return 0;

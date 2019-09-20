@@ -234,10 +234,11 @@ action_sched_host(attribute *pattr, void *pobj, int actmode)
 	psched = (pbs_sched *) pobj;
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if ( dflt_scheduler && psched != dflt_scheduler)
+		if ( dflt_scheduler && psched != dflt_scheduler) {
 			psched->pbs_scheduler_addr = get_hostaddr(pattr->at_val.at_str);
-		if (psched->pbs_scheduler_addr == (pbs_net_t)0)
-			return PBSE_BADATVAL;
+			if (psched->pbs_scheduler_addr == (pbs_net_t)0)
+				return PBSE_BADATVAL;
+		}
 	}
 	return PBSE_NONE;
 }
