@@ -18,8 +18,8 @@ if [ "x${ONLY_REBUILD}" != "x1" ]; then
     yum clean all
     yum -y update
     yum -y install yum-utils epel-release rpmdevtools
-    yum -y install python36-pip sudo which net-tools man-db time.x86_64 \
-                    expat libedit postgresql-server postgresql-contrib python36 \
+    yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
+                    expat libedit postgresql-server postgresql-contrib python3 \
                     sendmail sudo tcl tk libical libasan llvm
     rpmdev-setuptree
     yum-builddep -y ${SPEC_FILE}

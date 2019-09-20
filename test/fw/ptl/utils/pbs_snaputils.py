@@ -1692,6 +1692,7 @@ quit()
 
         # Capture information that's dependent on commands
         for (key, values) in self.sys_info.items():
+            sudo = False
             (path, cmd_list) = values
             if cmd_list is None:
                 continue

@@ -56,7 +56,7 @@ cscope.out
 *.ncb
 *.suo
 .vscode/
-win_confiure/.vs/
+win_configure/.vs/
 
 # Files used by gtags
 GPATH

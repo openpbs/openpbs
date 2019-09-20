@@ -1108,6 +1108,7 @@ pbs_python_setup_queue_class_attributes(void)
 			if (!py_default_args) {
 				/* TODO, continuing instead of fatal error */
 				log_err(-1, attr_def_p->at_name, "could not build args for default value");
+				attr_def_p++;
 				continue;
 			}
 			py_default_value = pbs_python_make_default_value(py_value_type, py_default_args);
@@ -11805,7 +11806,6 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 		pbs_python_write_error_to_log(log_buffer);
 		Py_CLEAR(os_mod_obj);
 		return (-1);
-
 	}
 
 	if ((os_env_dict =
@@ -11817,7 +11817,6 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 		Py_CLEAR(os_mod_obj);
 		Py_CLEAR(os_mod_env);
 		return (-1);
-
 	}
 
 	if (env_val == NULL) {

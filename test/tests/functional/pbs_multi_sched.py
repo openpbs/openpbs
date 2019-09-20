@@ -1553,7 +1553,7 @@ class TestMultipleSchedulers(TestFunctional):
             a['partition'] = 'P2'
         if numnode is 11:
             a['partition'] = 'P2'
-        return dict(list(attrib.items()) + list(a.items()))
+        return {**attrib, **a}
 
     def setup_placement_set(self):
         self.server.add_resource('switch', 'string_array', 'h')

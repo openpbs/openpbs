@@ -1339,7 +1339,7 @@ class SmokeTest(PBSTestSuite):
                 if d and len(d) > 0:
                     self.assertFalse(ar in d[0])
 
-    @timeout(1440)
+    @timeout(720)
     def test_resource_delete(self):
         """
         Verify behavior of resource deletion when the resource is defined

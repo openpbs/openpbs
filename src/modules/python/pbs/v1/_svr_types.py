@@ -124,7 +124,8 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
 
     if con < 0:
         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                       "pbs_statobj: Unable to connect to server %s" % (connect_server))
+                       "pbs_statobj: Unable to connect to server %s"
+                       % (connect_server))
         _pbs_v1.set_python_mode()
         return None
 
@@ -263,10 +264,10 @@ class _job():
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
 
-    def __new__(cls,value,connect_server=None):
+    def __new__(cls, value, connect_server=None):
         return object.__new__(cls)
-    
-    def __init__(self,jid,connect_server=None,
+
+    def __init__(self, jid, connect_server=None,
                  failed_node_list=None, node_list=None):
         """__init__"""
 
@@ -344,34 +345,42 @@ class _job():
         """in_ms_mom"""
         return self._msmom
     #: m(in_ms_mom)
+
     def stdout_file(self):
         """stdout_file"""
         return self._stdout_file
     #: m(stdout_file)
+
     def stderr_file(self):
         """stderr_file"""
         return self._stderr_file
     #: m(stderr_file)
+
     def release_nodes(self, node_list=None, keep_select=None):
         """release_nodes"""
-        if ( (_pbs_v1.event().type & _pbs_v1.EXECJOB_PROLOGUE) == 0 and
-             (_pbs_v1.event().type & _pbs_v1.EXECJOB_LAUNCH) == 0 ):
+        if ((_pbs_v1.event().type & _pbs_v1.EXECJOB_PROLOGUE) == 0 and
+                (_pbs_v1.event().type & _pbs_v1.EXECJOB_LAUNCH) == 0):
             return None
         tolerate_node_failures = None
         ajob = _pbs_v1.event().job
         if hasattr(ajob, "tolerate_node_failures"):
             tolerate_node_failures = getattr(ajob, "tolerate_node_failures")
             if tolerate_node_failures not in ["job_start", "all"]:
-                msg = "no nodes released as job does not tolerate node failures"
+                msg = "no nodes released as job does not " \
+                      "tolerate node failures"
                 _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG, "%s: %s" % (ajob.id, msg))
                 return ajob
         return _pbs_v1.release_nodes(self, node_list, keep_select)
     #: m(release_nodes)
 
-_job.id = PbsAttributeDescriptor(_job, 'id', "",(str,))
-_job.failed_mom_list = PbsAttributeDescriptor(_job, 'failed_mom_list', {},(list,))
-_job.succeeded_mom_list = PbsAttributeDescriptor(_job, 'succeeded_mom_list', {},(list,))
-_job._connect_server = PbsAttributeDescriptor(_job, '_connect_server', {}, (str,))
+
+_job.id = PbsAttributeDescriptor(_job, 'id', "", (str,))
+_job.failed_mom_list = PbsAttributeDescriptor(
+    _job, 'failed_mom_list', {}, (list,))
+_job.succeeded_mom_list = PbsAttributeDescriptor(
+    _job, 'succeeded_mom_list', {}, (list,))
+_job._connect_server = PbsAttributeDescriptor(
+    _job, '_connect_server', {}, (str,))
 #: C(job)
 
 #:------------------------------------------------------------------------
@@ -669,7 +678,7 @@ class _server():
         """
         vnode(strVname)
             strVname - PBS vnode name to query.
-          Returns a vnode object representing vname 
+          Returns a vnode object representing vname
         """
         if _pbs_v1.get_python_daemon_name() == "pbs_python":
             if _pbs_v1.use_static_data():
@@ -704,19 +713,22 @@ class _server():
     if NAS_mod != None and NAS_mod != 0:
         def jobs(self, ignore_fin=None, qname=None, username=None):
             """
-            Returns an iterator that loops over the list of jobs on this server.
+            Returns an iterator that loops over the list of jobs
+            on this server.
             Jobs can be filtered in 3 ways:
             - if ignore_fin is an integer != 0, finished jobs are ignored
             - qname returns jobs from that queue
             - username returns jobs with that euser
             """
 
-            return pbs_iter("jobs", "",  qname, self._connect_server, ignore_fin, username)
+            return pbs_iter("jobs", "",  qname, self._connect_server,
+                            ignore_fin, username)
         #: m(jobs_nas)
     else:
         def jobs(self):
             """
-            Returns an iterator that loops over the list of jobs on this server.
+            Returns an iterator that loops over the list of jobs
+            on this server.
             """
 
             return pbs_iter("jobs", "",  "", self._connect_server)
@@ -724,7 +736,8 @@ class _server():
 
     def vnodes(self):
         """
-            Returns an iterator that loops over the list of vnodes on this server.
+        Returns an iterator that loops over the list of vnodes
+        on this server.
         """
 
         return pbs_iter("vnodes", "",  "", self._connect_server)
@@ -848,7 +861,7 @@ class _event():
            associated event request action. If [msg] argument is given, it
                 will be shown in the appropriate PBS daemon log, and the STDERR
            of the PBS command that caused this event to take place.
-           If [ecode] argument is given, if will be used as the value for 
+           If [ecode] argument is given, if will be used as the value for
            the SystemExit exception, else a value of 255 is used.
 
            This terminates hook execution by throwing a SystemExit exception.
@@ -924,7 +937,9 @@ class pbs_iter():
         Pbs_username   tells the iterator to return only jobs with this euser.
         """
 
-        def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2, connect_server=None, pbs_ignore_fin=None, pbs_username=None):
+        def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2,
+                     connect_server=None, pbs_ignore_fin=None,
+                     pbs_username=None):
 
             self._caller = _pbs_v1.get_python_daemon_name()
             if self._caller == "pbs_python":
@@ -948,19 +963,23 @@ class pbs_iter():
                         self.bs = iter(_pbs_v1.get_resv_static("", sn))
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/init: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/init: Bad object iterator"
+                                       " type %s"
+                                       % (self.type))
                         return None
                     return
 
                 self.con = pbs_connect(self._connect_server)
                 if self.con < 0:
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                   "pbs_iter: Unable to connect to server %s" % (connect_server))
+                                   "pbs_iter: Unable to connect to server %s"
+                                   % (connect_server))
                     return None
 
                 if(self.type == "jobs"):
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                   "pbs_iter: pbs_python mode not supported by NAS local mod")
+                                   "pbs_iter: pbs_python mode not"
+                                   " supported by NAS local mod")
                     pbs_disconnect(self.con)
                     self.con = -1
                     return None
@@ -972,7 +991,8 @@ class pbs_iter():
                     self.bs = pbs_statresv(self.con, None, None, None)
                 else:
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                   "pbs_iter/init: Bad object iterator type %s" % (self.type))
+                                   "pbs_iter/init: Bad object iterator type %s"
+                                   % (self.type))
                     pbs_disconnect(self.con)
                     self.con = -1
                     return None
@@ -996,9 +1016,11 @@ class pbs_iter():
 
                 # argument 1 below tells C function were inside __init__
                 _pbs_v1.iter_nextfunc(
-                    self, 1, pbs_obj_name, pbs_filter1, self.filter2, self.ignore_fin, self.filter_user)
+                    self, 1, pbs_obj_name, pbs_filter1, self.filter2,
+                    self.ignore_fin, self.filter_user)
     else:
-        def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2, connect_server=None):
+        def __init__(self, pbs_obj_name, pbs_filter1,
+                     pbs_filter2, connect_server=None):
 
             self._caller = _pbs_v1.get_python_daemon_name()
             if self._caller == "pbs_python":
@@ -1022,14 +1044,17 @@ class pbs_iter():
                         self.bs = iter(_pbs_v1.get_resv_static("", sn))
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/init: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/init: Bad object "
+                                       "iterator type %s"
+                                       % (self.type))
                         return None
                     return
 
                 self.con = pbs_connect(self._connect_server)
                 if self.con < 0:
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                   "pbs_iter: Unable to connect to server %s" % (connect_server))
+                                   "pbs_iter: Unable to connect to server %s"
+                                   % (connect_server))
                     return None
 
                 if(self.type == "jobs"):
@@ -1042,7 +1067,8 @@ class pbs_iter():
                     self.bs = pbs_statresv(self.con, None, None, None)
                 else:
                     _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                   "pbs_iter/init: Bad object iterator type %s" % (self.type))
+                                   "pbs_iter/init: Bad object iterator type %s"
+                                   % (self.type))
                     pbs_disconnect(self.con)
                     self.con = -1
                     return None
@@ -1071,16 +1097,22 @@ class pbs_iter():
 
                 if _pbs_v1.use_static_data():
                     if(self.type == "jobs"):
-                        return _pbs_v1.get_job_static(next(self.bs), self._connect_server, "")
+                        return _pbs_v1.get_job_static(next(self.bs),
+                                                      self._connect_server, "")
                     elif(self.type == "queues"):
-                        return _pbs_v1.get_queue_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_queue_static(next(self.bs),
+                                                        self._connect_server)
                     elif(self.type == "resvs"):
-                        return _pbs_v1.get_resv_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_resv_static(next(self.bs),
+                                                       self._connect_server)
                     elif(self.type == "vnodes"):
-                        return _pbs_v1.get_vnode_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_vnode_static(next(self.bs),
+                                                        self._connect_server)
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/next: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
                         raise StopIteration
                     return
 
@@ -1093,7 +1125,8 @@ class pbs_iter():
                 if(b):
                     if(self.type == "jobs"):
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/next: pbs_python mode not supported by NAS local mod")
+                                       "pbs_iter/next: pbs_python mode not"
+                                       " supported by NAS local mod")
                         pbs_disconnect(self.con)
                         self.con = -1
                         _pbs_v1.set_python_mode()
@@ -1109,7 +1142,9 @@ class pbs_iter():
                         header_str = "pbs.server().vnode(%s)" % (b.name,)
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/next: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/next: Bad object iterator "
+                                       "type %s"
+                                       % (self.type))
                         pbs_disconnect(self.con)
                         self.con = -1
                         _pbs_v1.set_python_mode()
@@ -1131,7 +1166,8 @@ class pbs_iter():
                                 v = _pbs_v1.str_to_vnode_sharing(v)
 
                         if(self.type == "jobs"):
-                            if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
+                            if n == ATTR_inter or n == ATTR_block or \
+                                    n == ATTR_X11_port:
                                 v = int(pbs_bool(v))
 
                         if(r):
@@ -1153,10 +1189,12 @@ class pbs_iter():
                                 setattr(pr, r, v)
                                 if server_data_fp:
                                     server_data_fp.write(
-                                        "%s.%s[%s]=%s\n" % (header_str, n, r, v))
+                                        "%s.%s[%s]=%s\n" % (header_str, n,
+                                                            r, v))
                             else:
                                 # append value:
-                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
+                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,
+                                # place=pack"
                                 vl = [vo, v]
                                 setattr(pr, r, ",".join(vl))
                                 if server_data_fp:
@@ -1186,7 +1224,10 @@ class pbs_iter():
                 return obj
             else:
                 # argument 0 below tells C function we're inside next
-                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name, self.filter1, self.filter2, self.ignore_fin, self.filter_user)
+                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
+                                             self.filter1,
+                                             self.filter2, self.ignore_fin,
+                                             self.filter_user)
     else:
         def __next__(self):
             if self._caller == "pbs_python":
@@ -1198,16 +1239,23 @@ class pbs_iter():
 
                 if _pbs_v1.use_static_data():
                     if(self.type == "jobs"):
-                        return _pbs_v1.get_job_static(next(self.bs), self._connect_server, "")
+                        return _pbs_v1.get_job_static(next(self.bs),
+                                                      self._connect_server,
+                                                      "")
                     elif(self.type == "queues"):
-                        return _pbs_v1.get_queue_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_queue_static(next(self.bs),
+                                                        self._connect_server)
                     elif(self.type == "resvs"):
-                        return _pbs_v1.get_resv_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_resv_static(next(self.bs),
+                                                       self._connect_server)
                     elif(self.type == "vnodes"):
-                        return _pbs_v1.get_vnode_static(next(self.bs), self._connect_server)
+                        return _pbs_v1.get_vnode_static(next(self.bs),
+                                                        self._connect_server)
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/next: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
                         raise StopIteration
                     return
 
@@ -1232,7 +1280,9 @@ class pbs_iter():
                         header_str = "pbs.server().vnode(%s)" % (b.name,)
                     else:
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                       "pbs_iter/next: Bad object iterator type %s" % (self.type))
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
                         pbs_disconnect(self.con)
                         self.con = -1
                         _pbs_v1.set_python_mode()
@@ -1254,7 +1304,8 @@ class pbs_iter():
                                 v = _pbs_v1.str_to_vnode_sharing(v)
 
                         if(self.type == "jobs"):
-                            if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
+                            if n == ATTR_inter or n == ATTR_block or \
+                                    n == ATTR_X11_port:
                                 v = int(pbs_bool(v))
 
                         if(r):
@@ -1276,10 +1327,12 @@ class pbs_iter():
                                 setattr(pr, r, v)
                                 if server_data_fp:
                                     server_data_fp.write(
-                                        "%s.%s[%s]=%s\n" % (header_str, n, r, v))
+                                        "%s.%s[%s]=%s\n" % (header_str, n, r,
+                                                            v))
                             else:
                                 # append value:
-                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
+                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,
+                                # place=pack"
                                 vl = [vo, v]
                                 setattr(pr, r, ",".join(vl))
                                 if server_data_fp:
@@ -1309,6 +1362,6 @@ class pbs_iter():
                 return obj
             else:
                 # argument 0 below tells C function we're inside next
-                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name, self.filter1, self.filter2)
+                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
+                                             self.filter1, self.filter2)
 #: C(pbs_iter)
-

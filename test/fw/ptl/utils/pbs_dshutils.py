@@ -1658,7 +1658,10 @@ class DshUtils(object):
             cmd = ['ls', '-1', py_path]
             ret = self.run_cmd(hostname, cmd, logerr=False)
             if ret['rc'] == 0:
-                self._h2which[hostname].setdefault(exe, py_path)
+                if hostname not in self._h2which.keys():
+                    self._h2which.setdefault(hostname, {exe: py_path})
+                else:
+                    self._h2which[hostname].setdefault(exe, py_path)
                 return py_path
 
         cmd = ['which', exe]
@@ -1667,7 +1670,7 @@ class DshUtils(object):
         if ((ret['rc'] == 0) and (len(ret['out']) == 1) and
                 os.path.isabs(ret['out'][0].strip())):
             path = ret['out'][0].strip()
-            if hostname not in list(self._h2which.keys()):
+            if hostname not in self._h2which.keys():
                 self._h2which.setdefault(hostname, {exe: path})
             else:
                 self._h2which[hostname].setdefault(exe, path)

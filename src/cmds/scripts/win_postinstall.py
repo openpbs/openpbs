@@ -65,6 +65,7 @@ PBS_START_MOM=${pbs_start_mom}
 PBS_START_SCHED=${pbs_start_sched}
 """)
 
+
 def __log_err(msg):
     sys.stderr.write(msg + '\n')
     sys.stderr.flush()
@@ -93,21 +94,23 @@ def validate_cred(username, password):
     else:
         __log_info('Successfully validated given username and password')
 
-def install_vcredist():	
-    __log_info('Installing Visual C++ redistributable')	
-    cmd = [os.path.join(pbs_exec, 'etc', 'vc_redist.x86.exe')]	
-    cmd += ['/q', '/norestart']	
-    ret = __run_cmd(cmd)	
-    if ret > 0:	
-        if ret == 5100:	
-            msg = 'Newer version of Visual C++ redistributable is already'	
-            msg += 'installed, ignoring this installation'	
-            __log_info(msg)	
-        else:	
-            __log_err('Failed to install Visual C++ redistributable')	
-            sys.exit(6)	
-    else:	
+
+def install_vcredist():
+    __log_info('Installing Visual C++ redistributable')
+    cmd = [os.path.join(pbs_exec, 'etc', 'vc_redist.x86.exe')]
+    cmd += ['/q', '/norestart']
+    ret = __run_cmd(cmd)
+    if ret > 0:
+        if ret == 5100:
+            msg = 'Newer version of Visual C++ redistributable is already'
+            msg += 'installed, ignoring this installation'
+            __log_info(msg)
+        else:
+            __log_err('Failed to install Visual C++ redistributable')
+            sys.exit(6)
+    else:
         __log_info('Successfully installed Visual C++ redistributable')
+
 
 def create_pbs_conf():
     __log_info('Creating PBSPro configuration at %s' % pbs_conf_path)
@@ -171,6 +174,7 @@ def create_home():
         fp.write('\n'.join(pbs_env) + '\n')
     with open(os.path.join(pbs_home, 'mom_priv', 'config'), 'w+') as fp:
         fp.write('$clienthost %s%s' % (server, '\n'))
+
 
 def __svc_helper(svc, username, password):
     svc_name = os.path.basename(svc).replace('.exe', '').upper()
@@ -265,7 +269,8 @@ def main():
         sys.exit(4)
 
     if not ctypes.windll.shell32.IsUserAnAdmin():
-        __log_err('Only user with Administrators privileges can run this script!')
+        __log_err('Only user with Administrators privileges '
+                  'can run this script!')
         sys.exit(255)
     __log_info('Post installation process started')
     __log_info('This script may take a few minutes to run')
@@ -289,7 +294,7 @@ def main():
     validate_cred(username, password)
     create_pbs_conf()
     if installtype == 'execution':
-        create_home()		
+        create_home()
     install_vcredist()
     __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe'), 'mom'])
     cmd = ['mklink', '/H']

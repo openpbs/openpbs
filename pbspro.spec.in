@@ -537,9 +537,8 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{_sysconfdir}/profile.d/ptl.sh
 
 %post %{pbs_ptl}
-installed_pkg="$(pip3 list --format=legacy)"
+installed_pkg="$(pip3 list)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
-declare -a uninstall_pkg
 for i in "${required_pkg[@]}"; do
     if [[ "$installed_pkg" =~ "$i" ]]; then
         continue
@@ -554,7 +553,7 @@ for i in "${required_pkg[@]}"; do
 done
 
 %preun %{pbs_ptl}
-installed_pkg="$(pip3 list --format=legacy)"
+installed_pkg="$(pip3 list)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 for i in "${required_pkg[@]}"; do
     if [[ "$installed_pkg" =~ "$i" ]]; then

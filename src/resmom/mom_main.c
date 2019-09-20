@@ -9577,7 +9577,7 @@ main(int argc, char *argv[])
 
 	path = PySys_GetObject("path");
 #ifdef WIN32
-	snprintf(buf, sizeof(buf), "%s/python/Lib", pbs_conf.pbs_exec_path);
+	snprintf(buf, sizeof(buf), "%s/Lib", pbs_python_home);
 	retval = PyUnicode_FromString(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
@@ -9589,13 +9589,13 @@ main(int argc, char *argv[])
 	py_version[3] = '\0';
 
 	/* list of possible paths to Python modules (mom imports json) */
-	snprintf(buf, sizeof(buf), "%s/python/lib/python%s", pbs_conf.pbs_exec_path, py_version);
+	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python%s/lib-dynload", pbs_conf.pbs_exec_path, py_version);
+	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);

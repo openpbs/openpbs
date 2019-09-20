@@ -119,7 +119,7 @@ class PBSAnonymizer(object):
         """
         key = self.__refactor_key(key)
 
-        if key in list(attr_map.keys()):
+        if key in attr_map.keys():
             anon_key = attr_map[key]
         else:
             anon_key = self.utils.random_str(len(key))
@@ -918,14 +918,14 @@ class PBSAnonymizer(object):
                 title = header[start_index:end_index]
                 title = title.strip()
 
-                if title in list(self.attr_delete.keys()):
+                if title in self.attr_delete.keys():
                     # Need to delete this whole column
                     del_columns.append(col_index)
-                elif title in list(self.attr_val.keys()):
+                elif title in self.attr_val.keys():
                     # Need to anonymize all values in the column
                     anon_columns[col_index] = title
 
-            anon_col_keys = list(anon_columns.keys())
+            anon_col_keys = anon_columns.keys()
             # Go through the file and anonymize/delete columns
             for line in f:
                 start_index = 0

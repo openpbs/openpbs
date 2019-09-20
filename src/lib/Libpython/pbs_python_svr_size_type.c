@@ -610,7 +610,7 @@ static PyNumberMethods pps_size_as_number = {
 	/* nb_negative */                   0,
 	/* nb_positive */        (unaryfunc)0,
 	/* nb_absolute */        (unaryfunc)0,
-	/* nb_bool (new Py3) */	   (inquiry)0,
+	/* nb_bool */	           (inquiry)0,
 	/* nb_invert */                     0,
 	/* nb_lshift */                     0,
 	/* nb_rshift */                     0,
@@ -618,9 +618,7 @@ static PyNumberMethods pps_size_as_number = {
 	/* nb_xor */                        0,
 	/* nb_or */                         0,
 	/* nb_int */                        0,
-	/* The nb_reserved field should always be NULL.
-	 * It was previously called nb_long, and was renamed in Python3*/
-	/* nb_reserved (new Py3) */	    0,
+	/* nb_reserved */	            0,
 	/* nb_float */                      0,
 	/* nb_inplace_add */                0,
 	/* nb_inplace_subtract */           0,
