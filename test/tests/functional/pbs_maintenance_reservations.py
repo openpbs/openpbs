@@ -425,7 +425,7 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'managers': '%s@*' % TEST_USER})
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'scheduler_iteration': 3})
+                            {'scheduler_iteration': 3}, runas=TEST_USER)
 
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
