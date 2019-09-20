@@ -109,6 +109,7 @@ BuildRequires: ncurses-devel
 BuildRequires: perl
 BuildRequires: postgresql-devel >= 9.1
 BuildRequires: postgresql-contrib >= 9.1
+BuildRequires: python3-devel >= 3.5
 BuildRequires: tcl-devel
 BuildRequires: tk-devel
 BuildRequires: swig
@@ -121,9 +122,7 @@ BuildRequires: libXft-devel
 BuildRequires: fontconfig
 BuildRequires: timezone
 BuildRequires: python-xml
-BuildRequires: python3-devel >= 3.5
 %else
-BuildRequires: python36-devel
 BuildRequires: expat-devel
 BuildRequires: openssl-devel
 BuildRequires: libXext
@@ -155,14 +154,13 @@ Requires: bash
 Requires: expat
 Requires: postgresql-server >= 9.1
 Requires: postgresql-contrib >= 9.1
+Requires: python3 >= 3.5
 Requires: tcl
 Requires: tk
 %if %{defined suse_version}
 Requires: smtp_daemon
-Requires: python3 >= 3.5
 %else
 Requires: smtpdaemon
-Requires: python36
 %endif
 Requires: hostname
 Requires: libical
@@ -190,13 +188,9 @@ Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
 Requires: expat
+Requires: python3 >= 3.5
 %if 0%{?suse_version} >= 1500
 Requires: hostname
-%endif
-%if %{defined suse_version}
-Requires: python3 >= 3.5
-%else
-Requires: python36
 %endif
 Autoreq: 1
 
@@ -222,11 +216,7 @@ Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
-%if %{defined suse_version}
 Requires: python3 >= 3.5
-%else
-Requires: python36
-%endif
 Autoreq: 1
 
 %description %{pbs_client}
