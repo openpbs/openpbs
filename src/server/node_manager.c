@@ -193,6 +193,7 @@ struct pbsnode **pbsndlist = NULL;
 static int	 cvt_overflow(size_t, size_t);
 static int	 cvt_realloc(char **, size_t *, char **, size_t *);
 
+static void set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv);
 extern time_t	 time_now;
 extern int	 server_init_type;
 
@@ -1581,8 +1582,8 @@ vnode_available(struct pbsnode *np)
 	rinfp_hd = rinfp;
 
 	/* Process each reservation that this node is associated to */
-	for (presv=rinfp->resvp; rinfp; rinfp = rinfp->next) {
-		if ((presv=rinfp->resvp) == NULL) {
+	for (presv = rinfp->resvp; rinfp; rinfp = rinfp->next) {
+		if ((presv = rinfp->resvp) == NULL) {
 			log_err(PBSE_SYSTEM, __func__, "could not access reservation");
 			continue;
 		}
@@ -1694,7 +1695,7 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 	rinfp_hd = rinfp;
 
 	/* Process each reservation that this node is associated to */
-	for (presv=rinfp->resvp; rinfp; rinfp = rinfp->next) {
+	for (presv = rinfp->resvp; rinfp; rinfp = rinfp->next) {
 
 		if ((presv=rinfp->resvp) == NULL) {
 			log_err(PBSE_SYSTEM, __func__, "could not access reservation");
@@ -1730,7 +1731,7 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 			}
 		}
 
-		/* If resv_retry  attribute isn't set and the reservation is to start
+		/* If resv_retry attribute isn't set and the reservation is to start
 		 * later than reserve_retry_init and reserve_retry_cutoff from now.
 		 * Also handle the case where a standing reservation is currently
 		 * running by setting the retry to be RESV_RETRY_DELAY from the end
@@ -1771,7 +1772,7 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 				/* If reservation is currently running and a node is down then
 				 * set its substate to degraded
 				 */
-				resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
+				(void) resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
 			}
 		} else if (degraded_time > resv_start_time)
 			(void) resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
@@ -1988,7 +1989,7 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 	if ((short_execvnodes_seq = strdup(execvnodes)) == NULL)
 		return -1;
 	execvnodes_seq = unroll_execvnode_seq(short_execvnodes_seq, &tofree);
-	/* If an error occurred during unrolling ,this reservation is ignored */
+	/* If an error occurred during unrolling, this reservation is ignored */
 	if (!(*execvnodes_seq)) {
 		free(short_execvnodes_seq);
 		return -1;
@@ -2006,7 +2007,7 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 	curr_degraded_time = 0;
 
 	/* Search for a match for this node in each occurrence's execvnode */
-	for (i=ridx_adjusted-1, j=1; i < rcount_adjusted; i++, j++) {
+	for (i = ridx_adjusted - 1, j = 1; i < rcount_adjusted; i++, j++) {
 		if (find_vnode_in_execvnode(execvnodes_seq[i], np->nd_name)) {
 			occr_found = 1;
 			if (degraded_op == Set_Degraded_Time) {
@@ -2038,8 +2039,7 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 					curr_degraded_time == 0) {
 					curr_degraded_time = occr_time;
 				}
-			}
-			else
+			} else
 				break;
 		}
 	}
@@ -6946,13 +6946,13 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
  *                              otherwise pobj points to a reservation object
  * @param[in]	execvnod_in  -  original vnode list from scheduler/operator
  * @param[out]	execvnod_out -  original or modified list of vnodes and
- *                              resources, becomves exec_vnode value.
+ *                              resources, becomes exec_vnode value.
  * @param[in]	hoststr      -  original or modified exec_host string, see
  *                              mk_new_host.
  * @param[in]	hoststr2      - original or modified exec_host2 string
  *
  * @param[in]	mk_new_host  -  if True (non-zero), this function is to create
- *                              a new hoststr including new job indicies,
+ *                              a new hoststr including new job indices,
  *                              otherwise return existing exec_host unchanged.
  * @param[in]	svr_init     -  if True, server is recovering jobs.
  *
@@ -7130,10 +7130,13 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
+			if ((pnode->nd_state & (INUSE_DOWN | INUSE_STALE | INUSE_OFFLINE)) && (svr_init == FALSE))
+				if ((objtype == RESC_RESV_OBJECT) && (presv->ri_qs.ri_resvID[0] != PBS_MNTNC_RESV_ID_CHAR) /*&& (presv->ri_qs.ri_state == RESV_UNCONFIRMED)*/)
+					set_resv_for_degrade(pnode, presv);
 
 			if (pjob != NULL) { /* only for jobs do we warn if a mom */
 				/* hook has not been sent */
-				for (i=0; i<pnode->nd_nummoms; ++i) {
+				for (i = 0; i < pnode->nd_nummoms; ++i) {
 
 					if ((pnode->nd_moms[i] != NULL) &&
 						(sync_mom_hookfiles_count(pnode->nd_moms[i]) > 0)) {
@@ -7147,11 +7150,11 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				}
 			}
 
-			(phowl+ndindex)->hw_pnd   = pnode;
-			(phowl+ndindex)->hw_ncpus = 0;
-			(phowl+ndindex)->hw_chunk = setck;
-			(phowl+ndindex)->hw_index = -1;	/* will fill in later */
-			(phowl+ndindex)->hw_htcpu = 0;
+			(phowl + ndindex)->hw_pnd   = pnode;
+			(phowl + ndindex)->hw_ncpus = 0;
+			(phowl + ndindex)->hw_chunk = setck;
+			(phowl + ndindex)->hw_index = -1;	/* will fill in later */
+			(phowl + ndindex)->hw_htcpu = 0;
 			if (setck == 1) {	/* start of new chunk on host */
 				if (mk_new_host) {
 
@@ -7402,7 +7405,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					while (snp->inuse != INUSE_FREE) {
 						if (snp->next)
 							snp = snp->next;
-						else if (svr_init == 1) {
+						else if (svr_init == TRUE) {
 							/*
 							 * Server is in the process of recovering jobs at
 							 * start up. Haven't contacted the Moms yet, so
@@ -7557,7 +7560,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			rp = (struct resvinfo *)malloc(sizeof(struct resvinfo));
 			if (rp) {
 				pbsnode_list_t *tmp_pl;
-				rp->next = (phowl+i)->hw_pnd->nd_resvp;
+				rp->next = (phowl + i)->hw_pnd->nd_resvp;
 				(phowl+i)->hw_pnd->nd_resvp = rp;
 				rp->resvp = presv;
 
@@ -7568,7 +7571,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					return PBSE_SYSTEM;
 				}
 				tmp_pl->next = presv->ri_pbsnode_list;
-				tmp_pl->vnode = (phowl+i)->hw_pnd;
+				tmp_pl->vnode = (phowl + i)->hw_pnd;
 				presv->ri_pbsnode_list = tmp_pl;
 				presv->ri_vnodect++;
 				DBPRT(("%s: Adding %s to %s\n", __func__,
@@ -8411,7 +8414,7 @@ set_old_subUniverse(resc_resv	*presv)
 		return;
 	}
 	/* set the nodes on the reservation */
-	rc = assign_resv_resc(presv, sp);
+	rc = assign_resv_resc(presv, sp, TRUE);
 	if (rc != PBSE_NONE) {
 		sprintf(log_buffer,
 			"problem assigning resource to reservation %d", rc);
@@ -8469,7 +8472,7 @@ degrade_offlined_nodes_reservations(void)
 	int i;
 
 	DBPRT(("%s: entered\n", __func__))
-	for (i=0; i<svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		struct pbsnode *pn;
 		pn = pbsndlist[i];
 		if ((pn->nd_state & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM)) != 0 ||
@@ -8775,4 +8778,58 @@ void
 update_node_rassn(attribute *pexech, enum batch_op op)
 {
 	update_job_node_rassn(NULL, pexech, op);
+}
+
+static void
+set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
+{
+	char *str_time;
+	long degraded_time;
+
+	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0)
+		presv->ri_degraded_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	else
+		find_degraded_occurrence(presv, pnode, Set_Degraded_Time);
+
+	degraded_time = presv->ri_degraded_time;
+
+	if ((degraded_time > (time_now + reserve_retry_cutoff)) &&
+		(degraded_time > (time_now + reserve_retry_init)))
+			set_resv_retry(presv, (time_now + reserve_retry_init));
+
+	if (presv->ri_resv_retry) {
+		str_time = ctime(&presv->ri_resv_retry);
+		if (str_time != NULL) {
+			str_time[strlen(str_time) - 1] = '\0';
+			(void) snprintf(log_buffer, sizeof(log_buffer),
+				"An attempt to reconfirm reservation will be made on %s",
+				str_time);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE,
+				presv->ri_qs.ri_resvID, log_buffer);
+		}
+	}
+	(void) resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
+
+	/* the number of vnodes down could exceed the number of vnodes in
+	 * the reservation only in the case of a standing reservation for
+	 * which the vnodes unavailable are associated to later occurrences
+	 */
+	if (presv->ri_vnodes_down > presv->ri_vnodect) {
+		attribute *rsv_attr = presv->ri_wattr;
+		/* If a standing reservation we print the execvnodes sequence
+		 * string for debugging purposes */
+		if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
+			snprintf(log_buffer, sizeof(log_buffer), " execvnodes sequence %s",
+				rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				presv->ri_qs.ri_resvID, log_buffer);
+
+		}
+		snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; "
+			" unavailable vnodes in reservation: %d",
+			presv->ri_vnodect, presv->ri_vnodes_down);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			presv->ri_qs.ri_resvID, log_buffer);
+	}
+	presv->ri_vnodes_down++;
 }

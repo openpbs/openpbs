@@ -2987,7 +2987,7 @@ Time4resv(struct work_task *ptask)
 		job *pjob;
 
 		/*
-		 *this is really the line  we want once the scheduler
+		 *this is really the line we want once the scheduler
 		 *has the capability to say "begin this reservation"
 		 */
 
@@ -3335,7 +3335,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* The reservation index starts at 1 but the short_xc array at 0. Occurrence 1
 	 * is therefore given by array element 0. */
-	newxc = strdup(short_xc[ridx-rcount_adjusted-1]);
+	newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
 
 	/* clean up helper variables */
 	free(short_xc);
@@ -3384,7 +3384,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
 	 */
-	rc = assign_resv_resc(presv, newxc);
+	rc = assign_resv_resc(presv, newxc, FALSE);
 	free(newxc);
 
 	if (rc != PBSE_NONE) {
@@ -3682,23 +3682,26 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 
 	if (s == RESVSTATE_gen_task_Time4resv) {
 		if (relVal == 0) {
-			if (*pstate == RESV_BEING_ALTERED) {
-				/*
-				 * Altering a reservation's start time after the current time
-				 * moves the reservation into the confirmed state.
-				 */
-				if (presv->ri_qs.ri_stime > time_now) {
-
+			if (*psub == RESV_DEGRADED && *pstate != RESV_DEGRADED) {
+				*pstate = RESV_DEGRADED;
+			} else {
+				if (*pstate == RESV_BEING_ALTERED) {
+					/*
+					* Altering a reservation's start time after the current time
+					* moves the reservation into the confirmed state.
+					*/
+					if (presv->ri_qs.ri_stime > time_now) {
+						*pstate = RESV_CONFIRMED;
+						*psub = RESV_CONFIRMED;
+					} else {
+						/* Altering a reservation after its start time */
+						*pstate = RESV_RUNNING;
+						*psub = RESV_RUNNING;
+					}
+				} else if (presv->ri_qs.ri_etime > time_now) {
 					*pstate = RESV_CONFIRMED;
 					*psub = RESV_CONFIRMED;
-				} else {
-					/* Altering a reservation after its start time */
-					*pstate = RESV_RUNNING;
-					*psub = RESV_RUNNING;
 				}
-			} else if (presv->ri_qs.ri_etime > time_now) {
-				*pstate = RESV_CONFIRMED;
-				*psub = RESV_CONFIRMED;
 			}
 		}
 	} else if (s == RESVSTATE_Time4resv) {
