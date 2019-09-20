@@ -191,13 +191,7 @@ class DshUtils(object):
             found_already = True
         if not self.is_localhost(hostname) and not found_already:
             if pyexec is None:
-                pbs_conf = self.parse_pbs_config(hostname)
-                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-                if os.path.exists(py_path):
-                    pyexec = py_path
-                else:
-                    pyexec = self.which(hostname, 'python3',
-                                        level=logging.DEBUG2)
+                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
             cmd = [pyexec, '-c', '"import sys; print(sys.platform)"']
             ret = self.run_cmd(hostname, cmd=cmd)
             if ret['rc'] != 0 or len(ret['out']) == 0:
@@ -229,13 +223,7 @@ class DshUtils(object):
             return self._h2pu[hostname]
         if not self.is_localhost(hostname):
             if pyexec is None:
-                pbs_conf = self.parse_pbs_config(hostname)
-                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-                if os.path.exists(py_path):
-                    pyexec = py_path
-                else:
-                    pyexec = self.which(hostname, 'python3',
-                                        level=logging.DEBUG2)
+                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
             _cmdstr = '"import platform;'
             _cmdstr += 'print(\' \'.join(platform.uname()))"'
             cmd = [pyexec, '-c', _cmdstr]
@@ -270,12 +258,7 @@ class DshUtils(object):
             return self._h2osinfo[hostname]
 
         if pyexec is None:
-            pbs_conf = self.parse_pbs_config(hostname)
-            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-            if os.path.exists(py_path):
-                pyexec = py_path
-            else:
-                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+            pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
 
         cmd = [pyexec, '-c',
                '"import platform; print(platform.platform())"']
@@ -395,10 +378,12 @@ class DshUtils(object):
         else:
             pc = ('"import os;print([False, os.environ[\'PBS_CONF_FILE\']]'
                   '[\'PBS_CONF_FILE\' in os.environ])"')
-            if os.path.exists(dflt_python):
+            cmd = ['ls', '-1', dflt_python]
+            ret = self.run_cmd(hostname, cmd, logerr=False)
+            if ret['rc'] == 0:
                 pyexec = dflt_python
             else:
-                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
+                pyexec = 'python3'
             cmd = [pyexec, '-c', pc]
             ret = self.run_cmd(hostname, cmd, logerr=False)
             if ((ret['rc'] != 0) and (len(ret['out']) > 0) and
@@ -860,12 +845,7 @@ class DshUtils(object):
         if self.is_localhost(hostname):
             self._tempdir[hostname] = tempfile.gettempdir()
         else:
-            pbs_conf = self.parse_pbs_config(hostname)
-            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-            if os.path.exists(py_path):
-                pyexec = py_path
-            else:
-                pyexec = 'python3'
+            pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
             cmd = [pyexec, '-c',
                    '"import tempfile; print(tempfile.gettempdir())"']
             ret = self.run_cmd(hostname, cmd, level=logging.DEBUG)
@@ -1151,13 +1131,8 @@ class DshUtils(object):
                 # to avoid a file copy as root, we copy it as current user
                 # and move it remotely to the desired path/name.
                 # First, get a remote temporary filename
-                pbs_conf = self.parse_pbs_config(targethost)
-                py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-                if os.path.exists(py_path):
-                    pyexec = py_path
-                else:
-                    pyexec = self.which(hostname, 'python3',
-                                        level=logging.DEBUG2)
+                pyexec = self.which(targethost, 'python3',
+                                    level=logging.DEBUG2)
                 cmd = [pyexec, '-c',
                        '"import tempfile;print(' +
                        'tempfile.mkstemp(\'PtlPbstmpcopy\')[1])"']
@@ -1441,13 +1416,7 @@ class DshUtils(object):
             py_cmd = 'import os; print(os.path.getmtime(\'%s\'))' % (path)
             if not self.is_localhost(hostname):
                 py_cmd = '\"' + py_cmd + '\"'
-            pbs_conf = self.parse_pbs_config(hostname)
-            py_path = pbs_conf['PBS_EXEC'] + '/python/bin/python'
-            if os.path.exists(py_path):
-                pyexec = py_path
-            else:
-                pyexec = self.which(hostname, 'python3',
-                                    level=logging.DEBUG2)
+            pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
             cmd = [pyexec, '-c', py_cmd]
             ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, runas=runas,
                                logerr=False, level=level)
@@ -1679,6 +1648,18 @@ class DshUtils(object):
             else:
                 self._h2which[hostname].setdefault(exe, _exe)
             return _exe
+
+        # Changes specific to python
+        # Use PBS Python if available before looking for system Python
+        if exe is 'python3':
+            pbs_conf = self.parse_pbs_config(hostname)
+            py_path = os.path.join(pbs_conf['PBS_EXEC'], 'python',
+                                   'bin', 'python')
+            cmd = ['ls', '-1', py_path]
+            ret = self.run_cmd(hostname, cmd, logerr=False)
+            if ret['rc'] == 0:
+                self._h2which[hostname].setdefault(exe, py_path)
+                return py_path
 
         cmd = ['which', exe]
         ret = self.run_cmd(hostname, cmd=cmd, logerr=False,
