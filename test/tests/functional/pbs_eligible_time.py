@@ -125,7 +125,7 @@ class TestEligibleTime(TestFunctional):
         m2 = m1 + " for %d secs, " % eligible_time
         # Format timedelta object as it does not print a preceding 0 for
         # hours in HH:MM:SS
-        m2 += "total eligible_time={:0>8}".format(
+        m2 += "total eligible_time={!s:0>8}".format(
               datetime.timedelta(seconds=eligible_time))
         try:
             self.server.log_match(m2)

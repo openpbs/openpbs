@@ -3191,12 +3191,17 @@ main(int argc, char *argv[], char *envp[])
 
 		set_alarm(hook_alarm, pbs_python_set_interrupt);
 		if (hook_script[0] == '\0') {
-			char *tmp_argv[2];
+			wchar_t *tmp_argv[2];
 
-			tmp_argv[0] = argv[0];
+			tmp_argv[0] = Py_DecodeLocale(argv[0], NULL);
+			if (tmp_argv[0] == NULL) {
+				fprintf(stderr, "Fatal error: cannot decode script name\n");
+				exit(2);
+			}
 			tmp_argv[1] = NULL;
 
 			rc=Py_Main(1, tmp_argv);
+			PyMem_RawFree(tmp_argv[0]);
 		} else {
 			hook_perf_stat_start(perf_label, HOOK_PERF_RUN_CODE, 0);
 			rc=pbs_python_run_code_in_namespace(&svr_interp_data,

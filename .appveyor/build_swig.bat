@@ -50,91 +50,29 @@ if exist "%BINARIESDIR%\swig" (
     exit /b 0
 )
 
-if exist "%BINARIESDIR%\python\python.exe" (
-    echo "Found Python installation at %BINARIESDIR%\python, using it to add Python support in swig"
-    set PYTHON_INSTALL_DIR="%BINARIESDIR_M%/python/python.exe"
-) else if exist "C:\Python27\python.exe" (
-    echo "Found Python installation at C:\Python27, using it to add Python support in swig"
-    set PYTHON_INSTALL_DIR=/c/Python27/python.exe
-) else (
-    echo "Could not find Python installation, required to add Python support in swig"
-    exit /b 1
-)
-
-if not exist "%BINARIESDIR%\swig-rel-%SWIG_VERSION%.zip" (
-    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\swig-rel-%SWIG_VERSION%.zip" https://github.com/swig/swig/archive/rel-%SWIG_VERSION%.zip
-    if not exist "%BINARIESDIR%\swig-rel-%SWIG_VERSION%.zip" (
+if not exist "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" http://prdownloads.sourceforge.net/swig/swigwin-%SWIG_VERSION%.zip
+    if not exist "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" (
         echo "Failed to download swig"
         exit /b 1
     )
 )
-REM CCCL is Unix cc compiler to Microsoft's cl compiler wrapper
-REM and it is require to generate native swig windows binary which doesn't depend on any of MinGW DLLs
-if not exist "%BINARIESDIR%\cccl-1.0.zip" (
-    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\cccl-1.0.zip" https://github.com/swig/cccl/archive/cccl-1.0.zip
-    if not exist "%BINARIESDIR%\cccl-1.0.zip" (
-        echo "Failed to download cccl"
-        exit /b 1
-    )
-)
 
-2>nul rd /S /Q "%BINARIESDIR%\cccl-cccl-1.0"
-"%UNZIP_BIN%" -q "%BINARIESDIR%\cccl-1.0.zip"
+2>nul rd /S /Q "%BINARIESDIR%\swigwin-%SWIG_VERSION%"
+7z x -y "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BINARIESDIR%\cccl-1.0.zip"
+    echo "Failed to extract %BINARIESDIR%\swigwin-%SWIG_VERSION%.zip"
     exit /b 1
 )
-if not exist "%BINARIESDIR%\cccl-cccl-1.0" (
-    echo "Could not find %BINARIESDIR%\cccl-cccl-1.0"
-    exit /b 1
-)
-if not exist "%BINARIESDIR%\cccl-cccl-1.0\cccl" (
-    echo "Could not find %BINARIESDIR%\cccl-cccl-1.0\cccl"
-    exit /b 1
-)
-
-2>nul rd /S /Q "%BINARIESDIR%\swig-rel-%SWIG_VERSION%"
-"%UNZIP_BIN%" -q "%BINARIESDIR%\swig-rel-%SWIG_VERSION%.zip"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BINARIESDIR%\swig-rel-%SWIG_VERSION%.zip"
-    exit /b 1
-)
-if not exist "%BINARIESDIR%\swig-rel-%SWIG_VERSION%" (
-    echo "Could not find %BINARIESDIR%\swig-rel-%SWIG_VERSION%"
-    exit /b 1
-)
-
-call "%VS90COMNTOOLS%\vsvars32.bat
-
-"%MSYSDIR%\bin\bash" --login -i -c "cp -f \"$BINARIESDIR_M/cccl-cccl-1.0/cccl\" /usr/bin/cccl && chmod +x /usr/bin/cccl"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to copy cccl from %BINARIESDIR%\cccl-cccl-1.0\cccl to /usr/bin/cccl in MSYS bash"
-    exit /b 1
-)
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/swig-rel-$SWIG_VERSION\" && ./autogen.sh"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to generate configure for swig"
-    exit /b 1
-)
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/swig-rel-$SWIG_VERSION\" && ./configure CC=cccl CXX=cccl CFLAGS='-O2' CXXFLAGS='-O2' LDFLAGS='--cccl-link /LTCG' --prefix=\"$BINARIESDIR_M/swig\" --without-alllang --with-python=\"$PYTHON_INSTALL_DIR\" --disable-dependency-tracking --disable-ccache --without-pcre"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to generate makefiles for swig"
-    exit /b 1
-)
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/swig-rel-$SWIG_VERSION\" && make"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to compile swig"
-    exit /b 1
-)
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/swig-rel-$SWIG_VERSION\" && make install"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to install swig"
+if not exist "%BINARIESDIR%\swigwin-%SWIG_VERSION%" (
+    echo "Could not find %BINARIESDIR%\swigwin-%SWIG_VERSION%"
     exit /b 1
 )
 
 cd "%BINARIESDIR%"
-2>nul rd /S /Q "%BINARIESDIR%\cccl-cccl-1.0"
-2>nul rd /S /Q "%BINARIESDIR%\swig-rel-%SWIG_VERSION%"
-
+ren "swigwin-%SWIG_VERSION%" swig
+if not %ERRORLEVEL% == 0 (
+    echo "Failed to rename swigwin-%SWIG_VERSION% to swig"
+    exit /b 1
+)
 exit /b 0
-

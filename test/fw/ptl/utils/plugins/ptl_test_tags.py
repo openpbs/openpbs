@@ -39,6 +39,7 @@ import sys
 import logging
 import unittest
 from nose.plugins.base import Plugin
+import collections
 
 log = logging.getLogger('nose.plugins.PTLTestTags')
 
@@ -55,7 +56,7 @@ def tags(*args, **kwargs):
             tagobj.append(name)
             PTLTestTags.tags_list.append(name)
             setattr(obj, name, True)
-        for name, value in kwargs.iteritems():
+        for name, value in kwargs.items():
             tagobj.append('%s=%s' % (name, value))
             PTLTestTags.tags_list.append(name)
             setattr(obj, name, value)
@@ -104,16 +105,16 @@ class FakeRunner(object):
 
     def run(self, test):
         if self.list_tags:
-            print '\n'.join(sorted(set(self.tags_list)))
+            print(('\n'.join(sorted(set(self.tags_list)))))
             sys.exit(0)
         suites = sorted(set(self.matched.keys()))
         if not self.verbose:
-            print '\n'.join(suites)
+            print(('\n'.join(suites)))
         else:
             for k in suites:
                 v = sorted(set(self.matched[k]))
                 for _v in v:
-                    print k + '.' + _v
+                    print((k + '.' + _v))
         sys.exit(0)
 
 
@@ -123,7 +124,7 @@ class PTLTestTags(Plugin):
     Load test cases from given parameter
     """
     name = 'PTLTestTags'
-    score = sys.maxint - 3
+    score = sys.maxsize - 3
     logger = logging.getLogger(__name__)
     tags_list = []
 
@@ -198,7 +199,7 @@ class PTLTestTags(Plugin):
             group_matched = True
             for key, value in group:
                 tag_value = get_tag_value(method, cls, key)
-                if callable(value):
+                if isinstance(value, collections.Callable):
                     if not value(key, method, cls):
                         group_matched = False
                         break
@@ -258,7 +259,7 @@ class PTLTestTags(Plugin):
         Accept the method if its tags match.
         """
         try:
-            cls = method.im_class
+            cls = method.__self__.__class__
         except AttributeError:
             return False
         if not method.__name__.startswith(self._test_marker):

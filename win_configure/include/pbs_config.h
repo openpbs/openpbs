@@ -144,9 +144,6 @@ typedef	int		pid_t;
 /* The number of bytes in a unsigned short.  */
 #define SIZEOF_UNSIGNED_SHORT 2
 
-/* PBS specific: the seperator for Tcl attribute parsing */
-#define TCL_ATRSEP "."
-
 /* PBS specific: The pathname of the temporary directory for mom */
 #define TMP_DIR "C:\\WINNT\\TEMP"
 
@@ -157,8 +154,6 @@ typedef	int		pid_t;
 #define HAVE_ATEXIT 1
 
 #define H_ERRNO_DECLARED 1
-
-#define TCL_QSTAT 1
 
 /* PBS specific: Define to the path of the qstat init file */
 #define QSTATRC_PATH "C:\\Program Files\\PBS Pro\\qstatrc"

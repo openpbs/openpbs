@@ -64,10 +64,7 @@ from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
 
@@ -173,6 +170,7 @@ class _PtlTestResult(unittest.TestResult):
         if self.handler not in ptl_logger.handlers:
             ptl_logger.addHandler(self.handler)
         self.handler.buffer.truncate(0)
+        self.handler.buffer.seek(0)
         unittest.TestResult.startTest(self, test)
         test.start_time = datetime.datetime.now()
         if self.showAll:
@@ -496,7 +494,7 @@ class PTLTestRunner(Plugin):
     PTL Test Runner Plugin
     """
     name = 'PTLTestRunner'
-    score = sys.maxint - 4
+    score = sys.maxsize - 4
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -538,7 +536,7 @@ class PTLTestRunner(Plugin):
                     continue
                 else:
                     _nparams.append(_params_from_file[l])
-            _f = ','.join(map(lambda l: l.strip('\r\n'), _nparams))
+            _f = ','.join([l.strip('\r\n') for l in _nparams])
             if testparam is not None:
                 testparam += ',' + _f
             else:
@@ -598,13 +596,11 @@ class PTLTestRunner(Plugin):
                                    'conf',
                                    {}).get('default-testcase-timeout',
                                            MINIMUM_TESTCASE_TIMEOUT))
-        tc_timeout = getattr(getattr(_test,
-                                     getattr(_test,
-                                             '_testMethodName',
-                                             ''),
-                                     None),
-                             TIMEOUT_KEY,
-                             0)
+        tc_timeout = int(getattr(getattr(_test,
+                                 getattr(_test, '_testMethodName', ''),
+                                 None),
+                         TIMEOUT_KEY,
+                         0))
         return max([dflt_timeout, tc_timeout])
 
     def __set_test_end_data(self, test, err=None):
@@ -687,7 +683,7 @@ class PTLTestRunner(Plugin):
             method = getattr(test.test, test_name, None)
         if method is not None:
             tc_requirements = getattr(method, REQUIREMENTS_KEY, {})
-            cls = method.im_class
+            cls = method.__self__.__class__
             ts_requirements = getattr(cls, REQUIREMENTS_KEY, {})
         if not tc_requirements:
             if not ts_requirements:

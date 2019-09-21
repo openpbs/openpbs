@@ -85,7 +85,7 @@ class TestPBSConfig(TestFunctional):
         outdir = pwd.getpwnam(self.du.get_current_user()).pw_dir
         snap_cmd = [pbs_snapshot_path, "-o " + outdir, "--with-sudo"]
         ret = self.du.run_cmd(cmd=snap_cmd, logerr=False, as_script=True)
-        self.assertEquals(ret["rc"], 0, "pbs_snapshot command failed")
+        self.assertEqual(ret["rc"], 0, "pbs_snapshot command failed")
         snap_out = ret['out'][0]
         output_tar = snap_out.split(":")[1]
         output_tar = output_tar.strip()
@@ -119,7 +119,7 @@ class TestPBSConfig(TestFunctional):
         self.server.expect(QUEUE, {"Priority": 200}, id="expressq")
         self.server.expect(SCHED, {"preempt_order": "R"}, id="default")
         self.scheds["default"].parse_sched_config()
-        self.assertEquals(
+        self.assertEqual(
             self.scheds["default"].sched_config["smp_cluster_dist"],
             "round_robin",
             "pbs_config didn't load sched_config correctly")

@@ -77,6 +77,7 @@
  *
  */
 
+#include <Python.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -95,7 +96,7 @@
 #include "cmds.h"
 #include "pbs_version.h"
 #include "pbs_ifl.h"
-
+#include "glob.h"
 
 
 #ifndef	S_ISLNK
@@ -467,28 +468,23 @@ static char exlib[][80] = {
 	/* 18 */ "lib/python",
 	/* 19 */ "lib/python/altair",
 	/* 20 */ "lib/python/altair/pbs",
-	/* 21 */ "lib/python/altair/pbs/__init__.pyc",
-	/* 22 */ "lib/python/altair/pbs/__init__.py",
-	/* 23 */ "lib/python/altair/pbs/v1",
-	/* 24 */ "lib/python/altair/pbs/v1/__init__.pyc",
-	/* 25 */ "lib/python/altair/pbs/v1/__init__.py",
-	/* 26 */ "lib/python/altair/pbs/v1/_export_types.py",
-	/* 27 */ "lib/python/altair/pbs/v1/__init__.pyo",
-	/* 28 */ "lib/python/altair/pbs/v1/_attr_types.py",
-	/* 29 */ "lib/python/altair/pbs/v1/_attr_types.pyc",
-	/* 30 */ "lib/python/altair/pbs/v1/_attr_types.pyo",
+	/* 21 */ "lib/python/altair/pbs/__pycache__",
+	/* 22 */ "lib/python/altair/pbs/__pycache__/__init__.cpython-3?.pyc",
+	/* 23 */ "lib/python/altair/pbs/__init__.py",
+	/* 24 */ "lib/python/altair/pbs/v1",
+	/* 25 */ "lib/python/altair/pbs/v1/__pycache__",
+	/* 26 */ "lib/python/altair/pbs/v1/__pycache__/__init__.cpython-3?.pyc",
+	/* 27 */ "lib/python/altair/pbs/v1/__init__.py",
+	/* 28 */ "lib/python/altair/pbs/v1/_export_types.py",
+	/* 29 */ "lib/python/altair/pbs/v1/_attr_types.py",
+	/* 30 */ "lib/python/altair/pbs/v1/__pycache__/_attr_types.cpython-3?.pyc",
 	/* 31 */ "lib/python/altair/pbs/v1/_base_types.py",
-	/* 32 */ "lib/python/altair/pbs/v1/_base_types.pyc",
-	/* 33 */ "lib/python/altair/pbs/v1/_base_types.pyo",
-	/* 34 */ "lib/python/altair/pbs/v1/_exc_types.py",
-	/* 35 */ "lib/python/altair/pbs/v1/_exc_types.pyc",
-	/* 36 */ "lib/python/altair/pbs/v1/_exc_types.pyo",
-	/* 37 */ "lib/python/altair/pbs/v1/_export_types.pyo",
-	/* 38 */ "lib/python/altair/pbs/v1/_export_types.pyc",
-	/* 39 */ "lib/python/altair/pbs/v1/_svr_types.pyo",
-	/* 40 */ "lib/python/altair/pbs/v1/_svr_types.py",
-	/* 41 */ "lib/python/altair/pbs/v1/_svr_types.pyc",
-	/* 42 */ "lib/python/altair/pbs/__init__.pyo"
+	/* 32 */ "lib/python/altair/pbs/v1/__pycache__/_base_types.cpython-3?.pyc",
+	/* 33 */ "lib/python/altair/pbs/v1/_exc_types.py",
+	/* 34 */ "lib/python/altair/pbs/v1/__pycache__/_exc_types.cpython-3?.pyc",
+	/* 35 */ "lib/python/altair/pbs/v1/__pycache__/_export_types.cpython-3?.pyc",
+	/* 36 */ "lib/python/altair/pbs/v1/_svr_types.py",
+	/* 37 */ "lib/python/altair/pbs/v1/__pycache__/_svr_types.cpython-3?.pyc",
 };
 
 #if 0
@@ -880,28 +876,30 @@ static MPUG	lib_mpugs[] = {
 	{1, 6, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[18], NULL},  /* lib/python */
 	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[19], NULL},  /* lib/python/altair */
 	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[20], NULL},  /* lib/python/altair/pbs */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[21], NULL},  /* lib/python/altair/pbs/__init__.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[22], NULL},  /* lib/python/altair/pbs/__init__.py */
-	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[23], NULL},  /* lib/python/altair/pbs/v1 */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[24], NULL},  /* lib/python/altair/pbs/v1/__init__.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[25], NULL},  /* lib/python/altair/pbs/v1/__init__.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[26], NULL},  /* lib/python/altair/pbs/v1/_export_types.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[27], NULL},  /* lib/python/altair/pbs/v1/__init__.pyo */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[28], NULL},  /* lib/python/altair/pbs/v1/_attr_types.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[29], NULL},  /* lib/python/altair/pbs/v1/_attr_types.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[30], NULL},  /* lib/python/altair/pbs/v1/_attr_types.pyo */
+	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[21], NULL},  /* lib/python/altair/pbs/__pycache__ */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[22], NULL},  /* lib/python/altair/pbs/__pycache__
+	/__init__.cpython-3?.pyc */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[23], NULL},  /* lib/python/altair/pbs/__init__.py */
+	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[24], NULL},  /* lib/python/altair/pbs/v1 */
+    {1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[25], NULL},  /* lib/python/altair/pbs/v1/__pycache__ */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[26], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/__init__.cpython-3?.pyc */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[27], NULL},  /* lib/python/altair/pbs/v1/__init__.py */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[28], NULL},  /* lib/python/altair/pbs/v1/_export_types.py */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[29], NULL},  /* lib/python/altair/pbs/v1/_attr_types.py */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[30], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/_attr_types.cpython-3?.pyc */
 	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[31], NULL},  /* lib/python/altair/pbs/v1/_base_types.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[32], NULL},  /* lib/python/altair/pbs/v1/_base_types.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[33], NULL},  /* lib/python/altair/pbs/v1/_base_types.pyo */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[34], NULL},  /* lib/python/altair/pbs/v1/_exc_types.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[35], NULL},  /* lib/python/altair/pbs/v1/_exc_types.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[36], NULL},  /* lib/python/altair/pbs/v1/_exc_types.pyo */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[37], NULL},  /* lib/python/altair/pbs/v1/_export_types.pyo */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[38], NULL},  /* lib/python/altair/pbs/v1/_export_types.pyc */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[39], NULL},  /* lib/python/altair/pbs/v1/_svr_types.pyo */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[40], NULL},  /* lib/python/altair/pbs/v1/_svr_types.py */
-	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[41], NULL},  /* lib/python/altair/pbs/v1/_svr_types.pyc */
-	{1, 0, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[42], NULL},  /* lib/python/altair/pbs/__init__.pyo */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[32], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/_base_types.cpython-3?.pyc */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[33], NULL},  /* lib/python/altair/pbs/v1/_exc_types.py */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[34], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/_exc_types.cpython-3?.pyc */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[35], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/_export_types.cpython-3?pyc */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[36], NULL},  /* lib/python/altair/pbs/v1/_svr_types.py */
+	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[37], NULL},  /* lib/python/altair/pbs/v1/__pycache__
+	/_svr_types.cpython-3?.pyc */
 };
 
 static MPUG	man_mpugs[] = {
@@ -1570,7 +1568,7 @@ print_infrastruct(struct infrastruct *pinf)
 	int	i, j;
 	int	tflag;
 	MPUG	*pmpug;
-
+	
 	tflag = 0;
 	for (i=0; i<PBS_last; ++i) {
 
@@ -1606,18 +1604,15 @@ print_infrastruct(struct infrastruct *pinf)
 		fprintf(stdout, "\nHierarchy %s:\n", home_mpug_set[i]);
 
 		for (j=0; j<home_sizes[i]; ++j, ++pmpug) {
-
 			if (pmpug->path == NULL || (pmpug->notReq & notbits))
 				continue;
-
-			fprintf(stdout, "%-40s(%s, %s)\n", pmpug->path, perm_string((mode_t)pmpug->req_modes), owner_string(NULL, pmpug, 0));
+                        fprintf(stdout, "%-70s(%s, %s)\n", pmpug->path, perm_string((mode_t)pmpug->req_modes), owner_string(NULL, pmpug, 0));
 		}
 	}
 
 	tflag = 0;
 	for (i=0; i<EXEC_last; ++i) {
-
-		if ((pmpug = pinf->exec[i]) == NULL || (pmpug->notReq & notbits))
+                if ((pmpug = pinf->exec[i]) == NULL || (pmpug->notReq & notbits))
 			continue;
 
 		if (!tflag++)
@@ -1629,8 +1624,7 @@ print_infrastruct(struct infrastruct *pinf)
 
 			if (pmpug->path == NULL || (pmpug->notReq & notbits))
 				continue;
-
-			fprintf(stdout, "%-40s(%s, %s)\n", pmpug->path, perm_string((mode_t)pmpug->req_modes), owner_string(NULL, pmpug, 0));
+			fprintf(stdout, "%-70s(%s, %s)\n", pmpug->path, perm_string((mode_t)pmpug->req_modes), owner_string(NULL, pmpug, 0));
 		}
 	}
 }
@@ -2079,8 +2073,8 @@ get_realpath_values(struct infrastruct *pinf)
 	MPUG *pmpug;
 	int  good_prime[PBS_last];
 	char *msgbuf;
-
-	/*
+	const char *pycptr;
+        /*
 	 * First try and resolve to a real path the MPUG path
 	 * data belonging to *pinf's "pri" member
 	 */
@@ -2243,7 +2237,7 @@ get_realpath_values(struct infrastruct *pinf)
 
 			if ((pmpug = pinf->exec[i]) == NULL)
 				continue;
-
+			
 			for (j = 0; j < exec_sizes[i]; ++j) {
 				if (pmpug[j].path) {
 
@@ -2253,13 +2247,19 @@ get_realpath_values(struct infrastruct *pinf)
 						continue;
 
 					strcpy(endhead, pmpug[j].path);
-
 					if ((real = realpath(path, NULL)) != NULL) {
 						pmpug[j].realpath = strdup(real);
 						free(real);
+					} else if ((pycptr = strstr(path, ".pyc")) != NULL){
+						glob_t pycbuf;
+						glob(path, 0, NULL, &pycbuf);
+						if (pycbuf.gl_pathc == 1){
+							pmpug[j].realpath = strdup(pycbuf.gl_pathv[0]);
+							pmpug[j].path = strdup((pycbuf.gl_pathv[0] + strlen(pinf->pri.pbs_mpug[PBS_exec].path) + strlen(demarc)));
+						}
+						globfree(&pycbuf);
 					} else if ((pmpug[j].notReq & notbits) == 0) {
-
-						if (errno == ENOENT)
+                        			if (errno == ENOENT)
 							pbs_asprintf(&msgbuf, "%s, %s\n",
 								path, strerror(errno));
 						else
@@ -2273,7 +2273,6 @@ get_realpath_values(struct infrastruct *pinf)
 			}
 		}
 	}
-
 	return (0);
 }
 
@@ -2392,14 +2391,13 @@ inspect_dir_entries(struct infrastruct *pinf)
 
 	for (i=0; i<EXEC_last; ++i) {
 
-		if ((pmpug = pinf->exec[i]) == NULL)
+                if ((pmpug = pinf->exec[i]) == NULL)
 			continue;
 		tsz = exec_sizes[i];
 
 		for (j=0; j<exec_sizes[i]; ++j) {
 
 			if ((pmpug[j].path)) {
-
 				/*
 				 * Refer to block comments in previous code block
 				 * for explanation of what this code block does
@@ -2434,55 +2432,66 @@ which_suffixset(MPUG *pmpug)
 	static char vld_hooks[] = ".HK,.PY";
 	static char vld_resv[] = ".RB,.RBD";
 	static char vld_tcltk[] = ".h,8.3,8.3.a,.sh";
-	static char vld_python[] = ".py,.pyc,.pyo,.so";
-
+	static char vld_python[] = ".py,.pyc,.so";
+	char buf[MAXPATHLEN];
+	char py_version[4];
+	/* Get version of the Python interpreter */
+	strncpy(py_version, Py_GetVersion(), 3);
+	py_version[4] = '\0';
 
 	if (pmpug->path == NULL)
 		return NULL;
-	else if (strcmp("server_priv/jobs", pmpug->path) == 0)
+	if (strcmp("server_priv/jobs", pmpug->path) == 0)
 		return (vld_job);
-	else if (strcmp("server_priv/users", pmpug->path) == 0)
+	if (strcmp("server_priv/users", pmpug->path) == 0)
 		return (vld_job);
-	else if (strcmp("server_priv/hooks", pmpug->path) == 0)
+	if (strcmp("server_priv/hooks", pmpug->path) == 0)
 		return (vld_hooks);
-	else if (strcmp("mom_priv/jobs", pmpug->path) == 0)
+	if (strcmp("mom_priv/jobs", pmpug->path) == 0)
 		return (vld_job);
-	else if (strcmp("undelivered", pmpug->path) == 0)
+	if (strcmp("undelivered", pmpug->path) == 0)
 		return (vld_job);
-	else if (strcmp("spool", pmpug->path) == 0)
+	if (strcmp("spool", pmpug->path) == 0)
 		return (vld_job);
-	else if (strcmp("tcltk/bin", pmpug->path) == 0)
+	if (strcmp("tcltk/bin", pmpug->path) == 0)
 		return (vld_tcltk);
-	else if (strcmp("tcltk/include", pmpug->path) == 0)
+	if (strcmp("tcltk/include", pmpug->path) == 0)
 		return (vld_tcltk);
-	else if (strcmp("tcltk/lib", pmpug->path) == 0)
+	if (strcmp("tcltk/lib", pmpug->path) == 0)
 		return (vld_tcltk);
-	else if (strcmp("lib/python", pmpug->path) == 0)
+	if (strcmp("lib/python", pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/altair", pmpug->path) == 0)
+	if (strcmp("lib/python/altair", pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/altair/pbs", pmpug->path) == 0)
+	if (strcmp("lib/python/altair/pbs", pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/altair/pbs/v1", pmpug->path) == 0)
+	if (strcmp("lib/python/altair/pbs/v1", pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/logging", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/logging", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/shared", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/shared", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/xml", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/xml", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/xml/dom", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/xml/dom", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/xml/etree", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/xml/etree", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/xml/parsers", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/xml/parsers", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else if (strcmp("lib/python/python2.5/xml/sax", pmpug->path) == 0)
+	snprintf(buf, sizeof(buf), "lib/python/python%s/xml/sax", py_version);
+	if (strcmp(buf, pmpug->path) == 0)
 		return (vld_python);
-	else
-		return NULL;
+	return NULL;
 }
 #endif /* 0 */
 
@@ -2794,22 +2803,18 @@ check_paths(struct infrastruct *pinf)
 	char	*realpath;
 
 #ifndef	_SX
-	for (i=0; i<PBS_last; ++i) {
-
+        for (i=0; i<PBS_last; ++i) {
 		msg_table_set_defaults(pinf, SRC_pri, MSG_po);
-
-		if ((realpath = pinf->pri.pbs_mpug[i].realpath))
+                if ((realpath = pinf->pri.pbs_mpug[i].realpath))
 			check_owner_modes(realpath, &pinf->pri.pbs_mpug[i], 0);
 	}
 #endif
-
-	for (i=0; i<PH_last; ++i) {
-
+        for (i=0; i<PH_last; ++i) {    
 		msg_table_set_defaults(pinf, SRC_home, MSG_po);
 
 		if ((pmpug = pinf->home[i]) == NULL)
 			continue;
-
+        
 		for (j=0; j<home_sizes[i]; ++j) {
 			if ((realpath = pmpug[j].realpath))
 				check_owner_modes(realpath, pmpug + j, 0);
@@ -2826,12 +2831,10 @@ check_paths(struct infrastruct *pinf)
 		for (j=0; j<exec_sizes[i]; ++j) {
 			if ((realpath = pmpug[j].realpath) &&
 				!(pmpug[j].notReq & notbits)) {
-
-				check_owner_modes(realpath, pmpug + j, 0);
+                                check_owner_modes(realpath, pmpug + j, 0);
 			}
 		}
 	}
-
 	return 0;
 }
 /**
@@ -2864,7 +2867,6 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 	struct stat sbuf;
 	static int  cnt_recursive = 0;
 
-
 	/*
 	 * if full path check is required, see if the path contains
 	 * a sub-path and if it does, call check_owner_modes on that
@@ -2873,7 +2875,6 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 
 	if (p_mpug->chkfull &&
 		(dp = strrchr(path, DEMARC)) && (dp != path)) {
-
 		/* temporarily overwrite demarc */
 
 		*dp = '\0';
@@ -2884,6 +2885,7 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 		/* replace demarc value and stat this component of real path */
 
 		*dp = DEMARC;
+		
 	}
 
 	/*
@@ -2910,7 +2912,6 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 	if (! lstat(path, &sbuf)) {
 
 		/* successful on the lstat */
-
 		rc = mbits_and_owner(&sbuf, p_mpug, sys);
 		if (rc) {
 			snprintf(msg, sizeof(msg), "\n%s", path);
@@ -2940,7 +2941,6 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 
 	if (cnt_recursive > 0)
 		--cnt_recursive;
-
 	return (rc);
 }
 
@@ -3462,7 +3462,7 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 		case 2:
 		case 4:
 		case 6:
-			snprintf(msg, sizeof(msg), "%s: corrected ownership(s)", p_mpug->path);
+		  	snprintf(msg, sizeof(msg), "%s: corrected ownership(s)", p_mpug->path);
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			break;
 

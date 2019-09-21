@@ -102,7 +102,7 @@ class TestServerDynRes(TestFunctional):
         # Create a server_dyn_res of type long
         resname = ["mybadres"]
         restype = ["long"]
-        script_body = ["echo abc"]
+        script_body = ['echo abc']
 
         # Add it as a server_dyn_res that returns a string output
         filenames = self.setup_dyn_res(resname, restype, script_body)
@@ -539,19 +539,19 @@ class TestServerDynRes(TestFunctional):
                                                validate=False)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True)
+        self.du.chmod(path=fp, mode=0o766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True)
+        self.du.chmod(path=fp, mode=0o764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True)
+        self.du.chmod(path=fp, mode=0o746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True)
+        self.du.chmod(path=fp, mode=0o744, sudo=True)
         if os.getuid() != 0:
                 self.check_access_log(fp, exist=True)
         else:
@@ -561,7 +561,7 @@ class TestServerDynRes(TestFunctional):
         # This should make loading of this file fail in all cases
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
-        dir_temp = self.du.create_temp_dir(mode=0766, dirname=home_dir,
+        dir_temp = self.du.create_temp_dir(mode=0o766, dirname=home_dir,
                                            suffix=' tmp')
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=dir_temp,
@@ -571,40 +571,40 @@ class TestServerDynRes(TestFunctional):
         self.dirnames.append(dir_temp)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766, sudo=True)
+        self.du.chmod(path=fp, mode=0o766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True)
+        self.du.chmod(path=fp, mode=0o764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True)
+        self.du.chmod(path=fp, mode=0o746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True)
+        self.du.chmod(path=fp, mode=0o744, sudo=True)
         self.check_access_log(fp)
 
         # Create dynamic resource script in PBS_HOME directory and check
         # file permissions
         # self.scheduler.add_mom_dyn_res by default creates the script in
         # PBS_HOME as root
-        fp = self.scheduler.add_server_dyn_res("foo", scr_body, perm=0766,
+        fp = self.scheduler.add_server_dyn_res("foo", scr_body, perm=0o766,
                                                validate=False)
 
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764, sudo=True)
+        self.du.chmod(path=fp, mode=0o764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746, sudo=True)
+        self.du.chmod(path=fp, mode=0o746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744, sudo=True)
+        self.du.chmod(path=fp, mode=0o744, sudo=True)
         self.check_access_log(fp, exist=False)
 
     def tearDown(self):

@@ -659,8 +659,8 @@ class TestJobArray(TestFunctional):
             for sub_ind in range(1, 5):
                 f_name = j.create_subjob_id(jid, sub_ind) + ext
                 if f_name not in file_list:
-                    raise self.failureException("std file " + f_name
-                                                + " not found")
+                    raise self.failureException("std file " + f_name +
+                                                " not found")
 
     @skipOnCpuSet
     @skipOnCray

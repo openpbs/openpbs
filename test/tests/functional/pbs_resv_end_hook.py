@@ -255,7 +255,7 @@ if e.type == pbs.RESV_END:
             'queue': rid.split('.')[0]
         }
 
-        for _ in xrange(10):
+        for _ in range(10):
             self.server.submit(Job(TEST_USER, job_attrs))
 
         self.logger.info('wait 10 seconds till the reservation runs some jobs')
@@ -292,7 +292,7 @@ if e.type == pbs.RESV_END:
             'queue': rid.split('.')[0]
         }
 
-        for _ in xrange(10):
+        for _ in range(10):
             self.server.submit(Job(TEST_USER, job_attrs))
 
         self.logger.info('wait till 30 seconds until the reservation ends')
@@ -447,7 +447,7 @@ if e.type == pbs.RESV_END:
             'queue': rid.split('.')[0]
         }
 
-        for _ in xrange(10):
+        for _ in range(10):
             self.server.submit(Job(TEST_USER, job_attrs))
 
         self.logger.info('Sleep for 30 seconds for the reservation occurrence '
@@ -493,7 +493,7 @@ if e.type == pbs.RESV_END:
             'queue': rid.split('.')[0]
         }
 
-        for _ in xrange(10):
+        for _ in range(10):
             self.server.submit(Job(TEST_USER, job_attrs))
 
         attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')

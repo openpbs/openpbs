@@ -62,8 +62,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -89,10 +89,10 @@ class TestQsub_direct_write(TestFunctional):
         j.set_sleep_time(10)
         sub_dir = self.du.mkdtemp(uid=TEST_USER4.uid)
         mapping_dir = self.du.mkdtemp(
-            uid=TEST_USER5.uid, gid=TSTGRP4.gid, mode=0770)
+            uid=TEST_USER5.uid, gid=TSTGRP4.gid, mode=0o770)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -113,8 +113,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -141,8 +141,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -173,8 +173,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -197,8 +197,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -221,8 +221,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -272,7 +272,7 @@ class TestQsub_direct_write(TestFunctional):
                 self.server.expect(JOB, attribs,
                                    id=jid)
         except PbsAlterError as e:
-            print str(e)
+            print(str(e))
 
     def test_qalter_direct_write_error(self):
         """
@@ -305,8 +305,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.logger.info(self.msg)
@@ -345,8 +345,8 @@ class TestQsub_direct_write(TestFunctional):
             for sub_ind in range(1, 5):
                 f_name = 'STDIN.' + std + idn + '.' + str(sub_ind)
                 if f_name not in file_list:
-                    raise self.failureException("std file " + f_name
-                                                + " not found")
+                    raise self.failureException("std file " + f_name +
+                                                " not found")
 
     def test_direct_write_job_array_custom_dir(self):
         """
@@ -363,8 +363,8 @@ class TestQsub_direct_write(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
@@ -378,5 +378,5 @@ class TestQsub_direct_write(TestFunctional):
             for sub_ind in range(1, 5):
                 f_name = j.create_subjob_id(jid, sub_ind) + ext
                 if f_name not in file_list:
-                    raise self.failureException("std file " + f_name
-                                                + " not found")
+                    raise self.failureException("std file " + f_name +
+                                                " not found")

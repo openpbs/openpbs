@@ -64,7 +64,7 @@ if not exist "%BINARIESDIR%\OpenSSL_%OPENSSL_VERSION%.zip" (
 )
 
 2>nul rd /S /Q "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
-"%UNZIP_BIN%" -q "%BINARIESDIR%\OpenSSL_%OPENSSL_VERSION%.zip"
+7z x -y "%BINARIESDIR%\OpenSSL_%OPENSSL_VERSION%.zip" -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
     exit /b 1
@@ -76,27 +76,22 @@ if not exist "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%" (
 
 cd "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
 
-call "%VS90COMNTOOLS%vsvars32.bat
+call "%VS150COMNTOOLS%VsDevCmd.bat"
 
 if %DO_DEBUG_BUILD% EQU 1 (
     "%PERL_BIN%" "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%\Configure" --prefix="%BINARIESDIR%\%OPENSSL_DIR_NAME%" --debug VC-WIN32 no-asm no-shared
 ) else (
     "%PERL_BIN%" "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%\Configure" --prefix="%BINARIESDIR%\%OPENSSL_DIR_NAME%" VC-WIN32 no-asm no-shared
 )
+
 if not %ERRORLEVEL% == 0 (
     echo "Failed to generate makefiles for openssl"
     exit /b 1
 )
 
-nmake
+nmake install_dev
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to compile openssl"
-    exit /b 1
-)
-
-nmake install
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to install openssl"
+    echo "Failed to compile and install libcrypto.lib from openssl"
     exit /b 1
 )
 
@@ -104,4 +99,3 @@ cd "%BINARIESDIR%"
 2>nul rd /S /Q "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
 
 exit /b 0
-

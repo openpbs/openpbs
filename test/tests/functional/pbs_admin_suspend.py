@@ -146,9 +146,11 @@ class TestAdminSuspend(TestFunctional):
         self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
         self.server.expect(NODE, {'maintenance_jobs': jid})
 
-        # Adding sleep to avoid failure at resume since PBS licenses
+        # Checking licenses to avoid failure at resume since PBS licenses
         # might not be available and as a result resume fails
-        time.sleep(2)
+        rv = self.is_server_licensed(self.server)
+        _msg = 'No license found on server %s' % (self.server.shortname)
+        self.assertTrue(rv, _msg)
 
         # admin-resume job
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)

@@ -65,7 +65,7 @@ class TestVerifyLogOutput(TestFunctional):
         max_possible = 8
         while True:
             bytes = max_possible * struct_size
-            names = array.array('B', '\0' * bytes)
+            names = array.array('B', b'\0' * bytes)
             outbytes = struct.unpack('iL', fcntl.ioctl(
                 s.fileno(),
                 0x8912,
@@ -77,7 +77,7 @@ class TestVerifyLogOutput(TestFunctional):
                 break
         namestr = names.tostring()
         for i in range(0, outbytes, struct_size):
-            yield namestr[i:i + 16].split('\0', 1)[0]
+            yield namestr[i:i + 16].split(b'\0', 1)[0].decode()
 
     def test_hostname_add(self):
         """

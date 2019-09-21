@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{0B889879-456F-4F8E-A15E-3C0A7BBF3B25}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>15.0.28307.705</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>..\..\..\win_build\src\include\Debug\</OutDir>
+    <IntDir>..\..\..\win_build\src\include\Debug\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>..\..\..\win_build\src\include\Release\</OutDir>
+    <IntDir>..\..\..\win_build\src\include\Release\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <PreBuildEvent>
+      <Command>"$(ProjectDir)gen_pbs_version.bat"</Command>
+    </PreBuildEvent>
+    <Midl>
+      <TypeLibraryName>..\..\..\win_build\src\include\Debug\include.tlb</TypeLibraryName>
+      <HeaderFileName />
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <PreBuildEvent>
+      <Command>"$(ProjectDir)gen_pbs_version.bat"</Command>
+    </PreBuildEvent>
+    <Midl>
+      <TypeLibraryName>..\..\..\win_build\src\include\Release\include.tlb</TypeLibraryName>
+      <HeaderFileName />
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\include\acct.h" />
+    <ClInclude Include="..\..\src\include\attribute.h" />
+    <ClInclude Include="..\..\src\include\batch_request.h" />
+    <ClInclude Include="..\..\src\include\bitfield.h" />
+    <ClInclude Include="..\..\src\include\cmds.h" />
+    <ClInclude Include="..\..\src\include\credential.h" />
+    <ClInclude Include="..\..\src\include\dis.h" />
+    <ClInclude Include="..\..\src\include\dis_init.h" />
+    <ClInclude Include="..\..\src\include\getopt.h" />
+    <ClInclude Include="..\..\src\include\job.h" />
+    <ClInclude Include="..\..\src\include\libpbs.h" />
+    <ClInclude Include="..\..\src\include\libsec.h" />
+    <ClInclude Include="..\..\src\include\list_link.h" />
+    <ClInclude Include="..\..\src\include\log.h" />
+    <ClInclude Include="..\..\src\include\Long.h" />
+    <ClInclude Include="..\..\src\include\Long_.h" />
+    <ClInclude Include="..\..\src\include\mom_func.h" />
+    <ClInclude Include="..\..\src\include\mom_server.h" />
+    <ClInclude Include="..\..\src\include\net_connect.h" />
+    <ClInclude Include="..\..\src\include\pbs_array_list.h" />
+    <ClInclude Include="..\..\src\include\pbs_assert.h" />
+    <ClInclude Include="..\..\src\include\pbs_client_thread.h" />
+    <ClInclude Include="..\..\src\include\pbs_config.h" />
+    <ClInclude Include="..\..\src\include\pbs_db.h" />
+    <ClInclude Include="..\..\src\include\pbs_ecl.h" />
+    <ClInclude Include="..\..\src\include\pbs_error.h" />
+    <ClInclude Include="..\..\src\include\pbs_ifl.h" />
+    <ClInclude Include="..\..\src\include\pbs_internal.h" />
+    <ClInclude Include="..\..\src\include\pbs_json.h" />
+    <ClInclude Include="..\..\src\include\pbs_license.h" />
+    <ClInclude Include="..\..\src\include\pbs_mutex.h" />
+    <ClInclude Include="..\..\src\include\pbs_nodes.h" />
+    <ClInclude Include="..\..\src\include\pbs_sched.h" />
+    <ClInclude Include="..\..\src\include\pbs_share.h" />
+    <ClInclude Include="..\..\src\include\pbs_version.h" />
+    <ClInclude Include="..\..\src\include\portability.h" />
+    <ClInclude Include="..\..\src\include\qmgr.h" />
+    <ClInclude Include="..\..\src\include\qmgr_node_public.h" />
+    <ClInclude Include="..\..\src\include\qmgr_node_readonly.h" />
+    <ClInclude Include="..\..\src\include\qmgr_que_public.h" />
+    <ClInclude Include="..\..\src\include\qmgr_que_readonly.h" />
+    <ClInclude Include="..\..\src\include\qmgr_svr_public.h" />
+    <ClInclude Include="..\..\src\include\qmgr_svr_readonly.h" />
+    <ClInclude Include="..\..\src\include\queue.h" />
+    <ClInclude Include="..\..\src\include\reservation.h" />
+    <ClInclude Include="..\..\src\include\resmon.h" />
+    <ClInclude Include="..\..\src\include\resource.h" />
+    <ClInclude Include="..\..\src\include\resv_node.h" />
+    <ClInclude Include="..\..\src\include\rm.h" />
+    <ClInclude Include="..\..\src\include\rpp.h" />
+    <ClInclude Include="..\..\src\include\sched_cmds.h" />
+    <ClInclude Include="..\..\src\include\server.h" />
+    <ClInclude Include="..\..\src\include\server_limits.h" />
+    <ClInclude Include="..\..\src\include\site_job_attr_def.h" />
+    <ClInclude Include="..\..\src\include\site_que_attr_def.h" />
+    <ClInclude Include="..\..\src\include\site_resc_attr_def.h" />
+    <ClInclude Include="..\..\src\include\site_resv_attr_def.h" />
+    <ClInclude Include="..\..\src\include\site_svr_attr_def.h" />
+    <ClInclude Include="..\..\src\include\svrfunc.h" />
+    <ClInclude Include="..\..\src\include\ticket.h" />
+    <ClInclude Include="..\..\src\include\tm.h" />
+    <ClInclude Include="..\..\src\include\tm_.h" />
+    <ClInclude Include="..\..\src\include\tracking.h" />
+    <ClInclude Include="..\..\src\include\win.h" />
+    <ClInclude Include="..\..\src\include\win_remote_shell.h" />
+    <ClInclude Include="..\..\src\include\work_task.h" />
+    <ClInclude Include="..\..\src\lib\Libtpp\tpp_common.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\include\include.dsp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

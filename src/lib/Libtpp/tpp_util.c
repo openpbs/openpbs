@@ -273,6 +273,7 @@ tpp_set_keep_alive(int fd, struct tpp_config *cnf)
 	}
 #endif
 
+#ifndef WIN32
 #ifdef TCP_KEEPIDLE
 	optval = cnf->tcp_keep_idle;
 	if (tpp_sock_setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &optval, optlen) < 0) {
@@ -300,14 +301,7 @@ tpp_set_keep_alive(int fd, struct tpp_config *cnf)
 	}
 #endif
 
-#ifdef TCP_USER_TIMEOUT
-	optval = cnf->tcp_user_timeout;
-	if (tpp_sock_setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &optval, optlen) < 0) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "setsockopt(TCP_USER_TIMEOUT) errno=%d", errno);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-		return -1;
-	}
-#endif
+#endif /*for win32*/
 
 	return 0;
 }

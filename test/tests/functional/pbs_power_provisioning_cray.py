@@ -77,7 +77,7 @@ class Test_power_provisioning_cray(TestFunctional):
                                       'server_priv', 'hooks', conf_file)
         with open(conf_file_path) as data_file:
             data = json.load(data_file)
-        for key, value in attrs.iteritems():
+        for key, value in attrs.items():
             data[key] = value
         with open(conf_file_path, 'w') as fp:
             json.dump(data, fp)
@@ -97,7 +97,7 @@ class Test_power_provisioning_cray(TestFunctional):
         # different power profile , which will be used to submit jobs with
         # chunks matching to the number of nodes set to each profile
         self.npp = len(self.names) / 3
-        for i in xrange(len(self.names)):
+        for i in range(len(self.names)):
             if i in range(0, self.npp):
                 self.server.manager(MGR_CMD_SET, NODE,
                                     {"resources_available.eoe": 'low'},

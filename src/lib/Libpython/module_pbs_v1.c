@@ -429,10 +429,10 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		METH_NOARGS, pbsv1mod_meth_in_site_hook_doc},
 	{"duration_to_secs",
 		(PyCFunction) pbsv1mod_meth_duration_to_secs,
-		METH_KEYWORDS, pbsv1mod_meth_duration_to_secs_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_duration_to_secs_doc},
 	{"validate_input",
 		(PyCFunction) pbsv1mod_meth_validate_input,
-		METH_KEYWORDS, pbsv1mod_meth_validate_input_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_validate_input_doc},
 	{"event",
 		(PyCFunction) pbsv1mod_meth_event,
 		METH_NOARGS, pbsv1mod_meth_event_doc},
@@ -444,7 +444,7 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		METH_NOARGS, pbsv1mod_meth_event_accept_doc},
 	{"_event_reject",
 		(PyCFunction) pbsv1mod_meth_event_reject,
-		METH_KEYWORDS, pbsv1mod_meth_event_reject_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_event_reject_doc},
 	{"_event_param_mod_allow",
 		(PyCFunction) pbsv1mod_meth_event_param_mod_allow,
 		METH_NOARGS, pbsv1mod_meth_event_param_mod_allow_doc},
@@ -452,40 +452,40 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		(PyCFunction) pbsv1mod_meth_event_param_mod_disallow,
 		METH_NOARGS, pbsv1mod_meth_event_param_mod_disallow_doc},
 	{"is_attrib_val_settable", (PyCFunction) pbsv1mod_meth_is_attrib_val_settable,
-		METH_KEYWORDS, pbsv1mod_meth_is_attrib_val_settable_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_is_attrib_val_settable_doc},
 	{"get_queue", (PyCFunction) pbsv1mod_meth_get_queue,
-		METH_KEYWORDS, pbsv1mod_meth_get_queue_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_queue_doc},
 	{"get_job", (PyCFunction) pbsv1mod_meth_get_job,
-		METH_KEYWORDS, pbsv1mod_meth_get_job_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_job_doc},
 	{"release_nodes", (PyCFunction) pbsv1mod_meth_release_nodes,
-		METH_KEYWORDS, pbsv1mod_meth_release_nodes_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_release_nodes_doc},
 	{PY_GETRESV_METHOD, (PyCFunction) pbsv1mod_meth_get_resv,
-		METH_KEYWORDS, pbsv1mod_meth_get_resv_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_resv_doc},
 	{PY_GETVNODE_METHOD, (PyCFunction) pbsv1mod_meth_get_vnode,
-		METH_KEYWORDS, pbsv1mod_meth_get_vnode_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_vnode_doc},
 	{PY_ITER_NEXTFUNC_METHOD, (PyCFunction) pbsv1mod_meth_iter_nextfunc,
-		METH_KEYWORDS, pbsv1mod_meth_iter_nextfunc_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_iter_nextfunc_doc},
 	{PY_MARK_VNODE_SET_METHOD, (PyCFunction) pbsv1mod_meth_mark_vnode_set,
-		METH_KEYWORDS, pbsv1mod_meth_mark_vnode_set_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_mark_vnode_set_doc},
 	{PY_LOAD_RESOURCE_VALUE_METHOD,
 		(PyCFunction) pbsv1mod_meth_load_resource_value,
-		METH_KEYWORDS, pbsv1mod_meth_load_resource_value_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_load_resource_value_doc},
 	{PY_RESOURCE_STR_VALUE_METHOD,
 		(PyCFunction) pbsv1mod_meth_resource_str_value,
-		METH_KEYWORDS, pbsv1mod_meth_resource_str_value_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_resource_str_value_doc},
 	{PY_VNODE_STATE_TO_STR_METHOD,
 		(PyCFunction) pbsv1mod_meth_vnode_state_to_str,
-		METH_KEYWORDS, pbsv1mod_meth_vnode_state_to_str_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_vnode_state_to_str_doc},
 	{PY_VNODE_SHARING_TO_STR_METHOD,
 		(PyCFunction) pbsv1mod_meth_vnode_sharing_to_str,
-		METH_KEYWORDS, pbsv1mod_meth_vnode_sharing_to_str_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_vnode_sharing_to_str_doc},
 	{PY_VNODE_NTYPE_TO_STR_METHOD,
 		(PyCFunction) pbsv1mod_meth_vnode_ntype_to_str,
-		METH_KEYWORDS, pbsv1mod_meth_vnode_ntype_to_str_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_vnode_ntype_to_str_doc},
 	{"logmsg", (PyCFunction) pbsv1mod_meth_logmsg,
-		METH_KEYWORDS, pbsv1mod_meth_logmsg_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_logmsg_doc},
 	{PY_LOGJOBMSG_METHOD, (PyCFunction) pbsv1mod_meth_logjobmsg,
-		METH_KEYWORDS, pbsv1mod_meth_logjobmsg_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_logjobmsg_doc},
 	{PY_GET_PYTHON_DAEMON_NAME_METHOD,
 		(PyCFunction) pbsv1mod_meth_get_python_daemon_name,
 		METH_NOARGS, pbsv1mod_meth_get_python_daemon_name_doc},
@@ -502,32 +502,32 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		(PyCFunction) pbsv1mod_meth_set_c_mode,
 		METH_NOARGS, pbsv1mod_meth_set_c_mode_doc},
 	{PY_STR_TO_VNODE_STATE_METHOD, (PyCFunction) pbsv1mod_meth_str_to_vnode_state,
-		METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_state_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_state_doc},
 	{PY_STR_TO_VNODE_NTYPE_METHOD, (PyCFunction) pbsv1mod_meth_str_to_vnode_ntype,
-		METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_ntype_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_ntype_doc},
 	{PY_STR_TO_VNODE_SHARING_METHOD, (PyCFunction) pbsv1mod_meth_str_to_vnode_sharing,
-		METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_sharing_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_str_to_vnode_sharing_doc},
 	{PY_REBOOT_HOST_METHOD,
 		(PyCFunction) pbsv1mod_meth_reboot,
-		METH_KEYWORDS, pbsv1mod_meth_reboot_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_reboot_doc},
 	{PY_SCHEDULER_RESTART_CYCLE_METHOD,
 		(PyCFunction) pbsv1mod_meth_scheduler_restart_cycle,
-		METH_KEYWORDS, pbsv1mod_meth_scheduler_restart_cycle_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_scheduler_restart_cycle_doc},
 	{PY_SET_PBS_STATOBJ_METHOD,
 		(PyCFunction) pbsv1mod_meth_set_pbs_statobj,
-		METH_KEYWORDS, pbsv1mod_meth_set_pbs_statobj_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_set_pbs_statobj_doc},
 	{PY_SIZE_TO_KBYTES_METHOD, (PyCFunction) pbsv1mod_meth_size_to_kbytes,
-		METH_KEYWORDS, pbsv1mod_meth_size_to_kbytes_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_size_to_kbytes_doc},
 	{PY_GET_SERVER_STATIC_METHOD, (PyCFunction) pbsv1mod_meth_get_server_static,
 		METH_NOARGS, pbsv1mod_meth_get_server_static_doc},
 	{PY_GET_JOB_STATIC_METHOD, (PyCFunction) pbsv1mod_meth_get_job_static,
-		METH_KEYWORDS, pbsv1mod_meth_get_job_static_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_job_static_doc},
 	{PY_GET_RESV_STATIC_METHOD, (PyCFunction) pbsv1mod_meth_get_resv_static,
-		METH_KEYWORDS, pbsv1mod_meth_get_resv_static_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_resv_static_doc},
 	{PY_GET_QUEUE_STATIC_METHOD, (PyCFunction) pbsv1mod_meth_get_queue_static,
-		METH_KEYWORDS, pbsv1mod_meth_get_queue_static_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_queue_static_doc},
 	{PY_GET_VNODE_STATIC_METHOD, (PyCFunction) pbsv1mod_meth_get_vnode_static,
-		METH_KEYWORDS, pbsv1mod_meth_get_vnode_static_doc},
+		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_vnode_static_doc},
 	{PY_GET_SERVER_DATA_FP_METHOD, (PyCFunction) pbsv1mod_meth_get_server_data_fp,
 		METH_NOARGS, pbsv1mod_meth_get_server_data_fp_doc},
 	{PY_USE_STATIC_DATA_METHOD,
@@ -546,6 +546,13 @@ static char pbs_v1_module_doc[] =
     \t\n\
     ";
 
+static struct PyModuleDef pbs_v1_module = {
+	PyModuleDef_HEAD_INIT,
+	PBS_PYTHON_V1_MODULE_EXTENSION_NAME,
+	pbs_v1_module_doc,
+	-1,
+	pbs_v1_module_methods
+};
 
 /*
  * ----------------- EXTERNAL DEFINITIONS -----------------------
@@ -569,9 +576,7 @@ pbs_v1_module_init(void)
 	PyObject *m     = NULL; /* the module object, BORROWED ref */
 	PyObject *mdict = NULL; /* the module object, BORROWED ref */
 
-	m = Py_InitModule3(PBS_PYTHON_V1_MODULE_EXTENSION_NAME,
-		pbs_v1_module_methods,
-		pbs_v1_module_doc);
+	m = PyModule_Create(&pbs_v1_module);
 
 	if (m == NULL)
 		return m;
@@ -606,11 +611,10 @@ ERROR_EXIT:
  * 	module.
  *
  */
-void
+PyObject *
 pbs_v1_module_inittab(void)
 {
-	(void) pbs_v1_module_init();
-	return;
+	return pbs_v1_module_init();
 }
 
 
@@ -622,6 +626,5 @@ pbs_v1_module_inittab(void)
 PyMODINIT_FUNC
 init_pbs_v1(void)
 {
-	(void) pbs_v1_module_init();
-	return;
+	return pbs_v1_module_init();
 }

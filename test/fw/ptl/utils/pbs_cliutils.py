@@ -163,7 +163,7 @@ class CliUtils(object):
             msg.append('\nPrivilege ports in use: ')
             for k, v in resv_ports.items():
                 msg.append('\t' + k + ': ' +
-                           str(",".join(map(lambda l: str(l), v))))
+                           str(",".join([str(l) for l in v])))
             for sh in source_hosts:
                 msg.append('\nTotal on ' + sh + ': ' +
                            str(len(resv_ports[sh])))

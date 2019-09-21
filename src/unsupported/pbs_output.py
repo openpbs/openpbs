@@ -1,5 +1,5 @@
 # coding: utf-8
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 /*
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -101,7 +101,7 @@ def main():
         apid = rur_output[0]
         jobid = rur_output[1]
         inputfilelist = rur_output[4]
-    except Exception, e:
+    except Exception as e:
         rur_errorlog("RUR PBS output plugin rur_output_args error '%s'" %
                      str(e))
         exit(1)

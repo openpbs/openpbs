@@ -204,7 +204,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j.set_sleep_time(1)
         self.server.create_import_hook(hook_name, attr, hook_body)
         jid = self.server.submit(j)
-        for host, mom in self.moms.iteritems():
+        for host, mom in self.moms.items():
             (_, str1) = mom.log_match("Job;%s;executed execjob_end hook" %
                                       jid, n=100, max_attempts=10,
                                       interval=2)
@@ -250,7 +250,7 @@ class TestPbsExecjobEnd(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.deljob(id=jid, wait=True, attr_W="force")
-        for host, mom in self.moms.iteritems():
+        for host, mom in self.moms.items():
             mom.log_match("Job;%s;executed execjob_end hook" %
                           jid, n=100, max_attempts=10,
                           interval=2)

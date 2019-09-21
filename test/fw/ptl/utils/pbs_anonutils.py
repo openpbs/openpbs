@@ -1100,7 +1100,7 @@ class PBSAnonymizer(object):
 
             skip_record = False
             # Split the attribute list into key value pairs
-            kvl_list = map(lambda n: n.split("=", 1), buf)
+            kvl_list = [n.split("=", 1) for n in buf]
             if kvl_list is None:
                 self.num_bad_acct_records += 1
                 self.logger.debug("Bad accounting record found:\n" +

@@ -74,8 +74,10 @@ class TestMovedJob(TestFunctional):
         self.server.restart()
 
         attr = {ATTR_queue: "p2p", ATTR_j: "oe",
-                ATTR_W: "Output_Path=%s:/dev/null" % self.servers.keys()[0],
-                'Resource_List.select': 'host=%s' % self.moms.keys()[0]}
+                ATTR_W: "Output_Path=%s:/dev/null"
+                % self.servers.keys()[0],
+                'Resource_List.select': 'host=%s'
+                % self.moms.keys()[0]}
         j = Job(TEST_USER, attrs=attr)
         j.set_sleep_time(300)
         jid = self.servers[second_server].submit(j)

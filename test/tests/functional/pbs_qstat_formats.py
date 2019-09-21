@@ -119,7 +119,7 @@ class TestQstatFormats(TestFunctional):
         attrs = self.server.status(obj_type)
         qstat_attrs = []
 
-        for key, val in attrs[0].iteritems():
+        for key, val in attrs[0].items():
             # qstat -F json output does not
             # print the 'id' attribute. Its value
             # is printed instead.
@@ -296,7 +296,7 @@ class TestQstatFormats(TestFunctional):
         f = open(qstat_dsv_out, 'r')
         dsv_out = f.read()
         f.close()
-        dsv_attr_count = len(dsv_out.replace("\|", "").split("|"))
+        dsv_attr_count = len(dsv_out.replace(r"\|", "").split("|"))
         f = open(qstat_oneline_script, 'w')
         f.write(qstat_cmd + ' -f -w ' + str(jid) + ' > ' + qstat_oneline_out)
         f.close()
@@ -306,7 +306,7 @@ class TestQstatFormats(TestFunctional):
         oneline_attr_count = sum(1 for line in open(
             qstat_oneline_out) if not line.isspace())
         map(os.remove, [qstat_dsv_script, qstat_dsv_out,
-                        qstat_oneline_script, qstat_oneline_out])
+            qstat_oneline_script, qstat_oneline_out])
         self.assertEqual(dsv_attr_count, oneline_attr_count)
 
     def test_json(self):
@@ -332,7 +332,7 @@ class TestQstatFormats(TestFunctional):
         map(os.remove, [qstat_json_script, qstat_json_out])
         try:
             json_data = json.loads(data)
-        except:
+        except BaseException:
             self.assertTrue(False)
 
     def test_qstat_tag(self):
@@ -369,14 +369,14 @@ class TestQstatFormats(TestFunctional):
         qstat_out = "\n".join(ret['out'])
         try:
             json_object = json.loads(qstat_out)
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(False)
 
         json_only_attrs = ['Jobs', 'timestamp', 'pbs_version', 'pbs_server']
         attrs_qstatf = self.get_qstat_attribs(JOB)
         qstat_json_attr = []
 
-        for key, val in json_object.iteritems():
+        for key, val in json_object.items():
             qstat_json_attr.append(str(key))
             if isinstance(val, dict):
                 self.parse_json(val, qstat_json_attr)
@@ -424,9 +424,9 @@ class TestQstatFormats(TestFunctional):
         jid = self.server.submit(j)
         jid2 = self.server.submit(j)
         jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid2)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid3)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + ' -fp -F json '
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
@@ -460,7 +460,7 @@ class TestQstatFormats(TestFunctional):
         qstat_out = "\n".join(ret['out'])
         try:
             json_object = json.loads(qstat_out)
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(False)
 
     def test_qstat_json_valid_ja(self):
@@ -478,7 +478,7 @@ class TestQstatFormats(TestFunctional):
         qstat_out = "\n".join(ret['out'])
         try:
             json_object = json.loads(qstat_out)
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(False)
 
     @tags('smoke')
@@ -493,14 +493,14 @@ class TestQstatFormats(TestFunctional):
         qstat_out = "\n".join(ret['out'])
         try:
             json_object = json.loads(qstat_out)
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(False)
 
         json_only_attrs = ['Server', 'timestamp', 'pbs_version', 'pbs_server']
         attrs_qstatbf = self.get_qstat_attribs(SERVER)
 
         qstat_json_attr = []
-        for key, val in json_object.iteritems():
+        for key, val in json_object.items():
             qstat_json_attr.append(str(key))
             if isinstance(val, dict):
                 self.parse_json(val, qstat_json_attr)
@@ -525,14 +525,14 @@ class TestQstatFormats(TestFunctional):
         qstat_out = "\n".join(ret['out'])
         try:
             json_object = json.loads(qstat_out)
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(False)
 
         json_only_attrs = ['Queue', 'timestamp', 'pbs_version', 'pbs_server']
         attrs_qstatqf = self.get_qstat_attribs(QUEUE)
 
         qstat_json_attr = []
-        for key, val in json_object.iteritems():
+        for key, val in json_object.items():
             qstat_json_attr.append(str(key))
             if isinstance(val, dict):
                 self.parse_json(val, qstat_json_attr)
@@ -575,7 +575,7 @@ class TestQstatFormats(TestFunctional):
         with special chars in env
         """
         os.environ["DOUBLEQUOTES"] = 'hi"ha'
-        os.environ["REVERSESOLIDUS"] = 'hi\ha'
+        os.environ["REVERSESOLIDUS"] = r'hi\ha'
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'default_qsub_arguments': '-V'})

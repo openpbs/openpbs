@@ -66,7 +66,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rsub: Unauthorized Request", msg)
+        self.assertEqual("pbs_rsub: Unauthorized Request", msg)
 
     def test_maintenance_forbidden_resources(self):
         """
@@ -90,7 +90,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rsub: can't use -l select with --hosts", msg)
+        self.assertEqual("pbs_rsub: can't use -l select with --hosts", msg)
 
         a = {'Resource_List.place': 'scatter',
              'reserve_start': now + 3600,
@@ -105,7 +105,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rsub: can't use -l place with --hosts", msg)
+        self.assertEqual("pbs_rsub: can't use -l place with --hosts", msg)
 
     def test_maintenance_missing_hosts(self):
         """
@@ -129,7 +129,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rsub: missing host(s)", msg)
+        self.assertEqual("pbs_rsub: missing host(s)", msg)
 
         a = {'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -143,7 +143,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rsub: missing host(s)", msg)
+        self.assertEqual("pbs_rsub: missing host(s)", msg)
 
     def test_maintenance_confirm(self):
         """

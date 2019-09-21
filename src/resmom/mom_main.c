@@ -45,6 +45,8 @@
 
 #ifdef PYTHON
 #include <Python.h>
+#include <pythonrun.h>
+#include <wchar.h>
 #endif
 
 #ifdef	WIN32
@@ -8199,6 +8201,7 @@ main(int argc, char *argv[])
 	char				*configscriptaction = NULL;
 	char				*inputfile = NULL;
 	char				*scriptname = NULL;
+	char 				pbs_python_home[MAXPATHLEN + 1];
 	resource			*prscput;
 	resource			*prswall;
 	char				*getopt_str;
@@ -8245,7 +8248,9 @@ main(int argc, char *argv[])
 
 #ifdef PYTHON
 	PyObject			*path;
+	PyObject 			*retval =  NULL;
 	char				buf[MAXPATHLEN];
+	char				py_version[4];
 #endif
 
 
@@ -8289,6 +8294,14 @@ main(int argc, char *argv[])
 			return (1);
 		}
 	}
+#endif
+
+	/* set single threaded mode */
+	pbs_client_thread_set_single_threaded_mode();
+	/* disable attribute verification */
+	set_no_attribute_verification();
+
+#ifdef WIN32
 
 	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 	/* load the pbs conf file */
@@ -8320,11 +8333,6 @@ main(int argc, char *argv[])
 	}
 #endif
 #endif	/* WIN32 */
-
-	/* set single threaded mode */
-	pbs_client_thread_set_single_threaded_mode();
-	/* disable attribute verification */
-	set_no_attribute_verification();
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
@@ -9016,12 +9024,9 @@ main(int argc, char *argv[])
 		(void)fclose(stdin);
 		(void)fclose(stdout);
 		(void)fclose(stderr);
-		dummyfile = fopen("NUL:", "r");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-		dummyfile = fopen("NUL:", "w");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-		dummyfile = fopen("NUL:", "w");
-		assert((dummyfile != 0) && (fileno(dummyfile) == 2));
+		freopen("nul", "r", stdin);
+		freopen("nul", "w", stdout);
+		freopen("nul", "w", stderr);
 	}
 
 #else	/* DEBUG */
@@ -9555,33 +9560,70 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
+
+        /* Setting PYTHONHOME */
+        Py_IgnoreEnvironmentFlag = 1;
+        memset((char *)pbs_python_home, '\0', MAXPATHLEN + 1);
+        snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
+                pbs_conf.pbs_exec_path);
+        if (file_exists(pbs_python_home)) {
+                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
+                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
+                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+                Py_SetPythonHome(tmp_pbs_python_home);
+        }
+
 	Py_Initialize();
 
 	path = PySys_GetObject("path");
 #ifdef WIN32
-	snprintf(buf, sizeof(buf), "%s/python/Lib", pbs_conf.pbs_exec_path);
-
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/Lib", pbs_python_home);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
 #else
+	/* Identify the version of the Python interpreter */
+	strncpy(py_version, Py_GetVersion(), 3);
+	py_version[3] = '\0';
+
 	/* list of possible paths to Python modules (mom imports json) */
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
+	
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7/lib-dynload");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7");
-	PyList_Append(path, PyString_FromString(buf));
-
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7/lib-dynload");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 #endif
 	PySys_SetObject("path", path);
 #endif
@@ -10393,13 +10435,11 @@ main(int argc, char *argv[])
 
 		struct arg_param *pap;
 		int	i, j;
-
 		pap = create_arg_param();
 		if (pap == NULL) {
 			ErrorMessage("create_arg_param");
 			return 1;
 		}
-
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {
 			if (i == 1)
@@ -10423,7 +10463,6 @@ main(int argc, char *argv[])
 			{ 0 }
 		};
 
-
 		if (getenv("PBS_CONF_FILE") == NULL) {
 			char conf_path[80];
 			char conf_env[80];
@@ -10441,7 +10480,6 @@ main(int argc, char *argv[])
 				}
 			}
 		}
-
 		hStop = CreateMutex(NULL, TRUE, NULL);
 		if (!StartServiceCtrlDispatcher(ServiceTable)) {
 			log_err(-1, "main", "StartServiceCtrlDispatcher");

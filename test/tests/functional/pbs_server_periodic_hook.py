@@ -320,7 +320,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
             msg = "Able to set freq to negative value"
             self.assertTrue(False, msg)
 
-    @timeout('600')
+    @timeout(600)
     def test_with_other_hooks(self):
         """
         Test periodic hook works fine with other hooks

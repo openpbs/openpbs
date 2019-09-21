@@ -66,7 +66,7 @@ if not exist "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip" (
 )
 
 2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
-"%UNZIP_BIN%" -q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip"
+7z x -y "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip" -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip"
     exit /b 1
@@ -81,6 +81,8 @@ if not exist "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%" (
 2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\lib32"
 2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\include"
 mkdir "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\build"
+
+call "%VS150COMNTOOLS%VsDevCmd.bat"
 
 cd "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\build" && %CMAKE_BIN% -DLIB_SUFFIX=32 -DMSVC_USE_STATIC_RUNTIME=OFF -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -G "NMake Makefiles" ..
 if not %ERRORLEVEL% == 0 (
@@ -121,4 +123,3 @@ cd "%BINARIESDIR%"
 2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
 
 exit /b 0
-

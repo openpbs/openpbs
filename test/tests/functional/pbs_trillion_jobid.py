@@ -387,7 +387,7 @@ exit 0
 
         # Verify the sequence window, incase of submitting more than 1001 jobs
         # and all jobs should submit successfully without any duplication error
-        for _ in xrange(1010):
+        for _ in range(1010):
             j = Job(TEST_USER)
             self.server.submit(j)
 

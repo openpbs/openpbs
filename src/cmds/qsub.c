@@ -107,6 +107,9 @@
 
 #include "credential.h"
 #include "ticket.h"
+#if defined(PBS_PASS_CREDENTIALS)
+#include <openssl/evp.h>
+#endif
 #ifdef WIN32
 #include "win_remote_shell.h"
 #endif

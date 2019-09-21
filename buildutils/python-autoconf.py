@@ -1,10 +1,7 @@
 # coding: utf-8
+#!/usr/bin/python3
+# -*- python -*-
 #
-
-#
-# Python module to detect python settings to build and install python
-#  embedded interpreter and any external modules
-# 
 #
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -42,157 +39,69 @@
 # trademark licensing policies.
 #
 # NOTE:
-#   - requires the distutils, os and sys packages to be installed.
+# Keep this script in sync with python-config.sh.in
 
-_REQUIRED_VERSION_MIN = '2.6.0'
-_REQUIRED_VERSION_MAX = '2.7.99'
-
-import sys
+import getopt
 import os
+import sys
+import sysconfig
 
-if sys.version < _REQUIRED_VERSION_MIN or sys.version > _REQUIRED_VERSION_MAX:
-    print "requires python version >= %s" % (_REQUIRED_VERSION,)
-    raise SystemExit,2
+valid_opts = ['prefix', 'exec-prefix', 'includes', 'libs', 'cflags',
+              'ldflags', 'extension-suffix', 'help', 'abiflags', 'configdir']
 
-from optparse import OptionParser
-from distutils import sysconfig
+def exit_with_usage(code=1):
+    print("Usage: {0} [{1}]".format(
+        sys.argv[0], '|'.join('--'+opt for opt in valid_opts)), file=sys.stderr)
+    sys.exit(code)
 
-get_py_config_var = sysconfig.get_config_var
-py_version = get_py_config_var('VERSION')
+try:
+    opts, args = getopt.getopt(sys.argv[1:], '', valid_opts)
+except getopt.error:
+    exit_with_usage()
 
-if py_version is None:
-    py_version = sys.version[:3]
-    
-py_stdlibdir = get_py_config_var('LIBDIR')
-# the actual LIBDIR in case install path got moved
-if py_stdlibdir:
-    py_stdlibdir_real  = "%s/%s" % (sysconfig.PREFIX, py_stdlibdir.split(os.sep)[-1])
-else:
-    py_stdlibdir_real  = "%s/lib" % (sysconfig.PREFIX,) 
+if not opts:
+    exit_with_usage()
 
-py_lib_configdir = get_py_config_var('LIBPL')
-if py_lib_configdir:
-    py_lib_configdir=py_lib_configdir.replace(py_stdlibdir,py_stdlibdir_real)
+pyver = sysconfig.get_config_var('VERSION')
+getvar = sysconfig.get_config_var
 
-def get_includes():
-    """get compiled pythons include directories"""
+opt_flags = [flag for (flag, val) in opts]
 
-    rv = ["-I%s" % (sysconfig.get_python_inc(plat_specific=1),), "-I%s" % (sysconfig.get_python_inc(),)]
-    return " ".join(rv)
-#:: get_includes()
+if '--help' in opt_flags:
+    exit_with_usage(code=0)
 
-def get_cflags():
-    """get compiler flags"""
-    rv = ""
-    cflags = get_py_config_var('CFLAGS')
-    if cflags:
-        rv = " ".join(cflags.split())
-        #: TODO you could remove some options?
-    return rv   
-#:: get_cflags()
+for opt in opt_flags:
+    if opt == '--prefix':
+        print(sysconfig.get_config_var('prefix'))
 
-def get_libs():
-    """get libraries to link with"""
-    rv = ""
-    tmp_list = []
-    if py_lib_configdir:
-        tmp_list.append('-L%s' % (py_lib_configdir,))
-    tmp_list.append("-lpython%s" % (py_version,))
-    libs = get_py_config_var('LIBS')
-    if libs:
-        tmp_list.extend(libs.split())
-    syslibs = get_py_config_var('SYSLIBS')
-    if syslibs:
-        tmp_list.extend(syslibs.split())
-    if tmp_list:
-        rv = " ".join(tmp_list)
-    return rv   
-#:: get_libs()
+    elif opt == '--exec-prefix':
+        print(sysconfig.get_config_var('exec_prefix'))
 
-def get_ldflags():
-    """get linker flags for the compiled python"""
+    elif opt in ('--includes', '--cflags'):
+        flags = ['-I' + sysconfig.get_path('include'),
+                 '-I' + sysconfig.get_path('platinclude')]
+        if opt == '--cflags':
+            flags.extend(getvar('CFLAGS').split())
+        print(' '.join(flags))
 
-    rv = ""
-    tmp_list = []
-    
-    #: this is needed so that symbols are not removed from the static library
-    #: when shared modules need to be loaded
-    
-    py_link_for_shared = get_py_config_var('LINKFORSHARED')
-    if py_lib_configdir:
-        py_link_for_shared = py_link_for_shared.replace("Modules",
-							py_lib_configdir);
-    if py_link_for_shared:
-        tmp_list.append(py_link_for_shared)
-        
-    if tmp_list:
-        rv = " ".join(tmp_list)
-        
-    return rv   
-#:: get_ldflagss()
+    elif opt in ('--libs', '--ldflags'):
+        libs = ['-lpython' + pyver + sys.abiflags]
+        libs += getvar('LIBS').split()
+        libs += getvar('SYSLIBS').split()
+        # add the prefix/lib/pythonX.Y/config dir, but only if there is no
+        # shared library in prefix/lib/.
+        if opt == '--ldflags':
+            if not getvar('Py_ENABLE_SHARED'):
+                libs.insert(0, '-L' + getvar('LIBPL'))
+            if not getvar('PYTHONFRAMEWORK'):
+                libs.extend(getvar('LINKFORSHARED').split())
+        print(' '.join(libs))
 
-def get_stdlibdir():
-    """The installed pythons library directory"""
+    elif opt == '--extension-suffix':
+        print(sysconfig.get_config_var('EXT_SUFFIX'))
 
-    rv = ""
-    tmp_list = []
-    
-    
-    if py_stdlibdir_real:
-        tmp_list.append(py_stdlibdir_real)
-        
-    if tmp_list:
-        rv = " ".join(tmp_list)
-        
-    return rv   
-#:: get_stdlibdir()
+    elif opt == '--abiflags':
+        print(sys.abiflags)
 
-
-def setupOptions():
-    usage = "usage: %prog [options]"
-    parser = OptionParser(usage=usage)
-    parser.add_option("--includes", action="store_true", dest="includes", 
-                      help="get header file includes for python installation")
-    parser.add_option("--cflags", action="store_true", dest="cflags", 
-                      help="get Compiler flags")
-    parser.add_option("--libs", action="store_true", dest="libs", 
-                      help="get additional libraries to be linked with")
-    parser.add_option("--ldflags",action="store_true", dest="ldflags",
-                      help="get library flags")
-    parser.add_option("--stdlibdir",action="store_true", dest="stdlibdir",
-                      help="get installed python's libdir")
-    parser.add_option("--py-version",action="store_true", dest="py_version",
-                      help="get version string to determine the installed python standard modules dir")
-    parser.add_option("--stdlibmoddir",action="store_true", dest="stdlibmoddir",
-                      help="get installed python's standard modules libdir")
-    parser.add_option("--stdlibmodshareddir",action="store_true", dest="stdlibmodshareddir",
-                      help="get installed python's standard modules *shared* libdir")
-    return parser.parse_args()
-#:: seetupOptions()
-
-
-def Main():
-    (options, args) = setupOptions()
-    if options.ldflags:
-        print get_ldflags()
-    elif options.libs:
-        print get_libs()
-    elif options.cflags:
-        print get_cflags()
-    elif options.includes:
-        print get_includes() 
-    elif options.stdlibdir:
-        print get_stdlibdir() 
-    elif options.py_version:
-        print py_version 
-    elif options.stdlibmoddir:
-        print \
-	 get_py_config_var('DESTLIB').replace(py_stdlibdir,py_stdlibdir_real)
-    elif options.stdlibmodshareddir:
-        print \
-	 get_py_config_var('DESTSHARED').replace(py_stdlibdir,py_stdlibdir_real)
-#:: Main()
-
-if __name__ == '__main__':
-    Main()
-
+    elif opt == '--configdir':
+        print(sysconfig.get_config_var('LIBPL'))

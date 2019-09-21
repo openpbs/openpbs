@@ -113,7 +113,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -131,7 +131,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -240,7 +240,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -255,7 +255,7 @@
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>#ifdef PBS_MOM
-							NULL_FUNC
+							NULL_FUNC_RESC
 					  #else
 							resc_select_action
 					  #endif</member_at_action>
@@ -276,7 +276,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -312,7 +312,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_ONLY | ATR_DFLAG_MGWR | ATR_DFLAG_RASSN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -330,7 +330,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -348,7 +348,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>NO_USER_SET | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -362,7 +362,7 @@
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -412,7 +412,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -430,7 +430,7 @@
 	<member_at_set>set_f</member_at_set>
 	<member_at_comp>comp_f</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_FLOAT</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -448,7 +448,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -466,7 +466,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -484,7 +484,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -502,7 +502,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -520,7 +520,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -538,7 +538,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -556,7 +556,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -574,7 +574,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -592,7 +592,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -611,7 +611,7 @@
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>#ifdef PBS_MOM
-							NULL_FUNC
+							NULL_FUNC_RESC
 					  #else
 							host_action
 					  #endif</member_at_action>
@@ -632,7 +632,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -650,7 +650,7 @@
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -668,7 +668,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -686,7 +686,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -704,7 +704,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -718,7 +718,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -732,7 +732,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -750,7 +750,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -768,7 +768,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -840,7 +840,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -858,7 +858,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -876,7 +876,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -894,7 +894,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -912,7 +912,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -930,7 +930,7 @@
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -948,7 +948,7 @@
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -984,7 +984,7 @@
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_BOOL</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -998,7 +998,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1012,7 +1012,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_SIZE</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1026,7 +1026,7 @@
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1040,7 +1040,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1054,7 +1054,7 @@
 	<member_at_set>set_size</member_at_set>
 	<member_at_comp>comp_size</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1072,7 +1072,7 @@
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -1114,7 +1114,7 @@
 	<member_at_set>set_unkn</member_at_set>
 	<member_at_comp>comp_unkn</member_at_comp>
 	<member_at_free>free_unkn</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>NULL_FUNC_RESC</member_at_action>
 	<member_at_flags><SVR>READ_WRITE</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LIST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>

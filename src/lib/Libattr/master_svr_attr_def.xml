@@ -845,7 +845,7 @@
 	<member_at_decode>decode_rcost</member_at_decode>	<!-- these are not right, haven't figured this out yet -->
 	<member_at_encode>encode_rcost</member_at_encode>
 	<member_at_set>set_rcost</member_at_set>
-	<member_at_comp>NULL_FUNC</member_at_comp>
+	<member_at_comp>NULL_FUNC_CMP</member_at_comp>
 	<member_at_free>free_rcost</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
 	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
@@ -862,7 +862,7 @@
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
-	<member_at_comp>NULL_FUNC</member_at_comp>
+	<member_at_comp>NULL_FUNC_CMP</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
 	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>

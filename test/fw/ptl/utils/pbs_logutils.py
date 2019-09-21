@@ -337,7 +337,7 @@ class PBSLogUtils(object):
             num_rec += 1
             if num is not None and num_rec > num:
                 break
-            m = tm_tag.match(record)
+            m = tm_tag.match(str(record))
             if m:
                 rec_times.append(
                     self.convert_date_time(m.group('datetime')))
@@ -466,7 +466,7 @@ class PBSLogUtils(object):
     @staticmethod
     def _duration(val=None):
         if val is not None:
-            return str(timedelta(seconds=int(val)))
+            return str(timedelta(seconds=int(float(val))))
 
     @staticmethod
     def get_day(tm=None):
@@ -509,7 +509,7 @@ class PBSLogUtils(object):
             return info
 
         val = [x - intervals[i - 1] for i, x in enumerate(intervals) if i > 0]
-        info[RI] = ", ".join(map(lambda v: str(v), val))
+        info[RI] = ", ".join([str(v) for v in val])
         if intervals:
             info[IT] = intervals[0]
         if frequency is not None:
@@ -642,7 +642,7 @@ class PBSLogAnalyzer(object):
             return False
         self.re_conditional = conditions
         self.num_conditionals = len(conditions)
-        self.prev_records = map(lambda n: '', range(self.num_conditionals))
+        self.prev_records = ['' for n in range(self.num_conditionals)]
         self.info['matches'] = []
 
     def analyze_scheduler_log(self, filename=None, start=None, end=None,
@@ -747,7 +747,7 @@ class PBSLogAnalyzer(object):
             tm = self.logutils.convert_date_time(m.group('datetime'))
             if ((start is None and end is None) or
                     self.logutils.in_range(tm, start, end)):
-                print rec,
+                print(rec, end=' ')
 
     def comp_analyze(self, rec, start, end):
         if self.re_conditional is not None:
@@ -800,8 +800,8 @@ class PBSLogAnalyzer(object):
         num_line = 0
         last_rec = None
         if self.show_progress:
-            perc_range = range(10, 110, 10)
-            perc_records = map(lambda x: num_records * x / 100, perc_range)
+            perc_range = list(range(10, 110, 10))
+            perc_records = [num_records * x / 100 for x in perc_range]
             sys.stderr.write('Parsing ' + filename + ': |0%')
             sys.stderr.flush()
 
@@ -1110,7 +1110,7 @@ class JobEstimatedStartTimeInfo(object):
         self.num_estimates += 1
 
     def __repr__(self):
-        estimated_at_str = map(lambda t: str(t), self.estimated_at)
+        estimated_at_str = [str(t) for t in self.estimated_at]
         return " ".join([str(self.jobid), 'started: ', str(self.started_at),
                          'estimated: ', ",".join(estimated_at_str)])
 
@@ -1454,7 +1454,7 @@ class PBSSchedulerLog(PBSLogAnalyzer):
             c.summary(showjobs)
             self.info[num_cycle] = c.info
             run += len(c.sched_job_run.keys())
-            run_tm.extend(c.sched_job_run.values())
+            run_tm.extend(list(c.sched_job_run.values()))
             failed += len(c.run_failure.keys())
             total_considered += c.num_considered
 
@@ -1878,7 +1878,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
         """
         Parsing accounting log
         """
-        r = self.record_tag.match(rec)
+        r = self.record_tag.match(rec.decode("utf-8"))
         if not r:
             return PARSER_ERROR_CONTINUE
 
@@ -1987,17 +1987,17 @@ class PBSAccountingLog(PBSLogAnalyzer):
             self.duration = last_record_tm - self.record_tm[0]
             self.info[DUR] = self.logutils._duration(self.duration)
 
-        self.jobs_started = self.job_start.keys()
-        self.jobs_ended = self.job_end.keys()
-        self.job_node_size = map(lambda n: len(n), self.job_nodes.values())
-        self.job_cpu_size = self.job_cpus.values()
+        self.jobs_started = list(self.job_start.keys())
+        self.jobs_ended = list(self.job_end.keys())
+        self.job_node_size = [len(n) for n in self.job_nodes.values()]
+        self.job_cpu_size = list(self.job_cpus.values())
         self.start = sorted(self.job_start.values())
         self.end = sorted(self.job_end.values())
 
         # list of jobs that have not yet ended, those are jobs that
         # have an S record but no E record. We port back the precomputed
         # metrics from the S record into the data to "publish"
-        sjobs = list(set(self.jobs_started).difference(self.jobs_ended))
+        sjobs = set(self.jobs_started).difference(self.jobs_ended)
         for job in sjobs:
             if job in self.tmp_wait_time:
                 self.wait_time.append(self.tmp_wait_time[job])

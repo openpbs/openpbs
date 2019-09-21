@@ -28,7 +28,7 @@ max_load=2.0
 def get_la():
     line=os.popen("uptime").read()
     r = re.search(r'load average: (\S+), (\S+), (\S+)$', line).groups()
-    return map(float, r)
+    return list(map(float, r))
 
 local_node = pbs.get_local_nodename()
 

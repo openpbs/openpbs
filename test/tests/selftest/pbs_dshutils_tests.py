@@ -54,7 +54,7 @@ class TestDshUtils(TestSelf):
         conf = self.du.parse_pbs_config()
         msg = 'pbs.conf variable not set'
         self.assertIn(var, conf, msg)
-        self.assertEquals(conf[var], val, msg)
+        self.assertEqual(conf[var], val, msg)
 
         msg = 'pbs.conf variable not unset'
         self.du.unset_pbs_config(confs=[var])
@@ -77,7 +77,7 @@ class TestDshUtils(TestSelf):
         environ = self.du.parse_pbs_environment()
         msg = 'pbs environment variable not set'
         self.assertIn('pbs_foo', environ, msg)
-        self.assertEquals(environ['pbs_foo'], 'True', msg)
+        self.assertEqual(environ['pbs_foo'], 'True', msg)
 
         msg = 'pbs environment variable not unset'
         self.du.unset_pbs_environment(environ=['pbs_foo'])

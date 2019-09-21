@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -145,7 +145,7 @@ def usage():
     msg += ['           Note that -t option will be ignored\n']
     msg += ['--version: print version number and exit\n']
 
-    print "".join(msg)
+    print("".join(msg))
 
 
 def process_config(hosts, process_obj, conf_file=None, type='default',
@@ -192,7 +192,7 @@ def common_users_groups_ops():
     g_create = []
     u_create = []
     gm_expected = {}
-    gm_actual = du.group_memberships(map(lambda g: str(g), PBS_GROUPS))
+    gm_actual = du.group_memberships([str(g) for g in PBS_GROUPS])
     for g in PBS_GROUPS:
         gm_expected[g] = g.users
     for k, v in gm_expected.items():
@@ -214,11 +214,11 @@ def check_users_groups():
     if ((len(g_create) > 0) or (len(u_create) > 0)):
         out = ['Expected (format is <group name>: <user> [, <user2>...) ']
         for k, v in gm_expected.items():
-            out += [str(k) + ': ' + ', '.join(map(lambda u:str(u), v))]
+            out += [str(k) + ': ' + ', '.join([str(u) for u in v])]
         out += ['\n', 'Actual: ']
         for k, v in gm_actual.items():
             out += [k + ': ' + ', '.join(v)]
-        print '\n'.join(out)
+        print('\n'.join(out))
         return False
     else:
         return True
@@ -417,7 +417,7 @@ if __name__ == '__main__':
         elif o == '--switch-version':
             switchversion = val
         elif o == '--version':
-            print ptl.__version__
+            print(ptl.__version__)
             sys.exit(0)
         else:
             sys.stderr.write("Unrecognized option " + o + "\n")
@@ -465,8 +465,8 @@ if __name__ == '__main__':
                        delqueues=delqueues, delhooks=delhooks)
     elif saveconf:
         if os.path.isfile(saveconf):
-            answer = raw_input('file ' + saveconf + ' exists, overwrite? '
-                               '[y]/n: ')
+            answer = input('file ' + saveconf + ' exists, overwrite? '
+                           '[y]/n: ')
             if answer == 'n':
                 sys.exit(1)
         if not process_obj:

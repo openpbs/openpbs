@@ -36,7 +36,7 @@
 # trademark licensing policies.
 
 from tests.selftest import *
-from StringIO import StringIO
+from io import StringIO
 import logging
 
 

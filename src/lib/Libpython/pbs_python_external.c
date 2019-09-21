@@ -58,12 +58,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <wchar.h>
 
-extern void init_pbs_ifl(void);
+extern PyObject* PyInit__pbs_ifl(void);
 
 static struct _inittab pbs_python_inittab_modules[] = {
 	{PBS_PYTHON_V1_MODULE_EXTENSION_NAME, pbs_v1_module_inittab},
-	{"_pbs_ifl", init_pbs_ifl},
+	{"_pbs_ifl", PyInit__pbs_ifl},
 	{NULL, NULL}                    /* sentinel */
 };
 
@@ -114,6 +115,7 @@ pbs_python_ext_start_interpreter(
 	struct stat sbuf;
 	char pbs_python_home[MAXPATHLEN+1];
 	char pbs_python_destlib[MAXPATHLEN+1];
+	char pbs_python_destlib2[MAXPATHLEN+1];
 	int  evtype;
 	int  rc;
 
@@ -134,16 +136,21 @@ pbs_python_ext_start_interpreter(
 
 	memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
 	memset((char *)pbs_python_destlib, '\0', MAXPATHLEN+1);
+	memset((char *)pbs_python_destlib2, '\0', MAXPATHLEN+1);
 
 	snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
 		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib64/python/altair",
+		pbs_conf.pbs_exec_path);
+	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib64/python/altair/pbs/v1",
 		pbs_conf.pbs_exec_path);
 	rc = stat(pbs_python_destlib, &sbuf);
 	if (rc != 0) {
 		snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib/python/altair",
 			pbs_conf.pbs_exec_path);
 		rc = stat(pbs_python_destlib, &sbuf);
+		snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
+			pbs_conf.pbs_exec_path);
 	}
 	if (rc != 0) {
 		log_err(-1, __func__,
@@ -174,8 +181,12 @@ pbs_python_ext_start_interpreter(
 	Py_FrozenFlag = 1;
 	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
-	if (file_exists(pbs_python_home))
-		Py_SetPythonHome(pbs_python_home);
+	if (file_exists(pbs_python_home)) {
+		wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
+		wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
+		mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+		Py_SetPythonHome(tmp_pbs_python_home);
+	}
 
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
@@ -214,6 +225,15 @@ pbs_python_ext_start_interpreter(
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"could not insert %s into sys.path shutting down",
 			pbs_python_destlib);
+		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		log_err(-1, __func__, log_buffer);
+		goto ERROR_EXIT;
+	}
+
+	if (pbs_python_modify_syspath(pbs_python_destlib2, -1) == -1) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1,
+			"could not insert %s into sys.path shutting down",
+			pbs_python_destlib2);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
 		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
@@ -304,21 +324,29 @@ pbs_python_ext_quick_start_interpreter(void)
 
 	char pbs_python_home[MAXPATHLEN+1];
 	char pbs_python_destlib[MAXPATHLEN+1];
+	char pbs_python_destlib2[MAXPATHLEN+1];
 
 	memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
 	memset((char *)pbs_python_destlib, '\0', MAXPATHLEN+1);
+	memset((char *)pbs_python_destlib2, '\0', MAXPATHLEN+1);
 
 	snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
 		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib/python/altair",
+		pbs_conf.pbs_exec_path);
+	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
 		pbs_conf.pbs_exec_path);
 
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
 	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
-	if (file_exists(pbs_python_home))
-		Py_SetPythonHome(pbs_python_home);
+	if (file_exists(pbs_python_home)) {
+		wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
+		wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
+		mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+		Py_SetPythonHome(tmp_pbs_python_home);
+	}
 
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
@@ -358,9 +386,17 @@ pbs_python_ext_quick_start_interpreter(void)
 		goto ERROR_EXIT;
 	}
 
+	if (pbs_python_modify_syspath(pbs_python_destlib2, -1) == -1) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1,
+			"could not insert %s into sys.path shutting down",
+			pbs_python_destlib2);
+		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		log_err(-1, __func__, log_buffer);
+		goto ERROR_EXIT;
+	}
+
 	snprintf(log_buffer, LOG_BUF_SIZE-1,
-		"--> Inserted Altair PBS Python modules dir '%s' <--",
-		pbs_python_destlib);
+		"--> Inserted Altair PBS Python modules dir '%s' '%s'<--", pbs_python_destlib, pbs_python_destlib2);
 	log_buffer[LOG_BUF_SIZE-1] = '\0';
 	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
 		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
@@ -654,6 +690,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	PyObject *pvalue;
 	PyObject *ptraceback;
 	PyObject *pobjStr;
+	PyObject *retval;
 	char      *pStr;
 	int rc=0;
 
@@ -724,12 +761,13 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	PyErr_Clear(); /* clear any exceptions before starting code */
 	/* precompile strings of code to bytecode objects */
-	(void) PyEval_EvalCode((PyCodeObject *)py_script->py_code_obj,
+	retval = PyEval_EvalCode((PyObject *)py_script->py_code_obj,
 		pdict, pdict);
 	/* check for exception */
 	if (PyErr_Occurred()) {
 		if (PyErr_ExceptionMatches(PyExc_KeyboardInterrupt)) {
 			pbs_python_write_error_to_log("Python script received a KeyboardInterrupt");
+			Py_XDECREF(retval);
 			return -3;
 		}
 
@@ -739,7 +777,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 			if (pvalue) {
 				pobjStr = PyObject_Str(pvalue); /* new ref */
-				pStr = PyString_AsString(pobjStr);
+				pStr = PyUnicode_AsUTF8(pobjStr);
 				rc = (int) atol(pStr);
 				Py_XDECREF(pobjStr);
 			}
@@ -756,10 +794,12 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 		} else {
 			pbs_python_write_error_to_log("Error evaluating Python script");
+			Py_XDECREF(retval);
 			return -2;
 		}
 	}
 	PyErr_Clear();
+	Py_XDECREF(retval);
 
 	if (exit_code)
 		*exit_code=rc; /* set exit code if var is not null */
@@ -876,4 +916,5 @@ ERROR_EXIT:
 
 
 #endif /* PYTHON */
+
 

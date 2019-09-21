@@ -1,4 +1,4 @@
-#coding: utf-8
+# coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.

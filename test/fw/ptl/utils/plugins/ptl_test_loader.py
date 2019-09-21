@@ -301,7 +301,7 @@ class PTLTestLoader(Plugin):
         Is the method wanted?
         """
         try:
-            cls = method.im_class
+            cls = method.__self__.__class__
         except AttributeError:
             return False
         if not method.__name__.startswith(self._test_marker):
