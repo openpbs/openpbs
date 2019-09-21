@@ -96,7 +96,7 @@ class TestNodeBuckets(TestFunctional):
         # Yellow buckets get a higher priority
         if numnode // 1430 == 2:
             a['Priority'] = 100
-        return {**attrib, **a}
+        return {**attribs, **a}
 
     def check_normal_path(self, sel='2:ncpus=2:mem=1gb', pl='scatter:excl',
                           queue='workq'):

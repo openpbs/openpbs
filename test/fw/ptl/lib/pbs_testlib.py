@@ -5066,7 +5066,7 @@ class Server(PBSService):
             setdict.update({ATTR_dfltque: 'workq'})
         if delscheds:
             self.manager(MGR_CMD_LIST, SCHED)
-            for name in self.schedulers.keys():
+            for name in list(self.schedulers.keys()):
                 if name != 'default':
                     self.schedulers[name].terminate()
                     sched_log = self.schedulers[
