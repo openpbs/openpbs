@@ -39,13 +39,17 @@ from tests.functional import *
 
 
 @requirements(num_moms=2)
-class TestSupportLinuxCgroupPhase1_2(TestFunctional):
+class TestSupportLinuxHookEventPhase1_2(TestFunctional):
     """
     Tests that cover support for Linux cgroups in phase 1.2.
     """
 
     def setUp(self):
         TestFunctional.setUp(self)
+        self.pbs_attach = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                       'bin', 'pbs_attach')
+        self.pbs_tmrsh = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                      'bin', 'pbs_tmrsh')
 
     def test_prologue_attach_order(self):
         """
@@ -78,16 +82,14 @@ else:
             self.hostA = self.hostA + '[0]'
         if self.momB.is_cpuset_mom():
             self.hostB = self.hostB + '[1]'
-        pbs_attach = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_attach"
-        pbs_tmrsh = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_tmrsh"
 
         # Job script
         test = []
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
-        test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % pbs_attach]
+        test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
         test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (pbs_tmrsh, self.hostB, pbs_attach)]
+                 (self.pbs_tmrsh, self.hostB, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)
@@ -146,7 +148,7 @@ vn = pbs.event().vnode_list
 for k in vn.keys():
    pbs.logmsg(pbs.LOG_DEBUG, "Vnode: [%s]-------------->" % (k))
 
-pbs.logjobmsg(e.job.id, "PID = %d, type=%s" % (e.pid, type(e.pid)))
+pbs.logjobmsg(e.job.id, "PID = %d, type = %s" % (e.pid, type(e.pid)))
 
 if e.job.in_ms_mom():
         pbs.logmsg(pbs.LOG_DEBUG, "job is in_ms_mom")
@@ -167,16 +169,14 @@ e.accept()
             self.hostA = self.hostA + '[0]'
         if self.momB.is_cpuset_mom():
             self.hostB = self.hostB + '[0]'
-        pbs_attach = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_attach"
-        pbs_tmrsh = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_tmrsh"
 
         # Job script
         test = []
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
-        test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % pbs_attach]
+        test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
         test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (pbs_tmrsh, self.hostB, pbs_attach)]
+                 (self.pbs_tmrsh, self.hostB, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)
