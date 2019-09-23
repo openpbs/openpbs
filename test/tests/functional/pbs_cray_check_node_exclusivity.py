@@ -71,7 +71,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         Test node state will change when reservation
         asks for exclusivity.
         """
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 30,
@@ -167,7 +167,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         Test Job outside the reservation will not be allowed
         to run if reservation has place=excl.
         """
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
@@ -210,7 +210,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         Reservation2 is inside the duration of confirmed reservation
         requesting the same vnode in Reservation1.
         """
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
@@ -240,13 +240,14 @@ class TestCheckNodeExclusivity(TestFunctional):
         msg3 += "amount of resource: vnode"
         self.scheduler.log_match(msg3, starttime=now, interval=2)
 
+    @skip(reason="skip test due to PP-1213")
     def test_node_exclusivity_with_multinode_reservation(self):
         """
         Test Jobs run correctly in multinode reservation
         and accordingly update node exclusivity.
         """
         self.get_vnode_ncpus_value()
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {ATTR_l + '.select': '2:ncpus=%d' % (int(self.ncpus)),
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
@@ -276,7 +277,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node[0])
         # Below steps are blocked due to PP-1213
-        # Submit aother job inside the reservation
+        # Submit another job inside the reservation
         submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '2:ncpus=1',
              'Resource_List.place': 'shared'}
@@ -293,7 +294,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         are confirmed when not overlapping in time.
         """
         self.get_vnode_ncpus_value()
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
@@ -322,7 +323,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         leaves node in state resv-exclusive.
         """
         self.get_vnode_ncpus_value()
-        # Submit a resrvation with place=excl
+        # Submit a reservation with place=excl
         now = int(time.time())
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
@@ -406,3 +407,154 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.delete(rid2)
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node)
+
+    def test_job_inside_exclusive_reservation(self):
+        """
+        Test Job will run correctly inside the exclusive
+        reservation
+        """
+        self.script2 = []
+        self.script2 += ['echo Hello World\n']
+        self.script2 += ['/bin/sleep 10']
+
+        # Submit a reservation with place=excl
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
+             'Resource_List.place': 'excl', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.server.expect(NODE, {'state': 'free'},
+                           id=resv_node)
+        self.logger.info('Waiting 20s for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=20)
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node)
+        # Submit a jinside the reservation
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1:vntype=cray_login',
+             'Resource_List.place': 'excl'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script2)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
+        self.server.expect(
+            JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        # waith 5 sec for job to end
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node, offset=5, interval=10)
+        # Wait for reservation to end and verify node state
+        # changed as free
+        msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
+        self.server.log_match(msg, starttime=now, interval=2)
+        self.server.expect(NODE, {'state': 'free'},
+                           id=resv_node)
+
+    def test_job_inside_exclusive_reservation_on_compute_node(self):
+        """
+        Test Job will run correctly inside the exclusive
+        reservation requesting compute_node
+        """
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+        # Submit a standing reservation with place=excl
+        now = int(time.time())
+        a = {ATTR_l + '.select': '1:ncpus=1:vntype=cray_compute',
+             'Resource_List.place': 'excl',
+             ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=1',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': now + 10,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.server.expect(NODE, {'state': 'free'}, id=resv_node)
+        self.logger.info('Waiting 10s for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node)
+        # Submit a job inside the reservation
+        submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
+        a = {ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1, submit_dir=submit_dir)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        # waith 5 sec for job to end
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node, offset=5, interval=10)
+
+    def test_reservation_request_exclhost(self):
+        """
+        Test Reservation asking for place=exclhost on HostA
+        will have all resources of the vnodes present
+        on HostA assigned to it
+        """
+        # Submit a reservation with place=exclhost
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
+             'Resource_List.place': 'exclhost', 'reserve_start': now + 10,
+             'reserve_end': now + 30}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.logger.info('Waiting 10s for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node)
+        self.logger.info('Waiting 20s for reservation to finish')
+        self.server.expect(NODE, {'state': 'free'},
+                           id=resv_node, offset=20)
+
+    def test_reservation_request_force_excl(self):
+        """
+        Test Reservation asking for place=force_excl
+        will not get confirmed if node has
+        force_excl/ignore_excl set on it.
+        """
+
+        a = {'sharing': 'ignore_excl'}
+        self.server.create_vnodes(self.mom.shortname, a, 1,
+                                  self.mom, createnode=False,
+                                  delall=False, usenatvnode=True)
+        self.server.expect(NODE, {'state': 'free',
+                                  'sharing': 'ignore_excl'},
+                           id=self.mom.shortname)
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
+             'Resource_List.place': 'force_excl', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        # pbs-rsub is denied with the message
+        _msg = "pbs_rsub: Illegal attribute or resource value"
+        _msg += " Resource_List.place"
+        r = Reservation(TEST_USER, attrs=a)
+        try:
+            rid = self.server.submit(r)
+            rid_q = rid.split('.')[0]
+        except PbsSubmitError as e:
+            self.assertEqual(
+                e.msg[0], _msg, msg="Did not get expected qsub err message")
+            self.logger.info("Got expected qsub err message as %s", e.msg[0])
