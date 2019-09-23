@@ -74,8 +74,8 @@ else:
         a = {'event': 'execjob_prologue,execjob_attach', 'enabled': 'True'}
         self.server.create_import_hook("hook1", a, hook_body)
 
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
+        self.momA = list(self.moms.values())[0]
+        self.momB = list(self.moms.values())[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         if self.momA.is_cpuset_mom():
@@ -161,8 +161,8 @@ e.accept()
         a = {'event': 'execjob_attach', 'enabled': 'True'}
         self.server.create_import_hook("hook1", a, hook_body)
 
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
+        self.momA = list(self.moms.values())[0]
+        self.momB = list(self.moms.values())[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         if self.momA.is_cpuset_mom():
