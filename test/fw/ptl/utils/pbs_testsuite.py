@@ -670,19 +670,21 @@ class PBSTestSuite(unittest.TestCase):
         if init_server_func is None:
             init_server_func = cls.init_server
         if 'servers' in cls.conf:
+            server_param = cls.conf['servers']
             if 'comms' not in cls.conf and 'comm' not in cls.conf:
-                cls.conf['comms'] = cls.conf['servers']
+                cls.conf['comms'] = server_param
             if 'schedulers' not in cls.conf and 'scheduler' not in cls.conf:
-                cls.conf['schedulers'] = cls.conf['servers']
+                cls.conf['schedulers'] = server_param
             if 'moms' not in cls.conf and 'mom' not in cls.conf:
-                cls.conf['moms'] = cls.conf['servers']
+                cls.conf['moms'] = server_param
         if 'server' in cls.conf:
+            server_param = cls.conf['server']
             if 'comms' not in cls.conf and 'comm' not in cls.conf:
-                cls.conf['comm'] = cls.conf['server']
+                cls.conf['comm'] = server_param
             if 'schedulers' not in cls.conf and 'scheduler' not in cls.conf:
-                cls.conf['scheduler'] = cls.conf['server']
+                cls.conf['scheduler'] = server_param
             if 'moms' not in cls.conf and 'mom' not in cls.conf:
-                cls.conf['mom'] = cls.conf['server']
+                cls.conf['mom'] = server_param
         cls.servers = cls.init_from_conf(conf=cls.conf, single='server',
                                          multiple='servers', skip=skip,
                                          func=init_server_func)
