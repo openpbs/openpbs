@@ -41,7 +41,7 @@ from tests.functional import *
 @requirements(num_moms=2)
 class TestSupportLinuxHookEventPhase1_2(TestFunctional):
     """
-    Tests that cover support for Linux cgroups in phase 1.2.
+    Tests that cover support for Linux hook events in phase 1.2.
     """
 
     def setUp(self):
