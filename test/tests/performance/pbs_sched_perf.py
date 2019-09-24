@@ -250,6 +250,7 @@ class TestSchedPerf(TestPerformance):
         self.perf_test_result(((cycle1_time / cycle2_time) * 100),
                               "optimized_percentage", "percentage")
 
+    @timeout(1200)
     def test_many_chunks(self):
         num_jobs = 1000
         # Submit jobs with a large number of chunks that can't run
