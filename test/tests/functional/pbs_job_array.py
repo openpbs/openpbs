@@ -714,7 +714,6 @@ class TestJobArray(TestFunctional):
         try:
             self.server.restart()
         except PbsServiceError as e:
-            print e.msg
             if 'pbs_server startup failed' in e.msg:
                 reset_db = 'echo y | ' + \
                     os.path.join(self.server.pbs_conf['PBS_EXEC'],
