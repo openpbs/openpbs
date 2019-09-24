@@ -8817,18 +8817,19 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 	if (presv->ri_vnodes_down > presv->ri_vnodect) {
 		attribute *rsv_attr = presv->ri_wattr;
 		/* If a standing reservation we print the execvnodes sequence
-		 * string for debugging purposes */
+		 * string for debugging purposes
+		 */
 		if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
 			snprintf(log_buffer, sizeof(log_buffer), " execvnodes sequence %s",
 				rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				presv->ri_qs.ri_resvID, log_buffer);
 
 		}
 		snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; "
 			" unavailable vnodes in reservation: %d",
 			presv->ri_vnodect, presv->ri_vnodes_down);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 			presv->ri_qs.ri_resvID, log_buffer);
 	}
 	presv->ri_vnodes_down++;
