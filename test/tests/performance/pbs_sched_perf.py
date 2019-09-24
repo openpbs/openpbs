@@ -57,9 +57,6 @@ class TestSchedPerf(TestPerformance):
                                   attrfunc=self.cust_attr_func, expect=False)
         self.server.expect(NODE, {'state=free': (GE, 10010)})
         self.scheduler.add_resource('color')
-        a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
-        self.du.set_pbs_config(confs=a, append=True)
-        self.scheduler.restart()
 
     def cust_attr_func(self, name, totalnodes, numnode, attribs):
         """
