@@ -249,3 +249,22 @@ class TestSchedPerf(TestPerformance):
                         'Optimization was not faster')
         self.perf_test_result(((cycle1_time / cycle2_time) * 100),
                               "optimized_percentage", "percentage")
+
+    def test_many_chunks(self):
+        num_jobs = 1000
+        # Submit jobs with a large number of chunks that can't run
+        a = {'Resource_List.select': '9999:ncpus=1:color=red'}
+        jids = self.submit_jobs(a, num_jobs, wt_start=1000)
+        m = 'Time taken to consider %d normal jobs' % num_jobs
+        times = []
+        for i in range(3):
+            t = self.run_cycle()
+            times.append(t)
+
+        self.logger.info('#' * 80)
+        for i in range(3):
+            m2 = '[%d] %s: %.2f' % (i, m, times[i])
+            self.logger.info(m2)
+        self.logger.info('#' * 80)
+
+        self.perf_test_result(times, m, "sec")
