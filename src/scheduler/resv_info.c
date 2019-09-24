@@ -1797,7 +1797,7 @@ adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
 			if (all_resvs[j]->resv->resv_substate == RESV_RUNNING) {
 				resv_nodes = all_resvs[j]->ninfo_arr;
 				for (i = 0; resv_nodes[i] != NULL; i++) {
-					ninfo = find_node_by_rank(all_nodes, resv_nodes[i]->rank);
+					ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
 					update_node_on_end(ninfo, all_resvs[j], NULL);
 				}
 			}
