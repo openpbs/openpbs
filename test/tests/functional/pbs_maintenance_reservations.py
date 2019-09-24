@@ -68,9 +68,9 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertEqual("pbs_rsub: Unauthorized Request", msg)
 
-    def test_maintenance_forbidden_resources(self):
+    def test_maintenance_forbidden_parameters(self):
         """
-        Test if the select and place is forbidden with maintenance
+        Test if forbidden parameters are refused
         """
         now = int(time.time())
 
@@ -107,9 +107,25 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertEqual("pbs_rsub: can't use -l with --hosts", msg)
 
-    def test_maintenance_missing_hosts(self):
+        a = {'interactive': 300,
+             'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = [self.mom.shortname]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEqual("pbs_rsub: can't use -I with --hosts", msg)
+
+    def test_maintenance_unknown_hosts(self):
         """
         Test if the pbs_rsub with all unknown hosts return error.
+        Test if the pbs_rsub with any unknown host return error.
         Test if the --hosts without host parameter return error.
         """
         now = int(time.time())
@@ -129,7 +145,21 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsSubmitError as err:
             msg = err.msg[0].strip()
 
-        self.assertEqual("pbs_rsub: missing host(s)", msg)
+        self.assertEqual("pbs_rsub: Host with resources not found: foo", msg)
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = [self.mom.shortname, "foo"]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEqual("pbs_rsub: Host with resources not found: foo", msg)
 
         a = {'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -144,6 +174,29 @@ class TestMaintenanceReservations(TestFunctional):
             msg = err.msg[0].strip()
 
         self.assertEqual("pbs_rsub: missing host(s)", msg)
+
+    def test_maintenance_duplicate_host(self):
+        """
+        Test if the pbs_rsub with duplicate host return error.
+        """
+        now = int(time.time())
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': '%s@*' % TEST_USER})
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        h = ["foo", "foo"]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        self.assertEqual("pbs_rsub: Duplicate host: foo", msg)
 
     def test_maintenance_confirm(self):
         """
@@ -211,7 +264,7 @@ class TestMaintenanceReservations(TestFunctional):
         except PbsDeleteError as err:
             msg = err.msg[0].strip()
 
-        self.assertEquals("pbs_rdel: Unauthorized Request  " + rid, msg)
+        self.assertEqual("pbs_rdel: Unauthorized Request  " + rid, msg)
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'managers': '%s@*' % TEST_USER})

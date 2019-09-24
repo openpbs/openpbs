@@ -95,6 +95,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char dur_buf[800];
 	char badw[] = "pbs_rsub: illegal -W value\n";
 	int opt_re_flg = FALSE;
+	int opt_inter_flg = FALSE;
 	int opt_res_req_flg = FALSE;
 #ifdef WIN32
 	struct attrl *ap = NULL;
@@ -128,6 +129,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'I':
+				opt_inter_flg = TRUE;
 				if ((optarg == NULL) || (*optarg == '\0'))
 					set_attr_error_exit(&attrib, ATTR_inter, "0");
 				else {
@@ -279,12 +281,19 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		errflg++;
 	}
 
+	if (opt_inter_flg && is_maintenance_resv) {
+		fprintf(stderr, "pbs_rsub: can't use -I with --hosts\n");
+		errflg++;
+	}
+
 	if (opt_res_req_flg && is_maintenance_resv) {
 		fprintf(stderr, "pbs_rsub: can't use -l with --hosts\n");
 		errflg++;
 	}
 
 	if (is_maintenance_resv) {
+		char **hostp = NULL;
+
 		if (argc - optind > 0) {
 			maintenance_hosts = malloc(sizeof(char *) * (argc - optind + 1));
 			if (maintenance_hosts == NULL) {
@@ -295,6 +304,14 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			maintenance_hosts[argc - optind] = NULL;
 
 			for (; optind < argc; optind++) {
+				hostp = maintenance_hosts;
+				for (; *hostp; hostp++) {
+					if (strcmp(*hostp, argv[optind]) == 0) {
+						fprintf(stderr, "pbs_rsub: Duplicate host: %s\n", argv[optind]);
+						return (++errflg);
+					}
+				}
+
 				maintenance_hosts[argc - (optind + 1)] = strdup(argv[optind]);
 				if (maintenance_hosts[argc - (optind + 1)] == NULL) {
 					fprintf(stderr, "pbs_rsub: Out of memory\n");
@@ -799,6 +816,9 @@ main(int argc, char *argv[], char *envp[])
 		for (; *hostp; hostp++) {
 			int host_ncpus = 0;
 
+			if (strlen(*hostp) == 0)
+				continue;
+
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				char *ncpus_str = NULL;
 				int ncpus = 0;
@@ -870,6 +890,13 @@ main(int argc, char *argv[], char *envp[])
 					}
 				}
 			} /* end of part that crafts select */
+
+			/* host not found or host has zero ncpus */
+			if (host_ncpus == 0) {
+				fprintf(stderr, "pbs_rsub: Host with resources not found: %s\n", *hostp);
+				CS_close_app();
+				exit(2);
+			}
 		}
 
 		pbs_statfree(bstat_head);	/* free info returned by pbs_statvnodes() */
