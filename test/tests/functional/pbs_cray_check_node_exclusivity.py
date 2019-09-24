@@ -65,6 +65,7 @@ class TestCheckNodeExclusivity(TestFunctional):
             if n['resources_available.vntype'] == 'cray_compute':
                 self.ncpus = n['resources_available.ncpus']
                 self.vnode = n['resources_available.vnode']
+                break
 
     def test_node_state_with_adavance_resv(self):
         """
@@ -86,7 +87,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
         self.server.qterm(runas=ROOT_USER)
-        self.server.start()
+        self.server.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
 
@@ -141,6 +142,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node)
         # Wait for standing reservation first instance to finished
+        self.logger.info(
+            'Waiting 20 sec for second instance of reservation to start')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
                     'reserve_index': 2}
         self.server.expect(RESV, exp_attr, id=rid, offset=20)
@@ -149,7 +152,7 @@ class TestCheckNodeExclusivity(TestFunctional):
                            id=resv_node)
         # Wait for standing reservation second instance to start
         self.logger.info(
-            'Waiting 40 sec for second  instance of reservation to start')
+            'Waiting 40 sec for second instance of reservation to start')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
                     'reserve_index': 2}
         self.server.expect(RESV, exp_attr, id=rid, offset=40, interval=1)
@@ -186,7 +189,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(RESV, a, id=rid, offset=20)
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node)
-        # Submit a job outside the reservation requesting  resv_nodes
+        # Submit a job outside the reservation requesting resv_nodes
         submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_q: 'workq', ATTR_l + '.select': '1:vnode=%s' % resv_node}
         j1 = Job(TEST_USER, attrs=a)
@@ -436,7 +439,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(RESV, a, id=rid, offset=20)
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node)
-        # Submit a jinside the reservation
+        # Submit a job inside the reservation
         submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1:vntype=cray_login',
              'Resource_List.place': 'excl'}
@@ -447,7 +450,7 @@ class TestCheckNodeExclusivity(TestFunctional):
             JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node)
-        # waith 5 sec for job to end
+        # wait 5 sec for job to end
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node, offset=5, interval=10)
         # Wait for reservation to end and verify node state
@@ -457,11 +460,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
 
-    def test_job_inside_exclusive_reservation_on_compute_node(self):
-        """
-        Test Job will run correctly inside the exclusive
-        reservation requesting compute_node
-        """
+        #  Test Job will run correctly inside the exclusive
+        #  standing reservation requesting compute_node
         if 'PBS_TZID' in self.conf:
             tzone = self.conf['PBS_TZID']
         elif 'PBS_TZID' in os.environ:
@@ -499,41 +499,15 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node)
-        # waith 5 sec for job to end
+        # wait 5 sec for job to end
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node, offset=5, interval=10)
 
-    def test_reservation_request_exclhost(self):
+    def test_reservation_request_node_ignore_excl(self):
         """
-        Test Reservation asking for place=exclhost on HostA
-        will have all resources of the vnodes present
-        on HostA assigned to it
-        """
-        # Submit a reservation with place=exclhost
-        now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
-             'Resource_List.place': 'exclhost', 'reserve_start': now + 10,
-             'reserve_end': now + 30}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
-        resv_node = self.server.reservations[rid].get_vnodes()[0]
-        self.logger.info('Waiting 10s for reservation to start')
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=10)
-        self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=resv_node)
-        self.logger.info('Waiting 20s for reservation to finish')
-        self.server.expect(NODE, {'state': 'free'},
-                           id=resv_node, offset=20)
-
-    def test_reservation_request_force_excl(self):
-        """
-        Test Reservation asking for place=force_excl
+        Test Reservation asking for place=excl
         will not get confirmed if node has
-        force_excl/ignore_excl set on it.
+        ignore_excl set on it.
         """
 
         a = {'sharing': 'ignore_excl'}
@@ -543,18 +517,21 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'free',
                                   'sharing': 'ignore_excl'},
                            id=self.mom.shortname)
+        # Submit a reservation
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
-             'Resource_List.place': 'force_excl', 'reserve_start': now + 20,
+             'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
-        # pbs-rsub is denied with the message
-        _msg = "pbs_rsub: Illegal attribute or resource value"
-        _msg += " Resource_List.place"
         r = Reservation(TEST_USER, attrs=a)
-        try:
-            rid = self.server.submit(r)
-            rid_q = rid.split('.')[0]
-        except PbsSubmitError as e:
-            self.assertEqual(
-                e.msg[0], _msg, msg="Did not get expected qsub err message")
-            self.logger.info("Got expected qsub err message as %s", e.msg[0])
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        # Wait for reservation to start and verify
+        # node state should not be resv-exclusive
+        self.logger.info('Waiting 10s for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=resv_node, op=NE)
