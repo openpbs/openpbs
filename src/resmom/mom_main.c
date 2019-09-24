@@ -8249,7 +8249,7 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	PyObject			*path;
 	PyObject 			*retval =  NULL;
-	char				buf[MAXPATHLEN];
+	char				*buf;
 	char				py_version[4];
 #endif
 
@@ -9577,8 +9577,9 @@ main(int argc, char *argv[])
 
 	path = PySys_GetObject("path");
 #ifdef WIN32
-	snprintf(buf, sizeof(buf), "%s/Lib", pbs_python_home);
+	pbs_asprintf(&buf, "%s/Lib", pbs_python_home);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
@@ -9589,38 +9590,44 @@ main(int argc, char *argv[])
 	py_version[3] = '\0';
 
 	/* list of possible paths to Python modules (mom imports json) */
-	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
+	pbs_asprintf(&buf, "%s/lib/python%s", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-	retval = PyUnicode_FromString(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s", py_version);
-	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 	
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s/lib-dynload", py_version);
+	pbs_asprintf(&buf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s", py_version);
+	
+	pbs_asprintf(&buf, "/usr/lib/python/python%s", py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s/lib-dynload", py_version);
+	
+	pbs_asprintf(&buf, "/usr/lib/python/python%s/lib-dynload", py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
+	
+	pbs_asprintf(&buf, "/usr/lib64/python/python%s", py_version);
+	retval = PyUnicode_FromString(buf);
+	free(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
+	
+	pbs_asprintf(&buf, "/usr/lib64/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);

@@ -312,7 +312,7 @@ req_quejob(struct batch_request *preq)
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
-	char		namebuf[MAXPATHLEN+1];
+	char		*namebuf;
 	int		hook_errcode = 0;
 	int		hook_rc = 0;
 	char		hook_buf[HOOK_MSG_SIZE];
@@ -597,19 +597,21 @@ req_quejob(struct batch_request *preq)
 			}
 			psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 		}
-		snprintf(namebuf, MAXPATHLEN + 1, "%s%s%s", path_jobs, basename, JOB_TASKDIR_SUFFIX);
+		pbs_asprintf(&namebuf, "%s%s%s", path_jobs, basename, JOB_TASKDIR_SUFFIX);
 		if (mkdir(namebuf, 0700) == -1) {
 			pj->ji_qs.ji_un.ji_momt.ji_exitstat = -1;
 			if (*pj->ji_qs.ji_fileprefix == '\0'
 					&& *pj->ji_qs.ji_jobid == '\0') {
-				strncpy(pj->ji_qs.ji_jobid, jid, PBS_MAXSVRJOBID);
+                        	snprintf(pj->ji_qs.ji_jobid, sizeof(pj->ji_qs.ji_jobid), "%s", jid);
 			}
 			job_purge(pj);
 			req_reject(PBSE_SYSTEM, 0, preq);
+			free(namebuf);
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
 	}
+	free(namebuf);
 #endif          /* PBS_MOM */
 
 	(void)strcpy(pj->ji_qs.ji_jobid, jid);
