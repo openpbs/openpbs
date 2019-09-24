@@ -52,8 +52,9 @@ pbsexec = _pbs_conf("PBS_EXEC")
 if pbsexec is None:
     raise BackendError("PBS_EXEC not found")
 
-sys.path.append(os.path.join(pbsexec, "python", "lib", "python2.7"))
-sys.path.append(os.path.join(pbsexec, "python", "lib", "python2.7",
+py_version = str(sys.version_info.major) + "." + str(sys.version_info.minor)
+sys.path.append(os.path.join(pbsexec, "python", "lib", py_version))
+sys.path.append(os.path.join(pbsexec, "python", "lib", py_version,
                 "lib-dynload"))
 import encodings
 

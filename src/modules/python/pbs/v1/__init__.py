@@ -40,17 +40,17 @@ The PBS Python V1 package
 """
 
 #: the following is used by the embedded interpreter
-from _export_types import EXPORTED_TYPES_DICT
+from ._export_types import EXPORTED_TYPES_DICT
 #: import all types from pbs_v1 C module
 from _pbs_v1 import *
 #
-from _base_types import *
-from _exc_types import *
-from _svr_types import *
+from ._base_types import *
+from ._exc_types import *
+from ._svr_types import *
 
 #: this is Power Management Infrastructure which may not exist on all system types yet
 try:
-    from _pmi_types import *
+    from ._pmi_types import *
 except:
     pass
 

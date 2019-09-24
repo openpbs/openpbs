@@ -86,18 +86,17 @@ class TestNodeBuckets(TestFunctional):
         nodes of each color, letter, and shape.  The value of bool is True
         for the last 5005 nodes and unset for the first 5005 nodes
         """
-        a = {'resources_available.color': self.colors[numnode / 1430],
+        a = {'resources_available.color': self.colors[numnode // 1430],
              'resources_available.shape': self.shapes[numnode % 7],
              'resources_available.letter': self.letters[numnode % 7]}
 
-        if numnode / 5005 == 0:
+        if numnode // 5005 == 0:
             a['resources_available.bool'] = 'True'
 
         # Yellow buckets get a higher priority
-        if numnode / 1430 == 2:
+        if numnode // 1430 == 2:
             a['Priority'] = 100
-
-        return dict(attribs.items() + a.items())
+        return {**attribs, **a}
 
     def check_normal_path(self, sel='2:ncpus=2:mem=1gb', pl='scatter:excl',
                           queue='workq'):
@@ -560,8 +559,8 @@ class TestNodeBuckets(TestFunctional):
 
         c1 = n1[0]['resources_available.color']
         c2 = n2[0]['resources_available.color']
-        self.assertEquals(c1, 'yellow', "Job didn't run on yellow nodes")
-        self.assertEquals(c2, 'yellow', "Job didn't run on yellow nodes")
+        self.assertEqual(c1, 'yellow', "Job didn't run on yellow nodes")
+        self.assertEqual(c2, 'yellow', "Job didn't run on yellow nodes")
 
     @timeout(450)
     def test_psets(self):
@@ -831,8 +830,8 @@ class TestNodeBuckets(TestFunctional):
         n2 = j1.get_vnodes(s2[0]['exec_vnode'])
 
         msg = 'job did not run on correct number of nodes'
-        self.assertEquals(len(n1), 715, msg)
-        self.assertEquals(len(n2), 715, msg)
+        self.assertEqual(len(n1), 715, msg)
+        self.assertEqual(len(n2), 715, msg)
 
         for node in n1:
             self.assertTrue(node not in n2, 'Jobs share nodes: ' + node)

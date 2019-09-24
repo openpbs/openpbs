@@ -66,7 +66,6 @@ for %%a in (
     "%WINBUILDDIR%\src\lib\Libpbspthread\%BUILD_TYPE%\Libpbspthread.dll"
     "%WINBUILDDIR%\src\tools\%BUILD_TYPE%\*.exe"
     "%PBS_SRCDIR%\src\cmds\scripts\*.bat"
-    "%BINARIESDIR%\tcltk%BINARIESDIR_TYPE%\bin\*.dll"
 ) do (
     1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\bin\"
     if not %ERRORLEVEL% == 0 (
@@ -76,23 +75,13 @@ for %%a in (
 )
 
 REM Remove unneccesory files from bin directory
-del /F /Q "%PBS_EXECDIR%\bin\pbs_ds_monitor.exe"
-del /F /Q "%PBS_EXECDIR%\bin\pbs_ds_password.exe"
 del /F /Q "%PBS_EXECDIR%\bin\pbs_dataservice.bat"
 
 echo Copying necessory files for PBS_EXEC\sbin
 for %%a in (
-    "%WINBUILDDIR%\src\server\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\iff\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\tools\%BUILD_TYPE%\pbs_ds_monitor.exe"
-    "%WINBUILDDIR%\src\resmom\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\pbs_iff\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\pbs_mom\%BUILD_TYPE%\*.exe"
     "%WINBUILDDIR%\src\mom_rcp\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\cmds\%BUILD_TYPE%\pbs_ds_password.exe"
-    "%WINBUILDDIR%\src\scheduler\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\send_job\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\send_hooks\%BUILD_TYPE%\*.exe"
-    "%WINBUILDDIR%\src\start_provision\%BUILD_TYPE%\*.exe"
-    "%PBS_SRCDIR%\src\cmds\scripts\pbs_dataservice.bat"
 ) do (
     1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\sbin\"
     if not %ERRORLEVEL% == 0 (
@@ -102,22 +91,11 @@ for %%a in (
 )
 
 echo Copying necessory files for PBS_EXEC\etc
-for %%a in (
-    "%PBS_SRCDIR%\src\scheduler\pbs_holidays*"
-    "%PBS_SRCDIR%\src\scheduler\pbs_dedicated"
-    "%PBS_SRCDIR%\src\scheduler\pbs_resource_group"
-    "%PBS_SRCDIR%\src\scheduler\pbs_sched_config"
-    "%PBS_SRCDIR%\src\cmds\scripts\pbs_db_schema.sql"
-    "%PBS_SRCDIR%\src\cmds\scripts\win_postinstall.py"
-) do (
-    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\etc\"
-    if not %ERRORLEVEL% == 0 (
-        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\etc\"
-        exit /b 1
-    )
+1>nul xcopy /Y /V /J "%PBS_SRCDIR%\src\cmds\scripts\win_postinstall.py" "%PBS_EXECDIR%\etc\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%PBS_SRCDIR%\src\cmds\scripts\win_postinstall.py" to "%PBS_EXECDIR%\etc\"
+    exit /b 1
 )
-echo > "%PBS_EXECDIR%\etc\createdb.bat"
-echo > "%PBS_EXECDIR%\etc\create_svr_defaults.bat"
 
 echo Copying necessory files for PBS_EXEC\include
 for %%a in (
@@ -146,25 +124,17 @@ if not %ERRORLEVEL% == 0 (
     echo Failed to copy files from "%PBS_SRCDIR%\src\modules\python\pbs" to "%PBS_EXECDIR%\lib\python\altair\pbs\"
     exit /b 1
 )
-1>nul xcopy /Y /V /J "%PBS_SRCDIR%\win_configure\projects.VS2008\pbs_ifl.py" "%PBS_EXECDIR%\lib\python\altair\pbs\v1\"
+1>nul xcopy /Y /V /J "%PBS_SRCDIR%\win_configure\projects\pbs_ifl.py" "%PBS_EXECDIR%\lib\python\altair\pbs\v1\"
 if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%PBS_SRCDIR%\win_configure\projects.VS2008\pbs_ifl.py" to "%PBS_EXECDIR%\lib\python\altair\altair\v1\"
+    echo Failed to copy files from "%PBS_SRCDIR%\win_configure\projects\pbs_ifl.py" to "%PBS_EXECDIR%\lib\python\altair\altair\v1\"
     exit /b 1
 )
-1>nul xcopy /Y /V /J "%BINARIESDIR%\python\Lib\*.*" "%PBS_EXECDIR%\lib\python\python2.7\"
+1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python\Lib\*.*" "%PBS_EXECDIR%\lib\python\python3.6\"
 if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%BINARIESDIR%\python\Lib\" to "%PBS_EXECDIR%\lib\python\python2.7\"
+    echo Failed to copy files from "%BINARIESDIR%\python\Lib\" to "%PBS_EXECDIR%\lib\python\python3.6\"
     exit /b 1
 )
 
-"%BINARIESDIR%\python\python.exe" -Wi "%BINARIESDIR%\python\Lib\compileall.py" -q -f -x "%PBS_EXECDIR%\lib\python"
-"%BINARIESDIR%\python\python.exe" -O -Wi "%BINARIESDIR%\python\Lib\compileall.py" -q -f -x "%PBS_EXECDIR%\lib\python"
-
-1>nul xcopy /Y /V /J /S "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" "%PBS_EXECDIR%\lib\ical\zoneinfo\"
-if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" to "%PBS_EXECDIR%\lib\ical\zoneinfo"
-    exit /b 1
-)
 for %%a in (
     "%WINBUILDDIR%\src\lib\Libattr\%BUILD_TYPE%\Libattr.lib"
     "%WINBUILDDIR%\src\lib\Liblog\%BUILD_TYPE%\Liblog.lib"
@@ -172,7 +142,6 @@ for %%a in (
     "%WINBUILDDIR%\src\lib\Libpbs\%BUILD_TYPE%\Libpbs.lib"
     "%WINBUILDDIR%\src\lib\Libsite\%BUILD_TYPE%\Libsite.lib"
     "%WINBUILDDIR%\src\lib\Libwin\%BUILD_TYPE%\Libwin.lib"
-    "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\bin\*.dll"
 ) do (
     1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\lib\"
     if not %ERRORLEVEL% == 0 (
@@ -195,29 +164,24 @@ for %%a in (
     )
 )
 
-echo Copying necessory files for PBS_EXEC\pgsql
-1>nul xcopy /Y /V /J /S "%BINARIESDIR%\pgsql%BINARIESDIR_TYPE%" "%PBS_EXECDIR%\pgsql\"
-if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%BINARIESDIR%\pgsql%BINARIESDIR_TYPE%" to "%PBS_EXECDIR%\pgsql\"
-    exit /b 1
-)
-
 echo Copying necessory files for PBS_EXEC\python
 1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python" "%PBS_EXECDIR%\python\"
 if not %ERRORLEVEL% == 0 (
     echo Failed to copy files from "%BINARIESDIR%\python" to "%PBS_EXECDIR%\python\"
     exit /b 1
 )
+
 if "%BUILD_TYPE%"=="Debug" (
-    1>nul copy /B /Y "%BINARIESDIR%\python_debug\PC\VS9.0\python27_d.dll" "%PBS_EXECDIR%\python\"
-	1>nul copy /B /Y "%BINARIESDIR%\python_debug\PC\VS9.0\python27_d.pdb" "%PBS_EXECDIR%\python\"
+    1>nul copy /B /Y "%BINARIESDIR%\python_debug\PCbuild\win32\python36_d.*" "%PBS_EXECDIR%\python\"
 )
 
-echo Copying necessory files for PBS_EXEC\python_x64
-1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python_x64" "%PBS_EXECDIR%\python_x64\"
-if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%BINARIESDIR%\python_x64" to "%PBS_EXECDIR%\python_x64\"
-    exit /b 1
+if exist "%BINARIESDIR%\python_x64" (
+    echo Copying necessory files for PBS_EXEC\python_x64
+    1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python_x64" "%PBS_EXECDIR%\python_x64\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%BINARIESDIR%\python_x64" to "%PBS_EXECDIR%\python_x64\"
+        exit /b 1
+    )
 )
 
 exit /b 0

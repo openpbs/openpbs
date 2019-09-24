@@ -1,173 +1,35 @@
-version: "#{build}"
+version: '#{build}'
+image: Visual Studio 2017
 pull_requests:
   do_not_increment_build_number: true
 clone_depth: 5
 cache:
   - C:\projects\binaries -> .appveyor.yml, .appveyor
 configuration:
-  - Release
   - Debug
+  - Release
 before_build:
+  # - ps: choco install strawberryperl -y --no-progress --ignore-detected-reboot
+  # - ps: choco install wixtoolset -y --no-progress --ignore-detected-reboot
+  - cmd: refreshenv
   - cmd: call .appveyor\appveyor_helper.bat %CONFIGURATION%
 build_script:
-  - cmd: call "%VS90COMNTOOLS%vsvars32.bat"
-  - cmd: vcbuild win_configure\pbs_windows_VS2008.sln "%CONFIGURATION%|Win32"
+  - cmd: msbuild win_configure\pbs_windows_VS2017.sln /p:configuration=%CONFIGURATION% /p:platform=Win32 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 after_build:
   - cmd: call .appveyor\generate_installer.bat %CONFIGURATION%
 before_test:
-  - cmd: net user %USERNAME% pbS@123
   - ps: copy c:\projects\win_build\msi\PBSPro_*.msi PBSPro.msi
-  - cmd: msiexec /quiet /qn /norestart /i c:\projects\pbspro\PBSPro.msi
+  - ps: Start-Process msiexec -ArgumentList "/quiet","/qn","/norestart","/i","c:\projects\pbspro\PBSPro.msi" -Wait
+  - ps: $ip = [System.Net.Dns]::GetHostByName($env:computerName).AddressList[0].IPAddressToString
+  - ps: Add-Content C:\Windows\System32\Drivers\Etc\Hosts "$ip testdev.pbspro.org testdev"
+  - ps: net user $env:username pbS@123
   - cmd: refreshenv
-  - cmd: C:\PROGRA~2\PBS\exec\python\python.exe C:\PROGRA~2\PBS\exec\etc\win_postinstall.py -u %USERNAME% -p pbS@123
-test_script:
-  - ps: . C:\projects\pbspro\.appveyor\Retry-Command.ps1
-  - ps: pbs_password ${Env:USERNAME} pbS@123
-  - ps: qstat -Bf
-  - ps: qstat -Qf
-  - ps: pbsnodes -av
-  - ps: qmgr -c "s s acl_roots = ${Env:USERNAME}"
-  - ps: qmgr -c "c h simple_hook event = 'resvsub,resv_end,queuejob,movejob,modifyjob,runjob,periodic,execjob_begin,execjob_prologue,execjob_launch,execjob_attach,execjob_preterm,execjob_epilogue,execjob_end,exechost_startup,exechost_periodic', freq = 35"
-  - ps: qmgr -c "i h simple_hook application/x-python default C:\projects\pbspro\.appveyor\simple_hook.py"
-  - ps: qmgr -c "l h"
-  - ps: $TODAY=Get-Date -UFormat "%Y%m%d"
-  - ps: Retry-Command { grep -Hn 'successfully sent hook file' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'copy hook-related file request received' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: qmgr -c "c r myncpus type=long,flag=nh"
-  - ps: qmgr -c "s n ${Env:COMPUTERNAME} resources_available.myncpus = 2"
-  - ps: (Get-Content C:\PROGRA~2\PBS\home\sched_priv\sched_config).Replace(', eoe"', ', eoe, myncpus"') | Set-Content C:\PROGRA~2\PBS\home\sched_priv\sched_config
-  - ps: net stop pbs_sched
-  - ps: net start pbs_sched
-  - ps: qmgr -c "s q workq started = False"
-  - ps: $current_time = (Get-Date)
-  - ps: $next_min = $current_time.AddSeconds(10)
-  - ps: $current_time.ToString();$next_min.ToString()
-  - ps: pbs_rsub -lselect=myncpus=2 -R $next_min.ToString("ddHHmm.ss") -D 00:00:15
-  - ps: pbs_rstat -f
-  - ps: pbs_rstat -f | grep -E '^Resource_List.ncpus = 1$'
-  - ps: pbs_rstat -f | grep -E '^Resource_List.myncpus = 2$'
-  - ps: qsub -f -l myncpus=1 -- pbs_attach -c pbsdsh hostname
-  - ps: qstat -f
-  - ps: qstat -f | grep -E '^    job_state = Q$'
-  - ps: qstat -f | grep -E '^    queue = workq$'
-  - ps: qstat -f | grep -E '^    Resource_List.ncpus = 1$'
-  - ps: qstat -f | grep -E '^    Resource_List.myncpus = 1$'
-  - ps: qstat -f | grep -E '^    Submit_arguments = -f -l myncpus=1 -- pbs_attach -c pbsdsh hostname$'
-  - ps: qalter -lmyncpus=2 1
-  - ps: qstat -f | grep -E '^    Resource_List.ncpus = 1$'
-  - ps: qstat -f | grep -E '^    Resource_List.myncpus = 2$'
-  - ps: qmove R0 1
-  - ps: qstat -f | grep -E '^    queue = R0$'
-  - ps: qmgr -c "s s scheduling = True"
-  - ps: qstat -f
-  - ps: Retry-Command {
-          if ((qstat -f | Measure-Object -Character).Characters -gt 0) {
-            throw
-          }
-        } -Timeout 5000
-  - ps: Retry-Command {
-          if ((pbs_rstat -f | Measure-Object -Character).Characters -gt 0) {
-            throw
-          }
-        } -Timeout 5000
-  - ps: tracejob 1
-  - cmd: dir STDIN*
-  - cmd: hostname > my
-  - cmd: diff my STDIN.o1
-  - ps: Retry-Command { grep -Hn 'hook event type is resvsub' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is resv_end' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is queuejob' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is movejob' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is modifyjob' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_begin' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_prologue' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_launch' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_attach' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_epilogue' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_end' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: qmgr -c "s q workq started = True"
-  - ps: qmgr -c "c q equeue queue_type = Execution"
-  - ps: qmgr -c "s q equeue priority = 151"
-  - ps: qmgr -c "s q equeue enabled = True"
-  - ps: qmgr -c "s q equeue started = True"
-  - ps: qmgr -c "c q rqueue queue_type = Route"
-  - ps: qmgr -c "s q rqueue route_destinations = equeue@${Env:COMPUTERNAME}"
-  - ps: qmgr -c "s q rqueue enabled = True"
-  - ps: qmgr -c "s q rqueue started = False"
-  - ps: qsub -f -l myncpus=2 -- pbs_sleep 1000
-  - ps: qstat -f 2 | grep -E '^    queue = workq$'
-  - ps: qstat -f 2 | grep -E '^    Resource_List.myncpus = 2$'
-  - ps: Retry-Command {
-          qstat -f 2 | grep -E '^    job_state = R$';
-          $err1 = $LastExitCode;
-          qstat -f 2 | grep -E '^    substate = 42$';
-          $err2 = $LastExitCode;
-          if ($err1 -ne 0 -or $err2 -ne 0) {
-            qmgr -c "s s scheduling = True";
-            throw
-          }
-        }
-  - ps: qsub -f -q rqueue -l myncpus=2 -- pbs_sleep 1000
-  - ps: qstat -f 3 | grep -E '^    queue = rqueue$'
-  - ps: qstat -f 3 | grep -E '^    Resource_List.myncpus = 2$'
-  - ps: qmgr -c "s q rqueue started = True"
-  - ps: Retry-Command {
-          qstat -f 3 | grep -E '^    queue = equeue$';
-          if ($LastExitCode -ne 0) {
-            qmgr -c "s s scheduling = True";
-            throw
-          }
-        } -Timeout 2000
-  - ps: Retry-Command {
-          qstat -f 3 | grep -E '^    job_state = R$';
-          $err1 = $LastExitCode;
-          qstat -f 3 | grep -E '^    substate = 42$';
-          $err2 = $LastExitCode;
-          qstat -f 2 | grep -E '^    job_state = S$';
-          $err3 = $LastExitCode;
-          if ($err1 -ne 0 -or $err2 -ne 0 -or $err3 -ne 0) {
-            qmgr -c "s s scheduling = True";
-            throw
-          }
-        } -Timeout 2000
-  - ps: qstat -f 2
-  - ps: qdel 3
-  - ps: Retry-Command {
-          qstat -f 2 | grep -E '^    job_state = R$';
-          $err1 = $LastExitCode;
-          qstat -f 2 | grep -E '^    substate = 42$';
-          $err2 = $LastExitCode;
-          if ($err1 -ne 0 -or $err2 -ne 0) {
-            qmgr -c "s s scheduling = True";
-            throw
-          }
-        } -Timeout 5000
-  - ps: qsub -J1-2 -f -- pbs_sleep 1000
-  - ps: Retry-Command {
-          if ((Get-Process pbs_sleep).Length -ne 2) {
-            qmgr -c "s s scheduling = True";
-            throw
-          }
-        } -Timeout 2000
-  - ps: qdel 2 4[]
-  - ps: Retry-Command { grep -Hn 'hook event type is execjob_preterm' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Retry-Command {
-          if ((qstat -f | Measure-Object -Character).Characters -gt 0) {
-            throw
-          }
-        } -Timeout 5000
-# Uncomment below 3 line once https://pbspro.atlassian.net/browse/PP-1298 and https://pbspro.atlassian.net/browse/PP-1299 gets fixed
-#  - ps: net stop pbs_mom
-#  - ps: net start pbs_mom
-#  - ps: Retry-Command { grep -Hn 'hook event type is exechost_startup' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-  - ps: Start-Sleep -Seconds 40
-  - ps: Retry-Command { grep -Hn 'hook event type is exechost_periodic' C:\PROGRA~2\PBS\home\mom_logs\$TODAY }
-# Uncomment below line once https://pbspro.atlassian.net/browse/PP-1302 get fixed
-#  - ps: Retry-Command { grep -Hn 'hook event type is periodic' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
-  - ps: cmd /c "grep -Hn 'hook event type is unknown' C:\PROGRA~2\PBS\home\mom_logs\$TODAY && exit /b 1 || exit /b 0"
+  - cmd: C:\PROGRA~2\PBS\exec\python\python.exe C:\PROGRA~2\PBS\exec\etc\win_postinstall.py -u %USERNAME% -p pbS@123 -t execution -s testdev
 after_test:
   - ps: rm PBSPro.msi
   - ps: copy c:\projects\win_build\msi\PBSPro_*.msi .
 artifacts:
   - path: '*.msi'
 deploy: off
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -112,7 +112,7 @@ def usage():
             'detach\n']
     msg += ['--version: print version number and exit\n']
 
-    print "".join(msg)
+    print("".join(msg))
 
 
 if __name__ == '__main__':
@@ -171,7 +171,7 @@ if __name__ == '__main__':
                 (fd, fn) = tempfile.mkstemp()
                 os.write(fd, _wrapper_body)
                 os.close(fd)
-                os.chmod(fn, 0755)
+                os.chmod(fn, 0o755)
                 wrapper = fn
                 cleanup_wrapper = True
             a = [wrapper, pbs_attach, jobid] + args

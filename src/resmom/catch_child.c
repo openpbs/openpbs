@@ -342,7 +342,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		msg[0] = '\0';
 	}
 
-	py_name = PyString_FromString("json");
+	py_name = PyUnicode_FromString("json");
 	if (py_name == NULL) {
 		if (msg != NULL) {
 			snprintf(msg, msg_len, "failed to construct json name");
@@ -400,9 +400,9 @@ json_loads(char *value, char *msg, size_t msg_len)
 			/* get the exception */
 			if ((exc_type != NULL) &&
 				((exc_string = PyObject_Str(exc_type)) != NULL) &&
-				(PyString_Check(exc_string))) {
+				(PyUnicode_Check(exc_string))) {
 				snprintf(msg, msg_len, "%s",
-					PyString_AsString(exc_string));
+					PyUnicode_AsUTF8(exc_string));
 			}
 			Py_XDECREF(exc_string);
 			Py_XDECREF(exc_type);
@@ -477,7 +477,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		msg[0] = '\0';
 	}
 
-	py_name = PyString_FromString("json");
+	py_name = PyUnicode_FromString("json");
 	if (py_name == NULL) {
 		if (msg != NULL) {
 			snprintf(msg, msg_len, "failed to construct json name");
@@ -534,9 +534,9 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 			/* get the exception */
 			if ((exc_type != NULL) &&
 				((exc_string = PyObject_Str(exc_type)) != NULL) &&
-				(PyString_Check(exc_string))) {
+				(PyUnicode_Check(exc_string))) {
 				snprintf(msg, msg_len, "%s",
-					PyString_AsString(exc_string));
+					PyUnicode_AsUTF8(exc_string));
 			}
 			Py_XDECREF(exc_string);
 			Py_XDECREF(exc_type);
@@ -549,7 +549,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 #endif
 		}
 		goto json_dumps_fail;
-	} else if (!PyString_Check(py_result)) {
+	} else if (!PyUnicode_Check(py_result)) {
 		if (msg != NULL) {
 			snprintf(msg, msg_len, "value is not a string");
 		}
@@ -560,10 +560,10 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	Py_XDECREF(py_name);
 	Py_XDECREF(py_module);
 
-	tmp_str = PyString_AsString(py_result);
+	tmp_str = PyUnicode_AsUTF8(py_result);
 	/* returned tmp_str points to an internal buffer of 'py_result' */
 	if (tmp_str == NULL) {
-		snprintf(msg, msg_len, "PyString_AsString failed");
+		snprintf(msg, msg_len, "PyUnicode_AsUTF8 failed");
 		Py_XDECREF(py_result);
 		return NULL;
 	}

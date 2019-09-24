@@ -63,21 +63,21 @@ class TestPythonRestartSettings(TestFunctional):
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_hooks': '-1'},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_objects': '-1'},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': '-1'},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         # 0 will also give error
@@ -85,35 +85,35 @@ class TestPythonRestartSettings(TestFunctional):
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_hooks': 0},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_objects': 0},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': 0},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': "00:00:00"},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': "HH:MM:SS"},
                                 runas=ROOT_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(exp_err in e.msg[0],
                             "Error message is not expected")
 
@@ -126,21 +126,21 @@ class TestPythonRestartSettings(TestFunctional):
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_hooks': 30},
                                 runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_objects': 2000},
                                 runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': 10},
                                 runas=OPER_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
         exp_err = "Unauthorized Request"
@@ -148,21 +148,21 @@ class TestPythonRestartSettings(TestFunctional):
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_hooks': 30},
                                 runas=TEST_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_max_objects': 2000},
                                 runas=TEST_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SERVER,
                                 {'python_restart_min_interval': 10},
                                 runas=TEST_USER, logerr=True)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertIn(exp_err, e.msg[0],
                           "Error message is not expected")
 

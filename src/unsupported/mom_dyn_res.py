@@ -61,6 +61,6 @@ dyn_res["home"]    = [get_filesystem_avail_unprivileged, "/home"]
 vnl = pbs.event().vnode_list
 local_node = pbs.get_local_nodename()
 
-for k in dyn_res.keys():
+for k in list(dyn_res.keys()):
     vnl[local_node].resources_available[k] = dyn_res[k][0](dyn_res[k][1])
 

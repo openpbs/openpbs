@@ -224,7 +224,7 @@ acl_check(attribute *pattr, char *name, int type)
 			match_func = gacl_match;
 			break;
 		default:
-			match_func = (int (*)())strcmp;
+			match_func = (int (*)(const char *, const char *))strcmp;
 			break;
 	}
 

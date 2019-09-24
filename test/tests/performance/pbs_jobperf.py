@@ -56,7 +56,7 @@ class TestJobPerf(TestPerformance):
         Sets test level configuration
         """
         testconfig = {}
-        for key, value in config.iteritems():
+        for key, value in config.items():
             if isinstance(value, int):
                 testconfig[key] = int(
                     self.conf[key]) if key in self.conf else value
@@ -171,8 +171,8 @@ class TestJobPerf(TestPerformance):
                     t.join()
                 stop = time.time()
                 res = stop - start
-                resps = (config['No_of_jobs_per_user']
-                         * config['No_of_users']) / res
+                resps = (config['No_of_jobs_per_user'] *
+                         config['No_of_users']) / res
                 sub_rate.append(resps)
                 i += 1
             a = {'scheduling': 'True'}
@@ -262,8 +262,8 @@ class TestJobPerf(TestPerformance):
                 i = i + 1
                 stop = time.time()
                 res = stop - start
-                resps = (self.config['No_of_jobs_per_user']
-                         * self.config['No_of_users']) / res
+                resps = (self.config['No_of_jobs_per_user'] *
+                         self.config['No_of_users']) / res
                 sub_time.append(resps)
             j += 1
             self.wait_for_job_finish()

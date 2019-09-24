@@ -51,7 +51,7 @@ __all__ = [
             'BadResourceValueError'
           ]
 
-class EventIncompatibleError(Exception):
+class EventIncompatibleError(AttributeError):
     pass
 
 class UnsetAttributeNameError(Exception):

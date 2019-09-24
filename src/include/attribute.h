@@ -456,7 +456,9 @@ extern char *parse_comma_string(char *start);
 extern char *return_external_value(char *name, char *val);
 extern char *return_internal_value(char *name, char *val);
 
-#define NULL_FUNC (int (*)())0
+#define NULL_FUNC_CMP (int (*)(attribute *, attribute *))0
+#define NULL_FUNC_RESC (int (*)(resource *, attribute *, void *, int, int))0
+#define NULL_FUNC (int (*)(attribute *, void *, int))0
 #define NULL_VERIFY_DATATYPE_FUNC (int (*)(struct attropl *, char **))0
 #define NULL_VERIFY_VALUE_FUNC (int (*)(int, int, int, struct attropl *, char **))0
 

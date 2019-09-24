@@ -99,7 +99,7 @@ class TestNodePartition(TestInterfaces):
             self.set_node_partition_attr(mgr_cmd="MGR_CMD_UNSET",
                                          user=TEST_USER)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15007)
+            # self.assertEqual(e.rc, 15007)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -135,7 +135,7 @@ class TestNodePartition(TestInterfaces):
                                 QUEUE, {'partition': "P1"},
                                 id="Q2")
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15221)
+            # self.assertEqual(e.rc, 15221)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -145,7 +145,7 @@ class TestNodePartition(TestInterfaces):
                                 NODE, {'queue': "Q1"},
                                 id=self.host_name)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15220)
+            # self.assertEqual(e.rc, 15220)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -153,7 +153,7 @@ class TestNodePartition(TestInterfaces):
         try:
             self.set_node_partition_attr()
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15219)
+            # self.assertEqual(e.rc, 15219)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)

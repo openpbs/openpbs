@@ -78,7 +78,7 @@ class TestHookDebugInput(TestFunctional):
         self.assertTrue(input_file is not None)
         with PBSLogUtils().open_log(input_file, sudo=True) as f:
             search_str = 'pbs.event().job.queue=%s' % qname
-            self.assertTrue(search_str in f.read())
+            self.assertTrue(search_str in f.read().decode())
         self.remove_files_match(input_file_pattern)
 
     def test_queuejob_hook_debug_input_has_queue_name(self):

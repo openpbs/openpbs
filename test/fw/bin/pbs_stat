@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -146,7 +146,7 @@ def usage():
     msg += ['--log-conf=<file>: logging config file\n']
     msg += ['--version: print version number and exit\n']
 
-    print "".join(msg)
+    print("".join(msg))
 
 
 class SiteReportFormatter:
@@ -162,7 +162,7 @@ class SiteReportFormatter:
             snap = snap.replace("snapshot_", "")
             if snap[0] == '_':
                 snap = snap[1:]
-            m = re.search("(?P<dtm>\d{6}_\d{6})", snap)
+            m = re.search(r"(?P<dtm>\d{6}_\d{6})", snap)
             if m:
                 _tm = m.group("dtm")
                 _kt = time.mktime(time.strptime(_tm, "%y%m%d_%H%M%S"))
@@ -436,7 +436,7 @@ if __name__ == '__main__':
         elif o == "--pports":
             pports = True
         elif o == '--version':
-            print ptl.__version__
+            print(ptl.__version__)
             sys.exit(0)
         elif o == "--user":
             entity['euser'] = val
@@ -520,7 +520,7 @@ if __name__ == '__main__':
         msg = CliUtils().priv_ports_info(hostname)
         if not msg:
             sys.exit(1)
-        print "\n".join(msg)
+        print("\n".join(msg))
         sys.exit(0)
 
     if logconf:
@@ -557,7 +557,7 @@ if __name__ == '__main__':
             server.set_op_mode(PTL_CLI)
 
     if get_mode:
-        print server.get_op_mode()
+        print(server.get_op_mode())
         sys.exit(0)
 
     if dedtimefile:
@@ -657,9 +657,9 @@ if __name__ == '__main__':
                                  lims, qtypes, users, groups, sc, formula,
                                  backfill, hooks, job_states, osrelease)
         if report_twiki:
-            print str(sr.__twiki__())
+            print(str(sr.__twiki__()))
         else:
-            print str(sr)
+            print(str(sr))
         sys.exit(0)
 
     if utilization:
@@ -668,7 +668,7 @@ if __name__ == '__main__':
         u = server.utilization(resources, entity=entity)
         msg = utilization_to_str(u)
         if msg:
-            print "\n".join(msg)
+            print("\n".join(msg))
         sys.exit(0)
 
     if fstree:
@@ -678,7 +678,7 @@ if __name__ == '__main__':
 
         fs_as_bs = scheduler.fairshare_tree.__batch_status__()
         if json_on:
-            print CliUtils.__json__(fs_as_bs)
+            print(CliUtils.__json__(fs_as_bs))
         else:
             scheduler.utils.show(fs_as_bs, fsentity)
         sys.exit(0)
@@ -687,10 +687,10 @@ if __name__ == '__main__':
         f = server.evaluate_formula(include_running_jobs=include_running_jobs)
         if f:
             d = server.status(SERVER, 'job_sort_formula')
-            print 'Formula: ' + d[0]['job_sort_formula']
-            ret = sorted(f.items(), key=lambda x: x[1][1], reverse=True)
+            print('Formula: ' + d[0]['job_sort_formula'])
+            ret = sorted(list(f.items()), key=lambda x: x[1][1], reverse=True)
             for (jobid, (fml, val)) in ret:
-                print jobid + ': ' + fml + ' = ' + str(val)
+                print(jobid + ': ' + fml + ' = ' + str(val))
         sys.exit(0)
 
     # parse resources and attributes 'language', i.e., handling of && and ||
@@ -709,7 +709,7 @@ if __name__ == '__main__':
             resources = resources.replace("&&", ",")
         elif "||" in resources:
             resources = resources.replace("||", ',')
-        attributes += ",".join(map(lambda n: _r + n, resources.split(',')))
+        attributes += ",".join([_r + n for n in resources.split(',')])
 
     if attributes is not None:
         attributes = attributes.replace(" ", "")
@@ -806,11 +806,11 @@ if __name__ == '__main__':
             alog = PBSAccountingLog(show_progress=True)
             alog.enable_accounting_workload_parsing()
             alog.analyze(acct)
-            attrs = alog.job_attrs.values()
+            attrs = list(alog.job_attrs.values())
             eq = server.equivalence_classes(JOB, attributes, bslist=attrs)
             server.show_equivalence_classes(eq)
             if alog.parser_errors > 0:
-                print 'Failed to parse: ' + str(alog.parser_errors)
+                print('Failed to parse: ' + str(alog.parser_errors))
             sys.exit(0)
         else:
             server.show_equivalence_classes(None, JOB, attributes, op=restotal,
@@ -831,7 +831,7 @@ if __name__ == '__main__':
             sys.exit(1)
         res = bu.list_resources(objtype, server.status(objtype))
         if res:
-            print "\n".join(res)
+            print("\n".join(res))
         sys.exit(0)
 
     if (accumulate or grandtotal) and (attributes is not None):
@@ -864,7 +864,9 @@ if __name__ == '__main__':
                                      db_access=db_access,
                                      resolve_indirectness=indirectness)
             if json_on:
-                print CliUtils.__json__(server.utils.decode_dictlist(statinfo))
+                print(
+                    CliUtils.__json__(
+                        server.utils.decode_dictlist(statinfo)))
             else:
                 server.utils.show(statinfo, fmt=fmt)
             sys.exit(0)
@@ -898,22 +900,22 @@ if __name__ == '__main__':
         if isinstance(attributes, (list, dict)):
             if grandtotal:
                 for k, v in d.items():
-                    print k + ": " + str(v)
+                    print(k + ": " + str(v))
             elif accumulate:
-                print " && ".join(d.keys()) + ": " + str(d.values()[0])
+                print(" && ".join(d.keys()) + ": " + str(list(d.values())[0]))
             else:
-                print " && ".join(d.keys()) + ": \n" + \
-                    "\n".join(str(d.values()[0]))
+                print(" && ".join(d.keys()) + ": \n" +
+                      "\n".join(str(list(d.values())[0])))
         else:
-            print str(" && ".join(d.keys())) + ": " + str(d.values()[0])
+            print(str(" && ".join(d.keys())) + ": " + str(list(d.values())[0]))
     else:
         if objtype is None:
             logging.error('no object type specified')
             sys.exit(1)
         for k, v in d.items():
             if isinstance(v, list):
-                print k + ":"
+                print(k + ":")
                 for val in v:
-                    print val
+                    print(val)
             else:
-                print k + ":" + str(v)
+                print(k + ":" + str(v))

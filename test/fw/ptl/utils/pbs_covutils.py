@@ -41,7 +41,7 @@ import time
 import logging
 import tempfile
 from stat import S_IWOTH
-from urlparse import urljoin
+from urllib.parse import urljoin
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_cliutils import CliUtils
 
@@ -315,7 +315,7 @@ class LcovUtils(object):
             newroot = urljoin(html_baseurl, newroot)
             if newroot[-1] != '/':
                 newroot += '/'
-            print root, newroot
+            print(root, newroot)
             for f in files:
                 if not f.endswith('.html'):
                     continue

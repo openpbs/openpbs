@@ -49,7 +49,7 @@ import sys
 import os
 import pbs
 from pbs.v1._pmi_utils import _get_hosts, _get_vnode_names, _running_excl
-from _exc_types import *
+from pbs.v1._exc_types import *
 
 
 class InternalError(Exception):
@@ -83,7 +83,7 @@ class Power:
 
         try:
             _temp = __import__("pbs.v1._pmi_" + self.pmi_type,
-                               globals(), locals(), ['Pmi'], -1)
+                               globals(), locals(), ['Pmi'], 0)
         except Exception as e:
             raise InternalError(
                 "could not import: " + self.pmi_type + ": " + str(e))

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -173,7 +173,7 @@ def usage():
         '--verbose: show verbose output (used with -i, -L or --tag-info)\n']
     msg += ['--version: show version number and exit\n']
 
-    print ''.join(msg)
+    print(''.join(msg))
 
 
 if __name__ == '__main__':
@@ -337,7 +337,7 @@ if __name__ == '__main__':
             usage()
             sys.exit(0)
         elif o == '--version':
-            print ptl.__version__
+            print(ptl.__version__)
             sys.exit(0)
         else:
             sys.stderr.write('Unreocgnized option %s\n' % o)

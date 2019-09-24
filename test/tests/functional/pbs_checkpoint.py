@@ -56,7 +56,7 @@ kill $1
 exit 0
 """
         self.abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=self.abort_file, mode=0755)
+        self.du.chmod(path=self.abort_file, mode=0o755)
         self.du.chown(path=self.abort_file, uid=0, gid=0, runas=ROOT_USER)
         c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
         self.mom.add_config(c)

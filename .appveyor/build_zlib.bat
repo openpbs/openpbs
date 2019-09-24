@@ -45,10 +45,8 @@ if not defined ZLIB_VERSION (
     exit /b 1
 )
 
-set ZLIB_DIR_NAME=zlib
-
-if exist "%BINARIESDIR%\%ZLIB_DIR_NAME%" (
-    echo "%BINARIESDIR%\%ZLIB_DIR_NAME% already exists!"
+if exist "%BINARIESDIR%\zlib" (
+    echo "%BINARIESDIR%\zlib already exists!"
     exit /b 0
 )
 
@@ -61,29 +59,29 @@ if not exist "%BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz" (
 )
 
 2>nul rd /S /Q "%BINARIESDIR%\zlib-%ZLIB_VERSION%"
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/\" && tar -xf zlib-%ZLIB_VERSION%.tar.gz"
+7z x -y "%BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz" -so | 7z x -y -aoa -si -ttar -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz"
     exit /b 1
 )
-
-if exist "%BINARIESDIR%\zlib-%ZLIB_VERSION%" (
-    move zlib-%ZLIB_VERSION% zlib
-	if not %ERRORLEVEL% == 0 (
-		echo "Failed to rename zlib library"
-		exit /b 1
-	)
+if not exist "%BINARIESDIR%\zlib-%ZLIB_VERSION%" (
+    echo "Failed to extract %BINARIESDIR%\zlib-%ZLIB_VERSION%.tar"
+    exit /b 1
 )
 
-call "%VS90COMNTOOLS%vsvars32.bat"
+call "%VS150COMNTOOLS%VsDevCmd.bat"
 
-cd "%BINARIESDIR%\zlib
+cd "%BINARIESDIR%\zlib-%ZLIB_VERSION%
 
 nmake /f win32/Makefile.msc
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile zlib"
     exit /b 1
 )
-
+cd "%BINARIESDIR%"
+ren "zlib-%ZLIB_VERSION%" zlib
+if not %ERRORLEVEL% == 0 (
+    echo "Failed to rename zlib-%ZLIB_VERSION% to zlib"
+    exit /b 1
+)
 exit /b 0
-

@@ -53,7 +53,7 @@ class Test_pbs_python(TestFunctional):
         pbs_python and checks for the result
         """
         fn = self.du.create_temp_file(prefix='test', suffix='.py',
-                                      body="print \"Hello\"", text=True)
+                                      body="print(\"Hello\")", text=True)
         pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                   "bin", "pbs_python")
         msg = ['Hello']

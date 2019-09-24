@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -88,6 +88,7 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
                                       INFOCLI2, DEBUG, DEBUG2, WARNING, ERROR
                                       or FATAL
     -h, --help                        display this usage message
+    --basic                           Capture only basic config & state data
     --daemon-logs=<num days>          number of daemon logs to collect
     --accounting-logs=<num days>      number of accounting logs to collect
     --additional-hosts=<hostname>     collect data from additional hosts
@@ -98,7 +99,7 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
     --version                         print version number and exit
 """
 
-    print msg
+    print(msg)
 
 
 def remotesnap_thread(logger, host):
@@ -144,7 +145,7 @@ def remotesnap_thread(logger, host):
     ret = du.run_cmd(hosts=host, cmd=cmd, logerr=False)
     if ret['rc'] != 0:
         logger.error("Error capturing snapshot from host %s" % (host))
-        print ret['err']
+        print(ret['err'])
         return
 
     # Get the snapshot tar filename from stdout
@@ -186,7 +187,7 @@ def capture_local_snap(sudo_val):
     else:
         create_tar = True
 
-    with PBSSnapUtils(out_dir, acct_logs=acct_logs,
+    with PBSSnapUtils(out_dir, basic=basic, acct_logs=acct_logs,
                       daemon_logs=daemon_logs, create_tar=create_tar,
                       log_path=log_path, with_sudo=sudo_val) as snap_utils:
         snap_name = snap_utils.capture_all()
@@ -212,21 +213,22 @@ if __name__ == '__main__':
     out_dir = None
     primary_host = None
     log_level = "INFOCLI2"
-    acct_logs = 30  # Capture 30 days of accounting logs by default
-    daemon_logs = 5   # Capture 5 days of daemon logs by default
+    acct_logs = None
+    daemon_logs = None
     additional_hosts = None
     map_file = None
     obfuscate = False
     log_file = "pbs_snapshot.log"
     with_sudo = False
     du = DshUtils()
+    basic = False
 
     PtlConfig()
 
     # Parse the options provided to pbs_snapshot
     try:
         sopt = "d:H:l:o:h"
-        lopt = ["accounting-logs=", "daemon-logs=", "help",
+        lopt = ["basic", "accounting-logs=", "daemon-logs=", "help",
                 "additional-hosts=", "map=", "obfuscate", "with-sudo",
                 "version"]
         opts, args = getopt.getopt(sys.argv[1:], sopt, lopt)
@@ -244,6 +246,8 @@ if __name__ == '__main__':
         elif o == "-h" or o == "--help":
             usage()
             sys.exit(0)
+        elif o == "--basic":
+            basic = True
         elif o == "--accounting-logs":
             try:
                 acct_logs = int(val)
@@ -265,7 +269,7 @@ if __name__ == '__main__':
         elif o == "--with-sudo":
             with_sudo = True
         elif o == "--version":
-            print ptl.__version__
+            print(ptl.__version__)
             sys.exit(0)
         else:
             sys.stderr.write("Unrecognized option")
@@ -282,6 +286,14 @@ if __name__ == '__main__':
                          " this is where the snapshot is captured")
         usage()
         sys.exit(1)
+
+    if not basic:
+        # Capture 5 days of daemon logs and 30 days of accounting logs
+        # by default
+        if daemon_logs is None:
+            daemon_logs = 5
+        if acct_logs is None:
+            acct_logs = 30
 
     fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
     level_int = CliUtils.get_logging_level(log_level)
@@ -340,7 +352,7 @@ if __name__ == '__main__':
             du.rm(path=p_snappath, force=True)
 
         # Let's reconcile the child snapshots
-        for host, thread in remotesnap_threads.iteritems():
+        for host, thread in remotesnap_threads.items():
             thread.join()
             host_snappath = os.path.join(out_dir, host + "_snapshot.tgz")
             if os.path.isfile(host_snappath):
@@ -374,4 +386,4 @@ if __name__ == '__main__':
         outtar = capture_local_snap(with_sudo)
 
     if outtar is not None:
-        print "Snapshot available at: " + outtar
+        print("Snapshot available at: " + outtar)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -39,7 +39,7 @@
 import sys
 import os
 import getopt
-import cPickle
+import pickle
 import pwd
 
 from ptl.lib.pbs_testlib import PtlConfig, Server
@@ -64,13 +64,13 @@ def usage():
     msg += ['-s <hostname>: name of host on which to perform command\n']
     msg += ['-h: usage help\n']
 
-    print "".join(msg)
+    print("".join(msg))
 
 
 def _load_data(objfile=None, servername=None, user=None):
     if objfile:
         f = open(objfile, 'r')
-        _data = cPickle.load(f)
+        _data = pickle.load(f)
         f.close()
     else:
         _data = None
@@ -81,6 +81,7 @@ def _load_data(objfile=None, servername=None, user=None):
     s = Server(servername, stat=False)
     return (s, _data)
 
+
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
@@ -89,7 +90,7 @@ if __name__ == '__main__':
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "c:e:o:u:f:s:h")
-    except:
+    except BaseException:
         usage()
         sys.exit(1)
 
@@ -122,7 +123,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
     if cmd is None or user is None or servername is None:
-        print None
+        print(None)
         sys.exit(0)
 
     PtlConfig()
@@ -134,7 +135,7 @@ if __name__ == '__main__':
         try:
             jid = s.submit(job)
             sys.stdout.write(jid.strip())
-        except PbsSubmitError, e:
+        except PbsSubmitError as e:
             sys.stdout.write(str(e.rv))
             sys.stderr.write(repr(e))
             sys.exit(e.rc)
@@ -157,7 +158,7 @@ if __name__ == '__main__':
         try:
             rv = s.status(obj_type, attrib, id, extend=extend)
             sys.stdout.write(str(rv))
-        except PbsStatusError, e:
+        except PbsStatusError as e:
             rv = e.rv
             sys.stdout.write(str(rv))
             sys.stderr.write(repr(e))
@@ -166,39 +167,39 @@ if __name__ == '__main__':
 
     elif cmd == 'delete':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, data) = _load_data(objfile, servername, user)
             try:
                 rc = s.delete(objid, extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsDeleteError, e:
+            except PbsDeleteError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'deljob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, data) = _load_data(objfile, servername, user)
             try:
                 rc = s.deljob(objid, extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsDeljobError, e:
+            except PbsDeljobError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'delresv':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, data) = _load_data(objfile, servername, user)
             try:
                 rc = s.delresv(objid, extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsDelresvError, e:
+            except PbsDelresvError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
@@ -206,137 +207,135 @@ if __name__ == '__main__':
     elif cmd == 'select':
         (s, attrib) = _load_data(objfile, servername, user)
         rv = s.select(attrib, extend=extend)
-        print rv
+        print(rv)
 
     elif cmd == 'alterjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, attrib) = _load_data(objfile, servername, user)
             try:
                 rc = s.alterjob(objid, attrib, extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsAlterError, e:
+            except PbsAlterError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'holdjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, hold_list) = _load_data(objfile, servername, user)
             try:
                 rc = s.holdjob(objid, str(hold_list), extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsHoldError, e:
+            except PbsHoldError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'sigjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, signal) = _load_data(objfile, servername, user)
             try:
                 rc = s.sigjob(objid, str(signal), extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsSignalError, e:
+            except PbsSignalError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'msgjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, msg) = _load_data(objfile, servername, user)
             try:
                 rc = s.holdjob(objid, str(msg), extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsMessageError, e:
+            except PbsMessageError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'rlsjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, hold_list) = _load_data(objfile, servername, user)
             try:
                 rc = s.rlsjob(objid, str(hold_list), extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsReleaseError, e:
+            except PbsReleaseError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'rerunjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, data) = _load_data(objfile, servername, user)
             try:
                 rc = s.rerunjob(objid, extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsRerunError, e:
+            except PbsRerunError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'orderjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, jobid2) = _load_data(objfile, servername, user)
             try:
                 rc = s.orderjob(objid, str(jobid2), extend=extend)
                 sys.stdout.write(str(rc))
-            except PbsOrderError, e:
+            except PbsOrderError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
     elif cmd == 'runjob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, location) = _load_data(objfile, servername, user)
             try:
                 rc = s.runjob(objid, str(location), extend=extend)
-            except PbsRunError, e:
+            except PbsRunError as e:
                 rc = e.rc
-            print str(rc)
+            print(str(rc))
 
     elif cmd == 'movejob':
         if objid is None:
-            print '1'
+            print('1')
         else:
             (s, destination) = _load_data(objfile, servername, user)
             try:
                 rc = s.movejob(objid, str(destination), extend=extend)
                 sys.stdout.write(rc)
-            except PbsMoveError, e:
+            except PbsMoveError as e:
                 sys.stdout.write(str(rc))
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
-    """
-    elif cmd == 'alterresv':
-        if objid is None:
-            print '1'
-        else:
-            (s, attrib) = _load_data(objfile, servername, user)
-            try:
-                rc = s.alterresv(objid, attrib, extend=extend)
-                sys.stdout.write(str(rc))
-            except PbsAlterError, e:
-                sys.stdout.write(str(rc))
-                sys.stderr.write(repr(e))
-                sys.exit(e.rc)
-    """
+    # elif cmd == 'alterresv':
+    #    if objid is None:
+    #        print '1'
+    #    else:
+    #        (s, attrib) = _load_data(objfile, servername, user)
+    #        try:
+    #            rc = s.alterresv(objid, attrib, extend=extend)
+    #            sys.stdout.write(str(rc))
+    #        except PbsAlterError, e:
+    #            sys.stdout.write(str(rc))
+    #            sys.stderr.write(repr(e))
+    #            sys.exit(e.rc)
 
     elif cmd == 'manager':
         (s, _data) = _load_data(objfile, servername, user)
@@ -359,7 +358,7 @@ if __name__ == '__main__':
         try:
             rc = s.manager(cmd, obj_type, attrib, id, extend=extend)
             sys.stdout.write(str(rc))
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             sys.stderr.write(repr(e))
             sys.exit(e.rc)
 
@@ -367,6 +366,6 @@ if __name__ == '__main__':
         (s, data) = _load_data(servername, user)
         rc = s.terminate(manner=data['manner'],
                          server_name=data['server_name'], extend=extend)
-        print str(rc)
+        print(str(rc))
 
     sys.exit(0)

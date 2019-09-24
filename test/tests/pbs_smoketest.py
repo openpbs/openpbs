@@ -170,7 +170,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(RESV, a, id=rid)
         a = {'resources_available.ncpus': (GT, 0)}
         free_nodes = self.server.filter(NODE, a)
-        nodes = free_nodes.values()[0]
+        nodes = list(free_nodes.values())[0]
         other_node = [nodes[0], nodes[1]][resv_node == nodes[0]]
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
              'resv_nodes': (MATCH_RE, re.escape(other_node))}
@@ -346,11 +346,11 @@ class SmokeTest(PBSTestSuite):
         exp_eq_val = {ATTR_used+'.ncpus': '2',
                       ATTR_used+'.cput': '00:00:15', ATTR_exit_status: '0'}
         for key in exp_eq_val:
-            self.assertEquals(exp_eq_val[key], jobs[0][key])
+            self.assertEqual(exp_eq_val[key], jobs[0][key])
         exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
                          ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
         for key in exp_noteq_val:
-            self.assertNotEquals(exp_noteq_val[key], jobs[0][key])
+            self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
 
     def test_project_based_limits(self):
         """
@@ -461,7 +461,7 @@ class SmokeTest(PBSTestSuite):
         self.logger.info('testinfo: waiting for walltime accumulation')
         running_jobs = self.server.filter(JOB, {'job_state': 'R'})
         if running_jobs.values():
-            for _j in running_jobs.values()[0]:
+            for _j in list(running_jobs.values())[0]:
                 a = {'resources_used.walltime': (NE, '00:00:00')}
                 self.server.expect(JOB, a, id=_j, interval=1, max_attempts=30)
         j = Job(TEST_USER2)
@@ -696,7 +696,7 @@ class SmokeTest(PBSTestSuite):
             p1jobs = [j1id, j2id, j3id]
             p2jobs = [j4id, j5id, j6id]
             jobs = [j1id, j2id, j3id, j4id, j5id, j6id]
-            job_order = map(lambda j: j.split('.')[0], p2jobs + p1jobs)
+            job_order = [j.split('.')[0] for j in p2jobs + p1jobs]
             self.logger.info(
                 'Political order: ' + ','.join(cycle.political_order))
             self.logger.info('Expected order: ' + ','.join(job_order))
@@ -745,7 +745,7 @@ class SmokeTest(PBSTestSuite):
             cycle = cycle[i]
             jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7],
                     jids[2], jids[5], jids[8]]
-            job_order = map(lambda j: j.split('.')[0], jobs)
+            job_order = [j.split('.')[0] for j in jobs]
             self.logger.info(
                 'Political order: ' + ','.join(cycle.political_order))
             self.logger.info('Expected order: ' + ','.join(job_order))
@@ -1257,7 +1257,6 @@ class SmokeTest(PBSTestSuite):
         self.assertTrue('Duplicate entry' in msg[0])
         self.logger.info('Expected error: Duplicate entry in ' + msg[0] +
                          ' ...OK')
-        self.assertNotEqual(e.rc, 0)
         rc = self.server.manager(MGR_CMD_DELETE, RSC, id=self.resc_name)
         self.assertEqual(rc, 0)
         for t in self.resc_types:
@@ -1398,7 +1397,8 @@ class SmokeTest(PBSTestSuite):
         rv = self.server.add_resource('foo1', 'float', 'nh')
         self.assertTrue(rv)
         # Set scheduler fairshare usage formula
-        self.setup_fs('ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))')
+        self.setup_fs(
+            'ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))')
         node_attr = {'resources_available.ncpus': 1,
                      'resources_available.foo1': 5000}
         self.server.manager(MGR_CMD_SET, NODE, node_attr, self.mom.shortname)

@@ -73,7 +73,7 @@ pbs_python_write_object_to_log(PyObject *obj, char *pre, int severity)
 	char *obj_str = NULL;
 
 	if (!(py_tmp_str = PyObject_Str(obj))) { goto ERROR_EXIT; }
-	if (!(obj_str = PyString_AsString(py_tmp_str))) { goto ERROR_EXIT; }
+	if (!(obj_str = PyUnicode_AsUTF8(py_tmp_str))) { goto ERROR_EXIT; }
 	if (pre) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s %s", pre, obj_str);
 	} else {
@@ -124,7 +124,7 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	PyErr_Clear(); /* clear any exceptions */
 
 	/* if sucess we ger a NEW ref */
-	if (!(pystr_dirname = PyString_FromString(dirname))) {/* failed */
+	if (!(pystr_dirname = PyUnicode_FromString(dirname))) {/* failed */
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:creating pystr_dirname <%s>",
 			__func__, dirname);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -241,9 +241,9 @@ pbs_python_write_error_to_log(const char *emsg)
 	exc_string = NULL;
 	if ((exc_type != NULL) && /* get the string representation of the object */
 		((exc_string = PyObject_Str(exc_type)) != NULL) &&
-		(PyString_Check(exc_string))
+		(PyUnicode_Check(exc_string))
 		) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyString_AsString(exc_string));
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyUnicode_AsUTF8(exc_string));
 	} else {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", "<could not figure out the exception type>");
 	}
@@ -256,9 +256,9 @@ pbs_python_write_error_to_log(const char *emsg)
 	exc_string = NULL;
 	if ((exc_value != NULL) && /* get the string representation of the object */
 		((exc_string = PyObject_Str(exc_value)) != NULL) &&
-		(PyString_Check(exc_string))
+		(PyUnicode_Check(exc_string))
 		) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyString_AsString(exc_string));
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", PyUnicode_AsUTF8(exc_string));
 	} else {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", "<could not figure out the exception value>");
 	}
@@ -322,7 +322,7 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 		return rv;
 	}
 
-	tmp_py_str = PyString_FromString(value); /* NEW reference */
+	tmp_py_str = PyUnicode_FromString(value); /* NEW reference */
 
 	if (!tmp_py_str) { /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
@@ -362,7 +362,7 @@ pbs_python_object_set_attr_integral_value(PyObject *obj,
 	const char *key,
 	int value)
 {
-	PyObject *tmp_py_int = PyInt_FromSsize_t(value); /* NEW reference */
+	PyObject *tmp_py_int = PyLong_FromSsize_t(value); /* NEW reference */
 
 	int rv = -1; /* default failure */
 	if (!tmp_py_int) { /* Uh-of failed */
@@ -455,7 +455,7 @@ pbs_python_object_str(PyObject *obj)
 	if (!py_str)
 		return ("");
 
-	str = PyString_AsString(py_str);
+	str = PyUnicode_AsUTF8(py_str);
 
 	if (str)
 		alloc_sz = strlen(str) + 1;
@@ -559,7 +559,7 @@ pbs_python_dict_set_item_string_value(PyObject *dict,
 		return rv;
 	}
 
-	tmp_py_str = PyString_FromString(value); /* NEW reference */
+	tmp_py_str = PyUnicode_FromString(value); /* NEW reference */
 	if (!tmp_py_str) { /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
 		return rv;
@@ -635,7 +635,7 @@ pbs_python_dict_set_item_integral_value(PyObject *dict,
 {
 	int rv = -1; /* default failure */
 
-	PyObject *tmp_py_int = PyInt_FromSsize_t(value); /* NEW reference */
+	PyObject *tmp_py_int = PyLong_FromSsize_t(value); /* NEW reference */
 	if (!tmp_py_int) { /* Uh-of failed */
 		pbs_python_write_error_to_log(__func__);
 		return rv;

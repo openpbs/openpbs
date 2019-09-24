@@ -43,24 +43,24 @@ __doc__ = """
 This module captures all the python types representing the PBS Server objects
 (server,queue,job,resv, etc.)
 """
-from _base_types import (PbsAttributeDescriptor, PbsReadOnlyDescriptor,
-                         pbs_resource, pbs_bool, _LOG,
-                         )
+from ._base_types import (PbsAttributeDescriptor, PbsReadOnlyDescriptor,
+                          pbs_resource, pbs_bool, _LOG,
+                          )
 import _pbs_v1
 from _pbs_v1 import (_event_accept, _event_reject,
-                    _event_param_mod_allow, _event_param_mod_disallow,
-                    iter_nextfunc)
+                     _event_param_mod_allow, _event_param_mod_disallow,
+                     iter_nextfunc)
 
-from _exc_types import *
+from ._exc_types import *
 
 NAS_mod = 0
 
 try:
-        if _pbs_v1.get_python_daemon_name() == "pbs_python":
-            from _pbs_ifl import *
-            from pbs_ifl import *
+    if _pbs_v1.get_python_daemon_name() == "pbs_python":
+        from _pbs_ifl import *
+        from pbs_ifl import *
 except:
-        pass
+    pass
 
 # Set global hook_config_filename parameter.
 hook_config_filename = None
@@ -79,166 +79,173 @@ pbs_conf = _pbs_v1.get_pbs_conf()
 # get_local_nodename: returns the name of the current host as it would appear
 #                      as a vnode name. This is usually the short form of the
 #                      hostname.
+
+
 def get_local_nodename():
-        return(_pbs_v1.get_local_host_name())
+    return(_pbs_v1.get_local_host_name())
 
 
 #
 # pbs_statobj: general-purpose function that connects to server named
 #           'connect_server' or if None, use "localhost", and depending
-#            on 'type', then performs pbs_statjob(), ps_statque(),
+#            on 'objtype', then performs pbs_statjob(), ps_statque(),
 #            pbs_statresv(), pbs_statvnode(), or pbs_statserver(), and
 #            returning results in a new object of type _job, _queue,
 #            _resv, _vnode, or _server.
 #            NOTE: 'filter_queue' is used for a "job" type, which means
 #                  the job must be in the queue 'filter_queue' for the
 #                  job object to be instantiated.
-def pbs_statobj(type, name=None, connect_server=None, filter_queue=None):
-        """
-        Returns a PBS (e.g. _job, _queue, _resv, _vnode, _server) object
-        that is populated with data obtained by calling PBS APIs:
-        pbs_statjob(), pbs_statque(), pbs_statresv(), pbs_statvnode(),
-        pbs_statserver(), using a connection handle to 'connect_server'.
+def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
+    """
+    Returns a PBS (e.g. _job, _queue, _resv, _vnode, _server) object
+    that is populated with data obtained by calling PBS APIs:
+    pbs_statjob(), pbs_statque(), pbs_statresv(), pbs_statvnode(),
+    pbs_statserver(), using a connection handle to 'connect_server'.
 
-        If 'type'  is "job", then return the _job object.
-        If 'type'  is "queue", then return the _queue object.
-        If 'type'  is "resv", then return the _resv object.
-        If 'type'  is "vnode", then return the _vnode object.
-        If 'type'  is "server", then return the _server object.
+    If 'objtype'  is "job", then return the _job object.
+    If 'objtype'  is "queue", then return the _queue object.
+    If 'objtype'  is "resv", then return the _resv object.
+    If 'objtype'  is "vnode", then return the _vnode object.
+    If 'objtype'  is "server", then return the _server object.
 
-        'filter_queue' is used for a "job" type, which means
-        the job must be in the queue 'filter_queue' for the
-        job object to be instantiated.
-        """
+    'filter_queue' is used for a "job" type, which means
+    the job must be in the queue 'filter_queue' for the
+    job object to be instantiated.
+    """
 
-        _pbs_v1.set_c_mode()
+    _pbs_v1.set_c_mode()
 
-        server_data_fp = _pbs_v1.get_server_data_fp();
+    server_data_fp = _pbs_v1.get_server_data_fp()
 
-        if( connect_server == None ):
-            con=pbs_connect("localhost")
+    if(connect_server == None):
+        con = pbs_connect("localhost")
+    else:
+        con = pbs_connect(connect_server)
+
+    if con < 0:
+        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                       "pbs_statobj: Unable to connect to server %s"
+                       % (connect_server))
+        _pbs_v1.set_python_mode()
+        return None
+
+    if(objtype == "job"):
+        bs = pbs_statjob(con, name, None, None)
+        header_str = "pbs.server().job(%s)" % (name,)
+    elif(objtype == "queue"):
+        bs = pbs_statque(con, name, None, None)
+        header_str = "pbs.server().queue(%s)" % (name,)
+    elif(objtype == "vnode"):
+        bs = pbs_statvnode(con, name, None, None)
+        header_str = "pbs.server().vnode(%s)" % (name,)
+    elif(objtype == "resv"):
+        bs = pbs_statresv(con, name, None, None)
+        header_str = "pbs.server().resv(%s)" % (name,)
+    elif(objtype == "server"):
+        bs = pbs_statserver(con, None, None)
+        header_str = "pbs.server()"
+    else:
+        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                       "pbs_statobj: Bad object type %s" % (objtype))
+        pbs_disconnect(con)
+        _pbs_v1.set_python_mode()
+        return None
+
+    b = bs
+    obj = None
+    while(b):
+        if(objtype == "job"):
+            obj = _job(b.name, connect_server)
+        elif(objtype == "queue"):
+            obj = _queue(b.name, connect_server)
+        elif(objtype == "vnode"):
+            obj = _vnode(b.name, connect_server)
+        elif(objtype == "resv"):
+            obj = _resv(b.name, connect_server)
+        elif(objtype == "server"):
+            obj = _server(b.name, connect_server)
         else:
-            con=pbs_connect(connect_server)
-
-        if con < 0:
-            _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,\
-               "pbs_statobj: Unable to connect to server %s" % (connect_server))
-            _pbs_v1.set_python_mode()
-            return None
-
-        if( type == "job" ):
-            bs=pbs_statjob(con, name, None, None)
-            header_str = "pbs.server().job(%s)" % (name,)
-        elif( type == "queue" ):
-            bs=pbs_statque(con, name, None, None)
-            header_str = "pbs.server().queue(%s)" % (name,)
-        elif( type == "vnode" ):
-            bs=pbs_statvnode(con, name, None, None)
-            header_str = "pbs.server().vnode(%s)" % (name,)
-        elif( type == "resv" ):
-            bs=pbs_statresv(con, name, None, None)
-            header_str = "pbs.server().resv(%s)" % (name,)
-        elif( type == "server" ):
-            bs=pbs_statserver(con, None, None)
-            header_str = "pbs.server()"
-        else:
-            _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG, "pbs_statobj: Bad object type %s" % (type))
+            _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                           "pbs_statobj: Bad object type %s" % (objtype))
             pbs_disconnect(con)
             _pbs_v1.set_python_mode()
             return None
 
-        b = bs
-        obj = None
-        while(b):
-            if( type == "job" ):
-                obj=_job(b.name, connect_server)
-            elif( type == "queue" ):
-                obj=_queue(b.name, connect_server)
-            elif( type == "vnode" ):
-                obj=_vnode(b.name, connect_server)
-            elif( type == "resv" ):
-                obj=_resv(b.name, connect_server)
-            elif( type == "server" ):
-                obj=_server(b.name, connect_server)
-            else:
-                _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                 "pbs_statobj: Bad object type %s" % (type))
-                pbs_disconnect(con)
-                _pbs_v1.set_python_mode()
-                return None
+        a = b.attribs
 
-            a=b.attribs
+        while(a):
+            n = a.name
+            r = a.resource
+            v = a.value
 
-            while(a):
-                n=a.name
-                r=a.resource
-                v=a.value
+            if(objtype == "vnode"):
+                if(n == ATTR_NODE_state):
+                    v = _pbs_v1.str_to_vnode_state(v)
+                elif(n == ATTR_NODE_ntype):
+                    v = _pbs_v1.str_to_vnode_ntype(v)
+                elif(n == ATTR_NODE_Sharing):
+                    v = _pbs_v1.str_to_vnode_sharing(v)
 
-                if( type == "vnode" ):        
-                    if( n == ATTR_NODE_state ):         
-                        v=_pbs_v1.str_to_vnode_state(v)         
-                    elif( n == ATTR_NODE_ntype ): 
-                        v=_pbs_v1.str_to_vnode_ntype(v)         
-                    elif( n == ATTR_NODE_Sharing ): 
-                        v=_pbs_v1.str_to_vnode_sharing(v)
+            elif(objtype == "job"):
+                if((filter_queue != None) and (n == ATTR_queue) and
+                        (filter_queue != v)):
+                    pbs_disconnect(con)
+                    _pbs_v1.set_python_mode()
+                    return None
+                if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
+                    v = int(pbs_bool(v))
 
-                elif( type == "job" ):
-                    if( (filter_queue != None) and (n == ATTR_queue) and \
-                                          (filter_queue != v) ):
-                        pbs_disconnect(con)
-                        _pbs_v1.set_python_mode()
-                        return None
-                    if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
-                        v=int(pbs_bool(v))
+            if(r):
+                pr = getattr(obj, n)
 
-                if(r):
-                    pr=getattr(obj,n)
+                # instantiate Resource_List object if not set
+                if(pr == None):
+                    setattr(obj, n)
 
-                    # instantiate Resource_List object if not set
-                    if( pr == None):
-                        setattr(obj,n)
+                pr = getattr(obj, n)
+                if (pr == None):
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_statobj: missing %s" % (n))
+                    a = a.next
+                    continue
 
-                    pr=getattr(obj,n)
-                    if (pr == None):
-                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-                                         "pbs_statobj: missing %s" % (n))
-                        a=a.next
-                        continue
-
-                    vo=getattr(pr, r)
-                    if( vo == None ):
-                        setattr(pr,r,v)
-                        if server_data_fp:
-                            server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
-                    else:
-                        # append value...
-                        # example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
-                        vl=[vo, v]
-                        setattr(pr, r, ",".join(vl))        
-                        if server_data_fp:
-                            server_data_fp.write("%s.%s[%s]=%s\n" % (header_str, n,r,",".join(vl)))
-
+                vo = getattr(pr, r)
+                if(vo == None):
+                    setattr(pr, r, v)
+                    if server_data_fp:
+                        server_data_fp.write(
+                            "%s.%s[%s]=%s\n" % (header_str, n, r, v))
                 else:
-                    vo=getattr(obj,n)
+                    # append value...
+                    # example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
+                    vl = [vo, v]
+                    setattr(pr, r, ",".join(vl))
+                    if server_data_fp:
+                        server_data_fp.write("%s.%s[%s]=%s\n" % (
+                            header_str, n, r, ",".join(vl)))
 
-                    if( vo == None ):
-                        setattr(obj,n,v)
-                        if server_data_fp:
-                            server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
-                    else:
-                        # append value        
-                        vl=[vo, v]
-                        setattr(obj, n, ",".join(vl))
-                        if server_data_fp:
-                            server_data_fp.write("%s.%s=%s\n" % (header_str, n, ",".join(vl)))
+            else:
+                vo = getattr(obj, n)
 
-                a=a.next
-  
-            b=b.next
+                if(vo == None):
+                    setattr(obj, n, v)
+                    if server_data_fp:
+                        server_data_fp.write("%s.%s=%s\n" % (header_str, n, v))
+                else:
+                    # append value
+                    vl = [vo, v]
+                    setattr(obj, n, ",".join(vl))
+                    if server_data_fp:
+                        server_data_fp.write("%s.%s=%s\n" %
+                                             (header_str, n, ",".join(vl)))
 
-        pbs_disconnect(con)
-        _pbs_v1.set_python_mode()
-        return obj 
+            a = a.next
+
+        b = b.next
+
+    pbs_disconnect(con)
+    _pbs_v1.set_python_mode()
+    return obj
 
 
 # Allow the C implementation of hooks to call pbs_statobj function.
@@ -247,7 +254,9 @@ _pbs_v1.set_pbs_statobj(pbs_statobj)
 #:------------------------------------------------------------------------
 #                       JOB TYPE
 #:-------------------------------------------------------------------------
-class _job(object):
+
+
+class _job():
     """
     This represents a PBS job.
     """
@@ -255,10 +264,10 @@ class _job(object):
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
 
-    def __new__(cls,value,connect_server=None):
-        return object.__new__(cls, value)
-    
-    def __init__(self,jid,connect_server=None,
+    def __new__(cls, value, connect_server=None):
+        return object.__new__(cls)
+
+    def __init__(self, jid, connect_server=None,
                  failed_node_list=None, node_list=None):
         """__init__"""
 
@@ -284,15 +293,17 @@ class _job(object):
     def __setattr__(self, name, value):
         if name == "_readonly":
             if _pbs_v1.in_python_mode() and \
-                                hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
-        elif ((name != "_rerun") and (name != "_delete") and \
-              (name != "_checkpointed") and (name != "_msmom") and \
-              (name != "_stdout_file") and (name != "_stderr_file") and \
-                                 not _job.attributes.has_key(name)):
-            raise UnsetAttributeNameError("job attribute '%s' not found" % (name,))
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
+        elif ((name != "_rerun") and (name != "_delete") and
+              (name != "_checkpointed") and (name != "_msmom") and
+              (name != "_stdout_file") and (name != "_stderr_file") and
+              name not in _job.attributes):
+            raise UnsetAttributeNameError(
+                "job attribute '%s' not found" % (name,))
 
-        super(_job,self).__setattr__(name, value)
+        super(_job, self).__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
@@ -302,17 +313,17 @@ class _job(object):
         # script, or been unset.
 
         if _pbs_v1.in_python_mode():
-            if not self._attributes_hook_set.has_key(self):
+            if self not in self._attributes_hook_set:
                 self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name : None})
-        
-    #: m(__setattr__)        
+            self._attributes_hook_set[self].update({name: None})
+
+    #: m(__setattr__)
 
     def rerun(self):
         """rerun"""
         ev_type = _pbs_v1.event().type
-        if ( (ev_type & _pbs_v1.MOM_EVENTS) == 0 ):
+        if ((ev_type & _pbs_v1.MOM_EVENTS) == 0):
             raise NotImplementedError("rerun(): only for mom hooks")
         self._rerun = True
     #: m(rerun)
@@ -320,7 +331,7 @@ class _job(object):
     def delete(self):
         """delete"""
         ev_type = _pbs_v1.event().type
-        if ( (ev_type & _pbs_v1.MOM_EVENTS) == 0 ):
+        if ((ev_type & _pbs_v1.MOM_EVENTS) == 0):
             raise NotImplementedError("delete(): only for mom hooks")
         self._delete = True
     #: m(rerun)
@@ -334,40 +345,50 @@ class _job(object):
         """in_ms_mom"""
         return self._msmom
     #: m(in_ms_mom)
+
     def stdout_file(self):
         """stdout_file"""
         return self._stdout_file
     #: m(stdout_file)
+
     def stderr_file(self):
         """stderr_file"""
         return self._stderr_file
     #: m(stderr_file)
+
     def release_nodes(self, node_list=None, keep_select=None):
         """release_nodes"""
-        if ( (_pbs_v1.event().type & _pbs_v1.EXECJOB_PROLOGUE) == 0 and
-             (_pbs_v1.event().type & _pbs_v1.EXECJOB_LAUNCH) == 0 ):
+        if ((_pbs_v1.event().type & _pbs_v1.EXECJOB_PROLOGUE) == 0 and
+                (_pbs_v1.event().type & _pbs_v1.EXECJOB_LAUNCH) == 0):
             return None
         tolerate_node_failures = None
         ajob = _pbs_v1.event().job
         if hasattr(ajob, "tolerate_node_failures"):
             tolerate_node_failures = getattr(ajob, "tolerate_node_failures")
             if tolerate_node_failures not in ["job_start", "all"]:
-                msg = "no nodes released as job does not tolerate node failures"
+                msg = "no nodes released as job does not " \
+                      "tolerate node failures"
                 _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG, "%s: %s" % (ajob.id, msg))
                 return ajob
         return _pbs_v1.release_nodes(self, node_list, keep_select)
     #: m(release_nodes)
 
-_job.id = PbsAttributeDescriptor(_job, 'id', "",(str,))
-_job.failed_mom_list = PbsAttributeDescriptor(_job, 'failed_mom_list', {},(list,))
-_job.succeeded_mom_list = PbsAttributeDescriptor(_job, 'succeeded_mom_list', {},(list,))
-_job._connect_server = PbsAttributeDescriptor(_job, '_connect_server', {}, (str,))
+
+_job.id = PbsAttributeDescriptor(_job, 'id', "", (str,))
+_job.failed_mom_list = PbsAttributeDescriptor(
+    _job, 'failed_mom_list', {}, (list,))
+_job.succeeded_mom_list = PbsAttributeDescriptor(
+    _job, 'succeeded_mom_list', {}, (list,))
+_job._connect_server = PbsAttributeDescriptor(
+    _job, '_connect_server', {}, (str,))
 #: C(job)
 
 #:------------------------------------------------------------------------
 #                       VNODE TYPE
 #:-------------------------------------------------------------------------
-class _vnode(object):
+
+
+class _vnode():
     """
     This represents a PBS vnode.
     """
@@ -375,10 +396,10 @@ class _vnode(object):
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
 
-    def __new__(cls,value,connect_server=None):
-        return object.__new__(cls, value)
-    
-    def __init__(self,name, connect_server=None):
+    def __new__(cls, value, connect_server=None):
+        return object.__new__(cls)
+
+    def __init__(self, name, connect_server=None):
         """__init__"""
 
         self.name = name
@@ -395,11 +416,13 @@ class _vnode(object):
     def __setattr__(self, name, value):
         if name == "_readonly":
             if _pbs_v1.in_python_mode() and \
-                                hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
-        elif not _vnode.attributes.has_key(name):
-            raise UnsetAttributeNameError("vnode attribute '%s' not found" % (name,))
-        super(_vnode,self).__setattr__(name, value)
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
+        elif name not in _vnode.attributes:
+            raise UnsetAttributeNameError(
+                "vnode attribute '%s' not found" % (name,))
+        super(_vnode, self).__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
@@ -409,17 +432,18 @@ class _vnode(object):
         # script, or been unset.
 
         if _pbs_v1.in_python_mode() and (name != "_connect_server"):
-            if not self._attributes_hook_set.has_key(self):
+            if self not in self._attributes_hook_set:
                 self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name : None})
-            _pbs_v1.mark_vnode_set(self.name, name, str(value))        
-        
-    #: m(__seattr__)        
-    
+            self._attributes_hook_set[self].update({name: None})
+            _pbs_v1.mark_vnode_set(self.name, name, str(value))
 
-_vnode.name = PbsAttributeDescriptor(_vnode, 'name', "",(str,))
-_vnode._connect_server = PbsAttributeDescriptor(_vnode, '_connect_server', "", (str,))
+    #: m(__seattr__)
+
+
+_vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
+_vnode._connect_server = PbsAttributeDescriptor(
+    _vnode, '_connect_server', "", (str,))
 #: C(vnode)
 
 # This exposes pbs.vnode() to be callable in a hook script
@@ -428,20 +452,22 @@ vnode = _vnode
 #:-------------------------------------------------------------------------
 #                       RESERVATION TYPE
 #:-------------------------------------------------------------------------
-class _resv(object):
+
+
+class _resv():
     """
     This represents a PBS reservation entity.
     """
-    
+
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
     attributes_readonly = PbsReadOnlyDescriptor('attributes_readonly',
-                        [])
-    
-    def __new__(cls,value,connect_server=None):
-        return object.__new__(cls, value)
+                                                [])
 
-    def __init__(self,resvid,connect_server=None):
+    def __new__(cls, value, connect_server=None):
+        return object.__new__(cls)
+
+    def __init__(self, resvid, connect_server=None):
         """__init__"""
 
         self.resvid = resvid
@@ -458,16 +484,20 @@ class _resv(object):
     def __setattr__(self, name, value):
         if (name == "_readonly"):
             if _pbs_v1.in_python_mode() and \
-                                    hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
-        elif not _resv.attributes.has_key(name):
-            raise UnsetAttributeNameError("resv attribute '%s' not found" % (name,))
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
+        elif name not in _resv.attributes:
+            raise UnsetAttributeNameError(
+                "resv attribute '%s' not found" % (name,))
         elif name in _resv.attributes_readonly and \
-                                _pbs_v1.in_python_mode() and \
-                                                _pbs_v1.in_site_hook():
+                _pbs_v1.in_python_mode() and \
+                _pbs_v1.in_site_hook():
             # readonly under a SITE hook
-            raise BadAttributeValueError("resv attribute '%s' is readonly" % (name,))
-        super(_resv,self).__setattr__(name, value)
+            raise BadAttributeValueError(
+                "resv attribute '%s' is readonly" % (name,))
+        super(_resv, self).__setattr__(name, value)
+        #super(_resv, self).__setattr__(name, value)
 
         # attributes that are set in python mode will be reflected in
         # _attributes_hook_set dictionary.
@@ -477,28 +507,33 @@ class _resv(object):
         # the hook script, or been unset.
 
         if _pbs_v1.in_python_mode():
-            if not self._attributes_hook_set.has_key(self):
+            if self not in self._attributes_hook_set:
                 self._attributes_hook_set[self] = {}
             # using a dictionary value as easier to search for keys
-            self._attributes_hook_set[self].update({name : None})
+            self._attributes_hook_set[self].update({name: None})
     #: m(__setattr__)
-    
+
+
 #: C(resv)
 _resv.resvid = PbsAttributeDescriptor(_resv, 'resvid', "", (str,))
-_resv._connect_server = PbsAttributeDescriptor(_resv, '_connect_server', "", (str,))
+_resv._connect_server = PbsAttributeDescriptor(
+    _resv, '_connect_server', "", (str,))
 #: End (resv) setting class attributes
 
 #:-------------------------------------------------------------------------
 #                       QUEUE TYPE
 #:-------------------------------------------------------------------------
-class _queue(object):
+
+
+class _queue():
     """
     This represents a PBS queue.
     """
-    
+
     attributes = PbsReadOnlyDescriptor('attributes', {})
     #name = PbsAttributeDescriptor(queue, 'name', "", (str,))
-    def __init__(self,name, connect_server=None):
+
+    def __init__(self, name, connect_server=None):
         """__init__"""
         #: ok, descriptor is set.
         self.name = name
@@ -515,11 +550,13 @@ class _queue(object):
     def __setattr__(self, name, value):
         if (name == "_readonly"):
             if _pbs_v1.in_python_mode() and \
-                            hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
-        elif not _queue.attributes.has_key(name):
-            raise UnsetAttributeNameError("queue attribute '%s' not found" % (name,))
-        super(_queue,self).__setattr__(name, value)
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
+        elif name not in _queue.attributes:
+            raise UnsetAttributeNameError(
+                "queue attribute '%s' not found" % (name,))
+        super(_queue, self).__setattr__(name, value)
     #: m(__setattr__)
 
     def job(self, jobid):
@@ -540,10 +577,10 @@ class _queue(object):
                     qn = ""
                 else:
                     qn = self.name
-                return _pbs_v1.get_job_static(jobid, sn, qn);
+                return _pbs_v1.get_job_static(jobid, sn, qn)
 
             return pbs_statobj("job", jobid, self._connect_server,
-                                                            self.name)
+                               self.name)
         else:
             return _pbs_v1.get_job(jobid, self.name)
     #: m(job)
@@ -554,25 +591,29 @@ class _queue(object):
         """
         return pbs_iter("jobs", "",  self.name, self._connect_server)
     #: m(jobs)
-    
+
 #: C(_queue)
 
+
 _queue.name = PbsAttributeDescriptor(_queue, 'name', "", (str,))
-_queue._connect_server = PbsAttributeDescriptor(_queue, '_connect_server', "", (str,))
+_queue._connect_server = PbsAttributeDescriptor(
+    _queue, '_connect_server', "", (str,))
 
 #: End (queue) setting class attributes
 
 #:-------------------------------------------------------------------------
 #                       Server TYPE
 #:-------------------------------------------------------------------------
-class _server(object):
+
+
+class _server():
     """
     This represents the PBS server entity.
     """
-    
+
     attributes = PbsReadOnlyDescriptor('attributes', {})
-    
-    def __init__(self,name, connect_server=None):
+
+    def __init__(self, name, connect_server=None):
         """__init__"""
 
         self.name = name
@@ -595,8 +636,8 @@ class _server(object):
           managed by server s.
         """
         if qname.find("@") != -1:
-            raise AssertionError(\
-               "Got '%s', please specify a queue name only (no @)" % (qname,))
+            raise AssertionError(
+                "Got '%s', please specify a queue name only (no @)" % (qname,))
 
         if _pbs_v1.get_python_daemon_name() == "pbs_python":
             if _pbs_v1.use_static_data():
@@ -604,10 +645,10 @@ class _server(object):
                     sn = ""
                 else:
                     sn = self._connect_server
-                return _pbs_v1.get_queue_static(qname, sn);
+                return _pbs_v1.get_queue_static(qname, sn)
 
             return pbs_statobj("queue", qname, self._connect_server)
-        else:        
+        else:
             return _pbs_v1.get_queue(qname)
     #: m(queue)
 
@@ -626,7 +667,7 @@ class _server(object):
                     sn = ""
                 else:
                     sn = self._connect_server
-                return _pbs_v1.get_job_static(jobid, sn, "");
+                return _pbs_v1.get_job_static(jobid, sn, "")
 
             return pbs_statobj("job", jobid, self._connect_server)
         else:
@@ -637,7 +678,7 @@ class _server(object):
         """
         vnode(strVname)
             strVname - PBS vnode name to query.
-          Returns a vnode object representing vname 
+          Returns a vnode object representing vname
         """
         if _pbs_v1.get_python_daemon_name() == "pbs_python":
             if _pbs_v1.use_static_data():
@@ -645,7 +686,7 @@ class _server(object):
                     sn = ""
                 else:
                     sn = self._connect_server
-                return _pbs_v1.get_vnode_static(vname, sn);
+                return _pbs_v1.get_vnode_static(vname, sn)
 
             return pbs_statobj("vnode", vname, self._connect_server)
         else:
@@ -654,14 +695,14 @@ class _server(object):
 
     def resv(self, resvid):
         """Return a resv object representing resvid"""
-                 
+
         if _pbs_v1.get_python_daemon_name() == "pbs_python":
             if _pbs_v1.use_static_data():
                 if self._connect_server is None:
                     sn = ""
                 else:
                     sn = self._connect_server
-                return _pbs_v1.get_resv_static(resvid, sn);
+                return _pbs_v1.get_resv_static(resvid, sn)
 
             return pbs_statobj("resv", resvid, self._connect_server)
         else:
@@ -672,19 +713,22 @@ class _server(object):
     if NAS_mod != None and NAS_mod != 0:
         def jobs(self, ignore_fin=None, qname=None, username=None):
             """
-            Returns an iterator that loops over the list of jobs on this server.
+            Returns an iterator that loops over the list of jobs
+            on this server.
             Jobs can be filtered in 3 ways:
             - if ignore_fin is an integer != 0, finished jobs are ignored
             - qname returns jobs from that queue
             - username returns jobs with that euser
             """
 
-            return pbs_iter("jobs", "",  qname, self._connect_server, ignore_fin, username)
+            return pbs_iter("jobs", "",  qname, self._connect_server,
+                            ignore_fin, username)
         #: m(jobs_nas)
     else:
         def jobs(self):
             """
-            Returns an iterator that loops over the list of jobs on this server.
+            Returns an iterator that loops over the list of jobs
+            on this server.
             """
 
             return pbs_iter("jobs", "",  "", self._connect_server)
@@ -692,7 +736,8 @@ class _server(object):
 
     def vnodes(self):
         """
-            Returns an iterator that loops over the list of vnodes on this server.
+        Returns an iterator that loops over the list of vnodes
+        on this server.
         """
 
         return pbs_iter("vnodes", "",  "", self._connect_server)
@@ -710,7 +755,7 @@ class _server(object):
         Returns an iterator that loops over the list of reservations on this
         server.
         """
-        return pbs_iter( "resvs", "", "", self._connect_server)
+        return pbs_iter("resvs", "", "", self._connect_server)
     #: m(resvs)
 
     def scheduler_restart_cycle(self):
@@ -725,17 +770,20 @@ class _server(object):
     def __setattr__(self, name, value):
         if (name == "_readonly"):
             if _pbs_v1.in_python_mode() and \
-                            hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
-        elif not _server.attributes.has_key(name):
-            raise UnsetAttributeNameError("server attribute '%s' not found" % (name,))
-        super(_server,self).__setattr__(name, value)
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
+        elif name not in _server.attributes:
+            raise UnsetAttributeNameError(
+                "server attribute '%s' not found" % (name,))
+        super(_server, self).__setattr__(name, value)
     #: m(__setattr__)
 
-    
+
 #: C(server)
 _server.name = PbsAttributeDescriptor(_server, 'name', "", (str,))
-_server._connect_server = PbsAttributeDescriptor(_server, '_connect_server', "", (str,))
+_server._connect_server = PbsAttributeDescriptor(
+    _server, '_connect_server', "", (str,))
 #: End (server) setting class attributes
 
 
@@ -744,14 +792,13 @@ _server._connect_server = PbsAttributeDescriptor(_server, '_connect_server', "",
 #        if in "pbs_python" mode, would use _pbs_ifl/pbs_ifl wrapped calls for
 #        querying the server for data; otherwise, use the builtin server()
 #        function in a server hook.
-# 
+#
 def server():
 
-
     if _pbs_v1.get_python_daemon_name() == "pbs_python":
-	
+
         if _pbs_v1.use_static_data():
-            return _pbs_v1.get_server_static();
+            return _pbs_v1.get_server_static()
         connect_server = _pbs_v1.get_pbs_server_name()
         return pbs_statobj("server", None, connect_server)
     else:
@@ -761,11 +808,13 @@ def server():
 #        given, to have PBS  use 'reboot_cmd' as the reboot command to
 #        execute.
 #        This immediately terminates the hook script.
-# 
+#
+
+
 def reboot(reboot_cmd=""):
 
     ev_type = _pbs_v1.event().type
-    if ( (ev_type & _pbs_v1.MOM_EVENTS) == 0 ):
+    if ((ev_type & _pbs_v1.MOM_EVENTS) == 0):
         raise NotImplementedError("reboot(): only for mom hooks")
     _pbs_v1.reboot(reboot_cmd)
     raise SystemExit
@@ -773,13 +822,15 @@ def reboot(reboot_cmd=""):
 #:-------------------------------------------------------------------------
 #                       Event TYPE
 #:-------------------------------------------------------------------------
-class _event(object):
+
+
+class _event():
     """
     This represents the event that the current hook is responding to.
     """
     #: the below is used for attribute type acess
-    attributes     = PbsReadOnlyDescriptor('attributes', {})
-    
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+
     def __init__(self, type, rq_user, rq_host):
         """__init__"""
         self.type = type
@@ -800,7 +851,7 @@ class _event(object):
         """
         _event_accept()
         _event_param_mod_disallow()
-        raise SystemExit, str(ecode)
+        raise SystemExit(str(ecode))
     #: m(__accept__)
 
     def reject(self, emsg="", ecode=255):
@@ -810,14 +861,14 @@ class _event(object):
            associated event request action. If [msg] argument is given, it
                 will be shown in the appropriate PBS daemon log, and the STDERR
            of the PBS command that caused this event to take place.
-           If [ecode] argument is given, if will be used as the value for 
+           If [ecode] argument is given, if will be used as the value for
            the SystemExit exception, else a value of 255 is used.
-        
+
            This terminates hook execution by throwing a SystemExit exception.
         """
         _event_reject(emsg)
         _event_param_mod_disallow()
-        raise SystemExit, str(ecode)
+        raise SystemExit(str(ecode))
     #: m(__reject__)
 
     def __getattr__(self, key):
@@ -830,25 +881,30 @@ class _event(object):
     def __setattr__(self, name, value):
         if (name == "_readonly"):
             if _pbs_v1.in_python_mode() and \
-                            hasattr(self, "_readonly") and not value:
-                 raise BadAttributeValueError("_readonly can only be set to True!")
+                    hasattr(self, "_readonly") and not value:
+                raise BadAttributeValueError(
+                    "_readonly can only be set to True!")
         elif _pbs_v1.in_python_mode() and self._param.__contains__(name):
             if name == "progname" or name == "argv" or name == "env":
                 self._param[name] = value
                 return
             else:
-                raise BadAttributeValueError("event attribute '%s' is readonly" % (name,))
-        elif not _event.attributes.has_key(name):
-            raise UnsetAttributeNameError("event attribute '%s' not found" % (name,))
-        super(_event,self).__setattr__(name, value)
+                raise BadAttributeValueError(
+                    "event attribute '%s' is readonly" % (name,))
+        elif name not in _event.attributes:
+            raise UnsetAttributeNameError(
+                "event attribute '%s' not found" % (name,))
+        super().__setattr__(name, value)
     #: m(__setattr__)
-    
+
+
 #: C(event)
 _event.type = PbsAttributeDescriptor(_event, 'type', None, (int,))
 _event.hook_name = PbsAttributeDescriptor(_event, 'hook_name', "", (str,))
 _event.hook_type = PbsAttributeDescriptor(_event, 'hook_type', "", (str,))
 _event.requestor = PbsAttributeDescriptor(_event, 'requestor', "", (str,))
-_event.requestor_host = PbsAttributeDescriptor(_event, 'requestor_host', "", (str,))
+_event.requestor_host = PbsAttributeDescriptor(
+    _event, 'requestor_host', "", (str,))
 _event._param = PbsAttributeDescriptor(_event, '_param', {}, (dict,))
 _event.freq = PbsAttributeDescriptor(_event, 'freq', None, (int,))
 #: End (event) setting class attributes
@@ -857,7 +913,8 @@ _event.freq = PbsAttributeDescriptor(_event, 'freq', None, (int,))
 #                       PBS Iterator Type
 #:-------------------------------------------------------------------------
 
-class pbs_iter(object):
+
+class pbs_iter():
     """
     This represents an iterator for looping over a list of PBS objects.
     Pbs_obj_name can be: queues, jobs, resvs, vnodes.
@@ -880,381 +937,431 @@ class pbs_iter(object):
         Pbs_username   tells the iterator to return only jobs with this euser.
         """
 
-        def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2, connect_server=None, pbs_ignore_fin=None, pbs_username=None):
+        def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2,
+                     connect_server=None, pbs_ignore_fin=None,
+                     pbs_username=None):
 
-	    self._caller = _pbs_v1.get_python_daemon_name()
-	    if self._caller == "pbs_python":
+            self._caller = _pbs_v1.get_python_daemon_name()
+            if self._caller == "pbs_python":
 
-		if( connect_server == None ):
-		    self._connect_server = "localhost"
-		    sn = ""
-		else:        
-		    self._connect_server = connect_server
-		    sn = connect_server
+                if(connect_server == None):
+                    self._connect_server = "localhost"
+                    sn = ""
+                else:
+                    self._connect_server = connect_server
+                    sn = connect_server
 
-		self.type = pbs_obj_name         
-		if _pbs_v1.use_static_data():
-		    if( self.type == "jobs" ):
-			self.bs=iter(_pbs_v1.get_job_static("", sn, ""))
-		    elif( self.type == "queues" ):
-			self.bs=iter(_pbs_v1.get_queue_static("", sn))
-		    elif( self.type == "vnodes" ):
-			self.bs=iter(_pbs_v1.get_vnode_static("", sn))
-		    elif( self.type == "resvs" ):
-			self.bs=iter(_pbs_v1.get_resv_static("", sn))
-		    else:
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			     "pbs_iter/init: Bad object iterator type %s" % (self.type))
-			return None        
-		    return
+                self.type = pbs_obj_name
+                if _pbs_v1.use_static_data():
+                    if(self.type == "jobs"):
+                        self.bs = iter(_pbs_v1.get_job_static("", sn, ""))
+                    elif(self.type == "queues"):
+                        self.bs = iter(_pbs_v1.get_queue_static("", sn))
+                    elif(self.type == "vnodes"):
+                        self.bs = iter(_pbs_v1.get_vnode_static("", sn))
+                    elif(self.type == "resvs"):
+                        self.bs = iter(_pbs_v1.get_resv_static("", sn))
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/init: Bad object iterator"
+                                       " type %s"
+                                       % (self.type))
+                        return None
+                    return
 
-		self.con=pbs_connect(self._connect_server)
-		if self.con < 0:
-		    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,\
-		       "pbs_iter: Unable to connect to server %s" % (connect_server))
-		    return None        
+                self.con = pbs_connect(self._connect_server)
+                if self.con < 0:
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_iter: Unable to connect to server %s"
+                                   % (connect_server))
+                    return None
 
-		if( self.type == "jobs" ):
-		    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,\
-		       "pbs_iter: pbs_python mode not supported by NAS local mod")
-		    pbs_disconnect(self.con)        
-		    self.con = -1
-		    return None
-		elif( self.type == "queues" ):
-		    self.bs=pbs_statque(self.con, None, None, None)
-		elif( self.type == "vnodes" ):
-		    self.bs=pbs_statvnode(self.con, None, None, None)
-		elif( self.type == "resvs" ):
-		    self.bs=pbs_statresv(self.con, None, None, None)
-		else:
-		    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-		     "pbs_iter/init: Bad object iterator type %s" % (self.type))
-		    pbs_disconnect(self.con)        
-		    self.con = -1
-		    return None
+                if(self.type == "jobs"):
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_iter: pbs_python mode not"
+                                   " supported by NAS local mod")
+                    pbs_disconnect(self.con)
+                    self.con = -1
+                    return None
+                elif(self.type == "queues"):
+                    self.bs = pbs_statque(self.con, None, None, None)
+                elif(self.type == "vnodes"):
+                    self.bs = pbs_statvnode(self.con, None, None, None)
+                elif(self.type == "resvs"):
+                    self.bs = pbs_statresv(self.con, None, None, None)
+                else:
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_iter/init: Bad object iterator type %s"
+                                   % (self.type))
+                    pbs_disconnect(self.con)
+                    self.con = -1
+                    return None
 
-	    else:
+            else:
 
-		self.obj_name = pbs_obj_name
-		self.filter1 = pbs_filter1
-		self.filter2 = ""
-		self.ignore_fin = 0
-		self.filter_user = ""
+                self.obj_name = pbs_obj_name
+                self.filter1 = pbs_filter1
+                self.filter2 = ""
+                self.ignore_fin = 0
+                self.filter_user = ""
 
-		if pbs_filter2 != None:
-		    self.filter2 = pbs_filter2
+                if pbs_filter2 != None:
+                    self.filter2 = pbs_filter2
 
-		if pbs_ignore_fin != None:
-		    self.ignore_fin = pbs_ignore_fin
+                if pbs_ignore_fin != None:
+                    self.ignore_fin = pbs_ignore_fin
 
-		if pbs_username != None:
-		    self.filter_user = pbs_username
+                if pbs_username != None:
+                    self.filter_user = pbs_username
 
-		# argument 1 below tells C function were inside __init__
-		_pbs_v1.iter_nextfunc(self, 1, pbs_obj_name, pbs_filter1, self.filter2, self.ignore_fin, self.filter_user) 
+                # argument 1 below tells C function were inside __init__
+                _pbs_v1.iter_nextfunc(
+                    self, 1, pbs_obj_name, pbs_filter1, self.filter2,
+                    self.ignore_fin, self.filter_user)
     else:
-	def __init__(self, pbs_obj_name, pbs_filter1, pbs_filter2, connect_server=None):
-        
-	    self._caller = _pbs_v1.get_python_daemon_name()
-	    if self._caller == "pbs_python":
+        def __init__(self, pbs_obj_name, pbs_filter1,
+                     pbs_filter2, connect_server=None):
 
-		if( connect_server == None ):
-		    self._connect_server = "localhost"
-		    sn = ""
-		else:        
-		    self._connect_server = connect_server
-		    sn = connect_server
+            self._caller = _pbs_v1.get_python_daemon_name()
+            if self._caller == "pbs_python":
 
-		self.type = pbs_obj_name         
-		if _pbs_v1.use_static_data():
-		    if( self.type == "jobs" ):
-			self.bs=iter(_pbs_v1.get_job_static("", sn, ""))
-		    elif( self.type == "queues" ):
-			self.bs=iter(_pbs_v1.get_queue_static("", sn))
-		    elif( self.type == "vnodes" ):
-			self.bs=iter(_pbs_v1.get_vnode_static("", sn))
-		    elif( self.type == "resvs" ):
-			self.bs=iter(_pbs_v1.get_resv_static("", sn))
-		    else:
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			     "pbs_iter/init: Bad object iterator type %s" % (self.type))
-			return None        
-		    return
+                if(connect_server == None):
+                    self._connect_server = "localhost"
+                    sn = ""
+                else:
+                    self._connect_server = connect_server
+                    sn = connect_server
 
-		self.con=pbs_connect(self._connect_server)
-		if self.con < 0:
-		    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,\
-		       "pbs_iter: Unable to connect to server %s" % (connect_server))
-		    return None        
+                self.type = pbs_obj_name
+                if _pbs_v1.use_static_data():
+                    if(self.type == "jobs"):
+                        self.bs = iter(_pbs_v1.get_job_static("", sn, ""))
+                    elif(self.type == "queues"):
+                        self.bs = iter(_pbs_v1.get_queue_static("", sn))
+                    elif(self.type == "vnodes"):
+                        self.bs = iter(_pbs_v1.get_vnode_static("", sn))
+                    elif(self.type == "resvs"):
+                        self.bs = iter(_pbs_v1.get_resv_static("", sn))
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/init: Bad object "
+                                       "iterator type %s"
+                                       % (self.type))
+                        return None
+                    return
 
-		if( self.type == "jobs" ):
-		    self.bs=pbs_statjob(self.con, pbs_filter2, None, None)
-		elif( self.type == "queues" ):
-		    self.bs=pbs_statque(self.con, None, None, None)
-		elif( self.type == "vnodes" ):
-		    self.bs=pbs_statvnode(self.con, None, None, None)
-		elif( self.type == "resvs" ):
-		    self.bs=pbs_statresv(self.con, None, None, None)
-		else:
-		    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-		     "pbs_iter/init: Bad object iterator type %s" % (self.type))
-		    pbs_disconnect(self.con)        
-		    self.con = -1
-		    return None        
+                self.con = pbs_connect(self._connect_server)
+                if self.con < 0:
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_iter: Unable to connect to server %s"
+                                   % (connect_server))
+                    return None
 
-	    else:
+                if(self.type == "jobs"):
+                    self.bs = pbs_statjob(self.con, pbs_filter2, None, None)
+                elif(self.type == "queues"):
+                    self.bs = pbs_statque(self.con, None, None, None)
+                elif(self.type == "vnodes"):
+                    self.bs = pbs_statvnode(self.con, None, None, None)
+                elif(self.type == "resvs"):
+                    self.bs = pbs_statresv(self.con, None, None, None)
+                else:
+                    _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                   "pbs_iter/init: Bad object iterator type %s"
+                                   % (self.type))
+                    pbs_disconnect(self.con)
+                    self.con = -1
+                    return None
 
-		self.obj_name = pbs_obj_name
-		self.filter1 = pbs_filter1
-		self.filter2 = pbs_filter2
-		# argument 1 below tells C function we're inside __init__
-		_pbs_v1.iter_nextfunc(self, 1, pbs_obj_name, pbs_filter1, pbs_filter2) 
+            else:
+
+                self.obj_name = pbs_obj_name
+                self.filter1 = pbs_filter1
+                self.filter2 = pbs_filter2
+                # argument 1 below tells C function we're inside __init__
+                _pbs_v1.iter_nextfunc(
+                    self, 1, pbs_obj_name, pbs_filter1, pbs_filter2)
 
     def __iter__(self):
         return self
 
     # NAS localmod 014
     if NAS_mod != None and NAS_mod != 0:
-        def next(self):
-	    if self._caller == "pbs_python":
-		if not hasattr(self, "bs") or self.bs == None:
-		    if not _pbs_v1.use_static_data():
-			pbs_disconnect(self.con)
-			self.con = -1
-		    raise StopIteration
+        def __next__(self):
+            if self._caller == "pbs_python":
+                if not hasattr(self, "bs") or self.bs == None:
+                    if not _pbs_v1.use_static_data():
+                        pbs_disconnect(self.con)
+                        self.con = -1
+                    raise StopIteration
 
-		if _pbs_v1.use_static_data():
-		    if( self.type == "jobs" ):
-			return _pbs_v1.get_job_static(self.bs.next(), self._connect_server, "")
-		    elif( self.type == "queues" ):
-			return _pbs_v1.get_queue_static(self.bs.next(), self._connect_server)
-		    elif( self.type == "resvs" ):
-			return _pbs_v1.get_resv_static(self.bs.next(), self._connect_server)
-		    elif( self.type == "vnodes" ):
-			return _pbs_v1.get_vnode_static(self.bs.next(), self._connect_server)
-		    else:        
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			    "pbs_iter/next: Bad object iterator type %s" % (self.type))
-			raise StopIteration
-		    return
-	    
-		b = self.bs
-		job = None
+                if _pbs_v1.use_static_data():
+                    if(self.type == "jobs"):
+                        return _pbs_v1.get_job_static(next(self.bs),
+                                                      self._connect_server, "")
+                    elif(self.type == "queues"):
+                        return _pbs_v1.get_queue_static(next(self.bs),
+                                                        self._connect_server)
+                    elif(self.type == "resvs"):
+                        return _pbs_v1.get_resv_static(next(self.bs),
+                                                       self._connect_server)
+                    elif(self.type == "vnodes"):
+                        return _pbs_v1.get_vnode_static(next(self.bs),
+                                                        self._connect_server)
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
+                        raise StopIteration
+                    return
 
-		_pbs_v1.set_c_mode()
+                b = self.bs
+                job = None
 
-		server_data_fp = _pbs_v1.get_server_data_fp();
-		if(b):
-		    if( self.type == "jobs" ):
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,\
-			    "pbs_iter/next: pbs_python mode not supported by NAS local mod")
-			pbs_disconnect(self.con)
-			self.con = -1 
-			_pbs_v1.set_python_mode()
-			raise StopIteration
-		    elif( self.type == "queues" ):
-			obj=_queue(b.name, self._connect_server)
-			header_str = "pbs.server().queue(%s)" % (b.name,)
-		    elif( self.type == "resvs" ):
-			obj=_resv(b.name, self._connect_server)
-			header_str = "pbs.server().resv(%s)" % (b.name,)
-		    elif( self.type == "vnodes" ):
-			obj=_vnode(b.name, self._connect_server)
-			header_str = "pbs.server().vnode(%s)" % (b.name,)
-		    else:        
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			    "pbs_iter/next: Bad object iterator type %s" % (self.type))
-			pbs_disconnect(self.con)
-			self.con = -1 
-			_pbs_v1.set_python_mode()
-			raise StopIteration
+                _pbs_v1.set_c_mode()
 
-		    a=b.attribs
+                server_data_fp = _pbs_v1.get_server_data_fp()
+                if(b):
+                    if(self.type == "jobs"):
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/next: pbs_python mode not"
+                                       " supported by NAS local mod")
+                        pbs_disconnect(self.con)
+                        self.con = -1
+                        _pbs_v1.set_python_mode()
+                        raise StopIteration
+                    elif(self.type == "queues"):
+                        obj = _queue(b.name, self._connect_server)
+                        header_str = "pbs.server().queue(%s)" % (b.name,)
+                    elif(self.type == "resvs"):
+                        obj = _resv(b.name, self._connect_server)
+                        header_str = "pbs.server().resv(%s)" % (b.name,)
+                    elif(self.type == "vnodes"):
+                        obj = _vnode(b.name, self._connect_server)
+                        header_str = "pbs.server().vnode(%s)" % (b.name,)
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/next: Bad object iterator "
+                                       "type %s"
+                                       % (self.type))
+                        pbs_disconnect(self.con)
+                        self.con = -1
+                        _pbs_v1.set_python_mode()
+                        raise StopIteration
 
-		    while(a):
-			n=a.name
-			r=a.resource
-			v=a.value
+                    a = b.attribs
 
-			if( self.type == "vnodes" ): 
-			    if( n == ATTR_NODE_state ):         
-				v=_pbs_v1.str_to_vnode_state(v)         
-			    elif( n == ATTR_NODE_ntype ): 
-				v=_pbs_v1.str_to_vnode_ntype(v)         
-			    elif( n == ATTR_NODE_Sharing ): 
-				v=_pbs_v1.str_to_vnode_sharing(v)         
+                    while(a):
+                        n = a.name
+                        r = a.resource
+                        v = a.value
 
-			if( self.type == "jobs" ):
-                            if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
-				v=int(pbs_bool(v))
+                        if(self.type == "vnodes"):
+                            if(n == ATTR_NODE_state):
+                                v = _pbs_v1.str_to_vnode_state(v)
+                            elif(n == ATTR_NODE_ntype):
+                                v = _pbs_v1.str_to_vnode_ntype(v)
+                            elif(n == ATTR_NODE_Sharing):
+                                v = _pbs_v1.str_to_vnode_sharing(v)
 
-			if(r):
-			    pr=getattr(obj,n)
+                        if(self.type == "jobs"):
+                            if n == ATTR_inter or n == ATTR_block or \
+                                    n == ATTR_X11_port:
+                                v = int(pbs_bool(v))
 
-			    # if resource list does not exist, then set it
-			    if( pr == None):
-				setattr(obj,n)
+                        if(r):
+                            pr = getattr(obj, n)
 
-			    pr=getattr(obj,n)
-			    if (pr == None):
-				_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-					       "pbs_statobj: missing %s" % (n))
-				a=a.next
-				continue
+                            # if resource list does not exist, then set it
+                            if(pr == None):
+                                setattr(obj, n)
 
-			    vo=getattr(pr, r)
-			    if( vo == None ):
-				setattr(pr,r,v)
-				if server_data_fp:
-				    server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
-			    else:
-				# append value:
-				# example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
-				vl=[vo, v]
-				setattr(pr, r, ",".join(vl))
-				if server_data_fp:
-				    server_data_fp.write("%s.%s[%s]=%s\n" % (header_str, n,r,",".join(vl)))
+                            pr = getattr(obj, n)
+                            if (pr == None):
+                                _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                               "pbs_statobj: missing %s" % (n))
+                                a = a.next
+                                continue
 
-			else:
-			    vo=getattr(obj,n)
+                            vo = getattr(pr, r)
+                            if(vo == None):
+                                setattr(pr, r, v)
+                                if server_data_fp:
+                                    server_data_fp.write(
+                                        "%s.%s[%s]=%s\n" % (header_str, n,
+                                                            r, v))
+                            else:
+                                # append value:
+                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,
+                                # place=pack"
+                                vl = [vo, v]
+                                setattr(pr, r, ",".join(vl))
+                                if server_data_fp:
+                                    server_data_fp.write("%s.%s[%s]=%s\n" % (
+                                        header_str, n, r, ",".join(vl)))
 
-			    if( vo == None ):
-				setattr(obj,n,v)
-				if server_data_fp:
-				    server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
-			    else:
-				vl=[vo, v]
-				setattr(obj, n, ",".join(vl))
-				if server_data_fp:
-				    server_data_fp.write("%s.%s=%s\n" % (header_str, n, ",".join(vl)))
+                        else:
+                            vo = getattr(obj, n)
 
-			a=a.next
-      
-		self.bs=b.next
+                            if(vo == None):
+                                setattr(obj, n, v)
+                                if server_data_fp:
+                                    server_data_fp.write(
+                                        "%s.%s=%s\n" % (header_str, n, v))
+                            else:
+                                vl = [vo, v]
+                                setattr(obj, n, ",".join(vl))
+                                if server_data_fp:
+                                    server_data_fp.write("%s.%s=%s\n" % (
+                                        header_str, n, ",".join(vl)))
 
-		_pbs_v1.set_python_mode()
-		return obj
-	    else:
-		# argument 0 below tells C function we're inside next
-		return _pbs_v1.iter_nextfunc(self, 0, self.obj_name, self.filter1, self.filter2, self.ignore_fin, self.filter_user)
+                        a = a.next
+
+                self.bs = b.next
+
+                _pbs_v1.set_python_mode()
+                return obj
+            else:
+                # argument 0 below tells C function we're inside next
+                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
+                                             self.filter1,
+                                             self.filter2, self.ignore_fin,
+                                             self.filter_user)
     else:
-	def next(self):
-	    if self._caller == "pbs_python":
-		if not hasattr(self, "bs") or self.bs == None:
-		    if not _pbs_v1.use_static_data():
-			pbs_disconnect(self.con)
-			self.con = -1
-		    raise StopIteration
+        def __next__(self):
+            if self._caller == "pbs_python":
+                if not hasattr(self, "bs") or self.bs == None:
+                    if not _pbs_v1.use_static_data():
+                        pbs_disconnect(self.con)
+                        self.con = -1
+                    raise StopIteration
 
-		if _pbs_v1.use_static_data():
-		    if( self.type == "jobs" ):
-			return _pbs_v1.get_job_static(self.bs.next(), self._connect_server, "")
-		    elif( self.type == "queues" ):
-			return _pbs_v1.get_queue_static(self.bs.next(), self._connect_server)
-		    elif( self.type == "resvs" ):
-			return _pbs_v1.get_resv_static(self.bs.next(), self._connect_server)
-		    elif( self.type == "vnodes" ):
-			return _pbs_v1.get_vnode_static(self.bs.next(), self._connect_server)
-		    else:        
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			    "pbs_iter/next: Bad object iterator type %s" % (self.type))
-			raise StopIteration
-		    return
-	    
-		b = self.bs
-		job = None
+                if _pbs_v1.use_static_data():
+                    if(self.type == "jobs"):
+                        return _pbs_v1.get_job_static(next(self.bs),
+                                                      self._connect_server,
+                                                      "")
+                    elif(self.type == "queues"):
+                        return _pbs_v1.get_queue_static(next(self.bs),
+                                                        self._connect_server)
+                    elif(self.type == "resvs"):
+                        return _pbs_v1.get_resv_static(next(self.bs),
+                                                       self._connect_server)
+                    elif(self.type == "vnodes"):
+                        return _pbs_v1.get_vnode_static(next(self.bs),
+                                                        self._connect_server)
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
+                        raise StopIteration
+                    return
 
-		_pbs_v1.set_c_mode()
+                b = self.bs
+                job = None
 
-		server_data_fp = _pbs_v1.get_server_data_fp();
-		if(b):
-		    if( self.type == "jobs" ):
-			obj=_job(b.name, self._connect_server)
-			header_str = "pbs.server().job(%s)" % (b.name,)
-		    elif( self.type == "queues" ):
-			obj=_queue(b.name, self._connect_server)
-			header_str = "pbs.server().queue(%s)" % (b.name,)
-		    elif( self.type == "resvs" ):
-			obj=_resv(b.name, self._connect_server)
-			header_str = "pbs.server().resv(%s)" % (b.name,)
-		    elif( self.type == "vnodes" ):
-			obj=_vnode(b.name, self._connect_server)
-			header_str = "pbs.server().vnode(%s)" % (b.name,)
-		    else:        
-			_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-			    "pbs_iter/next: Bad object iterator type %s" % (self.type))
-			pbs_disconnect(self.con)
-			self.con = -1 
-			_pbs_v1.set_python_mode()
-			raise StopIteration
+                _pbs_v1.set_c_mode()
 
-		    a=b.attribs
+                server_data_fp = _pbs_v1.get_server_data_fp()
+                if(b):
+                    if(self.type == "jobs"):
+                        obj = _job(b.name, self._connect_server)
+                        header_str = "pbs.server().job(%s)" % (b.name,)
+                    elif(self.type == "queues"):
+                        obj = _queue(b.name, self._connect_server)
+                        header_str = "pbs.server().queue(%s)" % (b.name,)
+                    elif(self.type == "resvs"):
+                        obj = _resv(b.name, self._connect_server)
+                        header_str = "pbs.server().resv(%s)" % (b.name,)
+                    elif(self.type == "vnodes"):
+                        obj = _vnode(b.name, self._connect_server)
+                        header_str = "pbs.server().vnode(%s)" % (b.name,)
+                    else:
+                        _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                       "pbs_iter/next: Bad object"
+                                       " iterator type %s"
+                                       % (self.type))
+                        pbs_disconnect(self.con)
+                        self.con = -1
+                        _pbs_v1.set_python_mode()
+                        raise StopIteration
 
-		    while(a):
-			n=a.name
-			r=a.resource
-			v=a.value
+                    a = b.attribs
 
-			if( self.type == "vnodes" ): 
-			    if( n == ATTR_NODE_state ):         
-				v=_pbs_v1.str_to_vnode_state(v)         
-			    elif( n == ATTR_NODE_ntype ): 
-				v=_pbs_v1.str_to_vnode_ntype(v)         
-			    elif( n == ATTR_NODE_Sharing ): 
-				v=_pbs_v1.str_to_vnode_sharing(v)         
+                    while(a):
+                        n = a.name
+                        r = a.resource
+                        v = a.value
 
-			if( self.type == "jobs" ):
-                            if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
-				v=int(pbs_bool(v))
+                        if(self.type == "vnodes"):
+                            if(n == ATTR_NODE_state):
+                                v = _pbs_v1.str_to_vnode_state(v)
+                            elif(n == ATTR_NODE_ntype):
+                                v = _pbs_v1.str_to_vnode_ntype(v)
+                            elif(n == ATTR_NODE_Sharing):
+                                v = _pbs_v1.str_to_vnode_sharing(v)
 
-			if(r):
-			    pr=getattr(obj,n)
+                        if(self.type == "jobs"):
+                            if n == ATTR_inter or n == ATTR_block or \
+                                    n == ATTR_X11_port:
+                                v = int(pbs_bool(v))
 
-			    # if resource list does not exist, then set it
-			    if( pr == None):
-				setattr(obj,n)
+                        if(r):
+                            pr = getattr(obj, n)
 
-			    pr=getattr(obj,n)
-			    if (pr == None):
-				_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
-					       "pbs_statobj: missing %s" % (n))
-				a=a.next
-				continue
+                            # if resource list does not exist, then set it
+                            if(pr == None):
+                                setattr(obj, n)
 
-			    vo=getattr(pr, r)
-			    if( vo == None ):
-				setattr(pr,r,v)
-				if server_data_fp:
-				    server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
-			    else:
-				# append value:
-				# example: "select=1:ncpus=1,ncpus=1,nodect=1,place=pack"
-				vl=[vo, v]
-				setattr(pr, r, ",".join(vl))
-				if server_data_fp:
-				    server_data_fp.write("%s.%s[%s]=%s\n" % (header_str, n,r,",".join(vl)))
+                            pr = getattr(obj, n)
+                            if (pr == None):
+                                _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
+                                               "pbs_statobj: missing %s" % (n))
+                                a = a.__next__
+                                continue
 
-			else:
-			    vo=getattr(obj,n)
+                            vo = getattr(pr, r)
+                            if(vo == None):
+                                setattr(pr, r, v)
+                                if server_data_fp:
+                                    server_data_fp.write(
+                                        "%s.%s[%s]=%s\n" % (header_str, n, r,
+                                                            v))
+                            else:
+                                # append value:
+                                # example: "select=1:ncpus=1,ncpus=1,nodect=1,
+                                # place=pack"
+                                vl = [vo, v]
+                                setattr(pr, r, ",".join(vl))
+                                if server_data_fp:
+                                    server_data_fp.write("%s.%s[%s]=%s\n" % (
+                                        header_str, n, r, ",".join(vl)))
 
-			    if( vo == None ):
-				setattr(obj,n,v)
-				if server_data_fp:
-				    server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
-			    else:
-				vl=[vo, v]
-				setattr(obj, n, ",".join(vl))
-				if server_data_fp:
-				    server_data_fp.write("%s.%s=%s\n" % (header_str, n, ",".join(vl)))
+                        else:
+                            vo = getattr(obj, n)
 
-			a=a.next
-      
-		self.bs=b.next
+                            if(vo == None):
+                                setattr(obj, n, v)
+                                if server_data_fp:
+                                    server_data_fp.write(
+                                        "%s.%s=%s\n" % (header_str, n, v))
+                            else:
+                                vl = [vo, v]
+                                setattr(obj, n, ",".join(vl))
+                                if server_data_fp:
+                                    server_data_fp.write("%s.%s=%s\n" % (
+                                        header_str, n, ",".join(vl)))
 
-		_pbs_v1.set_python_mode()
-		return obj
-	    else:
-		# argument 0 below tells C function we're inside next
-		    return _pbs_v1.iter_nextfunc(self, 0, self.obj_name, self.filter1, self.filter2)
+                        a = a.next
+
+                self.bs = b.next
+
+                _pbs_v1.set_python_mode()
+                return obj
+            else:
+                # argument 0 below tells C function we're inside next
+                return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
+                                             self.filter1, self.filter2)
 #: C(pbs_iter)
-

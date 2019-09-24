@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import signal
 import sys
 
@@ -15,10 +15,10 @@ signal.signal(signal.SIGALRM, receive_alarm)
 
 if (len(sys.argv) > 1):
     input_time = sys.argv[1]
-    print 'Terminating after %s seconds' % input_time
+    print('Terminating after %s seconds' % input_time)
     signal.alarm(int(input_time))
 else:
-    print 'Running indefinitely'
+    print('Running indefinitely')
 
 while True:
     x += 1

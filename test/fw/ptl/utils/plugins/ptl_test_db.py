@@ -191,7 +191,7 @@ class PostgreSQLDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             f = open(self.dbaccess)
-            creds = ' '.join(map(lambda n: n.strip(), f.readlines()))
+            creds = ' '.join([n.strip() for n in f.readlines()])
             f.close()
             self.__dbobj = psycopg2.connect(creds)
         except Exception as e:
@@ -242,7 +242,7 @@ class PostgreSQLDb(DBType):
             stmt = ['CREATE TABLE %s (' % (_DBVER_TN)]
             stmt += ['version TEXT);']
             c.execute(''.join(stmt))
-        except Exception:
+        except BaseException:
             stmt = 'SELECT version from %s;' % (_DBVER_TN)
             version = c.execute(stmt).fetchone()[0]
             self.__upgrade_db(version)
@@ -473,7 +473,7 @@ class PostgreSQLDb(DBType):
                 if lu.EJ in v:
                     for j in v[lu.EJ]:
                         if lu.EST in j:
-                            dt = map(lambda s: str(s), j[lu.Eat])
+                            dt = [str(s) for s in j[lu.Eat]]
                             j[lu.Eat] = ','.join(dt)
                         self.__write_estsum_data(j, logfile)
                 continue
@@ -584,13 +584,10 @@ class SQLiteDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             import sqlite3 as db
-        except ImportError:
-            try:
-                from pysqlite2 import dbapi2 as db
-            except ImportError:
-                _msg = 'Either sqlite3 or pysqlite2 module require'
-                _msg += ' for %s type database!' % (self.dbtype)
-                raise PTLDbError(rc=1, rv=False, msg=_msg)
+        except BaseException:
+            _msg = 'sqlite3 module is required'
+            _msg += ' for %s type database!' % (self.dbtype)
+            raise PTLDbError(rc=1, rv=False, msg=_msg)
         try:
             self.__dbobj = db.connect(self.dbpath)
         except Exception as e:
@@ -641,7 +638,7 @@ class SQLiteDb(DBType):
             stmt = ['CREATE TABLE %s (' % (_DBVER_TN)]
             stmt += ['version TEXT);']
             c.execute(''.join(stmt))
-        except Exception:
+        except BaseException:
             stmt = 'SELECT version from %s;' % (_DBVER_TN)
             version = c.execute(stmt).fetchone()[0]
             self.__upgrade_db(version)
@@ -872,7 +869,7 @@ class SQLiteDb(DBType):
                 if lu.EJ in v:
                     for j in v[lu.EJ]:
                         if lu.EST in j:
-                            dt = map(lambda s: str(s), j[lu.Eat])
+                            dt = [str(s) for s in j[lu.Eat]]
                             j[lu.Eat] = ','.join(dt)
                         self.__write_estsum_data(j, logfile)
                 continue
@@ -1022,7 +1019,7 @@ class FileDb(DBType):
                 if lu.EJ in v:
                     for j in v[lu.EJ]:
                         if lu.EST in j:
-                            dt = map(lambda s: str(s), j[lu.Eat])
+                            dt = [str(s) for s in j[lu.Eat]]
                             j[lu.Eat] = ','.join(dt)
                         self.__write_estsum_data(j, logfile)
                 continue
@@ -1565,7 +1562,9 @@ class HTMLDb(DBType):
         d['status'] = data['status']
         d['status_data'] = data['status_data']
         d['duration'] = str(data['duration'])
-        self.__dbobj[_TESTRESULT_TN].seek(-27, os.SEEK_END)
+        self.__dbobj[_TESTRESULT_TN].seek(0, os.SEEK_END)
+        self.__dbobj[_TESTRESULT_TN].seek(
+            self.__dbobj[_TESTRESULT_TN].tell() - 27, os.SEEK_SET)
         t = self.__dbobj[_TESTRESULT_TN].readline().strip()
         line = ''
         if t != '[':
@@ -1573,7 +1572,9 @@ class HTMLDb(DBType):
         else:
             line += '\n'
         line += str(d) + '\n];</script></body></html>'
-        self.__dbobj[_TESTRESULT_TN].seek(-26, os.SEEK_END)
+        self.__dbobj[_TESTRESULT_TN].seek(0, os.SEEK_END)
+        self.__dbobj[_TESTRESULT_TN].seek(
+            self.__dbobj[_TESTRESULT_TN].tell() - 26, os.SEEK_SET)
         self.__dbobj[_TESTRESULT_TN].write(line)
         self.__dbobj[_TESTRESULT_TN].flush()
         self.__index += 1
@@ -1650,7 +1651,7 @@ class PTLTestDb(Plugin):
     PTL Test Database Plugin
     """
     name = 'PTLTestDb'
-    score = sys.maxint - 5
+    score = sys.maxsize - 5
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -1857,18 +1858,18 @@ class PTLTestDb(Plugin):
 
         if 'matches' in info:
             for m in info['matches']:
-                print m,
+                print(m, end=' ')
             del info['matches']
 
         if freq_info is not None:
             for ((l, m), n) in freq_info:
                 b = time.strftime("%m/%d/%y %H:%M:%S", time.localtime(l))
                 e = time.strftime("%m/%d/%y %H:%M:%S", time.localtime(m))
-                print(b + ' -'),
+                print(b + ' -', end=' ')
                 if b[:8] != e[:8]:
-                    print(e),
+                    print(e, end=' ')
                 else:
-                    print(e[9:]),
+                    print(e[9:], end=' ')
                 print(': ' + str(n))
             return
 
@@ -1904,19 +1905,19 @@ class PTLTestDb(Plugin):
                     else:
                         m.append('\t' + k + ': ' + str(v))
 
-            print "\n".join(m)
+            print("\n".join(m))
             return
 
         sorted_info = sorted(info.items())
         for (k, v) in sorted_info:
             if summary and k != 'summary':
                 continue
-            print str(k) + ": ",
+            print(str(k) + ": ", end=' ')
             if isinstance(v, dict):
                 sorted_v = sorted(v.items())
                 for (k, val) in sorted_v:
-                    print str(k) + '=' + str(val) + ' '
-                print
+                    print(str(k) + '=' + str(val) + ' ')
+                print()
             else:
-                print str(v)
-        print ''
+                print(str(v))
+        print('')

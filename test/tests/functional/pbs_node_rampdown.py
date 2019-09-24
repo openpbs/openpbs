@@ -144,7 +144,7 @@ class TestPbsNodeRampDown(TestFunctional):
                 ehost1.append(h[0])
             j += 1
 
-        if cmp(ehost1, ehost2) != 0:
+        if ((ehost1 > ehost2) - (ehost1 < ehost2)) != 0:
             return False
         return True
 
@@ -354,19 +354,19 @@ class TestPbsNodeRampDown(TestFunctional):
 
         FIB40 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(40)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
 
         FIB45 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(45)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(45))\\\")"'
 
         FIB50 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(50)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(50))\\\")"'
 
         FIB400 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # job submission arguments
         self.script = {}
@@ -6991,7 +6991,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
             for key in self.server.pu.processes:
                 if ("fib" in key):
                     process = len(self.server.pu.processes[key])
-                    print "length of the process is %d " % (process,)
+                    self.logger.info("length of the process is %d" % process)
         self.assertEqual(process, 2)
 
         # Mom logs only have message for job1 for node3

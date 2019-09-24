@@ -227,7 +227,7 @@ at least resid .* is exclusive"
         try:
             a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
             d = self.server.expect(RESV, a, id=rid)
-        except PtlExpectError, e:
+        except PtlExpectError as e:
             d = e.rv
         return d
 

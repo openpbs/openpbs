@@ -736,7 +736,7 @@ else:
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
         foo_str_dict_out = eval(foo_str_dict_out_str)
-        self.assertEquals(foo_str_dict_in, foo_str_dict_out)
+        self.assertEqual(foo_str_dict_in, foo_str_dict_out)
 
     def test_reservation(self):
         """
@@ -906,7 +906,7 @@ else:
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
         foo_str_dict_out = eval(foo_str_dict_out_str)
-        self.assertEquals(foo_str_dict_in, foo_str_dict_out)
+        self.assertEqual(foo_str_dict_in, foo_str_dict_out)
 
     def test_mom_down(self):
         """
@@ -1079,7 +1079,7 @@ else:
 
         # Verify that once subjobs are over values are
         # set for each subjob in the accounting logs
-        subjob1 = string.replace(jid, '[]', '[1]')
+        subjob1 = str.replace(jid, '[]', '[1]')
 
         acctlog_match = 'resources_used.foo_f=0.29'
         # Below code is commented due to a PTL issue

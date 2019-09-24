@@ -65,8 +65,7 @@ class TestRequirementsDecorator(TestSelf):
             'num_comms': 1
         }
         ds = getattr(self, REQUIREMENTS_KEY, {})
-        rv = cmp(ds, requirements_set)
-        if not rv:
+        if ds == requirements_set:
             raise self.failureException("Requirements not as expected")
 
     @requirements(num_servers=3)

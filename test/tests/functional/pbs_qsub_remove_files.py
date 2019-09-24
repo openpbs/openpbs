@@ -105,8 +105,8 @@ class TestQsub_remove_files(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir
-             + ' ' + mapping_dir})
+            {'$usecp': self.server.hostname + ':' + sub_dir +
+             ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'e'}, id=jid)
@@ -207,7 +207,7 @@ class TestQsub_remove_files(TestFunctional):
             self.server.alterjob(jid, attribs)
             self.server.expect(JOB, attribs, id=jid)
         except PbsAlterError as e:
-            print str(e)
+            print(str(e))
 
     def test_qalter_direct_write_error(self):
         """
@@ -251,8 +251,8 @@ class TestQsub_remove_files(TestFunctional):
         std_files = ['JOB_NAME.o' + idn + '.2', 'JOB_NAME.e' + idn + '.2']
         for f_name in std_files:
             if f_name not in file_list:
-                raise self.failureException("std file " + f_name
-                                            + " not found")
+                raise self.failureException("std file " + f_name +
+                                            " not found")
 
     def test_remove_file_custom_path_job_array(self):
         """
@@ -281,5 +281,5 @@ class TestQsub_remove_files(TestFunctional):
         std_files = [subj2_id + '.OU', subj2_id + '.ER']
         for f_name in std_files:
             if f_name not in file_list:
-                raise self.failureException("std file " + f_name
-                                            + " not found")
+                raise self.failureException("std file " + f_name +
+                                            " not found")

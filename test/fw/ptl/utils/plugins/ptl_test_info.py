@@ -77,7 +77,7 @@ class PTLTestInfo(Plugin):
     Load test cases from given parameter
     """
     name = 'PTLTestInfo'
-    score = sys.maxint - 2
+    score = sys.maxsize - 2
     logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -161,7 +161,7 @@ class PTLTestInfo(Plugin):
                 k = getattr(suite, k)
                 try:
                     k.__name__
-                except:
+                except BaseException:
                     # not a test case, ignore
                     continue
                 self.total_case += 1
@@ -209,7 +209,7 @@ class PTLTestInfo(Plugin):
                 tc = getattr(suite, k)
                 try:
                     tc.__name__
-                except:
+                except BaseException:
                     # not a test case, ignore
                     continue
                 tcd['doc'] = str(tc.__doc__)
@@ -245,7 +245,7 @@ class PTLTestInfo(Plugin):
 
     def finalize(self, result):
         if self.list_test or self.gen_ts_tree:
-            suites = self._tree.keys()
+            suites = list(self._tree.keys())
         else:
             suites = self.suites
         suites.sort()
@@ -257,7 +257,7 @@ class PTLTestInfo(Plugin):
         for k in suites:
             try:
                 suite = eval(k, globals(), self._tree)
-            except:
+            except BaseException:
                 unknown.append(k)
                 continue
             func(suite)
