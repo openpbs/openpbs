@@ -423,7 +423,7 @@ class TestMaintenanceReservations(TestFunctional):
         now = int(time.time())
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduler_iteration': 3})
 
