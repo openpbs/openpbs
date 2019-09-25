@@ -46,6 +46,8 @@ class TestCheckNodeExclusivity(TestFunctional):
     the exclusivity of node when a reservation asks for it.
     Adapted for Cray Configuration
     """
+    ncpus = None
+    vnode = None
 
     def setUp(self):
         if not self.du.get_platform().startswith('cray'):
@@ -56,8 +58,18 @@ class TestCheckNodeExclusivity(TestFunctional):
 
         TestFunctional.setUp(self)
 
-    ncpus = None
-    vnode = None
+    def submit_and_confirm_resv(self, a=None, index=None):
+        """
+        This is common function to submit reservation
+        and verify reservation confirmed
+        """
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        if index is not None:
+            a['reserve_index'] = index
+        self.server.expect(RESV, a, id=rid)
+        return rid
 
     def get_vnode_ncpus_value(self):
         all_nodes = self.server.status(NODE)
@@ -77,11 +89,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 30,
              'reserve_end': now + 60}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
@@ -124,12 +133,8 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_start': start,
              'reserve_end': end,
              }
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a, 1)
         rid_q = rid.split(".")[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-             'reserve_index': 1}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
@@ -174,11 +179,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 30}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
@@ -217,10 +219,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 60}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
+        rid = self.submit_and_confirm_resv(a)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.logger.info('Waiting 20s for reservation to start')
@@ -254,11 +253,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {ATTR_l + '.select': '2:ncpus=%d' % (int(self.ncpus)),
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_end': now + 1600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split(".")[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()
         self.logger.info('Waiting 10s for reservation to start')
@@ -301,10 +297,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
+        rid = self.submit_and_confirm_resv(a)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excl
@@ -312,10 +305,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl',
              'reserve_start': now + 7200,
              'reserve_duration': 3600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid2)
+        self.submit_and_confirm_resv(a)
 
     def test_delete_future_resv_not_effect_node_state(self):
         """
@@ -330,10 +320,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
+        rid = self.submit_and_confirm_resv(a)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
@@ -342,10 +329,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl',
              'reserve_start': now + 7200,
              'reserve_duration': 3600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid2)
+        rid2 = self.submit_and_confirm_resv(a)
         self.logger.info('Waiting 10s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
@@ -381,10 +365,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              ATTR_resv_timezone: tzone,
              'reserve_start': now + 10,
              'reserve_end': now + 3100}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
+        rid = self.submit_and_confirm_resv(a)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
@@ -395,10 +376,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              ATTR_resv_timezone: tzone,
              'reserve_start': now + 7200,
              'reserve_end': now + 10800}
-        r = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid2)
+        rid2 = self.submit_and_confirm_resv(a)
         self.logger.info('Waiting 10s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
@@ -424,11 +402,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
@@ -476,11 +451,8 @@ class TestCheckNodeExclusivity(TestFunctional):
              ATTR_resv_timezone: tzone,
              'reserve_start': now + 10,
              'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'}, id=resv_node)
@@ -521,10 +493,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, id=rid)
+        rid = self.submit_and_confirm_resv(a)
         node = self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Wait for reservation to start and verify
