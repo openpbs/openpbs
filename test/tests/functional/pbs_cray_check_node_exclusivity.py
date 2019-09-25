@@ -86,7 +86,6 @@ class TestCheckNodeExclusivity(TestFunctional):
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
-        self.server.qterm(runas=ROOT_USER)
         self.server.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
