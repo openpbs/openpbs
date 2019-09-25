@@ -83,9 +83,9 @@ default_requirements = {
     'num_comms': 1,
     'num_clients': 1,
     'min_mom_ram': 1,
-    'min_mom_disk': 5,
+    'min_mom_disk': 2,
     'min_server_ram': 1,
-    'min_server_disk': 5,
+    'min_server_disk': 2,
     'no_mom_on_server': False,
     'no_comm_on_server': False,
     'no_comm_on_mom': True
