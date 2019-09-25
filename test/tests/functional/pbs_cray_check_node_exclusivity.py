@@ -300,7 +300,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         now = int(time.time())
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
-             'reserve_duration': 3600, ATTR_inter: 5}
+             'reserve_duration': 3600}
         r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -311,7 +311,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % resv_node,
              'Resource_List.place': 'excl',
              'reserve_start': now + 7200,
-             'reserve_duration': 3600, ATTR_inter: 5}
+             'reserve_duration': 3600}
         r = Reservation(TEST_USER, attrs=a)
         rid2 = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -329,7 +329,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         now = int(time.time())
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % self.vnode,
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
-             'reserve_duration': 3600, ATTR_inter: 5}
+             'reserve_duration': 3600}
         r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -341,7 +341,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % resv_node,
              'Resource_List.place': 'excl',
              'reserve_start': now + 7200,
-             'reserve_duration': 3600, ATTR_inter: 5}
+             'reserve_duration': 3600}
         r = Reservation(TEST_USER, attrs=a)
         rid2 = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -380,7 +380,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=2',
              ATTR_resv_timezone: tzone,
              'reserve_start': now + 10,
-             'reserve_end': now + 3100, ATTR_inter: 5}
+             'reserve_end': now + 3100}
         r = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -394,7 +394,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=2',
              ATTR_resv_timezone: tzone,
              'reserve_start': now + 7200,
-             'reserve_end': now + 10800, ATTR_inter: 5}
+             'reserve_end': now + 10800}
         r = Reservation(TEST_USER, attrs=a)
         rid2 = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
