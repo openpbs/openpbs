@@ -61,11 +61,6 @@
 #include "pbs_json.h"
 #include "pbs_internal.h"
 #include "libutil.h"
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -2366,7 +2361,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
-
+	check_last_query();
 #ifdef WIN32
 	if (winsock_init()) {
 		return 1;
@@ -3179,11 +3174,7 @@ svr_no_args:
 	 */
 	if (any_failed == PBSE_JOBHISTNOTSET)
 		any_failed = 0;
-#ifdef WIN32
-	Sleep(200);
-#else
-	usleep(200000);
-#endif
+	create_query_file();
 	exit(any_failed);
 }
 

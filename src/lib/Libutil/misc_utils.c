@@ -1782,3 +1782,59 @@ perf_stat_stop(char *instance)
 
 	return (stat_summary);
 }
+
+/**
+ * @brief
+ *	creates an empty file in /tmp/ and saves timestamp of that file
+ *
+ * @param[in] - void
+ *
+ * @return - void
+ */
+void
+create_query_file(void)
+{
+	char filename[30];
+	char command[30];
+	snprintf(filename, 30, "/tmp/last_query_%d", getuid());
+#ifdef WIN32
+	snprintf(command, 30, "type nul > %d", filename);
+#else
+	snprintf(command, 30, "touch %s", filename);
+#endif
+	system(command);
+}
+
+/**
+ * @brief
+ *	stats te information of the empty file created in /tmp/ to decide 
+ *  whether to add sleep for .2 secons or not
+ * 
+ * @param[in] - void
+ *
+ * @return - void
+ */
+void
+check_last_query(void)
+{
+	char filename[30];	
+#ifdef WIN32
+	struct _stat buf;
+#else
+	struct stat buf;
+#endif
+	snprintf(filename, 30, "/tmp/last_query_%d", getuid());
+#ifdef WIN32
+	if(_stat(filename, &buf) == 0) {
+		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
+			Sleep(200);
+		}
+	}
+#else
+	if(stat(filename, &buf) == 0) {
+		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
+			usleep(200000);
+		}
+	}
+#endif
+}

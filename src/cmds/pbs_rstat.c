@@ -46,11 +46,6 @@
 #include <time.h>
 #include "cmds.h"
 #include "pbs_ifl.h"
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 
 #define DISP_RESV_FULL		0x01	/* -F,-f option - full verbose description */
@@ -244,6 +239,7 @@ main(int argc, char *argv[])
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
+	check_last_query();
 
 #ifdef WIN32
 	if (winsock_init()) {
@@ -308,11 +304,7 @@ main(int argc, char *argv[])
 				handle_resv(resv_id_out, server_out, how);
 		}
 	}
-#ifdef WIN32
-	Sleep(200);
-#else
-	usleep(200000);
-#endif
+	create_query_file();
 	CS_close_app();
 	exit(errflg);
 }

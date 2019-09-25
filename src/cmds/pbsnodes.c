@@ -96,11 +96,6 @@
 #include	"pbs_ifl.h"
 #include	"pbs_internal.h"
 #include	"pbs_json.h"
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 /* Field width for Single line summary */
 #define NODE_NAME	15
@@ -903,7 +898,6 @@ main(int argc, char *argv[])
 	int		     con;
 	char		    *def_server;
 	int		     errflg = 0;
-	int		     slpflg = 0;
 	char		    *errmsg;
 	int		     i;
 	int		     rc = 0;
@@ -944,7 +938,6 @@ main(int argc, char *argv[])
 		switch (i) {
 
 			case 'a':
-				slpflg = 0;
 				if (oper == LISTSP)
 					oper = ALL;
 				else
@@ -952,7 +945,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'c':
-				slpflg = 1;
 				if (oper == LISTSP || do_vnodes == 1)
 					oper = CLEAR;
 				else
@@ -960,7 +952,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'C':
-				slpflg = 1;
 				if (optarg && (oper == LISTSP)) {
 					oper = UPDATE_COMMENT;
 					comment = optarg;
@@ -971,7 +962,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				slpflg = 0;
 				if (oper == LISTSP || do_vnodes == 1)
 					oper = DOWN;
 				else
@@ -979,7 +969,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				slpflg = 0;
 				if (oper == LISTSP || oper == ALL || oper == LISTSPNV)
 					dsv_delim = optarg;
 				else
@@ -987,7 +976,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'F':
-				slpflg = 0;
 				for (format = FORMAT_DEFAULT; format < FORMAT_MAX; format++) {
 					if (strcasecmp(optarg, output_format_names[format]) == 0) {
 						output_format = format;
@@ -999,7 +987,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'H':
-				slpflg = 0;
 				if (oper == LISTSP)
 					oper = LISTSPNV;
 				else
@@ -1007,7 +994,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'j':
-				slpflg = 0;
 				if (oper == LISTSP || oper == ALL || oper == LISTSPNV)
 					job_summary = 1;
 				else
@@ -1015,7 +1001,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'l':
-				slpflg = 0;
 				if (oper == LISTSP || do_vnodes == 1)
 					oper = LISTMRK;
 				else
@@ -1023,7 +1008,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'L':
-				slpflg = 0;
 				if (oper == LISTSP || oper == ALL || oper == LISTSPNV)
 					long_summary = 1;
 				else
@@ -1031,7 +1015,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'o':
-				slpflg = 1;
 				if (oper == LISTSP || do_vnodes == 1 || oper == UPDATE_COMMENT)
 					oper = OFFLINE;
 				else
@@ -1039,12 +1022,10 @@ main(int argc, char *argv[])
 				break;
 
 			case 'q':
-				slpflg = 0;
 				quiet = 1;
 				break;
 
 			case 'r':
-				slpflg = 1;
 				if (oper == LISTSP || do_vnodes == 1 || oper == UPDATE_COMMENT)
 					oper = RESET;
 				else
@@ -1052,12 +1033,10 @@ main(int argc, char *argv[])
 				break;
 
 			case 's':
-				slpflg = 0;
 				def_server = optarg;
 				break;
 
 			case 'S':
-				slpflg = 0;
 				if (oper == LISTSP || oper == ALL || oper == LISTSPNV)
 					prt_summary = 1;
 				else
@@ -1065,7 +1044,6 @@ main(int argc, char *argv[])
 				break;
 
 			case 'v':
-				slpflg = 0;
 				if (oper == LISTSP || oper == ALL)
 					do_vnodes = 1;
 				else
@@ -1074,7 +1052,6 @@ main(int argc, char *argv[])
 
 			case '?':
 			default:
-				slpflg = 0;
 				errflg = 1;
 				break;
 		}
@@ -1101,13 +1078,6 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (slpflg == 0 && errflg != 1) {
-#ifdef WIN32
-		Sleep(200);
-#else
-		usleep(200000);
-#endif
-	}
 	if (CS_client_init() != CS_SUCCESS) {
 		fprintf(stderr, "pbsnodes: unable to initialize security library.\n");
 		exit(1);
