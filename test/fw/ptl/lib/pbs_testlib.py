@@ -13108,13 +13108,13 @@ class MoM(PBSService):
         """
         if self._is_cpuset_mom is not None:
             return self._is_cpuset_mom
-        raa = ATTR_rescavail + '.arch'
-        a = {raa: None}
+        a = {'state': 'free'}
         try:
-            a = {'state': 'free'}
             self.server.expect(NODE, a, id=self.shortname, interval=1)
         except PtlExpectError:
             return False
+        raa = ATTR_rescavail + '.arch'
+        a = {raa: None}
         try:
             rv = self.server.status(NODE, a, id=self.shortname)
         except PbsStatusError:
