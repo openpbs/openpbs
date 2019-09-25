@@ -49,6 +49,7 @@ import os
 import json as JSON
 import urllib
 import site
+site.main()
 import requests
 import requests_unixsocket
 import pbs
@@ -158,7 +159,7 @@ class HookHelper(object):
             raise RejectError()
 
         path = 'http+unix://%s%s%s%s' % (
-            urllib.quote(cfg['unix_socket_file'], safe=''),
+            urllib.parse.quote(cfg['unix_socket_file'], safe=''),
             cfg['version_uri'],
             cfg['resources'][resource],
             ('/' + jobid) if jobid else ''
@@ -396,7 +397,7 @@ def main():
         raise timeout_exc('Handler alarmed')
 
 
-if __name__ == '__builtin__':
+if __name__ == 'builtins':
     try:
         main()
     except OfflineError as e:
