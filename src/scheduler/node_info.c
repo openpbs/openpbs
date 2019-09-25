@@ -1371,7 +1371,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->last_used_time = onode->last_used_time;
 
 	if (onode->svr_node != NULL)
-		nnode->svr_node = find_node_by_rank(nsinfo->nodes, onode->rank);
+		nnode->svr_node = find_node_by_indrank(nsinfo->nodes, onode->node_ind, onode->rank);
 
 	/* Duplicate list of jobs and running reservations.
 	 * If caller is dup_server_info() then nsinfo->resvs/jobs should be NULL,
@@ -2800,8 +2800,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 												(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
 											else
 #endif /* localmod 049 */
-											(*nsa)->ninfo = find_node_by_rank(nptr,
-												(*nsa)->ninfo->rank);
+											(*nsa)->ninfo = find_node_by_indrank(nptr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
 										}
 									}
 									while (*nsa != NULL)
@@ -3003,7 +3002,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 						(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
 					else
 #endif /* localmod 049 */
-					(*nsa)->ninfo = find_node_by_rank(ninfo_arr, (*nsa)->ninfo->rank);
+						(*nsa)->ninfo = find_node_by_indrank(ninfo_arr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
 				}
 				nsa++;
 
@@ -3268,7 +3267,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 								ns->ninfo = resresv->server->nodes_by_NASrank[ns->ninfo->NASrank];
 							else
 #endif /* localmod 049 */
-							ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
+								ns->ninfo = find_node_by_indrank(pninfo_arr, ns->ninfo->node_ind, ns->ninfo->rank);
 						}
 						if (!ninfo_arr[i]->lic_lock) {
 							ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
