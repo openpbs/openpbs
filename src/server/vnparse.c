@@ -2925,7 +2925,7 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 	}
 	rc = vn_addvnr(*vnlp, noden, buf, buf_val, 0, 0, NULL);
 	if (rc == -1) {
-                char *msgbuf;
+		char *msgbuf;
 		pbs_asprintf(&msgbuf, "failed to add '%s=%s', buf, keyval");
 		log_err(-1, __func__ , msgbuf);
 		free(msgbuf);
