@@ -2493,7 +2493,7 @@ stat_update(int stream)
 				/* or resources_used was modified         */
 
 				pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags &= ~ATR_VFLAG_MODIFY;
-				for (i=0; i<JOB_ATR_LAST; ++i) {
+				for (i = 0; i < JOB_ATR_LAST; ++i) {
 					if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
 						job_save(pjob, SAVEJOB_FULL);
 						break;
@@ -2767,7 +2767,7 @@ discard_job(job *pjob, char *txt, int noack)
 		/* had better be the "natural" vnode with only the one parent */
 		if (pnode != NULL) {
 
-			for (i=0; i < nmom; ++i) {
+			for (i = 0; i < nmom; ++i) {
 				if ((pdsc+i)->jdcd_mom == pnode->nd_moms[0])
 					break;		/* already have this Mom */
 			}
@@ -3343,7 +3343,7 @@ ping_nodes(struct work_task *ptask)
 				return;
 			}
 
-			for (i=0; i<mominfo_array_size; i++) {
+			for (i = 0; i < mominfo_array_size; i++) {
 				if (mominfo_array[i]) {
 					ping_a_mom_mcast(mominfo_array[i], 0,
 						mtfd_ishello, mtfd_isnull,
@@ -3425,7 +3425,7 @@ setup_pnames(char *namestr)
 
 		/* is the resource name already in the pnames attribute? */
 		if (pparst) {
-			for (i=0; i<pparst->as_usedptr; ++i) {
+			for (i = 0; i < pparst->as_usedptr; ++i) {
 				if (strcasecmp(ps, pparst->as_string[i]) == 0)
 					break;
 			}
@@ -3521,7 +3521,7 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 
 	/* see if the node already has this Mom listed,if not add her */
 
-	for (i=0; i<pnode->nd_nummoms; ++i) {
+	for (i = 0; i < pnode->nd_nummoms; ++i) {
 		if (pnode->nd_moms[i] == pmom)
 			break;
 	}
@@ -3563,7 +3563,7 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 	/* Now set reverse linkage Mom -> node */
 
 	prmomsvr = pmom->mi_data;
-	for (i=0; i<prmomsvr->msr_numvnds; ++i) {
+	for (i = 0; i < prmomsvr->msr_numvnds; ++i) {
 		if (prmomsvr->msr_children[i] == pnode)
 			break;
 	}
@@ -3664,7 +3664,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 
 		int have_topology   = 0;
 		int is_compute_node = 0;
-		for (i=0; i < pvnal->vnal_used; i++) {
+		for (i = 0; i < pvnal->vnal_used; i++) {
 			psrp = VNAL_NODENUM(pvnal, i);
 			if (strcasecmp(psrp->vna_name, ATTR_NODE_TopologyInfo) == 0)
 				have_topology = 1;
@@ -3785,7 +3785,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	 */
 
 	if (!from_hook) {
-		for (i=0; i < ND_ATR_LAST; ++i) {
+		for (i = 0; i < ND_ATR_LAST; ++i) {
 			/* if this vnode has been updated earlier in this update2 */
 			/* then don't free anything but topology */
 			if ((i != ND_ATR_TopologyInfo) && (pnode->nd_modified & NODE_UPDATE_VNL))
@@ -3821,7 +3821,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 
 	pRA = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 
-	for (i=0; i < pvnal->vnal_used; i++) {
+	for (i = 0; i < pvnal->vnal_used; i++) {
 		psrp = VNAL_NODENUM(pvnal, i);
 		strncpy(buf, psrp->vna_name, sizeof(buf)-1);
 		buf[sizeof(buf)-1] = '\0';
@@ -4244,7 +4244,7 @@ check_and_set_multivnode(struct pbsnode *pnode)
 		host_str1 = prc->rs_value.at_val.at_str;
 	}
 
-	for (i=0; i < svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		if (pnode != pbsndlist[i]) {
 			char *host_str2 = NULL;
 
@@ -4975,7 +4975,7 @@ found:
 					}
 					/* clear the NODE_UPDATE_VNL on all vnodes for this Mom */
 					/* It was set in update2_to_vnode() */
-					for (i=0; i<psvrmom->msr_numvnds; ++i)
+					for (i = 0; i < psvrmom->msr_numvnds; ++i)
 						(psvrmom->msr_children[i])->nd_modified &= ~NODE_UPDATE_VNL;
 
 					/* if multiple vnodes indicated (above) and
@@ -4987,7 +4987,7 @@ found:
 						(psvrmom->msr_numvnds > 1)) {
 						if (psvrmom->msr_children[1]->nd_nummoms > 1) {
 							j = psvrmom->msr_children[1]->nd_nummoms;
-							for (i=0; i<j; ++i) {
+							for (i = 0; i<j; ++i) {
 								psvrmom->msr_children[1]->nd_moms[i]->mi_modtime = vnlp->vnl_modtime;
 							}
 						}
@@ -5847,7 +5847,7 @@ write_node_state()
 	 **	The only state that carries forward is if the
 	 **	node has been marked offline.
 	 */
-	for (i=0; i<svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		np = pbsndlist[i];
 
 		if (np->nd_state & INUSE_DELETED)
@@ -6425,7 +6425,7 @@ cvt_nodespec_to_select(char *str, char **cvt_bp, size_t *cvt_lenp, attribute *pa
 		/* 4. now need to see if any property matches a node name */
 
 		for (walkprop = prop; walkprop; walkprop = walkprop->next) {
-			for (i=0; i<svr_totnodes; i++) {
+			for (i = 0; i < svr_totnodes; i++) {
 				if (pbsndlist[i]->nd_state & INUSE_DELETED)
 					continue;
 				if (strcasecmp(pbsndlist[i]->nd_name, walkprop->name) == 0) {
@@ -6604,7 +6604,7 @@ add_job_index_to_mom(struct pbsnode *pnode, job *pjob)
 
 	/* see if there is an empty slot in the array */
 
-	for (i=0; i<psm->msr_jbinxsz; i++) {
+	for (i = 0; i < psm->msr_jbinxsz; i++) {
 		if (psm->msr_jobindx[i] == NULL) {
 			psm->msr_jobindx[i] = pjob;
 			return i;
@@ -6622,7 +6622,7 @@ add_job_index_to_mom(struct pbsnode *pnode, job *pjob)
 			"could not realloc memory for adding job index");
 		return -1;
 	}
-	for (i=oldn; i<newn; i++)
+	for (i = oldn; i<newn; i++)
 		pnew[i] = NULL;
 	psm->msr_jobindx = pnew;
 	psm->msr_jbinxsz = newn;
@@ -6828,7 +6828,7 @@ build_execvnode(job *pjob, char *nds)
 	*(outbuf+strlen(outbuf)-1) = '\0';	/* remove trailing '+' */
 done:
 	/* it is safe to freeing <ndarray> upto <nnodes> as it was memset'd */
-	for (i=0; i<nnodes; ++i)
+	for (i = 0; i < nnodes; ++i)
 		free(*(ndarray+i));
 	free(ndarray);
 	ndarray = NULL;
@@ -6864,7 +6864,7 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 	 */
 
 	if (pcur_mom != NULL) {
-		for (i=0; i<pnode->nd_nummoms; ++i) {
+		for (i = 0; i < pnode->nd_nummoms; ++i) {
 			if (pcur_mom == pnode->nd_moms[i])
 				return (pcur_mom);	/* use same as before */
 		}
@@ -7130,7 +7130,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
-			if ((pnode->nd_state & (INUSE_DOWN | INUSE_STALE | INUSE_OFFLINE)) && (svr_init == FALSE))
+			if ((pnode->nd_state & VNODE_UNAVAILABLE) && (svr_init == FALSE))
 				if ((objtype == RESC_RESV_OBJECT) && (presv->ri_qs.ri_resvID[0] != PBS_MNTNC_RESV_ID_CHAR) /*&& (presv->ri_qs.ri_state == RESV_UNCONFIRMED)*/)
 					set_resv_for_degrade(pnode, presv);
 
@@ -7235,8 +7235,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				setck = 1;	/* end of multi-vnode chunk,start new */
 
 
-			for (i=0; i<nelem; i++) {
-				if (strcasecmp("ncpus", (pkvp+i)->kv_keyw) == 0)
+			for (i = 0; i < nelem; i++) {
+				if (strcasecmp("ncpus", (pkvp + i)->kv_keyw) == 0)
 					(phowl+ndindex)->hw_ncpus = atoi((pkvp+i)->kv_val);
 				else {
 					if ((find_resc_def(svr_resc_def, (pkvp+i)->kv_keyw, svr_resc_size) == NULL) && (svr_init == FALSE)) {
@@ -7248,7 +7248,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				}
 			}
 
-			hostcpus += (phowl+ndindex)->hw_ncpus;
+			hostcpus += (phowl + ndindex)->hw_ncpus;
 
 			if (setck == 1) {
 				(phowl+ndindex)->hw_htcpu = hostcpus;
@@ -7284,10 +7284,10 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 		ehlen = 0;
 		ehlen2 = 0;
 
-		for (i=1; i<ndindex; ++i) {
-			if ((phowl+i)->hw_chunk) {
-				ehlen  += strlen((phowl+i)->hw_natvn->nd_name) + 16;
-				ehlen2 += strlen((phowl+i)->hw_mom->mi_host) + 6 + 16;
+		for (i = 1; i < ndindex; ++i) {
+			if ((phowl + i)->hw_chunk) {
+				ehlen  += strlen((phowl + i)->hw_natvn->nd_name) + 16;
+				ehlen2 += strlen((phowl + i)->hw_mom->mi_host) + 6 + 16;
 			}
 		}
 
@@ -7518,9 +7518,9 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			pc = ehbuf;
 			*ehbuf2 = '\0';
 			pc2 = ehbuf2;
-			for (i=0; i<ndindex; ++i) {
-				if ((phowl+i)->hw_chunk) {
-					sprintf(pc, "%s/%d", (phowl+i)->hw_natvn->nd_name,
+			for (i = 0; i < ndindex; ++i) {
+				if ((phowl + i)->hw_chunk) {
+					sprintf(pc, "%s/%d", (phowl + i)->hw_natvn->nd_name,
 						(phowl+i)->hw_index);
 
 					sprintf(pc2, "%s:%d/%d", (phowl+i)->hw_mom->mi_host,
@@ -7553,7 +7553,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 		/* FOR RESERVATIONS */
 
 		/* now for each node, create a resvinfo structure */
-		for (i=0; i<ndindex; ++i) {
+		for (i = 0; i < ndindex; ++i) {
 
 			struct resvinfo *rp;
 			/* Create a list of pointers to each vnode associated to the reservation */
@@ -7628,7 +7628,7 @@ free_nodes(job *pjob)
 
 	/* Now loop through the Moms and remove the jobindx entry */
 	/* and remove this jobs's jobinfo entry from each vnode   */
-	for (i=0; i<mominfo_array_size; i++) {
+	for (i = 0; i < mominfo_array_size; i++) {
 		if (mominfo_array[i] == NULL)
 			continue;
 		psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
@@ -7749,7 +7749,7 @@ free_resvNodes(resc_resv *presv)
 	pbsnode_list_t *pnl_next;
 
 	DBPRT(("%s: entered\n", __func__))
-	for (i=0; i<svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		pnode = pbsndlist[i];
 
 		for (prev=NULL, rinfp = pnode->nd_resvp;
@@ -8509,7 +8509,7 @@ degrade_downed_nodes_reservations(void)
 	struct pbsnode *pn;
 
 	DBPRT(("%s: entered\n", __func__))
-	for (i=0; i<svr_totnodes; i++) {
+	for (i = 0; i < svr_totnodes; i++) {
 		pn = pbsndlist[i];
 		/* checking for nodes that are down, including stale state,
 		 * but excluding those that are offlined as those were checked
@@ -8779,6 +8779,17 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 {
 	update_job_node_rassn(NULL, pexech, op);
 }
+
+/**
+ * @brief - Degrade a reservation.
+ *
+ * This function is different from vnode_unavailable, as here we know the
+ * reservation that needs to be degraded
+ *
+ * @param[in] - pnode - pbsnode which has gone down.
+ * @param[in] - presv - reservation that needs to be degraded.
+ *
+ */
 
 static void
 set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
