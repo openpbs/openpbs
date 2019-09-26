@@ -232,15 +232,15 @@ schedinit(void)
         py_version[3] = '\0';
 	
 	pbs_asprintf(&msgbuf, "%s/lib/python%s", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(msgbuf);
-        free(msgbuf);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
 	
 	pbs_asprintf(&msgbuf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(msgbuf);
-        free(msgbuf);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
