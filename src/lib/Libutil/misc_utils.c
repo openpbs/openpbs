@@ -92,6 +92,7 @@
 #include <malloc.h>
 #endif
 
+#define MAXLENGTH 40
 #define ISESCAPED(ch) (ch == '\'' || ch == '\"' || ch == ',')
 
 /** @brief conversion array for vnode sharing attribute between str and enum */
@@ -1794,36 +1795,32 @@ perf_stat_stop(char *instance)
 void
 create_query_file(void)
 {
-	char filename[30];
-	char command[30];
-	snprintf(filename, 30, "/tmp/last_query_%d", getuid());
-#ifdef WIN32
-	snprintf(command, 30, "type nul > %d", filename);
-#else
-	snprintf(command, 30, "touch %s", filename);
-#endif
-	system(command);
+	FILE *f;
+	char filename[MAXLENGTH];
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	f = fopen(filename, "w");
+	fclose(f);
 }
 
 /**
  * @brief
  *	stats te information of the empty file created in /tmp/ to decide 
- *  whether to add sleep for .2 secons or not
+ *  whether to add sleep for .2 seconds or not
  * 
  * @param[in] - void
  *
  * @return - void
  */
 void
-check_last_query(void)
+delay_query(void)
 {
-	char filename[30];	
+	char filename[MAXLENGTH];	
 #ifdef WIN32
 	struct _stat buf;
 #else
 	struct stat buf;
 #endif
-	snprintf(filename, 30, "/tmp/last_query_%d", getuid());
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
 #ifdef WIN32
 	if(_stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
@@ -1837,4 +1834,5 @@ check_last_query(void)
 		}
 	}
 #endif
+	atexit(create_query_file);
 }

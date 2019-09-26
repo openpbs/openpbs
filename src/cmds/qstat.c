@@ -2361,7 +2361,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
-	check_last_query();
+	delay_query();
 #ifdef WIN32
 	if (winsock_init()) {
 		return 1;
@@ -3174,7 +3174,6 @@ svr_no_args:
 	 */
 	if (any_failed == PBSE_JOBHISTNOTSET)
 		any_failed = 0;
-	create_query_file();
 	exit(any_failed);
 }
 

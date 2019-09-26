@@ -239,7 +239,6 @@ main(int argc, char *argv[])
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
-	check_last_query();
 
 #ifdef WIN32
 	if (winsock_init()) {
@@ -304,7 +303,6 @@ main(int argc, char *argv[])
 				handle_resv(resv_id_out, server_out, how);
 		}
 	}
-	create_query_file();
 	CS_close_app();
 	exit(errflg);
 }

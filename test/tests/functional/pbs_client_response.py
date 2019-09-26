@@ -54,27 +54,3 @@ class TestClientResponse(TestFunctional):
             self.server.status()
             count += 1
             print(count)
-
-    def test_pbsnodes_response(self):
-        """
-        Test to check how many pbsnode can be done in 1 sec
-        """
-        count = 0
-        t = time.time() + 1
-        while time.time() < t:
-            self.server.status(NODE)
-            count += 1
-            print(count)
-
-    def test_pbs_rstat_response(self):
-        """
-        Test to check how many pbs_rstat can be done in 1 sec
-        """
-        count = 0
-        rstat_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_rstat')
-        t = time.time() + 1
-        while time.time() < t:
-            self.du.run_cmd(cmd=rstat_cmd)
-            count += 1
-            print(count)
