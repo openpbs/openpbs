@@ -92,7 +92,6 @@
 #include <malloc.h>
 #endif
 
-#define MAXLENGTH 40
 #define ISESCAPED(ch) (ch == '\'' || ch == '\"' || ch == ',')
 
 /** @brief conversion array for vnode sharing attribute between str and enum */
@@ -1796,7 +1795,7 @@ void
 create_query_file(void)
 {
 	FILE *f;
-	char filename[MAXLENGTH];
+	char filename[MAXPATHLEN + 1];
 	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
 	f = fopen(filename, "w");
 	fclose(f);
@@ -1814,7 +1813,7 @@ create_query_file(void)
 void
 delay_query(void)
 {
-	char filename[MAXLENGTH];	
+	char filename[MAXPATHLEN + 1];	
 #ifdef WIN32
 	struct _stat buf;
 #else
