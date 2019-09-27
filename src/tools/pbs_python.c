@@ -2367,11 +2367,13 @@ main(int argc, char *argv[], char *envp[])
 		pc = strdup(SYSTEM_PYTHON_PATH);
 		if (pc == NULL) {
 			fprintf(stderr, "Out of memory\n");
+			free(python_path);
 			return 1;
 		}
 		pc2 = strstr(pc,"bin/python");
 		if (pc2 == NULL) {
 			fprintf(stderr, "Python executable not found!\n");
+			free(python_path);
 			return 1;
 		}
 		*pc2 = '\0';
@@ -2380,6 +2382,7 @@ main(int argc, char *argv[], char *envp[])
 			free(pc);
 		} else {
 			fprintf(stderr, "Python home not found!\n");
+			free(python_path);
 			return 1;
 		}
 		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
@@ -2401,6 +2404,7 @@ main(int argc, char *argv[], char *envp[])
 		lenvp = (char **) malloc((env_len + 1) * sizeof(char *));
 		if (lenvp == NULL) {
 			errno = ENOMEM;
+			free(python_path);
 			return 1;
 		}
 
@@ -2461,6 +2465,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr,
 							"Failed to chdir to %s (errno %d)\n",
 							dirname, errno);
+						free(python_path);
 						return 1;
 					}
 				}
@@ -2472,8 +2477,8 @@ main(int argc, char *argv[], char *envp[])
 			}
 
 			if (largv[1][0] == '\0') {
-
 				fprintf(stderr, "Failed to obtain python script\n");
+				free(python_path);
 				return 1;
 			}
 
