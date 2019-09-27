@@ -1137,6 +1137,27 @@ req_quejob(struct batch_request *preq)
 	pj->ji_qs.ji_un.ji_newt.ji_scriptsz = 0;
 
 #ifdef PBS_MOM
+	if ((pj->ji_wattr[(int)JOB_ATR_executable].at_flags & ATR_VFLAG_SET) &&
+	    (reject_root_scripts == TRUE) &&
+	    (pj->ji_wattr[(int)JOB_ATR_euser].at_flags & ATR_VFLAG_SET) &&
+	    (pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str != NULL)) {
+#ifdef WIN32
+
+		/* equivalent of root */
+		if (isAdminPrivilege(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str))
+#else
+		struct passwd		*pwdp;
+
+		pwdp = getpwnam(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+		if ((pwdp != NULL) && (pwdp->pw_uid == 0))
+#endif
+		{
+			log_err(-1, __func__, msg_mom_reject_root_scripts);
+			reply_text(preq, PBSE_MOM_REJECT_ROOT_SCRIPTS, msg_mom_reject_root_scripts);
+			job_purge(pj);
+			return;
+		}
+	}
 	mom_hook_input_init(&hook_input);
 	hook_input.pjob = pj;
 
