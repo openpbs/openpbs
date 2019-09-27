@@ -41,8 +41,8 @@ import datetime
 import grp
 import logging
 import os
-import pwd
 import pickle
+import pwd
 import random
 import re
 import socket
@@ -8229,8 +8229,13 @@ class Server(PBSService):
                         ks.lower(): [ks, vs] for ks, vs in stat.items()}
                     k_lower = k.lower()
                     if k_lower not in attrs_lower:
-                        self.logger.error("Attribute %s not found" % k)
-                        return False
+                        time.sleep(interval)
+                        _tsc = trigger_sched_cycle
+                        return self.expect(obj_type, attrib, id, op, attrop,
+                                           attempt + 1, max_attempts,
+                                           interval, count, extend,
+                                           level=level, msg=" ".join(msg),
+                                           trigger_sched_cycle=_tsc)
                     stat_v = attrs_lower[k_lower][1]
                     stat_k = attrs_lower[k_lower][0]
                 else:
