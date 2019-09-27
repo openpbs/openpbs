@@ -58,7 +58,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "fake calling os provisioning script")
 e.accept(0)
 """
 
-
+@requirements(no_mom_on_server=True)
 class TestProvisioningJob(TestFunctional):
     """
     This testsuite tests whether OS provisioned jobs are getting all

@@ -746,6 +746,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         with open(jsonpath, "r") as fd:
             json.load(fd)
 
+    @requirements(no_mom_on_server=True)
     def test_remote_primary_mom(self):
         """
         Test that pbs_snapshot -H works correctly to capture a remote primary
