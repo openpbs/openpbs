@@ -152,7 +152,7 @@ schedinit(void)
 
 #ifdef PYTHON
 	char errMsg[LOG_BUF_SIZE];
-	char buf[MAXPATHLEN];
+	char *msgbuf;
 	char *errstr;
 	char py_version[4];
 
@@ -230,18 +230,21 @@ schedinit(void)
 	/* get the version of Python interpreter */
 	strncpy(py_version, Py_GetVersion(), 3);
         py_version[3] = '\0';
-
-	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(buf);
+	
+	pbs_asprintf(&msgbuf, "%s/lib/python%s", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(buf);
+	
+	pbs_asprintf(&msgbuf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
+        
 
 	PySys_SetObject("path", path);
 

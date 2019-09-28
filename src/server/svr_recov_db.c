@@ -401,8 +401,7 @@ sched_recov_db(char *sname)
 	}
 
 	/* load sched */
-	dbsched.sched_name[sizeof(dbsched.sched_name) - 1] = '\0';
-	strncpy(dbsched.sched_name, sname, sizeof(dbsched.sched_name));
+	snprintf(dbsched.sched_name, sizeof(dbsched.sched_name), "%s", sname);
 
 	/* read in job fixed sub-structure */
 	if (pbs_db_load_obj(conn, &obj) != 0)

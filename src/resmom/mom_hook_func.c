@@ -612,10 +612,10 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 			snprintf(bufs, sizeof(bufs), "%s", vnode_entry[i].vn_host->hn_host);
 			rc = vn_addvnr(vnl, v_name, RESCASSN_HOST, bufs, 0, 0, NULL);
 			if (rc == -1) {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"%s:failed to add '%s=%s'",
+				pbs_asprintf(&msgbuf, "%s:failed to add '%s=%s'",
 					v_name, "host", bufs);
 				log_err(-1, __func__, log_buffer);
+ 				free(msgbuf);
 				return (-1);
 			}
 		}
