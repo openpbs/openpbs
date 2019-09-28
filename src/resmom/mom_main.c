@@ -9596,35 +9596,35 @@ main(int argc, char *argv[])
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-	
+
 	pbs_asprintf(&buf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
 	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-	
+
 	pbs_asprintf(&buf, "/usr/lib/python/python%s", py_version);
 	retval = PyUnicode_FromString(buf);
 	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-	
+
 	pbs_asprintf(&buf, "/usr/lib/python/python%s/lib-dynload", py_version);
 	retval = PyUnicode_FromString(buf);
 	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-	
+
 	pbs_asprintf(&buf, "/usr/lib64/python/python%s", py_version);
 	retval = PyUnicode_FromString(buf);
 	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
-	
+
 	pbs_asprintf(&buf, "/usr/lib64/python/python%s/lib-dynload", py_version);
 	retval = PyUnicode_FromString(buf);
 	free(buf);
