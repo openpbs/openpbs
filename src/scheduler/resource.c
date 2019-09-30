@@ -122,7 +122,6 @@ query_resources(int pbs_sd)
 
 	char *endp;				/* used for strtol() validation */
 
-	char logbuf[MAX_LOG_SIZE];
 	char *errmsg;
 	int error = 0;
 
@@ -131,9 +130,8 @@ query_resources(int pbs_sd)
 		if (errmsg == NULL)
 			errmsg = "";
 
-		sprintf(logbuf, "pbs_statrsc failed: %s (%d)", errmsg, pbs_errno);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_REQUEST, LOG_INFO,
-			"pbs_statrsc", logbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_REQUEST, LOG_INFO, "pbs_statrsc",
+			"pbs_statrsc failed: %s (%d)", errmsg, pbs_errno);
 		return NULL;
 	}
 
@@ -141,7 +139,7 @@ query_resources(int pbs_sd)
 		num_defs++;
 
 	if (num_defs < RES_HIGH) { /* too few resources! */
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
 			"query_resources() returned too few resources");
 		pbs_statfree(bs);
 		return NULL;
@@ -204,10 +202,7 @@ query_resources(int pbs_sd)
 	/* check for all expected resources. If we didn't find one, it will be NULL */
 	for (i = 0; i < RES_HIGH; i++) {
 		if (defarr[i] == NULL) {
-			char logbuf[MAX_LOG_SIZE];
-			snprintf(logbuf, sizeof(logbuf),
-				"query_resources() did not return all expected resources(%d)", i);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, logbuf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, "query_resources() did not return all expected resources(%d)", i);
 			/* Since we didn't get all the expected built in resources, we have holes
 			 * in our resdef array.  If we free it, we'll free the first part and leak
 			 * the rest.  We need to fill in the holes so we can free the entire thing
@@ -822,7 +817,7 @@ resstr_to_resdef(char **resstr)
 			j++;
 		}
 		else {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, resstr[i], "Unknown Resource");
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, resstr[i], "Unknown Resource");
 		}
 	}
 	tmparr[j] = NULL;
@@ -988,7 +983,6 @@ filter_noncons(void *v, void *arg)
 void update_sorting_defs(int op)
 {
 	int i, j;
-	char errbuf[MAX_LOG_SIZE];
 	char *prefix = NULL;
 
 	/* Job sorts */
@@ -1025,10 +1019,9 @@ void update_sorting_defs(int op)
 			for (j = 0; si[j].res_name != NULL; j++) {
 				if (op == SD_UPDATE) {
 					si[j].def = find_resdef(allres, si[j].res_name);
-					if (si[j].def == NULL && !is_speccase_sort(si[j].res_name, obj)) {
-						snprintf(errbuf, sizeof(errbuf), "%s sorting resource %s is not a valid resource", prefix, si[j].res_name);
-						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE, errbuf);
-					}
+					if (si[j].def == NULL && !is_speccase_sort(si[j].res_name, obj))
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, CONFIG_FILE, 
+							"%s sorting resource %s is not a valid resource", prefix, si[j].res_name);
 				} else
 					si[j].def = NULL;
 

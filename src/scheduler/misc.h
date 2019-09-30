@@ -79,13 +79,7 @@ sch_resource_t res_to_num(char * res_str, struct resource_type *type);
 int skip_line(char *line);
 
 /*
- *      schdlog - write a log entry to the scheduler log file using log_record
- */
-
-void schdlog(int event, int class, int sev, const char *name, const char *text);
-
-/*
- *      schdlogerr - combination of schdlog and translate_fail_code()
+ *      schdlogerr - combination of log_event() and translate_fail_code()
  *                   If we're actually going to log a message, translate
  *                   err into a message and then log it.  The translated
  *                   error will be printed after the message

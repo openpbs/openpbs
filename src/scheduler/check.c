@@ -336,11 +336,10 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 		njob->duration = time_to_dedboundary < time_to_primeboundary ? time_to_dedboundary : time_to_primeboundary;
 		ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 		if (ns_arr && orig_duration > njob->duration) {
-			char logbuf[MAX_LOG_SIZE];
 			char timebuf[TIMEBUF_SIZE];
 			convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
-			snprintf(logbuf, MAX_LOG_SIZE, "Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, logbuf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+				"Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
 		}
 	}
 	return (ns_arr);
@@ -535,17 +534,14 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			retry_count--;
 		}
 	}
-	if (ns_arr && njob->duration == njob->min_duration) {
-		char logbuf[MAX_LOG_SIZE];
-		snprintf(logbuf, MAX_LOG_SIZE, "Considering shrinking job to it's minimum walltime");
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, logbuf);
-	}
+	if (ns_arr && njob->duration == njob->min_duration)
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+			"Considering shrinking job to it's minimum walltime");
 	else if (ns_arr && orig_duration > njob->duration) {
-		char logbuf[MAX_LOG_SIZE];
 		char timebuf[TIMEBUF_SIZE];
 		convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
-		snprintf(logbuf, MAX_LOG_SIZE, "Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, logbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+			"Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
 	}
 	return (ns_arr);
 }

@@ -564,7 +564,7 @@ perform_event(status *policy, timed_event *event)
 		case TIMED_RUN_EVENT:	/* event_ptr type: (resource_resv *) */
 			resresv = (resource_resv *) event->event_ptr;
 			if (sim_run_update_resresv(policy, resresv, NULL, NO_ALLPART) <= 0) {
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					event->name, "Simulation: Event failed to be run");
 				ret = 0;
 			}
@@ -589,21 +589,16 @@ perform_event(status *policy, timed_event *event)
 			strcpy(logbuf, "Node Down");
 			break;
 		default:
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 				event->name, "Simulation: Unknown event type");
 			ret = 0;
 	}
 	if (event->event_func != NULL)
 		event->event_func(event->event_ptr, event->event_func_arg);
 
-	if (ret) {
-		char *msgbuf;
-
-		pbs_asprintf(&msgbuf, "Simulation: %s [%s]", logbuf, timebuf);
-		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			event->name, msgbuf);
-		free(msgbuf);
-	}
+	if (ret)
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+			event->name, "Simulation: %s [%s]", logbuf, timebuf);
 	return ret;
 }
 
@@ -1004,9 +999,8 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 			oelist->next_event->event_type,
 			oelist->next_event->event_time);
 		if (nelist->next_event == NULL) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED,
-				LOG_WARNING, oelist->next_event->name,
-				"can't find next event in duplicated list");
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+			oelist->next_event->name, "can't find next event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
 		}
@@ -1019,8 +1013,7 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 				     TIMED_RUN_EVENT,
 				     oelist->first_run_event->event_time);
 		if (nelist->first_run_event == NULL) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED,
-				LOG_WARNING, oelist->first_run_event->name,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name, 
 				"can't find first run event event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
@@ -1289,7 +1282,6 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 {
 	resource_resv *oep;	/* old event_ptr in resresv form */
 	event_ptr_t *event_ptr = NULL;
-	char logbuf[MAX_LOG_SIZE];
 
 	if (ote == NULL || nsinfo == NULL)
 		return NULL;
@@ -1310,7 +1302,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 					    oep->rank, oep->resresv_ind);
 
 			if (event_ptr == NULL) {
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,
 					"Event can't be found in new server to be duplicated.");
 				event_ptr = NULL;
 			}
@@ -1326,13 +1318,8 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 				((node_info*)(ote->event_ptr))->name);
 			break;
 		default:
-			snprintf(logbuf, MAX_LOG_SIZE, "Unknown event type: %d",
-#ifdef NAS /* localmod 005 */
-				(int)ote->event_type);
-#else
-				ote->event_type);
-#endif /* localmod 005 */
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, logbuf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, 
+				"Unknown event type: %d", (int)ote->event_type);
 	}
 
 	return event_ptr;
@@ -1634,7 +1621,6 @@ int
 determine_event_name(timed_event *te)
 {
 	char *name;
-	char logbuf[MAX_LOG_SIZE];
 
 	if (te == NULL)
 		return 0;
@@ -1662,12 +1648,8 @@ determine_event_name(timed_event *te)
 			te->name = ((node_info*) te->event_ptr)->name;
 			break;
 		default:
-#ifdef NAS /* localmod 005 */
-			snprintf(logbuf, MAX_LOG_SIZE, "Unknown event type: %d", (int)te->event_type);
-#else
-			snprintf(logbuf, MAX_LOG_SIZE, "Unknown event type: %d", te->event_type);
-#endif /* localmod 005 */
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, logbuf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+				__func__, "Unknown event type: %d", (int)te->event_type);
 			return 0;
 	}
 
@@ -1702,7 +1684,8 @@ dedtime_change(status *policy, void  *arg)
 	else if (strcmp(event_arg, DEDTIME_END) == 0)
 		policy->is_ded_time = 0;
 	else {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, "unknown dedicated time change");
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+			__func__, "unknown dedicated time change");
 		return 0;
 	}
 

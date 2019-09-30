@@ -471,10 +471,8 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 				free_node_bucket_array(buckets);
 				return NULL;
 			}
-			if (!(flags & NO_PRINT_BUCKETS)) {
-				snprintf(log_buffer, sizeof(log_buffer), "Created node bucket %s", buckets[j]->name);
-				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
-			}
+			if (!(flags & NO_PRINT_BUCKETS))
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, "Created node bucket %s", buckets[j]->name);
 
 			nb = buckets[j];
 			j++;
@@ -576,21 +574,18 @@ log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
 	for (i = 0; cmap[i] != NULL; i++) {
 		int total_chunks = 0;
 
-		snprintf(log_buffer, sizeof(log_buffer), "Chunk: %s", cmap[i]->chunk->str_chunk);
-		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Chunk: %s", cmap[i]->chunk->str_chunk);
 
 		for (j = 0; cmap[i]->bkt_cnts[j] != NULL; j++) {
 			int chunk_count;
 			node_bucket_count *nbc = cmap[i]->bkt_cnts[j];
 			chunk_count = (nbc->bkt->free_pool->truth_ct + nbc->bkt->busy_later_pool->truth_ct) * nbc->chunk_count;
-			snprintf(log_buffer, sizeof(log_buffer), "Bucket %s can fit %d chunks", nbc->bkt->name, chunk_count);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Bucket %s can fit %d chunks", nbc->bkt->name, chunk_count);
 			total_chunks += chunk_count;
 		}
-		if (total_chunks < cmap[i]->chunk->num_chunks) {
-			snprintf(log_buffer, sizeof(log_buffer), "Found %d out of %d chunks needed", total_chunks, cmap[i]->chunk->num_chunks);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
-		}
+		if (total_chunks < cmap[i]->chunk->num_chunks)
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				"Found %d out of %d chunks needed", total_chunks, cmap[i]->chunk->num_chunks);
 	}
 }
 
@@ -1108,8 +1103,8 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 		for (i = 0; nodepart[i] != NULL; i++) {
 			nspec **nspecs;
-			snprintf(log_buffer, MAX_LOG_SIZE, "Evaluating placement set: %s", nodepart[i]->name);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				"Evaluating placement set: %s", nodepart[i]->name);
 
 			clear_schd_error(err);
 			nspecs = map_buckets(policy, nodepart[i]->bkts, resresv, err);
@@ -1128,7 +1123,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 				return NULL;
 			}
 			else {
-				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,  "Request won't fit into any placement sets, will use all nodes");
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Request won't fit into any placement sets, will use all nodes");
 				return map_buckets(policy, sinfo->buckets, resresv, err);
 			}
 		} else

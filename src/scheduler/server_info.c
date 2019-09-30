@@ -191,7 +191,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 
 	if (update_resource_defs(pbs_sd) == 0) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, "resources",
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, "resources",
 			"Failed to update global resource definition arrays");
 		return NULL;
 	}
@@ -201,9 +201,8 @@ query_server(status *pol, int pbs_sd)
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
-		sprintf(log_buffer, "pbs_statserver failed: %s (%d)", errmsg, pbs_errno);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
-			log_buffer);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
+			"pbs_statserver failed: %s (%d)", errmsg, pbs_errno);
 		return NULL;
 	}
 
@@ -233,9 +232,8 @@ query_server(status *pol, int pbs_sd)
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
-		sprintf(log_buffer, "pbs_statsched failed: %s (%d)", errmsg, pbs_errno);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
-			log_buffer);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
+			"pbs_statsched failed: %s (%d)", errmsg, pbs_errno);
 		pbs_statfree(server);
 		pbs_statfree(all_sched);
 		sinfo->fairshare = NULL;
@@ -246,8 +244,7 @@ query_server(status *pol, int pbs_sd)
 	pbs_statfree(all_sched);
 
 	if (!dflt_sched && (sinfo->partitions == NULL)) {
-		snprintf(log_buffer, sizeof(log_buffer), "Scheduler does not contain a partition");
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
@@ -563,8 +560,7 @@ query_server_info(status *pol, struct batch_status *server)
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
 			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-					"query_server",
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
 					"The job sorting formula will be used.");
 
@@ -711,10 +707,9 @@ query_server_dyn_res(server_info *sinfo)
 			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
 #endif
 			if (err != 0) {
-				snprintf(buf, sizeof(buf),
+				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", 
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
 					filename, res->name, err);
-				schdlog(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", buf);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
 #ifdef	WIN32
@@ -751,42 +746,32 @@ query_server_dyn_res(server_info *sinfo)
 				}
 
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
-					snprintf(buf, sizeof(buf), "Script %s returned bad output",
-							conf.dynamic_res[i].command_line);
-					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-										"server_dyn_res", buf);
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+						"Script %s returned bad output", conf.dynamic_res[i].command_line);
 					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
 			} else {
 				if (pipe_err != 0)
-					snprintf(buf, sizeof(buf), "Can't pipe to program %s: %s",
-						conf.dynamic_res[i].command_line, strerror(pipe_err));
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+						"Can't pipe to program %s: %s", conf.dynamic_res[i].command_line, strerror(pipe_err));
+
 				else
-					snprintf(buf, sizeof(buf), "Error piping to program %s.",
-						conf.dynamic_res[i].command_line);
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-					"server_dyn_res", buf);
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+						"Error piping to program %s.", conf.dynamic_res[i].command_line);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
-			if (res->type.is_non_consumable) {
-				snprintf(log_buffer, sizeof(log_buffer), "%s = %s",
-					conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
-			}
-			else {
-				snprintf(log_buffer, sizeof(log_buffer), "%s = %s (\"%s\")",
-					conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
-			}
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				"server_dyn_res", log_buffer);
+			if (res->type.is_non_consumable)
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+					"%s = %s", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
+			else
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
 		}
 	}
 
-	if (i == MAX_SERVER_DYN_RES) { /* reached max and stopped */
-		sprintf(buf, "Reached max number of server_dyn_res of %d",
-			MAX_SERVER_DYN_RES);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, "server_dyn_res",
-			buf);
-	}
+	if (i == MAX_SERVER_DYN_RES) /* reached max and stopped */
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, "server_dyn_res", 
+			"Reached max number of server_dyn_res of %d", MAX_SERVER_DYN_RES);
 
 	return 0;
 }
@@ -1412,7 +1397,8 @@ create_resource(char *name, char *value, enum resource_fields field)
 			}
 		}
 	} else {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, "Resource definition does not exist, resource may be invalid");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, 
+			"Resource definition does not exist, resource may be invalid");
 		return NULL;
 	}
 
@@ -1923,11 +1909,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 				res->assigned -= req->amount;
 
 				if (res->assigned < 0) {
-					char logbuf[MAX_LOG_SIZE] = {0};
-					snprintf(logbuf, MAX_LOG_SIZE,
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, 
 						"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
-					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-						LOG_DEBUG, __func__, logbuf);
 					res->assigned = 0;
 				}
 			}
@@ -3263,7 +3246,6 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 {
 	node_info *ninfo;
 	schd_resource *cur_res = NULL;
-	char logbuf[MAX_LOG_SIZE];
 	int i;
 	int error = 0;
 	const int max = 10;
@@ -3280,28 +3262,23 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 			cur_res = find_resource(ninfo->res, cur_res->def);
 			if (cur_res == NULL) {
 				error = 1;
-				sprintf(logbuf,
-					"Resource %s is indirect, and does not exist on indirect node %s",
-					res->name, ninfo->name);
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-					LOG_DEBUG, "find_indirect_resource", logbuf);
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, 
+						"Resource %s is indirect, and does not exist on indirect node %s",
+						res->name, ninfo->name);
 			}
 		} else {
 			error = 1;
-			sprintf(logbuf,
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 				"Resource %s is indirect but points to node %s, which was not found",
 				res->name, cur_res->indirect_vnode_name);
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-				LOG_DEBUG, "find_indirect_resource", logbuf);
 			cur_res = NULL;
 		}
 	}
 	if (i == max) {
-		sprintf(logbuf, "Attempted %d indirection lookups for resource %s=@%s-- "
-			"looks like a cycle, bailing out.",
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+			"Attempted %d indirection lookups for resource %s=@%s-- "
+			"looks like a cycle, bailing out",
 			max, cur_res->name, cur_res->indirect_vnode_name);
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-			"find_indirect_resource", logbuf);
 		return NULL;
 	}
 
@@ -3428,10 +3405,8 @@ read_formula(void)
 
 	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
 	if ((fp = fopen(pathbuf, "r")) == NULL) {
-		schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO,
-			__func__,
-			"Can not open file to read job_sort_formula.  "
-			"Please reset formula with qmgr.");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
+			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
 		return NULL;
 	}
 

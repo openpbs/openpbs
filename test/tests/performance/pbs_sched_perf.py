@@ -171,7 +171,7 @@ class TestSchedPerf(TestPerformance):
         a = {'Resource_List.select': '1:ncpus=1'}
         jids = self.submit_jobs(a, num_jobs, wt_start=1000)
         t = self.run_cycle()
-        self.server.expect(JOB, {'state=R': num_jobs})
+        self.server.expect(JOB, {'job_state=R': num_jobs})
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d normal jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
@@ -187,11 +187,12 @@ class TestSchedPerf(TestPerformance):
 
         t = self.run_cycle()
 
-        self.server.expect(JOB, {'state=R': num_jobs})
+        self.server.expect(JOB, {'job_state=R': num_jobs})
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d bucket jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
         self.logger.info('#' * 80)
+        self.perf_test_result(t, m, "seconds")
 
     @timeout(3600)
     def test_pset_fuzzy_perf(self):

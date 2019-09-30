@@ -104,6 +104,7 @@ extern void log_close(int close_msg);
 extern void log_err(int err, const char *func, const char *text);
 extern void log_joberr(int err, const char *func, const char *text, const char *pjid);
 extern void log_event(int type, int objclass, int severity, const char *objname, const char *text);
+extern void log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...);
 extern int will_log_event(int type);
 extern void log_suspect_file(const char *func, const char *text, const char *file, struct stat *sb);
 extern int  log_open(char *name, char *directory);

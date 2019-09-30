@@ -8376,24 +8376,28 @@ class Server(PBSService):
         except PbsDeljobError:
             pass
         st = int(time.time())
+        running_job = False
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
+                if chunks:
+                    running_job = True
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
-            _msg = job_ids[-1] + ';'
-            _msg += 'Job Obit notice received has error 15001'
-            try:
-                self.log_match(_msg, starttime=st, interval=10,
-                               max_attempts=10)
-            except PtlLogMatchError:
-                # don't fail on log match error as here purpose
-                # of log match is to allow mom to catch up with
-                # sigchild but we don't want to wait too long
-                # so limit max attempts to 10 ~ total 100 sec
-                # of wait
-                pass
+            if running_job is True:
+                _msg = job_ids[-1] + ';'
+                _msg += 'Job Obit notice received has error 15001'
+                try:
+                    self.log_match(_msg, starttime=st, interval=10,
+                                   max_attempts=10)
+                except PtlLogMatchError:
+                    # don't fail on log match error as here purpose
+                    # of log match is to allow mom to catch up with
+                    # sigchild but we don't want to wait too long
+                    # so limit max attempts to 10 ~ total 100 sec
+                    # of wait
+                    pass
         rv = self.expect(JOB, {'job_state': 0}, count=True, op=SET)
         # restore 'scheduling' state
         for sc in sched_state:
