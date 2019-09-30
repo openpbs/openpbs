@@ -673,17 +673,17 @@ class PBSTestSuite(unittest.TestCase):
             server_param = cls.conf['servers']
             if 'comms' not in cls.conf and 'comm' not in cls.conf:
                 cls.conf['comms'] = server_param
-            if 'schedulers' not in cls.conf and 'scheduler' not in cls.conf:
-                cls.conf['schedulers'] = server_param
+            if 'sched' not in cls.conf and 'scheds' not in cls.conf:
+                cls.conf['scheds'] = server_param
             if 'moms' not in cls.conf and 'mom' not in cls.conf:
                 cls.conf['moms'] = server_param
         if 'server' in cls.conf:
             server_param = cls.conf['server']
-            if 'comms' not in cls.conf and 'comm' not in cls.conf:
+            if 'comm' not in cls.conf:
                 cls.conf['comm'] = server_param
-            if 'schedulers' not in cls.conf and 'scheduler' not in cls.conf:
-                cls.conf['scheduler'] = server_param
-            if 'moms' not in cls.conf and 'mom' not in cls.conf:
+            if 'sched' not in cls.conf:
+                cls.conf['sched'] = server_param
+            if 'mom' not in cls.conf:
                 cls.conf['mom'] = server_param
         cls.servers = cls.init_from_conf(conf=cls.conf, single='server',
                                          multiple='servers', skip=skip,
@@ -714,8 +714,8 @@ class PBSTestSuite(unittest.TestCase):
         if init_sched_func is None:
             init_sched_func = cls.init_scheduler
         cls.scheds = cls.init_from_conf(conf=cls.conf,
-                                        single='scheduler',
-                                        multiple='schedulers', skip=skip,
+                                        single='sched',
+                                        multiple='scheds', skip=skip,
                                         func=init_sched_func)
 
         for sched in cls.scheds.values():
