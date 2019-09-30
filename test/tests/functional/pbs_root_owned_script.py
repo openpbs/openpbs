@@ -59,6 +59,8 @@ class Test_RootOwnedScript(TestFunctional):
         self.sleep_5 = """#!/bin/bash
         sleep 5
         """
+        self.qsub_cmd = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
         # Make sure local mom is ready to run jobs
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
         self.server.expect(VNODE, a, count=True,
@@ -113,3 +115,44 @@ class Test_RootOwnedScript(TestFunctional):
         j.create_script(self.sleep_5)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def test_root_owned_executable(self):
+        """
+        Edit the mom config to reject root script
+        submit a job as root with the -- <executable> option.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        cmd = [self.qsub_cmd, '--', '/usr/bin/id']
+        rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        jid = rv['out'][0]
+        self.server.runjob(jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=2)
+        _comment = 'Not Running: PBS Error: Execution server rejected request'
+        self.server.expect(JOB, {'comment': _comment}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
+        _comment = 'job held, too many failed attempts to run'
+        self.server.expect(JOB, {'comment': _comment}, id=jid)
+
+    def test_root_owned_job_array_executable(self):
+        """
+        Like test_root_owned_executable, except job array is used.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        cmd = [self.qsub_cmd, '-J', '1-3', '--', '/usr/bin/id']
+        rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        jid = rv['out'][0]
+        sjid = Job().create_subjob_id(jid, 1)
+        self.server.runjob(sjid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid, offset=2)
+        _comment = 'Not Running: PBS Error: Execution server rejected request'
+        self.server.expect(JOB, {'comment': _comment}, id=jid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
+        _comment = 'job held, too many failed attempts to run'
+        self.server.expect(JOB, {'comment': _comment}, id=sjid)
+        ja_comment = "Job Array Held, too many failed attempts to run subjob"
+        self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
+                           ja_comment)}, attrop=PTL_AND, id=jid)
