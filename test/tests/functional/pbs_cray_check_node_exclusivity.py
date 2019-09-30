@@ -241,7 +241,6 @@ class TestCheckNodeExclusivity(TestFunctional):
         msg3 += "amount of resource: vnode"
         self.scheduler.log_match(msg3, starttime=now, interval=2)
 
-    @skip(reason="skip test due to PP-1213")
     def test_node_exclusivity_with_multinode_reservation(self):
         """
         Test Jobs run correctly in multinode reservation
@@ -274,7 +273,6 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node[0])
-        # Below steps are blocked due to PP-1213
         # Submit another job inside the reservation
         submit_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '2:ncpus=1',
