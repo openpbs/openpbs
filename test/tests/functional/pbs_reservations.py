@@ -1064,9 +1064,9 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
 
         self.server.sigjob(subjid[0], 'resume')
-        self.logger.info("Wait 180s for all the subjobs to complete")
+        self.logger.info("Wait 120s for all the subjobs to complete")
         self.server.expect(JOB, {'job_state': 'F', 'exit_status': '0'},
-                           id=jid, extend='x', offset=180)
+                           id=jid, extend='x', interval=10, offset=120)
 
         self.server.expect(JOB, {'job_state': 'B'}, id=jid2)
         self.server.expect(JOB, {'job_state=R': 2}, count=True,
@@ -1086,9 +1086,9 @@ class TestReservations(TestFunctional):
         self.server.sigjob(subjid2[1], 'resume')
         self.server.expect(JOB, {'job_state=R': 2}, count=True,
                            extend='t', id=jid2)
-        self.logger.info("Wait 180s for all the subjobs to complete")
+        self.logger.info("Wait 120s for all the subjobs to complete")
         self.server.expect(JOB, {'job_state': 'F'},
-                           id=jid2, extend='x', offset=180)
+                           id=jid2, extend='x', interval=10, offset=120)
 
     def test_reservations_with_expired_subjobs(self):
         """
