@@ -9720,8 +9720,8 @@ class Server(PBSService):
 
         :param hook_name: The name of the hook to import body to
         :type name: str
-        :param hook_conf: The body of the hook config as a string.
-        :type hook_conf: str
+        :param hook_conf: The body of the hook config as a dict.
+        :type hook_conf: dict
         :param hook_type: The hook type "site" or "pbshook"
         :type hook_type: str
         :returns: True on success.
@@ -9732,7 +9732,7 @@ class Server(PBSService):
         else:
             hook_t = PBS_HOOK
 
-        fn = self.du.create_temp_file(body=hook_conf)
+        fn = self.du.create_temp_file(body=json.dumps(hook_conf))
 
         if not self._is_local:
             tmpdir = self.du.get_tempdir(self.hostname)
@@ -9752,7 +9752,7 @@ class Server(PBSService):
             self.du.rm(self.hostname, rfile)
         self.logger.log(level, 'server ' + self.shortname +
                         ': imported hook config\n---\n' +
-                        hook_conf + '---')
+                        str(hook_conf) + '---')
         return True
 
     def export_hook_config(self, hook_name, hook_type):
@@ -9782,7 +9782,8 @@ class Server(PBSService):
             config_dict = json.loads(config_out)
             return config_dict
         else:
-            self.fail("Failed to export hook config, %s", ret['err'])
+            raise AssertionError("Failed to export hook config, %s"
+                                 % (ret['err']))
 
     def evaluate_formula(self, jobid=None, formula=None, full=True,
                          include_running_jobs=False, exclude_subjobs=True):
