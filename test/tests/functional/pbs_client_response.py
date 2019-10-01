@@ -50,7 +50,10 @@ class TestClientResponse(TestFunctional):
         """
         count = 0
         t = time.time() + 1
+        qstat_cmd = os.path.join(self.server.pbs_conf["PBS_EXEC"], "bin",
+                                 "qstat")
         while time.time() < t:
-            self.server.status()
+            ret = self.du.run_cmd(self.server.hostname, qstat_cmd)
+            self.assertTrue('rc', 0)
             count += 1
-            print(count)
+        self.logger.info("Number qstat response:%d", count)
