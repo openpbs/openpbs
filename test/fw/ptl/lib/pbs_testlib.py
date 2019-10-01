@@ -9739,7 +9739,7 @@ class Server(PBSService):
             tmpdir = self.du.get_tempdir(self.hostname)
             rfile = os.path.join(tmpdir, os.path.basename(fn))
             rc = self.du.run_copy(self.hostname, fn, rfile)
-            if rc != 0
+            if rc != 0:
                 raise AssertionError("Failed to copy file %s"
                                      % (rfile))
         else:
