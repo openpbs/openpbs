@@ -442,7 +442,7 @@ class SystemInfo:
                     mem_free = float(i.split()[1]) / (2**20)
                 elif "Buffers" in i:
                     buffers = float(i.split()[1]) / (2**20)
-                elif "Cached" in i:
+                elif i.startswith("Cached"):
                     cached = float(i.split()[1]) / (2**20)
             if got_mem_available:
                 self.system_ram = mem_available
