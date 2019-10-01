@@ -293,17 +293,20 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 	if (is_maintenance_resv) {
 		char **hostp = NULL;
+		int num_hosts = argc - optind;
 
-		if (argc - optind > 0) {
-			maintenance_hosts = malloc(sizeof(char *) * (argc - optind + 1));
+		if (num_hosts > 0) {
+			int i;
+
+			maintenance_hosts = malloc(sizeof(char *) * (num_hosts + 1));
 			if (maintenance_hosts == NULL) {
 				fprintf(stderr, "pbs_rsub: Out of memory\n");
 				return (++errflg);
 			}
 
-			maintenance_hosts[argc - optind] = NULL;
+			maintenance_hosts[num_hosts] = NULL;
 
-			for (; optind < argc; optind++) {
+			for (i = 0; optind < argc; optind++, i++) {
 				hostp = maintenance_hosts;
 				for (; *hostp; hostp++) {
 					if (strcmp(*hostp, argv[optind]) == 0) {
@@ -312,8 +315,15 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					}
 				}
 
-				maintenance_hosts[argc - (optind + 1)] = strdup(argv[optind]);
-				if (maintenance_hosts[argc - (optind + 1)] == NULL) {
+				if (strlen(argv[optind]) == 0) {
+					num_hosts--;
+					i--;
+					maintenance_hosts[num_hosts] = NULL;
+					continue;
+				}
+
+				maintenance_hosts[i] = strdup(argv[optind]);
+				if (maintenance_hosts[i] == NULL) {
 					fprintf(stderr, "pbs_rsub: Out of memory\n");
 					return (++errflg);
 				}
@@ -816,9 +826,6 @@ main(int argc, char *argv[], char *envp[])
 		for (; *hostp; hostp++) {
 			int host_ncpus = 0;
 
-			if (strlen(*hostp) == 0)
-				continue;
-
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				char *ncpus_str = NULL;
 				int ncpus = 0;
@@ -868,6 +875,13 @@ main(int argc, char *argv[], char *envp[])
 				} /* end of part that crafts execvnodes */
 			}
 
+			/* host not found or host has zero ncpus */
+			if (host_ncpus == 0) {
+				fprintf(stderr, "pbs_rsub: Host with resources not found: %s\n", *hostp);
+				CS_close_app();
+				exit(2);
+			}
+
 			/* here, the select is crafted */
 			if (host_ncpus > 0) {
 				if (!select_str) {
@@ -890,13 +904,6 @@ main(int argc, char *argv[], char *envp[])
 					}
 				}
 			} /* end of part that crafts select */
-
-			/* host not found or host has zero ncpus */
-			if (host_ncpus == 0) {
-				fprintf(stderr, "pbs_rsub: Host with resources not found: %s\n", *hostp);
-				CS_close_app();
-				exit(2);
-			}
 		}
 
 		pbs_statfree(bstat_head);	/* free info returned by pbs_statvnodes() */

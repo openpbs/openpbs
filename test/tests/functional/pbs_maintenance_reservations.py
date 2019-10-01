@@ -68,9 +68,9 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertEqual("pbs_rsub: Unauthorized Request", msg)
 
-    def test_maintenance_forbidden_parameters(self):
+    def test_maintenance_conflicting_parameters(self):
         """
-        Test if forbidden parameters are refused
+        Test if conflicting parameters are refused
         """
         now = int(time.time())
 
