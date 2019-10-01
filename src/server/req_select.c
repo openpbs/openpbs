@@ -490,6 +490,7 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 	}
 
 	if ((dosubjobs == 2) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+		(pjob->ji_qs.ji_state != JOB_STATE_EXITING) &&
 		(pjob->ji_qs.ji_state != JOB_STATE_RUNNING)) /* select only running subjobs */
 		return 0;
 
