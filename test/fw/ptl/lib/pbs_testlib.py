@@ -9765,7 +9765,7 @@ class Server(PBSService):
         The hook must have been created prior to calling this
         function.
 
-        :param hook_name: The name of the hook to import body to
+        :param hook_name: The name of the hook to export config from
         :type name: str
         :param hook_type: The hook type "site" or "pbshook"
         :type hook_type: str
