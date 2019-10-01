@@ -500,6 +500,7 @@ class PTLTestRunner(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.param = None
+        self.use_cur_setup = False
         self.lcov_bin = None
         self.lcov_data = None
         self.lcov_out = None
@@ -525,7 +526,7 @@ class PTLTestRunner(Plugin):
     def set_data(self, paramfile, testparam,
                  lcov_bin, lcov_data, lcov_out, genhtml_bin, lcov_nosrc,
                  lcov_baseurl, tc_failure_threshold,
-                 cumulative_tc_failure_threshold):
+                 cumulative_tc_failure_threshold, use_cur_setup):
         if paramfile is not None:
             _pf = open(paramfile, 'r')
             _params_from_file = _pf.readlines()
@@ -542,6 +543,7 @@ class PTLTestRunner(Plugin):
             else:
                 testparam = _f
         self.param = testparam
+        self.use_cur_setup = use_cur_setup
         self.lcov_bin = lcov_bin
         self.lcov_data = lcov_data
         self.lcov_out = lcov_out
@@ -573,6 +575,7 @@ class PTLTestRunner(Plugin):
 
     def startContext(self, context):
         context.param = self.param
+        context.use_cur_setup = self.use_cur_setup
         context.start_time = datetime.datetime.now()
         if isclass(context) and issubclass(context, unittest.TestCase):
             self.result.logger.info(self.result.separator1)

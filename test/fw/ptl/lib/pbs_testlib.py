@@ -52,6 +52,9 @@ import tempfile
 import threading
 import time
 import traceback
+import json
+import base64
+import ast
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from operator import itemgetter
@@ -65,16 +68,16 @@ from ptl.utils.pbs_testusers import ROOT_USER, TEST_USER, PbsUser
 try:
     import psycopg2
     PSYCOPG = True
-except BaseException:
+except:
     PSYCOPG = False
 
 try:
     from ptl.lib.pbs_ifl import *
     API_OK = True
-except BaseException:
+except:
     try:
         from ptl.lib.pbs_ifl_mock import *
-    except BaseException:
+    except:
         sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
                          "to make it\n")
         raise ImportError
@@ -271,7 +274,7 @@ class PtlConfig(object):
                 k = k.strip()
                 v = v.strip()
                 self.options[k] = v
-            except BaseException:
+            except:
                 self.logger.error('Error parsing line ' + line)
         # below two if block are for backword compatibility
         if 'PTL_EXPECT_MAX_ATTEMPTS' in self.options:
@@ -866,7 +869,7 @@ class PbsTypeSelect(list):
             if 'mem' in k:
                 try:
                     v = PbsTypeSize(v).value
-                except BaseException:
+                except:
                     # failed so we guessed wrong on the type
                     pass
             if isinstance(v, int) or v.isdigit():
@@ -2185,7 +2188,7 @@ class BatchUtils(object):
         """
         try:
             ret = time.mktime(time.strptime(st, '%a %b %d %H:%M:%S %Y'))
-        except BaseException:
+        except:
             ret = st
         return ret
 
@@ -2209,7 +2212,7 @@ class BatchUtils(object):
                                                             fmt=_f)
                 dtime_to = self.convert_datetime_to_epoch(m.group('dt_to'),
                                                           fmt=_f)
-            except BaseException:
+            except:
                 self.logger.error('error converting dedicated time')
         return (dtime_from, dtime_to)
 
@@ -2300,7 +2303,7 @@ class BatchUtils(object):
         :type op: str or None
         :param hostname: The name of the host on which to operate
         :type hostname: str or None
-        :param dflt_conf: Whether we are using the default PBS
+        :param dflt_conf: Whether we are using the default PBS
                           configuration
         :type dflt_conf: bool
         :param exclude_attrs: Optional list of attributes to not
@@ -3448,7 +3451,7 @@ class PBSService(PBSObject):
                     self.logger.info('FQDN name ' + self.fqdn + ' differs '
                                      'from name provided ' + self.hostname)
                     self.hostname = self.fqdn
-            except BaseException:
+            except:
                 pass
         else:
             self.fqdn = self.hostname
@@ -4004,7 +4007,7 @@ class PBSService(PBSObject):
         """
         try:
             from ptl.utils.pbs_logutils import PBSLogUtils
-        except BaseException:
+        except:
             _msg = 'error loading ptl.utils.pbs_logutils'
             raise ImportError(_msg)
 
@@ -4060,7 +4063,7 @@ class PBSService(PBSObject):
             # an open file descriptor, we close here but ignore errors in case
             # any were raised for all irrelevant cases
             lines.close()
-        except BaseException:
+        except:
             pass
         if (rv is None and existence) or (rv is not None and not existence):
             _msg = infomsg + attemptmsg
@@ -4199,7 +4202,7 @@ class PBSService(PBSObject):
 
     def _load_configuration(self, infile, objtype=None):
         """
-        Load configuration as was saved in infile
+        Load server configuration as was saved in infile
 
         :param infile: the file in which configuration
                        was saved
@@ -4211,45 +4214,99 @@ class PBSService(PBSObject):
         if os.path.isfile(infile):
             conf = {}
             with open(infile, 'r') as f:
-                # load all objects from the Pickled file
-                while True:
-                    try:
-                        conf = cPickle.load(f)
-                    except BaseException:
-                        break
-
-            if objtype and objtype in conf:
-                conf = conf[objtype]
-            else:
-                # load all object types that could be in infile
-                newconf = {}
-                for ky in [MGR_OBJ_SERVER, MGR_OBJ_SCHED, MGR_OBJ_NODE]:
-                    if ky not in conf:
-                        conf[ky] = {}
-                    newconf = {**newconf, **conf[ky]}
-                conf = newconf
-
+                try:
+                    conf = json.load(f)
+                except ValueError:
+                    self.logger.info("Error loading JSON file: %s"
+                                     % infile)
+                    return False
+            qmgr = os.path.join(self.client_conf['PBS_EXEC'],
+                                'bin', 'qmgr')
             for k, v in conf.items():
-                fn = self.du.create_temp_file()
-                with open(fn, 'w') as fd:
-                    # handle server data saved as output of qmgr commands
-                    # by piping data back into qmgr
-                    if k.startswith('qmgr_'):
-                        qmgr = os.path.join(self.client_conf['PBS_EXEC'],
-                                            'bin', 'qmgr')
-                        fd.write("\n".join(v))
-                        self.du.run_cmd(self.hostname, [qmgr], cstdin=fd,
-                                        sudo=True)
-                    else:
-                        fd.write("\n".join(v))
-                        # append the last line
-                        fd.write("\n")
-                        self.du.run_cmd(self.hostname, ['cp', fn, k],
-                                        sudo=True)
-                    os.remove(fn)
-
+                # Load server configuration
+                if k.startswith('qmgr_'):
+                    fpath = self.du.create_temp_file()
+                    print_svr = '\n'.join(v)
+                    with open(fpath, 'w') as f:
+                        f.write(print_svr)
+                    file_qmgr = open(fpath)
+                    d = self.du.run_cmd(
+                        self.hostname, [qmgr], stdin=file_qmgr, sudo=True,
+                        logerr=False, level=logging.DEBUG)
+                    err_msg = "Failed to load server configurations"
+                    file_qmgr.close()
+                    if d['rc'] != 0:
+                        self.logger.error("%s" % err_msg)
+                        return False
+                # Load pbs.conf file
+                elif k == "pbs_conf":
+                    enc_utf = v.encode('UTF-8')
+                    dec_b64 = base64.b64decode(enc_utf)
+                    cfg_vals = dec_b64.decode('UTF-8')
+                    config = ast.literal_eval(cfg_vals)
+                    self.du.set_pbs_config(self.hostname, confs=config)
+                # Load hooks
+                elif k == "hooks":
+                    fpath = self.du.create_temp_file()
+                    print_hooks = '\n'.join(v)
+                    with open(fpath, 'w') as f:
+                        f.write(print_hooks)
+                    file_qmgr = open(fpath)
+                    d = self.du.run_cmd(
+                        self.hostname, [qmgr], stdin=file_qmgr, sudo=True,
+                        level=logging.DEBUG)
+                    file_qmgr.close()
+                    if d['rc'] != 0:
+                        self.logger.error("Failed to load site hooks")
+            if 'pbsnodes' in conf:
+                nodes = conf['pbsnodes']
+                for node in nodes:
+                    node_name = str(node['id'])
+                    nodes_created = self.create_pbsnode(node_name, node)
+                    if not nodes_created:
+                        self.logger.error("Failed to create node: %s"
+                                          % node)
+                        return False
             return True
         return False
+
+    def create_pbsnode(self, node_name, attrs):
+        """
+        Create node in PBS with given attributes
+        """
+        qmgr = os.path.join(self.client_conf['PBS_EXEC'],
+                            'bin', 'qmgr')
+        execcmd = "create node " + node_name
+        execcmd += " Port=" + attrs['Port']
+        cmd = [qmgr, "-c", execcmd]
+        ret = self.du.run_cmd(self.hostname, cmd, sudo=True)
+        if ret['rc'] != 0:
+            self.logger.info("Failed to create node: %s" % node_name)
+            self.logger.error("Error: %s" % ret['err'])
+            return False
+        # skip all read-only attributes
+        skip_atb_list = ['id', 'pbs_version', 'pcpus',
+                         'last_state_change_time', 'ntype',
+                         'Mom', 'sharing', 'resources_available.vnode',
+                         'resources_available.host', 'last_used_time',
+                         'resource_assigned', 'resv', 'Port'
+                         ]
+        for node_atb, val in attrs.items():
+            # only offline state of node is read, write attribute
+            if(node_atb in skip_atb_list or
+               'resources_assigned' in node_atb or
+               (node_atb == 'state' and val != 'offline')):
+                continue
+            k = str(node_atb)
+            v = str(val)
+            execcmd = "set node %s %s=%s" % (node_name, k, v)
+            cmd = [qmgr, "-c", execcmd]
+            ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
+                                  level=logging.DEBUG)
+            if ret['rc'] != 0:
+                self.logger.info("Failed to set node attribute %s=%s" % (k, v))
+                return False
+        return True
 
     def get_tempdir(self):
         """
@@ -4982,13 +5039,6 @@ class Server(PBSService):
                   encountered.
         :raises: PbsStatusError or PbsManagerError
         """
-        ignore_attrs = ['id', 'pbs_license', ATTR_NODE_ProvisionEnable]
-        ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
-        ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
-        ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
-        ignore_attrs += [ATTR_operators]
-        ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
-        unsetlist = []
         setdict = {}
         skip_site_hooks = ['pbs_cgroups']
         self.logger.info(self.logprefix +
@@ -5001,31 +5051,7 @@ class Server(PBSService):
                                           'lib', 'python', 'altair',
                                           'pbs_hooks',
                                           'PBS_translate_mpp.HK')
-        self.jacs_hk = os.path.join(self.pbs_conf['PBS_HOME'],
-                                    'server_priv', 'hooks',
-                                    'PBS_cray_jacs.HK')
-        self.dflt_jacs_hk = os.path.join(self.pbs_conf['PBS_EXEC'],
-                                         'lib', 'python', 'altair',
-                                         'pbs_hooks',
-                                         'PBS_cray_jacs.HK')
-        self.jacs_cf = os.path.join(self.pbs_conf['PBS_HOME'],
-                                    'server_priv', 'hooks',
-                                    'PBS_cray_jacs.CF')
-        self.dflt_jacs_cf = os.path.join(self.pbs_conf['PBS_EXEC'],
-                                         'lib', 'python', 'altair',
-                                         'pbs_hooks',
-                                         'PBS_cray_jacs.CF')
-        if server_stat is None:
-            server_stat = self.status(SERVER, level=logging.DEBUG)[0]
-        for k in server_stat.keys():
-            if (k in ignore_attrs) or (k in self.dflt_attributes.keys()):
-                continue
-            elif (('.' in k) and (k.split('.')[0] in ignore_attrs)):
-                continue
-            else:
-                unsetlist.append(k)
-        if len(unsetlist) != 0:
-            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
+        self.unset_svr_attrib()
         for k in self.dflt_attributes.keys():
             if(k not in self.attributes or
                self.attributes[k] != self.dflt_attributes[k]):
@@ -5038,53 +5064,20 @@ class Server(PBSService):
                 reverthooks = True
             else:
                 reverthooks = False
-            hooks = self.status(HOOK, level=logging.DEBUG)
-            hooks = [h['id'] for h in hooks]
-            for h in skip_site_hooks:
-                if h in hooks:
-                    hooks.remove(h)
-            if len(hooks) > 0:
-                self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
+            self.delete_site_hooks()
         if delqueues:
             revertqueues = False
-            queues = self.status(QUEUE, level=logging.DEBUG)
-            queues = [q['id'] for q in queues]
-            if len(queues) > 0:
-                try:
-                    nodes = self.status(VNODE, logerr=False)
-                    for node in nodes:
-                        if 'queue' in node.keys():
-                            self.manager(MGR_CMD_UNSET, NODE, 'queue',
-                                         node['id'])
-                except BaseException:
-                    pass
-                self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
+            self.delete_queues()
             a = {ATTR_qtype: 'Execution',
                  ATTR_enable: 'True',
                  ATTR_start: 'True'}
             self.manager(MGR_CMD_CREATE, QUEUE, a, id='workq')
             setdict.update({ATTR_dfltque: 'workq'})
         if delscheds:
-            self.manager(MGR_CMD_LIST, SCHED)
-            for name in list(self.schedulers.keys()):
-                if name != 'default':
-                    self.schedulers[name].terminate()
-                    sched_log = self.schedulers[
-                        name].attributes['sched_log']
-                    sched_priv = self.schedulers[
-                        name].attributes['sched_priv']
-                    self.du.rm(path=sched_log, sudo=True,
-                               recursive=True, force=True)
-                    self.du.rm(path=sched_priv, sudo=True,
-                               recursive=True, force=True)
-                    self.manager(MGR_CMD_DELETE, SCHED, id=name)
+            self.delete_sched_config()
 
         if delnodes:
-            try:
-                self.manager(MGR_CMD_DELETE, VNODE, id="@default")
-            except PbsManagerError as e:
-                if "Unknown node" not in e.msg[0]:
-                    raise
+            self.delete_nodes()
         if reverthooks:
             if self.platform == 'cray' or self.platform == 'craysim':
                 if self.du.cmp(self.hostname, self.dflt_mpp_hook,
@@ -5139,6 +5132,87 @@ class Server(PBSService):
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
         return True
 
+    def unset_svr_attrib(self, server_stat=None):
+        """
+        Unset server attributes
+        """
+        ignore_attrs = ['id', 'pbs_license', ATTR_NODE_ProvisionEnable]
+        ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
+        ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
+        ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
+        ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
+        unsetlist = []
+        self.cleanup_jobs_and_reservations()
+        if server_stat is None:
+            server_stat = self.status(SERVER, level=logging.DEBUG)[0]
+        for k in server_stat.keys():
+            if (k in ignore_attrs) or (k in self.dflt_attributes.keys()):
+                continue
+            elif (('.' in k) and (k.split('.')[0] in ignore_attrs)):
+                continue
+            else:
+                unsetlist.append(k)
+        if len(unsetlist) != 0:
+            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
+
+    def delete_site_hooks(self):
+        """
+        Delete site hooks from PBS
+        """
+        skip_site_hooks = ['pbs_cgroups']
+        hooks = self.status(HOOK, level=logging.DEBUG)
+        hooks = [h['id'] for h in hooks]
+        for h in skip_site_hooks:
+            if h in hooks:
+                hooks.remove(h)
+        if len(hooks) > 0:
+            self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
+
+    def delete_queues(self):
+        """
+        Delete queues
+        """
+        queues = self.status(QUEUE, level=logging.DEBUG)
+        queues = [q['id'] for q in queues]
+        if len(queues) > 0:
+            try:
+                nodes = self.status(VNODE, logerr=False)
+                for node in nodes:
+                    if 'queue' in node.keys():
+                        self.manager(MGR_CMD_UNSET, NODE, 'queue',
+                                     node['id'])
+            except BaseException:
+                pass
+            self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
+
+    def delete_sched_config(self):
+        """
+        Delete sched_priv & sched_log files
+        """
+        self.manager(MGR_CMD_LIST, SCHED)
+        for name in list(self.schedulers.keys()):
+            if name != 'default':
+                self.schedulers[name].terminate()
+                sched_log = self.schedulers[
+                    name].attributes['sched_log']
+                sched_priv = self.schedulers[
+                    name].attributes['sched_priv']
+                self.du.rm(path=sched_log, sudo=True,
+                           recursive=True, force=True)
+                self.du.rm(path=sched_priv, sudo=True,
+                           recursive=True, force=True)
+                self.manager(MGR_CMD_DELETE, SCHED, id=name)
+
+    def delete_nodes(self):
+        """
+        Remove all the nodes from PBS
+        """
+        try:
+            self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+        except PbsManagerError as e:
+            if "Unknown node" not in e.msg[0]:
+                raise
+
     def save_configuration(self, outfile, mode='a'):
         """
         Save a server configuration, this includes:
@@ -5164,47 +5238,85 @@ class Server(PBSService):
         """
         conf = {}
         sconf = {MGR_OBJ_SERVER: conf}
-
-        rd = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
-                          'resourcedef')
-        self._save_config_file(conf, rd)
-
+        # save pbs.conf file
+        cfg_path = self.du.get_pbs_conf_file()
+        with open(cfg_path, 'r') as p:
+            pbs_cfg = p.readlines()
+            config = self.utils.convert_to_dictlist(pbs_cfg)
+            cfg_str = str(config[0])
+            encode_utf = cfg_str.encode('UTF-8')
+            pbs_cfg_b64 = base64.b64encode(encode_utf)
+            decode_utf = pbs_cfg_b64.decode('UTF-8')
+        conf['pbs_conf'] = decode_utf
+        # save hook files
+        hooks_str = self._save_hook_files()
+        if hooks_str:
+            conf.update(hooks_str)
+            conf['hooks'] = hooks_str
+        else:
+            self.logger.error('Failed to save site hooks')
+            return False
         qmgr = os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qmgr')
-
-        ret = self.du.run_cmd(self.client, [qmgr, '-c', 'p s'], sudo=True)
+        pbsnodes = os.path.join(
+            self.client_conf['PBS_EXEC'], 'bin', 'pbsnodes')
+        ret = self.du.run_cmd(
+            self.hostname, [
+                qmgr, '-c', 'print server'], sudo=True,
+            logerr=False, level=logging.DEBUG)
         if ret['rc'] != 0:
+            self.logger.error('Failed to get Server attributes')
             return False
         else:
             conf['qmgr_print_server'] = ret['out']
-
-        ret = self.du.run_cmd(self.hostname, [qmgr, '-c', 'p sched'],
-                              sudo=True)
+        ret = self.du.run_cmd(self.hostname, [qmgr, '-c', 'print sched'],
+                              logerr=False, level=logging.DEBUG, sudo=True)
         if ret['rc'] != 0:
+            self.logger.error('Failed to get sched attributes')
             return False
         else:
             conf['qmgr_print_sched'] = ret['out']
-
-        ret = self.du.run_cmd(self.hostname, [qmgr, '-c', 'p h'], sudo=True)
-        if ret['rc'] != 0:
+        ret = self.du.run_cmd(self.hostname, [pbsnodes, '-av'],
+                              logerr=False, level=logging.DEBUG)
+        err_msg = "Server has no node list"
+        # pbsnodes -av returns a non zero exit code when there are
+        # no nodes in cluster
+        if ret['rc'] != 0 and err_msg in ret['err']:
+            self.logger.error('Failed to get nodes info')
             return False
         else:
-            conf['qmgr_print_hook'] = ret['out']
-
+            nodes_val = self.utils.convert_to_dictlist(ret['out'])
+            conf['pbsnodes'] = nodes_val
         try:
             with open(outfile, mode) as f:
-                cPickle.dump(sconf, f)
+                json.dump(conf, f)
         except BaseException:
             self.logger.error('Error processing file ' + outfile)
             return False
 
         return True
 
+    def _save_hook_files(self):
+        """
+        save all the hooks .CF, .PY, .HK files
+        """
+        qmgr = os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qmgr')
+        cfg = {"hooks": ""}
+        cmd = [qmgr, '-c', 'print hook @default']
+        ret = self.du.run_cmd(self.hostname, cmd,
+                              sudo=True)
+        if ret['rc'] != 0:
+            self.logger.error('Failed to save hook files ')
+            return False
+        else:
+            cfg['qmgr_print_hook'] = ret['out']
+        return cfg
+
     def load_configuration(self, infile):
         """
         load configuration from saved file ``infile``
         """
-        self.revert_to_defaults()
-        self._load_configuration(infile, MGR_OBJ_SERVER)
+        rv = self._load_configuration(infile, MGR_OBJ_SERVER)
+        return rv
 
     def get_hostname(self):
         """
@@ -5708,7 +5820,7 @@ class Server(PBSService):
                             elif obj_type == PBS_HOOK:
                                 return [h.attributes for h in
                                         self.pbshooks.values()]
-                    except BaseException:
+                    except:
                         pass
                 else:
                     bs = pbs_stathook(c, id, a, extend)
@@ -7824,7 +7936,7 @@ class Server(PBSService):
                 name = e0
                 r = Resource(name, rtype, flag)
                 resources[name] = r
-        except BaseException:
+        except:
             raise PbsResourceError(rc=1, rv=False,
                                    msg="error in parse_resources")
         return resources
@@ -8901,7 +9013,7 @@ class Server(PBSService):
                         if a.endswith('mem'):
                             try:
                                 amt = PbsTypeSize().encode(amt)
-                            except BaseException:
+                            except:
                                 # we guessed the type incorrectly
                                 pass
                     else:
@@ -9008,7 +9120,7 @@ class Server(PBSService):
                             avail_nodes_by_time[tm].append(nodes[n])
                             try:
                                 nodes_id.remove(n)
-                            except BaseException:
+                            except:
                                 pass
                         else:
                             ncopy = copy.copy(nodes[n])
@@ -9045,7 +9157,7 @@ class Server(PBSService):
                                 avail_nodes_by_time[tm].append(nodes[n])
                                 try:
                                     nodes_id.remove(n)
-                                except BaseException:
+                                except:
                                     pass
                             else:
                                 ncopy = copy.copy(nodes[n])
@@ -9311,7 +9423,7 @@ class Server(PBSService):
         if createnode:
             try:
                 statm = self.status(NODE, id=natvnode)
-            except BaseException:
+            except:
                 statm = []
             if len(statm) >= 1:
                 _m = 'Mom %s already exists, not creating' % (natvnode)
@@ -9488,7 +9600,7 @@ class Server(PBSService):
         srv_stat = self.status(SERVER, 'sync_mom_hookfiles_timeout')
         try:
             sync_val = srv_stat[0]['sync_mom_hookfiles_timeout']
-        except BaseException:
+        except:
             self.logger.info("Setting sync_mom_hookfiles_timeout to 15s")
             self.manager(MGR_CMD_SET, SERVER,
                          {"sync_mom_hookfiles_timeout": 15})
@@ -10223,7 +10335,7 @@ class Server(PBSService):
                               snapmap=self.snapmap)
             try:
                 svr.manager(MGR_CMD_DELETE, NODE, None, id="")
-            except BaseException:
+            except:
                 pass
             svr.revert_to_defaults(delqueues=True, delhooks=True)
             local = svr.pbs_conf['PBS_HOME']
@@ -10264,7 +10376,7 @@ class Server(PBSService):
             for a in ['pbs_license_info', 'mail_from', 'acl_hosts']:
                 try:
                     svr.manager(MGR_CMD_UNSET, SERVER, a, sudo=True)
-                except BaseException:
+                except:
                     pass
 
             for (d, l) in _fcopy:
@@ -10298,7 +10410,7 @@ class Server(PBSService):
                 if vdef:
                     try:
                         svr.manager(MGR_CMD_DELETE, NODE, None, "")
-                    except BaseException:
+                    except:
                         pass
                     MoM(h, pbsconf_file=conf_file).insert_vnode_def(vdef)
                     svr.restart()
@@ -10950,7 +11062,7 @@ class Scheduler(PBSService):
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
                                     sudo=(not self.has_snap),
                                     level=logging.DEBUG2)['out']
-        except BaseException:
+        except:
             self.logger.error('error parsing scheduler configuration')
             return False
 
@@ -11100,7 +11212,7 @@ class Scheduler(PBSService):
             os.remove(fn)
 
             self.logger.debug(self.logprefix + "updated configuration")
-        except BaseException:
+        except:
             m = self.logprefix + 'error in apply_config '
             self.logger.error(m + str(traceback.print_exc()))
             raise PbsSchedConfigError(rc=1, rv=False, msg=m)
@@ -12033,7 +12145,7 @@ class Scheduler(PBSService):
                     (dtime_from, dtime_to) = self.utils.convert_dedtime(line)
                     self.dedicated_time.append({'from': dtime_from,
                                                 'to': dtime_to})
-        except BaseException:
+        except:
             self.logger.error('error in parse_dedicated_time')
             return None
 
@@ -12113,7 +12225,7 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, fn, ddfile, sudo=True,
                              preserve_permission=False)
             os.remove(fn)
-        except BaseException:
+        except:
             raise PbsSchedConfigError(rc=1, rv=False,
                                       msg='error adding dedicated time')
 
@@ -12183,7 +12295,7 @@ class Scheduler(PBSService):
         """
         try:
             from ptl.utils.pbs_logutils import PBSSchedulerLog
-        except BaseException:
+        except:
             self.logger.error('error loading ptl.utils.pbs_logutils')
             return None
 
@@ -13267,7 +13379,7 @@ class MoM(PBSService):
                         self.config[k] = [self.config[k], v]
                 else:
                     self.config[k] = v
-        except BaseException:
+        except:
             self.logger.error('error in parse_config')
             return None
 
@@ -13356,7 +13468,7 @@ class MoM(PBSService):
             self.du.run_copy(self.hostname, fn, dest,
                              preserve_permission=False, sudo=True)
             os.remove(fn)
-        except BaseException:
+        except:
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg='error processing add_config')
         if restart:
@@ -13397,7 +13509,7 @@ class MoM(PBSService):
         """
         try:
             fn = self.du.create_temp_file(self.hostname, body=vdef)
-        except BaseException:
+        except:
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg="Failed to insert vnode definition")
         if fname is None:
@@ -13601,7 +13713,7 @@ class MoM(PBSService):
         :param host: the hostname on which dyn res script is created
         :type host: str or None
         :param perm: perm to use while creating scripts
-                     (must be octal like 0777)
+                     (must be octal like 0o777)
         :param prefix: the file name will begin with this prefix
         :type prefix: str
         :param suffix: the file name will end with this suffix
@@ -13864,7 +13976,7 @@ class Job(ResourceResv):
         else:
             try:
                 homedir = pwd.getpwnam(user)[5]
-            except BaseException:
+            except:
                 homedir = ""
 
         self.username = user
@@ -14127,7 +14239,7 @@ class InteractiveJob(threading.Thread):
         """
         try:
             import pexpect
-        except BaseException:
+        except:
             self.logger.error('pexpect module is required for '
                               'interactive jobs')
             return None
@@ -14164,7 +14276,7 @@ class InteractiveJob(threading.Thread):
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
-            expstr += r"(?P<jobid>\d+.[0-9A-Za-z-.]+) to start"
+            expstr += "(?P<jobid>\d+.[0-9A-Za-z-.]+) to start"
             _p.expect(expstr)
             if _p.match:
                 self.jobid = _p.match.group('jobid').decode()
