@@ -9732,7 +9732,8 @@ class Server(PBSService):
         else:
             hook_t = PBS_HOOK
 
-        fn = self.du.create_temp_file(body=json.dumps(hook_conf))
+        hook_body = json.dumps(hook_conf, indent=4)
+        fn = self.du.create_temp_file(body=hook_body)
 
         if not self._is_local:
             tmpdir = self.du.get_tempdir(self.hostname)
@@ -9752,7 +9753,7 @@ class Server(PBSService):
             self.du.rm(self.hostname, rfile)
         self.logger.log(level, 'server ' + self.shortname +
                         ': imported hook config\n---\n' +
-                        str(hook_conf) + '---')
+                        str(hook_body) + '\n---\n')
         return True
 
     def export_hook_config(self, hook_name, hook_type):
