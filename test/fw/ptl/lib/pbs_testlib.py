@@ -9718,7 +9718,7 @@ class Server(PBSService):
         The hook must have been created prior to calling this
         function.
 
-        :param hook_name: The name of the hook to import body to
+        :param hook_name: The name of the hook to import hook config
         :type name: str
         :param hook_conf: The body of the hook config as a dict.
         :type hook_conf: dict
@@ -9732,13 +9732,16 @@ class Server(PBSService):
         else:
             hook_t = PBS_HOOK
 
-        hook_body = json.dumps(hook_conf, indent=4)
-        fn = self.du.create_temp_file(body=hook_body)
+        hook_config_data = json.dumps(hook_conf, indent=4)
+        fn = self.du.create_temp_file(body=hook_config_data)
 
         if not self._is_local:
             tmpdir = self.du.get_tempdir(self.hostname)
             rfile = os.path.join(tmpdir, os.path.basename(fn))
-            self.du.run_copy(self.hostname, fn, rfile)
+            rc = self.du.run_copy(self.hostname, fn, rfile)
+            if rc != 0
+                raise AssertionError("Failed to copy file %s"
+                                     % (rfile))
         else:
             rfile = fn
 
@@ -9753,7 +9756,7 @@ class Server(PBSService):
             self.du.rm(self.hostname, rfile)
         self.logger.log(level, 'server ' + self.shortname +
                         ': imported hook config\n---\n' +
-                        str(hook_body) + '\n---\n')
+                        str(hook_config_data) + '\n---\n')
         return True
 
     def export_hook_config(self, hook_name, hook_type):
