@@ -822,7 +822,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return Comm(hostname, pbsconf_file=pbsconf_file, server=server)
 
@@ -842,7 +842,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return Scheduler(hostname=hostname, server=server,
                          pbsconf_file=pbsconf_file)
@@ -862,7 +862,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
 

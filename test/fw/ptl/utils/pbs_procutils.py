@@ -120,7 +120,7 @@ class ProcUtils(object):
                     size = _s[5]
                     cputime = _s[6]
                     command = " ".join(_s[7:])
-                except:
+                except BaseException:
                     continue
 
                 if ((pid is not None and p == str(pid)) or
@@ -183,7 +183,7 @@ class ProcUtils(object):
                 cmd = ['ps', '-o', 'stat', '-p', str(pid), '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
                 return rv['out'][0][0]
-        except:
+        except BaseException:
             self.logger.error('Error getting process state for pid ' + pid)
             return ''
 
@@ -222,7 +222,7 @@ class ProcUtils(object):
                     childlist.extend(self.get_proc_children(hostname, child))
 
             return childlist
-        except:
+        except BaseException:
             self.logger.error('Error getting children processes of parent ' +
                               ppid)
             return []
@@ -281,6 +281,7 @@ class ProcMonitor(threading.Thread):
         """
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
+
     def get_system_stats(self, nw_protocols=['TCP']):
         """
         Run system monitoring
@@ -291,7 +292,7 @@ class ProcMonitor(threading.Thread):
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
         for i in range(0, len(op), 2):
-            self.sysstat.update(dict(zip(op[i],op[i+1])))
+            self.sysstat.update(dict(zip(op[i], op[i + 1])))
 
     def run(self):
         """
@@ -302,7 +303,7 @@ class ProcMonitor(threading.Thread):
             self._pu.get_proc_info(name=self.name, regexp=self.regexp)
             for _p in self._pu.processes.values():
                 for _per_proc in _p:
-                     if bool(re.search("^((?!benchpress).)*$", _per_proc.name)):
+                    if bool(re.search("^((?!benchpress).)*$", _per_proc.name)):
                         _to_db = {}
                         _to_db['time'] = time.ctime(int(_per_proc.time))
                         _to_db['rss'] = _per_proc.rss
@@ -324,8 +325,12 @@ class ProcMonitor(threading.Thread):
             _sys_info['rtps'] = self.sysstat['rtps']
             _sys_info['wtps'] = self.sysstat['wtps']
             self.db_proc_info.append(_sys_info)
-            with open('proc_monitor.json', 'a+', encoding='utf-8') as proc_json_report:
-                json.dump(self.db_proc_info, proc_json_report, ensure_ascii=False, indent=4)
+            with open('proc_monitor.json', 'a+', encoding='utf-8') as proc:
+                json.dump(
+                    self.db_proc_info,
+                    proc,
+                    ensure_ascii=False,
+                    indent=4)
             time.sleep(self.frequency)
 
     def stop(self):
