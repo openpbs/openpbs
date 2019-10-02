@@ -290,9 +290,8 @@ class ProcMonitor(threading.Thread):
         op = rv['out'][2:]
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
-        op = [map(None, op[i], op[i + 1]) for i in range(0, len(op), 2)]
-        for i in op:
-            self.sysstat.update(dict(i))
+        for i in range(0, len(op), 2):
+            self.sysstat.update(dict(zip(op[i],op[i+1])))
 
     def run(self):
         """
@@ -325,8 +324,8 @@ class ProcMonitor(threading.Thread):
             _sys_info['rtps'] = self.sysstat['rtps']
             _sys_info['wtps'] = self.sysstat['wtps']
             self.db_proc_info.append(_sys_info)
-            with open('proc_monitor.json', 'w') as proc_json_report:
-                json.dump(self.db_proc_info, proc_json_report)
+            with open('proc_monitor.json', 'a+', encoding='utf-8') as proc_json_report:
+                json.dump(self.db_proc_info, proc_json_report, ensure_ascii=False, indent=4)
             time.sleep(self.frequency)
 
     def stop(self):
