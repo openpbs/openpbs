@@ -59,13 +59,13 @@ from nose.util import isclass
 
 import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
-from ptl.lib.pbs_testlib import PbsHardwareError
+from ptl.lib.pbs_testlib import PbsHardwareMonitorError
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
-
+from ptl.utils.pbs_testusers import PBS_ALL_USERS
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -521,6 +521,7 @@ class PTLTestRunner(Plugin):
         self.__tf_count = 0
         self.__failed_tc_count_msg = False
         self._test_marker = 'test_'
+        self.hardware_report_timer = None
 
     def options(self, parser, env):
         """
@@ -612,6 +613,8 @@ class PTLTestRunner(Plugin):
         return max([dflt_timeout, tc_timeout])
 
     def __set_test_end_data(self, test, err=None):
+        if self.hardware_report_timer is not None:
+            self.hardware_report_timer.cancel()
         if not hasattr(test, 'start_time'):
             test = test.context
         if err is not None:
@@ -755,297 +758,84 @@ class PTLTestRunner(Plugin):
     def hardware_report(self):
         """
         function used to get hardware report
-        in every 5 minutes
+        every 5 minutes
         """
         du = DshUtils()
         self.hardware_report_timer = Timer(300, self.hardware_report)
         self.hardware_report_timer.start()
-        self.timer_start = True
-        # mom hardware report
-        for hostname in self.param_dict['moms']:
-            hr = SystemInfo()
-            hr.get_system_info(hostname)
-            # monitors ram
-            avail_ram = getattr(hr, 'system_ram', None)
-            total_ram = getattr(hr, 'system_total_ram', None)
-            if (avail_ram or total_ram) is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get ram info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+": unable to get ram info")
-            else:
-                used_ram_percent = ((total_ram - avail_ram)/total_ram)*100
-                if 70 < used_ram_percent < 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.warning(_msg + str(used_ram_percent) + "%")
-                elif used_ram_percent > 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.error(_msg + str(used_ram_percent) + "%")
+        self.hardware_monitor_start = True
+        for system in ['servers', 'moms', 'comms']:
+            for hostname in self.param_dict[system]:
+                hr = SystemInfo()
+                hr.get_system_info(hostname)
+                # monitors disk
+                used_disk_percent = getattr(hr,
+                                            'system_disk_used_percent', None)
+                if used_disk_percent is None:
+                    _msg = hostname
+                    _msg += ": unable to get disk info"
+                    self.logger.error(_msg)
                     self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg+str(used_ram_percent)+"%")
-            # monitors disk
-            used_disk_percent = getattr(hr, 'system_disk_used_percent', None)
-            if used_disk_percent is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get disk info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+"unable to get disk info")
-            elif 70 < used_disk_percent < 95:
-                _msg = hostname + ": used disk is "
-                self.logger.warning(_msg + str(used_disk_percent) + "%")
-            elif used_disk_percent > 95:
-                _msg = hostname + ": used disk is "
-                self.logger.error(_msg + str(used_disk_percent) + "%")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+str(used_disk_percent)+"%")
-            # checks core files in mom_priv
-            pbs_conf = du.parse_pbs_config(hostname)
-            mom_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                         "mom_priv")
-            mom_priv_files = du.listdir(hostname,
-                                        mom_priv_path, sudo=True,
-                                        fullpath=False)
-            for filename in mom_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + mom_priv_path)
+                    self.hardware_monitor_start = False
+                    raise PbsHardwareMonitorError(msg=_msg)
+                elif 70 < used_disk_percent < 95:
+                    _msg = hostname + ": used disk is "
+                    _msg += str(used_disk_percent) + "%"
+                    _msg += "Please clean the disk"
+                    self.logger.warning(_msg)
+                elif used_disk_percent > 95:
+                    _msg = hostname + ": used disk is "
+                    _msg += str(used_disk_percent) + "%"
+                    _msg += "test will be  stopped"
+                    self.logger.error(_msg)
                     self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + mom_priv_path)
-            # checks core files in user home directory
-            ptl_users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                         'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                         'pbsroot', 'pbsadmin']
-            for user in ptl_users:
-                cmd = "getent passwd " + user
-                user_home = du.run_cmd(hostname, cmd=cmd)
-                if user_home['rc'] != 0:
-                    _msg = hostname + ", user-" + user
-                    self.logger.error(_msg + ": unable to get user home")
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(
-                        msg=_msg+": unable to get user home")
-                else:
-                    user_home_list = user_home['out'][0].split(":")
-                    user_home_files = du.listdir(hostname,
-                                                 user_home_list[5],
-                                                 sudo=True,
-                                                 fullpath=False)
+                    self.hardware_monitor_start = False
+                    raise PbsHardwareMonitorError(msg=_msg)
+                # checks for core files
+                pbs_conf = du.parse_pbs_config(hostname)
+                mom_priv_path = os.path.join(pbs_conf["PBS_HOME"],
+                                             "mom_priv")
+                mom_priv_files = du.listdir(hostname,
+                                            mom_priv_path, sudo=True,
+                                            fullpath=False)
+                for filename in mom_priv_files:
+                    if filename.startswith("core"):
+                        _msg = hostname + ": core files found in "
+                        _msg += mom_priv_path
+                        self.logger.warning(_msg)
+                if (system is "comms") or (system is "servers"):
+                    server_priv_path = os.path.join(pbs_conf["PBS_HOME"],
+                                                    "server_priv")
+                    server_priv_files = du.listdir(hostname,
+                                                   server_priv_path, sudo=True,
+                                                   fullpath=False)
+                    for filename in server_priv_files:
+                        if filename.startswith("core"):
+                            _msg = hostname + ": core files found in "
+                            self.logger.warning(_msg + server_priv_path)
+                    sched_priv_path = os.path.join(pbs_conf["PBS_HOME"],
+                                                   "sched_priv")
+                    sched_priv_files = du.listdir(hostname,
+                                                  sched_priv_path, sudo=True,
+                                                  fullpath=False)
+                    for filename in sched_priv_files:
+                        if filename.startswith("core"):
+                            _msg = hostname + ": core files found in "
+                            self.logger.warning(_msg + sched_priv_path)
+                for u in PBS_ALL_USERS:
+                    user_home_files = du.listdir(hostname, u.home,
+                                                 sudo=True, fullpath=False)
                     for filename in user_home_files:
                         if filename.startswith("core"):
                             _msg = hostname
-                            _msg = ", user-" + user
-                            _msg += ": core file exist at "
+                            _msg = ": user-" + u
+                            _msg += ": core files found in "
                             self.logger.warning(_msg + user_home['out'])
-                            self.hardware_report_timer.cancel()
-                            raise PbsHardwareError(msg=_msg+user_home['out'])
-        # server hardware report
-        for hostname in self.param_dict['servers']:
-            hr = SystemInfo()
-            hr.get_system_info(hostname)
-            # monitors ram
-            avail_ram = getattr(hr, 'system_ram', None)
-            total_ram = getattr(hr, 'system_total_ram', None)
-            if (avail_ram or total_ram) is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get ram info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+": unable to get ram info")
-            else:
-                used_ram_percent = ((total_ram - avail_ram)/total_ram)*100
-                if 70 < used_ram_percent < 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.warning(_msg + str(used_ram_percent) + "%")
-                elif used_ram_percent > 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.error(_msg + str(used_ram_percent) + "%")
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg+str(used_ram_percent)+"%")
-            # monitors disk
-            used_disk_percent = getattr(hr, 'system_disk_used_percent', None)
-            if used_disk_percent is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get disk info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+": unable to get disk info")
-            elif 70 < used_disk_percent < 95:
-                _msg = hostname + ": used disk is "
-                self.logger.warning(_msg + str(used_disk_percent) + "%")
-            elif used_disk_percent > 95:
-                _msg = hostname + ": used disk is "
-                self.logger.error(_msg + str(used_disk_percent) + "%")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+str(used_disk_percent)+"%")
-            # checks core files in mom_priv
-            pbs_conf = du.parse_pbs_config(hostname)
-            mom_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                         "mom_priv")
-            mom_priv_files = du.listdir(hostname,
-                                        mom_priv_path, sudo=True,
-                                        fullpath=False)
-            for filename in mom_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + mom_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + mom_priv_path)
-            # checks core files in server_priv
-            server_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                            "server_priv")
-            server_priv_files = du.listdir(hostname,
-                                           server_priv_path, sudo=True,
-                                           fullpath=False)
-            for filename in server_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + server_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + server_priv_path)
-            # checks core files in sched_priv
-            sched_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                           "sched_priv")
-            sched_priv_files = du.listdir(hostname,
-                                          sched_priv_path, sudo=True,
-                                          fullpath=False)
-            for filename in sched_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + sched_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + sched_priv_path)
-            # checks core files in user home directory
-            ptl_users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                         'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                         'pbsroot', 'pbsadmin']
-            for user in ptl_users:
-                cmd = "getent passwd " + user
-                user_home = du.run_cmd(hostname, cmd=cmd)
-                if user_home['rc'] != 0:
-                    _msg = hostname + ", user" + user
-                    self.logger.error(_msg + ": unable to get user home")
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(
-                        msg=_msg+": unable to get user home")
-                else:
-                    user_home_list = user_home['out'][0].split(":")
-                    user_home_files = du.listdir(hostname,
-                                                 user_home_list[5],
-                                                 sudo=True,
-                                                 fullpath=False)
-                    for filename in user_home_files:
-                        if filename.startswith("core"):
-                            _msg = hostname
-                            _msg = ", user-" + user
-                            _msg += ": core file exist at "
-                            self.logger.warning(_msg + user_home['out'])
-                            self.hardware_report_timer.cancel()
-                            raise PbsHardwareError(msg=_msg+user_home['out'])
-        # comms hardware report
-        for hostname in self.param_dict['comms']:
-            hr = SystemInfo()
-            hr.get_system_info(hostname)
-            # monitors ram
-            avail_ram = getattr(hr, 'system_ram', None)
-            total_ram = getattr(hr, 'system_total_ram', None)
-            if (avail_ram or total_ram) is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get ram info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+": unable to get ram info")
-            else:
-                used_ram_percent = ((total_ram - avail_ram)/total_ram)*100
-                if 70 < used_ram_percent < 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.warning(_msg + str(used_ram_percent) + "%")
-                elif used_ram_percent > 95:
-                    _msg = hostname + ": used ram is "
-                    self.logger.error(_msg + str(used_ram_percent) + "%")
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg+str(used_ram_percent)+"%")
-            # monitors disk
-            used_disk_percent = getattr(hr, 'system_disk_used_percent', None)
-            if used_disk_percent is None:
-                _msg = hostname
-                self.logger.error(_msg + ": unable to get disk info")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+": unable to get disk info")
-            elif 70 < used_disk_percent < 95:
-                _msg = hostname + ": used disk is "
-                self.logger.warning(_msg + str(used_disk_percent) + "%")
-            elif used_disk_percent > 95:
-                _msg = hostname + ": used disk is "
-                self.logger.error(_msg + str(used_disk_percent) + "%")
-                self.hardware_report_timer.cancel()
-                raise PbsHardwareError(msg=_msg+str(used_disk_percent)+"%")
-            # checks core files in mom_priv
-            pbs_conf = du.parse_pbs_config(hostname)
-            mom_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                         "mom_priv")
-            mom_priv_files = du.listdir(hostname,
-                                        mom_priv_path, sudo=True,
-                                        fullpath=False)
-            for filename in mom_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + mom_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + mom_priv_path)
-            # checks core files in server_priv
-            server_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                            "server_priv")
-            server_priv_files = du.listdir(hostname,
-                                           server_priv_path, sudo=True,
-                                           fullpath=False)
-            for filename in server_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + server_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + server_priv_path)
-            # checks core files in sched_priv
-            sched_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                           "sched_priv")
-            sched_priv_files = du.listdir(hostname,
-                                          sched_priv_path, sudo=True,
-                                          fullpath=False)
-            for filename in sched_priv_files:
-                if filename.startswith("core"):
-                    _msg = hostname + ": core file exist at "
-                    self.logger.warning(_msg + sched_priv_path)
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(msg=_msg + sched_priv_path)
-            # checks core files in user home directory
-            ptl_users = ['pbsuser1', 'pbsuser2', 'pbsuser3', 'pbsuser4',
-                         'pbsuser5', 'pbsuser6', 'pbsuser7', 'pbstest',
-                         'pbsroot', 'pbsadmin']
-            for user in ptl_users:
-                cmd = "getent passwd " + user
-                user_home = du.run_cmd(hostname, cmd=cmd)
-                if user_home['rc'] != 0:
-                    _msg = hostname + ", user" + user
-                    self.logger.error(_msg + ": unable to get user home")
-                    self.hardware_report_timer.cancel()
-                    raise PbsHardwareError(
-                        msg=_msg+": unable to get user home")
-                else:
-                    user_home_list = user_home['out'][0].split(":")
-                    user_home_files = du.listdir(hostname,
-                                                 user_home_list[5],
-                                                 sudo=True,
-                                                 fullpath=False)
-                    for filename in user_home_files:
-                        if filename.startswith("core"):
-                            _msg = hostname
-                            _msg = ", user-" + user
-                            _msg += ": core file exist at "
-                            self.logger.warning(_msg + user_home['out'])
-                            self.hardware_report_timer.cancel()
-                            raise PbsHardwareError(msg=_msg+user_home['out'])
 
     def startTest(self, test):
         """
         Start the test
         """
-        self.timer_start = False
         if ((self.cumulative_tc_failure_threshold != 0) and
                 (self.__tf_count >= self.cumulative_tc_failure_threshold)):
             _msg = 'Total testcases failure count exceeded cumulative'
@@ -1088,8 +878,6 @@ class PTLTestRunner(Plugin):
         if old_sigalrm_handler is not None:
             signal.signal(signal.SIGALRM, old_sigalrm_handler)
             signal.alarm(0)
-        if self.timer_start:
-            self.hardware_report_timer.cancel()
 
     def addError(self, test, err):
         """

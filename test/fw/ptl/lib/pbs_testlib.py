@@ -503,7 +503,7 @@ class PbsResvAlterError(PtlException):
     pass
 
 
-class PbsHardwareError(PtlException):
+class PbsHardwareMonitorError(PtlException):
     pass
 
 
