@@ -82,9 +82,9 @@ default_requirements = {
     'num_moms': 1,
     'num_comms': 1,
     'num_clients': 1,
-    'min_mom_ram': .128,
+    'min_mom_ram': 1,
     'min_mom_disk': 1,
-    'min_server_ram': .128,
+    'min_server_ram': 1,
     'min_server_disk': 1,
     'no_mom_on_server': False,
     'no_comm_on_server': False,
@@ -822,7 +822,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return Comm(hostname, pbsconf_file=pbsconf_file, server=server)
 
@@ -842,7 +842,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return Scheduler(hostname=hostname, server=server,
                          pbsconf_file=pbsconf_file)
@@ -862,7 +862,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         try:
             server = cls.servers[server]
-        except:
+        except BaseException:
             server = None
         return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
 
