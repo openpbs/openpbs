@@ -97,7 +97,7 @@ BuildRequires: rpm-build
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: libtool
-BuildRequires: hwloc-devel
+BuildRequires: hwloc-devel < 2.0
 BuildRequires: libX11-devel
 BuildRequires: libXt-devel
 BuildRequires: libedit-devel
