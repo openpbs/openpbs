@@ -6393,7 +6393,7 @@ class Server(PBSService):
 
         obj_type = {}
         for j in id:
-            if j[0] in ('R', 'S'):
+            if j[0] in ('R', 'S', 'M'):
                 obj_type[j] = RESV
                 try:
                     rc = self.delresv(j, extend, runas, logerr=logerr)
