@@ -6660,7 +6660,9 @@ class Server(PBSService):
             else:
                 as_script = False
 
-            if not self._is_local or as_script:
+            if (not self._is_local or as_script or
+                (runas and
+                 not self.du.is_localhost(PbsUser.get_user(runas).host))):
                 execcmd = '\'' + " ".join(execcmd) + '\''
             else:
                 execcmd = " ".join(execcmd)
