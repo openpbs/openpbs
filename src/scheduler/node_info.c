@@ -3211,14 +3211,14 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 							ns->end_of_chunk = 1;
 						}
 
-						if (ns != NULL) {
-							/* replace the dup'd node with the real one */
+						/* Replace the dup'd node with the real one, but only if we dup'd the nodes */
+						if (ns != NULL && pninfo_arr != ninfo_arr) {
 #ifdef NAS /* localmod 049 */
 							if (ns->ninfo->rank == resresv->server->nodes_by_NASrank[ns->ninfo->NASrank]->rank)
 								ns->ninfo = resresv->server->nodes_by_NASrank[ns->ninfo->NASrank];
 							else
-#endif /* localmod 049 */
-								ns->ninfo = find_node_by_indrank(pninfo_arr, ns->ninfo->node_ind, ns->ninfo->rank);
+#endif /* localmod 049 */					/* Need to call find_node_by_rank() over indrank since eval_placement might dup the nodes */
+								ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
 						}
 						if (!ninfo_arr[i]->lic_lock) {
 							ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
