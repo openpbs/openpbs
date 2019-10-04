@@ -5051,6 +5051,20 @@ class Server(PBSService):
                                           'lib', 'python', 'altair',
                                           'pbs_hooks',
                                           'PBS_translate_mpp.HK')
+        self.jacs_hk = os.path.join(self.pbs_conf['PBS_HOME'],
+                                    'server_priv', 'hooks',
+                                    'PBS_cray_jacs.HK')
+        self.dflt_jacs_hk = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                         'lib', 'python', 'altair',
+                                         'pbs_hooks',
+                                         'PBS_cray_jacs.HK')
+        self.jacs_cf = os.path.join(self.pbs_conf['PBS_HOME'],
+                                    'server_priv', 'hooks',
+                                    'PBS_cray_jacs.CF')
+        self.dflt_jacs_cf = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                         'lib', 'python', 'altair',
+                                         'pbs_hooks',
+                                         'PBS_cray_jacs.CF')
         self.unset_svr_attrib()
         for k in self.dflt_attributes.keys():
             if(k not in self.attributes or
