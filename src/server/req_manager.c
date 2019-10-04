@@ -3800,10 +3800,9 @@ struct batch_request *preq;
 		}
 	}
 	is_node_ip = inet_pton(AF_INET, preq->rq_ind.rq_manager.rq_objname, &(check_ip.sin_addr));
-	if(is_node_ip > 0) {
+	if (is_node_ip > 0) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_INFO, preq->rq_ind.rq_manager.rq_objname,
-			"Add PBS_MOM_NODE_NAME='IP address' in /etc/pbs.conf in Mom host and restart MOM to avoid node inconsistencies.");
-
+			"Node added using IPv4 address\nVerify that PBS_MOM_NODE_NAME is configured on the respective host");
 	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	rc = create_pbs_node(preq->rq_ind.rq_manager.rq_objname,
