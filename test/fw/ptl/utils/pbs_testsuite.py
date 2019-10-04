@@ -714,6 +714,13 @@ class PBSTestSuite(unittest.TestCase):
                                          func=init_server_func)
         if cls.servers:
             cls.server = cls.servers.values()[0]
+            for _server in cls.servers.values():
+                rv = _server.isUp()
+                if not rv:
+                    cls.logger.error('server ' + _server.hostname + ' is down')
+                    _server.pi.restart(_server.hostname)
+                    msg = 'Failed to restart server ' + _server.hostname
+                    cls.assertTrue(_server.isUp(), msg)
 
     @classmethod
     def init_comms(cls, init_comm_func=None, skip=None):
