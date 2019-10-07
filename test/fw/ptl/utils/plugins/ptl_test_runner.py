@@ -132,7 +132,7 @@ class _PtlTestResult(unittest.TestResult):
         """
         if hasattr(test, 'test'):
             return str(test.test)
-        elif type(test.context) == ModuleType:
+        elif isinstance(test.context, ModuleType):
             tmn = getattr(test.context, '_testMethodName', 'unknown')
             return '%s (%s)' % (tmn, test.context.__name__)
         elif isinstance(test, ContextSuite):
@@ -319,7 +319,7 @@ class _PtlTestResult(unittest.TestResult):
             if err:
                 try:
                     detail = str(err[1])
-                except:
+                except BaseException:
                     detail = None
                 if detail:
                     message.append(detail)
@@ -626,7 +626,7 @@ class PTLTestRunner(Plugin):
             try:
                 test.err_in_string = self.result._exc_info_to_string(err,
                                                                      test)
-            except:
+            except BaseException:
                 etype, value, tb = err
                 test.err_in_string = ''.join(format_exception(etype, value,
                                                               tb))
@@ -761,7 +761,8 @@ class PTLTestRunner(Plugin):
         every 5 minutes
         """
         du = DshUtils()
-        self.hardware_report_timer = Timer(300, self.check_and_report_hardware_status)
+        self.hardware_report_timer = Timer(
+            300, self.check_and_report_hardware_status)
         self.hardware_report_timer.start()
         systems = list(self.param_dict['servers'])
         systems.extend(self.param_dict['moms'])
@@ -794,26 +795,27 @@ class PTLTestRunner(Plugin):
             # checks for core files
             pbs_conf = du.parse_pbs_config(hostname)
             mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")
-            mom_priv_files = du.listdir(hostname, mom_priv_path,
-                                        sudo=True, fullpath=False)
-            if mom_priv_files is not None:
+            if du.isdir(hostname, mom_priv_path):
+                mom_priv_files = du.listdir(hostname, mom_priv_path,
+                                            sudo=True, fullpath=False)
                 for filename in mom_priv_files:
                     if filename.startswith("core"):
                         _msg = hostname + ": core files found in "
                         _msg += mom_priv_path
                         self.logger.warning(_msg)
-            server_priv_path = os.path.join(pbs_conf["PBS_HOME"], "server_priv")
-            server_priv_files = du.listdir(hostname, server_priv_path,
-                                           sudo=True, fullpath=False)
-            if server_priv_files is not None:
+            server_priv_path = os.path.join(
+                pbs_conf["PBS_HOME"], "server_priv")
+            if du.isdir(hostname, server_priv_path):
+                server_priv_files = du.listdir(hostname, server_priv_path,
+                                               sudo=True, fullpath=False)
                 for filename in server_priv_files:
                     if filename.startswith("core"):
                         _msg = hostname + ": core files found in "
                         self.logger.warning(_msg + server_priv_path)
             sched_priv_path = os.path.join(pbs_conf["PBS_HOME"], "sched_priv")
-            sched_priv_files = du.listdir(hostname, sched_priv_path,
-                                          sudo=True, fullpath=False)
-            if sched_priv_files is not None:
+            if du.isdir(hostname, sched_priv_path):
+                sched_priv_files = du.listdir(hostname, sched_priv_path,
+                                              sudo=True, fullpath=False)
                 for filename in sched_priv_files:
                     if filename.startswith("core"):
                         _msg = hostname + ": core files found in "
