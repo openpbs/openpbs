@@ -135,12 +135,14 @@ def get_mom_home():
 
     return home
 
+
 def hup_mom():
     PBS_MOM_HOME = get_mom_home()
     pidfile = open(os.path.join(PBS_MOM_HOME, "mom_priv", "mom.lock"))
     pid = int(pidfile.readline())
     pidfile.close()
     os.kill(pid, SIGHUP)
+
 
 def get_apstat_nids(msg):
     """
@@ -169,11 +171,11 @@ def get_apstat_nids(msg):
         __exit_hook(1, msg)
 
     pattern = re.compile(
-        "(?P<nid>.+?)\s+(?P<arch>.+?)\s+(?P<state>.+?)\s+" +
-        "(?P<hw>.+?)\s+(?P<everything>.+)")
+        r"(?P<nid>.+?)\s+(?P<arch>.+?)\s+(?P<state>.+?)\s+" +
+        r"(?P<hw>.+?)\s+(?P<everything>.+)")
 
     for apstat_line in apstat_out.stdout:
-        apstat_line = apstat_line.strip()
+        apstat_line = apstat_line.decode().strip()
 
         apstat_record = re.search(pattern, apstat_line)
 
@@ -207,7 +209,7 @@ def my_addresses():
             continue
 
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        ifreq = struct.pack('256s', ifname[:15])
+        ifreq = struct.pack('256s', bytes(ifname[:15], "utf-8"))
 
         try:
             sockaddr_in = fcntl.ioctl(test_socket.fileno(),
