@@ -124,7 +124,7 @@ if e.job.in_ms_mom():
                 break
         self.assertTrue(input_file is not None)
         with PBSLogUtils().open_log(input_file, sudo=True) as f:
-            self.assertTrue(search_str in f.read())
+            self.assertTrue(search_str in f.read().decode())
             self.logger.info("Found \"%s\" in %s" % (search_str, input_file))
 
     @tags('cray')
