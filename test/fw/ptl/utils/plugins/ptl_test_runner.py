@@ -755,82 +755,77 @@ class PTLTestRunner(Plugin):
             if not eff_tc_req['no_comm_on_mom']:
                 return False
 
-    def hardware_report(self):
+    def check_and_report_hardware_status(self):
         """
         function used to get hardware report
         every 5 minutes
         """
         du = DshUtils()
-        self.hardware_report_timer = Timer(300, self.hardware_report)
+        self.hardware_report_timer = Timer(300, self.check_and_report_hardware_status)
         self.hardware_report_timer.start()
-        self.hardware_monitor_start = True
-        for system in ['servers', 'moms', 'comms']:
-            for hostname in self.param_dict[system]:
-                hr = SystemInfo()
-                hr.get_system_info(hostname)
-                # monitors disk
-                used_disk_percent = getattr(hr,
-                                            'system_disk_used_percent', None)
-                if used_disk_percent is None:
-                    _msg = hostname
-                    _msg += ": unable to get disk info"
-                    self.logger.error(_msg)
-                    self.hardware_report_timer.cancel()
-                    self.hardware_monitor_start = False
-                    raise PbsHardwareMonitorError(msg=_msg)
-                elif 70 < used_disk_percent < 95:
-                    _msg = hostname + ": used disk is "
-                    _msg += str(used_disk_percent) + "%"
-                    _msg += "Please clean the disk"
-                    self.logger.warning(_msg)
-                elif used_disk_percent > 95:
-                    _msg = hostname + ": used disk is "
-                    _msg += str(used_disk_percent) + "%"
-                    _msg += "test will be  stopped"
-                    self.logger.error(_msg)
-                    self.hardware_report_timer.cancel()
-                    self.hardware_monitor_start = False
-                    raise PbsHardwareMonitorError(msg=_msg)
-                # checks for core files
-                pbs_conf = du.parse_pbs_config(hostname)
-                mom_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                             "mom_priv")
-                mom_priv_files = du.listdir(hostname,
-                                            mom_priv_path, sudo=True,
-                                            fullpath=False)
+        systems = list(self.param_dict['servers'])
+        systems.extend(self.param_dict['moms'])
+        systems.extend(self.param_dict['comms'])
+        systems = list(set(systems))
+        for hostname in systems:
+            hr = SystemInfo()
+            hr.get_system_info(hostname)
+            # monitors disk
+            used_disk_percent = getattr(hr,
+                                        'system_disk_used_percent', None)
+            if used_disk_percent is None:
+                _msg = hostname
+                _msg += ": unable to get disk info"
+                self.logger.error(_msg)
+                self.hardware_report_timer.cancel()
+                raise PbsHardwareMonitorError(msg=_msg)
+            elif 70 < used_disk_percent < 95:
+                _msg = hostname + ": used disk is "
+                _msg += str(used_disk_percent) + "%"
+                _msg += "Please clean the disk"
+                self.logger.warning(_msg)
+            elif used_disk_percent > 95:
+                _msg = hostname + ": used disk is "
+                _msg += str(used_disk_percent) + "%"
+                _msg += "test will be  stopped"
+                self.logger.error(_msg)
+                self.hardware_report_timer.cancel()
+                raise PbsHardwareMonitorError(msg=_msg)
+            # checks for core files
+            pbs_conf = du.parse_pbs_config(hostname)
+            mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")
+            mom_priv_files = du.listdir(hostname, mom_priv_path,
+                                        sudo=True, fullpath=False)
+            if mom_priv_files is not None:
                 for filename in mom_priv_files:
                     if filename.startswith("core"):
                         _msg = hostname + ": core files found in "
                         _msg += mom_priv_path
                         self.logger.warning(_msg)
-                if (system is "comms") or (system is "servers"):
-                    server_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                                    "server_priv")
-                    server_priv_files = du.listdir(hostname,
-                                                   server_priv_path, sudo=True,
-                                                   fullpath=False)
-                    for filename in server_priv_files:
-                        if filename.startswith("core"):
-                            _msg = hostname + ": core files found in "
-                            self.logger.warning(_msg + server_priv_path)
-                    sched_priv_path = os.path.join(pbs_conf["PBS_HOME"],
-                                                   "sched_priv")
-                    sched_priv_files = du.listdir(hostname,
-                                                  sched_priv_path, sudo=True,
-                                                  fullpath=False)
-                    for filename in sched_priv_files:
-                        if filename.startswith("core"):
-                            _msg = hostname + ": core files found in "
-                            self.logger.warning(_msg + sched_priv_path)
-                for u in PBS_ALL_USERS:
-                    user_home_files = du.listdir(hostname, u.home,
-                                                 sudo=True, fullpath=False)
-                    for filename in user_home_files:
-                        if filename.startswith("core"):
-                            _msg = hostname
-                            _msg = ": user-" + u
-                            _msg += ": core files found in "
-                            self.logger.warning(_msg + user_home['out'])
+            server_priv_path = os.path.join(pbs_conf["PBS_HOME"], "server_priv")
+            server_priv_files = du.listdir(hostname, server_priv_path,
+                                           sudo=True, fullpath=False)
+            if server_priv_files is not None:
+                for filename in server_priv_files:
+                    if filename.startswith("core"):
+                        _msg = hostname + ": core files found in "
+                        self.logger.warning(_msg + server_priv_path)
+            sched_priv_path = os.path.join(pbs_conf["PBS_HOME"], "sched_priv")
+            sched_priv_files = du.listdir(hostname, sched_priv_path,
+                                          sudo=True, fullpath=False)
+            if sched_priv_files is not None:
+                for filename in sched_priv_files:
+                    if filename.startswith("core"):
+                        _msg = hostname + ": core files found in "
+                        self.logger.warning(_msg + sched_priv_path)
+            for u in PBS_ALL_USERS:
+                user_home_files = du.listdir(hostname, u.home,
+                                             sudo=True, fullpath=False)
+                for filename in user_home_files:
+                    if filename.startswith("core"):
+                        _msg = hostname + ": user-" + u
+                        _msg += ": core files found in "
+                        self.logger.warning(_msg + user_home['out'])
 
     def startTest(self, test):
         """
@@ -861,7 +856,7 @@ class PTLTestRunner(Plugin):
             self.result.startTest(test)
             raise SkipTest('Test requirements are not matching')
         # function report hardware status
-        self.hardware_report()
+        self.check_and_report_hardware_status()
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
