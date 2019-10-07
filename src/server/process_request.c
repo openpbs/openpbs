@@ -472,6 +472,12 @@ process_request(int sfds)
 		return;
 	}
 
+	if ((conn->cn_authen & PBS_NET_CONN_FROM_PRIVIL) == 0) {
+		req_reject(PBSE_BADCRED, 0, request);
+		close_client(sfds);
+		return;
+	}
+
 	request->rq_fromsvr = 1;
 	request->rq_perm = ATR_DFLAG_USRD | ATR_DFLAG_USWR |
 			   ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
