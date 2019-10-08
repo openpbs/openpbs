@@ -7561,7 +7561,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			if (rp) {
 				pbsnode_list_t *tmp_pl;
 				rp->next = (phowl + i)->hw_pnd->nd_resvp;
-				(phowl+i)->hw_pnd->nd_resvp = rp;
+				(phowl + i)->hw_pnd->nd_resvp = rp;
 				rp->resvp = presv;
 
 				/* create a backlink from the reservation to the vnode */
@@ -7575,7 +7575,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				presv->ri_pbsnode_list = tmp_pl;
 				presv->ri_vnodect++;
 				DBPRT(("%s: Adding %s to %s\n", __func__,
-					(phowl+i)->hw_pnd->nd_name, presv->ri_qs.ri_resvID))
+					(phowl + i)->hw_pnd->nd_name, presv->ri_qs.ri_resvID))
 			}
 		}
 		presv->ri_qs.ri_svrflags |= RESV_SVFLG_HasNodes;
@@ -7752,15 +7752,15 @@ free_resvNodes(resc_resv *presv)
 	for (i = 0; i < svr_totnodes; i++) {
 		pnode = pbsndlist[i];
 
-		for (prev=NULL, rinfp = pnode->nd_resvp;
-			rinfp; prev=rinfp, rinfp = rinfp->next) {
+		for (prev = NULL, rinfp = pnode->nd_resvp;
+			rinfp; prev = rinfp, rinfp = rinfp->next) {
 
 
 			if (rinfp->resvp != presv)
 				continue;
 
 			/* garbage collect the pbsnode_list */
-			for (pnl = presv->ri_pbsnode_list, pnl_next=pnl; pnl_next; pnl = pnl_next) {
+			for (pnl = presv->ri_pbsnode_list, pnl_next = pnl; pnl_next; pnl = pnl_next) {
 				pnl_next = pnl->next;
 				free(pnl);
 			}

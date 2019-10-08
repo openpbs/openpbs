@@ -250,7 +250,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 		return;
 	}
 
-	snprintf(tmp_buf, strlen(pnode->nd_name) + 1,"%s:", pnode->nd_name);
+	snprintf(tmp_buf, strlen(pnode->nd_name) + 1, "%s:", pnode->nd_name);
 
 	/* remove the node '(vn[n]:foo)' from RESV_ATR_resv_nodes attribute */
 	if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
@@ -325,7 +325,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 	}
 
 	/* traverse the reservations of the node and remove the reservation if found */
-	for (prev = NULL, rinfp = pnode->nd_resvp; rinfp; prev=rinfp, rinfp = rinfp->next) {
+	for (prev = NULL, rinfp = pnode->nd_resvp; rinfp; prev = rinfp, rinfp = rinfp->next) {
 		if (strcmp(presv->ri_qs.ri_resvID, rinfp->resvp->ri_qs.ri_resvID) == 0) {
 			if (prev == NULL)
 				pnode->nd_resvp = rinfp->next;
@@ -351,9 +351,24 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 void
 remove_host_from_resv(resc_resv *presv, char *hostname) {
 	pbsnode_list_t *pl = NULL;
-	for (pl = presv->ri_pbsnode_list; pl != NULL; pl = pl->next) {
-		if (strcmp(pl->vnode->nd_hostname, hostname) == 0)
+	pbsnode_list_t *prev = NULL;
+
+	for (prev = NULL, pl = presv->ri_pbsnode_list; pl != NULL;) {
+		if (strcmp(pl->vnode->nd_hostname, hostname) == 0) {
 			remove_node_from_resv(presv, pl->vnode);
+			if (prev == NULL) {
+				presv->ri_pbsnode_list = pl->next;
+				free(pl);
+				pl = presv->ri_pbsnode_list;
+			} else {
+				prev->next = pl->next;
+				free(pl);
+				pl = prev->next;
+			}
+		} else {
+			prev = pl;
+			pl = pl->next;
+		}
 	}
 }
 
@@ -369,7 +384,8 @@ remove_host_from_resv(resc_resv *presv, char *hostname) {
  *
  */
 void
-degrade_overlapping_resv(resc_resv *presv) {
+degrade_overlapping_resv(resc_resv *presv)
+{
 	pbsnode_list_t *pl = NULL;
 	struct resvinfo *rip;
 	resc_resv *tmp_presv;
