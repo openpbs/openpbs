@@ -365,6 +365,9 @@ remove_host_from_resv(resc_resv *presv, char *hostname) {
 				free(pl);
 				pl = prev->next;
 			}
+		} else {
+			prev = pl;
+			pl = pl->next;
 		}
 	}
 }
