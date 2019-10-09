@@ -763,7 +763,7 @@ class PTLTestRunner(Plugin):
         """
         du = DshUtils()
         self.hardware_report_timer = Timer(
-            300, self.checks_hardware_status_and_core_files)
+            300, self.check_hardware_status_and_core_files)
         self.hardware_report_timer.start()
         systems = list(self.param_dict['servers'])
         systems.extend(self.param_dict['moms'])
@@ -781,12 +781,12 @@ class PTLTestRunner(Plugin):
                 self.logger.error(_msg)
                 self.hardware_report_timer.cancel()
                 raise PbsHardwareMonitorError(msg=_msg)
-            elif 70 < used_disk_percent < 95:
-                _msg = hostname + ": used disk is "
+            elif 70 <= used_disk_percent < 95:
+                _msg = hostname + ": disk usage is at "
                 _msg += str(used_disk_percent) + "%"
                 _msg += ", disk cleanup is recommended."
                 self.logger.warning(_msg)
-            elif used_disk_percent > 95:
+            elif used_disk_percent >= 95:
                 _msg = hostname + ":disk usage > 95%, stopping the test(s)"
                 self.logger.error(_msg)
                 self.hardware_report_timer.cancel()
@@ -794,38 +794,46 @@ class PTLTestRunner(Plugin):
             # checks for core files
             pbs_conf = du.parse_pbs_config(hostname)
             mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")
-            if du.isdir(hostname, mom_priv_path):
-                mom_priv_files = du.listdir(hostname, mom_priv_path,
-                                            sudo=True, fullpath=False)
+            if du.isdir(hostname=hostname, path=mom_priv_path):
+                mom_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=mom_priv_path,
+                    sudo=True,
+                    fullpath=False)
                 if fnmatch.filter(mom_priv_files, "core*"):
                     _msg = hostname + ": core files found in "
                     _msg += mom_priv_path
                     self.logger.warning(_msg)
             server_priv_path = os.path.join(
                 pbs_conf["PBS_HOME"], "server_priv")
-            if du.isdir(hostname, server_priv_path):
-                server_priv_files = du.listdir(hostname, server_priv_path,
-                                               sudo=True, fullpath=False)
+            if du.isdir(hostname=hostname, path=server_priv_path):
+                server_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=server_priv_path,
+                    sudo=True,
+                    fullpath=False)
                 if fnmatch.filter(server_priv_files, "core*"):
                     _msg = hostname + ": core files found in "
                     _msg += server_priv_path
                     self.logger.warning(_msg)
             sched_priv_path = os.path.join(pbs_conf["PBS_HOME"], "sched_priv")
-            if du.isdir(hostname, sched_priv_path):
-                sched_priv_files = du.listdir(hostname, sched_priv_path,
-                                              sudo=True, fullpath=False)
+            if du.isdir(hostname=hostname, path=sched_priv_path):
+                sched_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=sched_priv_path,
+                    sudo=True,
+                    fullpath=False)
                 if fnmatch.filter(sched_priv_files, "core*"):
                     _msg = hostname + ": core files found in "
                     _msg += sched_priv_path
                     self.logger.warning(_msg)
             for u in PBS_ALL_USERS:
-                user_home_files = du.listdir(hostname, u.home,
+                user_home_files = du.listdir(hostname=hostname, path=u.home,
                                              sudo=True, fullpath=False)
-                for filename in user_home_files:
-                    if filename.startswith("core"):
-                        _msg = hostname + ": user-" + u
-                        _msg += ": core files found in "
-                        self.logger.warning(_msg + user_home['out'])
+                if fnmatch.filter(user_home_files, "core*"):
+                    _msg = hostname + ": user-" + str(u)
+                    _msg += ": core files found in "
+                    self.logger.warning(_msg + u.home)
 
     def startTest(self, test):
         """
@@ -856,7 +864,7 @@ class PTLTestRunner(Plugin):
             self.result.startTest(test)
             raise SkipTest('Test requirements are not matching')
         # function report hardware status and core files
-        self.checks_hardware_status_and_core_files()
+        self.check_hardware_status_and_core_files()
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
