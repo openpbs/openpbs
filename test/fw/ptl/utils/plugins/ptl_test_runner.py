@@ -898,13 +898,9 @@ class PTLTestRunner(Plugin):
             # details in the output and to have the skipped test count
             # included in total run count of the test run
             self.result.startTest(test)
-<<<<<<< HEAD
-            raise SkipTest('Test requirements are not matching')
+            raise SkipTest(rv)
         # function report hardware status and core files
         self.check_hardware_status_and_core_files()
-=======
-            raise SkipTest(rv)
->>>>>>> changes in default ptl test requirements
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
