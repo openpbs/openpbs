@@ -153,7 +153,7 @@ db_to_svr_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 
 
 	if ((decode_attr_db(pnode, &pdbnd->attr_list, node_attr_def,
-		pnode->nd_attr, (int) ND_ATR_LAST, 0, pdbnd->nd_name)) != 0)
+		pnode->nd_attr, (int) ND_ATR_LAST, 0)) != 0)
 		return -1;
 
 	return 0;
@@ -350,7 +350,7 @@ node_recov_db(void *nd)
 
 	np = malloc(sizeof(struct pbsnode));
 	if (np == NULL) {
-		log_err(errno, "node_recov", "error on recovering node attr");
+		log_err(errno, "node_recov", "malloc failed");
 		return NULL;
 	}
 	obj.pbs_db_obj_type = PBS_DB_NODE;
@@ -382,7 +382,8 @@ db_err:
 		free(np->nd_moms);
 	}
 	free(np);
-	log_err(-1, "node_recov", "error on recovering node attr");
+	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover node %s", dbnode->nd_name);
+	log_err(-1, "node_recov", log_buffer);
 	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 	return NULL;
 }

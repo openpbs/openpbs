@@ -239,7 +239,6 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
  * @param[in/out] pattr - Address of the parent objects attribute array
  * @param[in]	  limit - Number of attributes in the list
  * @param[in]	  unknown	- The index of the unknown attribute if any
- * @param[in]	  objname	- Pointer to the name of the parent object
  *
  * @return      Error code
  * @retval	 0  - Success
@@ -254,8 +253,7 @@ decode_attr_db(
 	struct attribute_def *padef,
 	struct attribute *pattr,
 	int limit,
-	int unknown,
-	char *objname)
+	int unknown)
 {
 	int amt;
 	int index;
@@ -422,13 +420,13 @@ decode_attr_db(
 						if ((act_rc = (padef+index)->at_action(
 							pattr+index, parent,
 							ATR_ACTION_RECOV))) {
-							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr of %s, errn %d",
-									(padef+index)->at_name, objname, act_rc);
+							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
+									(padef+index)->at_name, act_rc);
 							log_err(act_rc, __func__, log_buffer);
 							free(palarray);
 							/* bailing out from this function */
 							/* any previously allocated attrs will be */
-							/* freed by caller (parent obj recov function */
+							/* freed by caller (parent obj recov function) */
 							return -1;
 						}
 				}

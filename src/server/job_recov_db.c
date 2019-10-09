@@ -252,7 +252,7 @@ db_to_svr_job(job *pjob,  pbs_db_job_info_t *dbjob)
 
 	if ((decode_attr_db(pjob, &dbjob->attr_list, job_attr_def,
 				pjob->ji_wattr,
-				(int)JOB_ATR_LAST, (int) JOB_ATR_UNKN, dbjob->ji_jobid)) != 0)
+				(int)JOB_ATR_LAST, (int) JOB_ATR_UNKN)) != 0)
 		return -1;
 
 	return 0;
@@ -338,7 +338,7 @@ db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
 
 	if ((decode_attr_db(presv, &pdresv->attr_list, resv_attr_def,
 		presv->ri_wattr,
-		(int) RESV_ATR_LAST, (int) RESV_ATR_UNKN, pdresv->ri_resvid)) != 0)
+		(int) RESV_ATR_LAST, (int) RESV_ATR_UNKN)) != 0)
 		return -1;
 
 	return 0;

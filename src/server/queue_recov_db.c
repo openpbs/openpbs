@@ -139,7 +139,7 @@ db_to_svr_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 	pque->qu_qs.qu_mtime = pdbque->qu_mtime;
 
 	if ((decode_attr_db(pque, &pdbque->attr_list, que_attr_def,
-		pque->qu_attr, (int) QA_ATR_LAST, 0, pdbque->qu_name)) != 0)
+		pque->qu_attr, (int) QA_ATR_LAST, 0)) != 0)
 		return -1;
 
 	return 0;
@@ -240,7 +240,8 @@ que_recov_db(char *qname)
 	return (pq);
 
 db_err:
-	log_err(-1, "que_recov", "read of queuedb failed");
+	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover queue %s", qname);
+	log_err(-1, "que_recov", log_buffer);
 	if (pq)
 		que_free(pq);
 	return 0;
