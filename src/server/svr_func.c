@@ -6566,7 +6566,6 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		if ((prov_vnode_info->pvnfo_aoe_req = strdup(aoe_req)) == NULL) {
 			free(prov_vnode_list);
 			free_pvnfo(prov_vnode_info);
-			free(prov_vnode_info);
 			if (aoe_req)
 				free(aoe_req);
 			return PBSE_SYSTEM;
