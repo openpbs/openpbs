@@ -101,7 +101,7 @@ def install_vcredist():
     cmd += ['/q', '/norestart']
     ret = __run_cmd(cmd)
     if ret > 0:
-        if ret == 5100:
+        if ret == 1638:
             msg = 'Newer version of Visual C++ redistributable is already'
             msg += 'installed, ignoring this installation'
             __log_info(msg)
