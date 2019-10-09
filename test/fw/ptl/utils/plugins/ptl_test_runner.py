@@ -37,6 +37,7 @@
 
 import datetime
 import logging
+import fnmatch
 import os
 import platform
 import pwd
@@ -755,14 +756,14 @@ class PTLTestRunner(Plugin):
             if not eff_tc_req['no_comm_on_mom']:
                 return False
 
-    def check_and_report_hardware_status(self):
+    def checks_hardware_status_and_core_files(self):
         """
-        function used to get hardware report
+        function checks hardware status and core files
         every 5 minutes
         """
         du = DshUtils()
         self.hardware_report_timer = Timer(
-            300, self.check_and_report_hardware_status)
+            300, self.checks_hardware_status_and_core_files)
         self.hardware_report_timer.start()
         systems = list(self.param_dict['servers'])
         systems.extend(self.param_dict['moms'])
@@ -783,12 +784,10 @@ class PTLTestRunner(Plugin):
             elif 70 < used_disk_percent < 95:
                 _msg = hostname + ": used disk is "
                 _msg += str(used_disk_percent) + "%"
-                _msg += "Please clean the disk"
+                _msg += ", disk cleanup is recommended."
                 self.logger.warning(_msg)
             elif used_disk_percent > 95:
-                _msg = hostname + ": used disk is "
-                _msg += str(used_disk_percent) + "%"
-                _msg += "test will be  stopped"
+                _msg = hostname + ":disk usage > 95%, stopping the test(s)"
                 self.logger.error(_msg)
                 self.hardware_report_timer.cancel()
                 raise PbsHardwareMonitorError(msg=_msg)
@@ -798,28 +797,27 @@ class PTLTestRunner(Plugin):
             if du.isdir(hostname, mom_priv_path):
                 mom_priv_files = du.listdir(hostname, mom_priv_path,
                                             sudo=True, fullpath=False)
-                for filename in mom_priv_files:
-                    if filename.startswith("core"):
-                        _msg = hostname + ": core files found in "
-                        _msg += mom_priv_path
-                        self.logger.warning(_msg)
+                if fnmatch.filter(mom_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += mom_priv_path
+                    self.logger.warning(_msg)
             server_priv_path = os.path.join(
                 pbs_conf["PBS_HOME"], "server_priv")
             if du.isdir(hostname, server_priv_path):
                 server_priv_files = du.listdir(hostname, server_priv_path,
                                                sudo=True, fullpath=False)
-                for filename in server_priv_files:
-                    if filename.startswith("core"):
-                        _msg = hostname + ": core files found in "
-                        self.logger.warning(_msg + server_priv_path)
+                if fnmatch.filter(server_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += server_priv_path
+                    self.logger.warning(_msg)
             sched_priv_path = os.path.join(pbs_conf["PBS_HOME"], "sched_priv")
             if du.isdir(hostname, sched_priv_path):
                 sched_priv_files = du.listdir(hostname, sched_priv_path,
                                               sudo=True, fullpath=False)
-                for filename in sched_priv_files:
-                    if filename.startswith("core"):
-                        _msg = hostname + ": core files found in "
-                        self.logger.warning(_msg + sched_priv_path)
+                if fnmatch.filter(sched_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += sched_priv_path
+                    self.logger.warning(_msg)
             for u in PBS_ALL_USERS:
                 user_home_files = du.listdir(hostname, u.home,
                                              sudo=True, fullpath=False)
@@ -857,8 +855,8 @@ class PTLTestRunner(Plugin):
             # included in total run count of the test run
             self.result.startTest(test)
             raise SkipTest('Test requirements are not matching')
-        # function report hardware status
-        self.check_and_report_hardware_status()
+        # function report hardware status and core files
+        self.checks_hardware_status_and_core_files()
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
