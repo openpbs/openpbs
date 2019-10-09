@@ -756,7 +756,7 @@ class PTLTestRunner(Plugin):
             if not eff_tc_req['no_comm_on_mom']:
                 return False
 
-    def checks_hardware_status_and_core_files(self):
+    def check_hardware_status_and_core_files(self):
         """
         function checks hardware status and core files
         every 5 minutes
