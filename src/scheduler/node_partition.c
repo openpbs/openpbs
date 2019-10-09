@@ -104,7 +104,7 @@ new_node_partition()
 	node_partition *np;
 
 	if ((np = malloc(sizeof(node_partition))) == NULL) {
-		log_err(errno, "new_node_partition", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -203,16 +203,13 @@ dup_node_partition_array(node_partition **onp_arr, server_info *nsinfo)
 		;
 
 	if ((nnp_arr = malloc((i+1) * sizeof(node_partition *))) == NULL) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-			"dup_node_partition_array", "error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; onp_arr[i] != NULL; i++) {
 		nnp_arr[i] = dup_node_partition(onp_arr[i], nsinfo);
 		if (nnp_arr[i] == NULL) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-				"dup_node_partition_array", "error allocating memory");
 			free_node_partition_array(nnp_arr);
 			return NULL;
 		}
@@ -1241,7 +1238,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 			}
 		}
 		else {
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"Failed to create host sets for server");
 			is_success = 0;
 		}
@@ -1258,7 +1255,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				sizeof(node_partition *), cmp_placement_sets);
 		}
 		else {
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
 				"Failed to create node partitions for server");
 			is_success = 0;
 		}
@@ -1291,7 +1288,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 					sizeof(node_partition *), cmp_placement_sets);
 			}
 			else {
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_QUEUE, LOG_DEBUG, qinfo->name,
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_QUEUE, LOG_DEBUG, qinfo->name,
 					"Failed to create node partitions for queue.");
 				is_success = 0;
 			}

@@ -174,10 +174,9 @@ node_info **
 query_nodes(int pbs_sd, server_info *sinfo)
 {
 	struct batch_status *nodes;		/* nodes returned from the server */
-	struct batch_status *cur_node;	/* used to cycle through nodes */
-	node_info **ninfo_arr;		/* array of nodes for scheduler's use */
+	struct batch_status *cur_node;		/* used to cycle through nodes */
+	node_info **ninfo_arr;			/* array of nodes for scheduler's use */
 	node_info *ninfo;			/* used to set up a node */
-	char errbuf[256];
 	char *err;				/* used with pbs_geterrmsg() */
 	int num_nodes = 0;			/* the number of nodes */
 	int i;
@@ -228,8 +227,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	/* get nodes from PBS server */
 	if ((nodes = pbs_statvnode(pbs_sd, NULL, attrib, NULL)) == NULL) {
 		err = pbs_geterrmsg(pbs_sd);
-		sprintf(errbuf, "Error getting nodes: %s", err);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", errbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", "Error getting nodes: %s", err);
 		return NULL;
 	}
 
@@ -276,7 +274,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 				/* failed to get information from node, mark it not free for this cycle */
 				ninfo->is_free = 0;
 				ninfo->is_offline = 1;
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
 					"Failed to talk with mom, marking node offline");
 			}
 			ninfo_arr[nidx++] = ninfo;
@@ -287,8 +285,8 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	}
 	ninfo_arr[nidx] = NULL;
 	if (nidx == 0) {
-		snprintf(log_buffer, sizeof(log_buffer), "No nodes found in partitions serviced by scheduler");
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, 
+			"No nodes found in partitions serviced by scheduler");
 		pbs_statfree(nodes);
 		free(ninfo_arr);
 		return NULL;
@@ -328,7 +326,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	schd_resource *res;		/* used to set resources in res list */
 	sch_resource_t count;		/* used to convert str->num */
 	char *endp;			/* end pointer for strtol */
-	char logbuf[256];		/* log buffer */
 	int check_expiry = 0;
 	time_t expiry = 0;
 
@@ -412,9 +409,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_NODE_Sharing)) {
 			ninfo->sharing = str_to_vnode_sharing(attrp->value);
 			if (ninfo->sharing == VNS_UNSET) {
-				sprintf(logbuf, "Unknown sharing type: %s using default shared", attrp->value);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-					ninfo->name, logbuf);
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name, 
+					"Unknown sharing type: %s using default shared", attrp->value);
 				ninfo->sharing = VNS_DFLT_SHARED;
 			}
 		}
@@ -428,9 +424,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 					check_expiry = 1;
 					break;
 				default:
-					sprintf(logbuf, "Unknown license type: %c", attrp->value[0]);
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-						ninfo->name, logbuf);
+					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+						ninfo->name, "Unknown license type: %c", attrp->value[0]);
 			}
 		} else if (!strcmp(attrp->name, ATTR_rescavail)) {
 			if (!strcmp(attrp->resource, ND_RESC_LicSignature)) {
@@ -724,15 +719,12 @@ free_node_info(node_info *ninfo)
 int
 set_node_type(node_info *ninfo, char *ntype)
 {
-	char errbuf[256];
-
 	if (ntype != NULL && ninfo != NULL) {
 		if (!strcmp(ntype, ND_pbs))
 			ninfo->is_pbsnode = 1;
 		else {
-			sprintf(errbuf, "Unknown node type: %s", ntype);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-				ninfo->name, errbuf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+				ninfo->name, "Unknown node type: %s", ntype);
 			return 1;
 		}
 		return 0;
@@ -754,7 +746,6 @@ set_node_type(node_info *ninfo, char *ntype)
 int
 set_node_info_state(node_info *ninfo, char *state)
 {
-	char errbuf[256];
 	char statebuf[256];			/* used to strtok() node states */
 	char *tok;				/* used with strtok() */
 
@@ -773,11 +764,9 @@ set_node_info_state(node_info *ninfo, char *state)
 			while (isspace((int) *tok))
 				tok++;
 
-			if (add_node_state(ninfo, tok) == 1) {
-				sprintf(errbuf, "Unknown Node State: %s", tok);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-					ninfo->name, errbuf);
-			}
+			if (add_node_state(ninfo, tok) == 1)
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+					ninfo->name, "Unknown Node State: %s", tok);
 
 			tok = strtok(NULL, ",");
 		}
@@ -806,8 +795,6 @@ set_node_info_state(node_info *ninfo, char *state)
 int
 remove_node_state(node_info *ninfo, char *state)
 {
-	char errbuf[256];
-
 	if (ninfo == NULL)
 		return 1;
 
@@ -842,9 +829,8 @@ remove_node_state(node_info *ninfo, char *state)
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 0;
 	else {
-		sprintf(errbuf, "Unknown Node State: %s on remove operation", state);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-			ninfo->name, errbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+			   ninfo->name, "Unknown Node State: %s on remove operation", state);
 		return 1;
 	}
 
@@ -876,7 +862,6 @@ remove_node_state(node_info *ninfo, char *state)
 int
 add_node_state(node_info *ninfo, char *state)
 {
-	char errbuf[256];
 	int set_free = 0;
 
 	if (ninfo == NULL)
@@ -916,9 +901,8 @@ add_node_state(node_info *ninfo, char *state)
 		if(ninfo->server->power_provisioning)
 			ninfo->is_sleeping = 1;
 	} else {
-		sprintf(errbuf, "Unknown Node State: %s on add operation", state);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-			ninfo->name, errbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+			ninfo->name, "Unknown Node State: %s on add operation", state);
 		return 1;
 	}
 
@@ -950,16 +934,15 @@ talk_with_mom(node_info *ninfo)
 	double testd;			/* used to convert string->double */
 	schd_resource *res;                /* used for dynamic resources from mom */
 	int ncpus = 1;		/* used as a default for loads */
-	char errbuf[MAX_LOG_SIZE];
 	int i;
 
 	if (!should_talk_with_mom(ninfo))
 		return 0;
 
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
 		"Initiating communication with mom");
 	if ((mom_sd = openrm(ninfo->mom, ninfo->port)) < 0) {
-		schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
 			"Cannot open connection to mom");
 		return 1;
 	}
@@ -997,11 +980,10 @@ talk_with_mom(node_info *ninfo)
 			else
 				ninfo->loadave = -1.0;
 		}
-		else {
-			sprintf(errbuf, "Unknown resource value[%d]: %s", i, mom_ans);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-				ninfo->name, errbuf);
-		}
+		else
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+				ninfo->name, "Unknown resource value[%d]: %s", i, mom_ans);
+
 		free(mom_ans);
 		mom_ans = NULL;
 	}
@@ -1009,7 +991,7 @@ talk_with_mom(node_info *ninfo)
 	/* getreq() returned NULL and we bailed out of the loop */
 	if (i < num_resget) {
 		ret = 1;
-		schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
 			"Communications problem talking with mom.");
 	}
 
@@ -1030,17 +1012,16 @@ talk_with_mom(node_info *ninfo)
 				else if (res->avail == SCHD_INFINITY_RES)
 					res->avail = 0;
 
-				snprintf(errbuf, sizeof(errbuf), "%s = %s (\"%s\")",
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, 
+					"mom_resources", "%s = %s (\"%s\")", 
 					res->name, res_to_str(res, RF_AVAIL), mom_ans);
-				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-					"mom_resources", errbuf);
 			}
 			free(mom_ans);
 			mom_ans = NULL;
 		}
 		if (conf.dyn_res_to_get[i]) {
 			ret = 1;
-			schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
 				"Communications problem talking with mom.");
 		}
 	}
@@ -1049,7 +1030,7 @@ talk_with_mom(node_info *ninfo)
 	mom_ans = NULL;
 
 	closerm(mom_sd);
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
 		"Ended communication with mom");
 	return (ret);
 }
@@ -1371,7 +1352,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->last_used_time = onode->last_used_time;
 
 	if (onode->svr_node != NULL)
-		nnode->svr_node = find_node_by_rank(nsinfo->nodes, onode->rank);
+		nnode->svr_node = find_node_by_indrank(nsinfo->nodes, onode->node_ind, onode->rank);
 
 	/* Duplicate list of jobs and running reservations.
 	 * If caller is dup_server_info() then nsinfo->resvs/jobs should be NULL,
@@ -1519,7 +1500,6 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	counts *cts;		/* used to update user and group counts */
 	int i, j, k;
 	node_info *node;	/* used to store pointer of node in ninfo_arr */
-	char logbuf[MAX_LOG_SIZE];
 	resource_resv **temp_ninfo_arr = NULL;
 
 	if (ninfo_arr == NULL || ninfo_arr[0] == NULL)
@@ -1579,11 +1559,9 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					 * recalculated later.
 					 */
 					ninfo_arr[i]->has_ghost_job = 1;
-					snprintf(logbuf, sizeof(logbuf),
-						"Job %s reported running on node no longer exists or is not in running state",
+					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name, 
+						"Job %s reported running on node no longer exists or is not in running state", 
 						ninfo_arr[i]->jobs[j]);
-					schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-						ninfo_arr[i]->name, logbuf);
 				}
 
 			}
@@ -1813,7 +1791,6 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 	schd_resource *res = NULL;
 	counts *cts;
 	nspec *ns;		/* nspec from resresv for this node */
-	char logbuf[MAX_LOG_SIZE];
 	int ind;
 	int i;
 
@@ -1871,10 +1848,8 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 							res = res->indirect_res;
 						res->assigned -= resreq->amount;
 						if (res->assigned < 0) {
-							snprintf(logbuf, MAX_LOG_SIZE,
+							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name, 
 								"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
-							schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-								LOG_DEBUG, ninfo->name, logbuf);
 							res->assigned = 0;
 						}
 						if (res->def == getallres(RES_NCPUS)) {
@@ -2244,7 +2219,6 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	int can_fit = 0;
 	int rc = 0;		/* 1 if resources are available, 0 if not */
 	int num_nspecs;
-	char logbuf[MAX_LOG_SIZE] = {0};
 	int pass_flags = NO_FLAGS;
 	char reason[MAX_LOG_SIZE] = {0};
 	int i = 0;
@@ -2336,10 +2310,8 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	for (i = 0; nodepart[i] != NULL && rc == 0; i++) {
 		clear_schd_error(err);
 		if (resresv_can_fit_nodepart(policy, nodepart[i], resresv, flags, err)) {
-			snprintf(logbuf, MAX_LOG_SIZE, "Evaluating placement set: %s",
-				nodepart[i]->name);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				resresv->name, logbuf);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				"Evaluating placement set: %s", nodepart[i]->name);
 			if (nodepart[i]->ok_break)
 				pass_flags |= EVAL_OKBREAK;
 
@@ -2363,14 +2335,9 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			}
 		}
 		else {
-			char *msgbuf;
-
 			translate_fail_code(err, NULL, reason);
-			pbs_asprintf(&msgbuf, "Placement set %s is too small: %s",
-				nodepart[i]->name, reason);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				resresv->name, msgbuf);
-			free(msgbuf);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				"Placement set %s is too small: %s", nodepart[i]->name, reason);
 			set_schd_error_codes(err, NOT_RUN, SET_TOO_SMALL);
 			set_schd_error_arg(err, ARG1, "Placement");
 #ifdef NAS /* localmod 031 */
@@ -2391,7 +2358,8 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 
 	if (!can_fit) {
 		if (!resresv->server->dont_span_psets) {
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,  "Request won't fit into any placement sets, will use all nodes");
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
+				"Request won't fit into any placement sets, will use all nodes");
 			resresv->can_not_fit = 1;
 			if (resresv->server->has_multi_vnode && ok_break_chunk(resresv, ninfo_arr))
 				pass_flags |= EVAL_OKBREAK;
@@ -2456,9 +2424,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	int			cur_flt_lic;
 	nspec			**nsa = NULL;
 	nspec			**ns_head = NULL;
-	char			logbuf[MAX_LOG_SIZE] = {0};
 	char			reason[MAX_LOG_SIZE] = {0};
-	char			*msgbuf;
 	resource_req		*req = NULL;
 	schd_resource		*res = NULL;
 	selspec			*dselspec = NULL;
@@ -2552,9 +2518,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			}
 
 			rc = any_succ_rc = 0;
-			sprintf(logbuf, "Evaluating host %s", hostsets[i]->res_val);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-				resresv->name, logbuf);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, 
+				resresv->name, "Evaluating host %s", hostsets[i]->res_val);
 
 			/* Pack on One Host Placement:
 			 * place all chunks on one host.  This is done with a call to
@@ -2639,12 +2604,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						pbs_asprintf(&msgbuf,
-							"Insufficient host-level resources %s",
-							reason);
-						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, msgbuf);
-						free(msgbuf);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+							resresv->name, "Insufficient host-level resources %s", reason);
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
@@ -2710,12 +2671,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						pbs_asprintf(&msgbuf,
-							"Insufficient host-level resources %s",
-							reason);
-						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, msgbuf);
-						free(msgbuf);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+							resresv->name, "Insufficient host-level resources %s", reason);
 
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
@@ -2800,8 +2757,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 												(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
 											else
 #endif /* localmod 049 */
-											(*nsa)->ninfo = find_node_by_rank(nptr,
-												(*nsa)->ninfo->rank);
+											(*nsa)->ninfo = find_node_by_indrank(nptr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
 										}
 									}
 									while (*nsa != NULL)
@@ -2826,12 +2782,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						pbs_asprintf(&msgbuf,
-							"Insufficient host-level resources %s",
-							reason);
-						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, msgbuf);
-						free(msgbuf);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+							resresv->name, "Insufficient host-level resources %s", reason);
 #ifdef NAS /* localmod 998 */
 						set_schd_error_codes(err, NOT_RUN, RESOURCES_INSUFFICIENT);
 #else
@@ -2859,9 +2811,9 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				free_nodes(dup_ninfo_arr);
 			}
 			else {
-				snprintf(logbuf, MAX_LOG_SIZE, "Unexpected Placement: not %s, %s, %s, or %s", PLACE_Scatter, PLACE_VScatter, PLACE_Pack, PLACE_Free);
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-					resresv->name, logbuf);
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name, 
+					"Unexpected Placement: not %s, %s, %s, or %s", 
+					PLACE_Scatter, PLACE_VScatter, PLACE_Pack, PLACE_Free);
 			}
 		}
 	} else
@@ -3003,7 +2955,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 						(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
 					else
 #endif /* localmod 049 */
-					(*nsa)->ninfo = find_node_by_rank(ninfo_arr, (*nsa)->ninfo->rank);
+					(*nsa)->ninfo = find_node_by_indrank(ninfo_arr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
 				}
 				nsa++;
 
@@ -3031,7 +2983,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	 * as no multi-node jobs
 	 */
 	resresv->will_use_multinode = 1;
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 		"Used multiple nodes with no_multinode_job=true: Resatisfy");
 	if (nspec_arr != NULL)
 		empty_nspec_array(*nspec_arr);
@@ -3073,7 +3025,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	resource_req	*req = NULL;		/* used to determine if we're done */
 	resource_req	*prevreq = NULL;	/* used to determine if we're done */
 	resource_req	*tmpreq = NULL;		/* used to unlink and free */
-	char		logbuf[MAX_LOG_SIZE];
 	int		need_new_nspec = 1;	/* need to allocate a new nspec for node solution */
 
 	int		allocated = 0;		/* did we allocate resources to a vnode */
@@ -3146,9 +3097,8 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 	str_chunk = &chk->str_chunk[i];
 
-	snprintf(logbuf, MAX_LOG_SIZE, "Evaluating subchunk: %s", str_chunk);
-	schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-		resresv->name, logbuf);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+		resresv->name, "Evaluating subchunk: %s", str_chunk);
 
 	/* We're duplicating the entire list here.  This list is organized so that
 	 * all non-consumable resources come before the consumable ones.  After
@@ -3189,7 +3139,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	nsa = *nspec_arr;
 
 	for (i = 0, j = 0; ninfo_arr[i] != NULL && chunks_found == 0; i++) {
-		if (ninfo_arr[i]->nscr.visited || ninfo_arr[i]->nscr.scattered  ||
+		if (ninfo_arr[i]->nscr.visited || ninfo_arr[i]->nscr.scattered ||
 			ninfo_arr[i]->nscr.ineligible)
 			continue;
 
@@ -3261,14 +3211,14 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 							ns->end_of_chunk = 1;
 						}
 
-						if (ns != NULL) {
-							/* replace the dup'd node with the real one */
+						/* Replace the dup'd node with the real one, but only if we dup'd the nodes */
+						if (ns != NULL && pninfo_arr != ninfo_arr) {
 #ifdef NAS /* localmod 049 */
 							if (ns->ninfo->rank == resresv->server->nodes_by_NASrank[ns->ninfo->NASrank]->rank)
 								ns->ninfo = resresv->server->nodes_by_NASrank[ns->ninfo->NASrank];
 							else
-#endif /* localmod 049 */
-							ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
+#endif /* localmod 049 */					/* Need to call find_node_by_rank() over indrank since eval_placement might dup the nodes */
+								ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
 						}
 						if (!ninfo_arr[i]->lic_lock) {
 							ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
@@ -3331,7 +3281,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 			}
 
 		} else {
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				ninfo_arr[i]->name, "Node allocated to job");
 		}
 	}
@@ -3347,9 +3297,8 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		free_nodes(ninfo_arr);
 
 	if (chunks_found) {
-		snprintf(logbuf, MAX_LOG_SIZE, "Allocated one subchunk: %s", str_chunk);
-		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-			resresv->name, logbuf);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+			resresv->name, "Allocated one subchunk: %s", str_chunk);
 		clear_schd_error(err);
 		return 1;
 	}
@@ -3364,10 +3313,8 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		nsa[i] = NULL;
 	}
 
-	snprintf(logbuf, MAX_LOG_SIZE, "Failed to satisfy subchunk: %s",
-		chk->str_chunk);
-	schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-		resresv->name, logbuf);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name, 
+		"Failed to satisfy subchunk: %s", chk->str_chunk);
 
 	/* If the last node we looked at was fine, err would be empty.
 	 * Actually return an a real error */
@@ -3641,8 +3588,6 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 	long long num_chunks = 0;
 	int is_p;
 
-	char logbuf[MAX_LOG_SIZE];
-
 	if (specreq_cons == NULL || node == NULL ||
 		resresv == NULL || pl == NULL || err == NULL)
 		return 0;
@@ -3685,10 +3630,8 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 						if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1)
 							set_current_aoe(node, resresv->aoename);
 						if (resresv->is_job) {
-							sprintf(logbuf, "Vnode %s selected for provisioning with AOE %s",
-								node->name, resresv->aoename);
-							schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-								resresv->name, logbuf);
+							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name, 
+								"Vnode %s selected for provisioning with AOE %s", node->name, resresv->aoename);
 						}
 					}
 
@@ -3702,13 +3645,9 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 						if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1)
 							set_current_eoe(node, resresv->eoename);
 
-						if (resresv->is_job) {
-							snprintf(logbuf, sizeof(logbuf),
-								"Vnode %s selected for power with EOE %s",
-								node->name, resresv->eoename);
-							schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
-								LOG_NOTICE, resresv->name, logbuf);
-						}
+						if (resresv->is_job)
+							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name, 
+								"Vnode %s selected for power with EOE %s", node->name, resresv->eoename);
 					}
 
 					if (num_chunks > num)
@@ -3745,10 +3684,8 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 
 					/* use tmpreq to wrap the amount so we can use res_to_str */
 					tmpreq.amount = amount;
-					sprintf(logbuf, "vnode allocated %s=%s",
-						req->name, res_to_str(&tmpreq, RF_REQUEST));
-					schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-						node->name, logbuf);
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name, 
+						"vnode allocated %s=%s", req->name, res_to_str(&tmpreq, RF_REQUEST));
 
 					allocated = 1;
 				}
@@ -3878,7 +3815,6 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	timed_event *event;
 	unsigned int event_mask;
 	int i;
-	char logbuf[MAX_LOG_SIZE];
 
 	if (resreq == NULL || ninfo == NULL || err == NULL || resresv == NULL)
 		return -1;
@@ -3965,11 +3901,8 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 				}
 				else {
 					ns = NULL;
-					snprintf(logbuf, MAX_LOG_SIZE,
-						"Event %s is a run/end event w/o nspec array, ignoring event",
-						event->name);
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-						resresv->name, logbuf);
+					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name, 
+						"Event %s is a run/end event w/o nspec array, ignoring event", event->name);
 				}
 
 				is_run_event = (event->event_type == TIMED_RUN_EVENT);
@@ -4499,7 +4432,6 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 
 	int num_chunk;
 	char *p;
-	char logbuf[256];
 
 	if (execvnode == NULL || sinfo == NULL)
 		return NULL;
@@ -4549,7 +4481,7 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 				}
 			}
 			else {
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, node_name,
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, node_name,
 					"Exechost contains a node that does not exist.");
 				invalid = 1;
 			}
@@ -4576,9 +4508,8 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 	nspec_arr[i] = NULL;
 
 	if (invalid) {
-		snprintf(logbuf, sizeof(logbuf), "Failed to parse execvnode: %s", execvnode);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_WARNING, __func__,
-			logbuf);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_WARNING, __func__,
+				"Failed to parse execvnode: %s", execvnode);
 		free_nspecs(nspec_arr);
 		return NULL;
 	}
@@ -4754,7 +4685,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 	count = count_array((void **) nspec_arr);
 
 	if ((ninfo_arr = calloc(count + 1, sizeof(node_info *))) == NULL) {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_INFO, "create_node_array_from_nspec", "malloc failed to allocate node array");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -4811,7 +4742,6 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	int			i = 0;
 	int			j = 0;
 	int			k = 0;
-	char			errbuf[MAX_LOG_SIZE] = {0};
 
 	if (nodes == NULL)
 		return NULL;
@@ -4865,11 +4795,8 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 			cmp_aoename = string_dup(resresv->aoename);
 			qsort(nptr, nsize, sizeof(node_info *), cmp_aoe);
 
-			sprintf(errbuf, "Re-sorted the nodes on aoe %s, since aoe was requested",
-				resresv->aoename);
-			errbuf[MAX_LOG_SIZE - 1] = '\0';
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-				errbuf);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				"Re-sorted the nodes on aoe %s, since aoe was requested", resresv->aoename);
 
 			return nptr;
 		}
@@ -4930,7 +4857,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 
 		default:
 			nptr = nodes;
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", "Invalid smp_cluster_dist value");
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", "Invalid smp_cluster_dist value");
 	}
 
 	return nptr;
@@ -4971,7 +4898,7 @@ ok_break_chunk(resource_resv *resresv, node_info **nodes)
 			}
 		}
 		else {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_WARNING,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_WARNING,
 				nodes[i]->name, "Node has no host resource");
 		}
 	}
@@ -5547,7 +5474,6 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 	int i, j;
 	node_info **ninfo_arr;
 	int cnt;
-	char errbuf[MAX_LOG_SIZE];
 
 	if (nodes == NULL || strnodes == NULL)
 		return NULL;
@@ -5567,10 +5493,9 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 				j++;
 				ninfo_arr[j] = NULL;
 			}
-			else {
-				snprintf(errbuf, MAX_LOG_SIZE, "Node %s not found in list.", strnodes[i]);
-				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, errbuf);
-			}
+			else
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, 
+					"Node %s not found in list.", strnodes[i]);
 		}
 	}
 
@@ -5882,7 +5807,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 						for (j = 0; ninfo_arr[i]->hostset->ninfo_arr[j] != NULL; j++) {
 							node_info *n = ninfo_arr[i]->hostset->ninfo_arr[j];
 							n->nscr.ineligible = 1;
-							schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+							log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 								n->name, exclerr_buf);
 						}
 					}

@@ -550,6 +550,11 @@ chk_rescResv_request(char *resvID, struct batch_request *preq)
 		return NULL;
 	}
 
+	if (resvID[0] == PBS_MNTNC_RESV_ID_CHAR && ! (preq->rq_perm & (ATR_DFLAG_OPWR | ATR_DFLAG_MGWR))) {
+		req_reject(PBSE_PERM, 0, preq);
+		return NULL;
+	}
+
 	if (svr_authorize_resvReq(preq, presv) == -1) {
 		(void)sprintf(log_buffer, msg_permlog, preq->rq_type,
 			"RESCRESV", presv->ri_qs.ri_resvID,

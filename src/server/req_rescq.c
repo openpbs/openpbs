@@ -250,7 +250,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 		return;
 	}
 
-	snprintf(tmp_buf, strlen(pnode->nd_name) + 1,"%s:", pnode->nd_name);
+	snprintf(tmp_buf, strlen(pnode->nd_name) + 1, "%s:", pnode->nd_name);
 
 	/* remove the node '(vn[n]:foo)' from RESV_ATR_resv_nodes attribute */
 	if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
@@ -325,7 +325,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 	}
 
 	/* traverse the reservations of the node and remove the reservation if found */
-	for (prev = NULL, rinfp = pnode->nd_resvp; rinfp; prev=rinfp, rinfp = rinfp->next) {
+	for (prev = NULL, rinfp = pnode->nd_resvp; rinfp; prev = rinfp, rinfp = rinfp->next) {
 		if (strcmp(presv->ri_qs.ri_resvID, rinfp->resvp->ri_qs.ri_resvID) == 0) {
 			if (prev == NULL)
 				pnode->nd_resvp = rinfp->next;
@@ -351,9 +351,24 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 void
 remove_host_from_resv(resc_resv *presv, char *hostname) {
 	pbsnode_list_t *pl = NULL;
-	for (pl = presv->ri_pbsnode_list; pl != NULL; pl = pl->next) {
-		if (strcmp(pl->vnode->nd_hostname, hostname) == 0)
+	pbsnode_list_t *prev = NULL;
+
+	for (prev = NULL, pl = presv->ri_pbsnode_list; pl != NULL;) {
+		if (strcmp(pl->vnode->nd_hostname, hostname) == 0) {
 			remove_node_from_resv(presv, pl->vnode);
+			if (prev == NULL) {
+				presv->ri_pbsnode_list = pl->next;
+				free(pl);
+				pl = presv->ri_pbsnode_list;
+			} else {
+				prev->next = pl->next;
+				free(pl);
+				pl = prev->next;
+			}
+		} else {
+			prev = pl;
+			pl = pl->next;
+		}
 	}
 }
 
@@ -369,7 +384,8 @@ remove_host_from_resv(resc_resv *presv, char *hostname) {
  *
  */
 void
-degrade_overlapping_resv(resc_resv *presv) {
+degrade_overlapping_resv(resc_resv *presv)
+{
 	pbsnode_list_t *pl = NULL;
 	struct resvinfo *rip;
 	resc_resv *tmp_presv;
@@ -429,13 +445,14 @@ degrade_overlapping_resv(resc_resv *presv) {
  *
  * @parm[in,out]	presv	-	reservation structure
  * @parm[in]	vnodes	-	original vnode list from scheduler/operator
+ * @parm[in]	svr_init	- the server is recovering jobs and reservations
  *
  * @return	int
  * @return	0 : no problems detected in the process
  * @retval	non-zero	: error code if problem occurs
  */
 int
-assign_resv_resc(resc_resv *presv, char *vnodes)
+assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 {
 	int		  ret;
 	char     *node_str = NULL;
@@ -445,7 +462,7 @@ assign_resv_resc(resc_resv *presv, char *vnodes)
 		return (PBSE_BADNODESPEC);
 
 	ret = set_nodes((void *)presv, presv->ri_qs.ri_type, vnodes,
-		&node_str, &host_str, &host_str2, 0, FALSE);
+		&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
 		/*update resc_resv object's RESV_ATR_resv_nodes attribute*/
@@ -486,25 +503,25 @@ assign_resv_resc(resc_resv *presv, char *vnodes)
 void
 req_confirmresv(struct batch_request *preq)
 {
-	char		buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME+256] = {0}; /* FQDN resvID+text */
-	time_t		newstart = 0;
-	attribute	*petime = NULL;
-	resc_resv	*presv = NULL;
-	int		rc = 0;
-	int		state = 0;
-	int		sub = 0;
-	int		resv_count = 0;
-	int		is_degraded = 0;
-	long		next_retry_time = 0;
-	char		*execvnodes = NULL;
-	char		*next_execvnode = NULL;
-	char		**short_xc = NULL;
-	char		**tofree = NULL;
-	char		*str_time = NULL;
-	extern char	server_host[];
-	int		is_being_altered = 0;
-	char		*tmp_buf = NULL;
-	size_t		tmp_buf_size = 0;
+	time_t newstart = 0;
+	attribute *petime = NULL;
+	resc_resv *presv = NULL;
+	int rc = 0;
+	int state = 0;
+	int sub = 0;
+	int resv_count = 0;
+	int is_degraded = 0;
+	long next_retry_time = 0;
+	char *execvnodes = NULL;
+	char *next_execvnode = NULL;
+	char **short_xc = NULL;
+	char **tofree = NULL;
+	char *str_time = NULL;
+	extern char server_host[];
+	int is_being_altered = 0;
+	char *tmp_buf = NULL;
+	size_t tmp_buf_size = 0;
+	char buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME+256] = {0}; /* FQDN resvID+text */
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -547,23 +564,20 @@ req_confirmresv(struct batch_request *preq)
 					(void)snprintf(log_buffer, sizeof(log_buffer), "Next attempt to reconfirm reservation will be made on %s", str_time);
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 				}
-			}
-			else {
+			} else {
 				/* reached a retry attempt that falls within the cutoff
 				 * When processing an advance reservation, unset retry attribute
 				 */
 				if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0) {
 					unset_resv_retry(presv);
-				}
-				else {
+				} else {
 					/* When processing a standing reservation, set a retry time
 					 * past the end time of the soonest occurrence.
 					 */
 					set_resv_retry(presv, presv->ri_wattr[RESV_ATR_end].at_val.at_long + RESV_RETRY_DELAY);
 				}
 			}
-		}
-		else {
+		} else {
 			if (!is_being_altered)
 				log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
 					LOG_INFO, presv->ri_qs.ri_resvID,
@@ -735,8 +749,7 @@ req_confirmresv(struct batch_request *preq)
 					preq->rq_ind.rq_run.rq_destin);
 			}
 		}
-	}
-	else { /* Advance reservation */
+	} else { /* Advance reservation */
 		next_execvnode = strdup(preq->rq_ind.rq_run.rq_destin);
 		if (next_execvnode == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
@@ -776,7 +789,7 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (is_being_altered)
 		free_resvNodes(presv);
-	rc = assign_resv_resc(presv, next_execvnode);
+	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
 	if (rc != PBSE_NONE) {
 		free(next_execvnode);

@@ -127,7 +127,7 @@ count_states(resource_resv **jobs, state_count *sc)
 					sc->expired++;
 				else {
 					sc->invalid++;
-					schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobs[i]->name, "Job in unknown state");
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobs[i]->name, "Job in unknown state");
 				}
 			}
 		}

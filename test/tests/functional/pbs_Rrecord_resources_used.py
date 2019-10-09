@@ -65,17 +65,9 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # of hostname and MoM object
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
-        self.momA.delete_vnode_defs()
-        self.momB.delete_vnode_defs()
 
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)

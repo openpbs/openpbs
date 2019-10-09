@@ -14,5 +14,5 @@ puts stderr ""
 set _module_name [module-info name]
 set is_module_rm [module-info mode remove]
 set package_root @prefix@
-prepend-path MANPATH [file join ${package_root} man]
+prepend-path MANPATH [file join ${package_root} share/man]
 prepend-path PATH [file join ${package_root} bin]

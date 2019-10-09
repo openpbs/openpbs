@@ -95,6 +95,8 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char dur_buf[800];
 	char badw[] = "pbs_rsub: illegal -W value\n";
 	int opt_re_flg = FALSE;
+	int opt_inter_flg = FALSE;
+	int opt_res_req_flg = FALSE;
 #ifdef WIN32
 	struct attrl *ap = NULL;
 	short nSizeofHostName = 0;
@@ -127,6 +129,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'I':
+				opt_inter_flg = TRUE;
 				if ((optarg == NULL) || (*optarg == '\0'))
 					set_attr_error_exit(&attrib, ATTR_inter, "0");
 				else {
@@ -143,6 +146,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'l':
+				opt_res_req_flg = TRUE;
 				if ((i = set_resources(&attrib, optarg, 0, &erp)) != 0) {
 					if (i > 1) {
 						pbs_prt_parse_err("pbs_rsub: illegal -l value\n", optarg,
@@ -277,19 +281,49 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		errflg++;
 	}
 
+	if (opt_inter_flg && is_maintenance_resv) {
+		fprintf(stderr, "pbs_rsub: can't use -I with --hosts\n");
+		errflg++;
+	}
+
+	if (opt_res_req_flg && is_maintenance_resv) {
+		fprintf(stderr, "pbs_rsub: can't use -l with --hosts\n");
+		errflg++;
+	}
+
 	if (is_maintenance_resv) {
-		if (argc - optind > 0) {
-			maintenance_hosts = malloc(sizeof(char *) * (argc - optind + 1));
+		char **hostp = NULL;
+		int num_hosts = argc - optind;
+
+		if (num_hosts > 0) {
+			int i;
+
+			maintenance_hosts = malloc(sizeof(char *) * (num_hosts + 1));
 			if (maintenance_hosts == NULL) {
 				fprintf(stderr, "pbs_rsub: Out of memory\n");
 				return (++errflg);
 			}
 
-			maintenance_hosts[argc - optind] = NULL;
+			maintenance_hosts[num_hosts] = NULL;
 
-			for (; optind < argc; optind++) {
-				maintenance_hosts[argc - (optind + 1)] = strdup(argv[optind]);
-				if (maintenance_hosts[argc - (optind + 1)] == NULL) {
+			for (i = 0; optind < argc; optind++, i++) {
+				hostp = maintenance_hosts;
+				for (; *hostp; hostp++) {
+					if (strcmp(*hostp, argv[optind]) == 0) {
+						fprintf(stderr, "pbs_rsub: Duplicate host: %s\n", argv[optind]);
+						return (++errflg);
+					}
+				}
+
+				if (strlen(argv[optind]) == 0) {
+					num_hosts--;
+					i--;
+					maintenance_hosts[num_hosts] = NULL;
+					continue;
+				}
+
+				maintenance_hosts[i] = strdup(argv[optind]);
+				if (maintenance_hosts[i] == NULL) {
 					fprintf(stderr, "pbs_rsub: Out of memory\n");
 					return (++errflg);
 				}
@@ -806,7 +840,7 @@ main(int argc, char *argv[], char *envp[])
 				if (ncpus_str != NULL)
 					ncpus = strtol(ncpus_str, &endp, 0);
 				
-				if (*endp != '\0' || ncpus_str == NULL) {
+				if (*endp != '\0') {
 					fprintf(stderr, "pbs_rsub: Attribute value error\n");
 					CS_close_app();
 					exit(2);
@@ -839,6 +873,13 @@ main(int argc, char *argv[], char *envp[])
 						}
 					}
 				} /* end of part that crafts execvnodes */
+			}
+
+			/* host not found or host has zero ncpus */
+			if (host_ncpus == 0) {
+				fprintf(stderr, "pbs_rsub: Host with resources not found: %s\n", *hostp);
+				CS_close_app();
+				exit(2);
 			}
 
 			/* here, the select is crafted */

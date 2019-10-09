@@ -808,7 +808,7 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 	if (sj == NULL) {
 		sprintf(log_buffer, "Cannot open %s: %s\n",
 			fname, strerror(errno));
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_ERR,
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, log_buffer);
 		return;
 	}
@@ -1255,7 +1255,7 @@ site_parse_shares(char *fname)
 		}
 		continue;		/* Done with line */
 err_parse:
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 			__func__, log_buffer);
 		if (cur) {
 			free(cur);
@@ -1316,7 +1316,7 @@ err_parse:
 
 err_out_l:
 	log_err(-1, __func__, log_buffer);
-	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
+	log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
 		"Warning: CPU shares file parse error: file ignored");
 	for (ttype = new_shr_types; ttype; ttype = new_shr_types) {
 		new_shr_types = ttype->next;
@@ -3258,7 +3258,7 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 						"%s share for %s too small for children: %d < %d",
 						root->name, shr_class_name_by_idx(i),
 						gross, c_sum);
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE,
+					log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE,
 						LOG_NOTICE, __func__, log_buffer);
 				}
 				root->share_gross[i] = gross = c_sum;
@@ -3713,7 +3713,7 @@ check_for_cycle_interrupt(int do_logging)
 	    time(NULL) >=
 		interrupted_cycle_start_time + conf.min_intrptd_cycle_length) {
 		if (do_logging)
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				"Short circuit of this cycle");
 
 		return 1;
@@ -3723,7 +3723,7 @@ check_for_cycle_interrupt(int do_logging)
 		sprintf(log_buffer, "Too early to short circuit (%ds elapsed, need %ds)",
 			(int)(time(NULL) - interrupted_cycle_start_time),
 			conf.min_intrptd_cycle_length);
-		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
 	}
 
 	return 0;

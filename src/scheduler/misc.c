@@ -49,7 +49,6 @@
  * 		add_str_to_array()
  * 		res_to_num()
  * 		skip_line()
- * 		schdlog()
  * 		schdlogerr()
  * 		filter_array()
  * 		dup_string_array()
@@ -420,7 +419,7 @@ schdlog(int event, int class, int sev, const char *name, const char *text)
 }
 
 /**
- *	@brief  combination of schdlog and translate_fail_code()
+ *	@brief  combination of log_event() and translate_fail_code()
  *		If we're actually going to log a message, translate
  *		err into a message and then log it.  The translated
  *		error will be printed after the message
@@ -447,14 +446,9 @@ schdlogerr(int event, int class, int sev, char *name, char *text,
 	if (will_log_event(event)) {
 		translate_fail_code(err, NULL, logbuf);
 		if (text == NULL)
-			schdlog(event, class, sev, name, logbuf);
-		else {
-			char *msgbuf;
-
-			pbs_asprintf(&msgbuf, "%s %s", text, logbuf);
-			schdlog(event, class, sev, name, msgbuf);
-			free(msgbuf);
-		}
+			log_event(event, class, sev, name, logbuf);
+		else
+			log_eventf(event, class, sev, name, "%s %s", text, logbuf);
 	}
 }
 
@@ -1199,7 +1193,7 @@ void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
 			err->specmsg = string_dup(arg);
 			break;
 		default:
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");
 	}
 
 }

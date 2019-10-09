@@ -56,6 +56,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "log.h"
 #include "server_limits.h"
 #include "list_link.h"
@@ -74,6 +75,8 @@ PBSEVENT_RESV;
 
 extern char *path_home;
 long	    *log_event_mask = &log_event_lvl_priv;
+
+extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 /**
  * @brief
@@ -121,4 +124,49 @@ log_event(int eventtype, int objclass, int sev, const char *objname, const char 
 {
 	if (will_log_event(eventtype))
 		log_record(eventtype, objclass, sev, objname, text);
+}
+
+/**
+ * @brief
+ * 	log_eventf - a combination of log_event() and printf()
+ * 
+ * @param[in] eventtype - event type
+ * @param[in] objclass - event object class 
+ * @param[in] sev - indication for whether to syslogging enabled or not
+ * @param[in] objname - object name stating log msg related to which object
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string
+ * 
+ * @return void
+ */
+void
+log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...)
+{
+	va_list args;
+	int len;
+	char logbuf[LOG_BUF_SIZE];
+	char *buf;
+	
+	if (will_log_event(eventtype) == 0)
+		return;
+
+	va_start(args, fmt);
+
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+
+	if (len >= sizeof(logbuf)) {
+		buf = pbs_asprintf_format(len, fmt, args);
+		if (buf == NULL) {
+			va_end(args);
+			return;
+		}
+	}
+	else
+		buf = logbuf;
+	
+	log_record(eventtype, objclass, sev, objname, buf);
+	
+	if (len >= sizeof(logbuf))
+		free(buf);
+	va_end(args);
 }

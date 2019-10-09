@@ -225,8 +225,7 @@ que_recov_db(char *qname)
 	}
 
 	/* load server_qs */
-	dbque.qu_name[sizeof(dbque.qu_name) - 1] = '\0';
-	strncpy(dbque.qu_name, qname, sizeof(dbque.qu_name));
+	snprintf(dbque.qu_name, sizeof(dbque.qu_name), "%s", qname);
 
 	/* read in job fixed sub-structure */
 	if (pbs_db_load_obj(conn, &obj) != 0)

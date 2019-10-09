@@ -108,9 +108,8 @@ stat_resvs(int pbs_sd)
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
-			sprintf(log_buffer, "pbs_statresv failed: %s (%d)", errmsg, pbs_errno);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_NOTICE, "resv_info",
-				log_buffer);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_NOTICE, "resv_info",
+					"pbs_statresv failed: %s (%d)", errmsg, pbs_errno);
 		}
 		return NULL;
 	}
@@ -165,8 +164,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 	schd_error *err;
 
-	char logmsg[MAX_LOG_SIZE];
-
 	if (resvs == NULL)
 		return NULL;
 
@@ -214,13 +211,13 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		}
 		/* Make sure it is not a future reservation that is being deleted, if so ignore it */
 		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->start > sinfo->server_time)) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				resresv->name, "Future reservation is being deleted, ignoring this reservation");
 			ignore_resv = 1;
 		}
 		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->resv->resv_nodes != NULL) &&
 			(!is_string_in_arr(resresv->resv->resv_nodes[0]->resvs, resresv->name))) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				resresv->name, "Reservation is being deleted and not present on node, ignoring this reservation");
 			ignore_resv = 1;
 		}
@@ -328,16 +325,16 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 								}
 								else {
 #ifdef NAS /* localmod 031 */
-									sprintf(log_buffer, "Job has been assigned a node that doesn't exist in its reservation: %s", ns->ninfo->name);
-									schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name, log_buffer);
+									log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name, 
+										"Job has been assigned a node that doesn't exist in its reservation: %s", ns->ninfo->name);
 #else
-									schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
+									log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
 										"Job has been assigned a node which doesn't exist in its reservation");
 #endif /* localmod 031 */
 								}
 							}
 							if (rjob->ninfo_arr[k] != NULL) {
-								schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
+								log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
 									"Job's node array has different length than nspec_arr in query_reservations()");
 							}
 						}
@@ -403,7 +400,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				/* this should happen only if the execvnodes_seq are corrupted. In such
 				 * case, we ignore the reservation and move on to the next one */
 				if (occr_count == 0) {
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+					log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 						resresv->name, "Error processing standing reservation");
 					free(execvnodes_seq);
 					sinfo->num_resvs--;
@@ -541,9 +538,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						free_schd_error(err);
 						return NULL;
 					}
-					sprintf(logmsg, "Occurrence %d/%d,%s", occr_idx, count, start_time);
-					schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-						resresv->name, logmsg);
+					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name, 
+						"Occurrence %d/%d,%s", occr_idx, count, start_time);
 				}
 				/* The parent reservation has already been added so move on to handling
 				 * the next reservation
@@ -920,7 +916,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	for (i = 0; sinfo->resvs[i] != NULL; i++) {
 
 		if (sinfo->resvs[i]->resv ==NULL) {
-			schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 				sinfo->resvs[i]->name,
 				"Error determining if reservation can be confirmed: "
 				"Could not find the reservation.");
@@ -946,7 +942,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			 */
 			nresv = find_resource_resv_by_indrank(nsinfo->resvs, sinfo->resvs[i]->rank, sinfo->resvs[i]->resresv_ind);
 			if (nresv == NULL) {
-				schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 					sinfo->resvs[i]->name,
 					"Error determining if reservation can be confirmed: "
 					"Resource not found.");
@@ -986,7 +982,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					occr_execvnodes_arr = unroll_execvnode_seq(
 						nresv->resv->execvnodes_seq, &tofree);
 					if (occr_execvnodes_arr == NULL) {
-						schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 							sinfo->resvs[i]->name,
 							"Error unrolling standing reservation.");
 						free_server(nsinfo);
@@ -1029,7 +1025,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 								nresv_copy->name, nresv->resv->occr_start_arr[j]);
 							if (nresv_copy == NULL) {
-								schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
+								log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
 									LOG_INFO, nresv->name,
 									"Error determining if reservation can be confirmed: "
 									"Could not find reservation by time.");
@@ -1114,7 +1110,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 							nresv->name, nresv->resv->occr_start_arr[j]);
 						if (nresv_copy == NULL) {
-							schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
+							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV,
 								LOG_INFO, nresv->name,
 								"Error determining if reservation can be confirmed: "
 								"Could not find reservation by time.");
@@ -1217,7 +1213,6 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	char logmsg[MAX_LOG_SIZE];
 	char logmsg2[MAX_LOG_SIZE];
 	char *errmsg;
-	char *msgbuf;
 
 	nspec **ns = NULL;
 	resource_resv *nresv = unconf_resv;
@@ -1325,7 +1320,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nresv_copy = find_resource_resv_by_time(nsinfo->all_resresv,
 					nresv->name, next);
 				if (nresv_copy == NULL) {
-					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 						"Error determining if reservation can be confirmed: "
 						"Could not find reservation by time.");
 					rconf = RESV_CONFIRM_FAIL;
@@ -1365,7 +1360,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			/* Concatenate the execvnode to a Token separator */
 			tmp = (char *) concat_str(execvnodes, TOKEN_SEPARATOR, NULL, 1);
 			if (tmp == NULL) {
-				schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 					"Error determining if reservation can be confirmed: "
 					"String concatenation failed.");
 				free_resource_resv(nresv);
@@ -1406,7 +1401,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				else  { /* subsequent occurrences */
 					vnode_seq_tmp = (char *) concat_str(execvnodes, tmp, NULL, 1);
 					if (vnode_seq_tmp == NULL) {
-						schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
 						rconf = RESV_CONFIRM_FAIL;
@@ -1417,7 +1412,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					vnode_seq_tmp = (char *) concat_str(execvnodes, TOKEN_SEPARATOR,
 						NULL, 1);
 					if (vnode_seq_tmp == NULL) {
-						schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
 						rconf = RESV_CONFIRM_FAIL;
@@ -1428,9 +1423,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 				continue;
 			}
-			if (disable_reservation_occurrence(nsinfo->calendar->events, nresv)
-				!= 1) {
-				schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+			if (disable_reservation_occurrence(nsinfo->calendar->events, nresv) != 1) {
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 					"Error determining if reservation can be confirmed: "
 					"Could not mark occurrence disabled.");
 				rconf = RESV_CONFIRM_FAIL;
@@ -1462,8 +1456,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				tmp = create_execvnode(ns);
 				free_nspecs(ns);
 				if (tmp == NULL) {
-					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-						nresv->name,
+					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 						"Error determining if reservation can be confirmed: "
 						"Creation of execvnode failed.");
 					rconf = RESV_CONFIRM_FAIL;
@@ -1481,8 +1474,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				else  { /* subsequent occurrences */
 					vnode_seq_tmp = (char *) concat_str(execvnodes, tmp, NULL, 1);
 					if (!vnode_seq_tmp) {
-						schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-							nresv->name,
+						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
 						rconf = RESV_CONFIRM_FAIL;
@@ -1501,10 +1493,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 
 				/* If the reservation is degraded, we log a message and continue */
 				if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
-					pbs_asprintf(&msgbuf, "Reservation Failed to Reconfirm: %s", logmsg);
-					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-						nresv->name, msgbuf);
-					free(msgbuf);
+					log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name, "Reservation Failed to Reconfirm: %s", logmsg);
 				}
 				/* failed to confirm so move on. This will throw flow out of the
 				 * loop
@@ -1513,7 +1502,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			}
 		} /* end of simulation */
 		else {
-			schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 				nresv->name,
 				"Error determining if reservation can be confirmed: "
 				"Simulation failed.");
@@ -1534,9 +1523,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		else
 			short_xc = string_dup(execvnodes);
 
-		sprintf(logmsg, "Confirming %d Occurrences", occr_count);
-		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
-			logmsg);
+		log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
+			"Confirming %d Occurrences", occr_count);
 
 		/* Send a reservation confirm message, if anything goes wrong pbsrc
 		 * will return an error
@@ -1563,22 +1551,21 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * translated error code. Otherwise, use the error message from the server.
 		 */
 		if (rconf == RESV_CONFIRM_FAIL)
-			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s", logmsg);
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+				"PBS Failed to confirm resv: %s", logmsg);
 		else {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
-			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+				"PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
 			rconf = RESV_CONFIRM_RETRY;
 		}
-		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, msgbuf);
-		free(msgbuf);
+
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
-			snprintf(logmsg, MAX_LOG_SIZE,
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
 				"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
 				vnodes_down, tot_vnodes, names_of_down_vnodes);
-			schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-				nresv_parent->name, logmsg);
 
 			/* we failed to confirm the degraded reservation but we still need to
 			 * set the remaining occurrences start time to avoid looking at them
@@ -1596,7 +1583,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	 * execvnodes
 	 */
 	else if (rconf == RESV_CONFIRM_SUCCESS) {
-		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
+		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 			"Reservation Confirmed");
 
 		/* If handling a degraded reservation or while altering a standing reservation
@@ -1797,7 +1784,7 @@ adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
 			if (all_resvs[j]->resv->resv_substate == RESV_RUNNING) {
 				resv_nodes = all_resvs[j]->ninfo_arr;
 				for (i = 0; resv_nodes[i] != NULL; i++) {
-					ninfo = find_node_by_rank(all_nodes, resv_nodes[i]->rank);
+					ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
 					update_node_on_end(ninfo, all_resvs[j], NULL);
 				}
 			}

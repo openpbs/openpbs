@@ -35,19 +35,20 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from subprocess import PIPE, Popen
-import os
-import sys
-import re
-import stat
-import socket
-import logging
-import traceback
 import copy
-import tempfile
-import pwd
 import grp
+import logging
+import os
 import platform
+import pwd
+import re
+import socket
+import stat
+import sys
+import tempfile
+import traceback
+from subprocess import PIPE, Popen
+
 from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
@@ -1310,7 +1311,7 @@ class DshUtils(object):
         # different than the one we tell PTL to use (pbs-service-nmn). This
         # causes a name mismatch, so we should just set it to be True
         if (self.get_platform() == 'shasta' and host == 'pbs-service-nmn' and
-           localhost == 'pbs-host'):
+                localhost == 'pbs-host'):
             self._h2l[host] = True
             return True
         self._h2l[host] = False
@@ -2037,6 +2038,7 @@ class DshUtils(object):
         if dirname is not None:
             dirname = str(dirname)
             self.run_copy(hostname, tmpdir, dirname, runas=asuser,
+                          recursive=True,
                           preserve_permission=False, level=level)
             tmpdir = dirname + tmpdir[4:]
 
@@ -2050,6 +2052,7 @@ class DshUtils(object):
                 # copy temp dir created on local host to remote host
                 # as different user
                 self.run_copy(hostname, tmpdir, tmpdir, runas=asuser,
+                              recursive=True,
                               preserve_permission=False, level=level)
             else:
                 # copy temp dir created on localhost to remote as current user
@@ -2065,8 +2068,10 @@ class DshUtils(object):
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
+            os.rmdir(tmpdir2)
             # copy the orginal temp as new temp dir
             self.run_copy(hostname, tmpdir, tmpdir2, runas=asuser,
+                          recursive=True,
                           preserve_permission=False, level=level)
             # remove original temp dir
             os.rmdir(tmpdir)

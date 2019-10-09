@@ -37,8 +37,8 @@ if [ "x${ONLY_REBUILD}" != "x1" ]; then
     zypper -n update
     zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64
     rpmdev-setuptree
-    zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
-    zypper -n install --force-resolution $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
+    zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
+    zypper -n install --force-resolution $(rpmspec --requires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install -r ${REQ_FILE}
   elif [ "x${ID}" == "xdebian" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then

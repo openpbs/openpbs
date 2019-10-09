@@ -282,7 +282,7 @@ parse_holidays(char *fname)
 	if ((fp = fopen(fname, "r")) == NULL) {
 		sprintf(log_buffer, "Error opening file %s", fname);
 		log_err(errno, "parse_holidays", log_buffer);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
 			"Warning: cannot open holidays file; assuming 24hr primetime");
 		return 0;
 	}
@@ -458,9 +458,8 @@ parse_holidays(char *fname)
 			}
 
 			if (error) {
-				sprintf(log_buffer, "Error on line %d, line started with: %s", linenum, config_name);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-					fname, log_buffer);
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+					"Error on line %d, line started with: %s", linenum, config_name);
 			}
 
 		}
@@ -502,7 +501,7 @@ load_day(enum days d, enum prime_time pr, char *tok)
 	if (tok != NULL) {
 		if (!strcmp(tok, "all") || !strcmp(tok, "ALL")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].all == TRUE) {
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
 						"Warning: both prime & non-prime starts are 'all'; assuming 24hr primetime");
 				return 0;
 			}
@@ -512,7 +511,7 @@ load_day(enum days d, enum prime_time pr, char *tok)
 			conf.prime[d][pr].none = FALSE;
 		} else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].none == TRUE) {
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
 						"Warning: both prime & non-prime starts are 'none'; assuming 24hr primetime");
 				return load_day(d, PRIME, "all");
 			}

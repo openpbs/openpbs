@@ -125,6 +125,7 @@
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
 #include	"pbs_reliable.h"
+#include	<arpa/inet.h>
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
@@ -8212,6 +8213,8 @@ main(int argc, char *argv[])
 	char				path_hooks_rescdef[MAXPATHLEN+1];
 	int					sock_bind_rm;
 	int					sock_bind_mom;
+	struct				sockaddr_in check_ip;
+	int				is_mom_host_ip;
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
@@ -8249,7 +8252,7 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	PyObject			*path;
 	PyObject 			*retval =  NULL;
-	char				buf[MAXPATHLEN];
+	char				*buf;
 	char				py_version[4];
 #endif
 
@@ -8873,9 +8876,10 @@ main(int argc, char *argv[])
 	}
 	(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
 	mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
-		*ptr = '\0';  /* terminate shortname at first dot */
-
+	is_mom_host_ip = inet_pton(AF_INET, mom_host, &(check_ip.sin_addr));
+	if (!(is_mom_host_ip > 0))
+		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
+			*ptr = '\0';  /* terminate shortname at first dot */
 	/*
 	 * Now get mom_host, which determines resources_available.host
 	 * and also the interface used to register to pbs_comm if
@@ -9577,8 +9581,9 @@ main(int argc, char *argv[])
 
 	path = PySys_GetObject("path");
 #ifdef WIN32
-	snprintf(buf, sizeof(buf), "%s/Lib", pbs_python_home);
+	pbs_asprintf(&buf, "%s/Lib", pbs_python_home);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
@@ -9589,38 +9594,44 @@ main(int argc, char *argv[])
 	py_version[3] = '\0';
 
 	/* list of possible paths to Python modules (mom imports json) */
-	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
+	pbs_asprintf(&buf, "%s/lib/python%s", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
+	pbs_asprintf(&buf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s", py_version);
+	pbs_asprintf(&buf, "/usr/lib/python/python%s", py_version);
 	retval = PyUnicode_FromString(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-	
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s/lib-dynload", py_version);
-	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s", py_version);
+	pbs_asprintf(&buf, "/usr/lib/python/python%s/lib-dynload", py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s/lib-dynload", py_version);
+	pbs_asprintf(&buf, "/usr/lib64/python/python%s", py_version);
 	retval = PyUnicode_FromString(buf);
+	free(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
+
+	pbs_asprintf(&buf, "/usr/lib64/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	free(buf);
 	if (retval != NULL)
 		PyList_Append(path, retval);
 	Py_CLEAR(retval);

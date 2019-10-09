@@ -654,10 +654,8 @@ lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
 		case LIM_OLD:
 			return (lim_setoldlimits(a, lip));
 		default:
-			(void) sprintf(log_buffer, "attribute %s not a limit attribute",
-				a->name);
-			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+				"attribute %s not a limit attribute", a->name);
 			return (1);
 	}
 }
@@ -1295,9 +1293,9 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, user, NULL, NULL, NULL);
-	(void) sprintf(log_buffer, "%s user %s max_*user_run (%d, %d), used %d",
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s user %s max_*user_run (%d, %d), used %d", 
 		rr->name, user, max_user_run, max_genuser_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_user_run != SCHD_INFINITY) {
 		if (max_user_run <= used) {
@@ -1365,10 +1363,9 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
-	(void) sprintf(log_buffer,
-		"%s group %s max_*group_run (%d, %d), used %d",
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s group %s max_*group_run (%d, %d), used %d", 
 		rr->name, group, max_group_run, max_gengroup_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_group_run != SCHD_INFINITY) {
 		if (max_group_run <= used) {
@@ -1420,12 +1417,9 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	ret = check_max_user_res(rr, cts, &rdef,
 		LI2RESCTX(si->liminfo));
-	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_user_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
-	}
+	if (ret != 0) 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			   "%s check_max_user_res returned %d", rr->name, ret);
 	switch (ret) {
 		default:
 		case -1:
@@ -1479,12 +1473,9 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	ret = check_max_group_res(rr, cts,
 		&rdef, LI2RESCTX(si->liminfo));
-	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_group_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
-	}
+	if (ret != 0)
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s check_max_group_res returned %d", rr->name, ret);
 	switch (ret) {
 		default:
 		case -1:
@@ -1554,9 +1545,9 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts,  user, NULL, NULL, NULL);
-	(void) sprintf(log_buffer, "%s user %s max_*user_run (%d, %d), used %d",
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s user %s max_*user_run (%d, %d), used %d",
 		rr->name, user, max_user_run, max_genuser_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_user_run != SCHD_INFINITY) {
 		if (max_user_run <= used) {
@@ -1623,10 +1614,9 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
-	(void) sprintf(log_buffer,
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
 		"%s group %s max_*group_run (%d, %d), used %d",
 		rr->name, group, max_group_run, max_gengroup_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_group_run != SCHD_INFINITY) {
 		if (max_group_run <= used) {
@@ -1677,12 +1667,10 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	cts = qc->user;
 
 	ret = check_max_user_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
-	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_user_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
-	}
+	if (ret != 0)
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s check_max_user_res returned %d", rr->name, ret);
+
 	switch (ret) {
 		default:
 		case -1:
@@ -1736,12 +1724,10 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	cts = qc->group;
 
 	ret = check_max_group_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
-	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_group_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
-	}
+	if (ret != 0)
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s check_max_group_res returned %d", rr->name, ret);
+
 	switch (ret) {
 		default:
 		case -1:
@@ -1821,10 +1807,8 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		else
 			used = used_res->amount;
 
-		(void) sprintf(log_buffer, "%s max_res.%s %.1lf, used %.1lf",
-			rr->name, res->name, max_res, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s max_res.%s %.1lf, used %.1lf", rr->name, res->name, max_res, used);
 		if (used + req->amount > max_res) {
 			schderr_args_q_res(qi->name, NULL, NULL, err);
 			err->rdef = res->def;
@@ -1897,10 +1881,8 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		else
 			used = used_res->amount;
 
-		(void) sprintf(log_buffer, "%s max_res.%s %.1lf, used %.1lf",
-			rr->name, res->name, max_res, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s max_res.%s %.1lf, used %.1lf", rr->name, res->name, max_res, used);
 		if (used + req->amount > max_res) {
 			err->rdef = res->def;
 			return (SERVER_RESOURCE_LIMIT_REACHED);
@@ -2107,11 +2089,10 @@ check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(qi->user_counts, user, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s user %s max_*user_run_soft (%d, %d), used %d",
-		rr->name, user,
-		max_user_run_soft, max_genuser_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s user %s max_*user_run_soft (%d, %d), used %d", 
+		rr->name, user, max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
@@ -2181,11 +2162,9 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 		return (0);
 
 	used = find_counts_elm(qi->group_counts, group, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s group %s max_*group_run_soft (%d, %d), used %d",
-		rr->name, group,
-		max_group_run_soft, max_gengroup_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s group %s max_*group_run_soft (%d, %d), used %d", 
+		rr->name, group, max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
@@ -2356,11 +2335,9 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->user_counts, user, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s user %s max_*user_run_soft (%d, %d), used %d",
-		rr->name, user,
-		max_user_run_soft, max_genuser_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s user %s max_*user_run_soft (%d, %d), used %d", 
+		rr->name, user, max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
 		if (max_user_run_soft < used) {
@@ -2431,11 +2408,10 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->group_counts, group, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s group %s max_*group_run_soft (%d, %d), used %d",
-		rr->name, group,
-		max_group_run_soft, max_gengroup_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s group %s max_*group_run_soft (%d, %d), used %d", 
+		rr->name, group, max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
 		if (max_group_run_soft < used) {
@@ -2569,11 +2545,10 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		else
 			used = used_res->amount;
 
-		(void) sprintf(log_buffer,
-			"%s max_res_soft.%s %.1lf, used %.1lf",
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s max_res_soft.%s %.1lf, used %.1lf", 
 			rr->name, res->name, max_res_soft, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+
 		if (max_res_soft < used) {
 			if (used_res != NULL)
 				used_res->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
@@ -2639,11 +2614,10 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		else
 			used = used_res->amount;
 
-		(void) sprintf(log_buffer,
-			"%s max_res_soft.%s %.1lf, used %.1lf",
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s max_res_soft.%s %.1lf, used %.1lf", 
 			rr->name, res->name, max_res_soft, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+
 		if (max_res_soft < used) {
 			if (used_res != NULL)
 				used_res->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
@@ -2715,12 +2689,10 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->def, NULL, NULL);
-		(void) sprintf(log_buffer, "%s group %s "
-			"max_*group_res.%s (%.1lf, %.1lf), used %.1lf",
-			rr->name, group,
-			res->name, max_group_res, max_gengroup_res, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s group %s max_*group_res.%s (%.1lf, %.1lf), used %.1lf", 
+			rr->name, group, res->name, max_group_res, max_gengroup_res, used);
 
 		if (max_group_res != SCHD_INFINITY) {
 			if (used + req->amount > max_group_res) {
@@ -2795,13 +2767,9 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		rescts = NULL;
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->def, NULL, &rescts);
-		(void) sprintf(log_buffer,
-			"%s group %s "
-			"max_*group_res_soft.%s (%.1lf, %.1lf), used %.1lf",
-			rr->name, group, res->name,
-			max_group_res_soft, max_gengroup_res_soft, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s group %s max_*group_res_soft.%s (%.1lf, %.1lf), used %.1lf", 
+			rr->name, group, res->name, max_group_res_soft, max_gengroup_res_soft, used);
 
 		if (max_group_res_soft != SCHD_INFINITY) {
 			if (max_group_res_soft < used) {
@@ -2880,13 +2848,10 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->def, NULL, NULL);
-		(void) sprintf(log_buffer,
-			"%s user %s "
-			"max_*user_res.%s (%.1lf, %.1lf), used %.1lf",
-			rr->name, user,
-			res->name, max_user_res, max_genuser_res, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s user %s max_*user_res.%s (%.1lf, %.1lf), used %.1lf", 
+			rr->name, user, res->name, max_user_res, max_genuser_res, used);
 
 		if (max_user_res != SCHD_INFINITY) {
 			if (used + req->amount > max_user_res) {
@@ -2963,13 +2928,10 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		rescts = NULL;
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->def, NULL, &rescts);
-		(void) sprintf(log_buffer,
-			"%s user %s "
-			"max_*user_res_soft (%.1lf, %.1lf), used %.1lf",
-			rr->name, user,
-			max_user_res_soft, max_genuser_res_soft, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
+
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s user %s max_*user_res_soft (%.1lf, %.1lf), used %.1lf", 
+			rr->name, user, max_user_res_soft, max_genuser_res_soft, used);
 
 		if (max_user_res_soft != SCHD_INFINITY) {
 			if (max_user_res_soft < used) {
@@ -3020,10 +2982,8 @@ lim_setreslimits(const struct attrl *a, void *ctx)
 	if (entlim_parse(a->value, a->resource, ctx, lim_callback) == 0)
 		return (0);
 	else {
-		(void) sprintf(log_buffer, "entlim_parse(%s, %s) failed",
-			a->value, a->resource);
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+			"entlim_parse(%s, %s) failed", a->value, a->resource);
 		return (1);
 	}
 }
@@ -3079,10 +3039,7 @@ lim_setrunlimits(const struct attrl *a, void *ctx)
 	if (entlim_parse(a->value, NULL, ctx, lim_callback) == 0)
 		return (0);
 	else {
-		(void) sprintf(log_buffer, "entlim_parse(%s) failed",
-			a->value);
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "entlim_parse(%s) failed", a->value);
 		return (1);
 	}
 }
@@ -3215,17 +3172,12 @@ lim_dup_ctx(void *ctx)
 
 	while((pkey = entlim_get_next(pkey, ctx)) != NULL) {
 		if ((newval = strdup(pkey->recptr)) == NULL) {
-			(void) sprintf(log_buffer, "strdup recptr failed");
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR,
-					__func__, log_buffer);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup recptr failed");
 			free(pkey);
 			(void) entlim_free_ctx(newctx, free);
 			return(NULL);
 		} else if (entlim_add(pkey->key, newval, newctx) != 0) {
-			(void) sprintf(log_buffer, "entlim_add(%s) failed",
-				pkey->key);
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR,
-					__func__, log_buffer);
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "entlim_add(%s) failed", pkey->key);
 			/*
 			 *	One might think that we should free newval
 			 *	on error as well.  We don't only because we
@@ -3342,39 +3294,31 @@ lim_callback(void *ctx, enum lim_keytypes kt, char *param, char *namestring,
 	else
 		key = entlim_mk_runkey(kt, namestring);
 	if (key == NULL) {
-		sprintf(log_buffer, "key construction %d %s failed",
-			(int) kt, namestring);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+			"key construction %d %s failed", (int) kt, namestring);
 		return (-1);
 	}
 
 	if ((v = strdup(val)) == NULL) {
-		sprintf(log_buffer, "strdup %s %s %s failed",
-			key, res, val);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+			"strdup %s %s %s failed", key, res, val);
 		free(key);
 		return (-1);
 	}
 
 	if (entlim_add(key, v, ctx) != 0) {
-		sprintf(log_buffer, "limit set %s %s %s failed",
-			key, res, val);
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+			"limit set %s %s %s failed", key, res, val);
 		free(v);
 		free(key);
 		return (-1);
 	} else {
 		if (res != NULL)
-			sprintf(log_buffer, "limit set %s %s %s",
-				key, res, val);
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+				"limit set %s %s %s", key, res, val);
 		else
-			sprintf(log_buffer, "limit set %s NULL %s",
-				key, val);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-			log_buffer);
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+				"limit set %s NULL %s", key, val);
 		free(key);
 		return (0);
 	}
@@ -3533,12 +3477,10 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->def, NULL, NULL);
-		(void) sprintf(log_buffer, "%s project %s "
-			"max_*project_res.%s (%.1lf, %.1lf), used %.1lf",
-			rr->name, project,
-			res->name, max_project_res, max_genproject_res, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				__func__, log_buffer);
+
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+			"%s project %s max_*project_res.%s (%.1lf, %.1lf), used %.1lf", 
+			rr->name, project, res->name, max_project_res, max_genproject_res, used);
 
 		if (max_project_res != SCHD_INFINITY) {
 			if (used + req->amount > max_project_res) {
@@ -3614,13 +3556,9 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		rescts = NULL;
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->def, NULL, &rescts);
-		(void) sprintf(log_buffer,
-			"%s project %s "
-			"max_*project_res_soft.%s (%.1lf, %.1lf), used %.1lf",
-			rr->name, project, res->name,
-			max_project_res_soft, max_genproject_res_soft, used);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s project %s max_*project_res_soft.%s (%.1lf, %.1lf), used %.1lf", 
+			rr->name, project, res->name, max_project_res_soft, max_genproject_res_soft, used);
 
 		if (max_project_res_soft != SCHD_INFINITY) {
 			if (max_project_res_soft < used){
@@ -3684,10 +3622,8 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	ret = check_max_project_res(rr, cts,
 		&rdef, LI2RESCTX(si->liminfo));
 	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_project_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s check_max_project_res returned %d", rr->name, ret);
 	}
 	switch (ret) {
 		default:
@@ -3759,11 +3695,9 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->project_counts, project, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s project %s max_*project_run_soft (%d, %d), used %d",
-		rr->name, project,
-		max_project_run_soft, max_genproject_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s project %s max_*project_run_soft (%d, %d), used %d", 
+		rr->name, project, max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
@@ -3855,12 +3789,9 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	cts = qc->project;
 
 	ret = check_max_project_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
-	if (ret != 0) {
-		(void) sprintf(log_buffer, "%s check_max_project_res returned %d",
-			rr->name, ret);
-		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			log_buffer);
-	}
+	if (ret != 0)
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s check_max_project_res returned %d", rr->name, ret);
 	switch (ret) {
 		default:
 		case -1:
@@ -3929,11 +3860,10 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 		return (0);
 
 	used = find_counts_elm(qi->project_counts, project, NULL, &cnt, NULL);
-	(void) sprintf(log_buffer,
-		"%s project %s max_*project_run_soft (%d, %d), used %d",
-		rr->name, project,
-		max_project_run_soft, max_genproject_run_soft, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s project %s max_*project_run_soft (%d, %d), used %d", 
+		rr->name, project, max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
 		if (max_project_run_soft < used) {
@@ -4047,10 +3977,10 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, project, NULL, NULL, NULL);
-	(void) sprintf(log_buffer,
-		"%s project %s max_*project_run (%d, %d), used %d",
+
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s project %s max_*project_run (%d, %d), used %d", 
 		rr->name, project, max_project_run, max_genproject_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_project_run != SCHD_INFINITY) {
 		if (max_project_run <= used) {
@@ -4124,10 +4054,10 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, project, NULL, NULL, NULL);
-	(void) sprintf(log_buffer,
-		"%s project %s max_*project_run (%d, %d), used %d",
+
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		"%s project %s max_*project_run (%d, %d), used %d", 
 		rr->name, project, max_project_run, max_genproject_run, used);
-	schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (max_project_run != SCHD_INFINITY) {
 		if (max_project_run <= used) {

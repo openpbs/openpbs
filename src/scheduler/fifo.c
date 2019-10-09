@@ -151,8 +151,7 @@ schedinit(void)
 	struct tm *tmptr;
 
 #ifdef PYTHON
-	char errMsg[LOG_BUF_SIZE];
-	char buf[MAXPATHLEN];
+	char *msgbuf;
 	char *errstr;
 	char py_version[4];
 
@@ -177,9 +176,8 @@ schedinit(void)
 	if (conf.holiday_year != 0) {
 		tmptr = localtime(&cstat.current_time);
 		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
-			schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-			HOLIDAYS_FILE,
-					"The holiday file is out of date; please update it.");
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE, 
+				"The holiday file is out of date; please update it.");
 	}
 
 	parse_ded_file(DEDTIME_FILE);
@@ -230,18 +228,21 @@ schedinit(void)
 	/* get the version of Python interpreter */
 	strncpy(py_version, Py_GetVersion(), 3);
         py_version[3] = '\0';
-
-	snprintf(buf, sizeof(buf), "%s/lib/python%s", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(buf);
+	
+	pbs_asprintf(&msgbuf, "%s/lib/python%s", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
-
-	snprintf(buf, sizeof(buf), "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-        retval = PyUnicode_FromString(buf);
+	
+	pbs_asprintf(&msgbuf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
+	retval = PyUnicode_FromString(msgbuf);
+	free(msgbuf);
         if (retval != NULL)
                 PyList_Append(path, retval);
         Py_CLEAR(retval);
+        
 
 	PySys_SetObject("path", path);
 
@@ -262,11 +263,9 @@ schedinit(void)
 	if (obj != NULL) {
 		errstr = PyUnicode_AsUTF8(obj);
 		if (errstr != NULL) {
-			if (strlen(errstr) > 0) {
-				snprintf(errMsg, sizeof(errMsg), " %s. Python is unlikely to work properly.", errstr);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-					"PythonError", errMsg);
-			}
+			if (strlen(errstr) > 0)
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
+					   "PythonError", " %s. Python is unlikely to work properly.", errstr);
 		}
 		Py_XDECREF(obj);
 	}
@@ -294,9 +293,8 @@ update_cycle_status(struct status *policy, time_t current_time)
 	char dedtime;				/* boolean: is it dedtime? */
 	enum prime_time prime;		/* current prime time status */
 	struct tm *ptm;
-	char logbuf[MAX_LOG_SIZE];
-	char logbuf2[MAX_LOG_SIZE / 2];
 	struct tm *tmptr;
+	char *primetime;
 
 	if (policy == NULL)
 		return;
@@ -334,29 +332,27 @@ update_cycle_status(struct status *policy, time_t current_time)
 	if (conf.holiday_year != 0) {
 		tmptr = localtime(&policy->current_time);
 		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
-			schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-			HOLIDAYS_FILE,
-					"The holiday file is out of date; please update it.");
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+				  HOLIDAYS_FILE, "The holiday file is out of date; please update it.");
 	}
 	policy->prime_status_end = end_prime_status(policy->current_time);
 
+	primetime = prime == PRIME ? "primetime" : "non-primetime";
 	if (policy->prime_status_end == SCHD_INFINITY)
-		strcpy(logbuf2, "It will never end");
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", "It is %s.  It will never end", primetime);
 	else {
 		ptm = localtime(&(policy->prime_status_end));
 		if (ptm != NULL) {
-			snprintf(logbuf2, sizeof(logbuf2),
-				"It will end in %ld seconds at %02d/%02d/%04d %02d:%02d:%02d",
-				policy->prime_status_end - policy->current_time,
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", 
+				"It is %s.  It will end in %ld seconds at %02d/%02d/%04d %02d:%02d:%02d",
+				primetime, policy->prime_status_end - policy->current_time,
 				ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
 				ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
 		}
 		else
-			strcpy(logbuf2, "It will end at <UNKNOWN>");
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", 
+				"It is %s.  It will end at <UNKNOWN>", primetime);
 	}
-	snprintf(logbuf, sizeof(logbuf), "It is %s.  %s",
-		prime == PRIME ? "primetime" : "non-primetime", logbuf2);
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "", logbuf);
 
 	policy->order = 0;
 	policy->preempt_attempts = 0;
@@ -454,8 +450,8 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 		t = policy->current_time;
 		while (conf.decay_time != SCHD_INFINITY &&
 			(t - sinfo->fairshare->last_decay) > conf.decay_time) {
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				"Fairshare", "Decaying Fairshare Tree");
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+				  "Fairshare", "Decaying Fairshare Tree");
 			if (conf.fairshare != NULL)
 				decay_fairshare_tree(sinfo->fairshare->root);
 			t -= conf.decay_time;
@@ -472,8 +468,8 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 		if (policy->sync_fairshare_files && (decayed || last_running != NULL)) {
 			write_usage(USAGE_FILE, sinfo->fairshare);
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				"Fairshare", "Usage Sync");
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+				  "Fairshare", "Usage Sync");
 		}
 		reset_temp_usage(sinfo->fairshare->root);
 		calc_usage_factor(sinfo->fairshare);
@@ -511,15 +507,13 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 				if (sinfo->job_formula != NULL) {
 					double threshold = policy->job_form_threshold;
 					resresv->job->formula_value = formula_evaluate(sinfo->job_formula, resresv, resresv->resreq);
-					sprintf(log_buffer, "Formula Evaluation = %.*f",
-						float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
-					schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Formula Evaluation = %.*f",
+						   float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
 
 					if (!resresv->can_not_run && policy->job_form_threshold_set && resresv->job->formula_value <= threshold) {
 						set_schd_error_codes(err, NOT_RUN, JOB_UNDER_THRESHOLD);
-						snprintf(log_buffer, sizeof(log_buffer), "Job's formula value %.*f is under threshold %.*f",
-							float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value, float_digits(threshold, 2), threshold);
-						schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+						log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Job's formula value %.*f is under threshold %.*f",
+							   float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value, float_digits(threshold, 2), threshold);
 						if (err->error_code != SUCCESS) {
 							update_job_can_not_run(pbs_sd, resresv, err);
 							clear_schd_error(err);
@@ -598,8 +592,8 @@ schedule(int cmd, int sd, char *runjobid)
 		case SCH_SCHEDULE_AJOB:
 			return intermediate_schedule(sd, runjobid);
 		case SCH_CONFIGURE:
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
-				"reconfigure", "Scheduler is reconfiguring");
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
+				  "reconfigure", "Scheduler is reconfiguring");
 			reset_global_resource_ptrs();
 			if(schedinit() != 0) {
 				return 0;
@@ -611,8 +605,7 @@ schedule(int cmd, int sd, char *runjobid)
 			 * server through qmgr.
 			 */
 			if (!update_svr_schedobj(connector, 0, 0)) {
-				sprintf(log_buffer, "update_svr_schedobj failed");
-				log_err(-1, __func__, log_buffer);
+				log_err(-1, __func__, "update_svr_schedobj failed");
 				return 0;
 			}
 			break;
@@ -697,8 +690,8 @@ scheduling_cycle(int sd, char *jobid)
 	status *policy;			/* policy structure used for cycle */
 	schd_error *err = NULL;
 
-	schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-		"", "Starting Scheduling Cycle");
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+		  "", "Starting Scheduling Cycle");
 
 	update_cycle_status(&cstat, 0);
 
@@ -708,8 +701,8 @@ scheduling_cycle(int sd, char *jobid)
 #endif /* localmod 030 */
 	/* create the server / queue / job / node structures */
 	if ((sinfo = query_server(&cstat, sd)) == NULL) {
-		schdlog(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			"", "Problem with creating server data structure");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);
 		return 0;
 	}
@@ -736,7 +729,7 @@ scheduling_cycle(int sd, char *jobid)
 
 	/* jobid will not be NULL if we received a qrun request */
 	if (jobid != NULL) {
-		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobid, "Received qrun request");
 		if (is_job_array(jobid) > 1) /* is a single subjob or a range */
 			modify_job_array_for_qrun(sinfo, jobid);
@@ -744,7 +737,7 @@ scheduling_cycle(int sd, char *jobid)
 			sinfo->qrun_job = find_resource_resv(sinfo->jobs, jobid);
 
 		if (sinfo->qrun_job == NULL) { /* something went wrong */
-			schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid,
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid,
 				"Could not find job to qrun.");
 			error = 1;
 			rc = SCHD_ERROR;
@@ -754,7 +747,7 @@ scheduling_cycle(int sd, char *jobid)
 
 
 	if (init_scheduling_cycle(policy, sd, sinfo) == 0) {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			sinfo->name, "init_scheduling_cycle failed.");
 		end_cycle_tasks(sinfo);
 		return 0;
@@ -805,14 +798,12 @@ scheduling_cycle(int sd, char *jobid)
 				char *pbs_errmsg;
 				pbs_errmsg = pbs_geterrmsg(sd);
 
-				snprintf(log_msg, sizeof(log_msg), "Error in deferred reply: %s",
-					pbs_errmsg == NULL ? "" : pbs_errmsg);
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-					jobid, log_msg);
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, jobid, 
+					"Error in deferred reply: %s", pbs_errmsg == NULL ? "" : pbs_errmsg);
 			}
 		}
 		if (i == MAX_DEF_REPLY && def_rc != 0) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 				jobid, "Max deferred reply count reached; giving up.");
 		}
 	}
@@ -863,7 +854,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	int end_cycle = 0;		/* boolean  - end main cycle loop */
 	char log_msg[MAX_LOG_SIZE];	/* used to log an message about job */
 	char comment[MAX_LOG_SIZE];	/* used to update comment of job */
-	char buf[MAX_LOG_SIZE];		/* used for misc printing */
 	time_t cycle_start_time;	/* the time the cycle starts */
 	time_t cycle_end_time;		/* the time when the current cycle should end */
 	time_t cur_time;		/* the current time via time() */
@@ -918,7 +908,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 
 		clear_schd_error(err);
 
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			njob->name, "Considering job to run");
 
 		should_use_buckets = job_should_use_buckets(njob);
@@ -985,7 +975,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		 */
 		if (rc == SCHD_ERROR || rc == PBSE_PROTOCOL || got_sigpipe) {
 			end_cycle = 1;
-			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle because of an internal error.");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle because of an internal error.");
 		}
 		else if (rc != SUCCESS && rc != RUN_FAILURE) {
 			int cal_rc;
@@ -1032,7 +1022,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				else if (cal_rc == -1) { /* recycle */
 					end_cycle = 1;
 					rc = -1;
-					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 						njob->name, "Error in add_job_to_calendar");
 				}
 				/* else cal_rc == 0: failed to add to calendar - continue on */
@@ -1073,7 +1063,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				(!njob->job->is_array || !njob->job->is_begin))
 				update_job_comment(sd, njob, comment);
 			if (log_msg[0] != '\0')
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, njob->name, log_msg);
 
 			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
@@ -1087,7 +1077,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		}
 
 		if (njob->can_never_run) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
 				njob->name, "Job will never run with the resources currently configured in the complex");
 		}
 		if ((rc != SUCCESS) && njob->job->resv == NULL) {
@@ -1117,14 +1107,15 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		time(&cur_time);
 		if (cur_time >= cycle_end_time) {
 			end_cycle = 1;
-			snprintf(buf, MAX_LOG_SIZE, "Leaving the scheduling cycle: Cycle duration of %ld seconds has exceeded %s of %ld seconds", (long)(cur_time - cycle_start_time), ATTR_sched_cycle_len, sinfo->sched_cycle_len);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_NOTICE, "toolong", buf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_NOTICE, "toolong", 
+				"Leaving the scheduling cycle: Cycle duration of %ld seconds has exceeded %s of %ld seconds", 
+				(long)(cur_time - cycle_start_time), ATTR_sched_cycle_len, sinfo->sched_cycle_len);
 		}
 		if (conf.max_jobs_to_check != SCHD_INFINITY && (i + 1) >= conf.max_jobs_to_check) {
 			/* i begins with 0, hence i + 1 */
 			end_cycle = 1;
-			snprintf(buf, MAX_LOG_SIZE, "Bailed out of main job loop after checking to see if %d jobs could run.", (i + 1));
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, "", buf);
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, "", 
+				"Bailed out of main job loop after checking to see if %d jobs could run.", (i + 1));
 		}
 
 		if (!end_cycle) {
@@ -1134,7 +1125,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				/* get_sched_cmd_noblk() located in file get_4byte.c */
 				if ((get_sched_cmd_noblk(second_connection, &cmd, &jid) == 1) &&
 					(cmd == SCH_SCHEDULE_RESTART_CYCLE)) {
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
+					log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
 						njob->name, "Leaving scheduling cycle as requested by server.");
 					end_cycle = 1;
 				}
@@ -1206,7 +1197,7 @@ end_cycle_tasks(server_info *sinfo)
 	}
 
 	got_sigpipe = 0;
-	schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		"", "Leaving Scheduling Cycle");
 }
 
@@ -1278,7 +1269,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 		}
 
 		if (log_buf[0] != '\0')
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 				job->name, log_buf);
 
 		/* We won't be looking at this job in main_sched_loop()
@@ -1359,11 +1350,9 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
 				rc = update_job_attr(pbs_sd, rjob, ATTR_l, "walltime", timebuf, NULL, UPDATE_NOW);
 			}
 			if (rc > 0) {
-				if (strlen(timebuf) > 0) {
-					char logbuf[MAX_LOG_SIZE];
-					snprintf(logbuf, MAX_LOG_SIZE, "Job will run for duration=%s", timebuf);
-					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name, logbuf);
-				}
+				if (strlen(timebuf) > 0)
+					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name, 
+						"Job will run for duration=%s", timebuf);
 				if (throughput)
 					rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
 				else
@@ -1411,7 +1400,6 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
  */
 static int translate_runjob_return_code (int pbsrc, resource_resv *bjob)
 {
-    char log_buf[MAX_LOG_SIZE] = {'\0'};		/* generic buffer - comments & logging */
     if ((bjob == NULL) || (pbsrc == PBSE_PROTOCOL))
         return -1;
     if (pbsrc == 0)
@@ -1421,9 +1409,9 @@ static int translate_runjob_return_code (int pbsrc, resource_resv *bjob)
         case PBSE_HOOKERROR:
             return 0;
         default:
-            sprintf(log_buf, "Transient job warning.  Job may get held if issue persists:%d",pbsrc);
-            schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, bjob -> name, log_buf);
-            return 2;
+	    log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, bjob->name, 
+	    	"Transient job warning.  Job may get held if issue persists:%d",pbsrc);
+	    return 2;
     }
 }
 #endif /* localmod 125 */
@@ -1635,7 +1623,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				ret = 1;
 		}
 		else  { /* should never happen */
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rr->name,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rr->name,
 				"Could not find node solution in run_update_resresv()");
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			ret = 0;
@@ -1663,7 +1651,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		rr->nspec_arr = ns;
 
 		if (rr->is_job && !(flags & RURR_NOPRINT)) {
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, rr->name, "Job run");
 		}
 		if ((resresv->is_job) && (resresv->job->is_suspended ==1))
@@ -1965,11 +1953,10 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 
 	
 #ifdef NAS /* localmod 031 */
-	snprintf(log_buf, sizeof(log_buf), "Estimating the start time for a top job (q=%s schedselect=%.1000s).", topjob->job->queue->name, topjob->job->schedsel);
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-		topjob->name, log_buf);
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+		   topjob->name, "Estimating the start time for a top job (q=%s schedselect=%.1000s).", topjob->job->queue->name, topjob->job->schedsel);
 #else
-	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		topjob->name, "Estimating the start time for a top job.");
 #endif /* localmod 031 */
 	if(use_buckets)
@@ -1993,7 +1980,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			/* Can't search by rank, we just created tjob and it has a new rank*/
 			njob = find_resource_resv(nsinfo->jobs, tjob->name);
 			if (njob == NULL) {
-				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 					"Can't find new subjob in simulated universe");
 				free_server(nsinfo);
 				return 0;
@@ -2065,7 +2052,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 
 		if (update_estimated_attrs(pbs_sd, bjob, bjob->job->est_start_time,
 			bjob->job->est_execvnode, 0) <0) {
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 				bjob->name, "Failed to update estimated attrs.");
 		}
 
@@ -2096,19 +2083,17 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			 * cycles
 			 */
 			update_usage_on_run(bjob);
-			sprintf(log_buf, "Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name);
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				bjob->name, log_buf);
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, bjob->name, 
+				"Fairshare usage of entity %s increased due to job becoming a top job.", bjob->job->ginfo->name);
 		}
 
 		sprintf(log_buf, "Job is a top job and will run at %s",
 			ctime(&bjob->start));
 
 		log_buf[strlen(log_buf)-1] = '\0';	/* ctime adds a \n */
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			bjob->name, log_buf);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, bjob->name, log_buf);
 	} else if (start_time == 0) {
-		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, topjob->name,
 			"Error in calculation of start time of top job");
 		free_server(nsinfo);
 		return 0;
@@ -2527,7 +2512,7 @@ sched_settings_frm_svr(struct batch_status *status)
 				/* update the sched comment attribute with the reason for failure */
 				attribs = calloc(2, sizeof(struct attropl));
 				if (attribs == NULL) {
-					schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 					goto cleanup;
 				}
 				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE - 1);
@@ -2545,16 +2530,15 @@ sched_settings_frm_svr(struct batch_status *status)
 					sc_name, attribs, NULL);
 				free(attribs);
 				if (err) {
-					snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment %s at the server", comment);
-					schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+						   "Failed to update scheduler comment %s at the server", comment);
 				}
 				goto cleanup;
 			} else {
 				if (tmp_comment != NULL)
 					clear_comment = 1;
-				snprintf(log_buffer, sizeof(log_buffer), "scheduler log directory is changed to %s", tmp_log_dir);
-				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG,
-						"reconfigure", log_buffer);
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG,
+					   "reconfigure", "scheduler log directory is changed to %s", tmp_log_dir);
 				free(log_dir);
 				if ((log_dir = string_dup(tmp_log_dir)) == NULL) {
 					return 0;
@@ -2568,25 +2552,25 @@ sched_settings_frm_svr(struct batch_status *status)
 				c  = chk_file_sec(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1);
 				c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
 				if (c != 0) {
-					snprintf(log_buffer, sizeof(log_buffer), "PBS failed validation checks for directory %s", tmp_priv_dir);
-					schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+						"PBS failed validation checks for directory %s", tmp_priv_dir);
 					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
 					priv_dir_update_fail = 1;
 				}
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 			if (c == 0) {
 				if (chdir(tmp_priv_dir) == -1) {
-					snprintf(log_buffer, sizeof(log_buffer), "PBS failed validation checks for directory %s", tmp_priv_dir);
 					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
-					schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+						"PBS failed validation checks for directory %s", tmp_priv_dir);
 					priv_dir_update_fail = 1;
 				} else {
 					int lockfds;
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {
-						snprintf(log_buffer, sizeof(log_buffer), "PBS failed validation checks for directory %s", tmp_priv_dir);
 						strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
-						schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+							"PBS failed validation checks for directory %s", tmp_priv_dir);
 						priv_dir_update_fail = 1;
 					} else {
 						/* write schedulers pid into lockfile */
@@ -2598,9 +2582,8 @@ sched_settings_frm_svr(struct batch_status *status)
 							(void)sprintf(log_buffer, "%d\n", getpid());
 						(void)write(lockfds, log_buffer, strlen(log_buffer));
 						close(lockfds);
-						snprintf(log_buffer, sizeof(log_buffer), "scheduler priv directory has changed to %s", tmp_priv_dir);
-						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG,
-								"reconfigure", log_buffer);
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, "reconfigure", 
+							"scheduler priv directory has changed to %s", tmp_priv_dir);
 						if (tmp_comment != NULL)
 							clear_comment = 1;
 						free(priv_dir);
@@ -2618,7 +2601,7 @@ sched_settings_frm_svr(struct batch_status *status)
 			/* update the sched comment attribute with the reason for failure */
 			attribs = calloc(2, sizeof(struct attropl));
 			if (attribs == NULL) {
-				schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 				strncpy(comment, "Unable to change the sched_priv directory", MAX_LOG_SIZE);
 				goto cleanup;
 			}
@@ -2635,8 +2618,8 @@ sched_settings_frm_svr(struct batch_status *status)
 				sc_name, attribs, NULL);
 			free(attribs);
 			if (err) {
-				snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment %s at the server", comment);
-				schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+					"Failed to update scheduler comment %s at the server", comment);
 			}
 			goto cleanup;
 		}
@@ -2647,7 +2630,7 @@ sched_settings_frm_svr(struct batch_status *status)
 
 		attribs = calloc(1, sizeof(struct attropl));
 		if (attribs == NULL) {
-			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 			goto cleanup;
 		}
 
@@ -2655,8 +2638,8 @@ sched_settings_frm_svr(struct batch_status *status)
 		patt->name = ATTR_comment;
 		patt->value = malloc(1);
 		if (patt->value == NULL) {
-			snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, malloc failed");
-			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+				"can't update scheduler attribs, malloc failed");
 			free(attribs);
 			goto cleanup;
 		}
@@ -2668,8 +2651,8 @@ sched_settings_frm_svr(struct batch_status *status)
 		free(attribs->value);
 		free(attribs);
 		if (err) {
-			snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment at the server");
-			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+				"Failed to update scheduler comment at the server");
 			goto cleanup;
 		}
 	}
@@ -2738,7 +2721,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	/* update the sched with new values */
 	attribs = calloc(4, sizeof(struct attropl));
 	if (attribs == NULL) {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
