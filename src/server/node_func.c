@@ -446,7 +446,7 @@ free_prop_list(struct prop *prop)
  *		initialize_pbsnode - carries out initialization on a new
  *		pbs node.  The assumption is that all the parameters are valid.
  * @see
- * 		node_recov_db and create_pbs_node2
+ * 		create_pbs_node2
  * @param[out]	pnode 	- 	new pbs node
  * @param[in]	pname	- 	node name
  * @param[in]	ntype 	- 	time-shared or cluster
