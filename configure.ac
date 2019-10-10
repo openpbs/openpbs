@@ -38,9 +38,9 @@
 
 AC_PREREQ([2.63])
 # Use PBS_VERSION to override the version statically defined here. For example:
-# ./configure PBS_VERSION=19.1.2 --prefix=/opt/pbs
+# ./configure PBS_VERSION=19.1.3 --prefix=/opt/pbs
 AC_INIT([PBS Professional],
-  [19.1.2],
+  [19.1.3],
   [pbssupport@altair.com],
   [pbspro],
   [http://www.pbspro.org/])
