@@ -552,8 +552,11 @@ req_deletejob(struct batch_request *preq)
 			}
 
 			sjst = get_subjob_state(parent, i);
-			if ((sjst == JOB_STATE_EXITING) && !forcedel)
+			if ((sjst == JOB_STATE_EXITING) && !forcedel) {
+				x += z; /* ignore it */
 				continue;
+			}
+
 			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
