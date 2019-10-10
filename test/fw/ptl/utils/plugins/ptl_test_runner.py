@@ -430,11 +430,22 @@ class SystemInfo:
             _msg = 'failed to get content of /proc/meminfo of host: '
             self.logger.error(_msg + hostname)
         else:
+            get_MemAvailable = False
+            ram_search_count = 0
             for i in mem_info['out']:
+                ram_search_count += 1
                 if "MemTotal" in i:
                     self.system_total_ram = float(i.split()[1]) / (2**20)
                 elif "MemFree" in i:
-                    self.system_ram = float(i.split()[1]) / (2**20)
+                    MemFree = float(i.split()[1]) / (2**20)
+                elif "MemAvailable" in i:
+                    get_MemAvailable = True
+                    MemAvailable = float(i.split()[1]) / (2**20)
+                if get_MemAvailable:
+                    self.system_ram = MemAvailable
+                    break
+                elif ram_search_count >= 3:
+                    self.system_ram = MemFree
                     break
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
@@ -707,7 +718,9 @@ class PTLTestRunner(Plugin):
             param_count['num_' + key] = len(param_dic[key])
         for pk in param_count:
             if param_count[pk] < eff_tc_req[pk]:
-                _msg = 'available ' + pk + " is less than requirement"
+                _msg = 'available ' + pk + " ("
+                _msg += str(param_count[pk]) + ") is less than required " + pk
+                _msg += " (" + str(eff_tc_req[pk]) + ")"
                 logger.error(_msg)
                 return _msg
         for hostname in param_dic['moms']:
@@ -719,7 +732,7 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_mom_ram'] >= available_sys_ram:
-                _msg = 'avail ram is less than test requirement on host: '
+                _msg = 'available ram is less than test requirement on host: '
                 _msg += hostname
                 logger.error(_msg)
                 return _msg
@@ -729,7 +742,7 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
-                _msg = 'avail disk is less than test requirement on host: '
+                _msg = 'available disk is less than test requirement on host: '
                 _msg += hostname
                 logger.error(_msg)
                 return _msg
@@ -742,7 +755,7 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_server_ram'] >= available_sys_ram:
-                _msg = 'avail ram is less than requirement on host: '
+                _msg = 'available ram is less than requirement on host: '
                 _msg += hostname
                 logger.error(_msg)
                 return _msg
@@ -752,28 +765,28 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_server_disk'] >= available_sys_disk:
-                _msg = 'avail disk is less than requirement on host: '
+                _msg = 'available disk is less than requirement on host: '
                 _msg += hostname
                 logger.error(_msg)
                 return _msg
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
-                _msg = 'no mom on server: '
+                _msg = 'no mom on server'
                 logger.error(_msg)
                 return _msg
         else:
             if not eff_tc_req['no_mom_on_server']:
-                _msg = 'no mom on server: '
+                _msg = 'no mom on server'
                 logger.error(_msg)
                 return _msg
         if set(param_dic['comms']) & set(param_dic['servers']):
             if eff_tc_req['no_comm_on_server']:
-                _msg = 'no comm on server: '
+                _msg = 'no comm on server'
                 logger.error(_msg)
                 return _msg
         else:
             if not eff_tc_req['no_comm_on_server']:
-                _msg = 'no comm on server: '
+                _msg = 'no comm on server'
                 logger.error(_msg)
                 return _msg
         comm_mom_list = set(param_dic['moms']) & set(param_dic['comms'])
@@ -782,12 +795,12 @@ class PTLTestRunner(Plugin):
             comm_mom_list.remove(shortname)
         if comm_mom_list:
             if eff_tc_req['no_comm_on_mom']:
-                _msg = 'no comm on mom: '
+                _msg = 'no comm on mom'
                 logger.error(_msg)
                 return _msg
         else:
             if not eff_tc_req['no_comm_on_mom']:
-                _msg = 'no comm on server: '
+                _msg = 'no comm on server'
                 logger.error(_msg)
                 return _msg
 
