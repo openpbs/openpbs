@@ -433,7 +433,7 @@ class SystemInfo:
             for i in mem_info['out']:
                 if "MemTotal" in i:
                     self.system_total_ram = float(i.split()[1]) / (2**20)
-                elif "MemAvailable" in i:
+                elif "MemFree" in i:
                     self.system_ram = float(i.split()[1]) / (2**20)
                     break
         # getting disk size in gb
