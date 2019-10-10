@@ -313,6 +313,12 @@ void
 perf_stat_remove(char *instance);
 
 /**
+ * check delay in client commands
+ */
+void create_query_file(void);
+void delay_query(void);
+
+/**
  * End collecting performance stats (e.g. walltime)
  */
 char *

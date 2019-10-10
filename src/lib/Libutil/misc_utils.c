@@ -1821,3 +1821,56 @@ perf_stat_stop(char *instance)
 
 	return (stat_summary);
 }
+
+/**
+ * @brief
+ *	creates an empty file in /tmp/ and saves timestamp of that file
+ *
+ * @param[in] - void
+ *
+ * @return - void
+ */
+void
+create_query_file(void)
+{
+	FILE *f;
+	char filename[MAXPATHLEN + 1];
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	f = fopen(filename, "w");
+	fclose(f);
+}
+
+/**
+ * @brief
+ *	stats te information of the empty file created in /tmp/ to decide 
+ *  whether to add sleep for .2 seconds or not
+ * 
+ * @param[in] - void
+ *
+ * @return - void
+ */
+void
+delay_query(void)
+{
+	char filename[MAXPATHLEN + 1];	
+#ifdef WIN32
+	struct _stat buf;
+#else
+	struct stat buf;
+#endif
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+#ifdef WIN32
+	if(_stat(filename, &buf) == 0) {
+		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
+			Sleep(200);
+		}
+	}
+#else
+	if(stat(filename, &buf) == 0) {
+		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
+			usleep(200000);
+		}
+	}
+#endif
+	atexit(create_query_file);
+}
