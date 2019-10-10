@@ -145,7 +145,7 @@ sleep 5
         job_out = '\n'.join(ret['out'])
         self.logger.info('job output from %s:\n%s' % (job_outfile, job_out))
         job_output = ""
-        with open(job_outfile, 'r') as f:
+        with open(job_outfile, 'r', newline="") as f:
             job_output = f.read().strip()
         self.assertEqual(job_output, chk_var)
         self.logger.info('job output has: %s' % chk_var)
@@ -741,7 +741,7 @@ sleep 5
             # Once all commands sent and matched, job exits
             self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=1)
             # Check for the non-printable character in the output file
-            with open(self.job_out1_tempfile) as fd:
+            with open(self.job_out1_tempfile, newline="") as fd:
                 pkey = ""
                 penv = {}
                 for line in fd:
