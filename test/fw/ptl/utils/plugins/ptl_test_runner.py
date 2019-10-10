@@ -37,6 +37,7 @@
 
 import datetime
 import logging
+import fnmatch
 import os
 import platform
 import pwd
@@ -46,6 +47,7 @@ import socket
 import sys
 import tempfile
 import unittest
+from threading import Timer
 from logging import StreamHandler
 from traceback import format_exception
 from types import ModuleType
@@ -58,12 +60,13 @@ from nose.util import isclass
 
 import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
+from ptl.lib.pbs_testlib import PbsHardwareMonitorError
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
-
+from ptl.utils.pbs_testusers import PBS_ALL_USERS
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -130,7 +133,7 @@ class _PtlTestResult(unittest.TestResult):
         """
         if hasattr(test, 'test'):
             return str(test.test)
-        elif type(test.context) == ModuleType:
+        elif isinstance(test.context, ModuleType):
             tmn = getattr(test.context, '_testMethodName', 'unknown')
             return '%s (%s)' % (tmn, test.context.__name__)
         elif isinstance(test, ContextSuite):
@@ -317,7 +320,7 @@ class _PtlTestResult(unittest.TestResult):
             if err:
                 try:
                     detail = str(err[1])
-                except:
+                except BaseException:
                     detail = None
                 if detail:
                     message.append(detail)
@@ -428,13 +431,15 @@ class SystemInfo:
             self.logger.error(_msg + hostname)
         else:
             for i in mem_info['out']:
-                if "MemAvailable" in i:
+                if "MemTotal" in i:
+                    self.system_total_ram = float(i.split()[1]) / (2**20)
+                elif "MemAvailable" in i:
                     self.system_ram = float(i.split()[1]) / (2**20)
                     break
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
-                                   pbs_conf['PBS_HOME']])
+                                                  pbs_conf['PBS_HOME']])
         if pbs_home_info['rc'] != 0:
             _msg = 'failed to get output of df -k command of host: '
             self.logger.error(_msg + hostname)
@@ -442,6 +447,7 @@ class SystemInfo:
             disk_info = pbs_home_info['out']
             disk_size = disk_info[1].split()
             self.system_disk = float(disk_size[3]) / (2**20)
+            self.system_disk_used_percent = float(disk_size[4].rstrip('%'))
 
 
 class PtlTextTestRunner(TextTestRunner):
@@ -516,6 +522,7 @@ class PTLTestRunner(Plugin):
         self.__tf_count = 0
         self.__failed_tc_count_msg = False
         self._test_marker = 'test_'
+        self.hardware_report_timer = None
 
     def options(self, parser, env):
         """
@@ -600,13 +607,15 @@ class PTLTestRunner(Plugin):
                                    {}).get('default-testcase-timeout',
                                            MINIMUM_TESTCASE_TIMEOUT))
         tc_timeout = int(getattr(getattr(_test,
-                                 getattr(_test, '_testMethodName', ''),
-                                 None),
-                         TIMEOUT_KEY,
-                         0))
+                                         getattr(_test, '_testMethodName', ''),
+                                         None),
+                                 TIMEOUT_KEY,
+                                 0))
         return max([dflt_timeout, tc_timeout])
 
     def __set_test_end_data(self, test, err=None):
+        if self.hardware_report_timer is not None:
+            self.hardware_report_timer.cancel()
         if not hasattr(test, 'start_time'):
             test = test.context
         if err is not None:
@@ -618,7 +627,7 @@ class PTLTestRunner(Plugin):
             try:
                 test.err_in_string = self.result._exc_info_to_string(err,
                                                                      test)
-            except:
+            except BaseException:
                 etype, value, tb = err
                 test.err_in_string = ''.join(format_exception(etype, value,
                                                               tb))
@@ -747,6 +756,85 @@ class PTLTestRunner(Plugin):
             if not eff_tc_req['no_comm_on_mom']:
                 return False
 
+    def check_hardware_status_and_core_files(self):
+        """
+        function checks hardware status and core files
+        every 5 minutes
+        """
+        du = DshUtils()
+        self.hardware_report_timer = Timer(
+            300, self.check_hardware_status_and_core_files)
+        self.hardware_report_timer.start()
+        systems = list(self.param_dict['servers'])
+        systems.extend(self.param_dict['moms'])
+        systems.extend(self.param_dict['comms'])
+        systems = list(set(systems))
+        for hostname in systems:
+            hr = SystemInfo()
+            hr.get_system_info(hostname)
+            # monitors disk
+            used_disk_percent = getattr(hr,
+                                        'system_disk_used_percent', None)
+            if used_disk_percent is None:
+                _msg = hostname
+                _msg += ": unable to get disk info"
+                self.logger.error(_msg)
+                self.hardware_report_timer.cancel()
+                raise PbsHardwareMonitorError(msg=_msg)
+            elif 70 <= used_disk_percent < 95:
+                _msg = hostname + ": disk usage is at "
+                _msg += str(used_disk_percent) + "%"
+                _msg += ", disk cleanup is recommended."
+                self.logger.warning(_msg)
+            elif used_disk_percent >= 95:
+                _msg = hostname + ":disk usage > 95%, stopping the test(s)"
+                self.logger.error(_msg)
+                self.hardware_report_timer.cancel()
+                raise PbsHardwareMonitorError(msg=_msg)
+            # checks for core files
+            pbs_conf = du.parse_pbs_config(hostname)
+            mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")
+            if du.isdir(hostname=hostname, path=mom_priv_path):
+                mom_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=mom_priv_path,
+                    sudo=True,
+                    fullpath=False)
+                if fnmatch.filter(mom_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += mom_priv_path
+                    self.logger.warning(_msg)
+            server_priv_path = os.path.join(
+                pbs_conf["PBS_HOME"], "server_priv")
+            if du.isdir(hostname=hostname, path=server_priv_path):
+                server_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=server_priv_path,
+                    sudo=True,
+                    fullpath=False)
+                if fnmatch.filter(server_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += server_priv_path
+                    self.logger.warning(_msg)
+            sched_priv_path = os.path.join(pbs_conf["PBS_HOME"], "sched_priv")
+            if du.isdir(hostname=hostname, path=sched_priv_path):
+                sched_priv_files = du.listdir(
+                    hostname=hostname,
+                    path=sched_priv_path,
+                    sudo=True,
+                    fullpath=False)
+                if fnmatch.filter(sched_priv_files, "core*"):
+                    _msg = hostname + ": core files found in "
+                    _msg += sched_priv_path
+                    self.logger.warning(_msg)
+            for u in PBS_ALL_USERS:
+                user_home_files = du.listdir(hostname=hostname, path=u.home,
+                                             sudo=True, fullpath=False)
+                if fnmatch.filter(user_home_files, "core*"):
+                    _msg = hostname + ": user-" + str(u)
+                    _msg += ": core files found in "
+                    self.logger.warning(_msg + u.home)
+
     def startTest(self, test):
         """
         Start the test
@@ -775,6 +863,8 @@ class PTLTestRunner(Plugin):
             # included in total run count of the test run
             self.result.startTest(test)
             raise SkipTest('Test requirements are not matching')
+        # function report hardware status and core files
+        self.check_hardware_status_and_core_files()
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
