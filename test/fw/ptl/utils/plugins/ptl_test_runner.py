@@ -433,19 +433,25 @@ class SystemInfo:
             get_MemAvailable = False
             ram_search_count = 0
             for i in mem_info['out']:
-                ram_search_count += 1
                 if "MemTotal" in i:
                     self.system_total_ram = float(i.split()[1]) / (2**20)
-                elif "MemFree" in i:
-                    MemFree = float(i.split()[1]) / (2**20)
                 elif "MemAvailable" in i:
-                    get_MemAvailable = True
                     MemAvailable = float(i.split()[1]) / (2**20)
+                    get_MemAvailable = True
+                elif "MemFree" in i:
+                    ram_search_count += 1
+                    MemFree = float(i.split()[1]) / (2**20)
+                elif "Buffers" in i:
+                    ram_search_count += 1
+                    Buffers = float(i.split()[1]) / (2**20)
+                elif "Cached" in i:
+                    ram_search_count += 1
+                    Cached = float(i.split()[1]) / (2**20)
                 if get_MemAvailable:
                     self.system_ram = MemAvailable
                     break
-                elif ram_search_count >= 3:
-                    self.system_ram = MemFree
+                elif ram_search_count is 3:
+                    self.system_ram = MemFree + Buffers + Cached
                     break
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
