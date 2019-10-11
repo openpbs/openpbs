@@ -175,10 +175,10 @@ class TestMomHookSync(TestFunctional):
             'to %s.*' % self.momB.hostname,
             starttime=now, max_attempts=10, regexp=True)
 
-        # the higher the number, the earlier the line appears in the log
-        self.assertTrue(match_delete[0] > match_sent1[0])
-        self.assertTrue(match_delete[0] > match_sent2[0])
-        self.assertTrue(match_delete[0] > match_sent3[0])
+        # Lower the linecount, earlier the line appears in log
+        self.assertTrue(match_delete[0] < match_sent1[0])
+        self.assertTrue(match_delete[0] < match_sent2[0])
+        self.assertTrue(match_delete[0] < match_sent3[0])
 
     def test_momhook_to_momhook_with_resume(self):
         """
@@ -226,8 +226,8 @@ class TestMomHookSync(TestFunctional):
             'to %s.*' % self.momB.hostname,
             starttime=now, max_attempts=10, regexp=True)
 
-        # the higher the number, the earlier the line appears in the log
-        self.assertTrue(match_sent[0] > match_delete[0])
+        # Lower the linecount, earlier the line appears in log
+        self.assertTrue(match_sent[0] < match_delete[0])
 
         self.server.log_match(
             'successfully sent hook file .*cpufreq.CF ' +
@@ -299,10 +299,10 @@ class TestMomHookSync(TestFunctional):
             'to %s.*' % self.momB.hostname,
             starttime=now, max_attempts=10, regexp=True)
 
-        # the higher the number, the earlier the line appears in the log
-        self.assertTrue(match_delete[0] > match_sent1[0])
-        self.assertTrue(match_delete[0] > match_sent2[0])
-        self.assertTrue(match_delete[0] > match_sent3[0])
+        # Lower the linecount, earlier the line appears in log
+        self.assertTrue(match_delete[0] < match_sent1[0])
+        self.assertTrue(match_delete[0] < match_sent2[0])
+        self.assertTrue(match_delete[0] < match_sent3[0])
 
     def test_momhook_to_momhook_with_restart(self):
         """
