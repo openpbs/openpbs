@@ -733,8 +733,10 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_mom_ram'] >= available_sys_ram:
-                _msg = 'available ram is less than test requirement on host: '
-                _msg += hostname
+                _msg = hostname + ': available ram (' + str(available_sys_ram)
+                _msg += ') is less than the minimum required ram ('
+                _msg += str(eff_tc_req['min_mom_ram'])
+                _msg += ') for test execution'
                 logger.error(_msg)
                 return _msg
             available_sys_disk = getattr(si, 'system_disk', None)
@@ -743,8 +745,11 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
-                _msg = 'available disk is less than test requirement on host: '
-                _msg += hostname
+                _msg = hostname + ': available disk space ('
+                _msg += str(available_sys_disk)
+                _msg += ') is less than the minimum required disk space ('
+                _msg += str(eff_tc_req['min_mom_disk'])
+                _msg += ') for test execution'
                 logger.error(_msg)
                 return _msg
         for hostname in param_dic['servers']:
@@ -756,8 +761,10 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_server_ram'] >= available_sys_ram:
-                _msg = 'available ram is less than requirement on host: '
-                _msg += hostname
+                _msg = hostname + ': available ram (' + str(available_sys_ram)
+                _msg += ') is less than the minimum required ram ('
+                _msg += str(eff_tc_req['min_server_ram'])
+                _msg += ') for test execution'
                 logger.error(_msg)
                 return _msg
             available_sys_disk = getattr(si, 'system_disk', None)
@@ -766,8 +773,11 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
             elif eff_tc_req['min_server_disk'] >= available_sys_disk:
-                _msg = 'available disk is less than requirement on host: '
-                _msg += hostname
+                _msg = hostname + ': available disk space ('
+                _msg += str(available_sys_disk)
+                _msg += ') is less than the minimum required disk space ('
+                _msg += str(eff_tc_req['min_server_disk'])
+                _msg += ') for test execution'
                 logger.error(_msg)
                 return _msg
         if set(param_dic['moms']) & set(param_dic['servers']):
