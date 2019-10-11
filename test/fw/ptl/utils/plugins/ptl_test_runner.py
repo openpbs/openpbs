@@ -430,29 +430,24 @@ class SystemInfo:
             _msg = 'failed to get content of /proc/meminfo of host: '
             self.logger.error(_msg + hostname)
         else:
-            get_MemAvailable = False
-            ram_search_count = 0
+            got_MemAvailable = False
             for i in mem_info['out']:
                 if "MemTotal" in i:
                     self.system_total_ram = float(i.split()[1]) / (2**20)
                 elif "MemAvailable" in i:
                     MemAvailable = float(i.split()[1]) / (2**20)
-                    get_MemAvailable = True
+                    got_MemAvailable = True
+                    break
                 elif "MemFree" in i:
-                    ram_search_count += 1
                     MemFree = float(i.split()[1]) / (2**20)
                 elif "Buffers" in i:
-                    ram_search_count += 1
                     Buffers = float(i.split()[1]) / (2**20)
                 elif "Cached" in i:
-                    ram_search_count += 1
                     Cached = float(i.split()[1]) / (2**20)
-                if get_MemAvailable:
-                    self.system_ram = MemAvailable
-                    break
-                elif ram_search_count is 3:
-                    self.system_ram = MemFree + Buffers + Cached
-                    break
+            if got_MemAvailable:
+                self.system_ram = MemAvailable
+            else:
+                self.system_ram = MemFree + Buffers + Cached
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
