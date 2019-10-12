@@ -8341,7 +8341,7 @@ class Server(PBSService):
             return self.expect(obj_type, attrib, id, op, attrop, attempt + 1,
                                max_attempts, interval, count, extend,
                                runas=runas, level=level, msg=" ".join(msg))
-
+        inp_op = op
         for k, v in attrib.items():
             varargs = None
             if isinstance(v, tuple):
@@ -8349,6 +8349,8 @@ class Server(PBSService):
                 if len(v) > 2:
                     varargs = v[2:]
                 v = v[1]
+            else:
+                op = inp_op
 
             for stat in statlist:
                 if k not in stat:
