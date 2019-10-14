@@ -40,13 +40,14 @@ from tests.selftest import *
 
 class TestPTLConvertsResvIDtoid(TestSelf):
     """
-    This test suite tests PTL's revert to default functionality
+    This test suite tests PTL should not convert
+    'Resv ID' to 'id' when query a reservation
     """
 
     def test_attrib_ResvID(self):
         """
-        Test issue attrib 'Resv Id' in pbs_rstat for
-        reservation is replace with 'id' in PTL_framework.
+        Test attrib 'Resv Id' in pbs_rstat for
+        reservation is not replace with 'id' in PTL_framework.
         PTL converts 'Resv_ID' to 'id' when querying a reservation
         """
         r = Reservation(TEST_USER)
