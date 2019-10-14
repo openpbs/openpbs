@@ -59,13 +59,13 @@ class TestPTLConvertsResvIDtoid(TestSelf):
         rid = self.server.submit(r)
         val = self.server.status(RESV, id=rid)
         self.logger.info("Got value as list")
-        print(val)
+        self.logger.info(val)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
         val = self.server.status(RESV, id=rid)
         self.logger.info("Got value as dictionary")
-        print(val[0])
+        self.logger.info(val[0])
         self.logger.info("Verifying  attribs in pbs_rstat -f rid")
         self.assertIn('reserve_state', val[
                       0], msg="Failed to get expected attrib reserve_state")
