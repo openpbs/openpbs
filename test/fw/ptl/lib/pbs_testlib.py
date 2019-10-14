@@ -1170,7 +1170,7 @@ class BatchUtils(object):
     subjob_tag = re.compile(r"(?P<jobid>[\d]+)\[(?P<subjobid>[0-9]+)\]*" +
                             r"[.]*[(?P<server>.*)]*")
 
-    pbsobjname_re = re.compile(r"^([\w\d][\d\w\s]*:?[\s]+)" +
+    pbsobjname_re = re.compile(r"^(?P<tag>[\w\d][\d\w\s]*:?[\s]+)" +
                                r"*(?P<name>[\w@\.\d\[\]-]+)$")
     pbsobjattrval_re = re.compile(r"""
                             [\s]*(?P<attribute>[\w\d\.-]+)
@@ -1771,6 +1771,9 @@ class BatchUtils(object):
                         objlist.append(d.copy())
                 d = {}
                 d['id'] = m.group('name')
+                _t = m.group('tag')
+                if _t == 'Resv ID: ':
+                    d[_t.replace(': ', '')] = d['id']
             else:
                 m = self.pbsobjattrval_re.match(l)
                 if m:
