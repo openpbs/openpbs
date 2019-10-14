@@ -46,9 +46,8 @@ class TestPTLConvertsResvIDtoid(TestSelf):
 
     def test_attrib_ResvID(self):
         """
-        Test attrib 'Resv Id' in pbs_rstat for
-        reservation is not replace with 'id' in PTL_framework.
-        PTL converts 'Resv_ID' to 'id' when querying a reservation
+        Test reservation attribute 'Resv Id' in pbs_rstat output
+        is not replaced with 'id' by PTL framework.
         """
         r = Reservation(TEST_USER)
         now = int(time.time())
@@ -58,21 +57,10 @@ class TestPTLConvertsResvIDtoid(TestSelf):
         r.set_attributes(a)
         rid = self.server.submit(r)
         val = self.server.status(RESV, id=rid)
-        self.logger.info("Got value as list")
-        self.logger.info(val)
-        rid_q = rid.split('.')[0]
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-        self.server.expect(RESV, a, id=rid)
-        val = self.server.status(RESV, id=rid)
-        self.logger.info("Got value as dictionary")
-        self.logger.info(val[0])
-        self.logger.info("Verifying  attribs in pbs_rstat -f rid")
-        self.assertIn('reserve_state', val[
-                      0], msg="Failed to get expected attrib reserve_state")
-        self.logger.info("Got expected attib reserve_state")
+        self.logger.info("Verifying attribute in pbs_rstat -f rid")
         self.assertIn('id', val[0], msg="Failed to get expected attrib id")
-        self.logger.info("Got expected attib id")
-        self.logger.info("Look for attib Resv ID!")
+        self.logger.info("Got expected attribute id")
+        self.logger.info("Look for attribute Resv ID")
         self.assertIn(
             'Resv ID', val[0], msg="Failed to get expected attrib Resv ID")
-        self.logger.info("Got expected attib Resv ID")
+        self.logger.info("Got expected attribute Resv ID")
