@@ -1009,8 +1009,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # Set 2 ncpus available on the node
-        self.server.manager(MGR_CMD_DELETE, NODE, id="@default")
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.shortname)
         a = {ATTR_rescavail + '.ncpus': "2"}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
@@ -1022,7 +1020,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # make sure that job id is part of node's jobs attribute
         node = self.server.status(NODE, id=self.mom.shortname)
-        self.assertTrue(jid1 in node[0]['jobs'])
+        self.assertIn(jid1, node[0]['jobs'])
 
         # suspend job
         self.server.sigjob(jobid=jid1, signal="suspend")
@@ -1036,3 +1034,4 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # resume job
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(NODE, 'jobs', op=SET, id=self.mom.shortname)
