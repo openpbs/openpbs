@@ -244,7 +244,7 @@ class TestMaintenanceReservations(TestFunctional):
         now = int(time.time())
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
 
         a = {'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -255,7 +255,8 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertTrue(rid.startswith('M'))
 
-        self.server.manager(MGR_CMD_UNSET, SERVER, 'managers')
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': (DECR, '%s@*' % TEST_USER)})
 
         msg = ""
 
@@ -267,7 +268,7 @@ class TestMaintenanceReservations(TestFunctional):
         self.assertEqual("pbs_rdel: Unauthorized Request  " + rid, msg)
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
 
         self.server.delete(rid, runas=TEST_USER)
 
