@@ -141,6 +141,15 @@ struct rq_manage {
 	pbs_list_head    rq_attr;	/* svrattrlist */
 };
 
+/* Management - used by PBS_BATCH_Manager requests */
+
+struct rq_management {
+	struct rq_manage rq_manager;
+	struct batch_reply *rq_reply;
+	long rq_time;
+};
+
+
 /* HoldJob -  plus preference flag */
 
 struct rq_hold {
@@ -351,6 +360,7 @@ struct batch_request {
 		struct rq_hold		rq_hold;
 		char		        rq_locate[PBS_MAXSVRJOBID+1];
 		struct rq_manage	rq_manager;
+		struct rq_management rq_management;
 		struct rq_message	rq_message;
 		struct rq_relnodes	rq_relnodes;
 		struct rq_py_spawn	rq_py_spawn;

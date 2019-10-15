@@ -4726,6 +4726,7 @@ void
 req_manager(struct batch_request *preq)
 {
 	int obj_name_len;
+	++preq->rq_refct;
 
 	obj_name_len = strlen(preq->rq_ind.rq_manager.rq_objname);
 
@@ -4738,7 +4739,7 @@ req_manager(struct batch_request *preq)
 			if (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_SITE_HOOK) {
 				if ((preq->rq_perm & PERM_MANAGER) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
@@ -4764,7 +4765,7 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					if (preq->rq_ind.rq_manager.rq_cmd == MGR_CMD_CREATE)
 						mgr_hook_create(preq);
@@ -4794,7 +4795,7 @@ req_manager(struct batch_request *preq)
 
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4805,7 +4806,7 @@ req_manager(struct batch_request *preq)
 			    (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_PBS_HOOK)) {
 				if ((preq->rq_perm & PERM_OPorMGR) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
@@ -4836,7 +4837,7 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_set(preq);
 					break;
@@ -4845,7 +4846,7 @@ req_manager(struct batch_request *preq)
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					break;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4855,7 +4856,7 @@ req_manager(struct batch_request *preq)
 			   (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_PBS_HOOK)) {
 				if ((preq->rq_perm & PERM_OPorMGR) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
@@ -4878,7 +4879,7 @@ req_manager(struct batch_request *preq)
 							server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_unset(preq);
 					break;
@@ -4895,6 +4896,7 @@ req_manager(struct batch_request *preq)
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4914,13 +4916,13 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_import(preq);
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4940,18 +4942,32 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_export(preq);
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
 		default: /*batch_request specified an invalid command*/
 			req_reject(PBSE_IVALREQ, 0, preq);
+			goto req_manager_exit;
+	}
+req_manager_exit:
+	{
+		/* 
+		 * code goes here for all hooks for qmgr
+		 */
+		char		  hook_msg[HOOK_MSG_SIZE];
+		int rc;
+		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		/* FIXME: log an error if non-zero */
+	}
+	if (--preq->rq_refct == 0) {
+		reply_send(preq);
 	}
 }
 

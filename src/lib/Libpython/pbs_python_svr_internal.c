@@ -109,6 +109,8 @@ extern 	int		str_to_vnode_state(char *vnstate);
 extern	enum vnode_sharing str_to_vnode_sharing(char *vn_str);
 extern	int		str_to_vnode_ntype(char *vntype);
 extern u_Long		pps_size_to_kbytes(PyObject *l);
+extern PyObject * svrattrl_list_to_pyobject(pbs_list_head *);
+extern PyObject * svrattrl_to_server_attribute(svrattrl *);
 
 
 /* A dictionary for quick access to the pbs.v1 EMBEDDED_EXTENSION_TYPES */
@@ -153,6 +155,9 @@ typedef struct _pbs_python_types_entry {
 #define  PP_VNODE_IDX			24
 #define  PP_ENTITY_IDX			25
 #define  PP_ENV_IDX			26
+#define  PP_MANAGEMENT_IDX	27
+#define  PP_SERVER_ATTRIBUTE_IDX 28
+
 
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
@@ -182,6 +187,8 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_VNODE, 			NULL},		 /* 24 */
 	{PY_TYPE_ENTITY, 			NULL},		 /* 25 */
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
+	{PY_TYPE_MANAGEMENT, 		NULL},		 /* 27 */
+	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
 
 
 	/* ADD ENTRIES ONLY BELOW, OR CHANGE THE PP_XXX_IDX above the table */
@@ -1253,7 +1260,8 @@ pbs_python_setup_types_table(void)
 	pbs_python_types_entry *pp_type = pbs_python_types_table;
 
 	while (pp_type->t_key) {
-		if (!(pp_type->t_class = PyDict_GetItemString(PBS_PythonTypes, pp_type->t_key))) {
+		pp_type->t_class = PyDict_GetItemString(PBS_PythonTypes, pp_type->t_key);
+		if (!(pp_type->t_class)) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"could not find key <%s> in PBS_PythonTypes",
 				pp_type->t_key);
@@ -5071,10 +5079,13 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_job_o = NULL;
 	PyObject *py_que = NULL;
 	PyObject *py_resv = NULL;
+	PyObject *py_margs = NULL;
+	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
 
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
+	PyObject *py_management_class = NULL;
 	PyObject *py_resv_class = NULL;
 	PyObject *py_env_class = NULL;
 	PyObject *py_varlist = NULL;
@@ -5093,6 +5104,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_pid = NULL;
 	PyObject *py_node_list = (PyObject *) NULL;
 	PyObject *py_failed_node_list = (PyObject *) NULL;
+	PyObject *py_attr = (PyObject *) NULL;
 	char	 perf_action[MAXBUFLEN];
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
@@ -5245,7 +5257,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
 		pbs_python_ext_start_interpreter(&svr_interp_data);
 		if (!svr_interp_data.interp_started) {
-			log_err(PBSE_INTERNAL, __func__, "Failed to restart interpreter");
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart python interpreter");
 			goto event_set_exit;
 		}
 		/* Reset counters for the next interpreter restart. */
@@ -5750,6 +5762,56 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				goto event_set_exit;
 			}
 		}
+	} else if (hook_event == HOOK_EVENT_MANAGEMENT) {
+		struct rq_management *rqj = req_params->rq_manage;
+		// const char * str_attr;
+		py_management_class = pbs_python_types_table[PP_MANAGEMENT_IDX].t_class;
+		if (!py_management_class) {
+			log_err(PBSE_INTERNAL, __func__, "failed to acquire management class");
+			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+				Py_None);
+			goto event_set_exit;
+		}
+
+		//pass rq_attr as a list of tuple(Option(str,None), Option(str,None), Option(str,None))
+		py_attr = svrattrl_list_to_pyobject(&rqj->rq_manager.rq_attr);
+
+		py_margs = Py_BuildValue("(iisliiisO)",
+			rqj->rq_manager.rq_cmd,
+			rqj->rq_manager.rq_objtype,
+			rqj->rq_manager.rq_objname,
+			rqj->rq_time,
+			rqj->rq_reply->brp_code,
+			rqj->rq_reply->brp_auxcode,
+			rqj->rq_reply->brp_choice,
+			(rqj->rq_reply->brp_choice == BATCH_REPLY_CHOICE_Text) ? rqj->rq_reply->brp_un.brp_txt.brp_str : NULL,
+			py_attr
+			); /* NEW ref */
+		Py_CLEAR(py_attr);
+
+		if (!py_margs) {
+			log_err(PBSE_INTERNAL, __func__, "could not build args list for management");
+			goto event_set_exit;
+		}
+		// py_management = PyObject_Call(py_management_class, py_margs, NULL);/*NEW*/
+		py_management = PyObject_CallObject(py_management_class, py_margs);
+
+		if (!py_management) {
+			pbs_python_write_error_to_log(__func__);
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python management object");
+			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+				Py_None);
+			goto event_set_exit;
+		}
+
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+			py_management);
+
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
+			goto event_set_exit;
+		}
 
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
@@ -6235,7 +6297,8 @@ event_set_exit:
 	Py_CLEAR(py_joblist);
 	Py_CLEAR(py_pid);
 	Py_CLEAR(py_resvlist);
-
+	Py_CLEAR(py_margs);
+	Py_CLEAR(py_management);
 	return (rc);
 }
 
@@ -12487,4 +12550,137 @@ release_nodes_exit:
 
 	hook_set_mode = hook_set_mode_orig;
 	return (py_return);
+}
+
+
+/**
+ *
+ * @brief
+ *	Returns a String containing a space separated list of attribute name,
+ *  resource name and attribute/resource value.
+ * @param[in]	head_str- some string to print out the beginning.
+ * @param[in]	phead	- pointer to the head of the list containing data.
+ *
+ * @return char*
+ */
+
+const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
+{
+	char *buf = strdup(head_str);
+	size_t size = strlen(buf);
+	svrattrl *plist = NULL;
+
+	if ((head_str == NULL) || (phead == NULL)) {
+		log_err(errno, __func__, "NULL input parameters!");
+		return buf;
+	}
+
+	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
+		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
+		char * tmp_buf;
+		size_t tmp_size;
+		pbs_asprintf(&tmp_buf, " %s.%s[%s]=%s", head_str,
+			plist->al_name, plist->al_resc, plist->al_value);
+		tmp_size = strlen(tmp_buf);
+		buf = realloc(buf, size + tmp_size + 1);
+		strcpy(buf + size, tmp_buf);
+		size += tmp_size;
+		free(tmp_buf);
+	}
+	return buf;
+}
+
+
+/**
+ *
+ * @brief
+ *	Returns a Python List of Tuple(str, str, str) containing the attribute
+ *  name, resource name and attribute/resource value.
+ * @param[in]	phead	- pointer to the head of the list containing data.
+ *
+ * @return PyObject*
+ */
+PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
+{
+	// FIXME: add error checking like create_py_strlist_from_svrattrl_names
+	svrattrl *plist = NULL;
+	PyObject* py_list = PyList_New(0);
+
+	if (phead == NULL) {
+		log_err(errno, __func__, "NULL input parameters!");
+		return py_list;
+	}
+
+	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
+		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
+		PyObject *py_server_attribute = svrattrl_to_server_attribute(plist);
+		if (!py_server_attribute) {
+			py_server_attribute = Py_None;
+		} else {
+			svrattrl *slist = NULL;
+			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "al_sisters");
+			if (py_slist) {
+				for(slist = plist->al_sister; slist != NULL; slist = slist->al_sister) {
+					PyObject *py_server_attribute_sister = svrattrl_to_server_attribute(slist);
+					if (py_server_attribute_sister) {
+						PyList_Append(py_slist, py_server_attribute_sister);
+						Py_CLEAR(py_server_attribute_sister);
+					}
+				}
+				Py_CLEAR(py_slist);
+			} else {
+				log_err(PBSE_INTERNAL, __func__, "failed to acquire al_sisters in server_attribute object");
+			}
+		}
+		PyList_Append(py_list, py_server_attribute);
+		Py_CLEAR(py_server_attribute);
+	}
+	return py_list;
+}
+
+/**
+ *
+ * @brief
+ *	Returns a Python List of Tuple(str, str, str) containing the attribute 
+ *  name, resource name and attribute/resource value.
+ * @param[in]	phead	- pointer to the head of the list containing data.
+ *
+ * @return PyObject*
+ */
+PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
+{
+	// FIXME: add error checking like create_py_strlist_from_svrattrl_names
+	PyObject *py_server_attribute = NULL;
+	PyObject *py_server_attribute_class = NULL;
+	PyObject *py_server_attribute_args = NULL;
+
+	py_server_attribute_class = pbs_python_types_table[PP_SERVER_ATTRIBUTE_IDX].t_class;
+	if (!py_server_attribute_class) {
+		log_err(PBSE_INTERNAL, __func__, "failed to acquire server_attribute class");
+		goto server_attribute_exit;
+	}
+
+	py_server_attribute_args = Py_BuildValue("(sssii)",
+		attribute->al_name,
+		attribute->al_resc,
+		attribute->al_value,
+		attribute->al_op,
+		attribute->al_flags
+		); /* NEW ref */
+
+	if (!py_server_attribute_args) {
+		log_err(PBSE_INTERNAL, __func__, "could not build args list for server_attribute");
+		goto server_attribute_exit;
+	}
+	py_server_attribute = PyObject_CallObject(py_server_attribute_class, py_server_attribute_args);
+
+	if (!py_server_attribute) {
+		pbs_python_write_error_to_log(__func__);
+		log_err(PBSE_INTERNAL, __func__, "failed to create a python server_attribute object");
+		goto server_attribute_exit;
+	}
+server_attribute_exit:
+	Py_CLEAR(py_server_attribute_class);
+	Py_CLEAR(py_server_attribute_args);
+	return py_server_attribute;
 }

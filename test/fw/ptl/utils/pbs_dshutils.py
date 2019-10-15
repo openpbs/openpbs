@@ -1037,7 +1037,7 @@ class DshUtils(object):
 
             # handle the case where stdout is not a PIPE
             if o is not None:
-                ret['out'] = [i.decode("utf-8") for i in o.splitlines()]
+                ret['out'] = [i.decode("utf-8", 'backslashreplace') for i in o.splitlines()]
             else:
                 ret['out'] = []
             # Some output can be very verbose, for example listing many lines
@@ -1049,7 +1049,7 @@ class DshUtils(object):
             else:
                 self.logger.debug('out: ' + str(ret['out']))
             if e is not None:
-                ret['err'] = [i.decode("utf-8") for i in e.splitlines()]
+                ret['err'] = [i.decode("utf-8", 'backslashreplace') for i in e.splitlines()]
             else:
                 ret['err'] = []
             if ret['err'] and logerr:

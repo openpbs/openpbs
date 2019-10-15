@@ -288,6 +288,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_PARAM_ARGLIST "argv"
 #define PY_EVENT_PARAM_ENV	"env"
 #define PY_EVENT_PARAM_PID	"pid"
+#define PY_EVENT_PARAM_MANAGEMENT	"management"
 
 /* special job object attributes */
 #define PY_JOB_FAILED_MOM_LIST	"failed_mom_list"
@@ -342,6 +343,8 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_TYPE_FLOAT2			"float"
 #define PY_TYPE_ENTITY			"pbs_entity"
 #define PY_TYPE_ENV			"pbs_env"
+#define PY_TYPE_MANAGEMENT	"management"
+#define PY_TYPE_SERVER_ATTRIBUTE	"server_attribute"
 
 /* PBS Python Exception errors - in modules/pbs/v1.1 files */
 #define	PY_ERROR_EVENT_INCOMPATIBLE 	"EventIncompatibleError"
@@ -424,6 +427,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define	EVENT_ARGV_OBJECT  EVENT_OBJECT ".argv"
 #define	EVENT_ENV_OBJECT  EVENT_OBJECT ".env"
 #define	EVENT_PID_OBJECT  EVENT_OBJECT ".pid"
+#define	EVENT_MANAGEMENT_OBJECT  EVENT_OBJECT ".management"
 
 /* Special Job parameters */
 #define	JOB_FAILED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_FAILED_MOM_LIST
