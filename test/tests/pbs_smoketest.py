@@ -1517,6 +1517,11 @@ class SmokeTest(PBSTestSuite):
         Test basic functionality of man pages
         """
         pbs_conf = self.du.parse_pbs_config(self.server.shortname)
+        man_cmd = "man"
+        man_bin_path = self.du.which(exe=man_cmd)
+        if man_bin_path == man_cmd:
+            self.skip_test(reason='man command is not available. Please '
+                                  'install man and try again.')
         manpath = os.path.join(pbs_conf['PBS_EXEC'], "share", "man")
         pbs_cmnds = ["pbsnodes", "qsub"]
         os.environ['MANPATH'] = manpath
