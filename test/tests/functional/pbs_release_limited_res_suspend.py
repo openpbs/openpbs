@@ -949,7 +949,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'preempt_order': preempt_method}, runas=ROOT_USER)
 
-        # Set 1gb mem available on the node
+        # Set 2 ncpus available on the node
         a = {ATTR_rescavail + '.ncpus': "2"}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
@@ -997,3 +997,41 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.mom.add_config(c)
 
         self.helper_test_preempt_release_all("C")
+
+    def test_server_restart_with_suspened_job(self):
+        """
+        Test that when a job releases limited resources on a node and then
+        PBS server is restarted, the job is able to resume back on the same
+        node.
+        """
+        # Set ncpus in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        # Set 2 ncpus available on the node
+        a = {ATTR_rescavail + '.ncpus': "2"}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        # Submit a job which takes up all of the ncpus
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=2'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # make sure that job id is part of node's jobs attribute
+        node = self.server.status(NODE, id=self.mom.shortname)
+        self.assertIn(jid1, node[0]['jobs'])
+
+        # suspend job
+        self.server.sigjob(jobid=jid1, signal="suspend")
+
+        self.server.restart()
+
+        self.assertTrue(self.server.isUp())
+        self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
+        self.server.expect(NODE, 'jobs', op=UNSET, id=self.mom.shortname)
+
+        # resume job
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(NODE, 'jobs', op=SET, id=self.mom.shortname)

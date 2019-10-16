@@ -7385,6 +7385,13 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					}
 				}
 			}
+			else if ((svr_init == TRUE) &&
+				((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND ||
+				  pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)) &&
+				(pjob->ji_wattr[(int)JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET))
+				/* No need to add suspended job to jobinfo structure and assign CPU slots to it*/
+				break;
+
 			snp = pnode->nd_psn;
 			if ((phowl+i)->hw_ncpus == 0) {
 				/* setup jobinfo struture */
