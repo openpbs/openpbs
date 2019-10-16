@@ -657,29 +657,37 @@ class PTLTestRunner(Plugin):
         tparam_contents = {}
         nomomlist = []
         shortname = (socket.gethostname()).split('.', 1)[0]
-        for key in ['servers', 'moms', 'comms', 'clients']:
+        for key in ['servers', 'moms', 'comms', 'clients', 'nomom']:
             tparam_contents[key] = []
+        tparam_contents['no_mom_on_server'] = False
+        tparam_contents['no_comm_on_server'] = False
+        tparam_contents['no_comm_on_mom'] = False
         if self.param is not None:
             for h in self.param.split(','):
                 if '=' in h:
                     k, v = h.split('=', 1)
+                    hosts = [x.split('@')[0] for x in v.split(':')]
                     if (k == 'server' or k == 'servers'):
-                        tparam_contents['servers'].extend(v.split(':'))
+                        tparam_contents['servers'].extend(hosts)
                     elif (k == 'mom' or k == 'moms'):
-                        tparam_contents['moms'].extend(v.split(':'))
+                        tparam_contents['moms'].extend(hosts)
                     elif k == 'comms':
-                        tparam_contents['comms'] = v.split(':')
+                        tparam_contents['comms'] = hosts
                     elif k == 'client':
-                        tparam_contents['clients'] = v.split(':')
+                        tparam_contents['clients'] = hosts
                     elif k == 'nomom':
-                        nomomlist = v.split(':')
+                        nomomlist = hosts
+                    elif k == 'no_mom_on_server':
+                        tparam_contents['no_mom_on_server'] = v
+                    elif k == 'no_comm_on_mom':
+                        tparam_contents['no_comm_on_mom'] = v
         for pkey in ['servers', 'moms', 'comms', 'clients']:
             if not tparam_contents[pkey]:
                 tparam_contents[pkey] = set([shortname])
             else:
                 tparam_contents[pkey] = set(tparam_contents[pkey])
         if nomomlist:
-            tparam_contents['moms'] -= set(nomomlist)
+            tparam_contents['nomom'] = set(nomomlist)
         return tparam_contents
 
     @staticmethod
@@ -700,6 +708,13 @@ class PTLTestRunner(Plugin):
         ts_requirements = {}
         tc_requirements = {}
         param_count = {}
+        _servers = set(param_dic['servers'])
+        _moms = set(param_dic['moms'])
+        _comms = set(param_dic['comms'])
+        _nomom = set(param_dic['nomom'])
+        _no_mom_on_server = param_dic['no_mom_on_server']
+        _no_comm_on_mom = param_dic['no_comm_on_mom']
+        _no_comm_on_server = param_dic['no_comm_on_server']
         shortname = (socket.gethostname()).split('.', 1)[0]
         if test is None:
             return None
@@ -780,27 +795,20 @@ class PTLTestRunner(Plugin):
                 _msg += ') for test execution'
                 logger.error(_msg)
                 return _msg
-        if set(param_dic['moms']) & set(param_dic['servers']):
-            if eff_tc_req['no_mom_on_server']:
+        if _moms & _servers:
+            if eff_tc_req['no_mom_on_server'] or \
+               (_nomom - _servers) or \
+               _no_mom_on_server:
                 _msg = 'no mom on server'
                 logger.error(_msg)
                 return _msg
-        else:
-            if not eff_tc_req['no_mom_on_server']:
-                _msg = 'no mom on server'
-                logger.error(_msg)
-                return _msg
-        if set(param_dic['comms']) & set(param_dic['servers']):
-            if eff_tc_req['no_comm_on_server']:
+        if _comms & _servers:
+            if eff_tc_req['no_comm_on_server'] or _no_comm_on_server:
+                return False
                 _msg = 'no comm on server'
                 logger.error(_msg)
                 return _msg
-        else:
-            if not eff_tc_req['no_comm_on_server']:
-                _msg = 'no comm on server'
-                logger.error(_msg)
-                return _msg
-        comm_mom_list = set(param_dic['moms']) & set(param_dic['comms'])
+        comm_mom_list = _moms & _comms
         if comm_mom_list and shortname in comm_mom_list:
             # Excluding the server hostname for flag 'no_comm_on_mom'
             comm_mom_list.remove(shortname)
