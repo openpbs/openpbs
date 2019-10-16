@@ -95,10 +95,6 @@ static pthread_once_t log_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_key_t pbs_log_tls_key;
 static pthread_mutex_t log_mutex;
 
-struct pbs_log_lock {
-	int locked;
-};
-
 char *msg_daemonname;
 
 /* Local Data */
@@ -275,15 +271,15 @@ log_get_tls_data(void)
 int
 log_mutex_lock()
 {
-	long log_lock;
-	if ((log_lock = (long)pthread_getspecific(pbs_log_tls_key)) != 0)
+	void *log_lock;
+	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) != 0)
 		return -1;
 
 	if (pthread_mutex_lock(&log_mutex) != 0)
 		return -1;
 	
 	log_lock = 1;
-	pthread_setspecific(pbs_log_tls_key, (void*)log_lock);
+	pthread_setspecific(pbs_log_tls_key, log_lock);
 
 	return 0;
 }
@@ -305,15 +301,15 @@ log_mutex_lock()
 int
 log_mutex_unlock()
 {
-	long log_lock;
-	if ((log_lock = (long)pthread_getspecific(pbs_log_tls_key)) == 0)
+	void *log_lock;
+	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == 0)
 		return -1;
 	
 	if (pthread_mutex_unlock(&log_mutex) != 0)
 		return -1;
 
 	log_lock = 0;
-	pthread_setspecific(pbs_log_tls_key, (void*)log_lock);
+	pthread_setspecific(pbs_log_tls_key, log_lock);
 	
 	return 0;
 }
