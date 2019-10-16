@@ -1029,9 +1029,7 @@ is_request(int stream, int version)
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-				jobid, "Job removed, Server rejected Obit");
-			rid_job(jobid);
+			rid_job(jobid, "Job removed, Server rejected Obit");
 			free(jobid);
 			jobid = NULL;
 			break;

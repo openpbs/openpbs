@@ -2735,18 +2735,30 @@ send_sisters_deljob_wait(job *pjob)
  * 	rid_job - rid mom of a job that the server says no longer exists
  *
  * @param[in] jobid - char pointer holding jobid
+ * @param[in] msg - message to log if job has been deleted.
  *
  * @return Void
  *
  */
 void
-rid_job(char *jobid)
+rid_job(char *jobid, char *msg)
 {
 	job	*pjob;
 
 	pjob = find_job(jobid);
-	if (pjob && !pjob->ji_hook_running_bg_on)
+	if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+		/* Allowing only to rid a job that has actually started
+		   (i.e. not in JOB_SUBSTATE_PRERUN), avoids the race condition where
+		   a job that is just executing a prologue hook (in PRERUN state)
+		   gets signaled to qrerun -Wforce, causing server to immediately
+		   rerun the job, ahead of the Obit sent by mom, which is expectedly
+		   rejected by the server, but has a side effect of the Mom deleting
+		   its copy of the job due to the rejected obit. And this results in
+		   a hung job: server knows about the job but mom forgets it!
+		*/
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, msg);
 		mom_deljob(pjob);
+	}
 }
 
 /**
