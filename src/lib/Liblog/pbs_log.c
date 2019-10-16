@@ -95,10 +95,6 @@ static pthread_once_t log_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_key_t pbs_log_tls_key;
 static pthread_mutex_t log_mutex;
 
-struct pbs_log_lock {
-	int locked;
-};
-
 char *msg_daemonname;
 
 /* Local Data */
@@ -275,24 +271,17 @@ log_get_tls_data(void)
 int
 log_mutex_lock()
 {
-	struct pbs_log_lock *log_lock = NULL;
-	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == NULL) {
-		log_lock = calloc(1, sizeof(struct pbs_log_lock));
-		if (!log_lock)
-			return -1;
+	void *log_lock;
+	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) != NULL)
+		return -1;
 
-		if (pthread_setspecific(pbs_log_tls_key, log_lock) != 0) {
-			free(log_lock);
-			return -1;
-		}
-		log_lock->locked = 0;
-	}
+	if (pthread_mutex_lock(&log_mutex) != 0)
+		return -1;
+	
+	/* use &log_lock for non-null value */
+	log_lock = &log_lock;
+	pthread_setspecific(pbs_log_tls_key, log_lock);
 
-	if (log_lock->locked == 0) {
-		if (pthread_mutex_lock(&log_mutex) != 0)
-			return -1;
-	}
-	log_lock->locked++;
 	return 0;
 }
 
@@ -313,17 +302,16 @@ log_mutex_lock()
 int
 log_mutex_unlock()
 {
-	struct pbs_log_lock *log_lock = NULL;
+	void *log_lock;
 	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == NULL)
 		return -1;
+	
+	if (pthread_mutex_unlock(&log_mutex) != 0)
+		return -1;
 
-	if (log_lock->locked == 1) {
-		if (pthread_mutex_unlock(&log_mutex) != 0)
-			return -1;
-	} else if (log_lock->locked == 0) {
-		return -1; /* already fully unlocked mutex */
-	}
-	log_lock->locked--;
+	log_lock = NULL;
+	pthread_setspecific(pbs_log_tls_key, log_lock);
+	
 	return 0;
 }
 
