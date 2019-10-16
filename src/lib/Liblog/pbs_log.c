@@ -272,13 +272,14 @@ int
 log_mutex_lock()
 {
 	void *log_lock;
-	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) != 0)
+	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) != NULL)
 		return -1;
 
 	if (pthread_mutex_lock(&log_mutex) != 0)
 		return -1;
 	
-	log_lock = 1;
+	/* use &log_lock for non-null value */
+	log_lock = &log_lock;
 	pthread_setspecific(pbs_log_tls_key, log_lock);
 
 	return 0;
@@ -302,13 +303,13 @@ int
 log_mutex_unlock()
 {
 	void *log_lock;
-	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == 0)
+	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == NULL)
 		return -1;
 	
 	if (pthread_mutex_unlock(&log_mutex) != 0)
 		return -1;
 
-	log_lock = 0;
+	log_lock = NULL;
 	pthread_setspecific(pbs_log_tls_key, log_lock);
 	
 	return 0;
