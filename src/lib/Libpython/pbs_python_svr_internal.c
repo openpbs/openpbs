@@ -11778,9 +11778,9 @@ int
 pbs_python_set_os_environ(char *env_var, char *env_val)
 {
 	PyObject *pystr_env_val = NULL;
+	PyObject *pystr_env_var = NULL;
 	PyObject *os_mod_obj = NULL; /* 'sys' module  */
 	PyObject *os_mod_env = NULL; /* os.environ */
-	PyObject *os_env_dict = NULL; /* os.environ */
 
 	if (env_var == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "passed NULL env_var!");
@@ -11808,11 +11808,10 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 		return (-1);
 	}
 
-	if ((os_env_dict =
-		PyObject_GetAttrString(os_mod_env, "_data")) == NULL) {
+	if ((pystr_env_var = PyUnicode_FromString(env_var)) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
-			"%s:could not retrieve os environment data",
-			__func__);
+			"%s:creating pystr_env_var <%s>",
+			__func__, env_var);
 		pbs_python_write_error_to_log(log_buffer);
 		Py_CLEAR(os_mod_obj);
 		Py_CLEAR(os_mod_env);
@@ -11821,16 +11820,16 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 
 	if (env_val == NULL) {
 
-		if (PyDict_GetItemString(os_env_dict, env_var) != NULL) {
-			if (PyDict_DelItemString(os_env_dict,
-				env_var) == -1) {
+		if (PyObject_GetItem(os_mod_env, pystr_env_var) != NULL) {
+			if (PyObject_DelItem(os_mod_env,
+				pystr_env_var) == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"%s: error unsetting environment <%s>",
 					__func__, env_var);
 				pbs_python_write_error_to_log(log_buffer);
 				Py_CLEAR(os_mod_obj);
 				Py_CLEAR(os_mod_env);
-				Py_CLEAR(os_env_dict);
+				Py_CLEAR(pystr_env_var);
 				return (-1);
 			}
 		}
@@ -11843,10 +11842,11 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 			pbs_python_write_error_to_log(log_buffer);
 			Py_CLEAR(os_mod_obj);
 			Py_CLEAR(os_mod_env);
-			Py_CLEAR(os_env_dict);
+			Py_CLEAR(pystr_env_var);
 			return (-1);
 		}
-		if (PyDict_SetItemString(os_env_dict, (const char *)env_var,
+
+		if (PyObject_SetItem(os_mod_env, pystr_env_var,
 			pystr_env_val) == -1) {
 			snprintf(log_buffer, sizeof(log_buffer),
 				"%s: error setting os.environ[%s]=%s",
@@ -11854,15 +11854,15 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 			pbs_python_write_error_to_log(log_buffer);
 			Py_CLEAR(os_mod_obj);
 			Py_CLEAR(os_mod_env);
-			Py_CLEAR(os_env_dict);
 			Py_CLEAR(pystr_env_val);
+			Py_CLEAR(pystr_env_var);
 			return (-1);
 		}
 	}
 	Py_CLEAR(os_mod_obj);
 	Py_CLEAR(os_mod_env);
-	Py_CLEAR(os_env_dict);
 	Py_CLEAR(pystr_env_val);
+	Py_CLEAR(pystr_env_var);
 
 	return (0);
 
