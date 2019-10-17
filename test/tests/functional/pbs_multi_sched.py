@@ -2089,4 +2089,3 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)
-
