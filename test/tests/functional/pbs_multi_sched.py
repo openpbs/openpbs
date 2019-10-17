@@ -1835,39 +1835,44 @@ class TestMultipleSchedulers(TestFunctional):
 
         try:
             # get the number of open files per process
-            (open_files_soft_limit, open_files_hard_limit) =\
+            (open_files_soft_limit, open_files_hard_limit) = \
                 resource.getrlimit(resource.RLIMIT_NOFILE)
 
             # set the soft limit of number of open files per process to 10
             resource.setrlimit(resource.RLIMIT_NOFILE,
                                (10, open_files_hard_limit))
+
         except (ValueError, resource.error):
             self.assertFalse(True, "Error in accessing system RLIMIT_ "
                                    "variables, test fails.")
-
-        self.setup_sc3()
-
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduler_iteration': 1},
-                            id="sc3")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
-                            id="sc3")
-
-        self.logger.info('The sleep is 15 seconds which will trigger required '
-                         'number of scheduling cycles that are needed to '
-                         'exhaust open files per process which is 10 in our '
-                         'case')
-        time.sleep(15)
-        # scheduling should not go to false once all fds per process
-        # are exhausted.
-        self.server.expect(SCHED, {'scheduling': 'True'},
-                           id='sc3', max_attempts=10)
-
         try:
-            resource.setrlimit(resource.RLIMIT_NOFILE, (open_files_soft_limit,
-                                                        open_files_hard_limit))
-        except (ValueError, resource.error):
-            self.assertFalse(True, "Error in accessing system RLIMIT_ "
-                                   "variables, test fails.")
+            self.setup_sc3()
+
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduler_iteration': 1}, id="sc3")
+            self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                                id="sc3")
+
+            self.logger.info('The sleep is 15 seconds which will '
+                             'trigger required number of scheduling '
+                             'cycles that are needed to exhaust open '
+                             'files per process which is 10 in our case')
+            time.sleep(15)
+            # scheduling should not go to false once all fds per process
+            # are exhausted.
+            self.server.expect(SCHED, {'scheduling': 'True'},
+                               id='sc3', max_attempts=10)
+
+        except BaseException as exc:
+            raise exc
+        finally:
+            try:
+                resource.setrlimit(resource.RLIMIT_NOFILE,
+                                   (open_files_soft_limit,
+                                    open_files_hard_limit))
+            except (ValueError, resource.error):
+                self.assertFalse(True, "Error in accessing system RLIMIT_ "
+                                       "variables, test fails.")
 
     def test_set_msched_attr_sched_log_with_sched_off(self):
         """
