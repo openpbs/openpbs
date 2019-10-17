@@ -2184,6 +2184,8 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 							return PBSE_BADATVAL;	/* illegal null value */
 						if (svr_resc_sum[i].rs_def->rs_type == ATR_TYPE_SIZE)
 							tmpatr.at_val.at_size.atsv_num *= nchk;
+						else if (svr_resc_sum[i].rs_def->rs_type == ATR_TYPE_FLOAT)
+							tmpatr.at_val.at_float *= nchk;
 						else
 							tmpatr.at_val.at_long *= nchk;
 
