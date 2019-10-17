@@ -5161,6 +5161,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
         ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
         ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
+        ignore_attrs += [ATTR_operators]
         ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
         unsetlist = []
         self.cleanup_jobs_and_reservations()
