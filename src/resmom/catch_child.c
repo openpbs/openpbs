@@ -2730,39 +2730,6 @@ send_sisters_deljob_wait(job *pjob)
 		return 0;
 
 }
-/**
- * @brief
- * 	rid_job - rid mom of a job that the server says no longer exists
- *
- * @param[in] jobid - char pointer holding jobid
- * @param[in] msg - message to log if job has been deleted.
- *
- * @return Void
- *
- */
-void
-rid_job(char *jobid, char *msg)
-{
-	job	*pjob;
-
-	pjob = find_job(jobid);
-	if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
-		/* Allowing only to rid a job that has actually started
-		 * (i.e. not in JOB_SUBSTATE_PRERUN), would avoid the race condition
-		 * resulting in a hung job: server force reruns a job which
-		 * is lingering in PRERUN state, and an Obit request for
-		 * the previous instance of the job is received by the server and
-		 * rejected, causing mom to delete the new instance of the
-		 * job.
-		 * If the job has passed the PRERUN stage, then it would have already
-		 * synced up with the server on status, and not end up in this
-		 * race condition.
-		 */
-		if (msg != NULL)
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, msg);
-		mom_deljob(pjob);
-	}
-}
 
 /**
  * @brief
