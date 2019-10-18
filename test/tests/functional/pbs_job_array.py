@@ -686,3 +686,39 @@ class TestJobArray(TestFunctional):
                             {'scheduling': 'False'})
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')
+
+    def test_recover_big_array_job(self):
+        """
+        Test that during server restart, server is able to recover valid
+        array jobs which are bigger than the current value of max_array_size
+        server attribute
+        """
+        # submit a medium size array job
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(attrs={ATTR_J: '1-200'})
+        j_id = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
+
+        # reduce max_array_size
+        a = {ATTR_maxarraysize: 40}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.expect(SERVER, a)
+        try:
+            self.server.submit(Job(attrs={ATTR_J: '1-200'}))
+        except PbsSubmitError as e:
+            exp_msg = 'qsub: Array job exceeds server or queue size limit'
+            self.assertEqual(exp_msg, e.msg[0])
+
+        # restart the server to check for crash
+        try:
+            self.server.restart()
+        except PbsServiceError as e:
+            if 'pbs_server startup failed' in e.msg:
+                reset_db = 'echo y | ' + \
+                    os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'sbin', 'pbs_server') + ' -t create'
+                self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
+            self.fail('TC failed as server recovery failed')
+        else:
+            self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)

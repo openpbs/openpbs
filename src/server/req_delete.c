@@ -442,8 +442,6 @@ req_deletejob(struct batch_request *preq)
 			if (delhist)
 				pjob->ji_deletehistory = 1;
 			req_deletejob2(preq, pjob);
-			if (pjob->ji_terminated)
-				parent->ji_ajtrk->tkm_dsubjsct++;
 		} else {
 			acct_del_write(jid, parent, preq, 0);
 			parent->ji_ajtrk->tkm_tbl[offset].trk_substate =

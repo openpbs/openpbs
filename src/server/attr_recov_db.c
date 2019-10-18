@@ -411,14 +411,24 @@ decode_attr_db(
 				}
 			} else {
 				if ((padef+index)->at_decode) {
+					int act_rc = 0;
 					(void)(padef+index)->at_decode(pattr+index,
 						pal->al_name,
 						pal->al_resc,
 						pal->al_value);
 					if ((padef+index)->at_action)
-						(void)(padef+index)->at_action(
+						if ((act_rc = (padef+index)->at_action(
 							pattr+index, parent,
-							ATR_ACTION_RECOV);
+							ATR_ACTION_RECOV))) {
+							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
+									(padef+index)->at_name, act_rc);
+							log_err(act_rc, __func__, log_buffer);
+							free(palarray);
+							/* bailing out from this function */
+							/* any previously allocated attrs will be */
+							/* freed by caller (parent obj recov function) */
+							return -1;
+						}
 				}
 			}
 			(pattr+index)->at_flags = pal->al_flags & ~ATR_VFLAG_MODIFY;

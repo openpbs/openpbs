@@ -630,11 +630,12 @@ subst_array_index(job *pjob, char *path)
  * @param[in]	range - subjob index range
  * @param[in]	initialstate - job state
  * @param[out]	pbserror - PBSError to return
+ * @param[in]	mode - "actmode" parameter to action function of "array_indices_submitted"
  *
  * @return	ptr to table
  * @retval  NULL	- error
  */
-static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pbserror)
+static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pbserror, int mode)
 {
 	int   ct;
 	int   i, j, l;
@@ -649,14 +650,16 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 		return NULL; /* parse error */
 	}
 
-	if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-		l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
-	else
-		l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
+	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
+		if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
+			l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
+		else
+			l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
 
-	if (ct > l) {
-		*pbserror = PBSE_MaxArraySize;
-		return NULL; /* parse error */
+		if (ct > l) {
+			*pbserror = PBSE_MaxArraySize;
+			return NULL; /* parse error */
+		}
 	}
 
 	sz = sizeof(struct ajtrkhd) + ((ct-1) * sizeof(struct ajtrk));
@@ -714,7 +717,7 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 		if (pjob->ji_ajtrk)
 			free(pjob->ji_ajtrk);
 		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str,
-			                                      JOB_STATE_QUEUED, &pbs_error)) == NULL)
+			                                      JOB_STATE_QUEUED, &pbs_error, mode)) == NULL)
 			return pbs_error;
 	}
 
@@ -774,6 +777,9 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 	char *ep;
 	job  *pjob = pobj;
 	char *str;
+
+	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajtrk)
+		return PBSE_BADATVAL;
 
 	/* set all all sub jobs expired,  then reset queued the ones in "remaining" */
 	for (i=0; i < pjob->ji_ajtrk->tkm_ct; i++)

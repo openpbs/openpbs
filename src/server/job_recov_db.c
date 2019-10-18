@@ -493,7 +493,6 @@ job *
 job_recov_db_spl(pbs_db_job_info_t *dbjob)
 {
 	job		*pj;
-	pbs_db_conn_t *conn = svr_db_conn;
 
 	pj = job_alloc();	/* allocate & initialize job structure space */
 	if (pj == (job *)0) {
@@ -501,9 +500,6 @@ job_recov_db_spl(pbs_db_job_info_t *dbjob)
 	}
 
 	if (db_to_svr_job(pj, dbjob) != 0)
-		goto db_err;
-
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		goto db_err;
 
 	return (pj);

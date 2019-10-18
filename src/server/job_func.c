@@ -801,8 +801,11 @@ job_purge(job *pjob)
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
 			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
 				update_subjob_state(pjob, JOB_STATE_QUEUED);
-			else
+			else {
+				if (pjob->ji_terminated && pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
+					pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
 				update_subjob_state(pjob, JOB_STATE_EXPIRED);
+			}
 		}
 
 		(void)account_entity_limit_usages(pjob, NULL, NULL, DECR,

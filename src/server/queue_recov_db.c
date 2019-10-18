@@ -240,7 +240,8 @@ que_recov_db(char *qname)
 	return (pq);
 
 db_err:
-	log_err(-1, "que_recov", "read of queuedb failed");
+	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover queue %s", qname);
+	log_err(-1, "que_recov", log_buffer);
 	if (pq)
 		que_free(pq);
 	return 0;

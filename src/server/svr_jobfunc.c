@@ -5031,6 +5031,9 @@ svr_saveorpurge_finjobhist(job *pjob)
 		svr_setjob_histinfo(pjob, T_FIN_JOB);
 		if (pjob->ji_ajtrk)
 			pjob->ji_ajtrk->tkm_flags &= ~TKMFLG_CHK_ARRAY;
+		if (pjob->ji_terminated && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+				pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
+			pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
 	} else {
 		if (pjob->ji_deletehistory && flag) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
