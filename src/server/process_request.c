@@ -375,7 +375,7 @@ process_request(int sfds)
 
 #ifndef PBS_MOM
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	strcpy(conn->cn_physhost, request->rq_host);
+	strncpy(conn->cn_physhost, request->rq_host, strlen(request->rq_host));
 #endif
 #endif
 
@@ -1440,8 +1440,8 @@ free_br(struct batch_request *preq)
 				free(preq->rq_ind.rq_jobfile.rq_data);
 			break;
 		case PBS_BATCH_Cred:
-			if (preq->rq_ind.rq_cred.rq_data)
-				free(preq->rq_ind.rq_cred.rq_data);
+			if (preq->rq_ind.rq_cred.rq_cred_data)
+				free(preq->rq_ind.rq_cred.rq_cred_data);
 			break;
 
 #ifndef PBS_MOM		/* Server Only */

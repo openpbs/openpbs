@@ -862,7 +862,7 @@ tm_spawn(int argc, char **argv, char **envp,
 		for (i=0; (cp = envp[i]) != NULL; i++) {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 			/* never send KRB5CCNAME; it would rewrite the value on target host */
-			if(strncmp(envp[i], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+			if (strncmp(envp[i], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
 				continue;
 #endif
 			if (diswcs(local_conn, cp, strlen(cp)) != DIS_SUCCESS)

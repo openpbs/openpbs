@@ -112,7 +112,7 @@ struct	tcp_chan {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 int DIS_tcp_gss_wflush(int fd);
 void DIS_gss_funcs();
-void dis_gss_clear(struct gssdisbuf *tp);
+void dis_gss_clear(struct gss_disbuf *tp);
 #endif
 
 /* resize of following global variables are protected by a mutex */
@@ -827,18 +827,18 @@ DIS_tcp_setup(int fd)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 		tcp->extra = pbs_gss_alloc_gss_extra();
-
+		assert(tcp->extra != NULL);
 		tcp->gsschan = (struct gssdis_chan *) malloc(sizeof(struct gssdis_chan));
-		assert(tcp != NULL);
+		assert(tcp->gsschan != NULL);
 		tcp->gsschan->readbuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
 		assert(tcp->gsschan->readbuf.tdis_thebuf != NULL);
 		tcp->gsschan->readbuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
 		tcp->gsschan->writebuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
 		assert(tcp->gsschan->writebuf.tdis_thebuf != NULL);
 		tcp->gsschan->writebuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
-		tcp->gsschan->gssrdbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
-		assert(tcp->gsschan->gssrdbuf.tdis_thebuf != NULL);
-		tcp->gsschan->gssrdbuf.tdis_bufsize = THE_BUF_SIZE;
+		tcp->gsschan->gss_readbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+		assert(tcp->gsschan->gss_readbuf.tdis_thebuf != NULL);
+		tcp->gsschan->gss_readbuf.tdis_bufsize = THE_BUF_SIZE;
 		tcp->gsschan->cleartext.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
 		assert(tcp->gsschan->cleartext.tdis_thebuf != NULL);
 		tcp->gsschan->cleartext.tdis_bufsize = DIS_GSS_BUF_SIZE;
@@ -855,7 +855,7 @@ DIS_tcp_setup(int fd)
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	dis_gss_clear(&(tcp->gsschan->readbuf));
 	dis_gss_clear(&(tcp->gsschan->writebuf));
-	dis_gss_clear(&(tcp->gsschan->gssrdbuf));
+	dis_gss_clear(&(tcp->gsschan->gss_readbuf));
 #endif
 
 	rc = pbs_client_thread_unlock_tcp();

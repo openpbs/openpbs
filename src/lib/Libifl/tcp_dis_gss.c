@@ -70,10 +70,10 @@ extern int (*disr_skip)(int stream, size_t nskips);
 extern int (*disw_commit)(int stream, int commit);
 extern int (*disr_commit)(int stream, int commit);
 
-enum TCP_MSG_TYPES {
+enum TCP_GSS_MSG_TYPES {
         TCP_GSS_CTX = 1, /* starts from 1, zero means EOF */
         TCP_GSS_WRAP,
-        TCP_LAST_MSG
+        TCP_GSS_LAST_MSG
 };
 
 /**
@@ -101,19 +101,16 @@ tcp_gss_display(const char *func_name, const char* msg)
 static void
 display_status_1(const char *m, OM_uint32 code, int type)
 {
-	OM_uint32 maj_stat, min_stat;
+	OM_uint32 min_stat;
 	gss_buffer_desc msg;
 	OM_uint32 msg_ctx;
 	msg_ctx = 0;
 
 	do {
-		maj_stat = gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
+		gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
 		fprintf(stderr, "%s : %.*s\n", m, (int)msg.length, (char *)msg.value);
 		(void) gss_release_buffer(&min_stat, &msg);
 	} while (msg_ctx != 0);
-
-	(void)maj_stat;
-	(void)min_stat;
   }
 
 /**
@@ -142,11 +139,11 @@ tcp_gss_display_status(const char *msg, OM_uint32 maj_stat, OM_uint32 min_stat)
  * 
  * @param[in] tp - data buffer
  *
- * @return	Void
+ * @return	void
  *
  */
 static void
-dis_gss_pack_buff(struct gssdisbuf *tp)
+dis_gss_pack_buff(struct gss_disbuf *tp)
 {
 	size_t amt;
 	size_t start;
@@ -179,7 +176,7 @@ dis_gss_pack_buff(struct gssdisbuf *tp)
  *
  */
 static int
-dis_gss_buff_resize(struct gssdisbuf *tp, size_t newsize)
+dis_gss_buff_resize(struct gss_disbuf *tp, size_t newsize)
 {
 	if (tp->tdis_bufsize >= newsize)
 		return 0;
@@ -201,11 +198,11 @@ dis_gss_buff_resize(struct gssdisbuf *tp, size_t newsize)
  *
  * @param[in] tp - data buffer
  *
- * @return	Void
+ * @return	void
  *
  */
 void
-dis_gss_clear(struct gssdisbuf *tp)
+dis_gss_clear(struct gss_disbuf *tp)
 {
 	tp->tdis_lead = 0;
 	tp->tdis_trail = 0;
@@ -225,7 +222,7 @@ dis_gss_clear(struct gssdisbuf *tp)
  * @retval	-1 on error
  */
 static int
-dis_gss_fillbuffer(struct gssdisbuf *to, char *data, int len)
+dis_gss_fillbuffer(struct gss_disbuf *to, char *data, int len)
 {
 	size_t remaining_data = len;
 
@@ -259,8 +256,8 @@ dis_gss_fillbuffer(struct gssdisbuf *to, char *data, int len)
 static void
 dis_gss_fill_readbuf(struct gssdis_chan *chan)
 {
-	struct gssdisbuf *tp;
-	struct gssdisbuf *cl;
+	struct gss_disbuf *tp;
+	struct gss_disbuf *cl;
 
 	tp = &(chan->readbuf);
 	cl = &(chan->cleartext);
@@ -286,7 +283,7 @@ dis_gss_fill_readbuf(struct gssdis_chan *chan)
  * @retval	-2 	if EOF (stream closed)
  */
 static int
-dis_gss_read_buff(int fd, struct gssdisbuf *tp, uint32_t ct)
+dis_gss_read_buff(int fd, struct gss_disbuf *tp, uint32_t ct)
 {
 	int i;
 	char *tmcp;
@@ -335,13 +332,13 @@ dis_gss_read_buff(int fd, struct gssdisbuf *tp, uint32_t ct)
 static int
 dis_gss_read(int fd)
 {
-	struct gssdisbuf *tp;
-	struct gssdisbuf *enc;
+	struct gss_disbuf *tp;
+	struct gss_disbuf *enc;
 	struct gssdis_chan *chan;
 	char *data_out = NULL;
 	int len_out;
 	int rc;
-	enum TCP_MSG_TYPES type;
+	enum TCP_GSS_MSG_TYPES type;
 	char *data;
 	int i;
 	unsigned int ct;
@@ -368,8 +365,8 @@ dis_gss_read(int fd)
 	i = transport_getc(fd);
 	if (i <= 0)
 		return ((i == 0) ? -2 : i);
-	type = (unsigned char)i;
-	if (type >= TCP_LAST_MSG)
+	type = (enum TCP_GSS_MSG_TYPES)i;
+	if (type >= TCP_GSS_LAST_MSG)
                 return -1;
 
 	data = malloc(sizeof(int));
@@ -385,7 +382,7 @@ dis_gss_read(int fd)
 
 	free(data);
 
-	if (type > TCP_LAST_MSG)
+	if (type > TCP_GSS_LAST_MSG)
 		return -1;
 
 	if (type == TCP_GSS_CTX)
@@ -395,7 +392,7 @@ dis_gss_read(int fd)
 		return -1;
 
 	// we do not have decoded data, we need to read new data into coded buffer
-	enc = &chan->gssrdbuf;
+	enc = &chan->gss_readbuf;
 
 	if (dis_gss_buff_resize(enc, ct))
 		return -1;
@@ -442,7 +439,7 @@ dis_gss_read(int fd)
 static int
 dis_gss_rskip(int fd, size_t ct)
 {
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -472,7 +469,7 @@ static int
 dis_gss_getc(int fd)
 {
 	int x;
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -510,7 +507,7 @@ static int
 dis_gss_gets(int fd, char *str, size_t ct)
 {
 	int x;
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -548,7 +545,7 @@ dis_gss_gets(int fd, char *str, size_t ct)
 static int
 dis_gss_puts(int fd, const char *str, size_t ct)
 {
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	char *tmcp;
 	struct gssdis_chan *chan;
 
@@ -587,7 +584,7 @@ dis_gss_puts(int fd, const char *str, size_t ct)
 static int
 dis_gss_rcommit(int fd, int commit_flag)
 {
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -618,7 +615,7 @@ dis_gss_rcommit(int fd, int commit_flag)
 static int
 dis_gss_wcommit(int fd, int commit_flag)
 {
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -653,7 +650,7 @@ dis_gss_wcommit(int fd, int commit_flag)
  *
  */
 int
-tcp_gss_send_token(int fd, enum TCP_MSG_TYPES type, char *data, int len)
+tcp_gss_send_token(int fd, enum TCP_GSS_MSG_TYPES type, char *data, int len)
 {
 	int retval = DIS_SUCCESS;
 	int ntotlen;
@@ -699,7 +696,7 @@ tcp_gss_send_token(int fd, enum TCP_MSG_TYPES type, char *data, int len)
 int
 DIS_tcp_gss_wflush(int fd)
 {
-	struct gssdisbuf *tp;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 	uint32_t ct;
 	char *pb;
@@ -776,20 +773,20 @@ DIS_tcp_gss_wflush(int fd)
 int
 __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 {
-	gss_extra_t *gss_extra = NULL;
+	pbs_gss_extra_t *gss_extra = NULL;
 	char *data;
 	char *data_out = NULL;
 	int len_out = 0;
 	unsigned int data_len;
-	enum TCP_MSG_TYPES type;
-	struct gssdisbuf *tp;
+	enum TCP_GSS_MSG_TYPES type;
+	struct gss_disbuf *tp;
 	struct gssdis_chan *chan;
 	int ct;
 	int i;
 
 	DIS_tcp_setup(sfds);
 
-	if ((gss_extra = (gss_extra_t *)tcp_get_extra(sfds)) == NULL){
+	if ((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(sfds)) == NULL) {
 		gss_extra = pbs_gss_alloc_gss_extra();
 		tcp_set_extra(sfds, gss_extra);
 	}
@@ -813,10 +810,10 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 		return ((i == 0) ? -2 : i);
 	}
 
-	type = (unsigned char)i;
-	if (type >= TCP_LAST_MSG) {
+	type = (enum TCP_GSS_MSG_TYPES)i;
+	if (type >= TCP_GSS_LAST_MSG) {
 		snprintf(ebuf, ebufsz, "unknown message type");
-                return -1;
+		return -1;
 	}
 
 	data = malloc(sizeof(int));
@@ -883,7 +880,6 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 			free(data);
 
 			return 0; /* gss context -> no data for upper layer */
-			break;
 
 		case TCP_GSS_WRAP:
 			chan = (struct gssdis_chan *) gss_get_chan(sfds);
@@ -926,7 +922,7 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
  *
  * @param[in] fd - socket descriptor
  * 
- * @return	Void
+ * @return	void
  *
  */
 void
@@ -955,7 +951,7 @@ DIS_gss_funcs()
  * @retval	!= PBS_GSS_OK on error
  */
 int
-DIS_tcp_gss_set(int fd, gss_extra_t *gss_extra)
+DIS_tcp_gss_set(int fd, pbs_gss_extra_t *gss_extra)
 {
 	struct gssdis_chan *chan;
 	chan = (struct gssdis_chan *) gss_get_chan(fd);
@@ -967,7 +963,7 @@ DIS_tcp_gss_set(int fd, gss_extra_t *gss_extra)
 	if (!chan->gss_extra->gssctx_established)
 		return PBS_GSS_OK;
 
-	struct gssdisbuf *tp = &chan->gssrdbuf;
+	struct gss_disbuf *tp = &chan->gss_readbuf;
 	if (tp->tdis_bufsize < gss_extra->max_input_size)
 		if (dis_gss_buff_resize(tp, gss_extra->max_input_size))
 			return PBS_GSS_ERR_WRAPSIZE;
@@ -1043,17 +1039,17 @@ tcp_gss_send_auth(int sock)
 int
 tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 {
-	gss_extra_t *gss_extra = NULL;
+	pbs_gss_extra_t *gss_extra = NULL;
 	char *data_in = NULL;
 	int len_in = 0;
 	char *data_out = NULL;
 	int len_out = 0;
-	enum TCP_MSG_TYPES type;
+	enum TCP_GSS_MSG_TYPES type;
 	int i;
 	unsigned int data_len;
 	char *data;
 
-	if ((gss_extra = (gss_extra_t *)tcp_get_extra(sock)) == NULL){
+	if ((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(sock)) == NULL){
 		gss_extra = pbs_gss_alloc_gss_extra();
 		tcp_set_extra(sock, gss_extra);
 	}
@@ -1087,10 +1083,16 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 			return PBS_GSS_ERR_CONTEXT_ESTABLISH;
 		}
 
+		if (len_in) {
+			free(data_in);
+			len_in = 0;
+		}
+
 		if (len_out) {
 			if (tcp_gss_send_token(sock, TCP_GSS_CTX, data_out, len_out) != PBS_GSS_OK) {
 				snprintf(ebuf, ebufsz, "Failed to assemble GSS context token");
 				pbs_errno = PBSE_SYSTEM;
+				free(data_out);
 
 				return PBS_GSS_ERR_SENDTOKEN;
 			}
@@ -1098,6 +1100,7 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 			if (DIS_tcp_wflush(sock)) {
 				snprintf(ebuf, ebufsz, "Failed to send GSS context token");
 				pbs_errno = PBSE_SYSTEM;
+				free(data_out);
 
 				return PBS_GSS_ERR_INTERNAL;
 			}
@@ -1105,11 +1108,6 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 			free(data_out);
 			data_out = NULL;
 			len_out = 0;
-		}
-
-		if (len_in) {
-			free(data_in);
-			len_in = 0;
 		}
 
 		if (gss_extra->gssctx_established == 0) {

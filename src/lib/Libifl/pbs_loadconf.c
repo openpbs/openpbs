@@ -575,8 +575,7 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
 				if (!strcasecmp(conf_value, "MUNGE")) {
 				   pbs_conf.auth_method = AUTH_MUNGE;
-				}
-				else if (!strcasecmp(conf_value, "GSS")) {
+				} else if (!strcasecmp(conf_value, "GSS")) {
 					pbs_conf.auth_method = AUTH_GSS;
 				} else {
 					fprintf(stderr, "pbsconf error: illegal value for %s\n",PBS_CONF_AUTH);

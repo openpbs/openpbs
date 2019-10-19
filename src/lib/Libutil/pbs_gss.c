@@ -69,7 +69,9 @@ void (*pbs_gss_logdebug)(const char *func_name, const char* msg) = NULL;
 int
 pbs_gss_can_get_creds()
 {
-	OM_uint32 maj_stat, min_stat = 0, valid_sec = 0;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat;
+	OM_uint32 valid_sec = 0;
 	gss_cred_id_t creds = GSS_C_NO_CREDENTIAL;
 
 	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, GSS_C_NO_OID_SET, GSS_C_INITIATE, &creds, NULL, &valid_sec);
@@ -88,11 +90,11 @@ pbs_gss_can_get_creds()
  * @retval	structure on success
  * @retval	NULL on error
  */
-gss_extra_t*
+pbs_gss_extra_t*
 pbs_gss_alloc_gss_extra()
 {
-	gss_extra_t *gss_extra;
-	gss_extra = calloc(1, sizeof(gss_extra_t));
+	pbs_gss_extra_t *gss_extra;
+	gss_extra = calloc(1, sizeof(pbs_gss_extra_t));
 	if (!gss_extra) {
 		if (pbs_gss_logerror)
 			pbs_gss_logerror(__func__, "Out of memory allocating gss_extra");
@@ -122,7 +124,7 @@ pbs_gss_alloc_gss_extra()
  * @param[in] gss_extra - The structure with GSS data
  */
 void
-pbs_gss_free_gss_extra(gss_extra_t *gss_extra)
+pbs_gss_free_gss_extra(pbs_gss_extra_t *gss_extra)
 {
 	OM_uint32 min_stat = 0;
 
@@ -191,7 +193,7 @@ pbs_gss_server_acquire_creds(char *service_name, gss_cred_id_t* server_creds)
 	name_buf.value = service_name;
 	name_buf.length = strlen(service_name) + 1;
 
-	maj_stat = gss_import_name(&min_stat, &name_buf, gss_nt_service_name, &server_name);
+	maj_stat = gss_import_name(&min_stat, &name_buf, GSS_NT_SERVICE_NAME, &server_name);
 
 	if (maj_stat != GSS_S_COMPLETE) {
 		sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_import_name");
@@ -258,7 +260,7 @@ pbs_gss_client_establish_context(char *service_name, gss_cred_id_t creds, gss_OI
 
 	send_tok.value = service_name;
 	send_tok.length = strlen(service_name) ;
-	maj_stat = gss_import_name(&min_stat, &send_tok, gss_nt_service_name, &target_name);
+	maj_stat = gss_import_name(&min_stat, &send_tok, GSS_NT_SERVICE_NAME, &target_name);
 	if (maj_stat != GSS_S_COMPLETE) {
 		sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_import_name");
 		if (pbs_gss_log_gss_status)
@@ -437,7 +439,7 @@ pbs_gss_server_establish_context(gss_cred_id_t server_creds, gss_cred_id_t* clie
  * @return
  */
 int
-pbs_gss_establish_context(gss_extra_t *gss_extra, char *server_host, char *data_in, int len_in, char **data_out, int *len_out)
+pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *data_in, int len_in, char **data_out, int *len_out)
 {
 	OM_uint32 maj_stat, min_stat = 0;
 	gss_ctx_id_t gss_context = GSS_C_NO_CONTEXT;
@@ -548,7 +550,7 @@ pbs_gss_establish_context(gss_extra_t *gss_extra, char *server_host, char *data_
 					server_creds = new_server_creds;
 
 					/* fetch information about the fresh credentials */
-					if (gss_inquire_cred(&ret_flags, server_creds, NULL, &lifetime, NULL, NULL) == GSS_S_COMPLETE){
+					if (gss_inquire_cred(&ret_flags, server_creds, NULL, &lifetime, NULL, NULL) == GSS_S_COMPLETE) {
 						if (lifetime == GSS_C_INDEFINITE) {
 							credlifetime = DEFAULT_CREDENTIAL_LIFETIME;
 							snprintf(gss_log_buffer, LOG_BUF_SIZE, "Server credentials renewed with indefinite lifetime, using %d.\n", DEFAULT_CREDENTIAL_LIFETIME);
@@ -655,7 +657,7 @@ pbs_gss_establish_context(gss_extra_t *gss_extra, char *server_host, char *data_
  * @return
  */
 int
-pbs_gss_wrap(gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
+pbs_gss_wrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
 {
 	OM_uint32 maj_stat, min_stat = 0;
 	gss_buffer_desc unwrapped, wrapped;
@@ -720,7 +722,7 @@ pbs_gss_wrap(gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out,
  * @return
  */
 int
-pbs_gss_unwrap(gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
+pbs_gss_unwrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
 {
 	OM_uint32 maj_stat, min_stat = 0;
 	gss_buffer_desc wrapped, unwrapped;

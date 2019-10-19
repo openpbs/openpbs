@@ -49,14 +49,14 @@ extern "C" {
 
 #include <gssapi.h>
 
-#define gss_nt_service_name GSS_C_NT_HOSTBASED_SERVICE
+#define GSS_NT_SERVICE_NAME GSS_C_NT_HOSTBASED_SERVICE
 #define DIS_GSS_BUF_SIZE 4096 /* default DIS buffer size */
 
 enum PBS_GSS_ROLE {
 	PBS_GSS_ROLE_UNKNOWN = 0,
 	PBS_GSS_CLIENT,
-        PBS_GSS_SERVER,
-        PBS_GSS_ROLE_LAST
+	PBS_GSS_SERVER,
+	PBS_GSS_ROLE_LAST
 };
 
 typedef struct {
@@ -78,9 +78,9 @@ typedef struct {
 	/* TPP only */
 	char *cleartext; /* saves cleartext for postsend_handler() */
 	int cleartext_len;
-} gss_extra_t;
+} pbs_gss_extra_t;
 
-struct gssdisbuf {
+struct gss_disbuf {
 	size_t tdis_lead; /* pointer to the lead of the data */
 	size_t tdis_trail; /* pointer to the trailing char of the data */
 	size_t tdis_eod; /* variable to use to calculate end of data */
@@ -89,12 +89,12 @@ struct gssdisbuf {
 };
 
 struct gssdis_chan {
-	struct gssdisbuf readbuf; /* the dis read buffer */
-	struct gssdisbuf writebuf; /* the dis write buffer */
-	struct gssdisbuf gssrdbuf;   /* incoming wrapped data */
-	struct gssdisbuf cleartext;   /* incoming pre-read data - this buffer survives DIS_tcp_setup() */
-	unsigned short   read_properties;
-	gss_extra_t* gss_extra;
+	struct gss_disbuf readbuf; /* the dis read buffer */
+	struct gss_disbuf writebuf; /* the dis write buffer */
+	struct gss_disbuf gss_readbuf;   /* incoming wrapped data */
+	struct gss_disbuf cleartext;   /* incoming pre-read data - this buffer survives DIS_tcp_setup() */
+	unsigned short read_properties;
+	pbs_gss_extra_t* gss_extra;
 };
 
 enum PBS_GSS_ERRORS {
@@ -115,15 +115,15 @@ enum PBS_GSS_ERRORS {
 	PBS_GSS_ERR_WRAP,
 	PBS_GSS_ERR_UNWRAP,
 	PBS_GSS_ERR_CONTEXT_SAVE,
-	PBS_GSS_LAST
+	PBS_GSS_ERR_LAST
 };
 
 int pbs_gss_can_get_creds();
-gss_extra_t* pbs_gss_alloc_gss_extra();
-void pbs_gss_free_gss_extra(gss_extra_t *gss_extra);
-int pbs_gss_establish_context(gss_extra_t *gss_extra, char *target_host, char *data_in, int len_in, char **data_out, int *len_out);
-int pbs_gss_wrap(gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out);
-int pbs_gss_unwrap(gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out);
+pbs_gss_extra_t* pbs_gss_alloc_gss_extra();
+void pbs_gss_free_gss_extra(pbs_gss_extra_t *gss_extra);
+int pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *target_host, char *data_in, int len_in, char **data_out, int *len_out);
+int pbs_gss_wrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out);
+int pbs_gss_unwrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out);
 
 void pbs_gss_set_log_handlers(void (*log_gss_status)(const char *msg, OM_uint32 maj_stat, OM_uint32 min_stat),
 	void (*logerror)(const char *func_name, const char* msg),
@@ -133,7 +133,7 @@ void pbs_gss_set_log_handlers(void (*log_gss_status)(const char *msg, OM_uint32 
 int tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz);
 extern int DIS_tcp_gss_wflush(int fd);
 extern void DIS_gss_funcs(void);
-extern int DIS_tcp_gss_set(int fd, gss_extra_t *gss_extra);
+extern int DIS_tcp_gss_set(int fd, pbs_gss_extra_t *gss_extra);
 extern struct gssdis_chan *(*gss_get_chan)(int stream);
 
 

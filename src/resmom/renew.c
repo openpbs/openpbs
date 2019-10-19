@@ -92,7 +92,7 @@ typedef struct eexec_job_info_t {
 	krb5_ccache ccache;         /* User's credentials cache */
 	uid_t job_uid;
 	char *username;
-	char *princ;
+	char *krb_principal;
 	char *jobid;
 	char *ccache_name;
 	krb5_principal client;
@@ -325,7 +325,7 @@ store_ticket(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 /**
  * @brief
  * 	get_renewed_creds - Get and store renewed credentials for a given ticket.
- *	The credentilas are obtained from storage (which is the memory) and stored
+ *	The credentials are obtained from storage (which is the memory) and stored
  *	into ccache file.
  *
  * @param[in] ticket - ticket for which to get and store credentials
@@ -476,8 +476,8 @@ out:
  * @retval	ccache file
  * @retval	NULL on error
  */
-char
-*get_ticket_ccname(struct krb_holder *ticket)
+char *
+get_ticket_ccname(struct krb_holder *ticket)
 {
 	if (ticket == NULL || ticket->job_info == NULL)
 		return NULL;
@@ -493,8 +493,8 @@ char
  * @retval	structure - on success
  * @retval	NULL - otherwise
  */
-struct krb_holder
-*alloc_ticket()
+struct krb_holder *
+alloc_ticket()
 {
 	struct krb_holder *ticket = (struct krb_holder*)malloc(sizeof(struct krb_holder));
 	if (ticket == NULL)
@@ -503,7 +503,7 @@ struct krb_holder
 	ticket->job_info = &ticket->job_info_;
 	ticket->job_info->creds = NULL;
 	ticket->job_info->ccache_name = NULL;
-	ticket->job_info->princ = NULL;
+	ticket->job_info->krb_principal = NULL;
 	ticket->job_info->username = NULL;
 	ticket->job_info->jobid = NULL;
 	ticket->got_ticket = 0;
@@ -567,7 +567,7 @@ free_ticket(struct krb_holder *ticket, int cred_action)
 	}
 
 	free(ticket->job_info->ccache_name);
-	free(ticket->job_info->princ);
+	free(ticket->job_info->krb_principal);
 	free(ticket->job_info->username);
 	free(ticket->job_info->jobid);
 
@@ -589,18 +589,18 @@ free_ticket(struct krb_holder *ticket, int cred_action)
 static int
 get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_info)
 {
-	char *principal = NULL;
+	char *krb_principal = NULL;
 	size_t len;
 	char *ccname = NULL;
 
 	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET)
-		principal = strdup(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+		krb_principal = strdup(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 	else {
 		log_err(-1, __func__, "No ticket found on job.");
 		return PBS_KRB5_ERR_NO_KRB_PRINC;
 	}
 
-	if (principal == NULL) // memory allocation error
+	if (krb_principal == NULL) // memory allocation error
 		return PBS_KRB5_ERR_INTERNAL;
 
 	if (ptask == NULL) {
@@ -616,37 +616,37 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 	}
 
 	if (ccname == NULL) { /* memory allocation error */
-		free(principal);
+		free(krb_principal);
 		return PBS_KRB5_ERR_INTERNAL;
 	}
 
 	if (pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str == NULL) {
-		free(principal);
+		free(krb_principal);
 		free(ccname);
 		return PBS_KRB5_ERR_NO_USERNAME;
 	}
 
 	char *username = strdup(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
 	if (username == NULL) {
-		free(principal);
+		free(krb_principal);
 		free(ccname);
 		return PBS_KRB5_ERR_INTERNAL;
 	}
 
 	krb5_context context;
 	krb5_init_context(&context);
-	krb5_parse_name(context,principal,&job_info->client);
+	krb5_parse_name(context, krb_principal, &job_info->client);
 
 	krb5_free_context(context);
 
-	job_info->princ = principal;
+	job_info->krb_principal = krb_principal;
 	job_info->ccache_name = ccname;
 	job_info->username = username;
 	job_info->job_uid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
 
 	job_info->jobid = strdup(pjob->ji_qs.ji_jobid);
 	if (job_info->jobid == NULL) {
-		free(principal);
+		free(krb_principal);
 		free(ccname);
 		return PBS_KRB5_ERR_INTERNAL;
 	}
@@ -679,8 +679,8 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 		return PBS_KRB5_ERR_NO_KRB_PRINC;
 	}
 
-	char *princ = strdup(principal);
-	if (princ == NULL)
+	char *krb_principal = strdup(principal);
+	if (krb_principal == NULL)
 		return PBS_KRB5_ERR_INTERNAL;
 
 	char login[PBS_MAXUSER + 1];
@@ -695,14 +695,14 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 		bufsize = 16384;          /* Should be more than enough */
 
 	if ((buf = (char*)(malloc(bufsize))) == NULL) {
-		free(princ);
+		free(krb_principal);
 		return PBS_KRB5_ERR_INTERNAL;
 	}
 
 	int ret = getpwnam_r(login, &pwd, buf, bufsize, &result);
 
 	if (result == NULL) {
-		free(princ);
+		free(krb_principal);
 		free(buf);
 		if (ret == 0)
 			return PBS_KRB5_ERR_CANT_OPEN_FILE;
@@ -715,7 +715,7 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 
 	char *username = strdup(login);
 	if (username == NULL) {
-		free(princ);
+		free(krb_principal);
 		return PBS_KRB5_ERR_INTERNAL;
 	}
 
@@ -727,7 +727,7 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 		snprintf(ccname, len + 1, "FILE:/tmp/krb5cc_pbsjob_%s", jobid);
 
 	if (ccname == NULL) {
-		free(princ);
+		free(krb_principal);
 		free(username);
 	}
 
@@ -737,14 +737,14 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 
 	krb5_free_context(context);
 
-	job_info->princ = princ;
+	job_info->krb_principal = krb_principal;
 	job_info->job_uid = uid;
 	job_info->username = username;
 	job_info->ccache_name = ccname;
 
 	job_info->jobid = strdup(jobid);
 	if (job_info->jobid == NULL) {
-		free(princ);
+		free(krb_principal);
 		free(ccname);
 		free(username);
 		return PBS_KRB5_ERR_INTERNAL;
@@ -911,8 +911,8 @@ delete_cred(char *jobid)
  * @retval	credentials data on success
  * @retval	NULL otherwise
  */
-static svrcred_data
-*find_cred_data_by_jobid(char *jobid)
+static svrcred_data *
+find_cred_data_by_jobid(char *jobid)
 {
 	svrcred_data *cred_data;
 
@@ -942,9 +942,9 @@ static svrcred_data
 int
 im_cred_send(job *pjob, hnodent *xp, int stream)
 {
-	int		ret;
-	svrcred_data	*cred_data;
-	char		*data_base64;
+	int ret;
+	svrcred_data *cred_data;
+	char *data_base64;
 
 	cred_data = find_cred_data_by_jobid(pjob->ji_qs.ji_jobid);
 
@@ -991,14 +991,14 @@ done:
 int
 im_cred_read(job *pjob, hnodent *np, int stream)
 {
-	int		ret;
-	char		*data_base64;
-	unsigned char	out_data[CRED_DATA_SIZE];
-	ssize_t		out_len = 0;
-	char		buf[LOG_BUF_SIZE];
-	krb5_data	*data;
-	int		cred_type;
-	long		validity;
+	int ret;
+	char *data_base64;
+	unsigned char out_data[CRED_DATA_SIZE];
+	ssize_t out_len = 0;
+	char buf[LOG_BUF_SIZE];
+	krb5_data *data;
+	int cred_type;
+	long validity;
 
 	DBPRT(("%s: entry\n", __func__))
 
@@ -1084,10 +1084,9 @@ send_cred_sisters(job *pjob)
 
 		i = send_sisters(pjob, IM_CRED, im_cred_send);
 
-		if (i != pjob->ji_numnodes-1) {
+		if (i != pjob->ji_numnodes - 1) {
 			/* If send_sisters() fails, the job is probably doomed anyway.
 			 * Should we resend credentials on fail? */
-			//(void)set_task(WORK_Timed, time_now + 2, send_cred_sisters, pjob);
 
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				pjob->ji_qs.ji_jobid,

@@ -5079,7 +5079,7 @@ req_cred(struct batch_request *preq) /* ptr to the decoded request   */
 	char		*data_base64 = NULL;
 	job		*pjob;
 
-	if (decode_block_base64((unsigned char *)preq->rq_ind.rq_cred.rq_data, preq->rq_ind.rq_cred.rq_size, out_data, &out_len, buf, LOG_BUF_SIZE) != 0) {
+	if (decode_block_base64((unsigned char *)preq->rq_ind.rq_cred.rq_cred_data, preq->rq_ind.rq_cred.rq_cred_size, out_data, &out_len, buf, LOG_BUF_SIZE) != 0) {
 		log_err(errno, __func__, buf);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
@@ -5100,9 +5100,9 @@ req_cred(struct batch_request *preq) /* ptr to the decoded request   */
 	data->length = out_len;
 	memcpy(data->data, out_data, out_len);
 
-	data_base64 = strdup(preq->rq_ind.rq_cred.rq_data);
+	data_base64 = strdup(preq->rq_ind.rq_cred.rq_cred_data);
 
-	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_credid, preq->rq_ind.rq_cred.rq_type, data, data_base64, preq->rq_ind.rq_cred.rq_validity);
+	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_credid, preq->rq_ind.rq_cred.rq_cred_type, data, data_base64, preq->rq_ind.rq_cred.rq_cred_validity);
 
 	/* renew ticket for the job*/
 	if ((pjob = find_job(preq->rq_ind.rq_cred.rq_jobid)) != NULL) {

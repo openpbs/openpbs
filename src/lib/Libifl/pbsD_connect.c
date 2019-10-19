@@ -330,7 +330,7 @@ engage_authentication(int sd,
 				if ((ret = engage_external_authentication(sd, server_name, AUTH_GSS, 0, errbuf, sizeof(errbuf))) != 0)
 					cs_logerr(-1, __func__, errbuf);
 				return (ret);
-			} /* else AUTH_RESV_PORT, no brake here */
+			} /* else AUTH_RESV_PORT, no break here */
 #endif
 
 		case AUTH_RESV_PORT:

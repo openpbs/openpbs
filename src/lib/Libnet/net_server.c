@@ -359,7 +359,7 @@ init_network_add(int sd, int (*readyreadfunc)(int), void (*readfunc)(int))
 	 * remark: passing 0 as port value causing entry's member
 	 *         cn_authen to have bit PBS_NET_CONN_PRIVIL set
 	 */
-	if(add_conn(sd, type, (pbs_net_t)0, 0, NULL, accept_conn) == NULL) {
+	if (add_conn(sd, type, (pbs_net_t)0, 0, NULL, accept_conn) == NULL) {
 #ifdef WIN32
 		errno = WSAGetLastError();
 		(void)closesocket(sd);

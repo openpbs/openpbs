@@ -681,9 +681,9 @@ issue_Drequest(int conn,
 			rc = PBSD_cred(conn,
 				request->rq_ind.rq_cred.rq_credid,
 				request->rq_ind.rq_cred.rq_jobid,
-				request->rq_ind.rq_cred.rq_type,
-				request->rq_ind.rq_cred.rq_data,
-				request->rq_ind.rq_cred.rq_validity,
+				request->rq_ind.rq_cred.rq_cred_type,
+				request->rq_ind.rq_cred.rq_cred_data,
+				request->rq_ind.rq_cred.rq_cred_validity,
 				rpp,
 				&msgid);
 			break;

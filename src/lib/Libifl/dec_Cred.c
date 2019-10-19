@@ -42,14 +42,14 @@
  * @brief
  * decode_DIS_JobCred() - decode a Job Credential batch request
  *
- *	The batch_request structure must already exist (be allocated by the
- *	caller.   It is assumed that the header fields (protocol type,
+ *	The batch_request structure must already exist (allocated by the
+ *	caller. It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
  * @par	Data items are:
  *			char		job id
  *			char		credential id (e.g. principal)
- *			int	credential type
+ *			int		credential type
  *			counted string	the message
  *			long		credential validity
  */
@@ -83,7 +83,7 @@ decode_DIS_Cred(int sock, struct batch_request *preq)
 {
 	int		rc;
 
-	preq->rq_ind.rq_cred.rq_data = NULL;
+	preq->rq_ind.rq_cred.rq_cred_data = NULL;
 
 	rc = disrfst(sock, PBS_MAXSVRJOBID + 1, preq->rq_ind.rq_cred.rq_jobid);
 	if (rc)
@@ -93,14 +93,14 @@ decode_DIS_Cred(int sock, struct batch_request *preq)
 	if (rc)
 		return rc;
 
-	preq->rq_ind.rq_cred.rq_type = disrui(sock, &rc);
+	preq->rq_ind.rq_cred.rq_cred_type = disrui(sock, &rc);
 	if (rc)
 		return rc;
 
-	preq->rq_ind.rq_cred.rq_data = disrcs(sock, (size_t *)&preq->rq_ind.rq_cred.rq_size, &rc);
+	preq->rq_ind.rq_cred.rq_cred_data = disrcs(sock, (size_t *)&preq->rq_ind.rq_cred.rq_cred_size, &rc);
 	if (rc)
 		return rc;
 
-	preq->rq_ind.rq_cred.rq_validity = disrul(sock, &rc);
+	preq->rq_ind.rq_cred.rq_cred_validity = disrul(sock, &rc);
 	return rc;
 }

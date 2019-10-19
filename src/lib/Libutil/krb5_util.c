@@ -149,6 +149,10 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 		endtime = creds->times.endtime;
 	}
 
+	/* if we have valid credentials in ccache goto out
+	 * if the credentils are about to expire soon (60 * 30 = 30 minutes)
+	 * then try to renew from keytab.
+	 */
 	if (endtime - (60 * 30) >= time(NULL)) {
 		ret = 0;
 		goto out;

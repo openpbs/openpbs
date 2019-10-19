@@ -76,21 +76,18 @@ tcp_gss_logdebug(const char *func_name, const char* msg)
 static void
 log_status_1(const char *m, OM_uint32 code, int type)
 {
-	OM_uint32 maj_stat, min_stat;
+	OM_uint32 min_stat;
 	gss_buffer_desc msg;
 	OM_uint32 msg_ctx;
 	msg_ctx = 0;
 
 	do {
-		maj_stat = gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
+		gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
 		snprintf(log_buffer, LOG_BUF_SIZE, "%s : %.*s\n", m, (int)msg.length, (char *)msg.value);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
 			msg_daemonname, log_buffer);
 		(void) gss_release_buffer(&min_stat, &msg);
 	} while (msg_ctx != 0);
-
-	(void)maj_stat;
-	(void)min_stat;
 }
 
 /**

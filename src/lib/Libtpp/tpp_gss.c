@@ -112,7 +112,7 @@ tpp_gss_logdebug(const char *func_name, const char* msg)
 int
 tpp_gss_set_extra_host(void *extra, char *hostname)
 {
-	gss_extra_t *gss_extra = (gss_extra_t*) extra;
+	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*) extra;
 	char *hn;
 
 	if (gss_extra->hostname)
@@ -148,20 +148,17 @@ tpp_gss_set_extra_host(void *extra, char *hostname)
 static void
 tpp_log_status_1(const char *m, OM_uint32 code, int type)
 {
-	OM_uint32 maj_stat, min_stat;
+	OM_uint32 min_stat;
 	gss_buffer_desc msg;
 	OM_uint32 msg_ctx;
 	msg_ctx = 0;
 
 	do {
-		maj_stat = gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
+		gss_display_status(&min_stat, code, type, GSS_C_NULL_OID, &msg_ctx, &msg);
 		snprintf(log_buffer, LOG_BUF_SIZE, "%s : %.*s\n", m, (int)msg.length, (char *)msg.value);
 		tpp_log_func(LOG_CRIT, "TPP GSS", log_buffer);
 		(void) gss_release_buffer(&min_stat, &msg);
 	} while (msg_ctx != 0);
-
-	(void)maj_stat;
-	(void)min_stat;
 }
 
 /**
@@ -241,7 +238,7 @@ tpp_gss_send_ctx_token(int tfd, void *data, int len)
 static int
 gss_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 {
-	gss_extra_t *gss_extra = (gss_extra_t*)extra;
+	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*)extra;
 	char *data_out = NULL;
 	int len_out = 0;
 	int totpktlen = 0;
@@ -310,7 +307,7 @@ gss_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 static int
 gss_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 {
-	gss_extra_t *gss_extra = (gss_extra_t*)extra;
+	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*)extra;
 
 	if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_CTX) {
 		tpp_free_pkt(pkt);
@@ -356,7 +353,7 @@ static int
 gss_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 {
 	enum TPP_MSG_TYPES type;
-	gss_extra_t *gss_extra = (gss_extra_t*) extra;
+	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*) extra;
 	char *data_out = NULL;
 	int len_out = 0;
 	int rc;
@@ -473,7 +470,7 @@ gss_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 static int
 gss_close_handler(int tfd, int error, void *c, void *extra)
 {
-	pbs_gss_free_gss_extra((gss_extra_t*)extra);
+	pbs_gss_free_gss_extra((pbs_gss_extra_t*)extra);
 
 	return tpp_close_handler(tfd, error, c, extra);
 }
@@ -500,7 +497,7 @@ gss_close_handler(int tfd, int error, void *c, void *extra)
 static int
 gss_post_connect_handler(int tfd, void *data, void *c, void *extra)
 {
-	gss_extra_t *gss_extra = (gss_extra_t*) extra;
+	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*) extra;
 	char *data_out = NULL;
 	int len_out = 0;
 	int rc;

@@ -69,12 +69,13 @@ int
 gss_set_conn(int s)
 {
 	char *credid;
-	int i, length;
-        conn_t *conn;
-	gss_extra_t *gss_extra = NULL;
+	int i;
+	int length;
+	conn_t *conn;
+	pbs_gss_extra_t *gss_extra = NULL;
 
 	/* this is done only once - after the gss handshake */
-	if (((gss_extra = (gss_extra_t *)tcp_get_extra(s)) != NULL) &&
+	if (((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(s)) != NULL) &&
 		gss_extra->establishing) {
 
 		conn = get_conn(s);
@@ -93,7 +94,8 @@ gss_set_conn(int s)
 		}
 
 		for (i = 0; credid[i] != '\0' && i < PBS_MAXUSER; i++) {
-			if (credid[i] == '@') {break;}
+			if (credid[i] == '@')
+				break;
 		}
 
 		length = strlen(credid);
@@ -126,12 +128,12 @@ gss_set_conn(int s)
 int
 req_gss_auth(struct batch_request *preq)
 {
-	gss_extra_t *gss_extra = NULL;
+	pbs_gss_extra_t *gss_extra = NULL;
 	int sock;
 
 	sock = preq->rq_conn;
 
-	if ((gss_extra = (gss_extra_t *)tcp_get_extra(sock)) == NULL){
+	if ((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(sock)) == NULL){
 		gss_extra = pbs_gss_alloc_gss_extra();
 		tcp_set_extra(sock, gss_extra);
 	}
