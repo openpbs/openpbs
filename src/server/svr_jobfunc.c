@@ -261,12 +261,12 @@ tickle_for_reply(void)
 int
 svr_enquejob(job *pjob)
 {
-	attribute      *pattrjb;
-	attribute_def  *pdef;
-	job	       *pjcur;
-	pbs_queue      *pque;
-	int		rc;
-	pbs_sched	*psched;
+	attribute *pattrjb;
+	attribute_def *pdef;
+	job *pjcur;
+	pbs_queue *pque;
+	int rc;
+	pbs_sched *psched;
 
 	/* make sure queue is still there, there exist a small window ... */
 
@@ -412,11 +412,6 @@ svr_enquejob(job *pjob)
 		pjob->ji_wattr[(int)JOB_ATR_qtime].at_val.at_long = time_now;
 		pjob->ji_wattr[(int)JOB_ATR_qtime].at_flags |=
 			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-
-		/* issue enqueued accounting record */
-
-		(void)sprintf(log_buffer, "queue=%s", pque->qu_qs.qu_name);
-		account_record(PBS_ACCT_QUEUE, pjob, log_buffer);
 	}
 
 	/*

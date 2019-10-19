@@ -65,6 +65,7 @@ extern "C" {
 #define PBS_ACCT_UPDATE	(int)'u'	/* phased job update record */
 #define PBS_ACCT_NEXT	(int)'c'	/* phased job next record */
 #define PBS_ACCT_LAST	(int)'e'	/* phased job last usage record */
+#define PBS_ACCT_ALTER  (int)'a'	/* Job attribute is being altered */
 
 /* for RESERVATION accounting */
 
