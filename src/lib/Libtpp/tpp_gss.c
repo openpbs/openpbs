@@ -214,10 +214,12 @@ tpp_gss_send_ctx_token(int tfd, void *data, int len)
 	if (tpp_transport_vsend(tfd, chunks, 1) != 0) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tpp_transport_vsend failed, err=%d", errno);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		free(tosend);
 		free(data);
 		return PBS_GSS_ERR_SENDTOKEN;
 	}
 
+	free(tosend);
 	free(data);
 	return PBS_GSS_OK;
 }
@@ -283,6 +285,9 @@ gss_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 
 		pkt->pos = pkt->data;
 		pkt->len = totpktlen;
+
+		free(data_out);
+		data_out = NULL;
 	}
 
 
@@ -313,6 +318,8 @@ gss_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 	}
 
 	if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_WRAP) {
+		free(pkt->data);
+
 		/* recover saved cleartext */
 		pkt->data = gss_extra->cleartext;
 		pkt->len = gss_extra->cleartext_len;

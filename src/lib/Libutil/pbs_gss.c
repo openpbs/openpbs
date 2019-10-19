@@ -73,7 +73,7 @@ pbs_gss_can_get_creds()
 	gss_cred_id_t creds = GSS_C_NO_CREDENTIAL;
 
 	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, GSS_C_NO_OID_SET, GSS_C_INITIATE, &creds, NULL, &valid_sec);
-	if (maj_stat == GSS_S_COMPLETE && creds != NULL)
+	if (maj_stat == GSS_S_COMPLETE && creds != GSS_C_NO_CREDENTIAL)
 		gss_release_cred(&min_stat, &creds);
 
 /* There is a bug in old MIT implementation. It causes valid_sec is always 0.
@@ -502,7 +502,7 @@ pbs_gss_establish_context(gss_extra_t *gss_extra, char *server_host, char *data_
 			if (gss_extra->init_client_ccache)
 				clear_pbs_ccache_env();
 
-			if (creds != NULL) {
+			if (creds != GSS_C_NO_CREDENTIAL) {
 				maj_stat = gss_release_cred(&min_stat, &creds);
 				if (maj_stat != GSS_S_COMPLETE) {
 					sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_release_cred");

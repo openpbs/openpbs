@@ -250,7 +250,7 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 		if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
 			snprintf(buf, sizeof(buf), "Could not resolve ccache name \"krb5_cc_resolve()\" : %s.", error_message(ret));
 			log_err(errno, __func__, buf);
-		return(ret);
+			return(ret);
 		}
 	}
 
@@ -445,7 +445,17 @@ get_ticket_from_storage(struct krb_holder *ticket, char *errbuf, size_t errbufsz
 		goto out;
 	}
 
+	if ((ret = krb5_auth_con_free(ticket->context, auth_context))) {
+		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+		snprintf(errbuf,errbufsz, "krb5_auth_con_free - freeing authentication context; Error text: %s", krb5_err);
+		krb5_free_error_message(ticket->context, krb5_err);
+		goto out;
+	}
+
+	krb5_free_data(ticket->context, data);
+
 	ticket->job_info->creds = creds[0];
+	free(creds);
 
 	ticket->job_info->endtime = ticket->job_info->creds->times.endtime;
 
@@ -491,10 +501,11 @@ struct krb_holder
 		return NULL;
 
 	ticket->job_info = &ticket->job_info_;
-
-	ticket->job_info->creds = malloc(sizeof(krb5_creds));
-	memset(ticket->job_info->creds, 0, sizeof(krb5_creds));
-
+	ticket->job_info->creds = NULL;
+	ticket->job_info->ccache_name = NULL;
+	ticket->job_info->princ = NULL;
+	ticket->job_info->username = NULL;
+	ticket->job_info->jobid = NULL;
 	ticket->got_ticket = 0;
 
 	return ticket;
@@ -519,30 +530,46 @@ free_ticket(struct krb_holder *ticket, int cred_action)
 		return;
 
 	if (ticket->got_ticket) {
-		if (cred_action == CRED_DESTROY && ticket->job_info->ccache) {
-			if ((ret = krb5_cc_destroy(ticket->context, ticket->job_info->ccache))) {
-				const char *krb5_err = krb5_get_error_message(ticket->context, ret);
-				log_err(ret, __func__, krb5_err);
-				krb5_free_error_message(ticket->context, krb5_err);
-			}
+		switch (cred_action) {
+			case CRED_SINGLESHOT:
+			case CRED_RENEWAL:
+			case CRED_CLOSE:
+				if ((ret = krb5_cc_close(ticket->context, ticket->job_info->ccache))) {
+					const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+					log_err(ret, __func__, krb5_err);
+					krb5_free_error_message(ticket->context, krb5_err);
+				}
 
-			unlink(ticket->job_info->ccache_name);
+				break;
+
+			case CRED_DESTROY:
+				if ((ret = krb5_cc_destroy(ticket->context, ticket->job_info->ccache))) {
+					const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+					log_err(ret, __func__, krb5_err);
+					krb5_free_error_message(ticket->context, krb5_err);
+				}
+
+				unlink(ticket->job_info->ccache_name);
+
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+				if (k_hasafs())
+					k_unlog();
+#endif
+				break;
+
+			case CRED_SETENV:
+				break;
 		}
 
 		krb5_free_creds(ticket->context, ticket->job_info->creds);
 		krb5_free_principal(ticket->context, ticket->job_info->client);
 		krb5_free_context(ticket->context);
-
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-		if (cred_action == CRED_DESTROY && k_hasafs())
-			k_unlog();
-#endif
-
 	}
 
 	free(ticket->job_info->ccache_name);
 	free(ticket->job_info->princ);
 	free(ticket->job_info->username);
+	free(ticket->job_info->jobid);
 
 	free(ticket);
 }
@@ -867,6 +894,7 @@ delete_cred(char *jobid)
 				free(cred_data->cr_data_base64);
 
 			delete_link(&cred_data->cr_link);
+			free(cred_data);
 			return;
 		}
 		cred_data = (svrcred_data *)GET_NEXT(cred_data->cr_link);
@@ -991,6 +1019,8 @@ im_cred_read(job *pjob, hnodent *np, int stream)
 		ret = DIS_PROTO;
 		goto err;
 	}
+
+	free(data_base64);
 
 	if ((data = (krb5_data *)malloc(sizeof(krb5_data))) == NULL) {
 		log_err(errno, __func__, "Unable to allocate Memory!\n");

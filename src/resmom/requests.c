@@ -3287,6 +3287,10 @@ req_cpyfile(struct batch_request *preq)
 #endif
 	rc  = (int)pid;
 	if (pid > 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		free_ticket(ticket, CRED_CLOSE);
+#endif
+
 		if (pjob) {
 			/* change substate so Mom doesn't send another obit     */
 			/* do not record to disk, so Obit is resent on recovery */
@@ -3312,6 +3316,10 @@ req_cpyfile(struct batch_request *preq)
 		}
 		return;		/* parent - continue with someother task */
 	} else if (rc < 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		free_ticket(ticket, CRED_DESTROY);
+#endif
+
 		req_reject(-rc, 0, preq);
 		return;
 	}
@@ -3402,16 +3410,16 @@ req_cpyfile(struct batch_request *preq)
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		dup_rqcpf_jobid, log_buffer);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        free_ticket(ticket, CRED_DESTROY);
+#endif
+
 	if (preq->isrpp && stage_inout.bad_files)
 		exit(STAGEOUT_FAILURE);
 
 	if (stage_inout.sandbox_private && stage_inout.stageout_failed) {
 		exit(STAGEOUT_FAILURE);
 	}
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        free_ticket(ticket, CRED_DESTROY);
-#endif
 
 	exit(0);	/* remember, we are the child, exit not return */
 }

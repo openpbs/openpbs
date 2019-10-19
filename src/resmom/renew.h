@@ -60,7 +60,8 @@ struct krb_holder;
 #define CRED_SINGLESHOT	    0
 #define CRED_RENEWAL	    1
 #define CRED_SETENV	    2
-#define CRED_DESTROY	    3
+#define CRED_CLOSE	    3
+#define CRED_DESTROY	    4
 
 #define	CRED_DATA_SIZE	4096
 

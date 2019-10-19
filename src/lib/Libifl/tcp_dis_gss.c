@@ -879,6 +879,9 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 				}
 			}
 
+			free(data_out);
+			free(data);
+
 			return 0; /* gss context -> no data for upper layer */
 			break;
 
@@ -909,6 +912,7 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 
 		default:
 			snprintf(ebuf, ebufsz, "incorrect message type");
+			free(data);
 			return -1;
 	}
 

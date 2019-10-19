@@ -848,6 +848,10 @@ job_purge(job *pjob)
 		child_process = 1;
 		pid = fork();
 		if (pid > 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			delete_cred(pjob->ji_qs.ji_jobid);
+#endif
+
 			/* parent mom */
 			job_free(pjob);
 			return;
