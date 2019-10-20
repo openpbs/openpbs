@@ -383,7 +383,6 @@ extern int   open_slave(void);
 extern char *rcvttype(int);
 extern int   rcvwinsize(int);
 extern int   remtree(char *);
-extern void  rid_job(char *jobid);
 extern void  scan_for_exiting(void);
 extern void  scan_for_terminated(void);
 extern int   setwinsize(int);

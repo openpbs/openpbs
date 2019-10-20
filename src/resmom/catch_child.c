@@ -2730,24 +2730,6 @@ send_sisters_deljob_wait(job *pjob)
 		return 0;
 
 }
-/**
- * @brief
- * 	rid_job - rid mom of a job that the server says no longer exists
- *
- * @param[in] jobid - char pointer holding jobid
- *
- * @return Void
- *
- */
-void
-rid_job(char *jobid)
-{
-	job	*pjob;
-
-	pjob = find_job(jobid);
-	if (pjob && !pjob->ji_hook_running_bg_on)
-		mom_deljob(pjob);
-}
 
 /**
  * @brief
