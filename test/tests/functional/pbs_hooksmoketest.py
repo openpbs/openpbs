@@ -449,7 +449,8 @@ print_attribs(j)"""
 
     def test_hook_config_os_env(self):
         """
-        Create a hook, import a hook content that test pbs.server() call.
+        Create a hook, import a config file for the hook
+        and test the os.environ call in the hook
         """
         hook_body = """
 import pbs
