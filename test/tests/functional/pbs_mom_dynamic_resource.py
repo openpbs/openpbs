@@ -41,6 +41,7 @@ from tests.functional import *
 class TestMomDynRes(TestFunctional):
 
     dirnames = []
+    resc_files = []
 
     def create_mom_resources(self, resc_name, resc_type, resc_flag,
                              script_body):
@@ -58,11 +59,12 @@ class TestMomDynRes(TestFunctional):
         for i, name in enumerate(resc_name):
             attr = {"type": resc_type[i], "flag": resc_flag[i]}
             self.server.manager(MGR_CMD_CREATE, RSC, attr, id=name)
-
             dest_file = self.mom.add_mom_dyn_res(name, script_body[i],
                                                  prefix="mom_resc",
-                                                 suffix=".scr")
+                                                 suffix=".scr",
+                                                 host=self.mom.shortname)
             fp_list.append(dest_file)
+            self.resc_files = copy.deepcopy(fp_list)
         return fp_list
 
     def check_access_log(self, fp, exist=True):
@@ -162,7 +164,7 @@ class TestMomDynRes(TestFunctional):
                            id=jid, attrop=PTL_AND)
 
         # Submit a job that requests mom dynamic resource
-        attr = {"Resource_List." + resc_name[0]: '"This is a test"'}
+        attr = {"Resource_List." + resc_name[0]: '\'\"This is a test\"\''}
         j = Job(TEST_USER, attrs=attr)
         jid = self.server.submit(j)
 
@@ -324,7 +326,6 @@ class TestMomDynRes(TestFunctional):
         resc_type = ["float"]
         resc_flag = ["nh"]
         script_body = ["/bin/echo 3"]
-
         self.create_mom_resources(resc_name, resc_type,
                                   resc_flag, script_body)
         # Submit a job that requests mom dynamic resource
@@ -337,7 +338,9 @@ class TestMomDynRes(TestFunctional):
 
         # Change script during job run
         change_res = "/bin/echo 1"
-        self.mom.add_mom_dyn_res(resc_name[0], script_body=change_res)
+        fp = self.mom.add_mom_dyn_res(resc_name[0], script_body=change_res,
+                                      host=self.mom.shortname)
+        self.resc_files.append(fp)
 
         self.server.rerunjob(jobid=jid)
 
@@ -438,4 +441,8 @@ class TestMomDynRes(TestFunctional):
             self.du.rm(path=self.dirnames, sudo=True, force=True,
                        recursive=True)
             self.dirnames[:] = []
+        if len(self.resc_files) != 0:
+            self.du.rm(path=self.resc_files, sudo=True, force=True,
+                       hostname=self.mom.shortname)
+
         TestFunctional.tearDown(self)

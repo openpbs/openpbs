@@ -13832,10 +13832,10 @@ class MoM(PBSService):
         else:
             if dirname is None:
                 dirname = self.pbs_conf['PBS_HOME']
+            local_host = socket.gethostname()
             tmp_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
                                                 body=script_body,
-                                                hostname=host)
-
+                                                hostname=local_host)
             res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
             self.du.run_copy(host, tmp_file, res_file, sudo=True,
                              preserve_permission=False)
