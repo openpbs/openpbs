@@ -430,12 +430,24 @@ class SystemInfo:
             _msg = 'failed to get content of /proc/meminfo of host: '
             self.logger.error(_msg + hostname)
         else:
+            got_mem_available = False
             for i in mem_info['out']:
                 if "MemTotal" in i:
                     self.system_total_ram = float(i.split()[1]) / (2**20)
                 elif "MemAvailable" in i:
-                    self.system_ram = float(i.split()[1]) / (2**20)
+                    mem_available = float(i.split()[1]) / (2**20)
+                    got_mem_available = True
                     break
+                elif "MemFree" in i:
+                    mem_free = float(i.split()[1]) / (2**20)
+                elif "Buffers" in i:
+                    buffers = float(i.split()[1]) / (2**20)
+                elif i.startswith("Cached"):
+                    cached = float(i.split()[1]) / (2**20)
+            if got_mem_available:
+                self.system_ram = mem_available
+            else:
+                self.system_ram = mem_free + buffers + cached
         # getting disk size in gb
         pbs_conf = du.parse_pbs_config(hostname)
         pbs_home_info = du.run_cmd(hostname, cmd=['df', '-k',
@@ -674,7 +686,7 @@ class PTLTestRunner(Plugin):
     def __are_requirements_matching(param_dic=None, test=None):
         """
         Validates test requirements against test cluster information
-        returns True on match or False otherwise None
+        returns True on match or error message otherwise None
 
         :param param_dic: dictionary of cluster information from data passed
                           to param list
@@ -682,8 +694,9 @@ class PTLTestRunner(Plugin):
         :param test: test object
         :test type: object
 
-        :returns True or False or None
+        :returns True or error message or None
         """
+        logger = logging.getLogger(__name__)
         ts_requirements = {}
         tc_requirements = {}
         param_count = {}
@@ -706,55 +719,101 @@ class PTLTestRunner(Plugin):
             param_count['num_' + key] = len(param_dic[key])
         for pk in param_count:
             if param_count[pk] < eff_tc_req[pk]:
-                return False
+                _msg = 'available ' + pk + " ("
+                _msg += str(param_count[pk]) + ") is less than required " + pk
+                _msg += " (" + str(eff_tc_req[pk]) + ")"
+                logger.error(_msg)
+                return _msg
         for hostname in param_dic['moms']:
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
             if available_sys_ram is None:
-                return False
+                _msg = 'failed to get ram info on host: ' + hostname
+                logger.error(_msg)
+                return _msg
             elif eff_tc_req['min_mom_ram'] >= available_sys_ram:
-                return False
+                _msg = hostname + ': available ram (' + str(available_sys_ram)
+                _msg += ') is less than the minimum required ram ('
+                _msg += str(eff_tc_req['min_mom_ram'])
+                _msg += ') for test execution'
+                logger.error(_msg)
+                return _msg
             available_sys_disk = getattr(si, 'system_disk', None)
             if available_sys_disk is None:
-                return False
+                _msg = 'failed to get disk info on host: ' + hostname
+                logger.error(_msg)
+                return _msg
             elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
-                return False
+                _msg = hostname + ': available disk space ('
+                _msg += str(available_sys_disk)
+                _msg += ') is less than the minimum required disk space ('
+                _msg += str(eff_tc_req['min_mom_disk'])
+                _msg += ') for test execution'
+                logger.error(_msg)
+                return _msg
         for hostname in param_dic['servers']:
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
             if available_sys_ram is None:
-                return False
+                _msg = 'failed to get ram info on host: ' + hostname
+                logger.error(_msg)
+                return _msg
             elif eff_tc_req['min_server_ram'] >= available_sys_ram:
-                return False
+                _msg = hostname + ': available ram (' + str(available_sys_ram)
+                _msg += ') is less than the minimum required ram ('
+                _msg += str(eff_tc_req['min_server_ram'])
+                _msg += ') for test execution'
+                logger.error(_msg)
+                return _msg
             available_sys_disk = getattr(si, 'system_disk', None)
             if available_sys_disk is None:
-                return False
+                _msg = 'failed to get disk info on host: ' + hostname
+                logger.error(_msg)
+                return _msg
             elif eff_tc_req['min_server_disk'] >= available_sys_disk:
-                return False
+                _msg = hostname + ': available disk space ('
+                _msg += str(available_sys_disk)
+                _msg += ') is less than the minimum required disk space ('
+                _msg += str(eff_tc_req['min_server_disk'])
+                _msg += ') for test execution'
+                logger.error(_msg)
+                return _msg
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
-                return False
+                _msg = 'no mom on server'
+                logger.error(_msg)
+                return _msg
         else:
             if not eff_tc_req['no_mom_on_server']:
-                return False
+                _msg = 'no mom on server'
+                logger.error(_msg)
+                return _msg
         if set(param_dic['comms']) & set(param_dic['servers']):
             if eff_tc_req['no_comm_on_server']:
-                return False
+                _msg = 'no comm on server'
+                logger.error(_msg)
+                return _msg
         else:
             if not eff_tc_req['no_comm_on_server']:
-                return False
+                _msg = 'no comm on server'
+                logger.error(_msg)
+                return _msg
         comm_mom_list = set(param_dic['moms']) & set(param_dic['comms'])
         if comm_mom_list and shortname in comm_mom_list:
             # Excluding the server hostname for flag 'no_comm_on_mom'
             comm_mom_list.remove(shortname)
         if comm_mom_list:
             if eff_tc_req['no_comm_on_mom']:
-                return False
+                _msg = 'no comm on mom'
+                logger.error(_msg)
+                return _msg
         else:
             if not eff_tc_req['no_comm_on_mom']:
-                return False
+                _msg = 'no comm on server'
+                logger.error(_msg)
+                return _msg
 
     def check_hardware_status_and_core_files(self):
         """
@@ -856,13 +915,14 @@ class PTLTestRunner(Plugin):
             self.logger.error(_msg)
             self.__failed_tc_count_msg = True
             raise TCThresholdReached
+        rv = None
         rv = self.__are_requirements_matching(self.param_dict, test)
-        if rv is False:
+        if rv is not None:
             # Below method call is needed in order to get the test case
             # details in the output and to have the skipped test count
             # included in total run count of the test run
             self.result.startTest(test)
-            raise SkipTest('Test requirements are not matching')
+            raise SkipTest(rv)
         # function report hardware status and core files
         self.check_hardware_status_and_core_files()
 
