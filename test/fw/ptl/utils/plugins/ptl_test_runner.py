@@ -888,8 +888,10 @@ class PTLTestRunner(Plugin):
                     self.logger.warning(_msg)
             for u in PBS_ALL_USERS:
                 user_home_files = du.listdir(hostname=hostname, path=u.home,
-                                             sudo=True, fullpath=False)
-                if fnmatch.filter(user_home_files, "core*"):
+                                             sudo=True, fullpath=False,
+                                             runas=u.name)
+                if user_home_files and fnmatch.filter(
+                        user_home_files, "core*"):
                     _msg = hostname + ": user-" + str(u)
                     _msg += ": core files found in "
                     self.logger.warning(_msg + u.home)
