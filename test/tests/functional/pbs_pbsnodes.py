@@ -69,11 +69,11 @@ class TestPbsnodes(TestFunctional):
         return expected values of attributes on a newly created node
         """
         expect_dict = {}
-        expect_dict[ATTR_NODE_Mom] = self.server.hostname
+        expect_dict[ATTR_NODE_Mom] = self.mom.hostname
         expect_dict[ATTR_NODE_ntype] = 'PBS'
         expect_dict[ATTR_NODE_state] = 'free'
-        expect_dict[ATTR_rescavail + '.vnode'] = self.server.shortname
-        expect_dict[ATTR_rescavail + '.host'] = self.server.shortname
+        expect_dict[ATTR_rescavail + '.vnode'] = self.mom.shortname
+        expect_dict[ATTR_rescavail + '.host'] = self.mom.shortname
         expect_dict[ATTR_NODE_resv_enable] = 'True'
 
         if user == 'root':

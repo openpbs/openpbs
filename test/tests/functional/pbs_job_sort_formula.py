@@ -49,7 +49,7 @@ class TestJobSortFormula(TestFunctional):
         job_sort_formula sort properly
         """
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.server.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         self.server.manager(MGR_CMD_CREATE, RSC, {'type': 'float'}, id='foo')
 
         a = {'job_sort_formula': 'foo', 'scheduling': 'False'}
