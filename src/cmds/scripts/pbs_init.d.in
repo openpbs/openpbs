@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -47,10 +47,10 @@
 #
 #
 # chkconfig: 35 90 10
-# description: The Portable Batch System (PBS) is a flexible workload 
-# management  system. It operates on # networked, multi-platform UNIX 
-# environments, including heterogeneous clusters of workstations, 
-# supercomputers, and massively parallel systems. 
+# description: The Portable Batch System (PBS) is a flexible workload
+# management  system. It operates on # networked, multi-platform UNIX
+# environments, including heterogeneous clusters of workstations,
+# supercomputers, and massively parallel systems.
 #
 ### BEGIN INIT INFO
 # Provides:       pbs
@@ -78,7 +78,7 @@ getpid() {
 	fi
 }
 
-# update_pids may cause an I/O read to block if PBS_HOME is on a shared 
+# update_pids may cause an I/O read to block if PBS_HOME is on a shared
 # mount, it is called selectively after sanity checks are performed
 update_pids() {
 	pbs_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock`
@@ -93,14 +93,14 @@ update_pids() {
 # lc_host_name - convert host name into lower case short host name
 # also handle multiple names in PBS_LEAF_NAME
 # PBS_LEAF_NAME is now of the format: host:port,host:port so the following code is to cut on , (to get the first host) and then : to parse our the port
-lc_host_name() 
+lc_host_name()
 {
   echo $1 | cut -d, -f1 | cut -d: -f1 | cut -d. -f1 | sed -e "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 }
 
 # check_started - check if a particular pid is the program which is expected.
-#                 pbs stores the pid of the currently running incarnation of 
-#                 itself.  This function is used to see if that pid is correct 
+#                 pbs stores the pid of the currently running incarnation of
+#                 itself.  This function is used to see if that pid is correct
 #		  program.
 # 	$1 - the pid
 # 	$2 - the program name (pbs_server pbs_mom pbs_sched)
@@ -129,10 +129,10 @@ check_started() {
 }
 
 # check_prog - this function checks to see if a prog is still running.  It will
-#              get the pid out of the prog.lock file and run check_started 
+#              get the pid out of the prog.lock file and run check_started
 #	       on that pid.
 #
-#	$1 is either "server" "oldserver" "mom" or "sched" 
+#	$1 is either "server" "oldserver" "mom" or "sched"
 #		"oldserver" is for non-database server (pbs_server)
 #		as opposed to "pbs_server.bin"
 #
@@ -142,24 +142,24 @@ check_started() {
 : check_prog
 check_prog() {
 
-  case $1 in 
+  case $1 in
     mom)
         daemon_name="pbs_mom"
         pid=${pbs_mom_pid} ;;
     server)
         daemon_name="pbs_server.bin"
-        if [ ${is_secondary} -eq 0 ] ; then 
-            pid=${pbs_server_pid} 
-        else 
-            pid=${pbs_secondary_server_pid} 
-        fi ;; 
+        if [ ${is_secondary} -eq 0 ] ; then
+            pid=${pbs_server_pid}
+        else
+            pid=${pbs_secondary_server_pid}
+        fi ;;
     oldserver)
         daemon_name="pbs_server"
-        if [ ${is_secondary} -eq 0 ] ; then 
-            pid=${pbs_server_pid} 
-        else 
-            pid=${pbs_secondary_server_pid} 
-        fi ;; 
+        if [ ${is_secondary} -eq 0 ] ; then
+            pid=${pbs_server_pid}
+        else
+            pid=${pbs_secondary_server_pid}
+        fi ;;
     sched)
         daemon_name="pbs_sched"
         if [ ${is_secondary} -eq 0 ] ; then
@@ -216,7 +216,7 @@ check_maxsys()
 
 # Look if core or core.pid file exists in given _priv directory
 # If exists format the name to core_<next_sequence_number>
-# When core file found set core flag 
+# When core file found set core flag
 check_core() {
         core_dir="$1"
 	[ -n "${core_dir}" ] || core_dir="."
@@ -229,7 +229,7 @@ check_core() {
 		else
 			max_seq=0
 		fi
-	
+
         	for core_name in `/bin/ls "${core_dir}"/core* | grep -v "core_" 2> /dev/null`
         	do
                		max_seq=`expr ${max_seq} + 1`
@@ -290,8 +290,8 @@ start_pbs() {
 
     # See if we need to populate PBS_HOME. We do if...
     # 1) PBS_HOME doesn't exist  (needmakehome=1 -> create PBS_HOME)
-    # 2) PBS_HOME/pbs_version doesn't exist 
-    # 3) if the version number in PBS_HOME/pbs_version does not match 
+    # 2) PBS_HOME/pbs_version doesn't exist
+    # 3) if the version number in PBS_HOME/pbs_version does not match
     #    the version of the commands  (2 and 3 needmakehome=2 -> update)
     # 4) PBS_HOME/datastore does not exist and this is a server
     needmakehome=0
@@ -341,7 +341,7 @@ start_pbs() {
     fi
     if [ -d ${PBS_HOME}/mom_priv ]; then
 	check_core ${PBS_HOME}/mom_priv
-    fi 
+    fi
 
     if [ $core_flag -eq 1 ];then
         echo "Warning: PBS Professional has detected core file(s) in PBS_HOME that require attention!!!"
@@ -369,7 +369,7 @@ start_pbs() {
       else
         if [ -f ${pbslibdir}/init.d/limits.pbs_mom ] ; then
             . ${pbslibdir}/init.d/limits.pbs_mom
-        fi	
+        fi
 	check_maxsys
 	site_mom_startup
         if [ "XX${BGLDIR}" != "XX" ] && [ "XX${DB2DIR}" != "XX" ] ; then
@@ -405,7 +405,7 @@ start_pbs() {
       else
          if [ -f ${pbslibdir}/init.d/limits.pbs_sched ] ; then
              . ${pbslibdir}/init.d/limits.pbs_sched
-         fi	
+         fi
 	 if ${PBS_EXEC}/sbin/pbs_sched
 	 then
             echo "PBS sched"
@@ -423,7 +423,7 @@ start_pbs() {
       else
          if [ -f ${pbslibdir}/init.d/limits.pbs_server ] ; then
              . ${pbslibdir}/init.d/limits.pbs_server
-         fi	
+         fi
 	 if ${PBS_EXEC}/sbin/pbs_server ; then
             echo "PBS server"
          else
@@ -507,7 +507,7 @@ stop_pbs() {
     if [ "${PBS_START_SCHED}" -gt 0 ] ; then
       if check_prog "sched" ; then
 	if [ ${is_secondary} -eq 0 ] ; then
-	  kill ${pbs_sched_pid} 
+	  kill ${pbs_sched_pid}
 	  echo "PBS sched - was pid: ${pbs_sched_pid}"
 	else
 	  kill ${pbs_secondary_sched_pid}
@@ -519,7 +519,7 @@ stop_pbs() {
     if [ "${PBS_START_COMM}" -gt 0 ] ; then
       if check_prog "pbs_comm" ; then
 	if [ ${is_secondary} -eq 0 ] ; then
-	  kill -TERM ${pbs_comm_pid} 
+	  kill -TERM ${pbs_comm_pid}
 	  echo "PBS comm - was pid: ${pbs_comm_pid}"
 	else
 	  kill -TERM ${pbs_secondary_comm_pid}
@@ -534,7 +534,7 @@ stop_pbs() {
     # make sure the daemons have exited for up to 180 seconds
     # if any still there, exit with message and error
     waitloop=1
-    echo "Waiting for shutdown to complete" 
+    echo "Waiting for shutdown to complete"
     while [ ${waitloop} -lt 180 ]
     do
 	sleep 1
@@ -683,7 +683,7 @@ sgi_chkfeature()
 
 # called when we are starting on a SGI ICE system
 # /etc/sgi-compute-node-release exists
-# Make a vnodedef file with cpuset info 
+# Make a vnodedef file with cpuset info
 sgi_ice_startup()
 {
 	vnodedefsdir=`dirname $vnodedefs`
@@ -714,7 +714,7 @@ site_mom_startup()
     #	If this site is using a pbs_mom that supports CPU sets ...
     if using_cpuset_mom
     then
-	# and if there's an SGI topology file (Altix), 
+	# and if there's an SGI topology file (Altix),
 	# generate a placement and vnode definitions file.
 	if  [ -f $SGItopology -o -f $UVSGItopology ]
 	then
@@ -780,29 +780,29 @@ is_registered()
 	return 0
 }
 
-# Check whether system is being booted or not 
-# and also update the time in /var/tmp/pbs_boot_check file  
+# Check whether system is being booted or not
+# and also update the time in /var/tmp/pbs_boot_check file
 # return 0 if system is being booted otherwise return 1
 is_boottime()
 {
 	is_registered
 	[ $? -ne 0 ] && return 1
-	
+
 	PYTHON_EXE=${PBS_EXEC}/python/bin/python
 	if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
-		PYTHON_EXE=`type python 2>/dev/null | cut -d' ' -f3`
+		PYTHON_EXE=`type python3 2>/dev/null | cut -d' ' -f3`
 		if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
 			return 1
 		fi
 	fi
-	
+
 	BOOTPYFILE="${pbslibdir}/python/pbs_bootcheck.py"
 	BOOTCHECKFILE="/var/tmp/pbs_boot_check"
 
 	if [ ! -r "${BOOTPYFILE}" ] ; then
 		return 1
 	fi
-	
+
 	${PYTHON_EXE} ${BOOTPYFILE} ${BOOTCHECKFILE} > /dev/null 2>&1
 	ret=$?
 	return ${ret}
@@ -936,4 +936,3 @@ case "`basename $0`" in
     esac
     ;;
 esac
-
