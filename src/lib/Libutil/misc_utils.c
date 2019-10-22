@@ -85,6 +85,8 @@
 #include <grp.h>
 #include <time.h>
 #include <sys/time.h>
+#else
+#include <sddl.h>
 #endif
 #include "pbs_error.h"
 
@@ -1835,9 +1837,16 @@ create_query_file(void)
 {
 	FILE *f;
 	char filename[MAXPATHLEN + 1];
+#ifdef WIN32
+	LPSTR win_sid = NULL;
+	ConvertSidToStringSid(getuid(), &win_sid);
+	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
+#else
 	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+#endif // WIN32
 	f = fopen(filename, "w");
-	fclose(f);
+	if (f != NULL)
+		fclose(f);
 }
 
 /**
@@ -1858,19 +1867,23 @@ delay_query(void)
 #else
 	struct stat buf;
 #endif
-	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	
 #ifdef WIN32
+	LPSTR win_sid=NULL;
+	ConvertSidToStringSid(getuid(), &win_sid);
+	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
 	if(_stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			Sleep(200);
 		}
 	}
 #else
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
 	if(stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			usleep(200000);
 		}
 	}
-#endif
+#endif //WIN32
 	atexit(create_query_file);
 }
