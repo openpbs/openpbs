@@ -97,7 +97,7 @@
 #include "pbs_internal.h"
 #include "pbs_reliable.h"
 
-#include "renew.h"
+#include "renew_creds.h"
 
 #define	PIPE_READ_TIMEOUT	5
 #define EXTRA_ENV_PTRS	       32

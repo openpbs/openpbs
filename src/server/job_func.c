@@ -136,7 +136,7 @@
 #include "pbs_reliable.h"
 
 #if defined(PBS_MOM) && defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#include "renew.h"
+#include "renew_creds.h"
 #endif
 
 /* External functions */

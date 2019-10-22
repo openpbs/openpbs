@@ -93,7 +93,6 @@ struct gssdis_chan {
 	struct gss_disbuf writebuf; /* the dis write buffer */
 	struct gss_disbuf gss_readbuf;   /* incoming wrapped data */
 	struct gss_disbuf cleartext;   /* incoming pre-read data - this buffer survives DIS_tcp_setup() */
-	unsigned short read_properties;
 	pbs_gss_extra_t* gss_extra;
 };
 

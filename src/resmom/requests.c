@@ -87,7 +87,7 @@
 #include "pbs_internal.h"
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#include "renew.h"
+#include "renew_creds.h"
 #include <krb5.h>
 extern int decode_block_base64(unsigned char *ascii_data, ssize_t ascii_len, unsigned char *bin_data, ssize_t *p_bin_len, char *msg, size_t msg_len);
 #endif

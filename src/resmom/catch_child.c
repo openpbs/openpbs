@@ -81,7 +81,7 @@
 #include "mom_hook_func.h"
 #include "placementsets.h"
 #include "hook.h"
-#include "renew.h"
+#include "renew_creds.h"
 
 /**
  * @file	catch_child.c

@@ -435,7 +435,7 @@ process_request(int sfds)
 			}
 		}
 
-		// this principal is allowed to access the server
+		/* this principal is allowed to access the server */
 		access_by_krb = 1;
 	}
 #endif

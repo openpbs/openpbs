@@ -94,7 +94,7 @@
 #include	"pbs_internal.h"
 #include	"placementsets.h"
 #include	"pbs_reliable.h"
-#include	"renew.h"
+#include	"renew_creds.h"
 
 
 /* Global Data Items */

@@ -99,8 +99,8 @@ pbs_mom_SOURCES = \
 	stage_func.c \
 	start_exec.c \
 	vnode_storage.c \
-	renew.c \
-	renew.h
+	renew_creds.c \
+	renew_creds.h
 
 if ALPS_ENABLED
 pbs_mom_CPPFLAGS += -DMOM_ALPS=1 @expat_inc@

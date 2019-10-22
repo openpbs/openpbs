@@ -53,15 +53,15 @@
 #include "pbs_gss.h"
 #include "batch_request.h"
 
-int (*transport_getc)(int stream)					= NULL;
-int (*transport_puts)(int stream, const char *string, size_t count)	= NULL;
-int (*transport_gets)(int stream, char *string, size_t count)		= NULL;
-int (*transport_rskip)(int stream, size_t nskips)			= NULL;
-int (*transport_rcommit)(int stream, int commit)			= NULL;
-int (*transport_wcommit)(int stream, int commit)			= NULL;
-int (*transport_read)(int fd)						= NULL;
+int (*transport_getc)(int stream);
+int (*transport_puts)(int stream, const char *string, size_t count);
+int (*transport_gets)(int stream, char *string, size_t count);
+int (*transport_rskip)(int stream, size_t nskips);
+int (*transport_rcommit)(int stream, int commit);
+int (*transport_wcommit)(int stream, int commit);
+int (*transport_read)(int fd);
 
-struct gssdis_chan *(*gss_get_chan)(int stream)				= NULL;
+struct gssdis_chan *(*gss_get_chan)(int stream);
 
 extern int (*dis_getc)(int stream);
 extern int (*dis_puts)(int stream, const char *string, size_t count);
@@ -859,13 +859,20 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 			if (len_out > 0) {
 				if (tcp_gss_send_token(sfds, TCP_GSS_CTX, data_out, len_out) != PBS_GSS_OK) {
 					snprintf(ebuf, ebufsz, "Failed to assemble GSS context token");
+					free(data_out);
+					free(data);
 					return -1;
 				}
 				if (DIS_tcp_wflush(sfds)) {
 					snprintf(ebuf, ebufsz, "Failed to send GSS context token");
+					free(data_out);
+					free(data);
 					return -1;
 				}
 			}
+
+			free(data_out);
+			free(data);
 
 			if (gss_extra->gssctx_established) {
 				gss_extra->ready = 1;
@@ -875,9 +882,6 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 					return -1;
 				}
 			}
-
-			free(data_out);
-			free(data);
 
 			return 0; /* gss context -> no data for upper layer */
 
@@ -894,6 +898,8 @@ __tcp_gss_process(int sfds, char *hostname, char *ebuf, int ebufsz)
 
 			if (pbs_gss_unwrap(gss_extra, data, data_len, &data_out, &len_out) != PBS_GSS_OK) {
 				snprintf(ebuf, ebufsz, "unwrapping GSS token failed");
+				free(data_out);
+				free(data);
 				return -1;
 			}
 
@@ -1120,7 +1126,7 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 				return PBS_GSS_ERR_RECVTOKEN;
 			}
 			type = (unsigned char)i;
-			if(type != TCP_GSS_CTX) {
+			if (type != TCP_GSS_CTX) {
 				snprintf(ebuf, ebufsz, "incorrect GSS token type");
 				pbs_errno = PBSE_SYSTEM;
 

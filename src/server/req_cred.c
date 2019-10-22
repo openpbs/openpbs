@@ -93,6 +93,7 @@ typedef struct cred_cache cred_cache;
 static struct cred_cache *
 get_cached_cred(job  *pjob)
 {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	cred_cache *cred = NULL;
 	cred_cache *nxcred = NULL;
 	char cmd[MAXPATHLEN + PBS_MAXUSER + 2]; /* +1 for space and +1 for EOL */
@@ -205,8 +206,10 @@ get_cached_cred(job  *pjob)
 	/* store cred to cache */
 	CLEAR_LINK(cred->cr_link);
 	append_link(&svr_creds_cache, &cred->cr_link, cred);
-
 	return cred;
+#else
+	return NULL;
+#endif
 }
 
 /* @brief
@@ -274,7 +277,7 @@ post_cred(struct work_task *pwt)
 	if (pjob != NULL) {
 
 		if (code != 0) {
-			sprintf(log_buffer, "sending credential to mom failed, returned code: %d", code);
+			snprintf(log_buffer, LOG_BUF_SIZE, "sending credential to mom failed, returned code: %d", code);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
 				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 		} else {

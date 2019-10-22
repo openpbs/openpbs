@@ -40,7 +40,7 @@
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 
-#include "renew.h"
+#include "renew_creds.h"
 
 #include "log.h"
 #include "mom_func.h"

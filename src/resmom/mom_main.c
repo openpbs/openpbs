@@ -127,7 +127,7 @@
 #include	"pbs_reliable.h"
 #include	<arpa/inet.h>
 
-#include	"renew.h"
+#include	"renew_creds.h"
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
