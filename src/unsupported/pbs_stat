@@ -50,5 +50,5 @@ export PYTHONPATH=${PBS_EXEC}/unsupported/fw:${PYTHONPATH}
 if [ -x "${PBS_EXEC}/python/bin/python" ]; then
 	${PBS_EXEC}/python/bin/python ${PBS_EXEC}/unsupported/fw/bin/pbs_stat.py "${@}"
 else
-	python ${PBS_EXEC}/unsupported/fw/bin/pbs_stat.py "${@}"
+	python3 ${PBS_EXEC}/unsupported/fw/bin/pbs_stat.py "${@}"
 fi
