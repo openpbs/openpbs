@@ -5058,17 +5058,17 @@ class Server(PBSService):
                                           'lib', 'python', 'altair',
                                           'pbs_hooks',
                                           'PBS_translate_mpp.HK')
-        self.jacs_hk = os.path.join(self.pbs_conf['PBS_HOME'],
+        self.atom_hk = os.path.join(self.pbs_conf['PBS_HOME'],
                                     'server_priv', 'hooks',
                                     'PBS_cray_atom.HK')
-        self.dflt_jacs_hk = os.path.join(self.pbs_conf['PBS_EXEC'],
+        self.dflt_atom_hk = os.path.join(self.pbs_conf['PBS_EXEC'],
                                          'lib', 'python', 'altair',
                                          'pbs_hooks',
                                          'PBS_cray_atom.HK')
-        self.jacs_cf = os.path.join(self.pbs_conf['PBS_HOME'],
+        self.atom_cf = os.path.join(self.pbs_conf['PBS_HOME'],
                                     'server_priv', 'hooks',
                                     'PBS_cray_atom.CF')
-        self.dflt_jacs_cf = os.path.join(self.pbs_conf['PBS_EXEC'],
+        self.dflt_atom_cf = os.path.join(self.pbs_conf['PBS_EXEC'],
                                          'lib', 'python', 'altair',
                                          'pbs_hooks',
                                          'PBS_cray_atom.CF')
@@ -5108,15 +5108,15 @@ class Server(PBSService):
                     self.signal('-HUP')
             if self.platform == 'shasta':
                 dohup = False
-                if (self.du.cmp(self.hostname, self.dflt_jacs_hk,
-                                self.jacs_hk, sudo=True) != 0):
-                    self.du.run_copy(self.hostname, self.dflt_jacs_hk,
-                                     self.jacs_hk, mode=0o644, sudo=True)
+                if (self.du.cmp(self.hostname, self.dflt_atom_hk,
+                                self.atom_hk, sudo=True) != 0):
+                    self.du.run_copy(self.hostname, self.dflt_atom_hk,
+                                     self.atom_hk, mode=0o644, sudo=True)
                     dohup = True
-                if self.du.cmp(self.hostname, self.dflt_jacs_cf,
-                               self.jacs_cf, sudo=True) != 0:
-                    self.du.run_copy(self.hostname, self.dflt_jacs_cf,
-                                     self.jacs_cf, mode=0o644, sudo=True)
+                if self.du.cmp(self.hostname, self.dflt_atom_cf,
+                               self.atom_cf, sudo=True) != 0:
+                    self.du.run_copy(self.hostname, self.dflt_atom_cf,
+                                     self.atom_cf, mode=0o644, sudo=True)
                     dohup = True
                 if dohup:
                     self.signal('-HUP')
