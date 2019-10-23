@@ -1838,8 +1838,6 @@ create_query_file(void)
 	FILE *f;
 	char filename[MAXPATHLEN + 1];
 	uid_t usid = getuid();
-	if (usid == NULL)
-		return;
 #ifdef WIN32
 	LPSTR win_sid = NULL;
 	if (!ConvertSidToStringSid(usid, &win_sid)) {
@@ -1878,8 +1876,6 @@ delay_query(void)
 #endif
 	
 	uid_t usid = getuid();
-	if (usid == NULL)
-		return;
 #ifdef WIN32
 	LPSTR win_sid=NULL;
 	if (!ConvertSidToStringSid(usid, &win_sid)) {
