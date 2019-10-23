@@ -1837,12 +1837,21 @@ create_query_file(void)
 {
 	FILE *f;
 	char filename[MAXPATHLEN + 1];
+	uid_t usid = getuid();
+	if (usid == NULL)
+		return;
 #ifdef WIN32
 	LPSTR win_sid = NULL;
-	ConvertSidToStringSid(getuid(), &win_sid);
+	if (!ConvertSidToStringSid(usid, &win_sid)) {
+		fprintf(stderr, "qstat: failed to convert SID to string.\n \
+						Failed error=%d\n", GetLastError());
+		LocalFree(win_sid);
+		return;
+	}
 	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
+	LocalFree(win_sid);
 #else
-	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, usid);
 #endif // WIN32
 	f = fopen(filename, "w");
 	if (f != NULL)
@@ -1868,17 +1877,26 @@ delay_query(void)
 	struct stat buf;
 #endif
 	
+	uid_t usid = getuid();
+	if (usid == NULL)
+		return;
 #ifdef WIN32
 	LPSTR win_sid=NULL;
-	ConvertSidToStringSid(getuid(), &win_sid);
+	if (!ConvertSidToStringSid(usid, &win_sid)) {
+		fprintf(stderr, "qstat: failed to convert SID to string.\n \
+						Failed error=%d\n", GetLastError());
+		LocalFree(win_sid);
+		return;
+	}
 	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
 	if(_stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			Sleep(200);
 		}
 	}
+	LocalFree(win_sid);
 #else
-	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, usid);
 	if(stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			usleep(200000);
