@@ -1841,7 +1841,7 @@ create_query_file(void)
 #ifdef WIN32
 	LPSTR win_sid = NULL;
 	if (!ConvertSidToStringSid(usid, &win_sid)) {
-		fprintf(stderr, "qstat: failed to convert SID to string.Failed error=%d\n", GetLastError());
+		fprintf(stderr, "qstat: failed to convert SID to string with failed error=%d\n", GetLastError());
 		return;
 	}
 	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
@@ -1877,7 +1877,7 @@ delay_query(void)
 #ifdef WIN32
 	LPSTR win_sid=NULL;
 	if (!ConvertSidToStringSid(usid, &win_sid)) {
-		fprintf(stderr, "qstat: failed to convert SID to string.Failed error=%d\n", GetLastError());
+		fprintf(stderr, "qstat: failed to convert SID to string with failed error=%d\n", GetLastError());
 		return;
 	}
 	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
