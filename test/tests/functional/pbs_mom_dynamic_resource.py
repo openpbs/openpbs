@@ -164,7 +164,7 @@ class TestMomDynRes(TestFunctional):
                            id=jid, attrop=PTL_AND)
 
         # Submit a job that requests mom dynamic resource
-        attr = {"Resource_List." + resc_name[0]: '\'\"This is a test\"\''}
+        attr = {"Resource_List." + resc_name[0]: '"This is a test"'}
         j = Job(TEST_USER, attrs=attr)
         jid = self.server.submit(j)
 

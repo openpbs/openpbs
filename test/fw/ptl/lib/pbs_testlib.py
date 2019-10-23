@@ -2397,6 +2397,10 @@ class BatchUtils(object):
             if isinstance(v, list):
                 v = ','.join(v)
 
+            if isinstance(v, str):
+                if " " in v:
+                    v = "'" + v + "'"
+
             # when issuing remote commands, escape spaces in attribute values
             if (((hostname is not None) and
                  (not self.du.is_localhost(hostname))) or
