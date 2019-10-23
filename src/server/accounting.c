@@ -292,21 +292,21 @@ cpy_quote_value(char *pb, char *value)
 }
 
 /* These are various printing formats used in acct_job() */
-#define	GRIDNAME_FMT		"gridname=\"%s\" "
+#define GRIDNAME_FMT		"gridname=\"%s\" "
 #define USER_FMT		"user=%s "
-#define	GROUP_FMT		"group=%s "
-#define	ACCOUNT_FMT		"account=\"%s\" "
-#define	PROJECT_FMT1		"project=\"%s\" "
-#define	PROJECT_FMT2		"project=%s "
-#define	ACCOUNTING_ID_FMT	"accounting_id=\"%s\" "
-#define	JOBNAME_FMT		"jobname=%s "
-#define	QUEUE_FMT		"queue=%s "
-#define	RESVNAME_FMT		"resvname=%s "
-#define	RESVID_FMT		"resvID=%s "
-#define	RESVJOBID_FMT		"resvjobID=%s "
-#define	ARRAY_INDICES_FMT	"array_indices=%s "
-#define	EXEC_HOST_FMT		"exec_host=%s "
-#define	EXEC_VNODE_FMT		"exec_vnode=%s "
+#define GROUP_FMT		"group=%s "
+#define ACCOUNT_FMT		"account=\"%s\" "
+#define PROJECT_FMT1		"project=\"%s\" "
+#define PROJECT_FMT2		"project=%s "
+#define ACCOUNTING_ID_FMT	"accounting_id=\"%s\" "
+#define JOBNAME_FMT		"jobname=%s "
+#define QUEUE_FMT		"queue=%s "
+#define RESVNAME_FMT		"resvname=%s "
+#define RESVID_FMT		"resvID=%s "
+#define RESVJOBID_FMT		"resvjobID=%s "
+#define ARRAY_INDICES_FMT	"array_indices=%s "
+#define EXEC_HOST_FMT		"exec_host=%s "
+#define EXEC_VNODE_FMT		"exec_vnode=%s "
 #define DEPEND_FMT		"depend=%s "
 
 /* Amount of space needed in account log buffer for the ctime, qtime, etime, */
@@ -349,7 +349,7 @@ get_walltime(job *jp, int res)
 /**
  * @brief
  *	Form and write a job termination/rerun record with resource usage.
- * 	Build common data for start/end job accounting record
+ * 	Build common data for queue/start/end job accounting record
  *
  * @par	Functionality:
  *	Used by account_jobstr() and account_jobend()
@@ -591,6 +591,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		i = strlen(pb);
 		pb += i;
 		len -= i;
+		free_svrattrl(svrattrl_list);
 	}
 
 	if (pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_flags & ATR_VFLAG_SET && ((pjob->ji_qs.ji_state == JOB_STATE_BEGUN) || type == PBS_ACCT_QUEUE)) {

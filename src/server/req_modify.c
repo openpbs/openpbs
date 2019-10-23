@@ -388,7 +388,7 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
-	if(find_sched_from_sock(preq->rq_conn) == NULL)
+	if (find_sched_from_sock(preq->rq_conn) == NULL)
 	{
 		svrattrl *svrattrl_list;
 		svrattrl *cur_svr;
@@ -426,6 +426,7 @@ req_modifyjob(struct batch_request *preq)
 					free(logstr);
 					logstr = NULL;
 				}
+				free_svrattrl(svrattrl_list);
 			}
 		}
 	}
