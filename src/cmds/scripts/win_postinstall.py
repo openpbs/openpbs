@@ -54,6 +54,7 @@ pbs_bin = None
 pbs_sbin = None
 installtype = 'execution'
 server = None
+scp_path = 'CHANGE_THIS_TO_PATH_TO_SCP_COMMAND'
 
 pbs_conf_t = Template(r"""
 PBS_SERVER=${pbs_server}
@@ -63,6 +64,7 @@ PBS_START_SERVER=${pbs_start_server}
 PBS_START_COMM=${pbs_start_comm}
 PBS_START_MOM=${pbs_start_mom}
 PBS_START_SCHED=${pbs_start_sched}
+PBS_SCP=${pbs_scp}
 """)
 
 
@@ -122,7 +124,8 @@ def create_pbs_conf():
                                                   pbs_start_server=0,
                                                   pbs_start_comm=0,
                                                   pbs_start_mom=1,
-                                                  pbs_start_sched=0)
+                                                  pbs_start_sched=0,
+                                                  pbs_scp=scp_path)
         elif installtype == 'client':
             pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
                                                   pbs_exec=pbs_exec,
@@ -216,6 +219,8 @@ def usage():
     _msg += ['\t\t\t\t  (execution/client)\n']
     _msg += ['    -s|--server=<server>\t- ']
     _msg += ['specify PBS Server value\n']
+    _msg += ['    -c|--scp-path=<scp_path>\t- ']
+    _msg += ['specify path to scp command\n']
     _msg += ['    -h|--help\t\t\t- print help message\n']
     print("".join(_msg))
 
@@ -228,14 +233,15 @@ def main():
     global pbs_sbin
     global installtype
     global server
+    global scp_path
     username = None
     password = None
     if len(sys.argv) < 2:
         usage()
         sys.exit(3)
     try:
-        largs = ['help', 'user=', 'passwd=', 'type=', 'server=']
-        opts, _ = getopt.getopt(sys.argv[1:], 'hu:p:t:s:', largs)
+        largs = ['help', 'user=', 'passwd=', 'type=', 'server=', 'scp-path=']
+        opts, _ = getopt.getopt(sys.argv[1:], 'hu:p:t:s:c:', largs)
     except getopt.GetoptError as e:
         print(e)
         usage()
@@ -255,6 +261,8 @@ def main():
             installtype = arg
         elif opt in ('-s', '--server'):
             server = arg
+        elif opt in ('-c', '--scp-path'):
+            scp_path = arg
         else:
             __log_err('Unrecognized option %s' % opt)
             usage()
@@ -302,6 +310,11 @@ def main():
     cmd += ['"' + os.path.join(pbs_bin, 'pbs_sleep.exe') + '"']
     cmd = " ".join(cmd)
     os.system(cmd)
+    if scp_path == 'CHANGE_THIS_TO_PATH_TO_SCP_COMMAND':
+        __log_info('NOTICE :\n'
+                   'Path to SCP command is not specified.\n'
+                   'Modify the path manually in %s.\n'
+                   'Restart pbs services after updating.\n' % pbs_conf_path)
     register_and_start_services(username, password)
     __log_info('Successfully completed post installation process')
 
