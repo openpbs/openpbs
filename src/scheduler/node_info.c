@@ -3261,7 +3261,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		else
 			set_schd_error_codes(err, NOT_RUN, NODE_UNLICENSED);
 
-		if (err->error_code) {
+		if (err->error_code != SUCCESS) {
 			schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				ninfo_arr[i]->name, NULL, err);
 			/* Since this node is not eligible, check if it ever eligible
