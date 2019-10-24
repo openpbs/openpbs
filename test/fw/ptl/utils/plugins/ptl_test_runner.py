@@ -515,8 +515,8 @@ class PTLTestRunner(Plugin):
         Plugin.__init__(self)
         self.param = None
         self.repeat_tests = 1
-        self.test_repeat = 1
-        self.repeat_test_delay = 30
+        self.test_run_count = 1
+        self.repeat_test_delay = 5
         self.use_cur_setup = False
         self.lcov_bin = None
         self.lcov_data = None
@@ -651,13 +651,13 @@ class PTLTestRunner(Plugin):
         test.end_time = datetime.datetime.now()
         test.duration = test.end_time - test.start_time
         test.captured_logs = self.result.handler.get_logs()
-        if self.test_repeat is 1:
+        if self.test_run_count is 1:
             self.current_test = test
         if self.current_test is not test:
-            self.test_repeat = 1
+            self.test_run_count = 1
             self.current_test = test
-        while self.test_repeat < self.repeat_tests:
-            self.test_repeat += 1
+        while self.test_run_count < self.repeat_tests:
+            self.test_run_count += 1
             time.sleep(self.repeat_test_delay)
             PtlTextTestRunner().run(test)
 

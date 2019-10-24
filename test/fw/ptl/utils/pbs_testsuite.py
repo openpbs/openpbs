@@ -1659,7 +1659,7 @@ class PBSTestSuite(unittest.TestCase):
         if self.conf:
             self.set_test_measurements({'testconfig': self.testconf})
         if 'skip-teardown' in self.conf:
-            return 
+            return
         self.log_enter_teardown()
         self.server.cleanup_jobs()
         self.stop_proc_monitor()
