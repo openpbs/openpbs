@@ -145,6 +145,9 @@ def usage():
             'fails\n']
     msg += ['--timeout=<seconds>: duration after which no test suites are '
             'run\n']
+    msg += ['--repeat_tests=<int>: number of times test is going to repeat\n']
+    msg += ['--repeat_tests_delay=<seconds>: duration after test repetition '
+            'start\n']
     msg += ['--follow-child: if set, walk the test hierarchy and run ' +
             'each test\n']
     msg += ['--tags=<tag>: Select only tests that have <tag> tag.']
@@ -214,6 +217,8 @@ if __name__ == '__main__':
     lcov_baseurl = None
     genhtml_bin = None
     timeout = None
+    repeat_tests = 1
+    repeat_tests_delay = 30
     nosedebug = False
     only_info = False
     tags = []
@@ -228,21 +233,21 @@ if __name__ == '__main__':
     user_plugins = None
     PtlConfig()
 
-    largs = ['exclude=', 'log-conf=', 'timeout=']
+    largs = ['exclude=', 'log-conf=', 'timeout=', 'repeat_tests=']
     largs += ['param-file=', 'min-pyver=', 'max-pyver=']
     largs += ['db-name=', 'db-access=', 'db-type=', 'genhtml-bin=']
     largs += ['lcov-bin=', 'lcov-data=', 'lcov-out=', 'lcov-nosrc']
     largs += ['lcov-baseurl=', 'tags=', 'eval-tags=', 'tags-info', 'list-tags']
     largs += ['version', 'verbose', 'follow-child']
     largs += ['stop-on-failure', 'enable-nose-debug']
-    largs += ['post-analysis-data=', 'gen-ts-tree']
+    largs += ['post-analysis-data=', 'gen-ts-tree', 'repeat_tests_delay=']
     largs += ['tc-failure-threshold=', 'cumulative-tc-failure-threshold=']
     largs += ['max-postdata-threshold=', 'user-plugins=', 'use-current-setup']
 
     try:
         opts, args = getopt.getopt(
             sys.argv[1:], 'f:il:t:o:p:g:hLF', largs)
-    except:
+    except BaseException:
         sys.stderr.write('Unrecognized option. Exiting\n')
         usage()
         sys.exit(1)
@@ -296,6 +301,10 @@ if __name__ == '__main__':
             testgroup = val
         elif o == '--timeout':
             timeout = int(val)
+        elif o == '--repeat_tests':
+            repeat_tests = int(val)
+        elif o == '--repeat_tests_delay':
+            repeat_tests_delay = int(val)
         elif o == '--db-type':
             dbtype = val
         elif o == '--db-name':
@@ -388,7 +397,7 @@ if __name__ == '__main__':
         tc_failure_threshold = int(tc_failure_threshold)
         if tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except BaseException:
         _msg = 'Invalid value provided for testcase failure threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -398,7 +407,7 @@ if __name__ == '__main__':
         cumulative_tc_failure_threshold = int(cumulative_tc_failure_threshold)
         if cumulative_tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except BaseException:
         _msg = 'Invalid value provided for cumulative-tc-failure-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -414,7 +423,7 @@ if __name__ == '__main__':
         max_postdata_threshold = int(max_postdata_threshold)
         if max_postdata_threshold < 0:
             raise ValueError
-    except:
+    except BaseException:
         _msg = 'Invalid value provided for max-postdata-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -461,11 +470,11 @@ if __name__ == '__main__':
         data = PTLTestData()
         loader.set_data(testgroup, testsuites, excludes, follow, testfiles)
         testtags.set_data(tags, eval_tags)
-        runner.set_data(paramfile, testparam, lcov_bin,
-                        lcov_data, lcov_out,
-                        genhtml_bin, lcov_nosrc, lcov_baseurl,
-                        tc_failure_threshold, cumulative_tc_failure_threshold,
-                        use_cur_setup)
+        runner.set_data(paramfile, testparam, repeat_tests,
+                        repeat_tests_delay, lcov_bin, lcov_data,
+                        lcov_out, genhtml_bin, lcov_nosrc,
+                        lcov_baseurl, tc_failure_threshold,
+                        cumulative_tc_failure_threshold, use_cur_setup)
         db.set_data(dbtype, dbname, dbaccess)
         data.set_data(post_data_dir, max_postdata_threshold)
         plugins = (loader, testtags, runner, db, data)

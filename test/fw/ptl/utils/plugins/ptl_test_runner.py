@@ -48,6 +48,7 @@ import re
 import signal
 import socket
 import sys
+import time
 import tempfile
 import unittest
 from threading import Timer
@@ -513,6 +514,9 @@ class PTLTestRunner(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.param = None
+        self.repeat_tests = 1
+        self.test_repeat = 1
+        self.repeat_test_delay = 30
         self.use_cur_setup = False
         self.lcov_bin = None
         self.lcov_data = None
@@ -530,6 +534,7 @@ class PTLTestRunner(Plugin):
         self.__failed_tc_count_msg = False
         self._test_marker = 'test_'
         self.hardware_report_timer = None
+        self.current_test = None
 
     def options(self, parser, env):
         """
@@ -537,10 +542,11 @@ class PTLTestRunner(Plugin):
         """
         pass
 
-    def set_data(self, paramfile, testparam,
-                 lcov_bin, lcov_data, lcov_out, genhtml_bin, lcov_nosrc,
-                 lcov_baseurl, tc_failure_threshold,
-                 cumulative_tc_failure_threshold, use_cur_setup):
+    def set_data(self, paramfile, testparam, repeat_tests,
+                 repeat_test_delay, lcov_bin, lcov_data, lcov_out,
+                 genhtml_bin, lcov_nosrc, lcov_baseurl,
+                 tc_failure_threshold, cumulative_tc_failure_threshold,
+                 use_cur_setup):
         if paramfile is not None:
             _pf = open(paramfile, 'r')
             _params_from_file = _pf.readlines()
@@ -557,6 +563,8 @@ class PTLTestRunner(Plugin):
             else:
                 testparam = _f
         self.param = testparam
+        self.repeat_tests = repeat_tests
+        self.repeat_test_delay = repeat_test_delay
         self.use_cur_setup = use_cur_setup
         self.lcov_bin = lcov_bin
         self.lcov_data = lcov_data
@@ -643,6 +651,15 @@ class PTLTestRunner(Plugin):
         test.end_time = datetime.datetime.now()
         test.duration = test.end_time - test.start_time
         test.captured_logs = self.result.handler.get_logs()
+        if self.test_repeat is 1:
+            self.current_test = test
+        if self.current_test is not test:
+            self.test_repeat = 1
+            self.current_test = test
+        while self.test_repeat < self.repeat_tests:
+            self.test_repeat += 1
+            time.sleep(self.repeat_test_delay)
+            PtlTextTestRunner().run(test)
 
     def __get_param_dictionary(self):
         """
