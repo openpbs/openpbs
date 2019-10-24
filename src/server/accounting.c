@@ -2222,3 +2222,67 @@ writeit:
 		free(resc_used);
 	}
 }
+
+/**
+ * @brief
+ * 	log an alter record for modified jobs
+ * 	plist contains the attributes and resources requested to be modified.
+ * 	We only modify those because the ATTR_l encode function will encode
+ * 	all resources, not just the ones we want.
+ * 
+ * @param[in] pjob - job to log records for.
+ * @param[in] plist - list of attributes and resources to log
+ * 
+ * @returns void 
+ */
+void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
+	svrattrl *svrattrl_list;
+	svrattrl *cur_svr;
+	pbs_list_head phead;
+	svrattrl *cur_plist;
+	char *logstr = NULL;
+	int i;
+	CLEAR_HEAD(phead);
+	for (i = 0; i < JOB_ATR_LAST; i++) {
+		if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
+			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
+			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
+				if (strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
+					continue;
+				else {
+					for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
+						if (pjob->ji_wattr[i].at_type == ATR_TYPE_RESC) {
+							if (cur_plist->al_resc != NULL) {
+								if (strcmp(cur_plist->al_resc, cur_svr->al_resc) == 0) {
+									char *fmt;
+									if (strchr(cur_svr->al_value, ' ') == NULL)
+										fmt = "%s.%s=%s";
+									else
+										fmt = "%s.%s=\"%s\"";
+									pbs_asprintf(&logstr, fmt, cur_svr->al_name, cur_svr->al_resc, cur_svr->al_value);
+									break;
+								}
+							}
+						}
+						else {
+							char *fmt;
+							if (strchr(cur_svr->al_value, ' ') == NULL)
+								fmt = "%s=%s";
+							else
+								fmt = "%s=\"%s\"";
+							pbs_asprintf(&logstr, fmt, cur_svr->al_name, cur_svr->al_value);
+							break;
+						}
+					}
+				}
+				if (logstr == NULL && cur_plist->al_value[0] == '\0') { /* unset */
+					pbs_asprintf(&logstr, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
+				}
+				account_record(PBS_ACCT_ALTER, pjob, logstr);
+				free(logstr);
+				logstr = NULL;
+			}
+			free_svrattrl(svrattrl_list);
+		}
+	}
+}

@@ -389,54 +389,14 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	if (find_sched_from_sock(preq->rq_conn) == NULL)
-	{
-		svrattrl *svrattrl_list;
-		svrattrl *cur_svr;
-		pbs_list_head phead;
-		svrattrl *cur_plist;
-		char *logstr = NULL;
-		int i;
-		CLEAR_HEAD(phead);
-		for (i = 0; i < JOB_ATR_LAST; i++) {
-			if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
-				job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
-				for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
-					if (strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
-						continue;
-					else {
-						for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
-							if (pjob->ji_wattr[i].at_type == ATR_TYPE_RESC) {
-								if (cur_plist->al_resc != NULL) {
-									if (strcmp(cur_plist->al_resc, cur_svr->al_resc) == 0) {
-										pbs_asprintf(&logstr, "%s.%s=%s", cur_svr->al_name, cur_svr->al_resc, cur_svr->al_value);
-										break;
-									}
-								}
-							}
-							else {
-								pbs_asprintf(&logstr, "%s=%s", cur_svr->al_name, cur_svr->al_value);
-								break;
-							}
-						}
-					}
-					if (logstr == NULL && cur_plist->al_value[0] == '\0') { /* unset */
-						pbs_asprintf(&logstr, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
-					}
-					account_record(PBS_ACCT_ALTER, pjob, logstr);
-					free(logstr);
-					logstr = NULL;
-				}
-				free_svrattrl(svrattrl_list);
-			}
-		}
-	}
+		log_alter_records_for_attrs(pjob, plist);
 
 	/* if job is not running, may need to change its state */
-
 	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
-	} else {
+	}
+	else {
 		(void)job_save(pjob, SAVEJOB_FULL);
 	}
 	(void)sprintf(log_buffer, msg_manager, msg_jobmod,
