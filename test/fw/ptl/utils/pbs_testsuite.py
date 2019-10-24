@@ -363,7 +363,6 @@ class PBSTestSuite(unittest.TestCase):
                          IFL call is refreshed (i.e., disconnected)
     :param skip-setup: Bypasses setUp of PBSTestSuite (not custom ones)
     :param skip-teardown: Bypasses tearDown of PBSTestSuite (not custom ones)
-    :test-repitation: How many times test repeat, It depends on the value of test-repitation
     :param procinfo: Enables process monitoring thread, logged into
                      ptl_proc_info test metrics. The value can be set to
                      _all_ to monitor all PBS processes,including
@@ -1656,7 +1655,6 @@ class PBSTestSuite(unittest.TestCase):
         """
         verify that ``server`` and ``scheduler`` are up
         clean up jobs and reservations.
-        test run again, How many times test run it depends on the value of test-repetition
         """
         if self.conf:
             self.set_test_measurements({'testconfig': self.testconf})
@@ -1688,7 +1686,6 @@ class PBSTestSuite(unittest.TestCase):
                     raise Exception("Failed to load mom's test setup")
             self.du.rm(path=self.saved_file)
         self.log_end_teardown()
-  
 
     @classmethod
     def tearDownClass(cls):
