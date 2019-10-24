@@ -295,7 +295,7 @@ class TestJobPerf(TestPerformance):
 
     def qstat_jobs(self, user, num_stats, qstat_arg=None):
         for _ in range(num_stats):
-            qstat = 'sudo -u ' + user + ' ' + \
+            qstat = 'sudo -u ' + str(user) + ' ' + \
                 str(os.path.join(
                     self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat'))
             if qstat_arg:
@@ -398,6 +398,7 @@ class TestJobPerf(TestPerformance):
 
         avg_stat_time = []
         stat_time = []
+        num_ncpus = self.config['No_of_ncpus_per_node']
         j = 0
         counts = self.server.counter(NODE, {'state': 'free'})
         if counts['state=free'] < self.config['No_of_moms']:
