@@ -58,6 +58,7 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_procutils import ProcMonitor
 from ptl.utils.pbs_testusers import *
+from ptl.utils.plugins.ptl_test_runner import repeat_tests
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
@@ -424,7 +425,7 @@ class PBSTestSuite(unittest.TestCase):
     conf = {}
     testconf = {}
     param = None
-    test_repetition = 1
+    repeat_tests = 1
     du = DshUtils()
     _procmon = None
     _process_monitoring = False
@@ -1662,13 +1663,7 @@ class PBSTestSuite(unittest.TestCase):
         if self.conf:
             self.set_test_measurements({'testconfig': self.testconf})
         if 'skip-teardown' in self.conf:
-            if (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition]) and ('skip-setup' in self.conf):
-                self.test_repeatation += 1
-                self.setUpfunc()
-            elif (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition])
-                self.test_repeatation += 1
-                self.setUpfunc()
-            return
+            return self.repeat_tests
         self.log_enter_teardown()
         self.server.cleanup_jobs()
         self.stop_proc_monitor()
@@ -1695,13 +1690,7 @@ class PBSTestSuite(unittest.TestCase):
                     raise Exception("Failed to load mom's test setup")
             self.du.rm(path=self.saved_file)
         self.log_end_teardown()
-        
-        if (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition]) and ('skip-setup' in self.conf):
-            self.test_repeatation += 1
-            self.setUpfunc()
-        elif (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition])
-            self.test_repeatation += 1
-            self.setUpfunc()
+        return self.repeat_tests
   
 
     @classmethod
