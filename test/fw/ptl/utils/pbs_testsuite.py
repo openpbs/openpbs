@@ -363,6 +363,7 @@ class PBSTestSuite(unittest.TestCase):
                          IFL call is refreshed (i.e., disconnected)
     :param skip-setup: Bypasses setUp of PBSTestSuite (not custom ones)
     :param skip-teardown: Bypasses tearDown of PBSTestSuite (not custom ones)
+    :test-repitation: How many times test repeat, It depends on the value of test-repitation
     :param procinfo: Enables process monitoring thread, logged into
                      ptl_proc_info test metrics. The value can be set to
                      _all_ to monitor all PBS processes,including
@@ -423,6 +424,7 @@ class PBSTestSuite(unittest.TestCase):
     conf = {}
     testconf = {}
     param = None
+    test_repetition = 1
     du = DshUtils()
     _procmon = None
     _process_monitoring = False
@@ -1654,11 +1656,18 @@ class PBSTestSuite(unittest.TestCase):
     def tearDown(self):
         """
         verify that ``server`` and ``scheduler`` are up
-        clean up jobs and reservations
+        clean up jobs and reservations.
+        test run again, How many times test run it depends on the value of test-repetition
         """
         if self.conf:
             self.set_test_measurements({'testconfig': self.testconf})
         if 'skip-teardown' in self.conf:
+            if (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition]) and ('skip-setup' in self.conf):
+                self.test_repeatation += 1
+                self.setUpfunc()
+            elif (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition])
+                self.test_repeatation += 1
+                self.setUpfunc()
             return
         self.log_enter_teardown()
         self.server.cleanup_jobs()
@@ -1686,6 +1695,14 @@ class PBSTestSuite(unittest.TestCase):
                     raise Exception("Failed to load mom's test setup")
             self.du.rm(path=self.saved_file)
         self.log_end_teardown()
+        
+        if (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition]) and ('skip-setup' in self.conf):
+            self.test_repeatation += 1
+            self.setUpfunc()
+        elif (test-repetition in self.conf) and (self.test_repetition < self.conf[test-repetition])
+            self.test_repeatation += 1
+            self.setUpfunc()
+  
 
     @classmethod
     def tearDownClass(cls):
