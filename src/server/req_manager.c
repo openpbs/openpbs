@@ -5082,7 +5082,7 @@ manager_oper_chk(attribute *pattr, void *pobject, int actmode)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* with kerberos, we do not check */
-        return 0;
+	return 0;
 #endif
 
 	for (i=0; i<pstr->as_usedptr; ++i) {

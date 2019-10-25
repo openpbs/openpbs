@@ -113,7 +113,7 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	ret = krb5_cc_resolve(context, PBS_KRB5_CLIENT_CCNAME, &ccache);
 	if (ret) {
 		snprintf(err_buf, err_buf_size, "Couldn't resolve ccache name (%s) New ccache will be created.", krb5_get_error_message(context, ret));
-		// not an error, we will create new ccache
+		/* not an error, we will create new ccache */
 	}
 
 	ret = gethostname(hostname, PBS_MAXHOSTNAME + 1);
@@ -144,7 +144,7 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	ret = krb5_cc_retrieve_cred(context, ccache, 0, mcreds, creds);
 	if (ret) {
 		snprintf(err_buf, err_buf_size, "Couldn't retrieve credentials from cache (%s) New ccache will be created.", krb5_get_error_message(context, ret));
-		// not an error, we will create new ccache
+		/* not an error, we will create new ccache */
 	} else {
 		endtime = creds->times.endtime;
 	}

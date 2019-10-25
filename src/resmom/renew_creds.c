@@ -120,7 +120,7 @@ typedef struct svrcred_data svrcred_data;
 
 const char *str_cred_actions[] = { "singleshot", "renewal", "setenv", "destroy"};
 
-extern char *path_jobs; // job directory path
+extern char *path_jobs; /* job directory path */
 extern struct var_table vtable;
 extern time_t time_now;
 extern int decode_block_base64(unsigned char *ascii_data, ssize_t ascii_len, unsigned char *bin_data, ssize_t *p_bin_len, char *msg, size_t msg_len);
@@ -689,7 +689,7 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 	if (c != NULL)
 		*c = '\0';
 
-	// get users uid
+	/* get users uid */
 	bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
 	if (bufsize == -1)          /* Value was indeterminate */
 		bufsize = 16384;          /* Should be more than enough */
@@ -776,8 +776,8 @@ cred_by_job(job *pjob, int cred_action)
 
 	ret = init_ticket_from_job(pjob, NULL, ticket, cred_action);
 	if (ret == PBS_KRB5_ERR_NO_KRB_PRINC) {
-		/* job without a principal */
-		/* not an error, but do nothing */
+		/* job without a principal
+		 * not an error, but do nothing */
 		return PBS_KRB5_OK;
 	}
 
@@ -1055,9 +1055,7 @@ im_cred_read(job *pjob, hnodent *np, int stream)
 	return DIS_SUCCESS;
 
 err:
-	/*
-	 ** Getting here means we had a read failure.
-	 */
+	/* Getting here means we had a read failure. */
 	sprintf(log_buffer, "dis err %d (%s)", ret, dis_emsg[ret]);
 	DBPRT(("%s: %s\n", __func__, log_buffer))
 	log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);

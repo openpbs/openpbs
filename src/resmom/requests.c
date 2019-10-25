@@ -389,7 +389,7 @@ fork_to_user(struct batch_request *preq)
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        // singleshot ticket, without renewal
+        /* singleshot ticket, without renewal */
         if (pjob != NULL)
 		init_ticket_from_job(pjob, NULL, ticket, CRED_SINGLESHOT);
         else
@@ -5070,7 +5070,7 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 void
-req_cred(struct batch_request *preq) /* ptr to the decoded request   */
+req_cred(struct batch_request *preq) /* ptr to the decoded request */
 {
 	unsigned char	out_data[CRED_DATA_SIZE];
 	ssize_t		out_len = 0;
@@ -5104,7 +5104,7 @@ req_cred(struct batch_request *preq) /* ptr to the decoded request   */
 
 	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_credid, preq->rq_ind.rq_cred.rq_cred_type, data, data_base64, preq->rq_ind.rq_cred.rq_cred_validity);
 
-	/* renew ticket for the job*/
+	/* renew ticket for the job */
 	if ((pjob = find_job(preq->rq_ind.rq_cred.rq_jobid)) != NULL) {
 		/* send cred to sisters too */
 		send_cred_sisters(pjob);

@@ -55,22 +55,22 @@
 pthread_mutex_t gss_lock;
 
 /* the function pointer to the upper layer received packet handler */
-int (*tpp_pkt_handler)(int tfd, void *data, int len, void *ctx, void *extra) = NULL;
+int (*tpp_pkt_handler)(int tfd, void *data, int len, void *ctx, void *extra);
 
 /* the function pointer to the upper layer connection close handler */
-int (*tpp_close_handler)(int tfd, int error, void *ctx, void *extra) = NULL;
+int (*tpp_close_handler)(int tfd, int error, void *ctx, void *extra);
 
 /* the function pointer to the upper layer connection restore handler */
-int (*tpp_post_connect_handler)(int tfd, void *data, void *ctx, void *extra) = NULL;
+int (*tpp_post_connect_handler)(int tfd, void *data, void *ctx, void *extra);
 
 /* the function pointer to the upper layer pre packet send handler */
-int (*tpp_pkt_presend_handler)(int tfd, tpp_packet_t *pkt, void *extra) = NULL;
+int (*tpp_pkt_presend_handler)(int tfd, tpp_packet_t *pkt, void *extra);
 
 /* the function pointer to the upper layer post packet send handler */
-int (*tpp_pkt_postsend_handler)(int tfd, tpp_packet_t *pkt, void *extra) = NULL;
+int (*tpp_pkt_postsend_handler)(int tfd, tpp_packet_t *pkt, void *extra);
 
 /* upper layer timer handler */
-int (*tpp_timer_handler)(time_t now) = NULL;
+int (*tpp_timer_handler)(time_t now);
 
 /**
  * @brief

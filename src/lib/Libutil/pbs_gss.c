@@ -55,9 +55,9 @@ char gss_log_buffer[LOG_BUF_SIZE];
 #define DEFAULT_CREDENTIAL_LIFETIME 7200
 char *gss_err_msg = "GSS - %s/%s";
 
-void (*pbs_gss_log_gss_status)(const char *msg, OM_uint32 maj_stat, OM_uint32 min_stat) = NULL;
-void (*pbs_gss_logerror)(const char *func_name, const char* msg) = NULL;
-void (*pbs_gss_logdebug)(const char *func_name, const char* msg) = NULL;
+void (*pbs_gss_log_gss_status)(const char *msg, OM_uint32 maj_stat, OM_uint32 min_stat);
+void (*pbs_gss_logerror)(const char *func_name, const char* msg);
+void (*pbs_gss_logdebug)(const char *func_name, const char* msg);
 
 /** @brief
  *	Determines whether GSS credentials can be acquired
@@ -187,7 +187,8 @@ static int
 pbs_gss_server_acquire_creds(char *service_name, gss_cred_id_t* server_creds)
 {
 	gss_name_t server_name;
-	OM_uint32 maj_stat, min_stat = 0;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
 
 	gss_buffer_desc name_buf;
 	name_buf.value = service_name;
@@ -254,9 +255,14 @@ pbs_gss_server_acquire_creds(char *service_name, gss_cred_id_t* server_creds)
 static int
 pbs_gss_client_establish_context(char *service_name, gss_cred_id_t creds, gss_OID oid, OM_uint32 gss_flags, gss_ctx_id_t * gss_context, OM_uint32 *ret_flags, char* data_in, int len_in, char **data_out, int *len_out)
 {
-	gss_buffer_desc send_tok, recv_tok, *token_ptr;
+	gss_buffer_desc send_tok;
+	gss_buffer_desc recv_tok;
+	gss_buffer_desc *token_ptr;
 	gss_name_t target_name;
-	OM_uint32 maj_stat, min_stat = 0, init_sec_maj_stat, init_sec_min_stat = 0;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
+	OM_uint32 init_sec_maj_stat;
+	OM_uint32 init_sec_min_stat = 0;
 
 	send_tok.value = service_name;
 	send_tok.length = strlen(service_name) ;
@@ -350,10 +356,14 @@ pbs_gss_client_establish_context(char *service_name, gss_cred_id_t creds, gss_OI
 static int
 pbs_gss_server_establish_context(gss_cred_id_t server_creds, gss_cred_id_t* client_creds, gss_ctx_id_t* gss_context, gss_buffer_t client_name, OM_uint32* ret_flags, char* data_in, int len_in, char **data_out, int *len_out)
 {
-	gss_buffer_desc send_tok, recv_tok;
+	gss_buffer_desc send_tok;
+	gss_buffer_desc recv_tok;
 	gss_name_t client;
 	gss_OID doid;
-	OM_uint32 maj_stat, min_stat = 0, acc_sec_maj_stat, acc_sec_min_stat = 0;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
+	OM_uint32 acc_sec_maj_stat;
+	OM_uint32 acc_sec_min_stat = 0;
 
 	recv_tok.value = (void *)data_in;
 	recv_tok.length = len_in;
@@ -441,7 +451,8 @@ pbs_gss_server_establish_context(gss_cred_id_t server_creds, gss_cred_id_t* clie
 int
 pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *data_in, int len_in, char **data_out, int *len_out)
 {
-	OM_uint32 maj_stat, min_stat = 0;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
 	gss_ctx_id_t gss_context = GSS_C_NO_CONTEXT;
 	static gss_cred_id_t server_creds = GSS_C_NO_CREDENTIAL;
 	gss_cred_id_t creds = GSS_C_NO_CREDENTIAL;
@@ -450,7 +461,8 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 	static time_t lastcredstime = 0;
 	static time_t credlifetime = 0;
 	OM_uint32 lifetime;
-	OM_uint32 gss_flags, ret_flags;
+	OM_uint32 gss_flags;
+	OM_uint32 ret_flags;
 	gss_OID oid;
 	int ret;
 
@@ -495,7 +507,6 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 				return PBS_GSS_ERR_ACQUIRE_CREDS;
 			}
 
-			/* gss_flags = GSS_C_MUTUAL_FLAG | (delegate ? GSS_C_DELEG_FLAG : 0) | (wrap ? (GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG) : 0); */
 			gss_flags = GSS_C_MUTUAL_FLAG | GSS_C_DELEG_FLAG | GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG;
 			oid = GSS_C_NULL_OID;
 
@@ -519,8 +530,8 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 
 		case PBS_GSS_SERVER:
 			/* if credentials are old, try to get new ones. If we can't, keep the old
-			ones since they're probably still valid and hope that
-			we can get new credentials next time */
+			 * ones since they're probably still valid and hope that
+			 * we can get new credentials next time */
 			if (now - lastcredstime > credlifetime) {
 				gss_cred_id_t new_server_creds = GSS_C_NO_CREDENTIAL;
 
@@ -529,7 +540,8 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 					if (pbs_gss_logerror)
 						pbs_gss_logerror(__func__, gss_log_buffer);
 
-					lastcredstime = now + 120; // try again in 2 minutes
+					/* try again in 2 minutes */
+					lastcredstime = now + 120;
 				} else {
 					lastcredstime = now;
 					snprintf(gss_log_buffer, LOG_BUF_SIZE, "Refreshing server credentials at %ld\n", (long)now);
@@ -659,8 +671,10 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 int
 pbs_gss_wrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
 {
-	OM_uint32 maj_stat, min_stat = 0;
-	gss_buffer_desc unwrapped, wrapped;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
+	gss_buffer_desc unwrapped;
+	gss_buffer_desc wrapped;
 	int conf_state = 0;
 
 	wrapped.length = 0;
@@ -724,8 +738,10 @@ pbs_gss_wrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_
 int
 pbs_gss_unwrap(pbs_gss_extra_t *gss_extra, char *data_in, int len_in, char **data_out, int *len_out)
 {
-	OM_uint32 maj_stat, min_stat = 0;
-	gss_buffer_desc wrapped, unwrapped;
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat = 0;
+	gss_buffer_desc wrapped;
+	gss_buffer_desc unwrapped;
 
 	unwrapped.length = 0;
 	unwrapped.value = NULL;

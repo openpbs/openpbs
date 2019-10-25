@@ -266,8 +266,8 @@ setup_cred(struct batch_request *preq, job  *pjob)
 static void
 post_cred(struct work_task *pwt)
 {
-	int		      code;
-	job		     *pjob;
+	int code;
+	job *pjob;
 	struct batch_request *preq;
 
 	preq = pwt->wt_parm1;
@@ -313,7 +313,7 @@ int
 send_cred(job *pjob)
 {
 	struct batch_request *credreq = NULL;
-	int		      rc;
+	int rc;
 
 	if (pjob == NULL) {
 	    return PBSE_SYSTEM;
