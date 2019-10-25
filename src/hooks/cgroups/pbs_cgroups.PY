@@ -1567,7 +1567,8 @@ class NodeUtils(object):
         # Now try to construct a dictionary with hyperthread information
         # if this is an Intel based processor
         try:
-            if 'Intel' in cpuinfo['cpu'][0]['vendor_id']:
+            if ('Intel' in cpuinfo['cpu'][0]['vendor_id']) or \
+               ('AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id']):
                 if 'ht' in cpuinfo['cpu'][0]['flags']:
                     cpuinfo['hyperthreads_per_core'] = \
                         cpuinfo['cpu'][0]['siblings'] / \
@@ -1599,6 +1600,10 @@ class NodeUtils(object):
                                     threads.add(yid)
                         pbs.logmsg(pbs.EVENT_DEBUG4, 'HT cores: %s' % threads)
                         cpuinfo['hyperthreads'] = sorted(threads)
+                    else:
+                        cores = cpuinfo['cpu'].keys()
+                        for xid in cores:
+                            cpuinfo['cpu'][xid]['threads'].append(xid)
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Hyperthreading check failed' %
                        caller_name())
@@ -2260,8 +2265,8 @@ class CgroupUtils(object):
                 prefix = subsys + '.'
         if self.systemd_version < 205:
             return os.path.join(mnt_point, self.cfg['cgroup_prefix'], prefix)
-        return os.path.join(mnt_point, str(self.cfg['cgroup_prefix']) + '.slice',
-                            prefix)
+        return os.path.join(mnt_point,
+                            str(self.cfg['cgroup_prefix']) + '.slice', prefix)
 
     def _get_paths(self):
         """
@@ -4781,6 +4786,11 @@ def main():
     """
     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Function called' % caller_name())
     # If an exception occurs, jobutil must be set to something
+    if not sys.platform.startswith('linux'):
+        pbs.logmsg(pbs.EVENT_DEBUG,
+                   '%s: cgroup hook not on linux -- just accepting' %
+                   caller_name())
+        pbs.event().accept()
     jobutil = None
     hostname = pbs.get_local_nodename()
     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Host is %s' % (caller_name(), hostname))
@@ -4800,6 +4810,8 @@ def main():
     # Instantiate the hook utility class
     try:
         hooks = HookUtils()
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Hook utility class instantiated' %
+                   caller_name())
     except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG,
                    '%s: Failed to instantiate hook utility class' %
@@ -4807,10 +4819,6 @@ def main():
         pbs.logmsg(pbs.EVENT_DEBUG,
                    str(traceback.format_exc().strip().splitlines()))
         event.accept()
-    pbs.logmsg(pbs.EVENT_DEBUG, '%s hook handling %s event' %
-               (event.hook_name, hooks.event_name(event.type)))
-    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Hook utility class instantiated' %
-               caller_name())
     # Bail out if there is no handler for this event
     if not hooks.hashandler(event.type):
         pbs.logmsg(pbs.EVENT_DEBUG, '%s: %s event not handled by this hook' %
@@ -4835,15 +4843,23 @@ def main():
             if hostname in event.vnode_list:
                 vnode = event.vnode_list[hostname]
         with Lock(cfg['cgroup_lock_file']):
+            # Only write this once we grabbed the lock,
+            # otherwise *another* event could actually win the lock
+            # even though *this* event printed this message last,
+            # and we'd be confused about the event that the winner services
+            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Event type is %s' %
+                       (caller_name(), hooks.event_name(event.type)))
             cgroup = CgroupUtils(hostname, vnode, cfg=cfg)
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Cgroup utility class instantiated' % caller_name())
+
             # Bail out if there is nothing to do
             if not cgroup.subsystems:
                 pbs.logmsg(pbs.EVENT_DEBUG,
                            '%s: Cgroups disabled or none to manage' %
                            caller_name())
                 event.accept()
+
             # Call the appropriate handler
             if hooks.invoke_handler(event, cgroup, jobutil):
                 pbs.logmsg(pbs.EVENT_DEBUG4,
