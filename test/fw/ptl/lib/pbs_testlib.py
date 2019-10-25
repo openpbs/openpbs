@@ -14218,13 +14218,17 @@ class Job(ResourceResv):
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
 
-    def create_eatcpu_job(self, duration=None):
+    def create_eatcpu_job(self, duration=None, mom=None):
         """
         Create a job that eats cpu indefinitely or for the given
         duration of time
         """
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
+        d = os.path.join(os.path.sep, 'home', self.username)
+        if mom:
+            DshUtils().run_copy(hosts=mom, src=script_path, dest=d)
+            script_path = os.path.join(d, "eatcpu.py")
         DshUtils().chmod(path=script_path, mode=0o755)
         self.set_execargs(script_path, duration)
 
