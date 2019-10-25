@@ -40,6 +40,7 @@ import json
 import os
 
 
+@skipOnShasta
 class TestNonprintingCharacters(TestFunctional):
     """
     Test to check passing non-printable environment variables
