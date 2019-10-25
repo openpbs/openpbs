@@ -39,6 +39,7 @@ from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
 
+@skipOnShasta
 class TestPbsHookSetJobEnv(TestFunctional):
     """
     This test suite to make sure hooks properly

@@ -39,6 +39,7 @@ from tests.functional import *
 import json
 import os
 
+
 @skipOnShasta
 class TestNonprintingCharacters(TestFunctional):
     """
