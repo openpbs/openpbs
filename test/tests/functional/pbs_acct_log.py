@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestAcctlog(TestFunctional):
+class TestAcctLog(TestFunctional):
     """
     Tests dealing with the PBS accounting logs
     """
@@ -281,8 +281,9 @@ pbs.event().reject('foo')
         jid1 = self.server.submit(j1)
 
         self.server.alterjob(jid1, {ATTR_p: 150})
-        self.server.accounting_match(';a;' + jid1 + ';Priority=150')
-        self.server.accounting_match(';a;' + jid1 + ';comment=foo')
+        (_, line) = self.server.accounting_match(';a;' + jid1 + ';')
+        self.assertIn('Priority=150', line)
+        self.assertIn('comment=foo', line)
 
         try:
             self.server.runjob(jid1)
