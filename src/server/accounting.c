@@ -2240,17 +2240,19 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	svrattrl *cur_svr;
 	pbs_list_head phead;
 	svrattrl *cur_plist;
-	char *per_alter_buf = NULL;
-	char *entire_record = NULL;
-	int entire_record_len = 0;
-
-	int i;
-	entire_record = malloc(1024 * sizeof(char));
-	if (entire_record == NULL)
-		return;
-	entire_record_len = 1024;
-	entire_record[0] = '\0';
+	char *per_attr_buf = NULL;
+	static char *entire_record = NULL;
+	static int entire_record_len = 0;
 	int error = 0;
+	int i;
+
+	if (entire_record == NULL) {
+		entire_record = malloc(1024 * sizeof(char));
+		if (entire_record == NULL)
+			return;
+		entire_record_len = 1024;
+	}
+	entire_record[0] = '\0';
 
 	CLEAR_HEAD(phead);
 	for (i = 0; i < JOB_ATR_LAST; i++) {
@@ -2269,7 +2271,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 										fmt = "%s.%s=%s";
 									else
 										fmt = "%s.%s=\"%s\"";
-									pbs_asprintf(&per_alter_buf, fmt, cur_svr->al_name, cur_svr->al_resc, cur_svr->al_value);
+									pbs_asprintf(&per_attr_buf, fmt, cur_svr->al_name, cur_svr->al_resc, cur_svr->al_value);
 									break;
 								}
 							}
@@ -2280,25 +2282,25 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 								fmt = "%s=%s";
 							else
 								fmt = "%s=\"%s\"";
-							pbs_asprintf(&per_alter_buf, fmt, cur_svr->al_name, cur_svr->al_value);
+							pbs_asprintf(&per_attr_buf, fmt, cur_svr->al_name, cur_svr->al_value);
 							break;
 						}
 					}
 				}
-				if (per_alter_buf == NULL && cur_plist->al_value[0] == '\0') { /* unset */
-					pbs_asprintf(&per_alter_buf, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
-				};
+				if (per_attr_buf == NULL && cur_plist->al_value[0] == '\0') { /* unset */
+					pbs_asprintf(&per_attr_buf, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
+				}
 
 				if (entire_record[0] != '\0')
 					if (pbs_strcat(&entire_record, &entire_record_len, " ") == NULL)
 						error = 1;
 
 				if (error == 0)
-					if (pbs_strcat(&entire_record, &entire_record_len, per_alter_buf) == NULL)
+					if (pbs_strcat(&entire_record, &entire_record_len, per_attr_buf) == NULL)
 						error = 1;
 
-				free(per_alter_buf);
-				per_alter_buf = NULL;
+				free(per_attr_buf);
+				per_attr_buf = NULL;
 				if (error) {
 					free(entire_record);
 					return;
@@ -2307,6 +2309,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 			free_svrattrl(svrattrl_list);
 		}
 	}
-	account_record(PBS_ACCT_ALTER, pjob, entire_record);
+	if (entire_record[0] != '\0')
+		account_record(PBS_ACCT_ALTER, pjob, entire_record);
 	free(entire_record);
 }
