@@ -2301,15 +2301,12 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 
 				free(per_attr_buf);
 				per_attr_buf = NULL;
-				if (error) {
-					free(entire_record);
+				if (error)
 					return;
-				}
 			}
 			free_svrattrl(svrattrl_list);
 		}
 	}
 	if (entire_record[0] != '\0')
 		account_record(PBS_ACCT_ALTER, pjob, entire_record);
-	free(entire_record);
 }
