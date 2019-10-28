@@ -64,28 +64,61 @@ This hook services the following events:
 # are not present.
 
 # Module imports
-import sys
-import os
-import fcntl
-import stat
-import errno
-import signal
-import subprocess
-import re
-import glob
-import time
-import string
-import platform
-import traceback
-import copy
-import operator
-import pwd
-import fnmatch
-try:
-    import json
-except Exception:
-    import simplejson as json
+#
+# This one is needed to log messages
 import pbs
+
+# if we are not on a Linux system then the hook should always do nothing
+# and accept, and certainly not try Linux-only module imports
+import platform
+if platform.system() != 'Linux':
+    pbs.logmsg(pbs.EVENT_DEBUG,
+               'Cgroup hook not on supported OS '
+               '-- just accepting event')
+    pbs.event().accept()
+
+# we're on Linux, but does the kernel support cgroups?
+rel = list(map(int, (platform.release().split('-')[0].split('.'))))
+pbs.logmsg(pbs.EVENT_DEBUG4,
+           'Cgroup hook: detected Linux kernel version %d.%d.%d' %
+           (rel[0], rel[1], rel[2]))
+supported = False
+if rel[0] > 2:
+    supported = True
+elif rel[0] == 2:
+    if rel[1] > 6:
+        supported = True
+    elif rel[1] == 6:
+        if rel[2] >= 28:
+            supported = True
+if not supported:
+    pbs.logmsg(pbs.EVENT_DEBUG,
+               'Cgroup hook: kernel %s.%s.%s < 2.6.28; not supported'
+               % (rel[0], rel[1], rel[2]))
+    pbs.event.accept()
+else:
+    # Now we know that at least the hook might do something useful
+    # so import other modules (some of them Linux-specific)
+    import sys
+    import os
+    import stat
+    import errno
+    import signal
+    import subprocess
+    import re
+    import glob
+    import time
+    import string
+    import traceback
+    import copy
+    import operator
+    import fnmatch
+    try:
+        import json
+    except Exception:
+        import simplejson as json
+    import fcntl
+    import pwd
 
 # Define some globals that get set in main
 PBS_EXEC = ''
@@ -322,18 +355,18 @@ def decode_dict(data):
             key = key.encode('utf-8')
         elif isinstance(key, (bytes, bytearray)):
             if sys.version_info[0] >= 3:
-                key = str(key,'utf-8')
+                key = str(key, 'utf-8')
             else:
                 key = str(key)
 
         # now the value
-        if isinstance(value,str):
-            pass 
+        if isinstance(value, str):
+            pass
         elif (sys.version_info[0] < 3) and isinstance(value, unicode):
             value = value.encode('utf-8')
         elif isinstance(value, (bytes, bytearray)):
             if sys.version_info[0] >= 3:
-                value = str(value,'utf-8')
+                value = str(value, 'utf-8')
             else:
                 key = str(value)
 
@@ -970,7 +1003,7 @@ class HookUtils(object):
                 except Exception:
                     result = False
                 try:
-                    # Note that True is morphed to 1 and False is morpĥed
+                    # Note that True is morphed to 1 and False is morphed
                     # to 0, which allows different per-host or per-vnode
                     # settings when polymorphic cfg file support is there
                     # 0 means "never swap even if there is swap"
@@ -1603,12 +1636,12 @@ class NodeUtils(object):
         # Now try to construct a dictionary with hyperthread information
         # if this is an Intel based processor
         try:
-            if ('Intel' in cpuinfo['cpu'][0]['vendor_id']) or \
-               ('AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id']):
+            if (('Intel' in cpuinfo['cpu'][0]['vendor_id'])
+                    or ('AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id'])):
                 if 'ht' in cpuinfo['cpu'][0]['flags']:
                     cpuinfo['hyperthreads_per_core'] = \
-                        cpuinfo['cpu'][0]['siblings'] / \
-                        cpuinfo['cpu'][0]['cpu cores']
+                        (cpuinfo['cpu'][0]['siblings']
+                         / cpuinfo['cpu'][0]['cpu cores'])
                     # Map hyperthreads to physical cores
                     if cpuinfo['hyperthreads_per_core'] > 1:
                         pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1888,12 +1921,11 @@ class NodeUtils(object):
 
         # Set resources_available.vntype of natural node according
         # to what's in local file if it needs to be propagated to server
-        if vntype is not None and vntype != '':
-            if (("propagate_vntype_to_server" in self.cfg)
-                    and self.cfg['propagate_vntype_to_server']):
-                host_resc_avail['vntype'] = vntype
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode type set to %s' %
-                           (caller_name(), vntype))
+        if (vntype and ("propagate_vntype_to_server" in self.cfg)
+                and self.cfg['propagate_vntype_to_server']):
+            host_resc_avail['vntype'] = vntype
+            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode type set to %s'
+                       % (caller_name(), vntype))
 
         vnode_msg_cpu = '%s: vnode_list[%s].resources_available[ncpus] = %d'
         vnode_msg_mem = '%s: vnode_list[%s].resources_available[mem] = %s'
@@ -1902,10 +1934,9 @@ class NodeUtils(object):
                 vnode_key = vnode_name + '[%d]' % nnid
                 vnode_list[vnode_key] = pbs.vnode(vnode_name)
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
-                if vntype is not None and vntype != '':
-                    if (("propagate_vntype_to_server" in self.cfg)
-                            and self.cfg['propagate_vntype_to_server']):
-                        vnode_resc_avail['vntype'] = vntype
+                if (vntype and ("propagate_vntype_to_server" in self.cfg)
+                        and self.cfg['propagate_vntype_to_server']):
+                    vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
                 if key is None:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key is None' %
@@ -2178,14 +2209,17 @@ class CgroupUtils(object):
                        caller_name())
             self.assigned_resources = {}
             return
+
         # Collect the cgroup resources
         if assigned_resources:
             self.assigned_resources = assigned_resources
         else:
             self.assigned_resources = self._get_assigned_cgroup_resources()
+
         # location to store information for the different hook events
         self.hook_storage_dir = os.path.join(PBS_MOM_HOME, 'mom_priv',
                                              'hooks', 'hook_data')
+
         if not os.path.isdir(self.hook_storage_dir):
             try:
                 os.makedirs(self.hook_storage_dir, 0o700)
@@ -2227,54 +2261,6 @@ class CgroupUtils(object):
                 desc.write(msg)
         except Exception:
             pass
-
-    def write_to_stdout(self, job, msg):
-        """
-        Write a message to the job stdout file
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        try:
-            filename = job.stdout_file()
-            if filename is None:
-                return
-            with open(filename, 'a') as desc:
-                desc.write(msg)
-        except Exception:
-            pass
-
-    @staticmethod
-    def check_os():
-        """
-        Validate the OS type and version
-        Do not raise exception: on unsupported OSes
-        we should simply bail out as soon as possible
-        and do nothing, to support e.g. mixed Linux/Win64 clusters
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        # Check to see if the platform is linux and the kernel is new enough
-        if platform.system() != 'Linux':
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: OS does not support cgroups' %
-                       caller_name())
-            return false
-        rel = list(map(int, (platform.release().split('-')[0].split('.'))))
-        pbs.logmsg(pbs.EVENT_DEBUG4,
-                   '%s: Detected Linux kernel version %d.%d.%d' %
-                   (caller_name(), rel[0], rel[1], rel[2]))
-        supported = False
-        if rel[0] > 2:
-            supported = True
-        elif rel[0] == 2:
-            if rel[1] > 6:
-                supported = True
-            elif rel[1] == 6:
-                if rel[2] >= 28:
-                    supported = True
-        if not supported:
-            pbs.logmsg(pbs.EVENT_DEBUG,
-                       '%s: kernel %s.%s.%s < 2.6.28; not supported'
-                       % (caller_name(), rel[0], rel[1], rel[2]))
-            pbs.event.accept()
-        return supported
 
     def _target_subsystems(self):
         """
@@ -2413,7 +2399,7 @@ class CgroupUtils(object):
         # and "vntype not in: ..." values
         # into booleans depending on the vntype in the CgroupConfig object
         # Ditto for "host in:" and "host not in:"
-        # Convert run_only_on_hosts and exclude_vntypes to derive
+        # Convert old run_only_on_hosts and exclude_vntypes to derive
         # "enabled" boolean (which will now _always_ be defined)
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Config file parsing" % caller_name())
         vntype = self.vntype
@@ -2570,6 +2556,7 @@ class CgroupUtils(object):
         # when the configuration file is read. Keep the keys in sync
         # with the default cgroup configuration files.
         defaults = {}
+        defaults['enabled'] = True
         defaults['cgroup_prefix'] = 'pbspro'
         defaults['cgroup_lock_file'] = os.path.join(PBS_MOM_HOME, 'mom_priv',
                                                     'cgroups.lock')
@@ -4250,7 +4237,8 @@ class CgroupUtils(object):
         # Make two attempts since self.cleanup_orphans may actually fix the
         # problem we see in a first attempt
         for attempt in range(2):
-            if hasattr(pbs, "EXECJOB_RESIZE") and event_type == pbs.EXECJOB_RESIZE:
+            if (hasattr(pbs, "EXECJOB_RESIZE")
+                    and event_type == pbs.EXECJOB_RESIZE):
                 # consider current job's resources as being available,
                 # where a subset of them would be re-assigned to the
                 # the same job.
@@ -4473,7 +4461,7 @@ class CgroupUtils(object):
                     break
                 time.sleep(0.5)
             # Delete the systemd slice for the job - if there is a job
-            if jobid is not None:
+            if jobid:
                 self._delete_slice(jobid)
             return True
         if not os.path.isdir(parent):
@@ -5020,11 +5008,6 @@ def main():
     """
     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Function called' % caller_name())
     # If an exception occurs, jobutil must be set to something
-    if not CgroupUtils.check_os():
-        pbs.logmsg(pbs.EVENT_DEBUG,
-                   '%s: cgroup hook not on supported linux '
-                   '-- just accepting' % caller_name())
-        pbs.event().accept()
     jobutil = None
     hostname = pbs.get_local_nodename()
     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Host is %s' % (caller_name(), hostname))
@@ -5152,6 +5135,7 @@ def main():
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
         event.reject(msg)
+
 
 # The following block is skipped if this is a unit testing environment.
 if __name__ == 'builtins':
