@@ -1848,7 +1848,7 @@ create_query_file(void)
 	LocalFree(win_sid);
 #else
 	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, usid);
-#endif // WIN32
+#endif /* WIN32 */
 	f = fopen(filename, "w");
 	if (f != NULL)
 		fclose(f);
@@ -1894,6 +1894,6 @@ delay_query(void)
 			usleep(200000);
 		}
 	}
-#endif //WIN32
+#endif /* WIN32 */
 	atexit(create_query_file);
 }
