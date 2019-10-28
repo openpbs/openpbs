@@ -59,6 +59,70 @@ void (*pbs_gss_log_gss_status)(const char *msg, OM_uint32 maj_stat, OM_uint32 mi
 void (*pbs_gss_logerror)(const char *func_name, const char* msg);
 void (*pbs_gss_logdebug)(const char *func_name, const char* msg);
 
+#if defined(KRB5_HEIMDAL)
+#define PBS_GSS_MECH_OID GSS_KRB5_MECHANISM
+#else
+#include <gssapi/gssapi_krb5.h>
+#define PBS_GSS_MECH_OID (gss_OID)gss_mech_krb5
+#endif
+
+/** @brief
+ *	If oid set is null then create oid set. Once we have the oid set,
+ *	the appropriate gss mechanism is added (e.g. kerberos).
+ *
+ * @param[in/out] oidset - oid set for change
+ *
+ * @return	int
+ * @retval	PBS_GSS_OK on success
+ * @retval	!= PBS_GSS_OK on error
+ */
+static int
+pbs_gss_oidset_mech(gss_OID_set *oidset)
+{
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat;
+	if (*oidset == GSS_C_NULL_OID_SET) {
+		maj_stat = gss_create_empty_oid_set(&min_stat, oidset);
+		if (maj_stat != GSS_S_COMPLETE) {
+			sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_create_empty_oid_set");
+			if (pbs_gss_log_gss_status)
+				pbs_gss_log_gss_status(gss_log_buffer, maj_stat, min_stat);
+
+			return PBS_GSS_ERR_OID;
+		}
+	}
+
+	maj_stat = gss_add_oid_set_member(&min_stat, PBS_GSS_MECH_OID, oidset);
+	if (maj_stat != GSS_S_COMPLETE) {
+		sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_add_oid_set_member");
+		if (pbs_gss_log_gss_status)
+			pbs_gss_log_gss_status(gss_log_buffer, maj_stat, min_stat);
+
+		return PBS_GSS_ERR_OID;
+	}
+
+	return PBS_GSS_OK;
+}
+
+/** @brief
+ *	Release oid set
+ *
+ * @param[in] oidset - oid set for releasing
+ */
+static void
+pbs_gss_release_oidset(gss_OID_set *oidset)
+{
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat;
+
+	maj_stat = gss_release_oid_set(&min_stat, oidset);
+	if (maj_stat != GSS_S_COMPLETE) {
+		sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_release_oid_set");
+		if (pbs_gss_log_gss_status)
+			pbs_gss_log_gss_status(gss_log_buffer, maj_stat, min_stat);
+	}
+}
+
 /** @brief
  *	Determines whether GSS credentials can be acquired
  *
@@ -73,10 +137,16 @@ pbs_gss_can_get_creds()
 	OM_uint32 min_stat;
 	OM_uint32 valid_sec = 0;
 	gss_cred_id_t creds = GSS_C_NO_CREDENTIAL;
+	gss_OID_set oidset = GSS_C_NO_OID_SET;
 
-	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, GSS_C_NO_OID_SET, GSS_C_INITIATE, &creds, NULL, &valid_sec);
+	if (pbs_gss_oidset_mech(&oidset) != PBS_GSS_OK)
+		return 0;
+
+	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, oidset, GSS_C_INITIATE, &creds, NULL, &valid_sec);
 	if (maj_stat == GSS_S_COMPLETE && creds != GSS_C_NO_CREDENTIAL)
 		gss_release_cred(&min_stat, &creds);
+
+	pbs_gss_release_oidset(&oidset);
 
 /* There is a bug in old MIT implementation. It causes valid_sec is always 0.
  * The problem is fixed in version >= 1.14 */
@@ -189,8 +259,9 @@ pbs_gss_server_acquire_creds(char *service_name, gss_cred_id_t* server_creds)
 	gss_name_t server_name;
 	OM_uint32 maj_stat;
 	OM_uint32 min_stat = 0;
-
+	gss_OID_set oidset = GSS_C_NO_OID_SET;
 	gss_buffer_desc name_buf;
+
 	name_buf.value = service_name;
 	name_buf.length = strlen(service_name) + 1;
 
@@ -204,7 +275,12 @@ pbs_gss_server_acquire_creds(char *service_name, gss_cred_id_t* server_creds)
 		return PBS_GSS_ERR_IMPORT_NAME;
 	}
 
-	maj_stat = gss_acquire_cred(&min_stat, server_name, 0, GSS_C_NULL_OID_SET, GSS_C_ACCEPT, server_creds, NULL, NULL);
+	if (pbs_gss_oidset_mech(&oidset) != PBS_GSS_OK)
+		return PBS_GSS_ERR_OID;
+
+	maj_stat = gss_acquire_cred(&min_stat, server_name, 0, oidset, GSS_C_ACCEPT, server_creds, NULL, NULL);
+
+	pbs_gss_release_oidset(&oidset);
 
 	if (maj_stat != GSS_S_COMPLETE) {
 		sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_acquire_cred");
@@ -464,6 +540,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 	OM_uint32 gss_flags;
 	OM_uint32 ret_flags;
 	gss_OID oid;
+	gss_OID_set oidset = GSS_C_NO_OID_SET;
 	int ret;
 
 	if (gss_extra == NULL)
@@ -498,7 +575,13 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 				return PBS_GSS_ERR_INIT_CLIENT_CCACHE;
 			}
 
-			maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, GSS_C_NO_OID_SET, GSS_C_INITIATE, &creds, NULL, NULL);
+			if (pbs_gss_oidset_mech(&oidset) != PBS_GSS_OK)
+				return PBS_GSS_ERR_OID;
+
+			maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, oidset, GSS_C_INITIATE, &creds, NULL, NULL);
+
+			pbs_gss_release_oidset(&oidset);
+
 			if (maj_stat != GSS_S_COMPLETE) {
 				sprintf(gss_log_buffer, gss_err_msg, __func__, "gss_acquire_cred");
 				if (pbs_gss_log_gss_status)
@@ -508,7 +591,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, char *server_host, char *d
 			}
 
 			gss_flags = GSS_C_MUTUAL_FLAG | GSS_C_DELEG_FLAG | GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG;
-			oid = GSS_C_NULL_OID;
+			oid = PBS_GSS_MECH_OID;
 
 			ret = pbs_gss_client_establish_context(service_name, creds, oid, gss_flags, &gss_context, &ret_flags, data_in, len_in, data_out, len_out);
 
