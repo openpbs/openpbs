@@ -2470,6 +2470,20 @@ class CgroupUtils(object):
                                % (caller_name(), key_found,
                                   str(config_dict[key_found])))
 
+        # Old "exclude_vntypes" now modulates current "enabled"
+        # (if present) or creates it if non-empty (deprecate!)
+        if (("exclude_vntypes" in config_dict)
+                and config_dict['exclude_vntypes']):
+            if (("enabled" not in config_dict)
+                    or (not isinstance(config_dict['enabled'], bool))):
+                config_dict['enabled'] = \
+                    (vntype not in config_dict['exclude_vntypes'])
+            else:
+                config_dict['enabled'] = \
+                    (config_dict['enabled']
+                     and (vntype not in config_dict['exclude_vntypes']))
+
+
         # Old "exclude_hosts" now modulates current "enabled" (if present)
         # or creates enabled if it is non-empty
         if (("exclude_hosts" in config_dict)
@@ -2506,19 +2520,6 @@ class CgroupUtils(object):
                        "set %s to %s based on include_hosts"
                        % (caller_name(), 'enabled',
                           str(config_dict['enabled'])))
-
-        # Old "exclude_vntypes" now modulates current "enabled"
-        # (if present) or creates it if non-empty (deprecate!)
-        if (("exclude_vntypes" in config_dict)
-                and config_dict['exclude_vntypes']):
-            if (("enabled" not in config_dict)
-                    or (not isinstance(config_dict['enabled'], bool))):
-                config_dict['enabled'] = \
-                    (vntype not in config_dict['exclude_vntypes'])
-            else:
-                config_dict['enabled'] = \
-                    (config_dict['enabled']
-                     and (vntype not in config_dict['exclude_vntypes']))
 
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
