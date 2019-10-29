@@ -1887,6 +1887,7 @@ req_commit(struct batch_request *preq)
 		req_reject(rc, 0, preq);
 		return;
 	}
+	account_jobstr2(pj, PBS_ACCT_QUEUE);
 
 	if (pj->ji_resvp) {
 		/*we are supposedly dealing with a reservation job:

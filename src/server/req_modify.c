@@ -72,6 +72,7 @@
 #include "sched_cmds.h"
 #include "pbs_internal.h"
 #include "pbs_sched.h"
+#include "acct.h"
 
 
 /* Global Data Items: */
@@ -387,12 +388,15 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
-	/* if job is not running, may need to change its state */
+	if (find_sched_from_sock(preq->rq_conn) == NULL)
+		log_alter_records_for_attrs(pjob, plist);
 
+	/* if job is not running, may need to change its state */
 	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
-	} else {
+	}
+	else {
 		(void)job_save(pjob, SAVEJOB_FULL);
 	}
 	(void)sprintf(log_buffer, msg_manager, msg_jobmod,
@@ -679,7 +683,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 					break;
 				default:
 					if ((newattr[i].at_type == ATR_TYPE_LIST) ||
-						(newattr[i].at_type == ATR_TYPE_RESC)) {
+					    (newattr[i].at_type == ATR_TYPE_RESC)) {
 						list_move(&newattr[i].at_val.at_list,
 							  &pattr[i].at_val.at_list);
 					} else {

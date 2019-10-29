@@ -65,6 +65,7 @@ extern "C" {
 #define PBS_ACCT_UPDATE	(int)'u'	/* phased job update record */
 #define PBS_ACCT_NEXT	(int)'c'	/* phased job next record */
 #define PBS_ACCT_LAST	(int)'e'	/* phased job last usage record */
+#define PBS_ACCT_ALTER  (int)'a'	/* Job attribute is being altered */
 
 /* for RESERVATION accounting */
 
@@ -93,7 +94,7 @@ extern void account_jobstr(job *pjob);
 extern void account_jobstr2(job *pjob, int type);
 extern void account_job_update(job *pjob, int type);
 extern void account_jobend(job *pjob, char * used, int type);
-
+extern void log_alter_records_for_attrs(job *pjob, svrattrl *plist);
 extern void set_job_ProvAcctRcd(job *pjob, long time_se, int type);
 
 extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob);

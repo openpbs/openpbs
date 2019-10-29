@@ -145,6 +145,7 @@
 #include "server.h"
 #include "pbs_sched.h"
 #include "dis.h"
+#include "acct.h"
 
 /* External functions */
 extern void disable_svr_prov();
@@ -2847,6 +2848,9 @@ set_attribute(job *pjob, int attr_index,
 				log_err(PBSE_INTERNAL, __func__, log_buffer);
 			}
 		}
+		snprintf(log_buffer, sizeof(log_buffer), "%s=%s", attr_name, new_attrval_str);
+		account_record(PBS_ACCT_ALTER, pjob, log_buffer);
+
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed decoding a value for '%s'", attr_name);
@@ -3147,6 +3151,9 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 			new_rescval_str);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, msg);
+
+		snprintf(log_buffer, sizeof(log_buffer), "%s.%s=%s", ATTR_l, resc, new_rescval_str);
+		account_record(PBS_ACCT_ALTER, pjob, log_buffer);
 
 		if (fp_debug_out != NULL) {
 			fprintf(fp_debug_out, "%s.%s[%s]=%s\n", EVENT_JOB_OBJECT, ATTR_l, resc, new_rescval_str);

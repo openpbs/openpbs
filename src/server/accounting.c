@@ -292,21 +292,22 @@ cpy_quote_value(char *pb, char *value)
 }
 
 /* These are various printing formats used in acct_job() */
-#define	GRIDNAME_FMT		"gridname=\"%s\" "
+#define GRIDNAME_FMT		"gridname=\"%s\" "
 #define USER_FMT		"user=%s "
-#define	GROUP_FMT		"group=%s "
-#define	ACCOUNT_FMT		"account=\"%s\" "
-#define	PROJECT_FMT1		"project=\"%s\" "
-#define	PROJECT_FMT2		"project=%s "
-#define	ACCOUNTING_ID_FMT	"accounting_id=\"%s\" "
-#define	JOBNAME_FMT		"jobname=%s "
-#define	QUEUE_FMT		"queue=%s "
-#define	RESVNAME_FMT		"resvname=%s "
-#define	RESVID_FMT		"resvID=%s "
-#define	RESVJOBID_FMT		"resvjobID=%s "
-#define	ARRAY_INDICES_FMT	"array_indices=%s "
-#define	EXEC_HOST_FMT		"exec_host=%s "
-#define	EXEC_VNODE_FMT		"exec_vnode=%s "
+#define GROUP_FMT		"group=%s "
+#define ACCOUNT_FMT		"account=\"%s\" "
+#define PROJECT_FMT1		"project=\"%s\" "
+#define PROJECT_FMT2		"project=%s "
+#define ACCOUNTING_ID_FMT	"accounting_id=\"%s\" "
+#define JOBNAME_FMT		"jobname=%s "
+#define QUEUE_FMT		"queue=%s "
+#define RESVNAME_FMT		"resvname=%s "
+#define RESVID_FMT		"resvID=%s "
+#define RESVJOBID_FMT		"resvjobID=%s "
+#define ARRAY_INDICES_FMT	"array_indices=%s "
+#define EXEC_HOST_FMT		"exec_host=%s "
+#define EXEC_VNODE_FMT		"exec_vnode=%s "
+#define DEPEND_FMT		"depend=%s "
 
 /* Amount of space needed in account log buffer for the ctime, qtime, etime, */
 /* start attributes */
@@ -348,7 +349,7 @@ get_walltime(job *jp, int res)
 /**
  * @brief
  *	Form and write a job termination/rerun record with resource usage.
- * 	Build common data for start/end job accounting record
+ * 	Build common data for queue/start/end job accounting record
  *
  * @par	Functionality:
  *	Used by account_jobstr() and account_jobend()
@@ -391,7 +392,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		(void)snprintf(pb, len, GRIDNAME_FMT,
 			pjob->ji_wattr[(int)JOB_ATR_gridname].at_val.at_str);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -409,7 +410,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
 #endif
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* group */
@@ -426,7 +427,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str);
 #endif
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* account */
@@ -445,7 +446,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 			pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str);
 #endif
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -465,7 +466,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 			(void)snprintf(pb, len, PROJECT_FMT2, projstr);
 		}
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -478,7 +479,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		(void)snprintf(pb, len, ACCOUNTING_ID_FMT,
 			pjob->ji_wattr[(int)JOB_ATR_acct_id].at_val.at_str);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -490,7 +491,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 	(void)snprintf(pb, len, JOBNAME_FMT,
 		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* queue name */
@@ -500,7 +501,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 			return (pb);
 	(void)snprintf(pb, len, QUEUE_FMT, pjob->ji_qhdr->qu_qs.qu_name);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	if (pjob->ji_myResv) {
@@ -527,7 +528,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		(void)snprintf(pb, len, RESVID_FMT,
 			pjob->ji_myResv->ri_qs.ri_resvID);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -540,7 +541,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		(void)snprintf(pb, len, RESVJOBID_FMT,
 			pjob->ji_resvp->ri_qs.ri_resvID);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
@@ -554,29 +555,46 @@ acct_job(job *pjob, int type, char *buf, int len)
 	(void)sprintf(pb, "ctime=%ld ",
 		pjob->ji_wattr[(int)JOB_ATR_ctime].at_val.at_long);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* queued time */
 	(void)sprintf(pb, "qtime=%ld ",
 		pjob->ji_wattr[(int)JOB_ATR_qtime].at_val.at_long);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* eligible time, how long ready to run */
 	(void)sprintf(pb, "etime=%ld ", pjob->ji_wattr[(int)JOB_ATR_etime].at_val.at_long);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
-	/* start time */
-	(void)sprintf(pb, "start=%ld ", (long)pjob->ji_qs.ji_stime);
-	i = strlen(pb);
-	pb  += i;
-	len -= i;
+	if (type != PBS_ACCT_QUEUE) {
+		/* start time */
+		(void)sprintf(pb, "start=%ld ", (long)pjob->ji_qs.ji_stime);
+		i = strlen(pb);
+		pb += i;
+		len -= i;
+	} else if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET) {
+		pbs_list_head phead;
+		svrattrl *svrattrl_list;
+		CLEAR_HEAD(phead);
+		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend], 
+			&phead, job_attr_def[(int)JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
+		nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
+		if (nd > len)
+			if (grow_acct_buf(&pb, &len, nd) == -1)
+				return (pb);
+		(void)snprintf(pb, len, DEPEND_FMT, svrattrl_list->al_value);
+		i = strlen(pb);
+		pb += i;
+		len -= i;
+		free_svrattrl(svrattrl_list);
+	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_flags & ATR_VFLAG_SET && (pjob->ji_qs.ji_state == JOB_STATE_BEGUN)) {
+	if (pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_flags & ATR_VFLAG_SET && ((pjob->ji_qs.ji_state == JOB_STATE_BEGUN) || type == PBS_ACCT_QUEUE)) {
 
 		/* for an Array Job in Begun state,  record index range */
 
@@ -1114,38 +1132,41 @@ account_jobstr2(job *pjob, int type)
 	(void)acct_job(pjob, type, acct_buf, acct_bufsize);
 	acct_buf[acct_bufsize] = '\0';
 
-	nd  = strlen(acct_buf);
-	pb  = acct_buf + nd;
-	len = acct_bufsize - nd;
+	if (type != PBS_ACCT_QUEUE) {
 
-	sum_resc_alloc(pjob, &attrlist);
+		nd = strlen(acct_buf);
+		pb = acct_buf + nd;
+		len = acct_bufsize - nd;
 
-	nd = 0;	/* compute total size needed in buf */
-	pal = GET_NEXT(attrlist);
-	while (pal != NULL) {
-		/* +5 in count is for '=', ' ', start and end quotes, and \0 */
-		nd += strlen(pal->al_name) + strlen(pal->al_value) + 5;
-		if (pal->al_resc)
-			nd += 1 + strlen(pal->al_resc);
-		pal = GET_NEXT(pal->al_link);
-	}
-	if ((nd <= len) ||
-		(grow_acct_buf(&pb, &len, nd) == 0)) {
+		sum_resc_alloc(pjob, &attrlist);
 
-		/* have room in buffer, so copy in resources_assigned */
+		nd = 0; /* compute total size needed in buf */
+		pal = GET_NEXT(attrlist);
+		while (pal != NULL) {
+			/* +5 in count is for '=', ' ', start and end quotes, and \0 */
+			nd += strlen(pal->al_name) + strlen(pal->al_value) + 5;
+			if (pal->al_resc)
+				nd += 1 + strlen(pal->al_resc);
+			pal = GET_NEXT(pal->al_link);
+		}
+		if ((nd <= len) ||
+		    (grow_acct_buf(&pb, &len, nd) == 0)) {
 
-		while ((pal = GET_NEXT(attrlist)) != NULL) {
-			(void)strcat(pb, pal->al_name);
-			if (pal->al_resc) {
-				(void)strcat(pb, ".");
-				(void)strcat(pb, pal->al_resc);
+			/* have room in buffer, so copy in resources_assigned */
+
+			while ((pal = GET_NEXT(attrlist)) != NULL) {
+				(void)strcat(pb, pal->al_name);
+				if (pal->al_resc) {
+					(void)strcat(pb, ".");
+					(void)strcat(pb, pal->al_resc);
+				}
+				(void)strcat(pb, "=");
+				cpy_quote_value(pb, pal->al_value);
+				(void)strcat(pb, " ");
+				delete_link(&pal->al_link);
+				(void)free(pal);
+				pb += strlen(pb);
 			}
-			(void)strcat(pb, "=");
-			cpy_quote_value(pb, pal->al_value);
-			(void)strcat(pb, " ");
-			delete_link(&pal->al_link);
-			(void)free(pal);
-			pb += strlen(pb);
 		}
 	}
 	account_record(type, pjob, acct_buf);
@@ -2200,4 +2221,92 @@ writeit:
 	if (resc_used != NULL) {
 		free(resc_used);
 	}
+}
+
+/**
+ * @brief
+ * 	log an alter record for modified jobs
+ * 	plist contains the attributes and resources requested to be modified.
+ * 	We only modify those because the ATTR_l encode function will encode
+ * 	all resources, not just the ones we want.
+ * 
+ * @param[in] pjob - job to log records for.
+ * @param[in] plist - list of attributes and resources to log
+ * 
+ * @returns void 
+ */
+void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
+	svrattrl *svrattrl_list;
+	svrattrl *cur_svr;
+	pbs_list_head phead;
+	svrattrl *cur_plist;
+	char *per_attr_buf = NULL;
+	static char *entire_record = NULL;
+	static int entire_record_len = 0;
+	int error = 0;
+	int i;
+
+	if (entire_record == NULL) {
+		entire_record = malloc(1024 * sizeof(char));
+		if (entire_record == NULL)
+			return;
+		entire_record_len = 1024;
+	}
+	entire_record[0] = '\0';
+
+	CLEAR_HEAD(phead);
+	for (i = 0; i < JOB_ATR_LAST; i++) {
+		if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
+			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
+			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
+				if (strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
+					continue;
+				else {
+					for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
+						if (pjob->ji_wattr[i].at_type == ATR_TYPE_RESC) {
+							if (cur_plist->al_resc != NULL) {
+								if (strcmp(cur_plist->al_resc, cur_svr->al_resc) == 0) {
+									char *fmt;
+									if (strchr(cur_svr->al_value, ' ') == NULL)
+										fmt = "%s.%s=%s";
+									else
+										fmt = "%s.%s=\"%s\"";
+									pbs_asprintf(&per_attr_buf, fmt, cur_svr->al_name, cur_svr->al_resc, cur_svr->al_value);
+									break;
+								}
+							}
+						}
+						else {
+							char *fmt;
+							if (strchr(cur_svr->al_value, ' ') == NULL)
+								fmt = "%s=%s";
+							else
+								fmt = "%s=\"%s\"";
+							pbs_asprintf(&per_attr_buf, fmt, cur_svr->al_name, cur_svr->al_value);
+							break;
+						}
+					}
+				}
+				if (per_attr_buf == NULL && cur_plist->al_value[0] == '\0') { /* unset */
+					pbs_asprintf(&per_attr_buf, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
+				}
+
+				if (entire_record[0] != '\0')
+					if (pbs_strcat(&entire_record, &entire_record_len, " ") == NULL)
+						error = 1;
+
+				if (error == 0)
+					if (pbs_strcat(&entire_record, &entire_record_len, per_attr_buf) == NULL)
+						error = 1;
+
+				free(per_attr_buf);
+				per_attr_buf = NULL;
+				if (error)
+					return;
+			}
+			free_svrattrl(svrattrl_list);
+		}
+	}
+	if (entire_record[0] != '\0')
+		account_record(PBS_ACCT_ALTER, pjob, entire_record);
 }

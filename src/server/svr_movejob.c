@@ -105,6 +105,7 @@
 #include "server.h"
 #include "hook.h"
 #include "pbs_sched.h"
+#include "acct.h"
 
 
 #define	RETRY	3	/* number of times to retry network move */
@@ -327,6 +328,7 @@ local_move(job *jobp, struct batch_request *req)
 
 	if ((pbs_errno = svr_enquejob(jobp)) != 0)
 		return -1;		/* should never ever get here */
+	account_jobstr2(jobp, PBS_ACCT_QUEUE);
 
 	jobp->ji_lastdest = 0;	/* reset in case of another route */
 
