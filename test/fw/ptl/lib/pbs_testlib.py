@@ -14225,8 +14225,8 @@ class Job(ResourceResv):
         """
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        d = os.path.join(os.path.sep, 'home', self.username)
         if mom:
+            d = pwd.getpwnam(self.username).pw_dir
             DshUtils().run_copy(hosts=mom, src=script_path, dest=d)
             script_path = os.path.join(d, "eatcpu.py")
         DshUtils().chmod(path=script_path, mode=0o755)
