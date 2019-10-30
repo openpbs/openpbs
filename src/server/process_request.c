@@ -422,10 +422,9 @@ process_request(int sfds)
 		strcpy(request->rq_user, conn->cn_username);
 		strcpy(request->rq_host, conn->cn_hostname);
 
-		(void)sprintf(log_buffer, msg_auth_request, request->rq_type,
-			request->rq_user, request->rq_host, conn->cn_physhost, sfds);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			"", log_buffer);
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			"", msg_auth_request, request->rq_type, request->rq_user,
+			request->rq_host, conn->cn_physhost, sfds);
 
 		if (server.sv_attr[(int)SRV_ATR_acl_krb_realm_enable].at_val.at_long) {
 			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {

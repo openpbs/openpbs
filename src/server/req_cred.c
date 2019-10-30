@@ -67,12 +67,12 @@ pbs_list_head svr_creds_cache;	/* all credentials cached and available to send *
 extern long svr_cred_renew_cache_period;
 
 struct cred_cache {
-	pbs_list_link	cr_link;
-	char	  credid[PBS_MAXUSER+1];
-	long	  validity;
-	int	  type;
-	char	  *data; /* credentials in base64 */
-	size_t	  size;
+	pbs_list_link cr_link;
+	char credid[PBS_MAXUSER + 1];
+	long validity;
+	int type;
+	char *data; /* credentials in base64 */
+	size_t size;
 };
 typedef struct cred_cache cred_cache;
 
@@ -127,28 +127,25 @@ get_cached_cred(job  *pjob)
 	/* valid credentials not cached, get new one */
 
 	if ((server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_flags & ATR_VFLAG_SET) == 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "%s is not set", ATTR_cred_renew_tool);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ERR, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, "%s is not set", ATTR_cred_renew_tool);
 		return NULL;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE, "using %s '%s' to acquire credentials for user: %s",
+	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+		LOG_DEBUG, msg_daemonname, "using %s '%s' to acquire credentials for user: %s",
 		ATTR_cred_renew_tool,
 		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
 		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_DEBUG, msg_daemonname, log_buffer);
 
 	snprintf(cmd, MAXPATHLEN + PBS_MAXUSER + 2, "%s %s", /* +1 for space and +1 for EOL */
 		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
 		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 
 	if ((fp = popen(cmd, "r")) == NULL) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "%s failed to open pipe, command: '%s'",
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, "%s failed to open pipe, command: '%s'",
 			ATTR_cred_renew_tool, cmd);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ERR, msg_daemonname, log_buffer);
 		return NULL;
 	}
 
@@ -166,19 +163,17 @@ get_cached_cred(job  *pjob)
 	}
 
 	if ((ret = pclose(fp))) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "%s command '%s' failed, exitcode: %d",
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, "%s command '%s' failed, exitcode: %d",
 			ATTR_cred_renew_tool, cmd, WEXITSTATUS(ret));
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ERR, msg_daemonname, log_buffer);
 		return NULL;
 	}
 
 	if (buf == NULL || strlen(buf) <= 1 || validity < time_now) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "%s command '%s' returned invalid credentials for %s",
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, "%s command '%s' returned invalid credentials for %s",
 			ATTR_cred_renew_tool, cmd,
 			pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ERR, msg_daemonname, log_buffer);
 
 		return NULL;
 	}
@@ -277,9 +272,9 @@ post_cred(struct work_task *pwt)
 	if (pjob != NULL) {
 
 		if (code != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "sending credential to mom failed, returned code: %d", code);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
+				LOG_INFO, pjob->ji_qs.ji_jobid,
+				"sending credential to mom failed, returned code: %d", code);
 		} else {
 			/* send_cred was successful  - update validity*/
 
@@ -292,9 +287,8 @@ post_cred(struct work_task *pwt)
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
 				"sending credential to mom succeed");
 		}
-	} else {
+	} else
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_INFO, __func__, "failed, job unknown");
-	}
 
 	release_req(pwt);	/* close connection and release request */
 }

@@ -100,7 +100,12 @@ tpp_gss_logdebug(const char *func_name, const char* msg)
 
 /**
  * @brief
- * 	-tpp_gss_set_extra_host - allocates the hostname to gss_extra structure
+ * 	-tpp_gss_set_extra_host - allocates the hostname to gss_extra structure.
+ *	The hostname is supposed to be the hostname of the GSS server.
+ *	For GSS client, the parameter 'hostname' conveys the GSS server hostname
+ *	and it is used. For GSS server, the parameter 'hostname' is not used
+ *	because it is set to the GSS client hostname.
+ *	The server hostname is retrieved by gethostname() in this case.
  *
  * @param[in] extra - gss extra structure as void*
  * @param[in] hostname - hostname

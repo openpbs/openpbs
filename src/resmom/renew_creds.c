@@ -87,8 +87,8 @@
 #include <com_err.h>
 
 typedef struct eexec_job_info_t {
-	time_t      endtime;        /* tickets expiration time */
-	krb5_creds  *creds;          /* User's TGT */
+	time_t endtime;             /* tickets expiration time */
+	krb5_creds *creds;          /* User's TGT */
 	krb5_ccache ccache;         /* User's credentials cache */
 	uid_t job_uid;
 	char *username;
@@ -108,13 +108,13 @@ struct krb_holder {
 pbs_list_head	svr_allcreds;	/* all credentials received from server */
 
 struct svrcred_data {
-	pbs_list_link	cr_link;
-	char		*cr_jobid;
-	char		*cr_credid;
-	int		cr_type;
-	krb5_data	*cr_data;
-	char		*cr_data_base64; /* used for sending to sis moms*/
-	long		cr_validity;
+	pbs_list_link cr_link;
+	char *cr_jobid;
+	char *cr_credid;
+	int cr_type;
+	krb5_data *cr_data;
+	char *cr_data_base64; /* used for sending to sis moms*/
+	long cr_validity;
 };
 typedef struct svrcred_data svrcred_data;
 
@@ -605,12 +605,12 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 
 	if (ptask == NULL) {
 		len = snprintf(NULL, 0, "FILE:/tmp/krb5cc_pbsjob_%s", pjob->ji_qs.ji_jobid);
-		ccname = (char*)(malloc(len + 1));
+		ccname = (char *)(malloc(len + 1));
 		if (ccname != NULL)
 			snprintf(ccname,len + 1,"FILE:/tmp/krb5cc_pbsjob_%s", pjob->ji_qs.ji_jobid);
 	} else {
 		len = snprintf(NULL, 0, "FILE:/tmp/krb5cc_pbsjob_%s_%ld", pjob->ji_qs.ji_jobid, (long)ptask->ti_qs.ti_task);
-		ccname = (char*)(malloc(len + 1));
+		ccname = (char *)(malloc(len + 1));
 		if (ccname != NULL)
 			snprintf(ccname, len + 1, "FILE:/tmp/krb5cc_pbsjob_%s_%ld", pjob->ji_qs.ji_jobid, (long)ptask->ti_qs.ti_task);
 	}
@@ -722,7 +722,7 @@ get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_
 	size_t len;
 	char *ccname;
 	len = snprintf(NULL, 0, "FILE:/tmp/krb5cc_pbsjob_%s", jobid);
-	ccname = (char*)(malloc(len + 1));
+	ccname = (char *)(malloc(len + 1));
 	if (ccname != NULL)
 		snprintf(ccname, len + 1, "FILE:/tmp/krb5cc_pbsjob_%s", jobid);
 
@@ -1082,14 +1082,13 @@ send_cred_sisters(job *pjob)
 
 		i = send_sisters(pjob, IM_CRED, im_cred_send);
 
-		if (i != pjob->ji_numnodes - 1) {
-			/* If send_sisters() fails, the job is probably doomed anyway.
-			 * Should we resend credentials on fail? */
-
+		if (i != pjob->ji_numnodes - 1)
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				pjob->ji_qs.ji_jobid,
 				"could not send credentials to sisters");
-		}
+			/* If send_sisters() fails, the job is probably doomed anyway.
+			 * Should we resend credentials on fail?
+			 * If yes, here is the right place*/
 	}
 }
 
@@ -1106,9 +1105,9 @@ int32_t
 getpag()
 {
 	gid_t *grplist = NULL;
-	int    i;
-	int    numsup;
-	static int   maxgroups = 0;
+	int i;
+	int numsup;
+	static int maxgroups = 0;
 	int32_t pag = 0;
 
 	if (k_hasafs() == 0)

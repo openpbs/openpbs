@@ -5072,12 +5072,12 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 void
 req_cred(struct batch_request *preq) /* ptr to the decoded request */
 {
-	unsigned char	out_data[CRED_DATA_SIZE];
-	ssize_t		out_len = 0;
-	char		buf[LOG_BUF_SIZE];
-	krb5_data	*data;
-	char		*data_base64 = NULL;
-	job		*pjob;
+	unsigned char out_data[CRED_DATA_SIZE];
+	ssize_t out_len = 0;
+	char buf[LOG_BUF_SIZE];
+	krb5_data *data;
+	char *data_base64 = NULL;
+	job *pjob;
 
 	if (decode_block_base64((unsigned char *)preq->rq_ind.rq_cred.rq_cred_data, preq->rq_ind.rq_cred.rq_cred_size, out_data, &out_len, buf, LOG_BUF_SIZE) != 0) {
 		log_err(errno, __func__, buf);

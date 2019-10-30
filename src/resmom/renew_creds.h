@@ -57,13 +57,13 @@
 struct krb_holder;
 
 /* cred actions */
-#define CRED_SINGLESHOT	    0
-#define CRED_RENEWAL	    1
-#define CRED_SETENV	    2
-#define CRED_CLOSE	    3
-#define CRED_DESTROY	    4
+#define CRED_SINGLESHOT	0
+#define CRED_RENEWAL		1
+#define CRED_SETENV		2
+#define CRED_CLOSE		3
+#define CRED_DESTROY		4
 
-#define	CRED_DATA_SIZE	4096
+#define CRED_DATA_SIZE 4096
 
 enum PBS_KRB5_ERRORS {
 	PBS_KRB5_OK = 0,

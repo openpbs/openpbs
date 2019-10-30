@@ -1055,8 +1055,14 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 	unsigned int data_len;
 	char *data;
 
-	if ((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(sock)) == NULL){
+	if ((gss_extra = (pbs_gss_extra_t *)tcp_get_extra(sock)) == NULL) {
 		gss_extra = pbs_gss_alloc_gss_extra();
+		if (gss_extra == NULL) {
+			snprintf(ebuf, ebufsz, "gss_extra allocation failed");
+			pbs_errno = PBSE_SYSTEM;
+
+			return PBS_GSS_ERR_INTERNAL;
+		}
 		tcp_set_extra(sock, gss_extra);
 	}
 
@@ -1156,9 +1162,11 @@ tcp_gss_client_authenticate(int sock, char *hostname, char *ebuf, int ebufsz)
 
 			data_len = ntohl(*((int *) data));
 
-			data = realloc(data, data_len);
+			free(data);
+
+			data = malloc(data_len);
 			if (data == NULL) {
-				snprintf(ebuf, ebufsz, "realloc failure");
+				snprintf(ebuf, ebufsz, "malloc failure");
 				pbs_errno = PBSE_SYSTEM;
 
 				return PBS_GSS_ERR_INTERNAL;

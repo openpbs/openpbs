@@ -357,11 +357,10 @@ pbs_gss_client_establish_context(char *service_name, gss_cred_id_t creds, gss_OI
 	recv_tok.value = (void *)data_in;
 	recv_tok.length = len_in;
 
-	if (recv_tok.length > 0) {
+	if (recv_tok.length > 0)
 		token_ptr = &recv_tok;
-	} else {
+	else
 		token_ptr = GSS_C_NO_BUFFER;
-	}
 
 	init_sec_maj_stat = gss_init_sec_context(&init_sec_min_stat, creds ? creds : GSS_C_NO_CREDENTIAL, gss_context, target_name, oid, gss_flags, 0, NULL, token_ptr, NULL, &send_tok, ret_flags, NULL);
 

@@ -4886,10 +4886,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	}
 
 	if (cred_by_job(ptask->ti_job, cred_action) != PBS_KRB5_OK) {
-		sprintf(log_buffer, "failed to set credentials for task %8.8X",
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid,
+			"failed to set credentials for task %8.8X",
 			ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
-			pjob->ji_qs.ji_jobid, log_buffer);
 	}
 #endif
 

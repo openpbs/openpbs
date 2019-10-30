@@ -105,8 +105,8 @@ gss_set_conn(int s)
 		strncpy(conn->cn_hostname, credid + i + 1, length - i -1);
 		conn->cn_hostname[length - i -1] = '\0';
 
-		snprintf(log_buffer, LOG_BUF_SIZE, "Entered encrypted communication with %s@%s", conn->cn_username, conn->cn_hostname);
-		log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
+		log_eventf(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			"Entered encrypted communication with %s@%s", conn->cn_username, conn->cn_hostname);
 
 		gss_extra->establishing = 0; /* establishing context is finished - don't do this next time */
 	}

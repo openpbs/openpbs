@@ -95,13 +95,13 @@ svr_renew_job_cred(struct work_task *pwt)
 
 		rc = send_cred(pjob);
 		if (rc != 0) {
-			sprintf(log_buffer, "svr_renew_job_cred %s renew failed, send_cred returned: %d", pjob->ji_qs.ji_jobid, rc);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"svr_renew_job_cred %s renew failed, send_cred returned: %d", pjob->ji_qs.ji_jobid, rc);
 		} else {
-			sprintf(log_buffer, "svr_renew_job_cred %s renew was successful", pjob->ji_qs.ji_jobid);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"svr_renew_job_cred %s renew was successful", pjob->ji_qs.ji_jobid);
 		}
 	} /* else job does not exists - job probably finished */
 }
@@ -207,11 +207,11 @@ set_cred_renew_period(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < SVR_RENEW_CREDS_TM)) {
-			sprintf(log_buffer, "%s value to low, using: %ld",
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"%s value to low, using: %ld",
 				ATTR_cred_renew_period,
 				svr_cred_renew_period);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
 			return PBSE_BADATVAL;
 		}
 
@@ -219,19 +219,19 @@ set_cred_renew_period(attribute *pattr, void *pobject, int actmode)
 
 		if ((svr_cred_renew_period > svr_cred_renew_cache_period)) {
 			/* warning */
-			sprintf(log_buffer, "%s: %ld should be lower than %s: %ld",
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"%s: %ld should be lower than %s: %ld",
 				ATTR_cred_renew_period,
 				pattr->at_val.at_long,
 				ATTR_cred_renew_cache_period,
 				svr_cred_renew_cache_period);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
 		}
 
-		sprintf(log_buffer, "svr_cred_renew_period set to val %ld",
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname,
+			"svr_cred_renew_period set to val %ld",
 			svr_cred_renew_period);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
 	}
 	return PBSE_NONE;
 }
@@ -254,11 +254,11 @@ set_cred_renew_cache_period(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < SVR_RENEW_CREDS_TM)) {
-			sprintf(log_buffer, "%s value to low, using: %ld",
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"%s value to low, using: %ld",
 				ATTR_cred_renew_cache_period,
 				svr_cred_renew_cache_period);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
 			return PBSE_BADATVAL;
 		}
 
@@ -266,19 +266,19 @@ set_cred_renew_cache_period(attribute *pattr, void *pobject, int actmode)
 
 		if ((svr_cred_renew_cache_period < svr_cred_renew_period)) {
 			/* warning */
-			sprintf(log_buffer, "%s: %ld should be greater than %s: %ld",
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname,
+				"%s: %ld should be greater than %s: %ld",
 				ATTR_cred_renew_cache_period,
 				pattr->at_val.at_long,
 				ATTR_cred_renew_period,
 				svr_cred_renew_period);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_NOTICE, msg_daemonname, log_buffer);
 		}
 
-		sprintf(log_buffer, "svr_cred_renew_cache_period set to val %ld",
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname,
+			"svr_cred_renew_cache_period set to val %ld",
 			svr_cred_renew_cache_period);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
 	}
 	return PBSE_NONE;
 }

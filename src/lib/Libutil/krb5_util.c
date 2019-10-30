@@ -111,10 +111,8 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	}
 
 	ret = krb5_cc_resolve(context, PBS_KRB5_CLIENT_CCNAME, &ccache);
-	if (ret) {
+	if (ret) /* for ret = true it is not a real error, we will just create new ccache */
 		snprintf(err_buf, err_buf_size, "Couldn't resolve ccache name (%s) New ccache will be created.", krb5_get_error_message(context, ret));
-		/* not an error, we will create new ccache */
-	}
 
 	ret = gethostname(hostname, PBS_MAXHOSTNAME + 1);
 	if (ret) {
@@ -142,12 +140,10 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	}
 
 	ret = krb5_cc_retrieve_cred(context, ccache, 0, mcreds, creds);
-	if (ret) {
+	if (ret) /* for ret = true it is not a real error, we will just create new ccache */
 		snprintf(err_buf, err_buf_size, "Couldn't retrieve credentials from cache (%s) New ccache will be created.", krb5_get_error_message(context, ret));
-		/* not an error, we will create new ccache */
-	} else {
+	else
 		endtime = creds->times.endtime;
-	}
 
 	/* if we have valid credentials in ccache goto out
 	 * if the credentials are about to expire soon (60 * 30 = 30 minutes)
