@@ -145,7 +145,7 @@ typedef	int		pid_t;
 #define SIZEOF_UNSIGNED_SHORT 2
 
 /* PBS specific: The pathname of the temporary directory for mom */
-#define TMP_DIR "C:\\WINNT\\TEMP"
+#define TMP_DIR "C:\\Windows\\Temp"
 
 /* Let's define PBS_PASS_CREDENTIALS but make sure openssl AES include and lib  */
 /* files are available in \Program Files\Openssl\{include,lib }		*/

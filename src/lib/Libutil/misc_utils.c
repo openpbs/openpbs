@@ -85,6 +85,8 @@
 #include <grp.h>
 #include <time.h>
 #include <sys/time.h>
+#else
+#include <sddl.h>
 #endif
 #include "pbs_error.h"
 
@@ -1835,9 +1837,21 @@ create_query_file(void)
 {
 	FILE *f;
 	char filename[MAXPATHLEN + 1];
-	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	uid_t usid = getuid();
+#ifdef WIN32
+	LPSTR win_sid = NULL;
+	if (!ConvertSidToStringSid(usid, &win_sid)) {
+		fprintf(stderr, "qstat: failed to convert SID to string with error=%d\n", GetLastError());
+		return;
+	}
+	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
+	LocalFree(win_sid);
+#else
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, usid);
+#endif /* WIN32 */
 	f = fopen(filename, "w");
-	fclose(f);
+	if (f != NULL)
+		fclose(f);
 }
 
 /**
@@ -1858,19 +1872,28 @@ delay_query(void)
 #else
 	struct stat buf;
 #endif
-	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, getuid());
+	
+	uid_t usid = getuid();
 #ifdef WIN32
+	LPSTR win_sid=NULL;
+	if (!ConvertSidToStringSid(usid, &win_sid)) {
+		fprintf(stderr, "qstat: failed to convert SID to string with error=%d\n", GetLastError());
+		return;
+	}
+	snprintf(filename, sizeof(filename), "%s\\.pbs_last_query_%s", TMP_DIR, win_sid);
 	if(_stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			Sleep(200);
 		}
 	}
+	LocalFree(win_sid);
 #else
+	snprintf(filename, sizeof(filename), "%s/.pbs_last_query_%d", TMP_DIR, usid);
 	if(stat(filename, &buf) == 0) {
 		if(((time(NULL)*1000) - (buf.st_mtime * 1000)) < 10) {
 			usleep(200000);
 		}
 	}
-#endif
+#endif /* WIN32 */
 	atexit(create_query_file);
 }
