@@ -551,6 +551,8 @@ class SmokeTest(PBSTestSuite):
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
         j.create_script('sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
+        jobs = self.server.status(JOB, id=jid)
+        self.logger.info("jobs status is %s" % jobs)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.logger.info("Testing script with extension")
         j = Job(TEST_USER)
