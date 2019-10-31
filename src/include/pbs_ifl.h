@@ -62,7 +62,7 @@ extern "C" {
 #define ATTR_a "Execution_Time"
 #define ATTR_c "Checkpoint"
 #define ATTR_e "Error_Path"
-#define ATTR_g	"group_list"
+#define ATTR_g "group_list"
 #define ATTR_h "Hold_Types"
 #define ATTR_j "Join_Path"
 #define ATTR_J "array_indices_submitted"

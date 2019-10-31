@@ -2236,7 +2236,6 @@ writeit:
  * @returns void 
  */
 void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
-	svrattrl *svrattrl_list;
 	svrattrl *cur_svr;
 	pbs_list_head phead;
 	svrattrl *cur_plist;
@@ -2257,6 +2256,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	CLEAR_HEAD(phead);
 	for (i = 0; i < JOB_ATR_LAST; i++) {
 		if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
+			svrattrl *svrattrl_list = {0};
 			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
 				if (strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)

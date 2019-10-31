@@ -221,7 +221,7 @@ pbs.event().accept()
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        j1 = Job()
+        j1 = Job(TEST_USER1)
         jid1 = self.server.submit(j1)
 
         # Basic test for existance of record for Resource_List
@@ -247,6 +247,10 @@ pbs.event().accept()
         # Check for non-resource attribute
         self.server.alterjob(jid1, {ATTR_p: 150})
         self.server.accounting_match(';a;' + jid1 + ';Priority=150')
+
+        self.server.alterjob(jid1, {ATTR_g: str(TSTGRP1)})
+        self.server.accounting_match(';a;' + jid1 +
+                                     ';group_list=' + str(TSTGRP1))
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
