@@ -41,7 +41,9 @@ AC_DEFUN([_KRB5_CONFIG_PATH],
   AC_ARG_VAR([PATH_KRB5_CONFIG], [Path to krb5-config.])
   AC_PATH_PROG([PATH_KRB5_CONFIG], [krb5-config], [], [${PATH}:/usr/kerberos/bin])
   AS_IF([test -x "$PATH_KRB5_CONFIG"],
-    [ ],
+    [
+    AC_MSG_NOTICE([krb5-config found])
+    ],
     [
     AC_MSG_ERROR([krb5-config not found at provided/default path])
     ])
