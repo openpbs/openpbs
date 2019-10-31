@@ -1237,7 +1237,7 @@ main(int argc, char *argv[])
 	sigaction(SIGHUP, &act, NULL);
 
 #ifdef PBS_UNDOLR_ENABLED	
-	extern void  catch_sigusr1(int);
+	extern void catch_sigusr1(int);
 	act.sa_handler = catch_sigusr1;
 	sigaction(SIGUSR1, &act, NULL);
 #endif

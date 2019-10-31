@@ -57,9 +57,9 @@
 #include "log.h"
 #include "undolr.h"
 
-int sigusr1_flag = 0;
-static int recording = 0;
-static char recording_file [MAXPATHLEN + 1] = {0};
+int sigusr1_flag;
+static int recording;
+static char recording_file [MAXPATHLEN + 1];
 
 /**
  * @brief
@@ -73,9 +73,8 @@ static char recording_file [MAXPATHLEN + 1] = {0};
 void
 catch_sigusr1(int sig)
 {
-    /*TODO: remove below logs */
     sprintf(log_buffer, "%s: caught signal %d", __func__, sig);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 	sigusr1_flag = 1;
 }
@@ -86,20 +85,19 @@ catch_sigusr1(int sig)
  *	based on the date and time: <deamon_name>_yyyymmddHHMM.undo
  *
  * @param[in] fpath - buffer to hold the live recording file path
- * @param[in] maxlen - max size of buffer
  *
  * @return  0 - Success
  *          1 - Failure
  *
  */
-static void mk_recording_path(char * fpath, int maxlen) 
+static void mk_recording_path(char * fpath) 
 {
 	struct tm ltm;
 	struct tm *ptm;
 	time_t time_now;
 
 	if (pbs_loadconf(1) == 0) {
-		sprintf(log_buffer, "%s: Could not load pbs configuration", __func__);
+		sprintf(log_buffer, "%s: Could not load pbs configuration, will use it's default value", __func__);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, log_buffer);
 	}
@@ -108,14 +106,14 @@ static void mk_recording_path(char * fpath, int maxlen)
 	ptm = localtime_r(&time_now, &ltm);
 
 	if (pbs_conf.pbs_lr_save_path)
-		(void)snprintf(fpath, maxlen,
+		(void)snprintf(fpath, MAXPATHLEN,
 			"%s/%s_%04d%02d%02d%02d%02d.undo",
-			pbs_conf.pbs_lr_save_path, msg_daemonname, ptm->tm_year+1900, ptm->tm_mon+1,
+			pbs_conf.pbs_lr_save_path, msg_daemonname, ptm->tm_year + 1900, ptm->tm_mon + 1,
 			ptm->tm_mday, ptm->tm_hour,ptm->tm_min);
 	else /* default path */
-		(void)snprintf(fpath, maxlen,
+		(void)snprintf(fpath, MAXPATHLEN,
 			"%s/%s/%s_%04d%02d%02d%02d%02d.undo",
-			pbs_conf.pbs_home_path, "spool", msg_daemonname, ptm->tm_year+1900, ptm->tm_mon+1,
+			pbs_conf.pbs_home_path, "spool", msg_daemonname, ptm->tm_year + 1900, ptm->tm_mon + 1,
 			ptm->tm_mday, ptm->tm_hour,ptm->tm_min);
 }
 
@@ -127,13 +125,12 @@ static void mk_recording_path(char * fpath, int maxlen)
  */
 void undolr()
 {
-		int e = 0;
-		undolr_error_t  err = 0;
-		undolr_recording_context_t lr_ctx;
+	int e = 0;
+	undolr_error_t  err = 0;
+	undolr_recording_context_t lr_ctx;
 
-	if (!recording)
-	{
-		mk_recording_path(recording_file, MAXPATHLEN);
+	if (!recording) {
+		mk_recording_path(recording_file);
 		sprintf(log_buffer,
 				"Undo live recording started, will save to %s", recording_file);
 		log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, 
@@ -144,10 +141,9 @@ void undolr()
 		 * Attaches Live Recorder to the process, and starts recording it.
 		 */
 		e = undolr_start(&err);
-		if (e)
-		{
+		if (e) {
 			sprintf(log_buffer,
-				"undolr_recording_start() failed: error=%i errno=%i\n", e, errno);
+				"Unable to start undo recording, error=%i errno=%i\n", e, errno);
 				log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 				LOG_ALERT, msg_daemonname, log_buffer);
 			return;
@@ -155,8 +151,7 @@ void undolr()
 
 		/* Undo API call to save recording on termination. */
 		e = undolr_save_on_termination(recording_file);
-		if (e)
-		{
+		if (e) {
 			sprintf(log_buffer,
 				"undolr_save_on_termination() failed: error=%i errno=%i\n", e, errno);
 				log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
@@ -164,15 +159,13 @@ void undolr()
 			return;
 		}
 		recording = 1;
-	} else 
-	{
+	} else {
 		/**
 		 * Undo API call to stop recording.
 		 * Detaches Live Recorder from the process.
 		 */
-		e = undolr_stop (&lr_ctx);
-		if (e)
-		{
+		e = undolr_stop(&lr_ctx);
+		if (e) {
 			sprintf(log_buffer, "undolr_stop() failed: errno=%i\n", errno);
 			log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 				LOG_ERR, msg_daemonname, log_buffer);
@@ -185,8 +178,7 @@ void undolr()
 
 		/* Undo API call to save recording. */
 		e = undolr_save_async(lr_ctx, recording_file);
-		if (e)
-		{
+		if (e) {
 			sprintf(log_buffer,
 				"undolr_save_async() failed: errno=%i\n", errno);
 			log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
@@ -201,8 +193,7 @@ void undolr()
 		 * Recording state that is currently held in memory is freed.
 		 */
 		e = undolr_discard(lr_ctx);
-		if (e)
-		{
+		if (e) {
 			sprintf(log_buffer,
 				"undolr_dicard() failed: errno=%i\n", errno);
 			log_event(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,

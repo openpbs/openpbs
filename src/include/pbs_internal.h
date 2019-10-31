@@ -238,7 +238,7 @@ struct pbs_config
 	long  pbs_comm_log_events;      /* log_events for pbs_comm process, default 0 */
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
-	char *pbs_lr_save_path;	/* path to store undo live recordings */
+	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */

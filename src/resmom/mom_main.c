@@ -319,8 +319,8 @@ int             mom_should_quiesce = 0;
 #endif /* localmod 153 */
 
 #ifdef PBS_UNDOLR_ENABLED
-extern int 	sigusr1_flag;
-extern void  catch_sigusr1(int);
+extern int sigusr1_flag;
+extern void catch_sigusr1(int);
 extern void undolr();
 #endif
 

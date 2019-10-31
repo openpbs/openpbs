@@ -118,7 +118,7 @@
 #include "buckets.h"
 
 #ifdef PBS_UNDOLR_ENABLED
-extern int 	sigusr1_flag;
+extern int sigusr1_flag;
 extern void undolr();
 #endif
 

@@ -564,7 +564,9 @@ __pbs_loadconf(int reload)
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
 				free(pbs_conf.pbs_lr_save_path);
-				pbs_conf.pbs_lr_save_path = strdup(conf_value);
+				if ((pbs_conf.pbs_lr_save_path = strdup(conf_value)) == NULL) {
+					goto err;
+				}
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
