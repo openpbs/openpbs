@@ -2904,6 +2904,15 @@ job_no_args:
 					p_server = NULL;
 				}
 
+				if (p_server == NULL && pbs_errno != PBSE_NONE) {
+					any_failed = pbs_errno;
+					if ((errmsg = pbs_geterrmsg(connect)) != NULL)
+						fprintf(stderr, "qstat: %s\n", errmsg);
+					else
+						fprintf(stderr, "qstat: Error %d\n", pbs_errno);
+					break;
+				}
+
 				/* check the server attribute max_job_sequence_id value */
 				if (p_server != NULL) {
 					int check_seqid_len; /* for dynamic qstat width */
@@ -3146,6 +3155,9 @@ svr_no_args:
 				break;
 
 		} /* switch */
+
+		if (any_failed == PBSE_PERM)
+			break;
 	}
 	if(output_format == FORMAT_JSON) {
 		if (add_json_node(JSON_OBJECT_END, JSON_NULL, JSON_NOVALUE, NULL, NULL) == NULL)

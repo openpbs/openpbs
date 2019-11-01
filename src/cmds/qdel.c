@@ -83,6 +83,7 @@ char **envp;
 	int num_deleted = 0;
 	struct attrl *attr;
 	struct batch_status *ss = NULL;
+	char *errmsg;
 
 #define MAX_TIME_DELAY_LEN 32
 	char warg[MAX_TIME_DELAY_LEN+1];
@@ -186,6 +187,15 @@ cnt:
 		/* retrieve default: suppress_email from server: default_qdel_arguments */
 		if (dfltmailflg == FALSE) {
 			ss = pbs_statserver(connect, NULL, NULL);
+			if (ss == NULL && pbs_errno != PBSE_NONE) {
+				any_failed = pbs_errno;
+				if ((errmsg = pbs_geterrmsg(connect)) != NULL)
+					fprintf(stderr, "qdel: %s\n", errmsg);
+				else
+					fprintf(stderr, "qdel: Error %d\n", pbs_errno);
+				break;
+			}
+
 			while (ss != NULL && dfltmailflg != TRUE) {
 				attr = ss->attribs;
 				while (attr != NULL) {
