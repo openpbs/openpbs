@@ -43,43 +43,46 @@ AC_DEFUN([PBS_AC_WITH_PMIX],
       [Specify the directory where the pmix library is installed.]
     )
   )
-  AS_IF([test "x$with_pmix" != "xyes"],
-    pmix_dir=["$with_pmix"],
-    pmix_dir=["/usr"]
-  )
   AC_MSG_CHECKING([for PMIx])
-  AS_IF([test -r "$pmix_dir/include/pmix_version.h"],
-    [pmix_version_h="$pmix_dir/include/pmix_version.h"],
-    AC_MSG_ERROR([PMIx headers not found.])
-  )
-  AC_MSG_RESULT([$pmix_dir])
-  AC_MSG_CHECKING([PMIx version])
-  pmix_version_major=`${SED} -n 's/^#define PMIX_VERSION_MAJOR \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
-  AS_IF([test "x$pmix_version_major" = "x"],
-    AC_MSG_ERROR([Could not determine PMIx major version.])
-  )
-  pmix_version_minor=`${SED} -n 's/^#define PMIX_VERSION_MINOR \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
-  AS_IF([test "x$pmix_version_minor" = "x"],
-    AC_MSG_ERROR([Could not determine PMIx minor version.])
-  )
-  pmix_version_release=`${SED} -n 's/^#define PMIX_VERSION_RELEASE \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
-  AS_IF([test "x$pmix_version_release" = "x"],
-    AC_MSG_ERROR([Could not determine PMIx release version.])
-  )
-  pmix_version="$pmix_version_major.$pmix_version_minor.$pmix_version_release"
-  AC_MSG_RESULT([$pmix_version])
-  AS_IF([test "$pmix_dir" = "/usr"],
-    [pmix_lib="-lpmix"; pmix_inc=""],
-    pmix_inc=""
-    AS_IF([test -r "$pmix_dir/lib/libpmix.so"],
-      [pmix_lib="-L$pmix_dir/lib -lpmix"],
-      AS_IF([test -r "$pmix_dir/lib64/libpmix.so"],
-        [pmix_lib="-L$pmix_dir/lib64 -lpmix"],
-        AC_MSG_ERROR([PMIx library not found.])
+  AS_IF([test "x$with_pmix" = "xno" -o "x$with_pmix" = "x"],
+    AC_MSG_RESULT([no]),
+    AS_IF([test "x$with_pmix" = "xyes"],
+      pmix_dir=["/usr"],
+      pmix_dir=["$with_pmix"]
+    )
+    AS_IF([test -r "$pmix_dir/include/pmix_version.h"],
+      [pmix_version_h="$pmix_dir/include/pmix_version.h"],
+      AC_MSG_ERROR([PMIx headers not found.])
+    )
+    AC_MSG_RESULT([$pmix_dir])
+    AC_MSG_CHECKING([PMIx version])
+    pmix_version_major=`${SED} -n 's/^#define PMIX_VERSION_MAJOR \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
+    AS_IF([test "x$pmix_version_major" = "x"],
+      AC_MSG_ERROR([Could not determine PMIx major version.])
+    )
+    pmix_version_minor=`${SED} -n 's/^#define PMIX_VERSION_MINOR \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
+    AS_IF([test "x$pmix_version_minor" = "x"],
+      AC_MSG_ERROR([Could not determine PMIx minor version.])
+    )
+    pmix_version_release=`${SED} -n 's/^#define PMIX_VERSION_RELEASE \([[0-9]]*\)L/\1/p' "$pmix_version_h"`
+    AS_IF([test "x$pmix_version_release" = "x"],
+      AC_MSG_ERROR([Could not determine PMIx release version.])
+    )
+    pmix_version="$pmix_version_major.$pmix_version_minor.$pmix_version_release"
+    AC_MSG_RESULT([$pmix_version])
+    AS_IF([test "$pmix_dir" = "/usr"],
+      [pmix_lib="-lpmix"; pmix_inc=""],
+      pmix_inc=""
+      AS_IF([test -r "$pmix_dir/lib/libpmix.so"],
+        [pmix_lib="-L$pmix_dir/lib -lpmix"],
+        AS_IF([test -r "$pmix_dir/lib64/libpmix.so"],
+          [pmix_lib="-L$pmix_dir/lib64 -lpmix"],
+          AC_MSG_ERROR([PMIx library not found.])
+        )
       )
     )
+    AC_SUBST(pmix_inc)
+    AC_SUBST(pmix_lib)
+    AC_DEFINE([PMIX], [], [Defined when PMIx is available])
   )
-  AC_SUBST(pmix_inc)
-  AC_SUBST(pmix_lib)
-  AC_DEFINE([PMIX], [], [Defined when PMIx is available])
 ])
