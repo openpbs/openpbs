@@ -2261,13 +2261,13 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
 				int j;
-				int found = 0;
+				int ignore = 0;
 				for (j = 0; do_not_emit_alter[j] != NULL; j++)
 					if (strcmp(do_not_emit_alter[j], cur_plist->al_name) == 0) {
-						found = 1;
+						ignore = 1;
 						break;
 				}
-				if (found || strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
+				if (ignore || strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
 					continue;
 				else {
 					for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
@@ -2294,7 +2294,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 							break;
 						}
 					}
-						}
+				}
 				if (per_attr_buf == NULL && cur_plist->al_value[0] == '\0') { /* unset */
 					pbs_asprintf(&per_attr_buf, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
 				}
