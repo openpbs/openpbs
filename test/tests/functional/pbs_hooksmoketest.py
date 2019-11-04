@@ -447,32 +447,6 @@ print_attribs(j)"""
             self.server.log_match(i, starttime=now)
             self.logger.info("Got expected logs in server as %s", i)
 
-    def test_hook_config_os_env(self):
-        """
-        Create a hook, import a config file for the hook
-        and test the os.environ call in the hook
-        """
-        hook_body = """
-import pbs
-import os
-pbs.logmsg(pbs.LOG_DEBUG, "Printing os.environ %s" % os.environ)
-"""
-        cfg = """
-{'hook_config':'testhook'}
-"""
-        a = {'event': 'queuejob', 'enabled': 'True'}
-        self.server.create_import_hook(self.hook_name, a, hook_body)
-        fn = self.du.create_temp_file(body=cfg)
-        a = {'content-type': 'application/x-config',
-             'content-encoding': 'default',
-             'input-file': fn}
-        self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        a = {'Resource_List.select': '1:ncpus=1'}
-        j = Job(TEST_USER, a)
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.log_match("Printing os.environ", self.server.shortname)
-
     def tearDown(self):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
