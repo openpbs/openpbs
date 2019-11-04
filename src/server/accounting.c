@@ -79,20 +79,21 @@
 
 /* Local Data */
 
-static FILE	    *acctfile;		/* open stream for log file */
-static volatile int  acct_opened = 0;
-static int	     acct_opened_day;
-static int	     acct_auto_switch = 0;
-static char	    *acct_buf = 0;
-static int	     acct_bufsize = PBS_ACCT_MAX_RCD;
+static FILE *acctfile;		/* open stream for log file */
+static volatile int acct_opened = 0;
+static int acct_opened_day;
+static int acct_auto_switch = 0;
+static char *acct_buf = 0;
+static int acct_bufsize = PBS_ACCT_MAX_RCD;
+static const char *do_not_emit_alter[] = {ATTR_estimated, ATTR_used, NULL};
 
 /* Global Data */
 
-extern char	    *acctlog_spacechar;
+extern char *acctlog_spacechar;
 extern attribute_def job_attr_def[];
-extern char	    *path_acct;
-extern int	     resc_access_perm;
-extern time_t	     time_now;
+extern char *path_acct;
+extern int resc_access_perm;
+extern time_t time_now;
 extern struct resc_sum *svr_resc_sum;
 extern struct server server;
 extern char *msg_job_end_stat;
@@ -2259,7 +2260,14 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 			svrattrl *svrattrl_list = NULL;
 			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
-				if (strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
+				int j;
+				int found = 0;
+				for (j = 0; do_not_emit_alter[j] != NULL; j++)
+					if (strcmp(do_not_emit_alter[j], cur_plist->al_name) == 0) {
+						found = 1;
+						break;
+				}
+				if (found || strcmp(cur_plist->al_name, job_attr_def[i].at_name) != 0)
 					continue;
 				else {
 					for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
@@ -2286,7 +2294,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 							break;
 						}
 					}
-				}
+						}
 				if (per_attr_buf == NULL && cur_plist->al_value[0] == '\0') { /* unset */
 					pbs_asprintf(&per_attr_buf, "%s%s%s=UNSET", cur_plist->al_name, cur_plist->al_resc ? "." : "", cur_plist->al_resc ? cur_plist->al_resc : "");
 				}
