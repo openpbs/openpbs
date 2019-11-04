@@ -2977,7 +2977,10 @@ static void
 make_argv(int *argc, char *argv[], char *line)
 {
 	char *l, *b, *c;
-	char buffer[4096];
+	char static_buffer[MAX_LINE_LEN + 1];
+	char *buffer;
+	int buf_allocated = 0;
+	int line_len = 0;
 	int len;
 	char quote;
 	int i;
@@ -2985,6 +2988,17 @@ make_argv(int *argc, char *argv[], char *line)
 	*argc = 0;
 	argv[(*argc)++] = "qsub";
 	l = line;
+	line_len = strlen(line);
+	if (line_len > MAX_LINE_LEN) {
+		buffer = malloc(line_len + 1);
+		if (buffer == NULL) {
+			fprintf(stderr, "qsub: out of memory\n");
+			exit_qsub(2);
+		}
+		buf_allocated = 1;
+	}
+	else
+		buffer = static_buffer;
 	b = buffer;
 	while (isspace(*l)) l++;
 	c = l;
@@ -3038,6 +3052,8 @@ make_argv(int *argc, char *argv[], char *line)
 		free(argv[i]);
 		argv[i++] = NULL;
 	}
+	if (buf_allocated)
+		free(buffer);
 }
 
 /**
@@ -3140,7 +3156,6 @@ set_opt_defaults(void)
 static int
 get_script(FILE *file, char *script, char *prefix)
 {
-	char s[MAX_LINE_LEN + 1];
 	char *sopt;
 	int err = 0;
 	int exec = FALSE;
@@ -3148,6 +3163,8 @@ get_script(FILE *file, char *script, char *prefix)
 	char tmp_name[MAXPATHLEN + 1];
 	FILE *TMP_FILE;
 	char *in;
+	char *s_in;
+	int s_len = 0;
 #ifndef WIN32
 	int fds;
 #endif
@@ -3189,9 +3206,8 @@ get_script(FILE *file, char *script, char *prefix)
 		return (4);
 	}
 
-	s[0] = '\0';
-	while ((in = fgets(s, MAX_LINE_LEN, file)) != NULL) {
-		if (!exec && ((sopt = pbs_ispbsdir(s, prefix)) != NULL)) {
+	while ((in = pbs_fgets(&s_in, &s_len, file)) != NULL) {
+		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
 			while ((*(cont = in + strlen(in) - 2) == ESC_CHAR) &&
 				(*(cont + 1) == '\n')) {
 				/* next line is continuation of this line */
@@ -3201,14 +3217,16 @@ get_script(FILE *file, char *script, char *prefix)
 					fprintf(stderr,
 						"qsub: error writing copy of script, %s\n", tmp_name);
 					fclose(TMP_FILE);
+					free(s_in);
 					return (3);
 				}
 				in = cont;
-				if ((in = fgets(in, MAX_LINE_LEN-(in - s), file)) == NULL) {
+				if ((in = fgets(in, MAX_LINE_LEN-(in - s_in), file)) == NULL) {
 					perror("fgets");
 					fprintf(stderr, "qsub: unexpected end-of-file "
 						"or read error in script\n");
 					fclose(TMP_FILE);
+					free(s_in);
 					return (6);
 				}
 			}
@@ -3221,7 +3239,7 @@ get_script(FILE *file, char *script, char *prefix)
 				fprintf(stderr, "%s", retmsg);
 				return (-1);
 			}
-		} else if (!exec && pbs_isexecutable(s)) {
+		} else if (!exec && pbs_isexecutable(s_in)) {
 			exec = TRUE;
 		}
 		if (fputs(in, TMP_FILE) < 0) {
@@ -3229,17 +3247,19 @@ get_script(FILE *file, char *script, char *prefix)
 			fprintf(stderr, "qsub: error writing copy of script, %s\n",
 				tmp_name);
 			fclose(TMP_FILE);
+			free(s_in);
 			return (3);
 		}
 	}
 
 #ifdef WIN32
-	if ((s[0] != '\0') && (s[strlen(s) - 1] != '\n')) {
+	if ((s_in[0] != '\0') && (s_in[strlen(s_in) - 1] != '\n')) {
 		fputs("\n", TMP_FILE);
 		printf("qsub: added missing newline in job script.\n");
 	}
 #endif
 
+	free(s_in);
 	if (fclose(TMP_FILE) != 0) {
 		perror(" qsub: copy of script to tmp failed on close");
 		return (5);
