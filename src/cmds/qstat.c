@@ -61,6 +61,7 @@
 #include "pbs_json.h"
 #include "pbs_internal.h"
 #include "libutil.h"
+#include	<arpa/inet.h>
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -598,49 +599,65 @@ trunc_value(char *value, int len, int wide_len, int wide)
 static void
 prt_nodes(char *nodes, int no_newl)
 {
-	int  i;
+	int  i, l;
 	char linebuf[78];
-	char *stp;
-	int   vnodeid = 0;
+	char *rest;
+	char *token;
+	char *token_cp;
+	char *subtoken;
+	char *node_name;
+	char *chunk;
+	struct	sockaddr_in check_ip;
+	int ret = 0;
 
 	if ((nodes == NULL) || (*nodes == '\0'))
 		return;
 
 	i = 0;
-	stp = nodes;
-	while (*nodes != '\0') {
-		if (*stp == '[')
-			vnodeid = 1;
-		else if (*stp == ']')
-			vnodeid = 0;
-		if ((vnodeid == 0) &&
-			((*stp == '.') || (*stp == '+') || (*stp == '\0'))) {
-			/* does node fit into line? */
-			if (i + stp - nodes < 77) {
-				while (nodes < stp)
-					linebuf[i++] = *nodes++;
-			} else {
-				/* flush line and start next */
-				linebuf[i] = '\0';
-				if (no_newl)
-					printf("%s", show_nonprint_chars(linebuf));
-				else
-					printf("   %s\n", show_nonprint_chars(linebuf));
-				i = 0;
-				while (nodes < stp)
-					linebuf[i++] = *nodes++;
-			}
+	rest = nodes;
+	while ((token = strtok_r(rest, "+", &rest))){
+		token_cp = (char*)malloc(strlen(token) + 1);
+		if(token_cp)
+			strcpy(token_cp, token);
+		else
+			exit_qstat("out of memory");
+		subtoken = strtok(token, "/");
+		chunk = token_cp + strlen(subtoken);
+		ret = inet_pton(AF_INET, subtoken, &(check_ip.sin_addr));
+		if (ret == 1){
+			/* node name is an IP address */
+			node_name = subtoken;
+			strcat(node_name, chunk);
 
-			/* strip off domain name to keep string short */
-			while ((*stp != '+') && (*stp != ':') && (*stp != '\0'))
-				stp++;
-			nodes = stp++;
 		} else {
-			stp++;
+			/* Node name is not an IP address */
+			node_name = strtok(subtoken, ".");
+			strcat(node_name, chunk);
+		}
+		l = strlen(node_name);
+		if (i + l < 77){
+			while (l) {
+				linebuf[i++] = *node_name++;
+				l--;
+			}
+			linebuf[i++] = '+';
+		} else {
+			/* flush line and start next */
+			linebuf[i] = '\0';
+			if (no_newl)
+				printf("%s", show_nonprint_chars(linebuf));
+			else
+				printf("   %s\n", show_nonprint_chars(linebuf));
+			i = 0;
+			while (l) {
+				linebuf[i++] = *node_name++;
+				l--;
+			}
+			linebuf[i++] = '+';
 		}
 	}
 	if (i != 0) {
-		linebuf[i] = '\0';
+		linebuf[--i] = '\0';
 		if (no_newl)
 			printf("%s\n", show_nonprint_chars(linebuf));
 		else
