@@ -5139,7 +5139,7 @@ def main():
 
 
 # The following block is skipped if this is a unit testing environment.
-if __name__ == 'builtins':
+if (__name__ == 'builtins') or (__name__ == '__builtin__'):
     START = time.time()
     try:
         main()
