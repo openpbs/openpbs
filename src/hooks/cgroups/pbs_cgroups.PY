@@ -99,6 +99,8 @@ if not supported:
 else:
     # Now we know that at least the hook might do something useful
     # so import other modules (some of them Linux-specific)
+    # Note the else is needed to be PEP8-compliant:  the imports must
+    # not be unindented since they are not top-of-file
     import sys
     import os
     import stat
@@ -2188,6 +2190,7 @@ class CgroupUtils(object):
         # morph the strings that should become booleans
         # into booleans depending on host/vntype
         self.morph_config_dict_bools(self.cfg)
+        pbs.logmsg(pbs.EVENT_DEBUG4, "Final cgroup cfg: %s" % repr(self.cfg))
 
         # Remove the added "enabled" in the cgroup section
         # it's added at all levels in the cfg because of the recursion,
@@ -2420,7 +2423,7 @@ class CgroupUtils(object):
                         and (len(value_split) > 1)):
                     vntypes_t_unstripped = value_split[1].split(',')
                     vntypes_t = [item.strip() for item in vntypes_t_unstripped]
-                    if vntype in vntypes_t:
+                    if any([fnmatch.fnmatch(vntype, p) for p in vntypes_t]):
                         config_dict[key_found] = True
                     else:
                         config_dict[key_found] = False
@@ -2433,7 +2436,7 @@ class CgroupUtils(object):
                       and (len(value_split) > 1)):
                     vntypes_f_unstripped = value_split[1].split(',')
                     vntypes_f = [item.strip() for item in vntypes_f_unstripped]
-                    if vntype in vntypes_f:
+                    if any([fnmatch.fnmatch(vntype, p) for p in vntypes_f]):
                         config_dict[key_found] = False
                     else:
                         config_dict[key_found] = True
@@ -2446,7 +2449,8 @@ class CgroupUtils(object):
                       and (len(value_split) > 1)):
                     hosts_t_unstripped = value_split[1].split(',')
                     hosts_t = [item.strip() for item in hosts_t_unstripped]
-                    if self.hostname in hosts_t:
+                    if any([fnmatch.fnmatch(self.hostname, p)
+                            for p in hosts_t]):
                         config_dict[key_found] = True
                     else:
                         config_dict[key_found] = False
@@ -2459,8 +2463,8 @@ class CgroupUtils(object):
                       and (len(value_split) > 1)):
                     hosts_f_unstripped = value_split[1].split(',')
                     hosts_f = [item.strip() for item in hosts_f_unstripped]
-
-                    if self.hostname in hosts_f:
+                    if any([fnmatch.fnmatch(self.hostname, p)
+                            for p in hosts_f]):
                         config_dict[key_found] = False
                     else:
                         config_dict[key_found] = True
@@ -2471,18 +2475,24 @@ class CgroupUtils(object):
                                   str(config_dict[key_found])))
 
         # Old "exclude_vntypes" now modulates current "enabled"
-        # (if present) or creates it if non-empty (deprecate!)
+        # (if present) or creates it if non-empty
         if (("exclude_vntypes" in config_dict)
                 and config_dict['exclude_vntypes']):
             if (("enabled" not in config_dict)
                     or (not isinstance(config_dict['enabled'], bool))):
                 config_dict['enabled'] = \
-                    (vntype not in config_dict['exclude_vntypes'])
+                    (not any([fnmatch.fnmatch(vntype, p)
+                             for p in config_dict['exclude_vntypes']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
-                     and (vntype not in config_dict['exclude_vntypes']))
-
+                     and (not any([fnmatch.fnmatch(vntype, p)
+                                   for p in config_dict['exclude_vntypes']])))
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       "%s: Config file parsing, "
+                       "set %s to %s based on exclude_vntypes"
+                       % (caller_name(), 'enabled',
+                          str(config_dict['enabled'])))
 
         # Old "exclude_hosts" now modulates current "enabled" (if present)
         # or creates enabled if it is non-empty
@@ -2491,11 +2501,13 @@ class CgroupUtils(object):
             if (("enabled" not in config_dict)
                     or (not isinstance(config_dict['enabled'], bool))):
                 config_dict['enabled'] = \
-                    (self.hostname not in config_dict['exclude_hosts'])
+                    (not any([fnmatch.fnmatch(self.hostname, p)
+                             for p in config_dict['exclude_hosts']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
-                     and (self.hostname not in config_dict['exclude_hosts']))
+                     and (not any([fnmatch.fnmatch(self.hostname, p)
+                                  for p in config_dict['exclude_hosts']])))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on exclude_hosts"
@@ -2510,20 +2522,16 @@ class CgroupUtils(object):
             if (("enabled" not in config_dict)
                     or (not isinstance(config_dict['enabled'], bool))):
                 config_dict['enabled'] = \
-                    (self.hostname in config_dict['include_hosts'])
+                    (any([fnmatch.fnmatch(self.hostname, p)
+                         for p in config_dict['include_hosts']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
-                     or (self.hostname in config_dict['include_hosts']))
+                     or any([fnmatch.fnmatch(self.hostname, p)
+                             for p in config_dict['include_hosts']]))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on include_hosts"
-                       % (caller_name(), 'enabled',
-                          str(config_dict['enabled'])))
-
-            pbs.logmsg(pbs.EVENT_DEBUG4,
-                       "%s: Config file parsing, "
-                       "set %s to %s based on exclude_vntypes"
                        % (caller_name(), 'enabled',
                           str(config_dict['enabled'])))
 
@@ -2535,12 +2543,13 @@ class CgroupUtils(object):
                        "section enabled by default"
                        % caller_name())
 
-        # Old "run_only_on_hosts" limits enabled hosts if present (deprecate!)
+        # Old "run_only_on_hosts" limits enabled hosts if present
         if (("run_only_on_hosts" in config_dict)
                 and config_dict['run_only_on_hosts']):
             config_dict['enabled'] = \
                 (config_dict['enabled']
-                 and (self.hostname in config_dict['run_only_on_hosts']))
+                 and any([fnmatch.fnmatch(self.hostname, p)
+                         for p in config_dict['run_only_on_hosts']]))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing,"
                        " set %s to %s based on run_only_on_hosts"
@@ -4757,7 +4766,7 @@ class CgroupUtils(object):
         with open(os.path.join(parent, cpufile), 'r') as desc:
             avail = expand_list(desc.read().strip())
         if len(avail) < 1:
-            raise CgroupProcessingError('No CPUs avaialble in cgroup')
+            raise CgroupProcessingError('No CPUs available in cgroup')
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Available CPUs: %s' %
                    (caller_name(), avail))
         for filename in glob.glob(os.path.join(parent, '[0-9]*', cpufile)):
@@ -5148,8 +5157,10 @@ if (__name__ == 'builtins') or (__name__ == '__builtin__'):
         # SystemExit exception.
         pass
     except Exception:
+        # "Should never happen" since main() is supposed to catch these
         pbs.logmsg(pbs.EVENT_DEBUG,
                    str(traceback.format_exc().strip().splitlines()))
+        pbs.event().reject(str(traceback.format_exc().strip().splitlines()))
     finally:
         pbs.logmsg(pbs.EVENT_DEBUG, 'Hook ended: %s (elapsed time: %0.4lf)' %
                    (pbs.event().hook_name, (time.time() - START)))
