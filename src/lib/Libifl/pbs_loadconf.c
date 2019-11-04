@@ -561,8 +561,7 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
 				free(pbs_conf.pbs_mom_node_name);
 				pbs_conf.pbs_mom_node_name = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
+			} else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
 				free(pbs_conf.pbs_lr_save_path);
 				if ((pbs_conf.pbs_lr_save_path = strdup(conf_value)) == NULL) {
 					goto err;
