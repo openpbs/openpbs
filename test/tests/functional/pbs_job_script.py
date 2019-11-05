@@ -42,18 +42,15 @@ class TestPbsJobScript(TestFunctional):
     Test suite for testing PBS's job script functionality
     """
 
-    def test_long_select_spec(self):
-        """
-        Test that PBS is able to accept jobs scripts with very long select
-        specification.
-        """
-
+    def submit_job(self, addnewline=False):
         a = {'resources_available.ncpus': 2}
         self.server.create_vnodes('Verylongvnodename', a, 500, self.mom)
 
         selstr = "#PBS -l select=1"
-        for node in range(0, 500):
+        for node in range(500):
             selstr += ":ncpus=1:vnode=Verylongvnodename[" + str(node) + "]+1"
+            if addnewline and node == 250:
+                selstr += "\\\n"
         selstr = selstr[0:-2]
 
         scr = []
@@ -63,4 +60,30 @@ class TestPbsJobScript(TestFunctional):
         j = Job()
         j.create_script(scr)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        return jid
+
+    def test_long_select_spec_without_newline(self):
+        """
+        Test that PBS is able to accept jobs scripts with very long select
+        specification with no newline in it.
+        """
+        jid = self.submit_job()
+        execvnode = ""
+        for node in range(500):
+            execvnode += "(Verylongvnodename[" + str(node) + "]:ncpus=1)+"
+        execvnode = execvnode[0:-1]
+        self.server.expect(JOB, {'job_state': 'R', 'exec_vnode': execvnode},
+                           id=jid)
+
+    def test_long_select_spec_with_newline(self):
+        """
+        Test that PBS is able to accept jobs scripts with very long select
+        specification with newline in it.
+        """
+        jid = self.submit_job(addnewline=True)
+        execvnode = ""
+        for node in range(500):
+            execvnode += "(Verylongvnodename[" + str(node) + "]:ncpus=1)+"
+        execvnode = execvnode[0:-1]
+        self.server.expect(JOB, {'job_state': 'R', 'exec_vnode': execvnode},
+                           id=jid)

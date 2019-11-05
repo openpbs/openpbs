@@ -3159,7 +3159,6 @@ get_script(FILE *file, char *script, char *prefix)
 	char *sopt;
 	int err = 0;
 	int exec = FALSE;
-	char *cont;
 	char tmp_name[MAXPATHLEN + 1];
 	FILE *TMP_FILE;
 	char *in;
@@ -3206,29 +3205,15 @@ get_script(FILE *file, char *script, char *prefix)
 		return (4);
 	}
 
-	while ((in = pbs_fgets(&s_in, &s_len, file)) != NULL) {
+	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
-			while ((*(cont = in + strlen(in) - 2) == ESC_CHAR) &&
-				(*(cont + 1) == '\n')) {
-				/* next line is continuation of this line */
-				*cont = '\0'; /* clear newline from our copy */
-				if (fputs(in, TMP_FILE) < 0) {
-					perror("fputs");
-					fprintf(stderr,
-						"qsub: error writing copy of script, %s\n", tmp_name);
-					fclose(TMP_FILE);
-					free(s_in);
-					return (3);
-				}
-				in = cont;
-				if ((in = fgets(in, MAX_LINE_LEN-(in - s_in), file)) == NULL) {
-					perror("fgets");
-					fprintf(stderr, "qsub: unexpected end-of-file "
-						"or read error in script\n");
-					fclose(TMP_FILE);
-					free(s_in);
-					return (6);
-				}
+			if (fputs(in, TMP_FILE) < 0) {
+				perror("fputs");
+				fprintf(stderr,
+					"qsub: error writing copy of script, %s\n", tmp_name);
+				fclose(TMP_FILE);
+				free(s_in);
+				return (3);
 			}
 			/*
 			 * Setting options from the job script will not overwrite
@@ -3237,6 +3222,7 @@ get_script(FILE *file, char *script, char *prefix)
 			 */
 			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
 				fprintf(stderr, "%s", retmsg);
+				free(s_in);
 				return (-1);
 			}
 		} else if (!exec && pbs_isexecutable(s_in)) {
