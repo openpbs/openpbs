@@ -14223,18 +14223,20 @@ class Job(ResourceResv):
         Create a job that eats cpu indefinitely or for the given
         duration of time
         """
+        if self.du is None:
+            self.du = DshUtils()
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        if not DshUtils().is_localhost(mom):
-            pbs_conf = DshUtils().parse_pbs_config(mom)
-            shell_path = os.path.join(pbs_conf['PBS_EXEC'],
-                                      'bin', 'pbs_python')
-            a = {ATTR_S: shell_path}
-            self.set_attributes(a)
+        pbs_conf = self.du.parse_pbs_config(mom)
+        shell_path = os.path.join(pbs_conf['PBS_EXEC'],
+                                  'bin', 'pbs_python')
+        a = {ATTR_S: shell_path}
+        self.set_attributes(a)
+        if not self.du.is_localhost(mom):
             d = pwd.getpwnam(self.username).pw_dir
-            DshUtils().run_copy(hosts=mom, src=script_path, dest=d)
+            self.du.run_copy(hosts=mom, src=script_path, dest=d)
             script_path = os.path.join(d, "eatcpu.py")
-        DshUtils().chmod(path=script_path, mode=0o755)
+        self.du.chmod(path=script_path, mode=0o755)
         self.set_execargs(script_path, duration)
 
 
