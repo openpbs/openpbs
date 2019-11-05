@@ -359,6 +359,8 @@ class PBSLogUtils(object):
                 dt_str = l.split(';', 1)[0]
                 if starttime is not None:
                     tm = self.convert_date_time(dt_str)
+                    self.logger.info(f'tm is {tm} | starttime is {starttime}'
+                                     f' | diff is {tm - starttime}')
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
