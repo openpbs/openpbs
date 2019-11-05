@@ -335,15 +335,10 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        shell_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                  "bin", "pbs_python")
-        a = {'Resource_List.ncpus': 2, ATTR_S: shell_path}
+        a = {'Resource_List.ncpus': 2}
         j = Job(TEST_USER, a)
         j.set_sleep_time(15)
         mom = self.moms.values()[0].shortname
-        server = self.server.shortname
-        if server == mom:
-            mom = None
         j.create_eatcpu_job(15, mom)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,

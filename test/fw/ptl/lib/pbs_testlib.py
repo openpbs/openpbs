@@ -14225,7 +14225,12 @@ class Job(ResourceResv):
         """
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        if mom:
+        if not DshUtils().is_localhost(mom):
+            pbs_conf = DshUtils().parse_pbs_config(mom)
+            shell_path = os.path.join(pbs_conf['PBS_EXEC'],
+                                      'bin', 'pbs_python')
+            a = {ATTR_S: shell_path}
+            self.set_attributes(a)
             d = pwd.getpwnam(self.username).pw_dir
             DshUtils().run_copy(hosts=mom, src=script_path, dest=d)
             script_path = os.path.join(d, "eatcpu.py")
