@@ -2397,10 +2397,6 @@ class BatchUtils(object):
             if isinstance(v, list):
                 v = ','.join(v)
 
-            if isinstance(v, str):
-                if " " in v:
-                    v = "'" + v + "'"
-
             # when issuing remote commands, escape spaces in attribute values
             if (((hostname is not None) and
                  (not self.du.is_localhost(hostname))) or
@@ -6037,6 +6033,13 @@ class Server(PBSService):
                     del obj.custom_attrs[ATTR_queue]
 
             _conf = self.default_client_pbs_conf
+            user_host = PbsUser.get_user(obj.username).host
+            if (not self._is_local) or \
+                    (not self.du.is_localhost(user_host)):
+                for k, v in obj.custom_attrs.items():
+                    if isinstance(v, str) and (" " in v):
+                        v = "'" + v + "'"
+                        obj.custom_attrs[k] = v
             cmd = self.utils.convert_to_cli(obj.custom_attrs, IFL_SUBMIT,
                                             self.hostname, dflt_conf=_conf,
                                             exclude_attrs=exclude_attrs)
