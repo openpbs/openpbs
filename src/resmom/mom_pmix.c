@@ -874,6 +874,10 @@ static void
 pbs_pmix_wait_cb(pmix_status_t status, void *cbdata)
 {
 	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	if (!cbdata) {
+		log_err(-1, __func__, "cbdata may not be NULL, returning");
+		return;
+	}
 	snprintf(log_buffer, sizeof(log_buffer),
 		"Setting thread status to %s",
 		PMIx_Error_string(status));
