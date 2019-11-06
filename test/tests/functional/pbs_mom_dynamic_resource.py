@@ -441,7 +441,7 @@ class TestMomDynRes(TestFunctional):
             self.du.rm(path=self.dirnames, sudo=True, force=True,
                        recursive=True)
             self.dirnames[:] = []
-        if len(self.resc_files) != 0:
+        if self.resc_files:
             self.du.rm(path=self.resc_files, sudo=True, force=True,
                        hostname=self.mom.shortname)
 
