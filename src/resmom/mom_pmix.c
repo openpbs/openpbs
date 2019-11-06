@@ -156,8 +156,8 @@ typedef struct {
 static void
 pbs_pmix_notify_exit_cb(pmix_status_t status, void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 }
 
 /**
@@ -180,7 +180,7 @@ pbs_pmix_notify_exit(job *pjob, int exitstat, char *msg)
 	pmix_proc_t procname, procsrc;
 	bool flag = true;
 
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	if (!pjob) {
 		log_event(PBSEVENT_DEBUG, 0, LOG_ERR, __func__,
 			"No job supplied, returning");
@@ -251,7 +251,7 @@ pbs_pmix_notify_exit(job *pjob, int exitstat, char *msg)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		break;
 	}
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 }
 
 /**
@@ -278,8 +278,8 @@ pbs_pmix_client_connected(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_OPERATION_SUCCEEDED;
 }
 
@@ -307,8 +307,8 @@ pbs_pmix_client_finalized(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_OPERATION_SUCCEEDED;
 }
 
@@ -347,22 +347,25 @@ pbs_pmix_abort(
 	int i;
 	job *pjob;
 
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	if (!proc) {
-		sprintf(log_buffer, "pmix_proc_t parameter is NULL");
+		snprintf(log_buffer, sizeof(log_buffer),
+			"pmix_proc_t parameter is NULL");
 		log_err(-1, __func__, log_buffer);
 		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
 		return PMIX_ERROR;
 	}
 	if (!proc->nspace || (*proc->nspace == '\0')) {
-		sprintf(log_buffer, "Invalid PMIx namespace");
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Invalid PMIx namespace");
 		log_err(-1, __func__, log_buffer);
 		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
 		return PMIX_ERROR;
 	}
 	pjob = find_job((char *)proc->nspace);
 	if (!pjob) {
-		sprintf(log_buffer, "Job not found: %s", proc->nspace);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Job not found: %s", proc->nspace);
 		log_err(-1, __func__, log_buffer);
 		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
 		return PMIX_ERROR;
@@ -389,7 +392,7 @@ pbs_pmix_abort(
 				pjob->ji_qs.ji_jobid, log_buffer);
 		}
 	}
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -437,45 +440,54 @@ pbs_pmix_fence_nb(
 	int i;
 	job *pjob;
 
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	if (!proc) {
-		sprintf(log_buffer, "pmix_proc_t parameter is NULL");
+		snprintf(log_buffer, sizeof(log_buffer),
+			"pmix_proc_t parameter is NULL");
 		log_err(-1, __func__, log_buffer);
 		return PMIX_ERROR;
 	}
 	if (!proc->nspace || (*proc->nspace == '\0')) {
-		sprintf(log_buffer, "Invalid PMIx namespace");
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Invalid PMIx namespace");
 		log_err(-1, __func__, log_buffer);
 		return PMIX_ERROR;
 	}
 	pjob = find_job((char *)proc->nspace);
 	if (!pjob) {
-		sprintf(log_buffer, "Job not found: %s", proc->nspace);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Job not found: %s", proc->nspace);
 		log_err(-1, __func__, log_buffer);
 		return PMIX_ERROR;
 	}
 	for (i = 0; i < nproc; i++) {
-		sprintf(log_buffer, "proc[%d].nspace = %s", i, proc[i].nspace);
-		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
-		sprintf(log_buffer, "proc[%d].rank = %u", i, (unsigned int)proc[i].rank);
-		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"proc[%d].nspace = %s", i, proc[i].nspace);
+		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"proc[%d].rank = %u", i, (unsigned int)proc[i].rank);
+		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	}
 	for (i = 0; i < ninfo; i++) {
-		sprintf(log_buffer, "info[%d].key = %s", i, info[i].key);
-		log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"info[%d].key = %s", i, info[i].key);
+		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	}
-	sprintf(log_buffer, "There are %lu data entries", ndata);
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
+	snprintf(log_buffer, sizeof(log_buffer),
+			"There are %lu data entries", ndata);
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	/*
 	 * If MS, find/create the barrier for this job. Otherwise, send
 	 * a message to MS that a fence has been encountered. Once all
 	 * ranks have been accounted for, invoke the callback function.
 	 */
-	sprintf(log_buffer, "cbfunc %s NULL", cbfunc ? "is not" : "is");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
-	sprintf(log_buffer, "cbdata %s NULL", cbdata ? "is not" : "is");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	snprintf(log_buffer, sizeof(log_buffer),
+		"cbfunc %s NULL", cbfunc ? "is not" : "is");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"cbdata %s NULL", cbdata ? "is not" : "is");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_OPERATION_SUCCEEDED;
 }
 
@@ -504,8 +516,8 @@ pbs_pmix_direct_modex(
 	pmix_modex_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -534,8 +546,8 @@ pbs_pmix_publish(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -567,8 +579,8 @@ pbs_pmix_lookup(
 	pmix_lookup_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -600,8 +612,8 @@ pbs_pmix_unpublish(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -640,8 +652,8 @@ pbs_pmix_spawn(
 	pmix_spawn_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -673,8 +685,8 @@ pbs_pmix_connect(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -706,8 +718,8 @@ pbs_pmix_disconnect(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -739,8 +751,8 @@ pbs_pmix_register_events(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -770,8 +782,8 @@ pbs_pmix_deregister_events(
 	pmix_op_cbfunc_t cbfunc,
 	void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return PMIX_ERR_NOT_IMPLEMENTED;
 }
 
@@ -838,14 +850,14 @@ pbs_pmix_server_init(char *name)
 
 	pstat = PMIx_server_init(&pbs_pmix_server_module, NULL, 0);
 	if (pstat != PMIX_SUCCESS) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Could not initialize PMIx server: %s",
+			PMIx_Error_string(pstat));
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, name,
-			"Could not initialize PMIx server");
-		sprintf(log_buffer, "PMIx error: %s", PMIx_Error_string(pstat));
+			LOG_ERR, name, log_buffer);
 	} else {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, name,
-			"PMIx server initialized");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+			LOG_DEBUG, name, "PMIx server initialized");
 	}
 }
 
@@ -861,14 +873,14 @@ pbs_pmix_server_init(char *name)
 static void
 pbs_pmix_wait_cb(pmix_status_t status, void *cbdata)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	snprintf(log_buffer, sizeof(log_buffer),
 		"Setting thread status to %s",
 		PMIx_Error_string(status));
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	((pbs_pmix_lock_t *)cbdata)->status = status;
 	PBS_PMIX_WAKEUP_THREAD((pbs_pmix_lock_t *)cbdata);
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 }
 
 /**
@@ -900,7 +912,8 @@ pbs_pmix_register_client(job *pjob, int tvnodeid, char ***envpp)
 		return;
 	}
 	/* Register the PMIx client */
-	sprintf(log_buffer, "Registering PMIx client %d", tvnodeid);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"Registering PMIx client %d", tvnodeid);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
 	/* Rank is based on tvnodeid */
@@ -925,7 +938,8 @@ pbs_pmix_register_client(job *pjob, int tvnodeid, char ***envpp)
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
 	/* Setup for the PMIx fork */
-	sprintf(log_buffer, "Setting up PMIx fork for client %d", tvnodeid);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"Setting up PMIx fork for client %d", tvnodeid);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
 	/* Allow PMIx to add required environment variables */
@@ -1223,6 +1237,7 @@ pbs_pmix_register_namespace(job *pjob)
 	int i, n, ninfo;
 	uint32_t ui, pmix_node_ct, pmix_node_idx;
 
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	if (!pjob) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Invalid job pointer");
@@ -1449,6 +1464,7 @@ pbs_pmix_register_namespace(job *pjob)
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
 	}
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 }
 
 /*
@@ -1489,9 +1505,9 @@ pbs_pmix_deregister_namespace(job *pjob)
 int
 pbs_pmix_job_join_extra(job *pjob, hnodent *pnode)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	pbs_pmix_register_namespace(pjob);
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return 0;
 }
 
@@ -1508,9 +1524,9 @@ pbs_pmix_job_join_extra(job *pjob, hnodent *pnode)
 int
 pbs_pmix_job_clean_extra(job *pjob)
 {
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "called");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "called");
 	pbs_pmix_deregister_namespace(pjob);
-	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "returning");
+	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, "returning");
 	return 0;
 }
 
