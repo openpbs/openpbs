@@ -113,7 +113,7 @@ time.sleep(2)
 """
         # job used in the tests
         a = {ATTR_l + '.select': '3:ncpus=1', ATTR_l + '.place': 'scatter'}
-        self.j = Job(self.du.get_current_user(), attrs=a)
+        self.j = Job(TEST_USER, attrs=a)
 
     def test_execjob_abort_ms_prologue(self):
         """
