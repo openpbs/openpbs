@@ -14231,8 +14231,8 @@ class Job(ResourceResv):
             d = pwd.getpwnam(self.username).pw_dir
             ret = self.du.run_copy(hosts=mom, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
-                raise AssertionError("Failed to copy file %s"
-                                     % (script_path))
+                raise AssertionError("Failed to copy file %s to %s"
+                                     % (script_path, mom))
             script_path = os.path.join(d, "eatcpu.py")
         pbs_conf = self.du.parse_pbs_config(mom)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
