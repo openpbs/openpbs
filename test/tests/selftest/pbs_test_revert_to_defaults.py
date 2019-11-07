@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.selftest import *
+from datetime import datetime, timedelta
 
 
 class TestPTLRevertToDefault(TestSelf):
@@ -82,3 +83,26 @@ class TestPTLRevertToDefault(TestSelf):
 
         self.server.expect(SERVER, self.svr_dflt_attr,
                            attrop=PTL_AND, max_attempts=20)
+
+    def test_sched_revert_to_defaults_dedtime(self):
+        """
+        Test that revert_to_defaults() reverts the dedicated time file
+        """
+        dt_start = datetime.now() + timedelta(seconds=3600)
+        dt_start_str = dt_start.strftime("%m/%d/%Y %H:%M")
+        dt_end = dt_start + timedelta(seconds=3600)
+        dt_end_str = dt_end.strftime("%m/%d/%Y %H:%M")
+        self.scheduler.add_dedicated_time(dt_start_str + ' ' + dt_end_str)
+
+        J = Job(attrs={'Resource_List.walltime': '7200'})
+        jid = self.server.submit(J)
+
+        a = {'job_state': 'Q',
+             'comment': 'Not Running: Job would cross dedicated time boundary'}
+        self.server.expect(JOB, a, id=jid)
+
+        self.scheduler.revert_to_defaults()
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)

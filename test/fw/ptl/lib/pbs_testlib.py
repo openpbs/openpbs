@@ -10872,6 +10872,9 @@ class Scheduler(PBSService):
         self.dflt_resource_group_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                      'etc',
                                                      'pbs_resource_group')
+        self.dflt_dedicated_file = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                                'etc',
+                                                'pbs_dedicated')
         self.setup_sched_priv(sched_priv)
 
         self.db_access = db_access
@@ -10896,6 +10899,7 @@ class Scheduler(PBSService):
         self.sched_config_file = os.path.join(sched_priv, 'sched_config')
         self.resource_group_file = os.path.join(sched_priv, 'resource_group')
         self.holidays_file = os.path.join(sched_priv, 'holidays')
+        self.set_dedicated_time_file(os.path.join(sched_priv, 'dedicated_time'))
 
         if not os.path.exists(sched_priv):
             return
@@ -11438,13 +11442,13 @@ class Scheduler(PBSService):
         if apply:
             return self.apply_config()
 
-    def set_dedicated_time_file(self, file):
+    def set_dedicated_time_file(self, filename):
         """
         Set the path to a dedicated time
         """
         self.logger.info(self.logprefix + " setting dedicated time file to " +
-                         str(file))
-        self.dedicated_time_file = file
+                         str(filename))
+        self.dedicated_time_file = filename
 
     def revert_to_defaults(self):
         """
@@ -11476,6 +11480,12 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
                              self.sched_config_file, preserve_permission=False,
                              sudo=True)
+        if self.du.cmp(self.hostname, self.dflt_dedicated_file, 
+                       self.dedicated_time_file, sudo=True):
+            self.du.run_copy(self.hostname, self.dflt_dedicated_file,
+                             self.dedicated_time_file,
+                             preserve_permission=False, sudo=True)
+
         self.signal('-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
@@ -11510,9 +11520,9 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, self.dflt_holidays_file,
                              self.holidays_file, mode=0o644, sudo=True)
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, mode=0o644,
-                             sudo=True)
-
+                             self.sched_config_file, mode=0o644, sudo=True)
+            self.du.run_copy(self.hostname, self.dflt_dedicated_file,
+                             self.dedicated_time_file, mode=0o644, sudo=True)
         if not os.path.exists(sched_logs_dir):
             self.du.mkdir(path=sched_logs_dir, sudo=True)
 
