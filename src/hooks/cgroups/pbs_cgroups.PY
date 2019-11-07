@@ -1077,7 +1077,7 @@ class JobUtils(object):
             raise CgroupProcessingError('No job information available')
         # Create a list of local vnodes
         vnodes = []
-        vnhost_pattern = r'%s\[[\d+]\]' % hostname
+        vnhost_pattern = r'%s\[[\d]+\]' % hostname
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnhost pattern: %s' %
                    (caller_name(), vnhost_pattern))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job exec_vnode list: %s' %
@@ -1926,7 +1926,10 @@ class NodeUtils(object):
                 elif key in ['mem', 'vmem', 'hpmem']:
                     # Used for vnodes per NUMA socket
                     if vnodes:
-                        vnode_resc_avail[key] = pbs.size(val)
+                        mem_val = val
+                        if isinstance(val, float):
+                            mem_val = int(val)
+                        vnode_resc_avail[key] = pbs.size(mem_val)
                 elif isinstance(val, list):
                     pass
                 elif isinstance(val, dict):
@@ -3260,9 +3263,13 @@ class CgroupUtils(object):
                     if needed <= 0:
                         break
                     for thread in node.cpuinfo['cpu'][corenum]['threads']:
+                        if thread in assigned['cpuset.cpus']:
+                            # thread core already assigned
+                            continue
                         assigned['cpuset.cpus'].append(thread)
                         needed -= 1
-                        cores.remove(thread)
+                        if thread in cores:
+                            cores.remove(thread)
                         if needed <= 0:
                             break
                     if needed <= 0:
