@@ -497,3 +497,37 @@ exit 3
         self.server.expect(JOB, {'job_state': 'Q'}, id=hjid2)
         comment = "Not Running: Insufficient amount of resource: host"
         self.server.expect(JOB, {'comment': comment}, id=hjid2)
+
+    def test_preempt_queue_restart(self):
+        """
+        Test that a queue which has preempt_targets set to another queue
+        recovers successfully before the target queue during server restart
+        """
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq3")
+
+        a = {'resources_default.preempt_targets': 'queue=workq3'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, "workq2")
+        self.server.expect(QUEUE, a, id='workq2')
+        self.server.manager(MGR_CMD_SET, QUEUE, a, "workq3")
+
+        self.server.restart()
+
+        try:
+            self.server.expect(QUEUE, a, id='workq2', max_attempts=1)
+        except PtlExpectError:
+            self.server.stop()
+            reset_db = 'echo y | ' + \
+                os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                             'sbin', 'pbs_server') + ' -t create'
+            self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
+            self.fail('TC failed as workq2 recovery failed')
