@@ -3160,7 +3160,7 @@ get_script(FILE *file, char *script, char *prefix)
 	char tmp_name[MAXPATHLEN + 1];
 	FILE *TMP_FILE;
 	char *in;
-	char *s_in;
+	char *s_in = NULL;
 	int s_len = 0;
 #ifndef WIN32
 	int fds;
