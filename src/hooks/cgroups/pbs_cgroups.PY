@@ -553,8 +553,15 @@ def printjob_info(jobid, include_attributes=False):
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Exception: %s' % exc)
         return info
     pattern = re.compile(r'^(\w.*):\s*(\S+)')
-    for line in out.decode('utf-8').splitlines():
-        result = re.match(pattern, str(line))
+    if ((not isinstance(out, str))
+            and isinstance(out, (bytes, bytearray))):
+        if sys.version_info[0] >= 3:
+            out = out.decode('utf-8')
+        else:
+            out = str(out)
+
+    for line in out.splitlines():
+        result = re.match(pattern, line)
         if not result:
             continue
         key, val = result.groups()
@@ -2997,14 +3004,20 @@ class CgroupUtils(object):
         ret = ''
         for i, char in enumerate(buf):
             if i < 1 and char == '.':
-                ret += '\\x' + char.encode("utf-8").hex()
-                continue
-            if char.isalnum() or char in '_.':
+                if (sys.version_info[0] < 3):
+                    ret += '\\x' + char.encode('hex')
+                else:
+                    ret += '\\x' + char.encode('utf-8').hex()
+            elif char.isalnum() or char in '_.':
                 ret += char
             elif char == '/':
                 ret += '-'
             else:
-                hexval = char.encode("utf-8").hex()
+                # Will turn non-ASCII into UTF-8 hex sequence on both Py2/3
+                if (sys.version_info[0] < 3):
+                    hexval = char.encode('hex')
+                else:
+                    hexval = char.encode('utf-8').hex()
                 for j in range(0, len(hexval), 2):
                     ret += '\\x' + hexval[j:j + 2]
         return ret
@@ -3017,14 +3030,19 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         if not isinstance(buf, str):
             raise ValueError('Not a basetype string')
-        ret = ''
+        # Cannot decode UTF-8 in Py3 before we have the whole byte array
+        # Gather everything and then convert at the end
+        ret = b''
         length = len(buf)
         i = 0
         while i < length:
             if (length - i) > 3 and buf[i] == '\\' and buf[i + 1] == 'x' and \
                 buf[i + 2] in '0123456789abcdef' and \
                     buf[i + 3] in '0123456789abcdef':
-                ret += bytes.fromhex(buf[(i + 2):(i + 4)]).decode('utf-8')
+                if (sys.version_info[0] < 3):
+                    ret += buf[(i + 2):(i + 4)].decode('hex')
+                else:
+                    ret += bytes.fromhex(buf[(i + 2):(i + 4)])
                 i += 4
                 continue
             if buf[i] == '-':
@@ -3034,6 +3052,10 @@ class CgroupUtils(object):
             else:
                 raise ValueError('Invalid systemd escaped string')
             i += 1
+            if (sys.version_info[0] < 3):
+                ret = str(ret)
+            else:
+                ret = ret.decode('utf-8')
         return ret
 
     def enabled(self, subsystem):
@@ -4792,7 +4814,16 @@ class CgroupUtils(object):
         try:
             proc = subprocess.Popen(['dmesg'], shell=False,
                                     stdout=subprocess.PIPE)
-            out = proc.communicate()[0].decode('utf-8').splitlines()
+            if (sys.version_info[0] < 3):
+                # string returned is a raw byte array in Py2, we don't care
+                # about what happens to special characters here as long as we
+                # can match the job cgroups-- assume no one is foolish
+                # enough to use non-ASCII in the cgroup prefix ot server name
+                out = proc.communicate()[0].splitlines()
+            else:
+                # Python 3 gets a UTF-8 encoded byte array,
+                # convert to normal Py3 string
+                out = proc.communicate()[0].decode('utf-8').splitlines()
         except Exception:
             return ''
         out.reverse()
