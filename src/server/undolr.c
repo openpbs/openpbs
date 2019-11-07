@@ -58,7 +58,6 @@
 #include "undolr.h"
 
 int sigusr1_flag;
-static int recording;
 static char recording_file [MAXPATHLEN + 1];
 
 /**
@@ -93,10 +92,9 @@ static void mk_recording_path(char * fpath)
 	struct tm *ptm;
 	time_t time_now;
 
-	if (pbs_loadconf(1) == 0) {
+	if (pbs_loadconf(1) == 0)
 		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, 
 				"%s: Could not load pbs configuration, will use it's default value", __func__);
-	}
 
 	time_now = time(NULL);
 	ptm = localtime_r(&time_now, &ltm);
@@ -122,6 +120,7 @@ static void mk_recording_path(char * fpath)
 void undolr()
 {
 	int e = 0;
+	static int recording;
 	undolr_error_t  err = 0;
 	undolr_recording_context_t lr_ctx;
 

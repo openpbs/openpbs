@@ -117,11 +117,6 @@
 #include "pbs_version.h"
 #include "buckets.h"
 
-#ifdef PBS_UNDOLR_ENABLED
-extern int sigusr1_flag;
-extern void undolr();
-#endif
-
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -698,11 +693,6 @@ scheduling_cycle(int sd, char *jobid)
 		  "", "Starting Scheduling Cycle");
 
 	update_cycle_status(&cstat, 0);
-
-#ifdef PBS_UNDOLR_ENABLED
-	if (sigusr1_flag)
-		undolr();
-#endif
 
 #ifdef NAS /* localmod 030 */
 	do_soft_cycle_interrupt = 0;

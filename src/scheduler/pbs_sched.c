@@ -148,6 +148,11 @@ extern int do_hard_cycle_interrupt;
 
 static int	engage_authentication(struct connect_handle *);
 
+#ifdef PBS_UNDOLR_ENABLED
+extern int sigusr1_flag;
+extern void undolr();
+#endif
+
 extern char *msg_startup1;
 /**
  * @brief
@@ -1424,6 +1429,11 @@ main(int argc, char *argv[])
 			}
 			continue;
 		}
+
+#ifdef PBS_UNDOLR_ENABLED
+		if (sigusr1_flag)
+			undolr();
+#endif
 
 		if (pbs_conf.pbs_use_tcp == 0 && rpp_fd != -1 && FD_ISSET(rpp_fd, &fdset)) {
 			if (rpp_io() == -1)
