@@ -2979,7 +2979,6 @@ make_argv(int *argc, char *argv[], char *line)
 	char *l, *b, *c;
 	char static_buffer[MAX_LINE_LEN + 1];
 	char *buffer;
-	int buf_allocated = 0;
 	int line_len = 0;
 	int len;
 	char quote;
@@ -2995,7 +2994,6 @@ make_argv(int *argc, char *argv[], char *line)
 			fprintf(stderr, "qsub: out of memory\n");
 			exit_qsub(2);
 		}
-		buf_allocated = 1;
 	}
 	else
 		buffer = static_buffer;
@@ -3052,7 +3050,7 @@ make_argv(int *argc, char *argv[], char *line)
 		free(argv[i]);
 		argv[i++] = NULL;
 	}
-	if (buf_allocated)
+	if (buffer != static_buffer)
 		free(buffer);
 }
 
