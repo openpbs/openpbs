@@ -3506,7 +3506,7 @@ class PBSService(PBSObject):
             self.pbs_conf['PBS_HOME'] = self.snap
             self.pbs_conf['PBS_EXEC'] = self.snap
             self.pbs_conf['PBS_SERVER'] = self.hostname
-            m = re.match('.*snapshot_(?P<datetime>\d{6,6}_\d{6,6}).*',
+            m = re.match(r'.*snapshot_(?P<datetime>\d{6,6}_\d{6,6}).*',
                          self.snap)
             if m:
                 tm = time.strptime(m.group('datetime'), "%y%m%d_%H%M%S")
@@ -5418,9 +5418,9 @@ class Server(PBSService):
         Status PBS objects from the SQL database
 
         :param obj_type: The type of object to query, one of the
-                         * objects,\ Default: SERVER
+                         * objects, Default: SERVER
         :param attrib: Attributes to query, can a string, a list,
-                       a dictionary\ Default: None. All attributes
+                       a dictionary Default: None. All attributes
                        will be queried
         :type attrib: str or list or dictionary
         :param id: An optional identifier, the name of the object
@@ -5923,7 +5923,7 @@ class Server(PBSService):
 
         :param obj: The Job or Reservation instance to submit
         :param script: Path to a script to submit. Default: None
-                       as an executable\ /bin/sleep 100 is submitted
+                       as an executable /bin/sleep 100 is submitted
         :type script: str or None
         :param extend: Optional extension to the IFL call.
                        see pbs_ifl.h
@@ -10899,7 +10899,8 @@ class Scheduler(PBSService):
         self.sched_config_file = os.path.join(sched_priv, 'sched_config')
         self.resource_group_file = os.path.join(sched_priv, 'resource_group')
         self.holidays_file = os.path.join(sched_priv, 'holidays')
-        self.set_dedicated_time_file(os.path.join(sched_priv, 'dedicated_time'))
+        self.set_dedicated_time_file(os.path.join(sched_priv,
+                                                  'dedicated_time'))
 
         if not os.path.exists(sched_priv):
             return
@@ -11480,7 +11481,7 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
                              self.sched_config_file, preserve_permission=False,
                              sudo=True)
-        if self.du.cmp(self.hostname, self.dflt_dedicated_file, 
+        if self.du.cmp(self.hostname, self.dflt_dedicated_file,
                        self.dedicated_time_file, sudo=True):
             self.du.run_copy(self.hostname, self.dflt_dedicated_file,
                              self.dedicated_time_file,
@@ -14390,7 +14391,7 @@ class InteractiveJob(threading.Thread):
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
-            expstr += "(?P<jobid>\d+.[0-9A-Za-z-.]+) to start"
+            expstr += r"(?P<jobid>\d+.[0-9A-Za-z-.]+) to start"
             _p.expect(expstr)
             if _p.match:
                 self.jobid = _p.match.group('jobid').decode()
