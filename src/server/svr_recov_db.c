@@ -283,6 +283,7 @@ svr_recov_db(void)
 		goto db_err;
 
 	if (db_to_svr_svr(&server, &dbsvr) != 0) {
+		pbs_db_reset_obj(&obj);
 		log_err(-1, "svr_recov", "Failed to recover server");
 		goto db_err;
 	}
@@ -411,12 +412,15 @@ sched_recov_db(char *sname)
 		goto db_err;
 
 	if (db_to_svr_sched(ps, &dbsched) != 0)
-		goto db_err;
+		goto db_err_reset;
 
 	pbs_db_reset_obj(&obj);
 
 	/* all done recovering the sched */
 	return (ps);
+
+db_err_reset:
+	pbs_db_reset_obj(&obj);
 
 db_err:
 	sprintf(log_buffer, "Failed to recover sched %s", sname);

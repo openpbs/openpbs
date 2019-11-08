@@ -545,14 +545,18 @@ job_recov_db(char *jid)
 
 	pj = job_recov_db_spl(&dbjob);
 	if (!pj)
-		goto db_err;
+		goto db_err_reset;
 
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
+		goto db_err_reset;
 
 	pbs_db_reset_obj(&obj);
 
 	return (pj);
+
+db_err_reset:
+	pbs_db_reset_obj(&obj);
+
 db_err:
 	if (pj)
 		job_free(pj);
@@ -690,7 +694,7 @@ resv_recov_db(char *resvid)
 		goto db_err;
 
 	if (db_to_svr_resv(presv, &dbresv) != 0)
-		goto db_err;
+		goto db_err_reset;
 
 	pbs_db_reset_obj(&obj);
 
@@ -698,6 +702,9 @@ resv_recov_db(char *resvid)
 		goto db_err;
 
 	return (presv);
+
+db_err_reset:
+	pbs_db_reset_obj(&obj);
 db_err:
 	if (presv)
 		resv_free(presv);

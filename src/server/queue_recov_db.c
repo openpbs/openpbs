@@ -224,20 +224,23 @@ que_recov_db(char *qname)
 		return NULL;
 	}
 
-	/* load server_qs */
+	/* load queue name */
 	snprintf(dbque.qu_name, sizeof(dbque.qu_name), "%s", qname);
 
-	/* read in job fixed sub-structure */
+	/* read in queue fixed sub-structure */
 	if (pbs_db_load_obj(conn, &obj) != 0)
 		goto db_err;
 
 	if (db_to_svr_que(pq, &dbque) != 0)
-		goto db_err;
+		goto db_err_reset;
 
 	pbs_db_reset_obj(&obj);
 
 	/* all done recovering the queue */
 	return (pq);
+
+db_err_reset:
+	pbs_db_reset_obj(&obj);
 
 db_err:
 	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover queue %s", qname);
