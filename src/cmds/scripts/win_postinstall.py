@@ -105,7 +105,7 @@ def install_vcredist():
     if ret > 0:
         if ret == 1638:
             msg = 'Newer version of Visual C++ redistributable is already'
-            msg += 'installed, ignoring this installation'
+            msg += ' installed, ignoring this installation'
             __log_info(msg)
         else:
             __log_err('Failed to install Visual C++ redistributable')
@@ -133,7 +133,8 @@ def create_pbs_conf():
                                                   pbs_start_server=0,
                                                   pbs_start_comm=0,
                                                   pbs_start_sched=0,
-                                                  pbs_start_mom=0)
+                                                  pbs_start_mom=0,
+                                                  pbs_scp=scp_path)
         fp.write(pbs_conf_data.lstrip())
     __log_info('Successfully created PBSPro configuration')
 
