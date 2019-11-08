@@ -259,6 +259,11 @@ gss_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 		if ((rc = tpp_pkt_presend_handler(tfd, pkt, extra)))
 			return rc;
 
+	/* if presend handler is called from handle_disconnect() gss_extra is NULL
+	 * and this is just a sending simulation. No gss needed. */
+	if (gss_extra == NULL)
+		return 0;
+
 	gss_extra->cleartext = pkt->data;
 	gss_extra->cleartext_len = pkt->len;
 
@@ -314,19 +319,23 @@ gss_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 {
 	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t*)extra;
 
-	if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_CTX) {
-		tpp_free_pkt(pkt);
-		return 0;
-	}
+	/* if postsend handler is called from handle_disconnect() gss_extra is NULL
+	 * and this is just a sending simulation. No gss needed. */
+	if (gss_extra) {
+		if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_CTX) {
+			tpp_free_pkt(pkt);
+			return 0;
+		}
 
-	if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_WRAP) {
-		free(pkt->data);
+		if ((char)(*(pkt->data + sizeof(int))) == (char)TPP_GSS_WRAP) {
+			free(pkt->data);
 
-		/* recover saved cleartext */
-		pkt->data = gss_extra->cleartext;
-		pkt->len = gss_extra->cleartext_len;
+			/* recover saved cleartext */
+			pkt->data = gss_extra->cleartext;
+			pkt->len = gss_extra->cleartext_len;
 
-		pkt->pos = pkt->data;
+			pkt->pos = pkt->data;
+		}
 	}
 
 	if (tpp_pkt_postsend_handler)
