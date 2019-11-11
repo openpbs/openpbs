@@ -122,6 +122,10 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 	if (!strcasecmp(orighost, server_host) && !strcmp(owner, luser))
 		return (0);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        return 0;
+#endif
+
 #ifdef WIN32
 	rc =   ruserok(orighost, isAdminPrivilege(luser), owner, luser);
 	if (rc == -2) {

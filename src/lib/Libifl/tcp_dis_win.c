@@ -899,3 +899,18 @@ DIS_tcp_setup(int fd)
 	assert(rc == 0);
 #endif
 }
+
+/**
+ * @brief
+ * 	-DIS_tcp_release - routine for releasing tcp structures
+ *	it does nothing on Windows, so only blank function is provided
+ *
+ * @param[in] fd - socket descriptor
+ *
+ * @return	Void
+ *
+ */
+void DIS_tcp_release(int fd)
+{
+	return;
+}

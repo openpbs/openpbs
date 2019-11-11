@@ -343,12 +343,12 @@ static void flush_acks(stream_t *strm);
 static void tpp_clr_retry(tpp_packet_t *pkt, stream_t *strm);
 
 /* externally called functions */
-int leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt);
-int leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt);
-int leaf_pkt_handler(int tfd, void *data, int len, void *ctx);
-int leaf_close_handler(int tfd, int error, void *ctx);
+int leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra);
+int leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra);
+int leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra);
+int leaf_close_handler(int tfd, int error, void *ctx, void *extra);
 int leaf_timer_handler(time_t now);
-int leaf_post_connect_handler(int tfd, void *data, void *c);
+int leaf_post_connect_handler(int tfd, void *data, void *c, void *extra);
 
 /*
  * Whether tpp is in fault tolerant mode.
@@ -498,7 +498,7 @@ tpp_set_app_net_handler(void (*app_net_down_handler)(void *data), void (*app_net
  *
  */
 int
-leaf_post_connect_handler(int tfd, void *data, void *c)
+leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	tpp_router_t *r;
@@ -722,6 +722,15 @@ tpp_init(struct tpp_config *cnf)
 	 * first register handlers with the transport, so these functions are called
 	 * from the IO thread from the transport layer
 	 */
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	gss_transport_set_handlers(leaf_pkt_presend_handler, /* called before sending pkt */
+		leaf_pkt_postsend_handler, /* called after sending a packet */
+		leaf_pkt_handler, /* called when a packet arrives */
+		leaf_close_handler, /* called when a connection closes */
+		leaf_post_connect_handler, /* called when connection restores */
+		leaf_timer_handler /* called after amt of time from previous handler */
+		);
+#else
 	tpp_transport_set_handlers(leaf_pkt_presend_handler, /* called before sending pkt */
 		leaf_pkt_postsend_handler, /* called after sending a packet */
 		leaf_pkt_handler, /* called when a packet arrives */
@@ -729,6 +738,7 @@ tpp_init(struct tpp_config *cnf)
 		leaf_post_connect_handler, /* called when connection restores */
 		leaf_timer_handler /* called after amt of time from previous handler */
 		);
+#endif
 
 	/* initialize the tpp transport layer */
 	if ((rc = tpp_transport_init(tpp_conf)) == -1)
@@ -3862,7 +3872,7 @@ free_stream(unsigned int sd)
  *
  */
 int
-leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
+leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 {
 	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
 	unsigned char type = data->type;
@@ -3969,7 +3979,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
  *
  */
 int
-leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
+leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 {
 	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
 	int len = *((int *)(pkt->data));
@@ -4205,7 +4215,7 @@ check_strm_valid(unsigned int src_sd, tpp_addr_t *dest_addr, int dest_sd)
  *
  */
 int
-leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
+leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 {
 	stream_t *strm;
 	unsigned int sd = UNINITIALIZED_INT;
@@ -4579,7 +4589,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
  *
  */
 int
-leaf_close_handler(int tfd, int error, void *c)
+leaf_close_handler(int tfd, int error, void *c, void *extra)
 {
 	int rc;
 	tpp_context_t *ctx = (tpp_context_t *) c;

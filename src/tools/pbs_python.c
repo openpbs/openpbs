@@ -737,6 +737,21 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	return 0;
 }
 
+int
+set_cred_renew_enable(attribute *pattr, void *pobj, int actmode) {
+	return PBSE_NONE;
+}
+
+int
+set_cred_renew_period(attribute *pattr, void *pobj, int actmode) {
+	return PBSE_NONE;
+}
+
+int
+set_cred_renew_cache_period(attribute *pattr, void *pobj, int actmode) {
+	return PBSE_NONE;
+}
+
 /**
  * @brief
  * 		encode_svrstate - encode string into svrstate value

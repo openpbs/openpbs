@@ -1512,6 +1512,11 @@ int
 verify_value_mgr_opr_acl_check(int batch_request, int parent_object,
 	int cmd, struct attropl *pattr, char **err_msg)
 {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	/* with kerberos, we cannot really check validity */
+	return PBSE_NONE;
+#endif
+
 	char *dup_val;
 	char *token;
 	char *entry;

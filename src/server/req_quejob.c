@@ -739,6 +739,24 @@ req_quejob(struct batch_request *preq)
 		}
 	}
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	/* save gssapi/krb5 creds for this job */
+	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			"saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
+
+		(void)job_attr_def[(int)JOB_ATR_cred_id].at_decode(&pj->ji_wattr[(int)JOB_ATR_cred_id], NULL, NULL, conn->cn_credid);
+
+		if (server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms].at_flags & ATR_VFLAG_SET) {
+			if (!acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms], conn->cn_credid, ACL_Host)) {
+				job_purge(pj);
+				req_reject(PBSE_PERM, 0, preq);
+				return;
+			}
+		}
+	}
+#endif
+
 	/*
 	 * Now that the attributes have been decoded, we can setup some
 	 * additional parameters and perform a few more checks.
@@ -840,6 +858,17 @@ req_quejob(struct batch_request *preq)
 			&pj->ji_wattr[(int)JOB_ATR_job_owner],
 			NULL, NULL, buf);
 
+		job_attr_def[(int)JOB_ATR_submit_host].at_free(
+			&pj->ji_wattr[(int)JOB_ATR_submit_host]);
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		(void)strcpy(buf, conn->cn_physhost);
+#else
+		(void)strcpy(buf, preq->rq_host);
+#endif
+		job_attr_def[(int)JOB_ATR_submit_host].at_decode(
+			&pj->ji_wattr[(int)JOB_ATR_submit_host],
+			NULL, NULL, buf);
+
 		/* set create time */
 
 		pj->ji_wattr[(int)JOB_ATR_ctime].at_val.at_long =(long)time_now;
@@ -861,7 +890,11 @@ req_quejob(struct batch_request *preq)
 			(void)strcat(buf, ",");
 			(void)strcat(buf, pbs_o_host);
 			(void)strcat(buf, "=");
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			(void)strcat(buf, conn->cn_physhost);
+#else
 			(void)strcat(buf, preq->rq_host);
+#endif
 		}
 		job_attr_def[(int)JOB_ATR_variables].at_decode(&tempattr,
 			NULL, NULL, buf);
@@ -1256,7 +1289,7 @@ req_quejob(struct batch_request *preq)
 		if ((pj->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
 			return;
 
-		myhost = get_hostPart(pj->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+		myhost = pj->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
 		if (myhost == NULL)
 			return;
 		myport = (int)pj->ji_wattr[(int)JOB_ATR_block].at_val.at_long;
@@ -1275,7 +1308,7 @@ req_quejob(struct batch_request *preq)
 			port = (int)pjob->ji_wattr[(int)JOB_ATR_block].at_val.at_long;
 			if (port != myport)
 				continue;
-			host = get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+			host = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
 			if (host == NULL)
 				continue;
 			if (strcmp(host, myhost) != 0)

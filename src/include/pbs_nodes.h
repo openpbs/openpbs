@@ -324,6 +324,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_NEED_ADDRS	0x10000	/* Needs to be sent IP addrs */
 #define INUSE_MAINTENANCE	0x20000 /* Node has a job in the admin suspended state */
 #define INUSE_SLEEP             0x40000 /* Node is sleeping */
+#define INUSE_NEED_CREDENTIALS	0x80000 /* Needs to be sent credentials */
 
 #define VNODE_AVAILABLE (INUSE_FREE | INUSE_JOB | INUSE_JOBEXCL | \
 			 INUSE_RESVEXCL | INUSE_BUSY)

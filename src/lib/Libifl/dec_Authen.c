@@ -107,6 +107,8 @@ decode_DIS_AuthExternal(int sock, struct batch_request *preq)
 	switch (preq->rq_ind.rq_authen_external.rq_auth_type) {
 		case AUTH_MUNGE:
 			return (disrfst(sock, cred_len, preq->rq_ind.rq_authen_external.rq_authen_un.rq_munge.rq_authkey) != 0);
+		case AUTH_GSS:
+			return (rc);
 	}
 
 	return DIS_EOF;

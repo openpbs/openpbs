@@ -147,6 +147,7 @@ extern pbs_list_head svr_deferred_req;
 extern time_t time_now;
 extern int   svr_totnodes;	/* non-zero if using nodes */
 extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
+extern int send_cred(job *pjob);
 
 
 /* private data */
@@ -1001,6 +1002,14 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	pjob->ji_wattr[(int)JOB_ATR_job_kill_delay].at_flags |=
 		(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
+		rc = send_cred(pjob);
+		if (rc != 0) {
+			return rc; /* do not start job without credentials */
+		}
+	}
+#endif
 
 	/* Next, are there files to be staged-in? */
 

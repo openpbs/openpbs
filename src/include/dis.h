@@ -47,6 +47,8 @@ extern "C" {
 #include <float.h>
 #include "Long.h"
 
+#include "pbs_gss.h"
+
 #ifndef TRUE
 #define TRUE	1
 #define FALSE	0
@@ -205,6 +207,10 @@ extern void DIS_tcp_funcs(void);
 extern void DIS_tcp_reset(int fd, int rw);
 extern void DIS_tcp_setup(int fd);
 extern int  DIS_tcp_wflush(int fd);
+extern void DIS_tcp_release(int fd);
+
+extern void tcp_set_extra(int fd, void *extra);
+extern void *tcp_get_extra(int fd);
 
 int diswull(int stream, u_Long value);
 u_Long disrull(int stream, int *retval);

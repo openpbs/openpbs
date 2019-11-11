@@ -1511,7 +1511,7 @@ check_block(job *pjob, char *message)
 	pjob->ji_wattr[(int) JOB_ATR_block].at_flags |= ATR_VFLAG_MODCACHE;
 	pjob->ji_modified = 1;
 
-	phost = get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+	phost = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
 	if (port == 0 || phost == NULL) {
 		sprintf(log_buffer, "%s: cannot reply %s:%d", __func__,
 			phost == NULL ? "<no host>" : phost, port);
@@ -1795,7 +1795,7 @@ prefix_std_file(job *pjob, int key)
 	if (pbs_conf.pbs_output_host_name)
 		outputhost = pbs_conf.pbs_output_host_name;
 	else
-		outputhost = get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+		outputhost = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
 	wdir     = get_variable(pjob, "PBS_O_WORKDIR");
 	if (outputhost) {
 		int len;

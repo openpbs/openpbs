@@ -963,7 +963,7 @@ takeover_from_secondary()
 	 */
 
 	(void)init_network(0);
-	(void)init_network_add(-1, NULL);
+	(void)init_network_add(-1, NULL, NULL);
 
 	/* connect to active secondary if we can */
 	/* if connected, send take-over request */
@@ -977,7 +977,7 @@ takeover_from_secondary()
 	if (sock < 0)
 		return 0;
 
-	conn = add_conn(sock, ToServerDIS, addr, 0, read_reg_reply);
+	conn = add_conn(sock, ToServerDIS, addr, 0, NULL, read_reg_reply);
 	if (conn == NULL) {
 		/* path highly unlikely but theoretically possible */
 
@@ -1048,7 +1048,7 @@ be_secondary(time_t delay)
 	 */
 
 	(void)init_network(0);
-	(void)init_network_add(-1, NULL);
+	(void)init_network_add(-1, NULL, NULL);
 	hd_time = time(0);
 
 	/* connect to primary */
@@ -1119,7 +1119,7 @@ be_secondary(time_t delay)
 				} else {
 					/* made contact with primary, set to send registration */
 					Secondary_state = SECONDARY_STATE_conn;
-					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0, NULL,
 						read_reg_reply);
 					if (conn) {
 						conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
@@ -1218,7 +1218,7 @@ be_secondary(time_t delay)
 					/* once in a while to quickly reconnect */
 					if ((sec_sock = alt_conn(primaddr, 8)) >= 0) {
 						Secondary_state = SECONDARY_STATE_conn;
-						conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+						conn = add_conn(sec_sock, ToServerDIS, primaddr, 0, NULL,
 							read_reg_reply);
 						if (conn) {
 							conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
@@ -1247,7 +1247,7 @@ be_secondary(time_t delay)
 					msg_daemonname, "Secondary attempting to connect with Primary one last time before taking over");
 				if ((sec_sock = alt_conn(primaddr, 8)) >= 0) {
 					Secondary_state = SECONDARY_STATE_conn;
-					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0, NULL,
 						read_reg_reply);
 					if (conn) {
 						conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;

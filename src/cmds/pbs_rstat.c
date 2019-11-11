@@ -341,6 +341,14 @@ handle_resv(char *resv_id, char *server, int how)
 	/* check the server attribute max_job_sequence_id value */
 	if (check_width == 0) {
 		server_attrs = pbs_statserver(pbs_sd, NULL, NULL);
+		if (server_attrs == NULL && pbs_errno != PBSE_NONE) {
+			if ((errmsg = pbs_geterrmsg(pbs_sd)) != NULL)
+				fprintf(stderr, "pbs_rstat: %s\n", errmsg);
+			else
+				fprintf(stderr, "pbs_rstat: Error %d\n", pbs_errno);
+			return;
+		}
+
 		if (server_attrs != NULL) {
 			int check_seqid_len;
 			check_seqid_len = check_max_job_sequence_id(server_attrs);

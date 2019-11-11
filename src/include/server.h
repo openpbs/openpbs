@@ -157,6 +157,15 @@ enum srv_atr {
 	SRV_ATR_sync_mom_hookfiles_timeout,
 	SRV_ATR_rpp_max_pkt_check,
 	SRV_ATR_max_job_sequence_id,
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	SRV_ATR_acl_krb_realm_enable,
+	SRV_ATR_acl_krb_realms,
+	SRV_ATR_acl_krb_submit_realms,
+	SRV_ATR_cred_renew_enable,
+	SRV_ATR_cred_renew_tool,
+	SRV_ATR_cred_renew_period,
+	SRV_ATR_cred_renew_cache_period,
+#endif
 	/* This must be last */
 	SRV_ATR_LAST
 };

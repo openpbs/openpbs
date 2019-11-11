@@ -640,6 +640,7 @@ refresh_dfltqsubargs(void)
 {
 	struct attrl *attr;
 	struct batch_status *ss_save = NULL;
+	char *errmsg;
 
 	if (sd_svr == -1)
 		return;
@@ -648,6 +649,15 @@ refresh_dfltqsubargs(void)
 
 	dfltqsubargs = NULL;
 	ss = pbs_statserver(sd_svr, NULL, NULL);
+
+	if (ss == NULL && pbs_errno != PBSE_NONE) {
+		if ((errmsg = pbs_geterrmsg(sd_svr)) != NULL)
+			fprintf(stderr, "qsub: %s\n", errmsg);
+		else
+			fprintf(stderr, "qsub: Error %d\n", pbs_errno);
+		return;
+	}
+
 	ss_save = ss;
 	while (ss != NULL) {
 		for (attr = ss->attribs; attr != NULL; attr = attr->next) {
@@ -4449,6 +4459,8 @@ do_connect(char *server_out, char *retmsg)
 	}
 
 	refresh_dfltqsubargs();
+	if (pbs_errno != PBSE_NONE)
+		return (pbs_errno);
 
 	pbs_hostvar = malloc(pbs_o_hostsize + PBS_MAXHOSTNAME + 1);
 	if (!pbs_hostvar) {
@@ -4499,8 +4511,11 @@ do_submit(char *retmsg)
 			rc = do_dir(dfltqsubargs, CMDLINE - 2, retmsg, MAXPATHLEN);
 			if (rc >= 0)
 				break;
-			if (retries == 2)
+			if (retries == 2) {
 				refresh_dfltqsubargs();
+				if (pbs_errno != PBSE_NONE)
+					return (pbs_errno);
+			}
 		}
 		if (rc != 0)
 			return (rc);
@@ -4834,6 +4849,8 @@ do_submit2(char *rmsg)
 	for (retry = 5; (rc == PBSE_FORCE_QSUB_UPDATE) && (retry > 0); retry--) {
 		/* Let's retry with the new "default_qsub_arguments" */
 		refresh_dfltqsubargs();
+		if (pbs_errno != PBSE_NONE)
+			return (pbs_errno);
 
 		/* Use the original attrib value before the previous "default_qsub_arguments" was applied. */
 		if (attrib_o != NULL) {

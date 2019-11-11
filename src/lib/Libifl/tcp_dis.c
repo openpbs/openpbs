@@ -86,6 +86,8 @@
 #include "dis.h"
 #include "dis_init.h"
 
+#include "pbs_gss.h"
+
 #define THE_BUF_SIZE 1024
 
 struct tcpdisbuf {
@@ -99,7 +101,19 @@ struct tcpdisbuf {
 struct	tcp_chan {
 	struct	tcpdisbuf	readbuf;
 	struct	tcpdisbuf	writebuf;
+
+	void *extra;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	struct gssdis_chan *gsschan;
+#endif
 };
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+int DIS_tcp_gss_wflush(int fd);
+void DIS_gss_funcs();
+void dis_gss_clear(struct gss_disbuf *tp);
+#endif
 
 /* resize of following global variables are protected by a mutex */
 static int			tcparraymax = 0;
@@ -326,7 +340,7 @@ DIS_wflush(int sock, int rpp)
 
 /**
  * @brief
- * 	-DIS_tcp_wflush - flush tcp/dis write buffer
+ * 	-__DIS_tcp_wflush - flush tcp/dis write buffer
  *
  * @par Functionality:
  *	Writes "committed" data in buffer to file discriptor,
@@ -337,8 +351,8 @@ DIS_wflush(int sock, int rpp)
  * @retval	-1	error
  *
  */
-int
-DIS_tcp_wflush(int fd)
+static int
+__DIS_tcp_wflush(int fd)
 {
 	size_t	ct;
 	int	i;
@@ -396,6 +410,29 @@ DIS_tcp_wflush(int fd)
 	tp->tdis_eod = tp->tdis_lead;
 	tcp_pack_buff(tp);
 	return 0;
+}
+
+/**
+ * @brief
+ * 	-DIS_tcp_wflush - flush tcp/dis write buffer wrapper
+ *
+ * @par Functionality:
+ *	Writes "committed" data in buffer to file descriptor,
+ *	packs remaining data (if any), resets pointers
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	-1	error
+ *
+ */
+int
+DIS_tcp_wflush(int fd)
+{
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	return (DIS_tcp_gss_wflush(fd)) || (__DIS_tcp_wflush(fd));
+#else
+	return __DIS_tcp_wflush(fd);
+#endif
 }
 
 /**
@@ -541,7 +578,7 @@ tcp_puts(int fd, const char *str, size_t ct)
 	tp = tcp_get_writebuf(fd);
 	if ((tp->tdis_bufsize - tp->tdis_lead) < ct) {
 		/* not enough room, try to flush committed data */
-		if (DIS_tcp_wflush(fd) < 0)
+		if (__DIS_tcp_wflush(fd) < 0)
 			return -1;		/* error */
 
 		if ((tp->tdis_bufsize - tp->tdis_lead) < ct) {	/* add room */
@@ -620,12 +657,100 @@ tcp_wcommit(int fd, int commit_flag)
 
 /**
  * @brief
+ * 	tcp_set_extra - associates optional structure with tcp connection
+ *
+ * @param[in] fd - file descriptor
+ * @param[in] extra - the structure for association
+ *
+ */
+
+void
+tcp_set_extra(int fd, void *extra)
+{
+	int rc;
+
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+	tcparray[fd]->extra = extra;
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+}
+
+/**
+ * @brief
+ * 	tcp_get_extra - gets optional structure associated with tcp connection
+ *
+ * @param[in] fd - file descriptor
+ *
+ * @return	void* - extra structure
+ *
+ */
+
+void
+*tcp_get_extra(int fd)
+{
+	int rc;
+	void *extra;
+
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+	extra = tcparray[fd]->extra;
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+
+	return (extra);
+}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+/**
+ * @brief
+ * 	tcp_get_gss_chan - gets dis structure related to GSS code
+ *
+ * @param[in] fd - file descriptor
+ *
+ * @return	gssdis_chan* - GSS dis structure
+ *
+ */
+
+struct gssdis_chan
+*tcp_get_gss_chan(int fd)
+{
+	int rc;
+	struct gssdis_chan *chan;
+
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+	chan = tcparray[fd]->gsschan;
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+
+	return (chan);
+}
+#endif
+
+/**
+ * @brief
  *	-sets tcp related functions.
  *
  */
 void
 DIS_tcp_funcs()
 {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	DIS_gss_funcs();
+
+	if (transport_getc != tcp_getc) {
+		transport_getc = tcp_getc;
+		transport_puts = tcp_puts;
+		transport_gets = tcp_gets;
+		transport_rskip = tcp_rskip;
+		transport_rcommit = tcp_rcommit;
+		transport_wcommit = tcp_wcommit;
+		transport_read = tcp_read;
+
+		gss_get_chan = tcp_get_gss_chan;
+	}
+#else
 	if (dis_getc != tcp_getc) {
 		dis_getc = tcp_getc;
 		dis_puts = tcp_puts;
@@ -634,6 +759,7 @@ DIS_tcp_funcs()
 		disr_commit = tcp_rcommit;
 		disw_commit = tcp_wcommit;
 	}
+#endif
 }
 
 /**
@@ -696,12 +822,70 @@ DIS_tcp_setup(int fd)
 		tcp->writebuf.tdis_thebuf = malloc(THE_BUF_SIZE);
 		assert(tcp->writebuf.tdis_thebuf != NULL);
 		tcp->writebuf.tdis_bufsize = THE_BUF_SIZE;
+
+		tcp->extra = NULL;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		tcp->extra = pbs_gss_alloc_gss_extra();
+		assert(tcp->extra != NULL);
+		tcp->gsschan = (struct gssdis_chan *) malloc(sizeof(struct gssdis_chan));
+		assert(tcp->gsschan != NULL);
+		tcp->gsschan->readbuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+		assert(tcp->gsschan->readbuf.tdis_thebuf != NULL);
+		tcp->gsschan->readbuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		tcp->gsschan->writebuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+		assert(tcp->gsschan->writebuf.tdis_thebuf != NULL);
+		tcp->gsschan->writebuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		tcp->gsschan->gss_readbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+		assert(tcp->gsschan->gss_readbuf.tdis_thebuf != NULL);
+		tcp->gsschan->gss_readbuf.tdis_bufsize = THE_BUF_SIZE;
+		tcp->gsschan->cleartext.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+		assert(tcp->gsschan->cleartext.tdis_thebuf != NULL);
+		tcp->gsschan->cleartext.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		tcp->gsschan->gss_extra = NULL;
+
+		dis_gss_clear(&(tcp->gsschan->cleartext));
+#endif
 	}
 
 	/* initialize read and write buffers */
 	DIS_tcp_clear(&tcp->readbuf);
 	DIS_tcp_clear(&tcp->writebuf);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	dis_gss_clear(&(tcp->gsschan->readbuf));
+	dis_gss_clear(&(tcp->gsschan->writebuf));
+	dis_gss_clear(&(tcp->gsschan->gss_readbuf));
+#endif
+
 	rc = pbs_client_thread_unlock_tcp();
 	assert(rc == 0);
+}
+
+/**
+ * @brief
+ * 	-DIS_tcp_release - release GSS structures associated with fd
+ *
+ * @param[in] fd - socket descriptor
+ *
+ * @return	Void
+ *
+ */
+void DIS_tcp_release(int fd)
+{
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	int rc;
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+
+	if (tcparray != NULL && tcparray[fd] != NULL) {
+		pbs_gss_free_gss_extra(tcparray[fd]->extra);
+		tcparray[fd]->extra = NULL;
+
+		tcparray[fd]->gsschan->gss_extra = NULL;
+	}
+
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+#endif
 }

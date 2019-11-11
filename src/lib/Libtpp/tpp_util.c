@@ -1418,7 +1418,7 @@ tpp_validate_hdr(int tfd, char *pkt_start)
 	type = *((unsigned char *) data);
 
 	if ((data_len < 0 || type >= TPP_LAST_MSG) ||
-		(data_len > TPP_SEND_SIZE && type != TPP_DATA && type != TPP_MCAST_DATA)) {
+		(data_len > TPP_SEND_SIZE && type != TPP_DATA && type != TPP_MCAST_DATA && type != TPP_GSS_WRAP)) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				 "tfd=%d, Received invalid packet type with type=%d? data_len=%d", tfd, type, data_len);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());

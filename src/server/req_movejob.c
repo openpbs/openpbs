@@ -222,11 +222,10 @@ req_orderjob(struct batch_request *req)
 
 		/* Jobs are in different queues */
 
-		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr,
-			get_hostPart(pjob1->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str),
+		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, pjob1->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
 			MOVE_TYPE_Order)) ||
 			(rc = svr_chkque(pjob2, pjob1->ji_qhdr,
-			get_hostPart(pjob2->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str),
+			pjob2->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
 			MOVE_TYPE_Order))) {
 			req_reject(rc, 0, req);
 			return;

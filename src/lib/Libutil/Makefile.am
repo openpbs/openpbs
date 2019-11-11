@@ -40,7 +40,7 @@ noinst_LIBRARIES = libutil.a
 
 libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@libical_inc@
+	@libical_inc@ @KRB5_CFLAGS@
 
 libutil_a_SOURCES = \
 	execvnode_seq_util.c \
@@ -54,4 +54,6 @@ libutil_a_SOURCES = \
 	pbs_array_list.c \
 	pbs_secrets.c \
 	pbs_aes_encrypt.c \
-	munge_supp.c
+	munge_supp.c \
+	krb5_util.c \
+	pbs_gss.c

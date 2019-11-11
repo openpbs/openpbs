@@ -1047,7 +1047,7 @@ main(int argc, char **argv)
 	}
 
 	rc = 0;
-	if (pbs_conf.auth_method == AUTH_RESV_PORT) {
+	if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
 		rc = set_tpp_config(&pbs_conf, &conf, host, port, routers, pbs_conf.pbs_use_compression,
 				TPP_AUTH_RESV_PORT, NULL, NULL);
 	} else {
