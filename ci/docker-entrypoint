@@ -1,0 +1,24 @@
+#!/bin/bash -ex
+
+workdir=/src
+logdir=/logs
+cd /pbspro
+${workdir}/do.sh 1 | tee ${logdir}/build
+commit_id=$( cd /pbspro && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
+while true; do
+    new_commit=$( cd /pbspro && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
+    if [ "xx${commit_id}" != "xx${new_commit}" ]; then
+        time_stamp=$( date +"%s" )
+        [ ! -d ${logdir}/prev_LOGS ] && mkdir -p ${logdir}/prev_LOGS
+        cp ${logdir}/build ${logdir}/prev_LOGS/
+        mv ${logdir}/prev_LOGS/build ${logdir}/prev_LOGS/${commit_id}_${time_stamp}.build
+        if [ -f ${logdir}/logfile ];then
+            cp ${logdir}/logfile ${logdir}/prev_LOGS/
+            mv ${logdir}/prev_LOGS/logfile ${logdir}/prev_LOGS/${commit_id}_${time_stamp}.ptl
+        fi
+        ${workdir}/do.sh  | tee ${logdir}/build
+        export ENABLE_TEST=1 && export ONLY_TEST=1 && ${workdir}/do.sh
+        commit_id=${new_commit}
+    fi
+    sleep 30
+done

@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+    pbs-build: 
+      image: ${CONTAINER_PLATFORM}
+      volumes: 
+        - ../../pbspro:/pbspro
+        - ./:/src
+        - ./logs:/logs
+      entrypoint: src/docker-entrypoint
+      env_file: .env
+      networks: 
+        ci:
+          aliases:
+            - pbs_server
+      hostname: pbs.ci
+      privileged: true
+
+    # website:
+    #   image: python:3
+    #   volumes:
+    #     - ./logs:/logs
+    #     - ./:/src
+    #   ports:
+    #     - "5000"
+    #   entrypoint: src/web-entrypoint
+    #   networks: 
+    #     ci:
+    #       aliases:
+    #         - website
+    #   hostname: website.ci
+
+networks: 
+  ci:
+    driver: bridge
+    

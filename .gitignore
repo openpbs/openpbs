@@ -248,6 +248,11 @@ win_configure/projects/pbs_ifl.i
 win_configure/projects/pbs_ifl.py
 win_configure/projects/pbs_ifl_wrap.c
 
+#ci logs
+ci/logs/
+ci/logs/prev_LOGS/
+ci/.*
+
 # Generated scripts
 src/cmds/scripts/modulefile
 src/cmds/scripts/pbs.service

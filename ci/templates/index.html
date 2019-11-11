@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>InstantCI</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+  <script>
+      $(document).ready( function() {
+        setInterval(load_build_data,100);
+        setInterval(load_test_data,100);
+        function load_build_data(){
+        $.ajax("{{ url_for('build_data') }}").done(function (reply) {
+            $('#build_data').html(reply);
+          });
+        }
+
+        function load_test_data(){
+          $.ajax("{{ url_for('test_data') }}").done(function (reply) {
+            $('#test_data').html(reply);
+          });
+        }
+        
+      });      
+  </script>
+  <style>
+    body {
+      position: relative; 
+    }
+    .log_data{
+      background: #636362;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body data-spy="scroll" data-target=".navbar" data-offset="50">
+
+<br>
+<br>
+<br>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container-fluid">
+          <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>                        
+            </button>
+            <a class="navbar-brand" href="#">InstantCI</a>
+          </div>
+          <div>
+            <div class="collapse navbar-collapse" id="myNavbar">
+              <ul class="nav navbar-nav">
+                <li><a href="#form_pbs" data-toggle="collapse" data-target="#form_pbs">Build & Test</a></li>
+                <li><a href="#monitor" data-toggle="collapse" data-target="#monitor">Monitor</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </nav> 
+
+<div class="container-fluid">
+    <h1>CI Dashboard</h1>
+    <p>Monitor and submit your builds</p>
+</div>
+<br><br>
+
+<div id="form_pbs" class="container-fluid">
+    <form class="form-horizontal" action="/pbs_opt/" method="POST">
+      <div class="form-group">
+        <label class="control-label col-sm-2" for="config_opt">Configure options:</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="config_opt" placeholder="Current options are: {{ config.CONFIGURE }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="control-label col-sm-2" for="bench_opt">Benchpress Options:</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="bench_opt" placeholder="Current options are: {{ config.BENCHPRESS_OPTS }} ">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <label class="radio-inline"><input type="radio" name="optradio" checked>Build and test</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Configure only</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Build only</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Install only</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Test only</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Stop pbs processes</label>
+            <label class="radio-inline"><input type="radio" name="optradio">Stop pbs processes and clean container</label>  
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Submit</button>
+        </div>
+      </div>
+    </form>  
+</div>
+
+<div class="row">
+  <div class="col-sm-offset-1">
+    <div id="build_data" class="col-sm-6" class="container"></div>
+  </div>
+  <div class="col-sm-offset-2">
+    <div id="test_data" class="col-sm-6" class="container"><div>
+  </div>
+</div>
+</body>
+</html> 
