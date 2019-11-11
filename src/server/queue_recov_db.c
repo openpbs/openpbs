@@ -211,7 +211,7 @@ pbs_queue *
 que_recov_db(char *qname)
 {
 	pbs_queue		*pq;
-	pbs_db_que_info_t	dbque;
+	pbs_db_que_info_t	dbque = {{0}};
 	pbs_db_obj_info_t	obj;
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 
@@ -232,17 +232,16 @@ que_recov_db(char *qname)
 		goto db_err;
 
 	if (db_to_svr_que(pq, &dbque) != 0)
-		goto db_err_reset;
+		goto db_err;
 
 	pbs_db_reset_obj(&obj);
 
 	/* all done recovering the queue */
 	return (pq);
 
-db_err_reset:
+db_err:
 	pbs_db_reset_obj(&obj);
 
-db_err:
 	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover queue %s", qname);
 	log_err(-1, "que_recov", log_buffer);
 	if (pq)

@@ -528,7 +528,7 @@ job *
 job_recov_db(char *jid)
 {
 	job		*pj = NULL;
-	pbs_db_job_info_t dbjob;
+	pbs_db_job_info_t dbjob = {{0}};
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
@@ -545,19 +545,18 @@ job_recov_db(char *jid)
 
 	pj = job_recov_db_spl(&dbjob);
 	if (!pj)
-		goto db_err_reset;
+		goto db_err;
 
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err_reset;
+		goto db_err;
 
 	pbs_db_reset_obj(&obj);
 
 	return (pj);
 
-db_err_reset:
+db_err:
 	pbs_db_reset_obj(&obj);
 
-db_err:
 	if (pj)
 		job_free(pj);
 
@@ -673,7 +672,7 @@ resc_resv *
 resv_recov_db(char *resvid)
 {
 	resc_resv               *presv;
-	pbs_db_resv_info_t	dbresv;
+	pbs_db_resv_info_t	dbresv = {{0}};
 	pbs_db_obj_info_t       obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
@@ -694,7 +693,7 @@ resv_recov_db(char *resvid)
 		goto db_err;
 
 	if (db_to_svr_resv(presv, &dbresv) != 0)
-		goto db_err_reset;
+		goto db_err;
 
 	pbs_db_reset_obj(&obj);
 
@@ -703,9 +702,8 @@ resv_recov_db(char *resvid)
 
 	return (presv);
 
-db_err_reset:
-	pbs_db_reset_obj(&obj);
 db_err:
+	pbs_db_reset_obj(&obj);
 	if (presv)
 		resv_free(presv);
 
