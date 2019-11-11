@@ -427,6 +427,7 @@
    fun:_PyUnicode_Init
    fun:_Py_InitializeEx_Private
    fun:Py_InitializeEx
+   ...
    fun:main
 }
 {
@@ -3177,6 +3178,7 @@
    fun:_PyLong_Init
    fun:_Py_InitializeEx_Private
    fun:Py_InitializeEx
+   ...
    fun:main
 }
 {
