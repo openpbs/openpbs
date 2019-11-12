@@ -103,11 +103,13 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd ${_targetdirname}
   if [ -f /src/ci ];then
     if [ -f ${workdir}/.configure_opt ]; then
-      configure_opt=$(cat ${workdir}/.configure_opt)
+      configure_opt="$(cat ${workdir}/.configure_opt)"
+      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
+      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else 
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    ../configure ${configure_opt} 
+    ../configure CFLAGS="${_cflags}" ${configure_opt}
     if [ "x${ONLY_CONFIGURE}" == "x1" ];then
       exit 0
     fi
@@ -147,7 +149,7 @@ pbs_config --make-ug
 if [ "x${RUN_TESTS}" == "x1" ];then
   ptl_tests_dir=$(dirname ${prefix})/ptl/tests
   cd ${ptl_tests_dir}/
-  pbs_benchpress $( cat ${workdir}/.benchpress_opt ) --db-type=html --db-name=result -o ${logdir}/logfile
+  pbs_benchpress "$( cat ${workdir}/.benchpress_opt )" --db-type=html --db-name=result -o ${logdir}/logfile
   mv result.html ${logdir}/
 fi
 
