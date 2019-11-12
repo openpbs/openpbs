@@ -5051,13 +5051,6 @@ class Server(PBSService):
         self.logger.info(self.logprefix +
                          'reverting configuration to defaults')
         self.cleanup_jobs_and_reservations()
-        self.mpp_hook = os.path.join(self.pbs_conf['PBS_HOME'],
-                                     'server_priv', 'hooks',
-                                     'PBS_translate_mpp.HK')
-        self.dflt_mpp_hook = os.path.join(self.pbs_conf['PBS_EXEC'],
-                                          'lib', 'python', 'altair',
-                                          'pbs_hooks',
-                                          'PBS_translate_mpp.HK')
         self.atom_hk = os.path.join(self.pbs_conf['PBS_HOME'],
                                     'server_priv', 'hooks',
                                     'PBS_cray_atom.HK')
@@ -5100,12 +5093,6 @@ class Server(PBSService):
         if delnodes:
             self.delete_nodes()
         if reverthooks:
-            if self.platform == 'cray' or self.platform == 'craysim':
-                if self.du.cmp(self.hostname, self.dflt_mpp_hook,
-                               self.mpp_hook, sudo=True) != 0:
-                    self.du.run_copy(self.hostname, self.dflt_mpp_hook,
-                                     self.mpp_hook, mode=0o644, sudo=True)
-                    self.signal('-HUP')
             if self.platform == 'shasta':
                 dohup = False
                 if (self.du.cmp(self.hostname, self.dflt_atom_hk,
