@@ -2869,7 +2869,7 @@ void
 finish_exec(job *pjob)
 {
 	char			**argv = NULL;
-	char			buf[2*MAXPATHLEN+5];
+	char			buf[(2 * MAXPATHLEN) + 5];
 	pid_t			cpid;
 	struct passwd		*pwdp;		/* for uid, shell, home dir */
 	int			i, j, k;
@@ -3255,7 +3255,7 @@ finish_exec(job *pjob)
 	cpid = fork_me(-1);
 	if (cpid > 0) {
 		conn_t *conn = NULL;
-		char	*s, *d, holdbuf[2*MAXPATHLEN+5];
+		char	*s, *d, holdbuf[(2 * MAXPATHLEN) + 5];
 
 		/* the parent side, still the main man, uhh that is MOM */
 
