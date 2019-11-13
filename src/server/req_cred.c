@@ -183,8 +183,8 @@ get_cached_cred(job  *pjob)
 		return NULL;
 	}
 
-	strncpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str,
-		strlen(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str));
+	strncpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str, PBS_MAXUSER);
+	cred->credid[PBS_MAXUSER] = '\0';
 	cred->type = cred_type;
 	cred->validity = validity;
 	cred->size = strlen(buf);
