@@ -17,8 +17,10 @@ RUN yum install -y \
     ncurses-devel \
     openssl-devel \
     perl \
+    postgresql-contrib \
     postgresql-devel \
-    python-devel \
+    python3 \
+    python3-devel \
     rpm-build \
     swig \
     tcl-devel \
