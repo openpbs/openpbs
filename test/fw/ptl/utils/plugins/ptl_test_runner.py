@@ -656,6 +656,12 @@ class PTLTestRunner(Plugin):
         if self.current_test is not test:
             self.test_run_count = 1
             self.current_test = test
+        print("\n test: " +
+              str(test) +
+              " repeated " +
+              str(self.test_run_count) +
+              " times out of required " +
+              str(self.repeat_tests))
         while self.test_run_count < self.repeat_tests:
             self.test_run_count += 1
             time.sleep(self.repeat_test_delay)
