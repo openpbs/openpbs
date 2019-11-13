@@ -121,7 +121,7 @@ void undolr()
 {
 	int e = 0;
 	static int recording;
-	undolr_error_t  err = 0;
+	undolr_error_t err = 0;
 	undolr_recording_context_t lr_ctx;
 
 	if (!recording) {

@@ -55,3 +55,8 @@ libutil_a_SOURCES = \
 	pbs_secrets.c \
 	pbs_aes_encrypt.c \
 	munge_supp.c
+
+if UNDOLR_ENABLED
+libutil_a_CPPFLAGS += @libundolr_inc@
+libutil_a_SOURCES += undolr.c
+endif

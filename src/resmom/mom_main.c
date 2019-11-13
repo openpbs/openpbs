@@ -134,6 +134,7 @@
 #ifndef	PRIO_MIN
 #define		PRIO_MIN	-20
 #endif
+#include	"pbs_undolr.h"
 
 
 /*
@@ -317,12 +318,6 @@ unsigned long	spoolsize = 0; /* default spoolsize = unlimited */
 static  char    quiesce_mom_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/quiesce_mom";
 int             mom_should_quiesce = 0;
 #endif /* localmod 153 */
-
-#ifdef PBS_UNDOLR_ENABLED
-extern int sigusr1_flag;
-extern void catch_sigusr1(int);
-extern void undolr();
-#endif
 
 #ifdef NAS_UNKILL /* localmod 011 */
 #define KP_WAIT_TIME	60		/* number of seconds to wait for kill
@@ -9161,13 +9156,13 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
+#ifdef	SIGINFO
+	sigaction(SIGINFO, &act, NULL);
+#endif
 #ifdef PBS_UNDOLR_ENABLED
 	act.sa_handler = catch_sigusr1;
 #endif
 	sigaction(SIGUSR1, &act, NULL);
-#ifdef	SIGINFO
-	sigaction(SIGINFO, &act, NULL);
-#endif
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */

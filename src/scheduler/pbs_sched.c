@@ -111,6 +111,7 @@
 #include	"config.h"
 #include	"fifo.h"
 #include	"globals.h"
+#include	"pbs_undolr.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;
@@ -147,11 +148,6 @@ extern int do_hard_cycle_interrupt;
 #endif /* localmod 030 */
 
 static int	engage_authentication(struct connect_handle *);
-
-#ifdef PBS_UNDOLR_ENABLED
-extern int sigusr1_flag;
-extern void undolr();
-#endif
 
 extern char *msg_startup1;
 /**

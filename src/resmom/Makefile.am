@@ -114,9 +114,7 @@ pbs_mom_SOURCES += linux/cpuset_misc.c
 endif
 
 if UNDOLR_ENABLED
-pbs_mom_CPPFLAGS += @libundolr_inc@
 pbs_mom_LDADD += @libundolr_lib@
-pbs_mom_SOURCES += $(top_srcdir)/src/server/undolr.c
 endif
 
 EXTRA_DIST = \

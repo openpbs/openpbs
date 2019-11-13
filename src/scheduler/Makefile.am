@@ -134,7 +134,5 @@ dist_sysconf_DATA = \
 	pbs_sched_config
 
 if UNDOLR_ENABLED
-libpbs_sched_a_CPPFLAGS += @libundolr_inc@
 common_libs += @libundolr_lib@
-libpbs_sched_a_SOURCES += $(top_srcdir)/src/server/undolr.c
 endif
