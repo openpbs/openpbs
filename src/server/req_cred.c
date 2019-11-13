@@ -102,7 +102,6 @@ get_cached_cred(job  *pjob)
 	long validity = 0;
 	int cred_type = CRED_NONE;
 	int ret = 0;
-	int credid_len;
 
 	/* try the cache first */
 	cred = (cred_cache *)GET_NEXT(svr_creds_cache);
@@ -184,9 +183,8 @@ get_cached_cred(job  *pjob)
 		return NULL;
 	}
 
-	credid_len = strlen(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
-	strncpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str, credid_len);
-	cred->credid[credid_len] = '\0';
+	strncpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str, PBS_MAXUSER);
+	cred->credid[PBS_MAXUSER] = '\0';
 	cred->type = cred_type;
 	cred->validity = validity;
 	cred->size = strlen(buf);
