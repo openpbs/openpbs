@@ -615,15 +615,12 @@ if __name__ == '__main__':
         hooks = []
         _hlist = server.status(HOOK)
         for hook in _hlist:
-            if (not hook['id'].startswith('PBS_translate_mpp') and
-                    not hook['id'].startswith('PBS_ibwins') and
-                    not hook['id'].startswith('PBSadd_spawn')):
-                if 'enabled' in hook and hook['enabled'] == 'false':
-                    _disabled = '[disabled]'
-                else:
-                    _disabled = ''
-                hooks.append(hook['id'] + ': ' + hook['event'] + ' ' +
-                             _disabled)
+            if 'enabled' in hook and hook['enabled'] == 'false':
+                _disabled = '[disabled]'
+            else:
+                _disabled = ''
+            hooks.append(hook['id'] + ': ' + hook['event'] + ' ' +
+                         _disabled)
         try:
             if 'pbs_version' not in server.attributes:
                 d = server.status(SERVER, ['pbs_version', 'job_sort_formula',

@@ -1504,7 +1504,7 @@ main(int argc, char *argv[])
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
-		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
+		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
 		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port,
 				pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {

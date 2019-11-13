@@ -528,7 +528,7 @@ job *
 job_recov_db(char *jid)
 {
 	job		*pj = NULL;
-	pbs_db_job_info_t dbjob;
+	pbs_db_job_info_t dbjob = {{0}};
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
@@ -553,7 +553,10 @@ job_recov_db(char *jid)
 	pbs_db_reset_obj(&obj);
 
 	return (pj);
+
 db_err:
+	pbs_db_reset_obj(&obj);
+
 	if (pj)
 		job_free(pj);
 
@@ -669,7 +672,7 @@ resc_resv *
 resv_recov_db(char *resvid)
 {
 	resc_resv               *presv;
-	pbs_db_resv_info_t	dbresv;
+	pbs_db_resv_info_t	dbresv = {{0}};
 	pbs_db_obj_info_t       obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
@@ -698,7 +701,9 @@ resv_recov_db(char *resvid)
 		goto db_err;
 
 	return (presv);
+
 db_err:
+	pbs_db_reset_obj(&obj);
 	if (presv)
 		resv_free(presv);
 

@@ -1,6 +1,0 @@
-type=pbs
-enabled=false
-user=pbsadmin
-event=queuejob,resvsub
-order=1000
-alarm=90

@@ -209,9 +209,9 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	/* add the connection to the server connection table and select list */
 
 	if (func) {
-		conn = add_conn(sock, ToServerDIS, hostaddr, port, func);
+		conn = add_conn(sock, ToServerDIS, hostaddr, port, NULL, func);
 	} else {
-		conn = add_conn(sock, ToServerDIS, 0, 0, NULL);/* empty slot */
+		conn = add_conn(sock, ToServerDIS, 0, 0, NULL, NULL);/* empty slot */
 	}
 
 

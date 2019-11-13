@@ -67,7 +67,8 @@ dist_unsupported_DATA = \
 	pbs_output.py
 
 pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
+					@libz_inc@ \
+					@KRB5_CFLAGS@
 pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
@@ -75,5 +76,6 @@ pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
-	@libz_lib@
+	@libz_lib@ \
+	@KRB5_LIBS@
 pbs_rmget_SOURCES = pbs_rmget.c

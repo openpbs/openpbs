@@ -234,6 +234,11 @@ static char *hook_privilege = "Not allowed to update vnodes or to request schedu
 
 extern struct python_interpreter_data  svr_interp_data;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern char server_host[];
+extern void svr_renew_job_cred(struct work_task *pwt);
+#endif
+
 extern long node_fail_requeue;
 
 #define		SKIP_NONE	0
@@ -4598,6 +4603,11 @@ is_request(int stream, int version)
 		((mom_svrinfo_t *)(pmom->mi_data))->msr_state |=
 			INUSE_NEEDS_HELLO_PING|INUSE_UNKNOWN;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_numjobs > 0)
+			((mom_svrinfo_t *)(pmom->mi_data))->msr_state |= INUSE_NEED_CREDENTIALS;
+#endif
+
 		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_vnode_pool != 0) {
 			/*
 			 * Mom has a pool, see if the pool has an
@@ -5200,6 +5210,21 @@ found:
 			}
 			psvrmom->msr_timedown = 0;
 			psvrmom->msr_timeinit = 0;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			if (psvrmom->msr_state & INUSE_NEED_CREDENTIALS) {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+					LOG_INFO, pmom->mi_host, "mom needs credentials");
+
+				for (i = 0; i < psvrmom->msr_numjobs; i++) {
+					if (psvrmom->msr_jobindx[i])
+						set_task(WORK_Immed, 0, svr_renew_job_cred, psvrmom->msr_jobindx[i]->ji_qs.ji_jobid);
+				}
+
+				psvrmom->msr_state &= ~INUSE_NEED_CREDENTIALS;
+			}
+#endif
+
 			break;
 
 		case IS_DISCARD_DONE:

@@ -123,6 +123,7 @@ extern char  *msg_err_noqueue;
 extern char  *msg_err_malloc;
 extern char  *msg_reqbadhost;
 extern char  *msg_request;
+extern char  *msg_auth_request;
 
 extern int    is_local_root(char *, char *);
 extern void   req_stat_hook(struct batch_request *);
@@ -133,6 +134,11 @@ static void freebr_manage(struct rq_manage *);
 static void freebr_cpyfile(struct rq_cpyfile *);
 static void freebr_cpyfile_cred(struct rq_cpyfile_cred *);
 static void close_quejob(int sfds);
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+int req_gss_auth(struct batch_request *preq);
+int gss_set_conn(int s);
+#endif
 
 /**
  * @brief
@@ -231,6 +237,30 @@ authenticate_external(conn_t *conn, struct batch_request *request)
 				conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL; /* set priv connection */
 
 			return rc;
+#ifndef PBS_MOM
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		case AUTH_GSS:
+			if (pbs_conf.auth_method != AUTH_GSS) {
+				rc = -2;
+				snprintf(log_buffer, sizeof(log_buffer), "PBS Server not enabled for GSS Authentication");
+				goto err;
+			}
+
+			rc = req_gss_auth(request);
+
+			if (rc != 0)
+				goto err;
+
+			(void) strcpy(conn->cn_username, request->rq_user);
+			(void) strcpy(conn->cn_hostname, request->rq_host);
+			conn->cn_timestamp = time_now;
+			conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+			conn->cn_authen |= PBS_NET_CONN_GSSAPIAUTH;
+
+			return rc;
+#endif
+#endif
+
 #endif
 		default:
 			snprintf(log_buffer, sizeof(log_buffer), "Authentication method not supported");
@@ -259,6 +289,9 @@ process_request(int sfds)
 	int		      rc;
 	struct batch_request *request;
 	conn_t		     *conn;
+#ifndef PBS_MOM
+	int		     access_by_krb;
+#endif
 
 
 	time_now = time(NULL);
@@ -341,6 +374,12 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	strncpy(conn->cn_physhost, request->rq_host, strlen(request->rq_host));
+#endif
+#endif
+
+#ifndef PBS_MOM
 	/* If the request is coming on the socket we opened to the  */
 	/* scheduler,  change the "user" from "root" to "Scheduler" */
 	if (find_sched_from_sock(request->rq_conn) != NULL) {
@@ -367,7 +406,40 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long) {
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (gss_set_conn(sfds)) {
+		req_reject(PBSE_INTERNAL, 0, request);
+		close_client(sfds);
+		return;
+	}
+#endif
+
+	access_by_krb = 0;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+		strcpy(request->rq_user, conn->cn_username);
+		strcpy(request->rq_host, conn->cn_hostname);
+
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			"", msg_auth_request, request->rq_type, request->rq_user,
+			request->rq_host, conn->cn_physhost, sfds);
+
+		if (server.sv_attr[(int)SRV_ATR_acl_krb_realm_enable].at_val.at_long) {
+			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {
+				req_reject(PBSE_PERM, 0, request);
+				close_client(sfds);
+				return;
+			}
+		}
+
+		/* this principal is allowed to access the server */
+		access_by_krb = 1;
+	}
+#endif
+
+	if ((access_by_krb == 0) && (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
@@ -966,6 +1038,15 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_del_hookfile(request);
 			break;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		case PBS_BATCH_Cred:
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+				LOG_INFO,
+				request->rq_ind.rq_cred.rq_jobid,
+				"credentials received");
+			req_cred(request);
+			break;
+#endif
 #endif
 		default:
 			req_reject(PBSE_UNKREQ, 0, request);
@@ -1356,6 +1437,10 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_MvJobFile:
 			if (preq->rq_ind.rq_jobfile.rq_data)
 				free(preq->rq_ind.rq_jobfile.rq_data);
+			break;
+		case PBS_BATCH_Cred:
+			if (preq->rq_ind.rq_cred.rq_cred_data)
+				free(preq->rq_ind.rq_cred.rq_cred_data);
 			break;
 
 #ifndef PBS_MOM		/* Server Only */

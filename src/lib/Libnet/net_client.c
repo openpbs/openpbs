@@ -120,9 +120,12 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 		return (-1);
 	}
 
+	if (pbs_conf.auth_method == AUTH_GSS)
+		authport_flags &= ~(B_EXTERNAL);
+
 	mode = (authport_flags & B_SVR) ? CS_MODE_SERVER:CS_MODE_CLIENT;
 	if (authport_flags & B_EXTERNAL) {
-		if ((ret = engage_external_authentication(sd, pbs_conf.auth_method, mode, errbuf, sizeof(errbuf))) != 0)
+		if ((ret = engage_external_authentication(sd, NULL, pbs_conf.auth_method, mode, errbuf, sizeof(errbuf))) != 0)
 			cs_logerr(-1, __func__,	errbuf);
 		return (ret);
 	} else {

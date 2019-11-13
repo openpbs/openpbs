@@ -414,7 +414,7 @@ preempt_targets_action(resource *presc, attribute *pattr, void *pobject, int typ
 	resource_def *resdef = NULL;
 	char ch;
 
-	if (actmode == ATR_ACTION_FREE)
+	if ((actmode == ATR_ACTION_FREE) || (actmode == ATR_ACTION_RECOV))
 		return PBSE_NONE;
 
 	if ((pattr->at_flags & ATR_VFLAG_SET) == 0)

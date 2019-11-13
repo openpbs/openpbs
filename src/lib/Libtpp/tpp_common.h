@@ -253,6 +253,8 @@ enum TPP_MSG_TYPES {
         TPP_CTL_MSG,
         TPP_CLOSE_STRM,
         TPP_MCAST_DATA,
+        TPP_GSS_CTX,
+        TPP_GSS_WRAP,
         TPP_LAST_MSG
 };
 
@@ -434,11 +436,11 @@ int tpp_transport_isresvport(int tfd);
 int tpp_transport_vsend_extra(int tfd, tpp_chunk_t *chunk, int count, void *extra);
 int tpp_transport_init(struct tpp_config *conf);
 void tpp_transport_set_handlers(
-	int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt),
-	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt),
-	int (*pkt_handler)(int, void *data, int len, void *),
-	int (*close_handler)(int, int, void *),
-	int (*post_connect_handler)(int sd, void *data, void *ctx),
+	int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_handler)(int, void *data, int len, void *, void *extra),
+	int (*close_handler)(int, int, void *, void *extra),
+	int (*post_connect_handler)(int sd, void *data, void *ctx, void *extra),
 	int (*timer_handler)(time_t now)
 	);
 void tpp_set_logmask(long logmask);
@@ -498,6 +500,8 @@ tpp_addr_t *tpp_get_local_host(int sock);
 tpp_addr_t *tpp_get_connected_host(int sock);
 int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);
 tpp_addr_t *tpp_sock_resolve_host(char *host, int *count);
+
+void tpp_transport_set_conn_extra(int tfd, void *extra);
 
 char *tpp_netaddr(tpp_addr_t *);
 char *tpp_netaddr_sa(struct sockaddr *);
@@ -686,6 +690,16 @@ void print_packet_hdr(const char *fnc, void *data, int len);
 #define		TPP_DBPRT(x)
 #define		PRTPKTHDR(id, data, len)
 
+#endif
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+void
+gss_transport_set_handlers(int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_handler)(int, void *data, int len, void *, void *extra),
+	int (*close_handler)(int, int, void *, void *extra),
+	int (*post_connect_handler)(int sd, void *data, void *ctx, void *extra),
+	int (*timer_handler)(time_t now));
 #endif
 
 #endif

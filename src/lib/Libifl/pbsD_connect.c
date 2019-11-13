@@ -70,7 +70,9 @@
 #include "libsec.h"
 #include "pbs_ecl.h"
 #include "pbs_internal.h"
+#include "pbs_gss.h"
 
+extern void DIS_tcp_release(int fd);
 
 extern struct connect_handle connection[NCONNECTS];
 
@@ -318,9 +320,18 @@ engage_authentication(int sd,
 
 	switch (pbs_conf.auth_method) {
 		case AUTH_MUNGE:
-			if ((ret = engage_external_authentication(sd, AUTH_MUNGE, 0, errbuf, sizeof(errbuf))) != 0)
+			if ((ret = engage_external_authentication(sd, server_name, AUTH_MUNGE, 0, errbuf, sizeof(errbuf))) != 0)
 				cs_logerr(-1, __func__, errbuf);
 			return (ret);
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		case AUTH_GSS:
+			if (!getenv("PBSPRO_IGNORE_KERBEROS") && pbs_gss_can_get_creds()) {
+				if ((ret = engage_external_authentication(sd, server_name, AUTH_GSS, 0, errbuf, sizeof(errbuf))) != 0)
+					cs_logerr(-1, __func__, errbuf);
+				return (ret);
+			} /* else AUTH_RESV_PORT, no break here */
+#endif
 
 		case AUTH_RESV_PORT:
 			if ((ret = CS_client_auth(sd)) == CS_SUCCESS)
@@ -421,7 +432,7 @@ pbs_connection_getsocket(int sd)
  *
  */
 int
-engage_external_authentication(int sock, int auth_type, int fromsvr, char *ebuf, int ebufsz)
+engage_external_authentication(int sock, char *server_name, int auth_type, int fromsvr, char *ebuf, int ebufsz)
 {
 	int cred_len = 0, rc = 0, ret = 0;
 	char *cred = NULL;
@@ -435,6 +446,15 @@ engage_external_authentication(int sock, int auth_type, int fromsvr, char *ebuf,
 			if (!cred)
 				goto err;
 			break;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		case AUTH_GSS:
+			ebuf[0] = '\0';
+			if (tcp_gss_client_authenticate(sock, server_name, ebuf, ebufsz) != PBS_GSS_OK)
+				ret = -1;
+			break;
+#endif
+
 #endif
 		default:
 			snprintf(ebuf, ebufsz, "Authentication type not supported");
@@ -761,23 +781,29 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * socket, so will send a "dummy" message and discard the replyback.
 	 */
 
-#if !defined(PBS_SECURITY ) || (PBS_SECURITY == STD )
+#if !defined(PBS_SECURITY ) || (PBS_SECURITY == STD) || (PBS_SECURITY == KRB5)
 
 	DIS_tcp_setup(connection[out].ch_socket);
-	if ((i = encode_DIS_ReqHdr(connection[out].ch_socket,
-		PBS_BATCH_Connect, pbs_current_user)) ||
-		(i = encode_DIS_ReqExtend(connection[out].ch_socket,
-		extend_data))) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	if (DIS_tcp_wflush(connection[out].ch_socket)) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (getenv("PBSPRO_IGNORE_KERBEROS") || !pbs_gss_can_get_creds()) {
+#endif
+		if ((i = encode_DIS_ReqHdr(connection[out].ch_socket,
+			PBS_BATCH_Connect, pbs_current_user)) ||
+			(i = encode_DIS_ReqExtend(connection[out].ch_socket,
+			extend_data))) {
+			pbs_errno = PBSE_SYSTEM;
+			return -1;
+		}
+		if (DIS_tcp_wflush(connection[out].ch_socket)) {
+			pbs_errno = PBSE_SYSTEM;
+			return -1;
+		}
 
-	reply = PBSD_rdrpy(out);
-	PBSD_FreeReply(reply);
+		reply = PBSD_rdrpy(out);
+		PBSD_FreeReply(reply);
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	}
+#endif
 
 #endif	/* PBS_SECURITY ... */
 
@@ -931,6 +957,8 @@ __pbs_disconnect(int connect)
 
 	CS_close_socket(sock);
 	CLOSESOCKET(sock);
+
+	DIS_tcp_release(sock);
 
 	if (connection[connect].ch_errtxt != NULL) {
 		free(connection[connect].ch_errtxt);

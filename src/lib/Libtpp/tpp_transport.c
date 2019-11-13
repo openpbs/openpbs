@@ -191,6 +191,8 @@ typedef struct {
 	thrd_data_t *td;                  /* connections controller thread */
 
 	tpp_context_t *ctx;        /* upper layers context information */
+
+	void *extra;               /* extra data structure */
 } phy_conn_t;
 
 /* structure for holding an array of physical connection structures */
@@ -203,6 +205,10 @@ conns_array_type_t *conns_array = NULL; /* array of physical connections */
 int conns_array_size = 0;                    /* the size of physical connection array */
 pthread_mutex_t cons_array_lock;             /* mutex used to synchronize array ops */
 pthread_mutex_t thrd_array_lock;             /* mutex used to synchronize thrd assignment */
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+int tpp_gss_set_extra_host(void *extra, char *hostname);
+#endif
 
 /* function forward declarations */
 static void *work(void *v);
@@ -637,19 +643,19 @@ tpp_transport_init(struct tpp_config *conf)
 }
 
 /* the function pointer to the upper layer received packet handler */
-int (*the_pkt_handler)(int tfd, void *data, int len, void *ctx) = NULL;
+int (*the_pkt_handler)(int tfd, void *data, int len, void *ctx, void *extra) = NULL;
 
 /* the function pointer to the upper layer connection close handler */
-int (*the_close_handler)(int tfd, int error, void *ctx) = NULL;
+int (*the_close_handler)(int tfd, int error, void *ctx, void *extra) = NULL;
 
 /* the function pointer to the upper layer connection restore handler */
-int (*the_post_connect_handler)(int tfd, void *data, void *ctx) = NULL;
+int (*the_post_connect_handler)(int tfd, void *data, void *ctx, void *extra) = NULL;
 
 /* the function pointer to the upper layer pre packet send handler */
-int (*the_pkt_presend_handler)(int tfd, tpp_packet_t *pkt) = NULL;
+int (*the_pkt_presend_handler)(int tfd, tpp_packet_t *pkt, void *extra) = NULL;
 
 /* the function pointer to the upper layer post packet send handler */
-int (*the_pkt_postsend_handler)(int tfd, tpp_packet_t *pkt) = NULL;
+int (*the_pkt_postsend_handler)(int tfd, tpp_packet_t *pkt, void *extra) = NULL;
 
 /* upper layer timer handler */
 int (*the_timer_handler)(time_t now) = NULL;
@@ -672,11 +678,11 @@ int (*the_timer_handler)(time_t now) = NULL;
  *
  */
 void
-tpp_transport_set_handlers(int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt),
-	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt),
-	int (*pkt_handler)(int, void *data, int len, void *),
-	int (*close_handler)(int, int, void *),
-	int (*post_connect_handler)(int sd, void *data, void *ctx),
+tpp_transport_set_handlers(int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
+	int (*pkt_handler)(int, void *data, int len, void *, void *extra),
+	int (*close_handler)(int, int, void *, void *extra),
+	int (*post_connect_handler)(int sd, void *data, void *ctx, void *extra),
 	int (*timer_handler)(time_t now))
 {
 	the_pkt_handler = pkt_handler;
@@ -719,6 +725,7 @@ alloc_conn(int tfd)
 	}
 	conn->sock_fd = tfd;
 	conn->send_queue_size = 0;
+	conn->extra = NULL;
 	TPP_QUE_CLEAR(&conn->send_queue);
 	/* initialize the send queue to empty */
 
@@ -1372,7 +1379,7 @@ add_transport_conn(phy_conn_t *conn)
 			}
 			conn->can_send = 1;
 			if (the_post_connect_handler)
-				the_post_connect_handler(fd, NULL, conn->ctx);
+				the_post_connect_handler(fd, NULL, conn->ctx, conn->extra);
 		}
 	} else if (conn->net_state == TPP_CONN_CONNECTED) {/* accepted socket */
 
@@ -1737,7 +1744,7 @@ work(void *v)
 							conn->net_state = TPP_CONN_CONNECTED;
 
 							if (the_post_connect_handler)
-								the_post_connect_handler(conn->sock_fd, NULL, conn->ctx);
+								the_post_connect_handler(conn->sock_fd, NULL, conn->ctx, conn->extra);
 							TPP_DBPRT(("phy_con %d connected", conn->sock_fd));
 						}
 
@@ -1875,7 +1882,9 @@ handle_disconnect(phy_conn_t *conn)
 	conn->can_send = 0;
 
 	if (the_close_handler)
-		the_close_handler(conn->sock_fd, error, conn->ctx);
+		the_close_handler(conn->sock_fd, error, conn->ctx, conn->extra);
+
+	conn->extra = NULL;
 
 	if (tpp_lock(&cons_array_lock)) {
 		return 1;
@@ -1898,9 +1907,9 @@ handle_disconnect(phy_conn_t *conn)
 		if (cmd == TPP_CMD_SEND) {
 			int freed = 0;
 			if (the_pkt_presend_handler) {
-				if (the_pkt_presend_handler(conn->sock_fd, data) == 0) {
+				if (the_pkt_presend_handler(conn->sock_fd, data, conn->extra) == 0) {
 					if (the_pkt_postsend_handler) {
-						the_pkt_postsend_handler(conn->sock_fd, data);
+						the_pkt_postsend_handler(conn->sock_fd, data, conn->extra);
 						freed = 1;
 					}
 				} else
@@ -2070,7 +2079,7 @@ add_pkts(phy_conn_t *conn)
 
 		data = pkt_start + sizeof(int);
 		if (the_pkt_handler) {
-			if ((rc = the_pkt_handler(conn->sock_fd, data, data_len, conn->ctx)) != 0) {
+			if ((rc = the_pkt_handler(conn->sock_fd, data, data_len, conn->ctx, conn->extra)) != 0) {
 				/* upper layer rejected data, disconnect */
 				handle_disconnect(conn);
 				return -1;
@@ -2142,7 +2151,7 @@ send_data(phy_conn_t *conn)
 		tosend = p->len - (p->pos - p->data);
 		if (p->pos == p->data) {
 			if (the_pkt_presend_handler) {
-				if (the_pkt_presend_handler(conn->sock_fd, p) != 0) {
+				if (the_pkt_presend_handler(conn->sock_fd, p, conn->extra) != 0) {
 					/* handler asked not to send data, skip packet */
 					conn->send_queue_size -= tosend;
 					(void) tpp_que_del_elem(&conn->send_queue, n);
@@ -2150,6 +2159,8 @@ send_data(phy_conn_t *conn)
 					p = TPP_QUE_DATA(n);
 					continue;
 				}
+				/* the_pkt_presend_handler could change the pkt size*/
+				tosend = p->len;
 			}
 		}
 
@@ -2329,7 +2340,7 @@ send_data(phy_conn_t *conn)
 			conn->send_queue_size -= p->len;
 
 			if (the_pkt_postsend_handler)
-				the_pkt_postsend_handler(conn->sock_fd, p);
+				the_pkt_postsend_handler(conn->sock_fd, p, conn->extra);
 			else {
 				tpp_free_pkt(p);
 			}
@@ -2489,4 +2500,26 @@ tpp_transport_terminate()
 	}
 
 	return 0;
+}
+
+/**
+ * @brief
+ *	Function associates some extra structure with physical connection
+ *
+ * @param[in] tfd - Descriptor to the physical connection
+ * @param[in] extra - Pointer to extra structure
+ *
+ */
+void
+tpp_transport_set_conn_extra(int tfd, void *extra)
+{
+	int slot_state;
+	phy_conn_t *conn;
+	conn = get_transport_atomic(tfd, &slot_state);
+	if (conn) {
+		conn->extra = extra;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		tpp_gss_set_extra_host(extra, conn->conn_params->hostname);
+#endif
+	}
 }

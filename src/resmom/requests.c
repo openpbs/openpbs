@@ -86,6 +86,12 @@
 #include "placementsets.h"
 #include "pbs_internal.h"
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#include "renew_creds.h"
+#include <krb5.h>
+extern int decode_block_base64(unsigned char *ascii_data, ssize_t ascii_len, unsigned char *bin_data, ssize_t *p_bin_len, char *msg, size_t msg_len);
+#endif
+
 /**
  * @file	requests.c
  */
@@ -306,9 +312,13 @@ frk_err(int err, struct batch_request *preq)
  *		 or a a cpyfiles_cred structure
  */
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 static pid_t
-fork_to_user(preq)
-struct batch_request *preq;
+fork_to_user(struct batch_request *preq, struct krb_holder *ticket)
+#else
+static pid_t
+fork_to_user(struct batch_request *preq)
+#endif
 {
 	struct group   *grpp;
 	pid_t		pid;
@@ -377,6 +387,14 @@ struct batch_request *preq;
 		}
 		(void)chdir(pwdp->pw_dir); /* change to user`s home directory */
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        /* singleshot ticket, without renewal */
+        if (pjob != NULL)
+		init_ticket_from_job(pjob, NULL, ticket, CRED_SINGLESHOT);
+        else
+		init_ticket_from_req(preq->rq_extend, preq->rq_ind.rq_cpyfile.rq_jobid, ticket, CRED_SINGLESHOT);
+#endif
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred ||
 		preq->rq_type == PBS_BATCH_DelFiles_Cred) {
@@ -3256,10 +3274,23 @@ req_cpyfile(struct batch_request *preq)
 	else
 		stage_inout.direct_write = 0;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	struct krb_holder *ticket = NULL;
+	ticket = alloc_ticket();
+#endif
+
 	/* Become the user */
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	pid = fork_to_user(preq, ticket);
+#else
 	pid = fork_to_user(preq);
+#endif
 	rc  = (int)pid;
 	if (pid > 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		free_ticket(ticket, CRED_CLOSE);
+#endif
+
 		if (pjob) {
 			/* change substate so Mom doesn't send another obit     */
 			/* do not record to disk, so Obit is resent on recovery */
@@ -3285,6 +3316,10 @@ req_cpyfile(struct batch_request *preq)
 		}
 		return;		/* parent - continue with someother task */
 	} else if (rc < 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		free_ticket(ticket, CRED_DESTROY);
+#endif
+
 		req_reject(-rc, 0, preq);
 		return;
 	}
@@ -3293,6 +3328,10 @@ req_cpyfile(struct batch_request *preq)
 	if (stage_inout.sandbox_private) {
 		chdir(pbs_jobdir);
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	setenv("KRB5CCNAME", get_ticket_ccname(ticket), 1);
+#endif
 
 	/*
 	 * Child process ...
@@ -3371,12 +3410,17 @@ req_cpyfile(struct batch_request *preq)
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		dup_rqcpf_jobid, log_buffer);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        free_ticket(ticket, CRED_DESTROY);
+#endif
+
 	if (preq->isrpp && stage_inout.bad_files)
 		exit(STAGEOUT_FAILURE);
 
 	if (stage_inout.sandbox_private && stage_inout.stageout_failed) {
 		exit(STAGEOUT_FAILURE);
 	}
+
 	exit(0);	/* remember, we are the child, exit not return */
 }
 
@@ -3462,7 +3506,17 @@ struct batch_request *preq;
 		if (preq->isrpp)
 			pjob->ji_preq = preq; /* keep the batch request pointer */
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	struct krb_holder *ticket = NULL;
+	ticket = alloc_ticket();
+#endif
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if ((pid = fork_to_user(preq, ticket)) > 0) {
+#else
 	if ((pid = fork_to_user(preq)) > 0) {
+#endif
 		/* parent */
 		if (pjob) {
 			pjob->ji_momsubt = pid;
@@ -3475,6 +3529,10 @@ struct batch_request *preq;
 		req_reject(-(int)pid, 0, preq);
 		return;
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        setenv("KRB5CCNAME", get_ticket_ccname(ticket), 1);
+#endif
 
 	/* Child process ... delete the files */
 
@@ -3492,6 +3550,10 @@ struct batch_request *preq;
 		if (!preq->isrpp)
 			reply_ack(preq);
 	}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        free_ticket(ticket, CRED_DESTROY);
+#endif
 
 	exit(0);	/* remember, we are the child, exit not return */
 }
@@ -5005,3 +5067,52 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 
 	reply_ack(preq);
 }
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+void
+req_cred(struct batch_request *preq) /* ptr to the decoded request */
+{
+	unsigned char out_data[CRED_DATA_SIZE];
+	ssize_t out_len = 0;
+	char buf[LOG_BUF_SIZE];
+	krb5_data *data;
+	char *data_base64 = NULL;
+	job *pjob;
+
+	if (decode_block_base64((unsigned char *)preq->rq_ind.rq_cred.rq_cred_data, preq->rq_ind.rq_cred.rq_cred_size, out_data, &out_len, buf, LOG_BUF_SIZE) != 0) {
+		log_err(errno, __func__, buf);
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+
+	if ((data = (krb5_data *)malloc(sizeof(krb5_data))) == NULL) {
+		log_err(errno, __func__, "Unable to allocate Memory!\n");
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+
+	if ((data->data = (char *)malloc(sizeof(unsigned char)*out_len)) == NULL) {
+		log_err(errno, __func__, "Unable to allocate Memory!\n");
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+
+	data->length = out_len;
+	memcpy(data->data, out_data, out_len);
+
+	data_base64 = strdup(preq->rq_ind.rq_cred.rq_cred_data);
+
+	store_or_update_cred(preq->rq_ind.rq_cred.rq_jobid, preq->rq_ind.rq_cred.rq_credid, preq->rq_ind.rq_cred.rq_cred_type, data, data_base64, preq->rq_ind.rq_cred.rq_cred_validity);
+
+	/* renew ticket for the job */
+	if ((pjob = find_job(preq->rq_ind.rq_cred.rq_jobid)) != NULL) {
+		/* send cred to sisters too */
+		send_cred_sisters(pjob);
+
+		/* new creds received - lets renew cred */
+		renew_job_cred(pjob);
+	}
+
+	reply_ack(preq);
+}
+#endif

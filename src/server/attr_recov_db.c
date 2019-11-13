@@ -423,6 +423,15 @@ decode_attr_db(
 							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
 									(padef+index)->at_name, act_rc);
 							log_err(act_rc, __func__, log_buffer);
+							for ( index++; index <= limit; index++) {
+								while (pal) {
+									tmp_pal = pal->al_sister;
+									free(pal);
+									pal = tmp_pal;
+								}
+								if (index < limit)
+									pal = palarray[index];
+							}
 							free(palarray);
 							/* bailing out from this function */
 							/* any previously allocated attrs will be */

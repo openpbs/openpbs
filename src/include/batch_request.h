@@ -295,6 +295,15 @@ struct rq_momrestart {
 	unsigned int	rq_port;
 };
 
+struct rq_cred {
+	char	  rq_jobid[PBS_MAXSVRJOBID + 1];
+	char	  rq_credid[PBS_MAXUSER + 1]; /* contains id specific for the used security mechanism */
+	long	  rq_cred_validity; /* validity of provided credentials */
+	int	  rq_cred_type; /* type of credentials like CRED_KRB5, CRED_TLS ... */
+	char	  *rq_cred_data; /* credentials in base64 */
+	size_t	  rq_cred_size; /* size of credentials */
+};
+
 struct rqfpair {
 	pbs_list_link	 fp_link;
 	int		 fp_flag;	/* 1 for std[out|err] 2 for stageout */
@@ -366,6 +375,7 @@ struct batch_request {
 		struct rq_hookfile	rq_hookfile;
 		struct rq_momrestart	rq_momrestart;
 		struct rq_preempt	rq_preempt;
+		struct rq_cred	        rq_cred;
 	} rq_ind;
 };
 
@@ -418,6 +428,9 @@ extern void  req_cpyfile(struct batch_request *req);
 extern void  req_delfile(struct batch_request *req);
 extern void  req_copy_hookfile(struct batch_request *req);
 extern void  req_del_hookfile(struct batch_request *req);
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern void req_cred(struct batch_request *preq);
+#endif
 #endif
 
 /* PBS Batch Request Decode/Encode routines */
@@ -452,6 +465,7 @@ extern int decode_DIS_Status(int socket, struct batch_request *);
 extern int decode_DIS_TrackJob(int socket, struct batch_request *);
 extern int decode_DIS_replySvr(int socket, struct batch_reply *);
 extern int decode_DIS_svrattrl(int socket, pbs_list_head *);
+extern int decode_DIS_Cred(int socket, struct batch_request *);
 
 extern int encode_DIS_failover(int socket, struct batch_request *);
 extern int encode_DIS_CopyFiles(int socket, struct batch_request *);
@@ -462,6 +476,7 @@ extern int encode_DIS_TrackJob(int socket, struct batch_request *);
 extern int encode_DIS_reply(int socket, struct batch_reply *);
 extern int encode_DIS_replyRPP(int socket, char *, struct batch_reply *);
 extern int encode_DIS_svrattrl(int socket, svrattrl *);
+extern int encode_DIS_Cred(int socket, char *, char *, int type, char *, size_t size, long validity);
 
 extern int dis_request_read(int socket, struct batch_request *);
 extern int dis_reply_read(int socket, struct batch_reply *, int rpp);

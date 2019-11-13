@@ -53,7 +53,7 @@
 #include <sys/types.h>
 #include "libsec.h"
 
-#if !defined(PBS_SECURITY ) || (PBS_SECURITY == STD )
+#if (!defined(PBS_SECURITY ) || (PBS_SECURITY == STD )) || (defined(PBS_SECURITY) && (PBS_SECURITY == KRB5))
 
 /* system includes */
 

@@ -307,6 +307,7 @@ pbs_list_head	svr_execjob_abort_hooks;
 pbs_list_head	svr_execjob_postsuspend_hooks;
 pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	svr_allscheds;
+extern pbs_list_head	svr_creds_cache; /* all credentials available to send */
 time_t		time_now;
 struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
@@ -340,6 +341,10 @@ void stop_db();
 char *db_err_msg = NULL;
 extern void		ping_nodes(struct work_task *ptask);
 extern void mark_nodes_unknown(int);
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern int tcp_gss_process(int sfds);
+#endif
 
 /*
  * Used only by the TPP layer, to ping nodes only if the connection to the
@@ -1295,6 +1300,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_execjob_postsuspend_hooks);
 	CLEAR_HEAD(svr_execjob_preresume_hooks);
 	CLEAR_HEAD(svr_allscheds);
+	CLEAR_HEAD(svr_creds_cache);
 
 	/* initialize paths that we will need */
 	path_priv       = build_path(pbs_conf.pbs_home_path, PBS_SVR_PRIVATE,
@@ -1772,8 +1778,11 @@ try_db_again:
 #endif /* WIN32 */
 
 	/* initialize the network interface */
-
-	if (init_network_add(sock, process_request) != 0) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (init_network_add(sock, tcp_gss_process, process_request) != 0) {
+#else
+	if (init_network_add(sock, NULL, process_request) != 0) {
+#endif
 		(void) sprintf(log_buffer, "add connection for init_network failed");
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
@@ -1822,7 +1831,7 @@ try_db_again:
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
-		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
+		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
 			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {
@@ -1850,7 +1859,7 @@ try_db_again:
 			return (3);
 		}
 
-		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, rpp_request);
+		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
 	} else {
 		/* set rpp function pointers */
 		set_rpp_funcs(log_rppfail);
@@ -1879,8 +1888,8 @@ try_db_again:
 			return (1);
 		}
 
-		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, rpp_request);
-		(void)add_conn(privfd, RppComm, (pbs_net_t)0, 0, rpp_request);
+		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
+		(void)add_conn(privfd, RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
 	}
 
 	/* record the fact that the Secondary is up and active (running) */

@@ -101,6 +101,7 @@ static void	*poll_context;  /* This is the context of the descriptors being poll
 void 	*priority_context;
 static int      init_poll_context();  /* Initialize the tpp context */
 static void	(*read_func[2])(int);
+static int	(*ready_read_func)(int);
 static char	logbuf[256];
 
 /* Private function within this file */
@@ -108,6 +109,8 @@ static int 	connection_find_usable_index(int);
 static int 	connection_find_actual_index(int);
 static void 	accept_conn();
 static void 	cleanup_conn(int);
+
+extern void DIS_tcp_release(int fd);
 
 /**
  * @brief
@@ -323,7 +326,7 @@ init_network(unsigned int port)
  * @retval	-1	error
  */
 int
-init_network_add(int sd, void (*readfunc)(int))
+init_network_add(int sd, int (*readyreadfunc)(int), void (*readfunc)(int))
 {
 	static int		initialized = 0;
 	enum conn_type  type;
@@ -344,6 +347,8 @@ init_network_add(int sd, void (*readfunc)(int))
 	if(sd == -1)
 		return -1;
 
+	ready_read_func = readyreadfunc;
+
 	/* for normal calls ...						*/
 	/* save the routine which should do the reading on connections	*/
 	/* accepted from the parent socket				*/
@@ -354,7 +359,7 @@ init_network_add(int sd, void (*readfunc)(int))
 	 * remark: passing 0 as port value causing entry's member
 	 *         cn_authen to have bit PBS_NET_CONN_PRIVIL set
 	 */
-	if(add_conn(sd, type, (pbs_net_t)0, 0, accept_conn) == NULL) {
+	if (add_conn(sd, type, (pbs_net_t)0, 0, NULL, accept_conn) == NULL) {
 #ifdef WIN32
 		errno = WSAGetLastError();
 		(void)closesocket(sd);
@@ -501,7 +506,10 @@ process_socket(int sock)
 			}
 		}
 	}
-	svr_conn[idx]->cn_func(svr_conn[idx]->cn_sock);
+
+	if ((svr_conn[idx]->cn_ready_func == NULL) ||
+		(svr_conn[idx]->cn_ready_func(svr_conn[idx]->cn_sock))) /* in case of error we still need call cn_func e.g. because of EOF */
+		svr_conn[idx]->cn_func(svr_conn[idx]->cn_sock);
 	return 0;
 }
 
@@ -686,6 +694,7 @@ accept_conn(int sd)
 	(void)add_conn(newsock, FromClientDIS,
 		(pbs_net_t)ntohl(from.sin_addr.s_addr),
 		(unsigned int)ntohs(from.sin_port),
+		ready_read_func,
 		read_func[(int)svr_conn[idx]->cn_active]);
 }
 
@@ -706,9 +715,9 @@ accept_conn(int sd)
  * @retval      NULL - failure.
  */
 conn_t *
-add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*func)(int))
+add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(int), void (*func)(int))
 {
-	return add_conn_priority(sd, type, addr, port, func, 0);
+	return add_conn_priority(sd, type, addr, port, ready_func, func, 0);
 }
 
 /**
@@ -731,7 +740,7 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*
  * @retval	NULL - failure.
  */
 conn_t *
-add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*func)(int), int priority_flag)
+add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(int), void (*func)(int), int priority_flag)
 {
 	int 	idx;
 	conn_t *conn;
@@ -750,6 +759,7 @@ add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port
 	conn->cn_addr = addr;
 	conn->cn_port = (unsigned short) port;
 	conn->cn_lasttime = time(NULL);
+	conn->cn_ready_func = ready_func;
 	conn->cn_func = func;
 	conn->cn_oncl = 0;
 	conn->cn_authen = 0;
@@ -881,6 +891,11 @@ close_conn(int sd)
 	if (idx == -1)
 		return;
 
+	if (svr_conn[idx]->cn_active == FromClientDIS
+		|| svr_conn[idx]->cn_active == ToServerDIS) {
+		DIS_tcp_release(sd);
+	}
+
 	if (svr_conn[idx]->cn_active != ChildPipe) {
 		if (CS_close_socket(sd) != CS_SUCCESS) {
 			char ebuf[PBS_MAXHOSTNAME + 1] = {'\0'};
@@ -945,6 +960,12 @@ cleanup_conn(int idx)
 
 	/* Remove connection from the linked list */
 	delete_link(&svr_conn[idx]->cn_link);
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	svr_conn[idx]->cn_physhost[0] = '\0';
+	free(svr_conn[idx]->cn_credid);
+	svr_conn[idx]->cn_credid = NULL;
+#endif
 
 	/* Free the connection memory */
 	free(svr_conn[idx]);

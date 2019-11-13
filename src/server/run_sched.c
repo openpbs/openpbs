@@ -308,7 +308,7 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		return (-1);
 	}
 	conn = add_conn_priority(sock, FromClientDIS, pbs_scheduler_addr,
-		pbs_scheduler_port, process_request, PRIORITY_CONNECTION);
+		pbs_scheduler_port, NULL, process_request, PRIORITY_CONNECTION);
 	if (!conn) {
 		log_err(errno, __func__, "could not find sock in connection table");
 		return (-1);

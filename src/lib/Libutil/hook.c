@@ -2966,7 +2966,7 @@ find_valid_base64_char(unsigned char *s, ssize_t slen, int num)
  *	RETURNS: 0 for success; 1 otherwise with 'msg' of size 'msg_len'
  *		filled in.
  */
-static int
+int
 decode_block_base64(unsigned char *ascii_data, ssize_t	ascii_len,
 	unsigned char *bin_data, ssize_t *p_bin_len,
 	char *msg, size_t msg_len)

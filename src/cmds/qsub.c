@@ -640,6 +640,7 @@ refresh_dfltqsubargs(void)
 {
 	struct attrl *attr;
 	struct batch_status *ss_save = NULL;
+	char *errmsg;
 
 	if (sd_svr == -1)
 		return;
@@ -648,6 +649,15 @@ refresh_dfltqsubargs(void)
 
 	dfltqsubargs = NULL;
 	ss = pbs_statserver(sd_svr, NULL, NULL);
+
+	if (ss == NULL && pbs_errno != PBSE_NONE) {
+		if ((errmsg = pbs_geterrmsg(sd_svr)) != NULL)
+			fprintf(stderr, "qsub: %s\n", errmsg);
+		else
+			fprintf(stderr, "qsub: Error %d\n", pbs_errno);
+		return;
+	}
+
 	ss_save = ss;
 	while (ss != NULL) {
 		for (attr = ss->attribs; attr != NULL; attr = attr->next) {
@@ -2977,7 +2987,9 @@ static void
 make_argv(int *argc, char *argv[], char *line)
 {
 	char *l, *b, *c;
-	char buffer[4096];
+	char static_buffer[MAX_LINE_LEN + 1];
+	char *buffer;
+	int line_len = 0;
 	int len;
 	char quote;
 	int i;
@@ -2985,6 +2997,16 @@ make_argv(int *argc, char *argv[], char *line)
 	*argc = 0;
 	argv[(*argc)++] = "qsub";
 	l = line;
+	line_len = strlen(line);
+	if (line_len > MAX_LINE_LEN) {
+		buffer = malloc(line_len + 1);
+		if (buffer == NULL) {
+			fprintf(stderr, "qsub: out of memory\n");
+			exit_qsub(2);
+		}
+	}
+	else
+		buffer = static_buffer;
 	b = buffer;
 	while (isspace(*l)) l++;
 	c = l;
@@ -3038,6 +3060,8 @@ make_argv(int *argc, char *argv[], char *line)
 		free(argv[i]);
 		argv[i++] = NULL;
 	}
+	if (buffer != static_buffer)
+		free(buffer);
 }
 
 /**
@@ -3140,14 +3164,14 @@ set_opt_defaults(void)
 static int
 get_script(FILE *file, char *script, char *prefix)
 {
-	char s[MAX_LINE_LEN + 1];
 	char *sopt;
 	int err = 0;
 	int exec = FALSE;
-	char *cont;
 	char tmp_name[MAXPATHLEN + 1];
 	FILE *TMP_FILE;
 	char *in;
+	char *s_in = NULL;
+	int s_len = 0;
 #ifndef WIN32
 	int fds;
 #endif
@@ -3189,28 +3213,15 @@ get_script(FILE *file, char *script, char *prefix)
 		return (4);
 	}
 
-	s[0] = '\0';
-	while ((in = fgets(s, MAX_LINE_LEN, file)) != NULL) {
-		if (!exec && ((sopt = pbs_ispbsdir(s, prefix)) != NULL)) {
-			while ((*(cont = in + strlen(in) - 2) == ESC_CHAR) &&
-				(*(cont + 1) == '\n')) {
-				/* next line is continuation of this line */
-				*cont = '\0'; /* clear newline from our copy */
-				if (fputs(in, TMP_FILE) < 0) {
-					perror("fputs");
-					fprintf(stderr,
-						"qsub: error writing copy of script, %s\n", tmp_name);
-					fclose(TMP_FILE);
-					return (3);
-				}
-				in = cont;
-				if ((in = fgets(in, MAX_LINE_LEN-(in - s), file)) == NULL) {
-					perror("fgets");
-					fprintf(stderr, "qsub: unexpected end-of-file "
-						"or read error in script\n");
-					fclose(TMP_FILE);
-					return (6);
-				}
+	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
+		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
+			if (fputs(in, TMP_FILE) < 0) {
+				perror("fputs");
+				fprintf(stderr,
+					"qsub: error writing copy of script, %s\n", tmp_name);
+				fclose(TMP_FILE);
+				free(s_in);
+				return (3);
 			}
 			/*
 			 * Setting options from the job script will not overwrite
@@ -3219,9 +3230,10 @@ get_script(FILE *file, char *script, char *prefix)
 			 */
 			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
 				fprintf(stderr, "%s", retmsg);
+				free(s_in);
 				return (-1);
 			}
-		} else if (!exec && pbs_isexecutable(s)) {
+		} else if (!exec && pbs_isexecutable(s_in)) {
 			exec = TRUE;
 		}
 		if (fputs(in, TMP_FILE) < 0) {
@@ -3229,17 +3241,19 @@ get_script(FILE *file, char *script, char *prefix)
 			fprintf(stderr, "qsub: error writing copy of script, %s\n",
 				tmp_name);
 			fclose(TMP_FILE);
+			free(s_in);
 			return (3);
 		}
 	}
 
 #ifdef WIN32
-	if ((s[0] != '\0') && (s[strlen(s) - 1] != '\n')) {
+	if ((s_in[0] != '\0') && (s_in[strlen(s_in) - 1] != '\n')) {
 		fputs("\n", TMP_FILE);
 		printf("qsub: added missing newline in job script.\n");
 	}
 #endif
 
+	free(s_in);
 	if (fclose(TMP_FILE) != 0) {
 		perror(" qsub: copy of script to tmp failed on close");
 		return (5);
@@ -4445,6 +4459,8 @@ do_connect(char *server_out, char *retmsg)
 	}
 
 	refresh_dfltqsubargs();
+	if (pbs_errno != PBSE_NONE)
+		return (pbs_errno);
 
 	pbs_hostvar = malloc(pbs_o_hostsize + PBS_MAXHOSTNAME + 1);
 	if (!pbs_hostvar) {
@@ -4495,8 +4511,11 @@ do_submit(char *retmsg)
 			rc = do_dir(dfltqsubargs, CMDLINE - 2, retmsg, MAXPATHLEN);
 			if (rc >= 0)
 				break;
-			if (retries == 2)
+			if (retries == 2) {
 				refresh_dfltqsubargs();
+				if (pbs_errno != PBSE_NONE)
+					return (pbs_errno);
+			}
 		}
 		if (rc != 0)
 			return (rc);
@@ -4830,6 +4849,8 @@ do_submit2(char *rmsg)
 	for (retry = 5; (rc == PBSE_FORCE_QSUB_UPDATE) && (retry > 0); retry--) {
 		/* Let's retry with the new "default_qsub_arguments" */
 		refresh_dfltqsubargs();
+		if (pbs_errno != PBSE_NONE)
+			return (pbs_errno);
 
 		/* Use the original attrib value before the previous "default_qsub_arguments" was applied. */
 		if (attrib_o != NULL) {

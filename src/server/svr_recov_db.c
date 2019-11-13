@@ -268,12 +268,8 @@ int
 svr_recov_db(void)
 {
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
-	pbs_db_svr_info_t dbsvr;
+	pbs_db_svr_info_t dbsvr = {0};
 	pbs_db_obj_info_t obj;
-
-	/* load server_qs */
-	dbsvr.attr_list.attr_count = 0;
-	dbsvr.attr_list.attributes = NULL;
 
 	obj.pbs_db_obj_type = PBS_DB_SVR;
 	obj.pbs_db_un.pbs_db_svr = &dbsvr;
@@ -292,6 +288,7 @@ svr_recov_db(void)
 	return (0);
 
 db_err:
+	pbs_db_reset_obj(&obj);
 	return -1;
 }
 
@@ -390,7 +387,7 @@ pbs_sched *
 sched_recov_db(char *sname)
 {
 	pbs_sched		*ps;
-	pbs_db_sched_info_t	dbsched;
+	pbs_db_sched_info_t	dbsched = {{0}};
 	pbs_db_obj_info_t	obj;
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 
@@ -419,6 +416,8 @@ sched_recov_db(char *sname)
 	return (ps);
 
 db_err:
+	pbs_db_reset_obj(&obj);
+
 	sprintf(log_buffer, "Failed to recover sched %s", sname);
 	log_err(-1, "sched_recov", log_buffer);
 	if (ps)

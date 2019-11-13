@@ -91,7 +91,8 @@ common_libs = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
-	@socket_lib@
+	@socket_lib@ \
+	@KRB5_LIBS@
 
 pbsdsh_CPPFLAGS = -I$(top_srcdir)/src/include
 pbsdsh_LDADD = ${common_libs}
@@ -225,7 +226,7 @@ qstop_CPPFLAGS = -I$(top_srcdir)/src/include
 qstop_LDADD = ${common_libs}
 qstop_SOURCES = qstop.c
 
-qsub_CPPFLAGS = -I$(top_srcdir)/src/include
+qsub_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
 qsub_LDADD = ${common_libs}
 qsub_SOURCES = qsub.c cmds_common.c
 

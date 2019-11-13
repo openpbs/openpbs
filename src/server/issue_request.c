@@ -611,7 +611,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_CopyFiles(sock, request);
 			if (rc != 0)
 				break;
-			rc=encode_DIS_ReqExtend(sock, 0);
+			rc = encode_DIS_ReqExtend(sock, get_job_credid(request->rq_ind.rq_cpyfile.rq_jobid));
 			if (rc != 0)
 				break;
 			rc = DIS_wflush(sock, rpp);
@@ -676,6 +676,16 @@ issue_Drequest(int conn,
 
 		case PBS_BATCH_FailOver:
 			rc = put_failover(sock, request); /* we should never do rpp for this one */
+			break;
+		case PBS_BATCH_Cred:
+			rc = PBSD_cred(conn,
+				request->rq_ind.rq_cred.rq_credid,
+				request->rq_ind.rq_cred.rq_jobid,
+				request->rq_ind.rq_cred.rq_cred_type,
+				request->rq_ind.rq_cred.rq_cred_data,
+				request->rq_ind.rq_cred.rq_cred_validity,
+				rpp,
+				&msgid);
 			break;
 
 #else	/* PBS_MOM */

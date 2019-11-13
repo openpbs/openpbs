@@ -210,8 +210,6 @@ PARSER_OK_STOP = 1
 PARSER_ERROR_CONTINUE = 2
 PARSER_ERROR_STOP = 3
 
-epoch_datetime = datetime.fromtimestamp(0)
-
 
 class PBSLogUtils(object):
 
@@ -240,12 +238,6 @@ class PBSLogUtils(object):
         if dt is None:
             return None
 
-        stdoffset = timedelta(seconds=-time.timezone)
-        if time.daylight:
-            dstoffset = timedelta(seconds=-time.altzone)
-        else:
-            dstoffset = stdoffset
-        offsetdiff = dstoffset - stdoffset
         micro = False
         if fmt is None:
             if '.' in dt:
@@ -257,10 +249,8 @@ class PBSLogUtils(object):
         try:
             # Get datetime object
             t = datetime.strptime(dt, fmt)
-            # Get timedelta object of epoch time
-            t -= epoch_datetime
-            # get epoch time from timedelta object
-            tm = t.total_seconds() - offsetdiff.total_seconds()
+            # Get epoch-timestamp assuming local timezone
+            tm = t.timestamp()
         except ValueError:
             cls.logger.debug("could not convert date time: " + str(dt))
             return None

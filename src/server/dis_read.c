@@ -708,6 +708,9 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_DelFiles_Cred:
 			rc = decode_DIS_CopyFiles_Cred(sfds, request);
 			break;
+		case PBS_BATCH_Cred:
+			rc = decode_DIS_Cred(sfds, request);
+			break;
 
 #endif	/* PBS_MOM */
 

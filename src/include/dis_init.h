@@ -44,3 +44,12 @@ extern int (*disr_skip)(int stream, size_t nskips);
 extern int (*disw_commit)(int stream, int commit);
 extern int (*disr_commit)(int stream, int commit);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+extern int (*transport_getc)(int stream);
+extern int (*transport_puts)(int stream, const char *string, size_t count);
+extern int (*transport_gets)(int stream, char *string, size_t count);
+extern int (*transport_rskip)(int stream, size_t nskips);
+extern int (*transport_rcommit)(int stream, int commit);
+extern int (*transport_wcommit)(int stream, int commit);
+extern int (*transport_read)(int fd);
+#endif
