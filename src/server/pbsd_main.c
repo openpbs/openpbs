@@ -1993,6 +1993,15 @@ try_db_again:
 
 	pbs_python_ext_start_interpreter(&svr_interp_data);
 
+	if (!svr_interp_data.pbs_python_types_loaded ||
+			!svr_interp_data.interp_started ||
+			!svr_interp_data.data_initialized) {
+		log_err(-1, msg_daemonname, "Failed to start python interpreter!");
+		stop_db();
+		free(keep_daemon_name);
+		return (1);
+	}
+
 	/* check and enable the prov attributes */
 	set_srv_prov_attributes();
 
