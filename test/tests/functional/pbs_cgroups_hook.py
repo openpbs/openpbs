@@ -57,6 +57,8 @@ def is_memsw_enabled(mem_path):
     Check if system has swapcontrol enabled, then return true
     else return false
     """
+    if not mem_path:
+        return 'false'
     # List all files and check if memsw files exists
     for files in os.listdir(mem_path):
         if 'memory.memsw' in files:
@@ -87,6 +89,28 @@ def systemd_escape(buf):
     return ret
 
 
+def count_items(items):
+    """
+    Given a comma-separated string of numerical items of either
+    singular value or a range of values (<start>-<stop>),
+    return the actual number of items.
+    For example,
+         items="4-6,9,12-15"
+         count(items) = 8
+    since items expands to "4,5,6,9,12,13,14,15"
+    """
+    ct = 0
+    if items is None:
+        return ct
+    for i in items.split(','):
+        j = i.split('-')
+        if len(j) == 2:
+            ct += len(range(int(j[0]), int(j[1]))) + 1
+        else:
+            ct += 1
+    return ct
+
+
 @tags('mom', 'multi_node')
 class TestCgroupsHook(TestFunctional):
 
@@ -95,6 +119,21 @@ class TestCgroupsHook(TestFunctional):
     """
 
     def setUp(self):
+
+        self.hook_name = 'pbs_cgroups'
+        # Cleanup previous pbs_cgroup hook so as to not interfere with test
+        c_hook = self.server.filter(HOOK, {'enabled': True}, id=self.hook_name)
+        if c_hook:
+            self.server.manager(MGR_CMD_DELETE, HOOK, id=self.hook_name)
+
+        a = {'resources_available.ncpus': (EQ, 0), 'state': 'free'}
+        no_cpu_vnodes = self.server.filter(VNODE, a, attrop=PTL_AND)
+        if no_cpu_vnodes:
+            # TestFunctional.setUp() would error out if leftover setup
+            # has no cpus vnodes. Best to cleanup vnodes altogether.
+            self.logger.info("Deleting the existing vnodes")
+            self.mom.delete_vnode_defs()
+            self.mom.restart()
         TestFunctional.setUp(self)
 
         # Some of the tests requires 2 or 3 nodes.
@@ -114,8 +153,8 @@ class TestCgroupsHook(TestFunctional):
             host = mom.shortname
             # Check if mom has needed cgroup mounted, otherwise skip test
             self.paths = self.get_paths(host)
-            if not (self.paths['cpuset'] and self.paths['memory']):
-                self.skipTest('cpuset and memory cgroup subsystem not mounted')
+            if not self.paths['cpuset']:
+                self.skipTest('cpuset subsystem not mounted')
             self.logger.info("%s: cgroup cpuset and memory are mounted" % host)
             if self.iscray:
                 node = self.get_hostname(host)
@@ -221,12 +260,6 @@ if [ -z "$cpuset_base" ]; then
     echo "Cpuset subsystem not mounted."
     exit 1
 fi
-memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2 | \
-             tr " " "\n" | sed -n '1p'`
-if [ -z "$memory_base" ]; then
-    echo "Memory subsystem not mounted."
-    exit 1
-fi
 echo "cpuset_base is $cpuset_base"
 if [ -d "$cpuset_base/pbspro" ]; then
     base="$cpuset_base/pbspro/$PBS_JOBID"
@@ -255,20 +288,24 @@ if [ -d $base ]; then
 else
     echo "Cpuset subsystem job directory not created."
 fi
-if [ -d "$memory_base/pbspro" ]; then
-    base="$memory_base/pbspro/$PBS_JOBID"
-else
-    jobnum=${PBS_JOBID%%.*}
-    base="$memory_base/pbspro.slice/pbspro-${jobnum}.*.slice"
-fi
-echo "cgroups base path for memory is $base"
-if [ -d $base ]; then
-   mem_limit=`cat $base/memory.limit_in_bytes`
-   echo "MemoryLimit=${mem_limit}"
-   memsw_limit=`cat $base/memory.memsw.limit_in_bytes`
-   echo "MemswLimit=${memsw_limit}"
-else
-    echo "Memory subsystem job directory not created."
+memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2 | \
+             tr " " "\n" | sed -n '1p'`
+if [ -d "$memory_base" ]; then
+    if [ -d "$memory_base/pbspro" ]; then
+        base="$memory_base/pbspro/$PBS_JOBID"
+    else
+        jobnum=${PBS_JOBID%%.*}
+        base="$memory_base/pbspro.slice/pbspro-${jobnum}.*.slice"
+    fi
+    echo "cgroups base path for memory is $base"
+    if [ -d $base ]; then
+        mem_limit=`cat $base/memory.limit_in_bytes`
+        echo "MemoryLimit=${mem_limit}"
+        memsw_limit=`cat $base/memory.memsw.limit_in_bytes`
+       echo "MemswLimit=${memsw_limit}"
+    else
+        echo "Memory subsystem job directory not created."
+    fi
 fi
 sleep 10
 """
@@ -767,6 +804,50 @@ sleep 300
     }
 }
 """
+        self.cfg9 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : true,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : true,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "devices" : {
+            "enabled"            : false
+        },
+        "hugetlb" : {
+            "enabled"            : false
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_amount"     : "64MB"
+        },
+        "memsw" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_amount"     : "64MB"
+        }
+    }
+}
+"""
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
@@ -781,7 +862,6 @@ sleep 300
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus',
                             logerr=False)
         # Import the hook
-        self.hook_name = 'pbs_cgroups'
         self.hook_file = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                       'lib',
                                       'python',
@@ -1249,6 +1329,8 @@ if %s e.job.in_ms_mom():
         """
         Test to verify that cgroups are reporting usage for cput and mem
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP13'
         conf = {'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
@@ -1363,10 +1445,22 @@ if %s e.job.in_ms_mom():
         self.assertTrue(jid in tmp_out)
         self.logger.info('job dir check passed')
         if self.paths['cpuacct']:
-            self.assertTrue('CpuIDs=0' in tmp_out)
+            cpuids = None
+            for kv in tmp_out:
+                if 'CpuIDs=' in kv:
+                    cpuids = kv.split("=")[1]
+                    break
+            self.assertEqual(count_items(cpuids), 1,
+                             'Number of CpIDs assigned not 1')
             self.logger.info('CpuIDs check passed')
         if self.paths['memory']:
-            self.assertTrue('MemorySocket=0' in tmp_out)
+            memsocket = None
+            for kv in tmp_out:
+                if 'MemorySocket=' in kv:
+                    memsocket = kv.split("=")[1]
+                    break
+            self.assertEqual(count_items(memsocket), 1,
+                             'Number of MemorySocket not 1')
             self.logger.info('MemorySocket check passed')
             if self.swapctl == 'true':
                 self.assertTrue('MemoryLimit=314572800' in tmp_out)
@@ -1400,10 +1494,22 @@ if %s e.job.in_ms_mom():
         self.assertTrue(jid in tmp_out)
         self.logger.info('job dir check passed')
         if self.paths['cpuacct']:
-            self.assertTrue('CpuIDs=0' in tmp_out)
+            cpuids = None
+            for kv in tmp_out:
+                if 'CpuIDs=' in kv:
+                    cpuids = kv.split("=")[1]
+                    break
+            self.assertEqual(count_items(cpuids), 1,
+                             'Number of CpIDs assigned not 1')
             self.logger.info('CpuIDs check passed')
         if self.paths['memory']:
-            self.assertTrue('MemorySocket=0' in tmp_out)
+            memsocket = None
+            for kv in tmp_out:
+                if 'MemorySocket=' in kv:
+                    memsocket = kv.split("=")[1]
+                    break
+            self.assertEqual(count_items(memsocket), 1,
+                             'Number of MemorySocket not 1')
             self.logger.info('MemorySocket check passed')
             if self.swapctl == 'true':
                 self.assertTrue('MemoryLimit=100663296' in tmp_out)
@@ -1549,13 +1655,15 @@ if %s e.job.in_ms_mom():
             self.skipTest('Insufficient information about the processors.')
         if pcpus < 2:
             self.skipTest('This test requires at least two processors.')
-        if sibs/cores == 1:
+        if sibs / cores == 1:
             self.skipTest('This test requires hyperthreading to be enabled.')
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
         # Submit M*N jobs, where M is the amount of physical processors and
         # N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys * cores
+        if njobs > 64:
+            self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         for _ in range(njobs):
@@ -1578,6 +1686,8 @@ if %s e.job.in_ms_mom():
         Test to verify that the job is killed when it tries to
         use more memory then it requested
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1601,6 +1711,8 @@ if %s e.job.in_ms_mom():
         Test to verify that the job is killed when it tries to
         use more vmem then it requested
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         # run the test if swap space is available
         if have_swap() == 0:
             self.skipTest('no swap space available on the local host')
@@ -1887,6 +1999,8 @@ if %s e.job.in_ms_mom():
         mem: 950MB - 900MB = 50MB = 51200KB
         vmem: 1905MB - 1810MB = 95MB = 97280KB
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take affect
         self.moms_list[0].restart()
@@ -1966,6 +2080,8 @@ if %s e.job.in_ms_mom():
         """
         Test that cgroups are created for subjobs like a regular job
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ('', '', '', '', self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -2111,6 +2227,7 @@ if %s e.job.in_ms_mom():
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
                            interval=1, max_attempts=30)
 
+    @timeout(1800)
     def test_cgroup_cpuset_exclude_cpu(self):
         """
         Confirm that exclude_cpus reduces resources_available.ncpus
@@ -2202,7 +2319,8 @@ if %s e.job.in_ms_mom():
         result = self.du.cat(hostname=self.hosts_list[0],
                              filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
-        self.assertEqual(result['out'][0], '0')
+        value_mem_fences = result['out'][0]
+        self.logger.info("value with mem_fences: %s" % value_mem_fences)
         # Now try with mem_fences set to false
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
                                       'false', self.swapctl))
@@ -2223,7 +2341,10 @@ if %s e.job.in_ms_mom():
         result = self.du.cat(hostname=self.hosts_list[0],
                              filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
-        self.assertNotEqual(result['out'][0], '0')
+        # compare mem value under mem_fences and under no mem_fences
+        value_no_mem_fences = result['out'][0]
+        self.logger.info("value with no mem_fences:%s" % value_no_mem_fences)
+        self.assertNotEqual(value_no_mem_fences, value_mem_fences)
 
     def test_cgroup_cpuset_mem_hardwall(self):
         """
@@ -2893,6 +3014,91 @@ event.accept()
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
+
+    def test_big_cgroup_cpuset(self):
+        """
+        With vnodes_per_numa and use_hyperthreads set to "true",
+        test to verify that a job requesting at least 10 vnodes
+        (i.e. 10 memory sockets) get a cgroup cpuset with the
+        correct number of cpus and memory sockets.
+        """
+        name = 'CGROUP_BIG'
+        self.load_config(self.cfg9)
+        # Restart mom for changes made by cgroups hook to take affect
+        self.moms_list[0].restart()
+
+        vnodes_count = 10
+        try:
+            self.server.expect(VNODE, {'state=free': vnodes_count},
+                               op=GE, count=True, max_attempts=10,
+                               interval=2)
+        except Exception as exc:
+            self.skipTest("Test require >= %d free vnodes" % (vnodes_count,))
+
+        rncpus = 'resources_available.ncpus'
+        a = {rncpus: (GT, 0), 'state': 'free'}
+        free_nodes = self.server.filter(VNODE, a, attrop=PTL_AND, idonly=False)
+        vnodes = list(free_nodes.values())[0]
+        self.assertGreaterEqual(len(vnodes), vnodes_count,
+                                'Test does not have enough free vnodes')
+        # find the minimum number of cpus found among the vnodes
+        cpus_per_vnode = None
+        for v in vnodes:
+            v_rncpus = int(v[rncpus])
+            if not cpus_per_vnode:
+                cpus_per_vnode = v_rncpus
+            if v_rncpus < cpus_per_vnode:
+                cpus_per_vnode = v_rncpus
+
+        # Submit two jobs
+        select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
+        a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.cpuset_mem_script)
+        jid1 = self.server.submit(j1)
+        a = {'job_state': 'R'}
+        # Make sure they are both running
+        self.server.expect(JOB, a, jid1)
+        # Status the jobs for their output files
+        attrib = [ATTR_o]
+        self.server.status(JOB, attrib, jid1)
+        filename1 = j1.attributes[ATTR_o]
+        self.logger.info('Job1 .o file: %s' % filename1)
+        self.tempfile.append(filename1)
+        # Read the output files
+        tmp_file1 = filename1.split(':')[1]
+        hostA = self.moms_list[0].shortname
+        tmp_out1 = self.wait_and_read_file(filename=tmp_file1, host=hostA)
+        self.logger.info("test output for job1: %s" % (tmp_out1))
+        self.assertTrue(
+            jid1 in tmp_out1, '%s not found in output on host %s'
+            % (jid1, hostA))
+        self.logger.info('job dir check passed')
+        # Ensure the number of cpus assigned matches request
+        cpuids = None
+        for kv in tmp_out1:
+            if 'CpuIDs=' in kv:
+                cpuids = kv.split("=")[1]
+                break
+        cpus_assn = count_items(cpuids)
+        cpus_req = vnodes_count * cpus_per_vnode
+        self.logger.info("CpuIDs assn=%d req=%d" % (cpus_assn, cpus_req))
+        self.assertEqual(count_items(cpuids),
+                         vnodes_count * cpus_per_vnode,
+                         'CpIDs assigned not match requested')
+        self.logger.info('CpuIDs check passed')
+
+        # Ensure the number of sockets assigned matches request
+        memsocket = None
+        for kv in tmp_out1:
+            if 'MemorySocket=' in kv:
+                memsocket = kv.split("=")[1]
+                break
+        mem_assn = count_items(memsocket)
+        self.logger.info("MemSocket assn=%d req=%d" % (mem_assn, vnodes_count))
+        self.assertEqual(mem_assn, vnodes_count,
+                         'MemSocket assigned not match requested')
+        self.logger.info('MemSocket check passed')
 
     def tearDown(self):
         TestFunctional.tearDown(self)
