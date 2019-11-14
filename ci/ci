@@ -23,14 +23,18 @@ def log_info(str_to_print):
     current_time = time.strftime("%H:%M:%S", t)
     print('\033[1m' + current_time + " ---> " + str_to_print + '\033[0m')
 
+
 def run_cmd(cmd, return_output=False):
+    '''
+    Run a terminal command, and if needed return output of the command.
+    '''
     cmd = shlex.split(cmd)
     try:
-        a = subprocess.Popen(cmd,stdout=subprocess.PIPE)
-        out,err = a.communicate()
+        a = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        out, err = a.communicate()
         if a.returncode != 0:
             log_error("command failed")
-            log_error(str(err))  
+            log_error(str(err))
         else:
             if return_output:
                 return str(out)
@@ -40,13 +44,16 @@ def run_cmd(cmd, return_output=False):
 
 
 def run_docker_cmd(cmd):
+    '''
+    Runs a docker command and on failure redirects user to the container terminal
+    '''
     try:
         docker_cmd = shlex.split(cmd)
         a = subprocess.Popen(docker_cmd)
         a.communicate()
         if a.returncode != 0:
             log_error(
-                "docker cmd returned with non zero exit code, dropping you into container")
+                "docker cmd returned with non zero exit code, redirecting you to container terminal")
             docker_cmd = shlex.split(
                 "docker-compose exec pbs-build bash -c \'cd /pbspro && /bin/bash\'")
             subprocess.run(docker_cmd)
@@ -69,6 +76,10 @@ def read_from_file(file_path):
 
 
 def commit_docker_image():
+    '''
+    Commit the docker container image with post-fix '_ci_pbs' when build dependencies
+    are installed and is ready to install pbs.
+    '''
     env_dir = os.path.join(pbs_dirname, ".env")
     image_name = read_from_file(env_dir)
     image_name = image_name.split('=')[1]
@@ -77,15 +88,14 @@ def commit_docker_image():
         image_name = image_name.replace(':', '_')
         try:
             build_id = 'docker-compose ps -q pbs-build'
-            build_id = run_cmd(build_id,True)
+            build_id = run_cmd(build_id, True)
             build_id = build_id.split("'")[1]
             build_id = build_id[:12]
             cmd = 'docker commit '+build_id+' '+image_name+':latest'
             log_info(cmd)
             run_cmd(cmd)
-            # remove all bad_images after commit alternatively remove image then commit
             bad_images = "docker images -qa -f'dangling=true'"
-            bad_images = run_cmd(bad_images,True)
+            bad_images = run_cmd(bad_images, True)
             if bad_images != "b''":
                 bad_images = (bad_images.split("'")[1]).replace("\\n", " ")
                 print("The following untagged images will be removed -> " + bad_images)
@@ -96,11 +106,14 @@ def commit_docker_image():
 
 
 def delete_older_image(bad_images):
-    if val.find('_ci_pbs') == -1:
+    '''
+    When building a newer '_ci_pbs' image this fucntion will delete any older such instance
+    '''
+    if bad_images.find('_ci_pbs') == -1:
         bad_images = val.replace(':', '_')
         bad_images += '_ci_pbs'
     cmd = "docker images -q " + bad_images
-    bad_images = run_cmd(cmd,True)
+    bad_images = run_cmd(cmd, True)
     if bad_images == "b''":
         return
     bad_images = (bad_images.split("'")[1]).replace("\\n", " ")
@@ -110,6 +123,9 @@ def delete_older_image(bad_images):
 
 
 def find_ci():
+    '''
+    Finds absolute path of pbs and ci 
+    '''
     cur_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(cur_dir)
 
@@ -122,8 +138,11 @@ def tail_file(build_log_path):
         return f.readline().decode()
 
 
-
 def check_for_existing_image():
+    '''
+    This function will check whether an existing image with the 
+    post-fix of '_ci_pbs' exists or not for the given docker image.
+    '''
     env_dir = os.path.join(pbs_dirname, '.env')
     val = read_from_file(env_dir)
     if val != '':
@@ -135,7 +154,7 @@ def check_for_existing_image():
     search_str = val.replace(":", "_")
     search_str += '_ci_pbs'
     cmd = 'docker images -q ' + search_str
-    search_result = run_cmd(cmd,True)
+    search_result = run_cmd(cmd, True)
     if search_result != "b''":
         write_to_file(env_dir, "CONTAINER_PLATFORM="+search_str)
         return True
@@ -145,26 +164,30 @@ def check_for_existing_image():
 
 
 def check_prerequisites():
-    # This function will check wether docker docker-compose commands are available
-    # or a  container is running that has pbs
+    '''
+    This function will check whether docker docker-compose commands are available
+    or a container is that has pbs running.
+    '''
     cmd = "where" if platform.system() == "Windows" else "which"
 
     try:
         subprocess.run([cmd, "docker"], stdout=subprocess.DEVNULL)
     except:
         log_error("docker not found in PATH")
+        return 1
 
     try:
         subprocess.run([cmd, "docker-compose"], stdout=subprocess.DEVNULL)
     except:
         log_error("docker-compose not found in PATH")
+        return 1
 
     try:
         docker_container_process = subprocess.run(
             ["docker-compose", "ps", "pbs-build"], stdout=subprocess.PIPE)
         docker_container = str(docker_container_process.stdout)
         if docker_container.find('Up') == -1:
-            log_error("No running service found")
+            log_info("No running service found")
             try:
                 log_info('Attempting to start container')
                 os.chdir(pbs_dirname)
@@ -176,7 +199,7 @@ def check_prerequisites():
                     return 0
                 log_info('Waiting for container build to complete ')
                 build_log_path = os.path.join(pbs_dirname, 'logs', 'build')
-                log_info("You can check the logs in " + build_log_path)
+                log_info("Build logs can be found in " + build_log_path)
                 # wait for build to complete and commit newly built container
                 timer = 1
                 while True:
@@ -196,7 +219,7 @@ def check_prerequisites():
             log_info("running container found")
             return 0
     except:
-        log_error("failed to check docker-compose running services")
+        log_error("failed to start ci services")
 
 
 if __name__ == "__main__":
@@ -250,7 +273,7 @@ if __name__ == "__main__":
         ret = check_prerequisites()
         if ret == 1:
             log_error(
-                "container build failed, take a look at logs " + build_log_path)
+                "container build failed, build logs can be found in " + build_log_path)
             sys.exit(1)
 
     try:

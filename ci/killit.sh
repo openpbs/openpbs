@@ -23,8 +23,8 @@ killit(){
 	fi	
 }
 
-check_process(){
-    ps_count=$(ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l )
+kill_pbs_process(){
+    ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l
     if [ $ret -gt 0 ];then
         killit pbs_server
         killit pbs_mom
@@ -50,7 +50,7 @@ ret=$?
 if [ ${ret} -ne 0 ];then
     echo "failed graceful stop"
     echo "force kill all processes"
-    check_process
+    kill_pbs_process
 else
     echo "checking for running ptl"
     benchpress_count=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | wc -l)
