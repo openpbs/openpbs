@@ -3853,11 +3853,68 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				pjob->ji_hosts[momindex].hn_node =
 					TM_ERROR_NODE;
 
-				if (strcmp(hp->hn_host, mom_host) == 0 && hp->hn_port == pbs_rm_port) {
+				if (hp->hn_port == pbs_rm_port) {
+					int hostmatch = 0;
+					static char node_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+					static char canonical_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+
+					/*
+					 * The following block prevents us from having to employ
+					 * yet another global variable to represent the hostname
+					 * of the local node.
+					 */
+					if ((pbs_conf.pbs_use_tcp == 1) && pbs_conf.pbs_leaf_name) {
+						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
+							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
+							strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
+							node_name[PBS_MAXHOSTNAME] = '\0';
+							/* Need to canonicalize PBS_LEAF_NAME */
+							if (get_fullhostname(node_name, canonical_name,
+									(sizeof(canonical_name) - 1)) != 0) {
+								sprintf(log_buffer,
+									"Failed to get fullhostname from %s for job %s",
+									node_name, pjob->ji_qs.ji_jobid);
+								log_err(errno, __func__, log_buffer);
+								node_name[0] = '\0';
+								canonical_name[0] = '\0';
+								return (PBSE_SYSTEM);
+							}
+						}
+					} else {
+						if (strcmp(mom_host, node_name) != 0) {
+							/* mom_host has changed or node_name is uninitialized */
+							strncpy(node_name, mom_host, PBS_MAXHOSTNAME);
+							node_name[PBS_MAXHOSTNAME] = '\0';
+							/* mom_host contains the canonical name */
+							strncpy(canonical_name, mom_host, PBS_MAXHOSTNAME);
+							canonical_name[PBS_MAXHOSTNAME] = '\0';
+						}
+					}
+
+					if (strcmp(hp->hn_host, node_name) == 0) {
+						hostmatch = 1;
+					} else {
+						char namebuf[PBS_MAXHOSTNAME + 1];
+
+						if (get_fullhostname(hp->hn_host, namebuf,
+								(sizeof(namebuf) - 1)) != 0) {
+
+							sprintf(log_buffer,
+								"Failed to get fullhostname from %s for job %s",
+								hp->hn_host, pjob->ji_qs.ji_jobid);
+							log_err(errno, __func__, log_buffer);
+							return (PBSE_SYSTEM);
+						}
+						if (strcmp(namebuf, canonical_name) == 0)
+							hostmatch = 1;
+					}
+
+					if (hostmatch) {
 						pjob->ji_nodeid = hp->hn_node;
 						if (mynp) {
 							*mynp = hp;
 						}
+					}
 				}
 			}
 
