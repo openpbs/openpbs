@@ -72,7 +72,6 @@ AC_DEFUN([PBS_AC_WITH_PMIX],
     AC_MSG_RESULT([$pmix_version])
     AS_IF([test "$pmix_dir" = "/usr"],
       [pmix_lib="-lpmix"; pmix_inc=""],
-      pmix_inc=""
       AS_IF([test -r "$pmix_dir/lib/libpmix.so"],
         [pmix_lib="-L$pmix_dir/lib -lpmix"],
         AS_IF([test -r "$pmix_dir/lib64/libpmix.so"],
@@ -80,6 +79,7 @@ AC_DEFUN([PBS_AC_WITH_PMIX],
           AC_MSG_ERROR([PMIx library not found.])
         )
       )
+      pmix_inc="-I$pmix_dir/include"
     )
     AC_SUBST(pmix_inc)
     AC_SUBST(pmix_lib)
