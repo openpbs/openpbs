@@ -94,11 +94,8 @@ extern resdef **boolres;
 extern char *sc_name;
 extern int sched_port;
 extern char *logfile;
-#ifdef WIN32
-extern char path_log[_MAX_PATH];
-#else
+
 extern char path_log[_POSIX_PATH_MAX];
-#endif
 extern int dflt_sched;
 
 /**

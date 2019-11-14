@@ -54,10 +54,6 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#ifndef WIN32
-#include <sys/param.h>
-#endif
-
 #include "pbs_ifl.h"
 #include <errno.h>
 #include <string.h>
@@ -74,11 +70,6 @@
 #include "batch_request.h"
 #include "resv_node.h"
 #include "queue.h"
-
-#ifdef WIN32
-#include <windows.h>
-#include "win.h"
-#endif
 
 #include "job.h"
 #include "reservation.h"

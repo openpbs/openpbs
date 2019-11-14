@@ -2000,11 +2000,7 @@ tcl_init()
 		home = pw->pw_dir;
 	}
 
-#ifdef WIN32
-	snprintf(script, sizeof(script), "%s\\.qstatrc", home);
-#else
 	snprintf(script, sizeof(script), "%s/.qstatrc", home);
-#endif
 	if (stat(script, &sb) == -1) {
 		strcpy(script, QSTATRC_PATH);
 		if (stat(script, &sb) == -1)
@@ -2051,11 +2047,7 @@ tcl_init()
 	if (pw == NULL)
 		return;
 
-#ifdef WIN32
-	sprintf(script, "%s\\.qstatrc", pw->pw_dir);
-#else
 	sprintf(script, "%s/.qstatrc", pw->pw_dir);
-#endif
 	if (stat(script, &sb) == -1) {
 		strcpy(script, QSTATRC_PATH);
 		if (stat(script, &sb) == -1)
@@ -2383,11 +2375,6 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 
 #if TCL_QSTAT
-
-#ifdef WIN32
-	/* needed so that program recognizes correct TCL_LIBRARY */
-	Tcl_FindExecutable(argv[0]);
-#endif
 
 	tcl_init();
 	tcl_addarg(flags, argv[0]);

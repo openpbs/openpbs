@@ -126,10 +126,6 @@
 static prev_job_info *last_running = NULL;
 static int last_running_size = 0;
 
-#ifdef WIN32
-extern void win_toolong(void);
-#endif
-
 extern int	second_connection;
 extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
 
@@ -2611,12 +2607,8 @@ sched_settings_frm_svr(struct batch_status *status)
 						priv_dir_update_fail = 1;
 					} else {
 						/* write schedulers pid into lockfile */
-						#ifdef WIN32
-							lseek(lockfds, (off_t)0, SEEK_SET);
-						#else
-							(void)ftruncate(lockfds, (off_t)0);
-						#endif
-							(void)sprintf(log_buffer, "%d\n", getpid());
+						(void)ftruncate(lockfds, (off_t)0);
+						(void)sprintf(log_buffer, "%d\n", getpid());
 						(void)write(lockfds, log_buffer, strlen(log_buffer));
 						close(lockfds);
 						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, "reconfigure", 

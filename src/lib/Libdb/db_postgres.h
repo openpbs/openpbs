@@ -59,23 +59,12 @@ extern "C" {
 
 #include <libpq-fe.h>
 #include <netinet/in.h>
-#ifndef WIN32
 #include <sys/types.h>
 #include <inttypes.h>
-#endif
 #include "net_connect.h"
 #include "list_link.h"
 #include "portability.h"
 #include "attribute.h"
-
-/* work around strtoll on some platforms */
-#if defined(WIN32)
-#define strtoll(n, e, b)	_strtoi64((n), (e), (b))
-typedef __int32 int32_t;
-typedef __int64 int64_t;
-typedef unsigned __int32 uint32_t;
-typedef unsigned __int64 uint64_t;
-#endif
 
 
 /*

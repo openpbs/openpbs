@@ -1194,8 +1194,6 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
  *
  *		If routine returns -1, then "log_buffer" contains a message to
  *		be logged.
- * @see
- * 		svr_migrate_data_from_fs
  *
  * @param[in]	preprocess	- arg set for first call to just scan for old style properties
  * 					and create matching boolean resources. On second call,
