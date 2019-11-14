@@ -6037,8 +6037,14 @@ class Server(PBSService):
             if (not self._is_local) or \
                     (not self.du.is_localhost(user_host)):
                 for k, v in obj.custom_attrs.items():
-                    if isinstance(v, str) and (" " in v):
-                        v = "'" + v + "'"
+                    if isinstance(v, str):
+                        if " " in v:
+                            v = "'%s'" % v
+                        if any((c in v) for c in set(',\'"')):
+                            if '"' in v:
+                                v = "\\'%s\\'" % v
+                            else:
+                                v = '\\"%s\\"' % v
                         obj.custom_attrs[k] = v
             cmd = self.utils.convert_to_cli(obj.custom_attrs, IFL_SUBMIT,
                                             self.hostname, dflt_conf=_conf,
