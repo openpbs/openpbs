@@ -46,6 +46,5 @@ EXTRA_DIST = \
 	README.md \
 	autogen.sh \
 	pbspro-rpmlintrc \
-	pbspro.spec \
-	src/include/pbs_undolr.h
+	pbspro.spec
 
