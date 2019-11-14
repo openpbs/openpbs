@@ -16,20 +16,6 @@ services:
       hostname: pbs.ci
       privileged: true
 
-    # website:
-    #   image: python:3
-    #   volumes:
-    #     - ./logs:/logs
-    #     - ./:/src
-    #   ports:
-    #     - "5000"
-    #   entrypoint: src/web-entrypoint
-    #   networks: 
-    #     ci:
-    #       aliases:
-    #         - website
-    #   hostname: website.ci
-
 networks: 
   ci:
     driver: bridge

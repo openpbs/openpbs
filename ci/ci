@@ -121,10 +121,6 @@ def tail_file(build_log_path):
             f.seek(-2, os.SEEK_CUR)
         return f.readline().decode()
 
-# def port_map_info():
-#     cmd = 'docker-compose port website 5000'
-#     log_info("Web interface accessible at : ")
-#     print(run_cmd(cmd,True))
 
 
 def check_for_existing_image():
@@ -177,7 +173,6 @@ def check_prerequisites():
                 image_check = check_for_existing_image()
                 subprocess.run(["docker-compose", "up", "-d"])
                 if image_check == True:
-                    # port_map_info()
                     return 0
                 log_info('Waiting for container build to complete ')
                 build_log_path = os.path.join(pbs_dirname, 'logs', 'build')
@@ -190,7 +185,6 @@ def check_prerequisites():
                     log_info("Get current status ...... " + last_line)
                     if last_line.find('### First time build is complete ###') != -1:
                         log_info("build is now complete")
-                        # port_map_info()
                         commit_docker_image()
                         return 0
                     timer += 1

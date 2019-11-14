@@ -149,7 +149,7 @@ pbs_config --make-ug
 if [ "x${RUN_TESTS}" == "x1" ];then
   ptl_tests_dir=$(dirname ${prefix})/ptl/tests
   cd ${ptl_tests_dir}/
-  pbs_benchpress "$( cat ${workdir}/.benchpress_opt )" --db-type=html --db-name=result -o ${logdir}/logfile
+  pbs_benchpress "$( cat ${workdir}/.benchpress_opt )" --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
   mv result.html ${logdir}/
 fi
 
