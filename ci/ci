@@ -91,6 +91,8 @@ def commit_docker_image():
             build_id = run_cmd(build_id, True)
             build_id = build_id.split("'")[1]
             build_id = build_id[:12]
+            # shortening the build id to 12 characters as is displayed by 'docker ps'
+            # unlike 'docker-compose ps'  which shows full id
             cmd = 'docker commit '+build_id+' '+image_name+':latest'
             log_info(cmd)
             run_cmd(cmd)
@@ -140,7 +142,7 @@ def tail_file(build_log_path):
 
 def check_for_existing_image():
     '''
-    This function will check whether an existing image with the 
+    This function will check whether an existing image with the
     post-fix of '_ci_pbs' exists or not for the given docker image.
     '''
     env_file = os.path.join(pbs_dirname, '.env')
@@ -193,8 +195,8 @@ def check_prerequisites():
                 os.chdir(pbs_dirname)
                 subprocess.run(["docker-compose", "down"],
                                stdout=subprocess.DEVNULL)
-                image_check = check_for_existing_image()
                 subprocess.run(["docker-compose", "up", "-d"])
+                image_check = check_for_existing_image()
                 if image_check == True:
                     return 0
                 log_info('Waiting for container build to complete ')
@@ -228,39 +230,35 @@ if __name__ == "__main__":
     pbs_dirname = find_ci()
     pbs_dirname = os.path.join(pbs_dirname, 'ci')
     os.chdir(pbs_dirname)
-    try:
-        ap = argparse.ArgumentParser(
-            prog='ci', description='Runs the ci tool for pbs', conflict_handler='resolve')
-        ap.add_argument('--configure', const='called', nargs='?',
-                        help='configure pbs, defaults to \'--prefix=/opt/pbs --enable-ptl\' \n eg --configure="--enable-ptl" ')
-        ap.add_argument('--make', help='run make command in pbs',
-                        const='called', nargs='?')
-        ap.add_argument(
-            '--install', help='run install command in pbs', const='called', nargs='?')
-        ap.add_argument('--test', const='called', nargs='?',
-                        help='run ptl tests on pbs\n --test default will run \'smoke tag\' for ptl \n eg --test="-f functional/pbs_qmgr.py" ')
-        ap.add_argument('--pbs-stop', const='called',
-                        help='stops all pbs processes inside container including ptl', nargs='?')
-        ap.add_argument('--run', const='called',
-                        help='runs complete install and test for pbs \n eg --run="-f functional/pbs_qmgr.py"', nargs='?')
-        ap.add_argument('--start', const='called',
-                        help='start container, optionally add platform name \n ex --start="ubuntu" ', nargs='?')
-        ap.add_argument('--build', const='called',
-                        help='forces the container to build dependencies, use as a suboption to --start', nargs='?')
-        ap.add_argument('--delete', const='called',
-                        help='destroy pbs container', nargs='?')
-        ap.add_argument('--local', const='called',
-                        help='Simply run the travis script locally, without spawning any containers', nargs='?')
-        ap.add_argument('--pbs-dir', const='called',
-                        help='provide directory location for pbs for which you want ci to run', nargs='?')
-
-        if len(sys.argv) < 2:
-            log_error('\nToo few arguments\n')
-            ap.print_help()
-            sys.exit(1)
-        args = ap.parse_args(sys.argv[1:])
-    except Exception as e:
-        log_error(e)
+    ap = argparse.ArgumentParser(
+        prog='ci', description='Runs the ci tool for pbs', conflict_handler='resolve')
+    ap.add_argument('--configure', const='called', nargs='?',
+                    help='configure pbs, defaults to \'--prefix=/opt/pbs --enable-ptl\' \n eg --configure="--enable-ptl" ')
+    ap.add_argument('--make', help='run make command in pbs',
+                    const='called', nargs='?')
+    ap.add_argument(
+        '--install', help='run install command in pbs', const='called', nargs='?')
+    ap.add_argument('--test', const='called', nargs='?',
+                    help='run ptl tests on pbs\n --test default will run \'smoke tag\' for ptl \n eg --test="-f functional/pbs_qmgr.py" ')
+    ap.add_argument('--pbs-stop', const='called',
+                    help='stops all pbs processes inside container including ptl', nargs='?')
+    ap.add_argument('--run', const='called',
+                    help='runs complete install and test for pbs \n eg --run="-f functional/pbs_qmgr.py"', nargs='?')
+    ap.add_argument('--start', const='called',
+                    help='start container, optionally add platform name \n ex --start="ubuntu" ', nargs='?')
+    ap.add_argument('--build', const='called',
+                    help='forces the container to build dependencies, use as a suboption to --start', nargs='?')
+    ap.add_argument('--delete', const='called',
+                    help='destroy pbs container', nargs='?')
+    ap.add_argument('--local', const='called',
+                    help='Simply run the travis script locally, without spawning any containers', nargs='?')
+    ap.add_argument('--pbs-dir', const='called',
+                    help='provide directory location for pbs for which you want ci to run', nargs='?')
+    if len(sys.argv) < 2:
+        log_error('\nToo few arguments\n')
+        ap.print_help()
+        sys.exit(1)
+    args = ap.parse_args(sys.argv[1:])
     if args.pbs_dir != None:
         pbs_dirname = os.path.join(args.pbs_dir, 'ci')
         try:
