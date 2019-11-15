@@ -117,6 +117,10 @@ endif
 pbs_mom_SOURCES += linux/cpuset_misc.c
 endif
 
+if UNDOLR_ENABLED
+pbs_mom_LDADD += @libundolr_lib@
+endif
+
 EXTRA_DIST = \
 	darwin/mom_mach.c \
 	darwin/mom_mach.h \

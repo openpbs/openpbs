@@ -159,3 +159,7 @@ pbs_comm_LDADD = \
 
 pbs_comm_SOURCES = pbs_comm.c
 
+if UNDOLR_ENABLED
+pbs_server_bin_LDADD += @libundolr_lib@
+pbs_comm_LDADD += @libundolr_lib@
+endif

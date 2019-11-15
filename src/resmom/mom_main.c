@@ -136,6 +136,7 @@
 #ifndef	PRIO_MIN
 #define		PRIO_MIN	-20
 #endif
+#include	"pbs_undolr.h"
 
 
 /*
@@ -6568,6 +6569,10 @@ finish_loop(time_t waittime)
 		wait_request(1, NULL);
 	}
 #else
+#ifdef PBS_UNDOLR_ENABLED
+	if (sigusr1_flag)
+		undolr();
+#endif
 	if (do_debug_report)
 		debug_report();
 	if (termin_child) {
@@ -9165,10 +9170,13 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
-	sigaction(SIGUSR1, &act, NULL);
 #ifdef	SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
+#ifdef PBS_UNDOLR_ENABLED
+	act.sa_handler = catch_sigusr1;
+#endif
+	sigaction(SIGUSR1, &act, NULL);
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */

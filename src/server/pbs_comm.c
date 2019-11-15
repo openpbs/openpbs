@@ -88,6 +88,7 @@
 #include "tpp_common.h"
 #include "server_limits.h"
 #include "pbs_version.h"
+#include "pbs_undolr.h"
 
 char daemonname[PBS_MAXHOSTNAME+8];
 extern char	*msg_corelimit;
@@ -1138,12 +1139,15 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
-	if (sigaction(SIGUSR1, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR1");
-		return (2);
-	}
 	if (sigaction(SIGUSR2, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR2");
+		return (2);
+	}
+#ifdef PBS_UNDOLR_ENABLED	
+	act.sa_handler = catch_sigusr1;
+#endif
+	if (sigaction(SIGUSR1, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
 #endif 	/* WIN32 */
@@ -1183,6 +1187,10 @@ main(int argc, char **argv)
 				tpp_set_logmask(*log_event_mask);
 			}
 		}
+#ifdef PBS_UNDOLR_ENABLED
+		if (sigusr1_flag)
+			undolr();
+#endif
 
 		sleep(3);
 	}

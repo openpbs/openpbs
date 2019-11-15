@@ -123,6 +123,7 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
+#include "pbs_undolr.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -596,14 +597,20 @@ pbsd_init(int type)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
+	if (sigaction(SIGUSR2, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR2");
+		return (2);
+	}	
+
+#ifdef PBS_UNDOLR_ENABLED	
+	act.sa_handler = catch_sigusr1;
+#endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
-	if (sigaction(SIGUSR2, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR2");
-		return (2);
-	}
+
+
 #endif 	/* WIN32 */
 
 	/* 2. check security and set up various global variables we need */

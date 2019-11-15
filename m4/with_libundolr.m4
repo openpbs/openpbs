@@ -36,30 +36,29 @@
 # trademark licensing policies.
 #
 
-noinst_LIBRARIES = libutil.a
-
-libutil_a_CPPFLAGS = \
-	-I$(top_srcdir)/src/include \
-	@libical_inc@ @KRB5_CFLAGS@
-
-libutil_a_SOURCES = \
-	execvnode_seq_util.c \
-	pbs_ical.c \
-	misc_utils.c \
-	avltree.c \
-	hook.c \
-	work_task.c \
-	entlim.c \
-	daemon_protect.c \
-	pbs_array_list.c \
-	pbs_secrets.c \
-	pbs_aes_encrypt.c \
-	munge_supp.c \
-	krb5_util.c \
-	pbs_gss.c
-  
-if UNDOLR_ENABLED
-libutil_a_CPPFLAGS += @libundolr_inc@
-libutil_a_SOURCES += undolr.c
-endif
-
+AC_DEFUN([PBS_AC_WITH_LIBUNDOLR],
+[
+  AC_ARG_WITH([libundolr],
+    AS_HELP_STRING([--with-libundolr=DIR],
+      [Specify the directory where libundolr is installed.]
+    )
+  )
+  AS_IF([test "x$with_libundolr" != "x"],
+    [libundolr_dir="$with_libundolr"]
+  )
+  AC_MSG_CHECKING([for libundolr])
+  # Using developer installed libundolr
+  AS_IF([test -r "$libundolr_dir/undolr.h"],
+    [libundolr_include="$libundolr_dir"],
+  )
+  libundolr_inc="-I$libundolr_include"
+  AS_IF([test -r "${libundolr_dir}/libundolr_pic_x64.a"],
+    [libundolr_lib="${libundolr_dir}/libundolr_pic_x64.a"],
+  )
+  AC_MSG_RESULT([$libundolr_dir])
+  AC_SUBST(libundolr_inc)
+  AC_SUBST(libundolr_lib)
+  AM_CONDITIONAL([UNDOLR_ENABLED], [test "x$with_libundolr" != "x"])
+  AS_IF([test "x$with_libundolr" != "x"],
+    AC_DEFINE(PBS_UNDOLR_ENABLED, [], [Defined when libundolr is available]))
+])

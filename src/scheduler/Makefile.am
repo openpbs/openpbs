@@ -96,7 +96,7 @@ libpbs_sched_a_SOURCES = \
 	state_count.h \
 	site_code.c \
 	site_code.h \
-	site_data.h 
+	site_data.h
 
 sbin_PROGRAMS = pbs_sched pbsfs
 
@@ -135,3 +135,6 @@ dist_sysconf_DATA = \
 	pbs_resource_group \
 	pbs_sched_config
 
+if UNDOLR_ENABLED
+common_libs += @libundolr_lib@
+endif

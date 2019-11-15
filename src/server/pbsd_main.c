@@ -140,6 +140,7 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
+#include "pbs_undolr.h"
 
 /* External functions called */
 
@@ -2156,6 +2157,11 @@ try_db_again:
 
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
+
+#ifdef PBS_UNDOLR_ENABLED
+		if (sigusr1_flag)
+			undolr();
+#endif
 #endif /* WIN32 */
 
 		if (*state == SV_STATE_SHUTSIG)

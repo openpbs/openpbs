@@ -91,6 +91,7 @@ noinst_HEADERS = \
 	pbs_python.h \
 	pbs_python_private.h \
 	pbs_share.h \
+	pbs_undolr.h \
 	pbs_version.h \
 	placementsets.h \
 	portability.h \
