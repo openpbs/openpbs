@@ -92,6 +92,7 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 %bcond_with alps
 %bcond_with cpuset
 %bcond_with ptl
+%bcond_with pmix
 
 BuildRoot: %{buildroot}
 BuildRequires: gcc
@@ -100,6 +101,7 @@ BuildRequires: rpm-build
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: libtool
+BuildRequires: libtool-ltdl-devel
 BuildRequires: hwloc-devel < 2.0
 BuildRequires: libX11-devel
 BuildRequires: libXt-devel
@@ -114,6 +116,9 @@ BuildRequires: tcl-devel
 BuildRequires: tk-devel
 BuildRequires: swig
 BuildRequires: zlib-devel
+%if %{with pmix}
+BuildRequires: pmix
+%endif
 %if %{defined suse_version}
 BuildRequires: libexpat-devel
 BuildRequires: libopenssl-devel
@@ -152,17 +157,26 @@ Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
 Requires: expat
+Requires: libedit
 Requires: postgresql-server >= 9.1
 Requires: postgresql-contrib >= 9.1
 Requires: python3 >= 3.5
 Requires: tcl
 Requires: tk
+%if %{with pmix}
+Requires: pmix
+%endif
 %if %{defined suse_version}
 Requires: smtp_daemon
+Requires: libhwloc5
+Requires: net-tools
 %else
 Requires: smtpdaemon
-%endif
 Requires: hostname
+%endif
+%if 0%{?rhel} >= 7
+Requires: hwloc-libs
+%endif
 Requires: libical
 Autoreq: 1
 
@@ -189,8 +203,17 @@ Conflicts: pbs-cmds
 Requires: bash
 Requires: expat
 Requires: python3 >= 3.5
-%if 0%{?suse_version} >= 1500
+%if %{with pmix}
+Requires: pmix
+%endif
+%if %{defined suse_version}
+Requires: libhwloc5
+Requires: net-tools
+%else
 Requires: hostname
+%endif
+%if 0%{?rhel} >= 7
+Requires: hwloc-libs
 %endif
 Autoreq: 1
 
@@ -290,6 +313,9 @@ cd build
 %if %{with cpuset}
 	--enable-cpuset \
 %endif
+%if %{with pmix}
+	--with-pmix \
+%endif
 	--with-pbs-server-home=%{pbs_home} \
 	--with-database-user=%{pbs_dbuser}
 %{__make} %{?_smp_mflags}
@@ -308,7 +334,7 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
@@ -323,7 +349,7 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
@@ -338,7 +364,7 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
@@ -417,12 +443,15 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
-%config(noreplace) %{_sysconfdir}/profile.d/*
+%config(noreplace) %{_sysconfdir}/profile.d/pbs.*
+%exclude %{_sysconfdir}/profile.d/ptl.csh
+%exclude %{_sysconfdir}/profile.d/ptl.sh
 %if %{defined have_systemd}
 %attr(644, root, root) %{_unitdir}/pbs.service
 %else
 %exclude %{_unitdir}/pbs.service
 %endif
+%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -439,7 +468,9 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
-%config(noreplace) %{_sysconfdir}/profile.d/*
+%config(noreplace) %{_sysconfdir}/profile.d/pbs.*
+%exclude %{_sysconfdir}/profile.d/ptl.csh
+%exclude %{_sysconfdir}/profile.d/ptl.sh
 %if %{defined have_systemd}
 %attr(644, root, root) %{_unitdir}/pbs.service
 %else
@@ -464,6 +495,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
+%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -479,7 +511,9 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %attr(644, root, root) %{pbs_prefix}/lib*/libpbs.la
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
-%config(noreplace) %{_sysconfdir}/profile.d/*
+%config(noreplace) %{_sysconfdir}/profile.d/pbs.*
+%exclude %{_sysconfdir}/profile.d/ptl.csh
+%exclude %{_sysconfdir}/profile.d/ptl.sh
 %exclude %{pbs_prefix}/bin/mpiexec
 %exclude %{pbs_prefix}/bin/pbs_attach
 %exclude %{pbs_prefix}/bin/pbs_tmrsh
@@ -512,6 +546,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
+%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
@@ -535,36 +570,44 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{ptl_prefix}/*
 %{_sysconfdir}/profile.d/ptl.csh
 %{_sysconfdir}/profile.d/ptl.sh
+%config(noreplace) %{_sysconfdir}/profile.d/ptl.*
 
 %post %{pbs_ptl}
 installed_pkg="$(pip3 list)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 for i in "${required_pkg[@]}"; do
-    if [[ "$installed_pkg" =~ "$i" ]]; then
-        continue
-    else
-        pip3 install "$i"
-        if [ $? -eq 0 ]; then
-            echo "$i installed successfully"
-        else
-            echo "Failed to install thirdparty package $i required by PTL"
-        fi
-    fi
+	if [[ "$installed_pkg" =~ "$i" ]]; then
+		continue
+	else
+		pip3 install "$i"
+		if [ $? -eq 0 ]; then
+			echo "$i installed successfully"
+		else
+			echo "Failed to install thirdparty package $i required by PTL"
+		fi
+	fi
 done
 
 %preun %{pbs_ptl}
 installed_pkg="$(pip3 list)"
 IFS=$'\n' required_pkg=($(cat %{ptl_prefix}/fw/requirements.txt))
 for i in "${required_pkg[@]}"; do
-    if [[ "$installed_pkg" =~ "$i" ]]; then
-        pip3 uninstall --yes "$i"
-    else
-        continue
-    fi
+	if [[ "$installed_pkg" =~ "$i" ]]; then
+		pip3 uninstall --yes "$i"
+	else
+		continue
+	fi
 done
 %endif
 
 %changelog
+* Wed Oct 9 2019 Michael Karo <mike0042@gmail.com> - 1.30
+- Update package requirements
+- Fix indentation
+* Mon Sep 30 2019 Michael Karo <mike0042@gmail.com> - 1.29
+- PTL files were being packaged in server, execution, and client RPMs
+* Fri Sep 20 2019 Michael Karo <mike0042@gmail.com> - 1.28
+- Add PMIx conditional
 * Wed Mar 20 2019 Minghui Liu <mliu@altair.com> - 1.27
 - Add pbspro-devel package
 * Thu Dec 13 2018 Michael Karo <mike0042@gmail.com> - 1.26

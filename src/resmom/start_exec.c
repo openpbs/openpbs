@@ -2332,7 +2332,7 @@ get_failed_moms_and_vnodes(job *pjob, int pipefd, int prolo_pipefd, vnl_t **vnl_
 	/* now prune_exec_vnode taking away vnodes managed by moms
 	 * in job's node_fail_list, and also satisfy the original
 	 * job schedselect
-         */
+	 */
 	if (prune_exec_vnode(pjob, NULL, vnl_fails, vnl_good, err_msg, LOG_BUF_SIZE) != 0) {
 		return (1);
 	}
@@ -2869,17 +2869,17 @@ void
 finish_exec(job *pjob)
 {
 	char			**argv = NULL;
-	char	   		buf[2*MAXPATHLEN+5];
-	pid_t      		cpid;
+	char			buf[(2 * MAXPATHLEN) + 5];
+	pid_t			cpid;
 	struct passwd		*pwdp;		/* for uid, shell, home dir */
-	int	   		i, j, k;
+	int			i, j, k;
 	pbs_socklen_t		len;
-	int	   		is_interactive = 0;
+	int			is_interactive = 0;
 	int			numthreads;
 	attribute		*pattr;
 	attribute		*pattri;
 #if SHELL_INVOKE == 1
-	int	   		pipe_script[] = {-1, -1};
+	int			pipe_script[] = {-1, -1};
 #endif
 	char			*pts_name;	/* name of slave pty */
 	char			*shell;
@@ -2902,7 +2902,7 @@ finish_exec(job *pjob)
 	int			port_out, port_err;
 	struct startjob_rtn	sjr;
 #if MOM_ALPS
-	struct startjob_rtn     ack;
+	struct startjob_rtn	ack;
 #endif
 	pbs_task			*ptask;
 	struct	array_strings	*vstrs;
@@ -3250,12 +3250,12 @@ finish_exec(job *pjob)
 #endif
 
 	/*
-	 ** Fork the child process that will become the job.
+	 * Fork the child process that will become the job.
 	 */
 	cpid = fork_me(-1);
 	if (cpid > 0) {
 		conn_t *conn = NULL;
-		char	*s, *d, holdbuf[2*MAXPATHLEN+5];
+		char	*s, *d, holdbuf[(2 * MAXPATHLEN) + 5];
 
 		/* the parent side, still the main man, uhh that is MOM */
 
@@ -3577,7 +3577,7 @@ finish_exec(job *pjob)
 	vtable.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		EXTRA_ENV_PTRS;
 	vtable.v_used   = 0;
-	vtable.v_envp = (char **)malloc(vtable.v_ensize * sizeof(char *));
+	vtable.v_envp = (char **)calloc(vtable.v_ensize, sizeof(char *));
 	if (vtable.v_envp == NULL) {
 		log_err(ENOMEM, __func__, "out of memory");
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -6390,7 +6390,7 @@ fork_me(int conn)
 		(void)mom_close_poll();
 		net_close(conn);	/* close all but for the current */
 	} else if (pid < 0)
-		log_err(errno, "fork_me", "fork failed");
+		log_err(errno, __func__, "fork failed");
 
 	return (pid);
 }

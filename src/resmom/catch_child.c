@@ -1548,8 +1548,8 @@ scan_for_exiting(void)
 			 */
 			for (pobit = (obitent *)GET_NEXT(ptask->ti_obits);
 				pobit != NULL;
-				pobit = (obitent *)
-				GET_NEXT(ptask->ti_obits)) {
+				pobit = (obitent *)GET_NEXT(ptask->ti_obits)) {
+
 				hnodent	*pnode;
 
 				/* see if this is a batch request */
@@ -1566,15 +1566,12 @@ scan_for_exiting(void)
 
 				pnode = get_node(pjob, pobit->oe_u.oe_tm.oe_node);
 
-				/* see if this is me or another MOM */
+				/* see if this is mother superior or a sister */
 				if (pjob->ji_nodeid == pnode->hn_node) {
 					pbs_task		*tp;
 
-					/*
-					 ** Send event to local kid.
-					 */
-					tp = task_find(pjob,
-						pobit->oe_u.oe_tm.oe_taskid);
+					/* Send response locally */
+					tp = task_find(pjob, pobit->oe_u.oe_tm.oe_taskid);
 					if (pobit->oe_u.oe_tm.oe_fd != -1) {
 						assert(tp != NULL);
 						(void)tm_reply(pobit->oe_u.oe_tm.oe_fd,
@@ -1588,8 +1585,8 @@ scan_for_exiting(void)
 				else if (pnode->hn_stream != -1 &&
 					cookie != NULL) {
 					/*
-					 ** Send a response over to MOM
-					 ** whose brat sent the request.
+					 * Send a response over to MOM
+					 * whose child sent the request
 					 */
 					(void)im_compose(pnode->hn_stream,
 						pjob->ji_qs.ji_jobid,
@@ -1657,7 +1654,7 @@ end_loop:
 			mins = secs/60;
 			secs -= mins*60;
 			sprintf(log_buffer,
-				"task %8.8X cput=%2lu:%2.2lu:%2.2lu",
+				"task %8.8X cput=%02lu:%2.2lu:%2.2lu",
 				ptask->ti_qs.ti_task,
 				hours, mins, secs);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
@@ -1762,7 +1759,7 @@ end_loop:
 		mins = secs/60;
 		secs -= mins*60;
 		sprintf(log_buffer,
-			"%s cput=%2lu:%2.2lu:%2.2lu mem=%lukb",
+			"%s cput=%02lu:%2.2lu:%2.2lu mem=%lukb",
 			mom_short_name, hours, mins, secs,
 			resc_used(pjob, "mem", getsize));
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
@@ -1783,7 +1780,7 @@ end_loop:
 			 ** ji_resource starts with node 1
 			 */
 			sprintf(log_buffer,
-				"%s cput=%2lu:%2.2lu:%2.2lu mem=%lukb",
+				"%s cput=%02lu:%2.2lu:%2.2lu mem=%lukb",
 				pjob->ji_resources[i].nodehost?
 				pjob->ji_resources[i].nodehost:"",
 				hours, mins, secs, nr->nr_mem);

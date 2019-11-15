@@ -868,6 +868,7 @@ typedef struct	infoent {
 #define IM_UPDATE_JOB		23
 #define IM_EXEC_PROLOGUE	24
 #define IM_CRED 		25
+#define IM_PMIX			26
 
 #define IM_ERROR		99
 #define IM_ERROR2		100

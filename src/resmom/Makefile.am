@@ -44,6 +44,7 @@ pbs_mom_CPPFLAGS = \
 	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
+	@pmix_inc@ \
 	@libz_inc@ \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
@@ -58,6 +59,7 @@ pbs_mom_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	@hwloc_lib@ \
+	@pmix_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@mom_mach_libs@ \
@@ -89,6 +91,8 @@ pbs_mom_SOURCES = \
 	mom_hook_func.c \
 	mom_inter.c \
 	mom_main.c \
+	mom_pmix.c \
+	mom_pmix.h \
 	mom_server.c \
 	mom_vnode.c \
 	mom_walltime.c \
