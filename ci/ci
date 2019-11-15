@@ -158,11 +158,9 @@ def check_for_existing_image():
     cmd = 'docker images -q ' + search_str
     search_result = run_cmd(cmd, True)
     if search_result != "b''":
-        write_to_file(env_file, "CONTAINER_PLATFORM="+search_str)
-        return True
+        return True, search_str
     else:
-        write_to_file(env_file, "CONTAINER_PLATFORM="+val)
-        return False
+        return False, val
 
 
 def check_prerequisites():
@@ -195,10 +193,14 @@ def check_prerequisites():
                 os.chdir(pbs_dirname)
                 subprocess.run(["docker-compose", "down"],
                                stdout=subprocess.DEVNULL)
-                subprocess.run(["docker-compose", "up", "-d"])
-                image_check = check_for_existing_image()
+                image_check, env_value = check_for_existing_image()
                 if image_check == True:
+                    env_file = os.path.join(pbs_dirname, '.env')
+                    write_to_file(env_file, "CONTAINER_PLATFORM="+env_value)
+                    subprocess.run(["docker-compose", "up", "-d"])
                     return 0
+                else:
+                    subprocess.run(["docker-compose", "up", "-d"])
                 log_info('Waiting for container build to complete ')
                 build_log_path = os.path.join(pbs_dirname, 'logs', 'build')
                 log_info("Build logs can be found in " + build_log_path)
