@@ -43,22 +43,355 @@
  * 		sched_func.c - various functions dealing with schedulers
  *
  */
+#include <pbs_config.h>
+
+#ifdef PYTHON
+#include <Python.h>
+#endif
+
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
 #include <memory.h>
-#include <pbs_config.h>
+
+#include <pbs_python.h>
 #include "pbs_share.h"
 #include "pbs_sched.h"
 #include "log.h"
 #include "pbs_ifl.h"
 #include "pbs_db.h"
 #include "pbs_error.h"
+#include "pbs_sched.h"
+#include "pbs_share.h"
+#include "resource.h"
 #include "sched_cmds.h"
 #include "server.h"
+#include <server_limits.h>
 #include "svrfunc.h"
 
+extern struct server server;
+
+/* Functions */
+#ifdef PYTHON
+extern char *pbs_python_object_str(PyObject *);
+#endif /* PYTHON */
+
+
 extern pbs_db_conn_t *svr_db_conn;
+
+/**
+ * @brief	Helper function to write job sort formula to a sched's sched_priv
+ *
+ * @param[in]	formula - the formula to write
+ * @param[in]	sched_priv_path - path to scheduler's sched_priv
+ *
+ * @return	int
+ * @return 	PBSE_NONE for Success
+ * @return	PBSE_ error code for Failure
+ */
+static int
+write_job_formula(char *formula, char *sched_priv_path)
+{
+	char pathbuf[MAXPATHLEN];
+	FILE *fp;
+
+	snprintf(pathbuf, sizeof(pathbuf), "%s/%s", sched_priv_path, FORMULA_FILENAME);
+	if ((fp = fopen(pathbuf, "w")) == NULL) {
+		return PBSE_SYSTEM;
+	}
+
+	fprintf(fp, "### PBS INTERNAL FILE DO NOT MODIFY ###\n");
+	fprintf(fp, "%s\n", formula);
+	fclose(fp);
+
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ * 	validate_job_formula - validate that the sorting forumla is in the
+ *	correct form.  We do this by calling python and having
+ *	it catch exceptions.
+ *
+ */
+int
+validate_job_formula(attribute *pattr, void *pobject, int actmode)
+{
+	char *formula;
+	char *errmsg = NULL;
+	struct resource_def *pres;
+	char buf[1024];
+	char *globals1 = NULL;
+	int globals_size1 = 1024;
+	char *globals2 = NULL;
+	int globals_size2 = 1024;
+	char *script = NULL;
+	int script_size = 2048;
+	PyThreadState *ts_main = NULL;
+	PyThreadState *ts_sub = NULL;
+	pbs_sched *psched = NULL;
+	int rc = 0;
+	int err = 0;
+
+	if (actmode == ATR_ACTION_FREE)
+		return (0);
+
+#ifndef PYTHON
+	return PBSE_INTERNAL;
+#else
+
+	formula = pattr->at_val.at_str;
+	if (formula == NULL)
+		return PBSE_INTERNAL;
+
+	if (pobject == &server) {
+		int incompatible = 0;
+
+		/* check if any sched's JSF is set to a different value */
+		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+				psched != NULL;
+				psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+			attribute *jsf_attr = NULL;
+
+			jsf_attr = &(psched->sch_attr[SCHED_ATR_job_sort_formula]);
+			if (jsf_attr->at_flags & ATR_VFLAG_SET) {
+				if (strcmp(psched->sch_attr[SCHED_ATR_job_sort_formula].at_val.at_str, formula) != 0) {
+					incompatible = 1;
+					break;
+				}
+			}
+		}
+
+		if (incompatible)
+			return PBSE_SVR_SCHED_JSF_INCOMPAT;
+	} else {
+		/* Check if server's JSF is set to a different value */
+		if ((server.sv_attr[SRV_ATR_job_sort_formula].at_flags & ATR_VFLAG_SET) &&
+				strcmp(server.sv_attr[SRV_ATR_job_sort_formula].at_val.at_str, formula) != 0)
+			return PBSE_SVR_SCHED_JSF_INCOMPAT;
+	}
+
+	if (!Py_IsInitialized())
+		return PBSE_INTERNAL;
+
+	globals1 = malloc(globals_size1);
+	if(globals1 == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+
+	globals2 = malloc(globals_size2);
+	if(globals2 == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+
+	strcpy(globals1, "globals1={");
+	strcpy(globals2, "globals2={");
+
+	/* We need to create a python dictionary to pass to python as a list
+	 * of valid symbols.
+	 */
+
+	for (pres = svr_resc_def; pres; pres = pres->rs_next) {
+		/* unknown resource is used as a delimiter between builtin and custom resources */
+		if (strcmp(pres->rs_name, RESOURCE_UNKNOWN) != 0) {
+			snprintf(buf, sizeof(buf), "\'%s\':1,", pres->rs_name);
+			if(pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
+				rc = PBSE_SYSTEM;
+				goto validate_job_formula_exit;
+			}
+			if (pres->rs_type == ATR_TYPE_LONG ||
+				pres->rs_type == ATR_TYPE_SIZE ||
+				pres->rs_type == ATR_TYPE_LL ||
+				pres->rs_type == ATR_TYPE_SHORT ||
+				pres->rs_type ==  ATR_TYPE_FLOAT) {
+				if(pbs_strcat(&globals2, &globals_size2, buf) ==  NULL) {
+					rc = PBSE_SYSTEM;
+					goto validate_job_formula_exit;
+				}
+			}
+
+		}
+	}
+
+	snprintf(buf, sizeof(buf), "\'%s\':1, '%s':1, \'%s\':1,\'%s\':1, \'%s\':1, \'%s\':1, \'%s\':1, \'%s\': 1}\n",
+		FORMULA_ELIGIBLE_TIME, FORMULA_QUEUE_PRIO, FORMULA_JOB_PRIO,
+		FORMULA_FSPERC, FORMULA_FSPERC_DEP, FORMULA_TREE_USAGE, FORMULA_FSFACTOR, FORMULA_ACCRUE_TYPE);
+	if (pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	if (pbs_strcat(&globals2, &globals_size2, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+
+	/* Allocate a buffer for the Python code */
+	script = malloc(script_size);
+	if (script == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	*script = '\0';
+
+	/* import math and initialize variables */
+	sprintf(buf,
+		"ans = 0\n"
+		"errnum = 0\n"
+		"errmsg = \'\'\n"
+		"try:\n"
+		"    from math import *\n"
+		"except ImportError as e:\n"
+		"    errnum=4\n"
+		"    errmsg=str(e)\n");
+	if (pbs_strcat(&script, &script_size, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	/* set up our globals dictionary */
+	if (pbs_strcat(&script, &script_size, globals1) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	if (pbs_strcat(&script, &script_size, globals2) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	/* Now for the real guts: The initial try/except block*/
+	sprintf(buf,
+		"try:\n"
+		"    exec(\'ans=");
+	if (pbs_strcat(&script, &script_size, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	if (pbs_strcat(&script, &script_size, formula) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	sprintf(buf, "\', globals1, locals())\n"
+		"except SyntaxError as e:\n"
+		"    errnum=1\n"
+		"    errmsg=str(e)\n"
+		"except NameError as e:\n"
+		"    errnum=2\n"
+		"    errmsg=str(e)\n"
+		"except Exception as e:\n"
+		"    pass\n"
+		"if errnum == 0:\n"
+		"    try:\n"
+		"        exec(\'ans=");
+	if (pbs_strcat(&script, &script_size, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	if (pbs_strcat(&script, &script_size, formula) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	sprintf(buf, "\', globals2, locals())\n"
+		"    except NameError as e:\n"
+		"        errnum=3\n"
+		"        errmsg=str(e)\n"
+		"    except Exception as e:\n"
+		"        pass\n");
+	if (pbs_strcat(&script, &script_size, buf) == NULL) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+
+	/* run the script in a subinterpreter */
+	ts_main = PyThreadState_Get();
+	ts_sub = Py_NewInterpreter();
+	if (!ts_sub) {
+		rc = PBSE_SYSTEM;
+		goto validate_job_formula_exit;
+	}
+	err = PyRun_SimpleString(script);
+
+	/* peek into the interpreter to get the values of err and errmsg */
+	if (err == 0) {
+		PyObject *module;
+		PyObject *dict;
+		PyObject *val;
+		err = -1;
+		if ((module = PyImport_AddModule("__main__"))) {
+			if ((dict = PyModule_GetDict(module))) {
+				char *p;
+				if ((val = PyDict_GetItemString(dict, "errnum"))) {
+					p = pbs_python_object_str(val);
+					if (*p != '\0')
+						err = atoi(p);
+				}
+				if ((val = PyDict_GetItemString(dict, "errmsg"))) {
+					p = pbs_python_object_str(val);
+					if (*p != '\0')
+						errmsg = strdup(p);
+				}
+			}
+		}
+	}
+
+	switch(err)
+	{
+		case 0: /* Success */
+			rc = 0;
+			break;
+		case 1: /* Syntax error in formula */
+			rc = PBSE_BAD_FORMULA;
+			break;
+		case 2: /* unknown resource name */
+			rc = PBSE_BAD_FORMULA_KW;
+			break;
+		case 3: /* resource of non-numeric type */
+			rc = PBSE_BAD_FORMULA_TYPE;
+			break;
+		case 4: /* import error */
+			rc = PBSE_SYSTEM;
+			break;
+		default: /* unrecognized error */
+			rc = PBSE_INTERNAL;
+			break;
+	}
+
+	if (err == 0) {
+		if (pobject == &server) {
+			/* Write formula to all scheds' sched_priv */
+			for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+					psched != NULL;
+					psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+				rc = write_job_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+				if (rc != PBSE_NONE)
+					goto validate_job_formula_exit;
+			}
+		} else {	/* Write formula to a specific sched's sched_priv */
+			psched = (pbs_sched *) pobject;
+			rc = write_job_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+			if (rc != PBSE_NONE)
+				goto validate_job_formula_exit;
+		}
+
+	} else {
+		snprintf(buf, sizeof(buf), "Validation Error: %s", errmsg?errmsg:"Internal error");
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, buf);
+	}
+
+validate_job_formula_exit:
+	if (ts_main) {
+		if (ts_sub)
+			Py_EndInterpreter(ts_sub);
+		PyThreadState_Swap(ts_main);
+	}
+	free(script);
+	free(globals1);
+	free(globals2);
+	free(errmsg);
+	return rc;
+#endif
+
+
+}
 
 /**
  * @brief
@@ -267,7 +600,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 		return PBSE_SCHED_OP_NOT_PERMITTED;
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 		while (psched != NULL) {
 			if (psched->sch_attr[SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) {
 				if (!strcmp(psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str, pattr->at_val.at_str)) {

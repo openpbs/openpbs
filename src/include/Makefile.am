@@ -98,14 +98,6 @@ noinst_HEADERS = \
 	port_forwarding.h \
 	provision.h \
 	qmgr.h \
-	qmgr_node_public.h \
-	qmgr_node_readonly.h \
-	qmgr_que_public.h \
-	qmgr_que_readonly.h \
-	qmgr_sched_public.h \
-	qmgr_sched_readonly.h \
-	qmgr_svr_public.h \
-	qmgr_svr_readonly.h \
 	queue.h \
 	reservation.h \
 	resmon.h \

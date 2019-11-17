@@ -105,12 +105,6 @@
     <ClInclude Include="..\..\src\include\pbs_version.h" />
     <ClInclude Include="..\..\src\include\portability.h" />
     <ClInclude Include="..\..\src\include\qmgr.h" />
-    <ClInclude Include="..\..\src\include\qmgr_node_public.h" />
-    <ClInclude Include="..\..\src\include\qmgr_node_readonly.h" />
-    <ClInclude Include="..\..\src\include\qmgr_que_public.h" />
-    <ClInclude Include="..\..\src\include\qmgr_que_readonly.h" />
-    <ClInclude Include="..\..\src\include\qmgr_svr_public.h" />
-    <ClInclude Include="..\..\src\include\qmgr_svr_readonly.h" />
     <ClInclude Include="..\..\src\include\queue.h" />
     <ClInclude Include="..\..\src\include\reservation.h" />
     <ClInclude Include="..\..\src\include\resmon.h" />

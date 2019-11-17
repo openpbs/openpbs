@@ -557,8 +557,10 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->node_group_enable = 0;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
-			sinfo->job_formula = read_formula();
+		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
+			if (conf.job_sort_formula != NULL)
+				free(conf.job_sort_formula);
+			conf.job_sort_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
@@ -929,6 +931,15 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				conf.preempt_min_wt_used = 1;
 			else
 				conf.preempt_min_wt_used = 0;
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+			if (conf.job_sort_formula != NULL)
+				free(conf.job_sort_formula);
+			conf.job_sort_formula = read_formula();
+			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
+					"Job sorting formula and job_sort_key are incompatible.  "
+					"The job sorting formula will be used.");
+
 		}
 		attrp = attrp->next;
 	}
@@ -1125,8 +1136,6 @@ free_server_info(server_info *sinfo)
 		free_np_cache_array(sinfo->npc_arr);
 	if (sinfo->node_group_key != NULL)
 		free_string_array(sinfo->node_group_key);
-	if (sinfo->job_formula != NULL)
-		free(sinfo->job_formula);
 	if (sinfo->calendar != NULL)
 		free_event_list(sinfo->calendar);
 	if (sinfo->policy != NULL)
@@ -1291,7 +1300,6 @@ new_server_info(int limallocflag)
 	sinfo->preempt_targets_enable = 1; /* enabled by default */
 	sinfo->npc_arr = NULL;
 	sinfo->qrun_job = NULL;
-	sinfo->job_formula = NULL;
 	sinfo->policy = NULL;
 	sinfo->fairshare = NULL;
 	sinfo->equiv_classes = NULL;
@@ -2322,7 +2330,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
 	nsinfo->node_group_key = dup_string_array(osinfo->node_group_key);
-	nsinfo->job_formula = string_dup(osinfo->job_formula);
 	nsinfo->nodesigs = dup_string_array(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);
@@ -3403,7 +3410,10 @@ read_formula(void)
 	FILE *fp;
 
 
-	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
+	if (dflt_sched)
+		sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
+	else
+		sprintf(pathbuf, "%s/sched_priv_%s/%s", pbs_conf.pbs_home_path, sc_name, FORMULA_FILENAME);
 	if ((fp = fopen(pathbuf, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
 			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
