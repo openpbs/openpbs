@@ -1842,7 +1842,7 @@ class DshUtils(object):
         return True
 
     def cat(self, hostname=None, filename=None, sudo=False, runas=None,
-            logerr=True, level=logging.INFOCLI2):
+            logerr=True, level=logging.INFOCLI2, option=None):
         """
         Generic function of cat with remote host support
 
@@ -1861,7 +1861,11 @@ class DshUtils(object):
         :type logerr: boolean
         :returns: output of run_cmd
         """
-        cmd = [self.which(hostname, 'cat', level=level), filename]
+        cmd = [self.which(hostname, 'cat', level=level)]
+        if option:
+            cmd += [option, filename]
+        else:
+            cmd.append(filename)
         return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
                             runas=runas, logerr=logerr, level=level)
 
