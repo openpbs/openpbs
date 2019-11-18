@@ -1,0 +1,381 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import platform
+import argparse
+import subprocess
+import fileinput
+import shlex
+import time
+
+pbs_dirname = ''
+
+
+def log_error(str_to_print):
+    t = time.localtime()
+    current_time = time.strftime("%H:%M:%S", t)
+    print('\033[91m' + current_time + " ---> " + str_to_print + '\033[0m')
+
+
+def log_info(str_to_print):
+    t = time.localtime()
+    current_time = time.strftime("%H:%M:%S", t)
+    print('\033[1m' + current_time + " ---> " + str_to_print + '\033[0m')
+
+
+def run_cmd(cmd, return_output=False):
+    '''
+    Run a terminal command, and if needed return output of the command.
+    '''
+    cmd = shlex.split(cmd)
+    try:
+        a = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        out, err = a.communicate()
+        if a.returncode != 0:
+            log_error("command failed")
+            log_error(str(err))
+        else:
+            if return_output:
+                return str(out)
+    except Exception as e:
+        log_error("The command failed.")
+        log_error(e)
+
+
+def run_docker_cmd(cmd):
+    '''
+    Runs a docker command and on failure redirects user to the container terminal
+    '''
+    try:
+        docker_cmd = shlex.split(cmd)
+        a = subprocess.Popen(docker_cmd)
+        a.communicate()
+        if a.returncode != 0:
+            log_error(
+                "docker cmd returned with non zero exit code, redirecting you to container terminal")
+            docker_cmd = shlex.split(
+                "docker-compose exec pbs-build bash -c \'cd /pbspro && /bin/bash\'")
+            subprocess.run(docker_cmd)
+    except Exception as e:
+        log_error("Failed\n:")
+        log_error(e)
+
+
+def write_to_file(file_path, value):
+    with open(file_path, "w+") as f:
+        f.write(value)
+
+
+def read_from_file(file_path):
+    if not os.path.isfile(file_path):
+        open(file_path, 'a').close()
+    with open(file_path, 'r+') as f:
+        val = f.read()
+    return val
+
+
+def commit_docker_image():
+    '''
+    Commit the docker container image with post-fix '_ci_pbs' when build dependencies
+    are installed and is ready to install pbs.
+    '''
+    env_file = os.path.join(pbs_dirname, ".env")
+    image_name = read_from_file(env_file)
+    image_name = image_name.split('=')[1]
+    if image_name.find('_ci_pbs') == -1:
+        image_name += '_ci_pbs'
+        image_name = image_name.replace(':', '_')
+        try:
+            build_id = 'docker-compose ps -q pbs-build'
+            build_id = run_cmd(build_id, True)
+            build_id = build_id.split("'")[1]
+            build_id = build_id[:12]
+            # shortening the build id to 12 characters as is displayed by 'docker ps'
+            # unlike 'docker-compose ps'  which shows full id
+            cmd = 'docker commit '+build_id+' '+image_name+':latest'
+            log_info(cmd)
+            run_cmd(cmd)
+            bad_images = "docker images -qa -f'dangling=true'"
+            bad_images = run_cmd(bad_images, True)
+            if bad_images != "b''":
+                bad_images = (bad_images.split("'")[1]).replace("\\n", " ")
+                print("The following untagged images will be removed -> " + bad_images)
+                cmd = 'docker rmi ' + bad_images
+                run_cmd(cmd)
+        except Exception as e:
+            log_error(e)
+
+
+def delete_older_image(bad_images):
+    '''
+    When building a newer '_ci_pbs' image this fucntion will delete any older such instance
+    '''
+    if bad_images.find('_ci_pbs') == -1:
+        bad_images = bad_images.replace(':', '_')
+        bad_images += '_ci_pbs'
+    cmd = "docker images -q " + bad_images
+    bad_images = run_cmd(cmd, True)
+    if bad_images == "b''":
+        return
+    bad_images = (bad_images.split("'")[1]).replace("\\n", " ")
+    log_info("The following untagged images will be removed -> " + bad_images)
+    cmd = 'docker rmi ' + bad_images
+    run_cmd(cmd)
+
+
+def find_ci():
+    '''
+    Finds absolute path of pbs and ci 
+    '''
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(cur_dir)
+
+
+def tail_file(build_log_path):
+    with open(build_log_path, 'rb') as f:
+        f.seek(-2, os.SEEK_END)
+        while f.read(1) != b'\n':
+            f.seek(-2, os.SEEK_CUR)
+        return f.readline().decode()
+
+
+def check_for_existing_image():
+    '''
+    This function will check whether an existing image with the
+    post-fix of '_ci_pbs' exists or not for the given docker image.
+    '''
+    env_file = os.path.join(pbs_dirname, '.env')
+    val = read_from_file(env_file)
+    if val != '':
+        val = val.split('=')[1]
+        if val.find('_ci_pbs') != -1:
+            val = val[:-7].replace('_', ':')
+    else:
+        val = 'centos:7'
+    search_str = val.replace(":", "_")
+    search_str += '_ci_pbs'
+    cmd = 'docker images -q ' + search_str
+    search_result = run_cmd(cmd, True)
+    if search_result != "b''":
+        return True, search_str
+    else:
+        return False, val
+
+
+def check_prerequisites():
+    '''
+    This function will check whether docker docker-compose commands are available
+    or a container is that has pbs running.
+    '''
+    cmd = "where" if platform.system() == "Windows" else "which"
+
+    try:
+        subprocess.run([cmd, "docker"], stdout=subprocess.DEVNULL)
+    except:
+        log_error("docker not found in PATH")
+        return 1
+
+    try:
+        subprocess.run([cmd, "docker-compose"], stdout=subprocess.DEVNULL)
+    except:
+        log_error("docker-compose not found in PATH")
+        return 1
+
+    try:
+        docker_container_process = subprocess.run(
+            ["docker-compose", "ps", "pbs-build"], stdout=subprocess.PIPE)
+        docker_container = str(docker_container_process.stdout)
+        if docker_container.find('Up') == -1:
+            log_info("No running service found")
+            try:
+                log_info('Attempting to start container')
+                os.chdir(pbs_dirname)
+                subprocess.run(["docker-compose", "down"],
+                               stdout=subprocess.DEVNULL)
+                image_check, env_value = check_for_existing_image()
+                if image_check == True:
+                    env_file = os.path.join(pbs_dirname, '.env')
+                    write_to_file(env_file, "CONTAINER_PLATFORM="+env_value)
+                    subprocess.run(["docker-compose", "up", "-d"])
+                    return 0
+                else:
+                    subprocess.run(["docker-compose", "up", "-d"])
+                log_info('Waiting for container build to complete ')
+                build_log_path = os.path.join(pbs_dirname, 'logs', 'build')
+                log_info("Build logs can be found in " + build_log_path)
+                # wait for build to complete and commit newly built container
+                timer = 1
+                while True:
+                    time.sleep(30)
+                    last_line = tail_file(build_log_path)
+                    log_info("Current status ...... " + last_line)
+                    if last_line.find('### First time build is complete ###') != -1:
+                        log_info("build is now complete")
+                        commit_docker_image()
+                        return 0
+                    timer += 1
+                    # timeout after 60 mins
+                    if timer > 120:
+                        return 1
+            except Exception as e:
+                log_error(e)
+        else:
+            log_info("running container found")
+            return 0
+    except:
+        log_error("failed to start ci services")
+
+
+if __name__ == "__main__":
+
+    ap = argparse.ArgumentParser(
+        prog='ci', description='Runs the ci tool for pbs', conflict_handler='resolve')
+    ap.add_argument('--configure', const='called', nargs='?',
+                    help='configure pbs, defaults to \'--prefix=/opt/pbs --enable-ptl\' \n eg --configure="--enable-ptl" ')
+    ap.add_argument('--make', help='run make command in pbs',
+                    const='called', nargs='?')
+    ap.add_argument(
+        '--install', help='run install command in pbs', const='called', nargs='?')
+    ap.add_argument('--test', const='called', nargs='?',
+                    help='run ptl tests on pbs\n --test default will run \'smoke tag\' for ptl \n eg --test="-f functional/pbs_qmgr.py" ')
+    ap.add_argument('--pbs-stop', const='called',
+                    help='stops all pbs processes inside container including ptl', nargs='?')
+    ap.add_argument('--run', const='called',
+                    help='runs complete install and test for pbs \n eg --run="-f functional/pbs_qmgr.py"', nargs='?')
+    ap.add_argument('--start', const='called',
+                    help='start container, optionally add platform name \n ex --start="ubuntu" ', nargs='?')
+    ap.add_argument('--build', const='called',
+                    help='forces the container to build dependencies, use as a suboption to --start', nargs='?')
+    ap.add_argument('--delete', const='called',
+                    help='destroy pbs container', nargs='?')
+    ap.add_argument('--local', const='called',
+                    help='Simply run the travis script locally, without spawning any containers', nargs='?')
+    ap.add_argument('--pbs-dir', const='called',
+                    help='provide directory location for pbs for which you want ci to run', nargs='?')
+    if len(sys.argv) < 2:
+        log_error('\nToo few arguments\n')
+        ap.print_help()
+        sys.exit(1)
+    args = ap.parse_args(sys.argv[1:])
+    if args.pbs_dir != None:
+        pbs_dirname = os.path.join(args.pbs_dir, 'ci')
+    else:
+        pbs_dirname = find_ci()
+        pbs_dirname = os.path.join(pbs_dirname, 'ci')
+    try:
+        os.chdir(pbs_dirname)
+    except Exception as e:
+        log_error(str(e))
+        log_error("Was correct pbs path provided?")
+        sys.exit(1)
+    build_log_path = os.path.join(pbs_dirname, 'logs', 'build')
+    if args.delete == None and args.start == None and args.local == None:
+        ret = check_prerequisites()
+        if ret == 1:
+            log_error(
+                "container build failed, build logs can be found in " + build_log_path)
+            sys.exit(1)
+
+    try:
+        if args.configure != None:
+            val = args.configure
+            write = True
+            configure_opt = os.path.join(pbs_dirname, '.configure_opt')
+            if val == 'called':
+                val = read_from_file(configure_opt)
+                if val == '':
+                    val = '--prefix=/opt/pbs --enable-ptl'
+                else:
+                    write = False
+            log_info("using configure parameters : " + val)
+            if write:
+                write_to_file(configure_opt, val)
+            cmd = "docker-compose exec pbs-build bash -c \'export ONLY_CONFIGURE=1 && /src/do.sh | tee /logs/build \'"
+            run_docker_cmd(cmd)
+            log_info("config options set")
+        if args.make == 'called':
+            cmd = "docker-compose exec pbs-build bash -c \'export ONLY_REBUILD=1 && /src/do.sh | tee /logs/build \'"
+            run_docker_cmd(cmd)
+            log_info(" done make ")
+        if args.install == 'called':
+            cmd = "docker-compose exec pbs-build bash -c \'export ONLY_INSTALL=1 && /src/do.sh | tee /logs/build \'"
+            run_docker_cmd(cmd)
+            log_info(" done install ")
+        if args.test != None:
+            val = args.test
+            write = True
+            benchpress_opt = os.path.join(pbs_dirname, '.benchpress_opt')
+            if val == 'called':
+                val = read_from_file(benchpress_opt)
+                if val == '':
+                    val = '--tags=smoke'
+                else:
+                    write = False
+            log_info("using test parameters : " + val)
+            if write:
+                write_to_file(benchpress_opt, val)
+            cmd = "docker-compose exec pbs-build bash -c \'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/do.sh | tee /logs/build \'"
+            run_docker_cmd(cmd)
+            log_info(" done test ")
+        if args.pbs_stop == 'called':
+            cmd = "docker-compose exec pbs-build bash -c \' /src/killit.sh  \'"
+            run_docker_cmd(cmd)
+            log_info(" done stop ")
+        if args.run != None:
+            benchpress_opt = os.path.join(pbs_dirname, '.benchpress_opt')
+            write = True
+            val = ''
+            if args.run == 'called':
+                val = read_from_file(benchpress_opt)
+                if val == '':
+                    val = '--tags=smoke'
+                else:
+                    write = False
+            else:
+                val = args.run
+            log_info("using test parameters : " + val)
+            if write:
+                write_to_file(benchpress_opt, val)
+            cmd = "docker-compose exec pbs-build bash -c \' export RUN_TESTS=1 && /src/do.sh | tee /logs/build \'"
+            run_docker_cmd(cmd)
+            log_info(" done running all ")
+        if args.start != None:
+            env_file = os.path.join(pbs_dirname, ".env")
+            if args.start == 'called':
+                val = read_from_file(env_file)
+                if val != '':
+                    val = val.split('=')[1]
+                else:
+                    val = 'centos:7'
+            else:
+                val = args.start
+            write_to_file(env_file, "CONTAINER_PLATFORM="+val)
+            if args.build != None:
+                delete_older_image(val)
+            ret = check_prerequisites()
+            if ret == 1:
+                log_error(
+                    "container build failed, take a look at logs " + build_log_path)
+                sys.exit(1)
+            log_info(" done start container ")
+        if args.delete != None:
+            try:
+                os.chdir(pbs_dirname)
+                run_cmd("docker-compose down")
+                log_info(
+                    "done delete container and services")
+            except Exception as e:
+                log_error("Failed to destroy container and services: " + e)
+        if args.local != None:
+            os.chdir(pbs_dirname)
+            # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
+            if args.local == 'called':
+                subprocess.run("./do.sh")
+            if args.local == 'sanitize':
+                subprocess.run("./do_sanitize_mode.sh")
+        else:
+            sys.exit(0)
+    except Exception as e:
+        ap.print_help()
+        log_error(e)
