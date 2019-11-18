@@ -136,5 +136,5 @@ dist_sysconf_DATA = \
 	pbs_sched_config
 
 if UNDOLR_ENABLED
-common_libs += @libundolr_lib@
+pbs_sched_LDADD += @libundolr_lib@
 endif
