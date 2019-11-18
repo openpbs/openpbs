@@ -149,7 +149,14 @@ pbs_config --make-ug
 if [ "x${RUN_TESTS}" == "x1" ];then
   ptl_tests_dir=$(dirname ${prefix})/ptl/tests
   cd ${ptl_tests_dir}/
-  pbs_benchpress $( cat ${workdir}/.benchpress_opt ) --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+  benchpress_opt="$( cat ${workdir}/.benchpress_opt )"
+  eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
+  benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
+  if [ -z "${eval_tag}" ];then
+    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+  else
+    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+  fi
 fi
 
 if [ "x$IS_CI_BUILD" != "x1" ];then
