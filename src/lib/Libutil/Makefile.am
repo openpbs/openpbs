@@ -40,7 +40,8 @@ noinst_LIBRARIES = libutil.a
 
 libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@libical_inc@ @KRB5_CFLAGS@
+	@libical_inc@ @KRB5_CFLAGS@ \
+	@libundolr_inc@
 
 libutil_a_SOURCES = \
 	execvnode_seq_util.c \
@@ -56,10 +57,6 @@ libutil_a_SOURCES = \
 	pbs_aes_encrypt.c \
 	munge_supp.c \
 	krb5_util.c \
-	pbs_gss.c
-  
-if UNDOLR_ENABLED
-libutil_a_CPPFLAGS += @libundolr_inc@
-libutil_a_SOURCES += undolr.c
-endif
+	pbs_gss.c \
+	undolr.c
 
