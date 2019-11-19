@@ -68,6 +68,9 @@ class TestJobCleanup(TestSelf):
         # Measure job cleanup performance
         t1 = time.time()
         self.server.cleanup_jobs()
+
+        # Restart the mom
+        self.mom.restart()
         t2 = time.time()
 
         self.logger.info("Time taken for job cleanup " + str(t2 - t1))
