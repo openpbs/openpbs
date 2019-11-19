@@ -2403,7 +2403,12 @@ class BatchUtils(object):
                     (not dflt_conf)):
                 if ' ' in str(v):
                     v = '"' + v + '"'
-
+                if isinstance(v, str):
+                    if any((c in v) for c in set(',\'"')):
+                        if '"' in v:
+                            v = "\\'%s\\'" % v
+                        else:
+                            v = '\\"%s\\"' % v
             if '.' in a:
                 (attribute, resource) = a.split('.')
                 ret.append('-' + api_to_cli[attribute])
@@ -6034,6 +6039,10 @@ class Server(PBSService):
 
             _conf = self.default_client_pbs_conf
             user_host = PbsUser.get_user(obj.username).host
+            if user_host:
+                hostname = user_host
+            else:
+                hostname = self.hostname
             if (not self._is_local) or \
                     (not self.du.is_localhost(user_host)):
                 for k, v in obj.custom_attrs.items():
@@ -6047,7 +6056,7 @@ class Server(PBSService):
                                 v = '\\"%s\\"' % v
                         obj.custom_attrs[k] = v
             cmd = self.utils.convert_to_cli(obj.custom_attrs, IFL_SUBMIT,
-                                            self.hostname, dflt_conf=_conf,
+                                            hostname=hostname, dflt_conf=_conf,
                                             exclude_attrs=exclude_attrs)
 
             if cmd is None:
