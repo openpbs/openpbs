@@ -1218,22 +1218,24 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 	}
 #endif /* localmod 097 */
 	if (si->has_soft_limit) {
-		rc |= si->soft_limit_preempt_bit;
 		if (si->has_user_limit)
 			rc |= find_preempt_bits(si->user_counts, rr->user, rr);
 		if (si->has_grp_limit)
 			rc |= find_preempt_bits(si->group_counts, rr->group, rr);
 		if (si->has_proj_limit)
 			rc |= find_preempt_bits(si->project_counts, rr->project, rr);
+		if (si->has_all_limit)
+			rc |= find_preempt_bits(si->alljobcounts, PBS_ALL_ENTITY, rr);
 	}
 	if (qi->has_soft_limit) {
-		rc |= qi->soft_limit_preempt_bit;
 		if (qi->has_user_limit)
 			rc |= find_preempt_bits(qi->user_counts, rr->user, rr);
 		if (qi->has_grp_limit)
 			rc |= find_preempt_bits(qi->group_counts, rr->group, rr);
 		if (qi->has_proj_limit)
 			rc |= find_preempt_bits(qi->project_counts, rr->project, rr);
+		if (qi->has_all_limit)
+			rc |= find_preempt_bits(qi->alljobcounts, PBS_ALL_ENTITY, rr);
 	}
 
 	return (rc);
@@ -1785,7 +1787,7 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	cts = qc->all;
 
-	c = find_counts(cts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -1859,7 +1861,7 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	cts = sc->all;
 
-	c = find_counts(cts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -1934,7 +1936,7 @@ check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 
-	running = find_counts_elm(cts, "o:" PBS_ALL_ENTITY, NULL, NULL, NULL);
+	running = find_counts_elm(cts, PBS_ALL_ENTITY, NULL, NULL, NULL);
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > running))
@@ -1989,7 +1991,7 @@ check_queue_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 
-	running = find_counts_elm(cts, "o:" PBS_ALL_ENTITY, NULL, NULL, NULL);
+	running = find_counts_elm(cts, PBS_ALL_ENTITY, NULL, NULL, NULL);
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > running))
@@ -2022,9 +2024,15 @@ check_queue_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	int	max_running;
 	char	*key;
+	counts	*cnt = NULL;
+	int used = 0;
+
 
 	if (qi == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
+
+	if (!qi->has_all_limit)
+	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2033,11 +2041,18 @@ check_queue_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > qi->sc.running)) {
-		qi->soft_limit_preempt_bit = 0;
+		qi->alljobcounts->soft_limit_preempt_bit = 0;
 		return (0);
 	} else {
-		qi->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
-		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
+		/* at this point, we know a limit is set  for PBS_ALL*/
+		used = find_counts_elm(qi->alljobcounts, PBS_ALL_ENTITY, NULL, &cnt, NULL);
+		if (used > max_running) {
+			if (cnt != NULL)
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
+		} else {
+			return (0);
+		}
 	}
 
 }
@@ -2268,9 +2283,14 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	int	max_running;
 	char	*key;
+	counts	*cnt = NULL;
+	int used = 0;
 
 	if (si == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
+
+	if (!si->has_all_limit)
+	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
@@ -2279,11 +2299,18 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > si->sc.running)) {
-		si->soft_limit_preempt_bit = 0;
+		si->alljobcounts->soft_limit_preempt_bit = 0;
 		return (0);
 	} else {
-		si->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
-		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
+		/* at this point, we know a limit is set  for PBS_ALL*/
+		used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY , NULL, &cnt, NULL);
+		if (used > max_running) {
+			if (cnt != NULL)
+				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
+		} else {
+			return (0);
+		}
 	}
 }
 
@@ -2523,7 +2550,7 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	if ((si == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	c = find_counts(si->alljobcounts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(si->alljobcounts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -2592,7 +2619,7 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	if ((qi == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	c = find_counts(qi->alljobcounts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(qi->alljobcounts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
