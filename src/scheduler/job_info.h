@@ -49,6 +49,11 @@ extern "C" {
  */
 resource_resv *query_job(struct batch_status *job, server_info *sinfo, schd_error *err);
 
+/*
+ * pthread routine for querying a chunk of jobs
+ */
+void query_jobs_chunk(th_data_query_jinfo *data);
+
 /* create an array of jobs for a particular queue */
 resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name);
 

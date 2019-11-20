@@ -40,9 +40,11 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
+#include <pthread.h>
 
 #include "data_types.h"
 #include "limits.h"
+#include "queue.h"
 /* resources to check */
 extern const struct rescheck res_to_check[];
 
@@ -70,6 +72,20 @@ extern int got_sigpipe;
 
 /* static indexes into allres */
 const struct enum_conv resind[RES_HIGH+1];
+
+/* Stuff needed for multi-threading */
+extern pthread_mutex_t general_lock;
+extern pthread_mutex_t work_lock;
+extern pthread_cond_t work_cond;
+extern pthread_mutex_t result_lock;
+extern pthread_cond_t result_cond;
+extern ds_queue *work_queue;
+extern ds_queue *result_queue;
+extern pthread_t *threads;
+extern int threads_die;
+extern int num_threads;
+extern pthread_key_t th_id_key;
+extern pthread_once_t key_once;
 
 extern resdef **allres;
 extern resdef **consres;

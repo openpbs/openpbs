@@ -8494,7 +8494,6 @@ class Server(PBSService):
                 a = {'scheduling': 'False'}
                 self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
                              runas=ROOT_USER)
-                self.expect(SCHED, a, id=sc['id'])
         try:
             self.deljob(id=job_ids, extend=delete_xt,
                         runas=ROOT_USER, wait=False)

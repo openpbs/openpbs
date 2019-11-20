@@ -168,6 +168,18 @@ enum resval_cmpflag
 	CMP_CASE,
 	CMP_CASELESS
 };
+
+enum thread_task_type
+{
+	TS_IS_ND_ELIGIBLE,
+	TS_DUP_ND_INFO,
+	TS_QUERY_ND_INFO,
+	TS_FREE_ND_INFO,
+	TS_DUP_RESRESV,
+	TS_QUERY_JOB_INFO,
+	TS_FREE_RESRESV
+};
+
 /* return codes for is_ok_to_run_* functions
  * codes less then RET_BASE are standard PBSE pbs error codes
  * NOTE: RET_BASE MUST be greater than the highest PBSE error code

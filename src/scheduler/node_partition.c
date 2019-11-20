@@ -420,7 +420,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 
 	if ((np_arr = (node_partition **)
 		malloc((num_nodes + 1) * sizeof(node_partition *))) == NULL) {
-		log_err(errno, "create_node_partitions", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -472,7 +472,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							tmp_arr = realloc(np_arr,
 								(np_arr_size * 2 + 1) * sizeof(node_partition *));
 							if (tmp_arr == NULL) {
-								log_err(errno, "create_node_partitions", MEM_ERR_MSG);
+								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
 								if (free_str == 1)
 									free(str);
@@ -768,7 +768,7 @@ new_np_cache(void)
 	np_cache *npc;
 
 	if ((npc = malloc(sizeof(np_cache))) == NULL) {
-		log_err(errno, "new_np_cache", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
