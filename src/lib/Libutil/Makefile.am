@@ -57,6 +57,9 @@ libutil_a_SOURCES = \
 	pbs_aes_encrypt.c \
 	munge_supp.c \
 	krb5_util.c \
-	pbs_gss.c \
-	undolr.c
+	pbs_gss.c
+
+if UNDOLR_ENABLED
+libutil_a_SOURCES += undolr.c
+endif
 
