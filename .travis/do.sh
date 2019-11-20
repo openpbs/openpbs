@@ -1,5 +1,8 @@
 #!/bin/bash -xe
 
+if [ "x${BUILD_MODE}" == "xsanitize" ]; then
+   exit 0
+fi
 . /etc/os-release
 if [ "x${ID}" == "xcentos" ]; then
     yum -y install python3
@@ -13,3 +16,7 @@ fi
 
 PBS_DIR=$(dirname $(readlink -f $(basename $0)))
 ${PBS_DIR}/ci/ci --local
+if [ $? -ne 0 ];then
+    exit 1
+fi
+
