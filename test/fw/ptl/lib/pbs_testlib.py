@@ -8464,42 +8464,71 @@ class Server(PBSService):
         jobs. Specifying an extend parameter could override
         this behavior.
         """
+        delete_xt = 'nomailforce'
         select_xt = None
         if self.is_history_enabled():
+            delete_xt += 'deletehist'
             select_xt = 'x'
         jobs = self.status(JOB, extend=select_xt)
-        job_ids = [x['id'] for x in jobs]
-
-        if len(job_ids) < 1:
-            return
+        job_ids = sorted(list(set([x['id'] for x in jobs])))
+        host_pid_map = {}
+        for job in jobs:
+            exec_host = job.get('exec_host', None)
+            if not exec_host or 'session_id' not in job:
+                continue
+            _host = exec_host.split('/')[0].split(':')[0]
+            if _host not in host_pid_map:
+                host_pid_map.setdefault(_host, [])
+            host_pid_map[_host].append(job['session_id'])
 
         # Turn off scheduling so jobs don't start when trying to
         # delete. Restore the orignial scheduling state
         # once jobs are deleted.
-        sched_to_start = []
+        sched_state = []
         scheds = self.status(SCHED)
         for sc in scheds:
             if sc['scheduling'] == 'True':
-                sched_to_start.append(sc['id'])
-            # runas is required here because some tests remove
-            # current user from managers list
-            a = {'scheduling': 'False'}
-            self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
-                         runas=ROOT_USER)
-
-        qdel_path = os.path.join(self.pbs_conf["PBS_EXEC"], "bin", "qdel")
-        if select_xt == 'x':
-            cmd = [qdel_path, "-x"] + job_ids
-        else:
-            cmd = [qdel_path] + job_ids
-
-        self.du.run_cmd(cmd=cmd)
-
+                sched_state.append(sc['id'])
+                # runas is required here because some tests remove
+                # current user from managers list
+                a = {'scheduling': 'False'}
+                self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
+                             runas=ROOT_USER)
+                self.expect(SCHED, a, id=sc['id'])
+        try:
+            self.deljob(id=job_ids, extend=delete_xt,
+                        runas=ROOT_USER, wait=False)
+        except PbsDeljobError:
+            pass
+        st = int(time.time())
+        running_job = False
+        if len(job_ids) > 100:
+            for host, pids in host_pid_map.items():
+                chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
+                if chunks:
+                    running_job = True
+                for chunk in chunks:
+                    self.du.run_cmd(host, ['kill', '-9'] + chunk,
+                                    runas=ROOT_USER, logerr=False)
+            if running_job is True:
+                _msg = job_ids[-1] + ';'
+                _msg += 'Job Obit notice received has error 15001'
+                try:
+                    self.log_match(_msg, starttime=st, interval=10,
+                                   max_attempts=10)
+                except PtlLogMatchError:
+                    # don't fail on log match error as here purpose
+                    # of log match is to allow mom to catch up with
+                    # sigchild but we don't want to wait too long
+                    # so limit max attempts to 10 ~ total 100 sec
+                    # of wait
+                    pass
         rv = self.expect(JOB, {'job_state': 0}, count=True, op=SET)
         # restore 'scheduling' state
-        for sc in sched_to_start:
+        for sc in sched_state:
             a = {'scheduling': 'True'}
             self.manager(MGR_CMD_SET, SCHED, a, id=sc, runas=ROOT_USER)
+            self.expect(SCHED, a, id=sc)
         return rv
 
     def cleanup_reservations(self):
