@@ -22,7 +22,7 @@ before_install:
   - '[ "${OS_TYPE}" == "opensuse/leap:15" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=C.utf8" || true'
   - docker run -it -d -h testdev.pbspro.org --name testdev -v $(pwd):$(pwd) --privileged -w $(pwd) ${DOCKER_EXTRA_ARG} ${OS_TYPE} /bin/bash
   - docker ps -a
-  - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} --privileged testdev"
+  - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} -e BUILD_MODE="${BUILD_MODE}" --privileged testdev"
 install:
   - '${DOCKER_EXEC} .travis/do_sanitize_mode.sh'
   - '${DOCKER_EXEC} .travis/do.sh'
