@@ -558,9 +558,9 @@ query_server_info(status *pol, struct batch_status *server)
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
-			if (conf.job_sort_formula != NULL)
-				free(conf.job_sort_formula);
-			conf.job_sort_formula = read_formula();
+			if (sinfo->job_formula != NULL)
+				free(sinfo->job_formula);
+			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
@@ -932,9 +932,9 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 			else
 				conf.preempt_min_wt_used = 0;
 		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
-			if (conf.job_sort_formula != NULL)
-				free(conf.job_sort_formula);
-			conf.job_sort_formula = read_formula();
+			if (sinfo->job_formula != NULL)
+				free(sinfo->job_formula);
+			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
@@ -1136,6 +1136,8 @@ free_server_info(server_info *sinfo)
 		free_np_cache_array(sinfo->npc_arr);
 	if (sinfo->node_group_key != NULL)
 		free_string_array(sinfo->node_group_key);
+	if (sinfo->job_formula != NULL)
+		free(sinfo->job_formula);
 	if (sinfo->calendar != NULL)
 		free_event_list(sinfo->calendar);
 	if (sinfo->policy != NULL)
@@ -1300,6 +1302,7 @@ new_server_info(int limallocflag)
 	sinfo->preempt_targets_enable = 1; /* enabled by default */
 	sinfo->npc_arr = NULL;
 	sinfo->qrun_job = NULL;
+	sinfo->job_formula = NULL;
 	sinfo->policy = NULL;
 	sinfo->fairshare = NULL;
 	sinfo->equiv_classes = NULL;
@@ -2330,6 +2333,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
 	nsinfo->node_group_key = dup_string_array(osinfo->node_group_key);
+	nsinfo->job_formula = string_dup(osinfo->job_formula);
 	nsinfo->nodesigs = dup_string_array(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);

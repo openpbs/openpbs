@@ -1747,16 +1747,6 @@ mgr_server_unset(struct batch_request *preq)
 			} else if (strcasecmp(plist->al_name, ATTR_scheduling) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduling]),
 					    &svr_attr_def[(int) SRV_ATR_scheduling], "TRUE");
-			else if (strcasecmp(plist->al_name, ATTR_job_sort_formula) == 0) {
-				pbs_sched *psched;
-
-				/* Ask all scheds to reconfigure */
-				for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-								psched != NULL;
-								psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-					set_scheduler_flag(SCH_CONFIGURE, psched);
-				}
-			}
 		}
 		svr_save_db(&server, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,

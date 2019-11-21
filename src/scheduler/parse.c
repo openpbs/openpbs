@@ -915,9 +915,6 @@ init_config()
 	if (conf.dyn_res_to_get != NULL)
 		free_string_array(conf.dyn_res_to_get);
 
-	if (conf.job_sort_formula != NULL)
-		free(conf.job_sort_formula);
-
 	/* default everyone OFF */
 	memset(&conf, 0, sizeof(struct config));
 	memset(&cstat, 0, sizeof(struct status));

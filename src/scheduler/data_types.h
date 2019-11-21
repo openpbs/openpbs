@@ -368,6 +368,7 @@ struct server_info
 	/* policy structure for the server.  This is an easy storage location for
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
+	char *job_formula;	/* formula used for sorting */
 	status *policy;
 	fairshare_head *fairshare;	/* root of fairshare tree */
 	resresv_set **equiv_classes;
@@ -1097,7 +1098,6 @@ struct config
 	char **res_to_check;			/* the resources schedule on */
 	resdef **resdef_to_check;		/* the res to schedule on in def form */
 	char **ignore_res;			/* resources - unset implies infinite */
-	char *job_sort_formula;			/* job sort formula for the sched */
 	int num_res_to_check;			/* the size of res_to_check */
 	time_t max_starve;			/* starving threshold */
 	int pprio[NUM_PPRIO][2];		/* premption priority levels */

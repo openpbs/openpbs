@@ -394,7 +394,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			return 0;
 	}
 
-	if ((policy->fair_share || conf.job_sort_formula != NULL) && sinfo->fairshare != NULL) {
+	if ((policy->fair_share || sinfo->job_formula != NULL) && sinfo->fairshare != NULL) {
 		FILE *fp;
 		int resort = 0;
 		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
@@ -503,9 +503,9 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 
 				}
-				if (conf.job_sort_formula != NULL) {
+				if (sinfo->job_formula != NULL) {
 					double threshold = policy->job_form_threshold;
-					resresv->job->formula_value = formula_evaluate(conf.job_sort_formula, resresv, resresv->resreq);
+					resresv->job->formula_value = formula_evaluate(sinfo->job_formula, resresv, resresv->resreq);
 					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Formula Evaluation = %.*f",
 						   float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
 

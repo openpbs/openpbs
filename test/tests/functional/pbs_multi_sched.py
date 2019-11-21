@@ -128,11 +128,6 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.common_setup()
 
-        self.server.expect(SCHED, 'job_sort_formula', id='sc1', op=UNSET)
-        self.server.expect(SCHED, 'job_sort_formula', id='sc2', op=UNSET)
-        self.server.expect(SCHED, 'job_sort_formula', id='sc3', op=UNSET)
-        self.server.expect(SERVER, 'job_sort_formula', op=UNSET)
-
         # Set JSF on server and test that it is used by all scheds
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'job_sort_formula': '1*walltime'})
@@ -156,7 +151,7 @@ class TestMultipleSchedulers(TestFunctional):
             self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
             self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
-        # Now, set a different JSF on sc1, this should fail
+        # Set a different JSF on sc1, this should fail
         try:
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'job_sort_formula': '2*walltime'}, id='sc1',
@@ -165,14 +160,14 @@ class TestMultipleSchedulers(TestFunctional):
         except PbsManagerError:
             pass
 
-        # Now, unset server's JSF and set sc1's JSF again
+        # Unset server's JSF and set sc1's JSF again
         self.server.manager(MGR_CMD_UNSET, SERVER, 'job_sort_formula')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'job_sort_formula': '2*walltime'}, id='sc1')
 
         self.server.cleanup_jobs()
 
-        # Now, submit 2 jobs with different walltimes to each sched again
+        # Submit 2 jobs with different walltimes to each sched again
         # This time, sc1 should be the only sched to care about walltime
         for i in range(1, 4):
             scid = "sc" + str(i)
