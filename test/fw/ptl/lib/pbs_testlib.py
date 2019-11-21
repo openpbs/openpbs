@@ -8472,8 +8472,6 @@ class Server(PBSService):
         jobs = self.status(JOB, extend=select_xt)
         job_ids = sorted(list(set([x['id'] for x in jobs])))
         running_jobs = [j['id'] for j in jobs if j['job_state'] == 'R']
-        if running_jobs:
-            last_running_job = running_jobs[-1]
         host_pid_map = {}
         for job in jobs:
             exec_host = job.get('exec_host', None)
@@ -8503,16 +8501,14 @@ class Server(PBSService):
         except PbsDeljobError:
             pass
         st = int(time.time())
-        running_job = False
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
-                if chunks:
-                    running_job = True
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
-            if running_job is True:
+            if running_jobs:
+                last_running_job = running_jobs[-1]
                 _msg = last_running_job + ';'
                 _msg += 'Job Obit notice received has error 15001'
                 try:
