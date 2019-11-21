@@ -8471,9 +8471,9 @@ class Server(PBSService):
             select_xt = 'x'
         jobs = self.status(JOB, extend=select_xt)
         job_ids = sorted(list(set([x['id'] for x in jobs])))
-        running_jobs = self.filter(JOB, {'job_state': 'R'})
-        if running_jobs.values():
-            last_running_job = list(running_jobs.values())[0][-1]
+        running_jobs = [j['id'] for j in jobs if j['job_state'] == 'R']
+        if running_jobs:
+            last_running_job = running_jobs[-1]
         host_pid_map = {}
         for job in jobs:
             exec_host = job.get('exec_host', None)
