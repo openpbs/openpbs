@@ -368,7 +368,7 @@ struct server_info
 	/* policy structure for the server.  This is an easy storage location for
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
-	char *job_formula;	/* formula used for sorting */
+	char *job_formula;		/* formula used for sorting */
 	status *policy;
 	fairshare_head *fairshare;	/* root of fairshare tree */
 	resresv_set **equiv_classes;

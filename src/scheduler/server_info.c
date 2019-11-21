@@ -114,6 +114,8 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <unistd.h>
+
 #include <pbs_ifl.h>
 #include <pbs_error.h>
 #include <log.h>
@@ -558,8 +560,6 @@ query_server_info(status *pol, struct batch_status *server)
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
-			if (sinfo->job_formula != NULL)
-				free(sinfo->job_formula);
 			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -3410,14 +3410,17 @@ read_formula(void)
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
 	int len;
-	char pathbuf[MAXPATHLEN];
+	char pathbuf[MAXPATHLEN + 100];
 	FILE *fp;
+	char cwd[MAXPATHLEN];
 
+	if (getcwd(cwd, sizeof(cwd)) == NULL) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
+				"Error getting current working directory path");
+		return NULL;
+	}
 
-	if (dflt_sched)
-		sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
-	else
-		sprintf(pathbuf, "%s/sched_priv_%s/%s", pbs_conf.pbs_home_path, sc_name, FORMULA_FILENAME);
+	snprintf(pathbuf, sizeof(pathbuf), "%s/%s", cwd, FORMULA_FILENAME);
 	if ((fp = fopen(pathbuf, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
 			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
