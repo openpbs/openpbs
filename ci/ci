@@ -371,9 +371,11 @@ if __name__ == "__main__":
             os.chdir(pbs_dirname)
             # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
             if args.local == 'called':
-                subprocess.run("./do.sh")
+                exit_code = subprocess.run("./do.sh")
+                sys.exit(exit_code.returncode)
             if args.local == 'sanitize':
-                subprocess.run("./do_sanitize_mode.sh")
+                exit_code = subprocess.run("./do_sanitize_mode.sh")
+                sys.exit(exit_code.returncode)
         else:
             sys.exit(0)
     except Exception as e:
