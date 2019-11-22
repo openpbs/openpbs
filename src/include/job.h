@@ -548,6 +548,7 @@ struct job {
 	time_t		ji_joinalarm;	/* time of job's sister join job alarm */
 	/* also, time obit sent, all */
 	time_t		ji_overlmt_timestamp;	/*time the job exceeded limit*/
+	time_t		ji_last_resc_updated;   /*time last updated to server */
 	int		ji_jsmpipe;	/* pipe from child starter process */
 	int		ji_mjspipe;	/* pipe to   child starter for ack */
 	int		ji_jsmpipe2;	/* pipe for child starter process to send special requests to parent mom */

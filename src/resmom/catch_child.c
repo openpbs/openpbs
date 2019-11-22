@@ -1048,7 +1048,8 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 	int			  index;
 	int			  nth = 0;
 	struct resc_used_update	  rused;
-	enum job_atr		*rtn_list;	
+	enum job_atr		*rtn_list;
+	extern int min_check_poll;
 
 	if (use_rtn_list_ext)
 		rtn_list = mom_rtn_list_ext;
@@ -1098,6 +1099,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 	 */
 	if ((cmd != IS_RESCUSED_FROM_HOOK) ||
 		((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) != 0)) {
+		pjob->ji_last_resc_updated = time(NULL);
 		/* now append resources used */
 
 		encode_used(pjob, &rused.ru_attr);
@@ -1105,7 +1107,9 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 
 	/* now send info to server via rpp */
 
-	send_resc_used(cmd, 1, &rused);
+	if (!(pjob->ji_last_resc_updated < time_now - min_check_poll))	{
+		send_resc_used(cmd, 1, &rused);
+	} 
 
 	/* free svrattrl list */
 
@@ -1151,6 +1155,7 @@ update_jobs_status(void)
 	struct resc_used_update	*prused;
 	struct resc_used_update	*prusedtop = NULL;
 	struct resc_used_update	**prusednext;	/* keep jobs in order */
+	extern	int	min_check_poll;
 
 	/* pass user-client privilege to encode_resc() */
 
@@ -1159,6 +1164,9 @@ update_jobs_status(void)
 
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+			time_now = time(NULL);
+			if (pjob->ji_last_resc_updated > time_now - min_check_poll)	
+				continue;
 
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 			continue;	/* not Mother Superior */
@@ -1166,6 +1174,7 @@ update_jobs_status(void)
 			continue;
 
 		++count;
+		pjob->ji_last_resc_updated = time(NULL);
 		/* allocate reply structure and fill in header portion */
 		prused = (struct resc_used_update *)
 			malloc(sizeof(struct resc_used_update));
