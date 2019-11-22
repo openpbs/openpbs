@@ -114,7 +114,6 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-#include <unistd.h>
 
 #include <pbs_ifl.h>
 #include <pbs_error.h>
@@ -3410,18 +3409,9 @@ read_formula(void)
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
 	int len;
-	char pathbuf[MAXPATHLEN + 100];
 	FILE *fp;
-	char cwd[MAXPATHLEN];
 
-	if (getcwd(cwd, sizeof(cwd)) == NULL) {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
-				"Error getting current working directory path");
-		return NULL;
-	}
-
-	snprintf(pathbuf, sizeof(pathbuf), "%s/%s", cwd, FORMULA_FILENAME);
-	if ((fp = fopen(pathbuf, "r")) == NULL) {
+	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
 			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
 		return NULL;

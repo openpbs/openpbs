@@ -90,7 +90,7 @@ extern pbs_db_conn_t *svr_db_conn;
  * @return	PBSE_ error code for Failure
  */
 static int
-write_job_formula(char *formula, char *sched_priv_path)
+write_job_sort_formula(char *formula, char *sched_priv_path)
 {
 	char pathbuf[MAXPATHLEN];
 	FILE *fp;
@@ -145,9 +145,7 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		return PBSE_INTERNAL;
 
 	if (pobject == &server) {
-		int incompatible = 0;
-
-		/* check if any sched's JSF is set to a different value */
+		/* check if any sched's JSF is set to a different, incompatible value */
 		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 				psched != NULL;
 				psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
@@ -155,15 +153,10 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 
 			jsf_attr = &(psched->sch_attr[SCHED_ATR_job_sort_formula]);
 			if (jsf_attr->at_flags & ATR_VFLAG_SET) {
-				if (strcmp(psched->sch_attr[SCHED_ATR_job_sort_formula].at_val.at_str, formula) != 0) {
-					incompatible = 1;
-					break;
-				}
+				if (strcmp(jsf_attr->at_val.at_str, formula) != 0)
+					return PBSE_SVR_SCHED_JSF_INCOMPAT;
 			}
 		}
-
-		if (incompatible)
-			return PBSE_SVR_SCHED_JSF_INCOMPAT;
 	} else {
 		/* Check if server's JSF is set to a different value */
 		if ((server.sv_attr[SRV_ATR_job_sort_formula].at_flags & ATR_VFLAG_SET) &&
@@ -361,13 +354,13 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 			for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 					psched != NULL;
 					psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-				rc = write_job_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+				rc = write_job_sort_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
 				if (rc != PBSE_NONE)
 					goto validate_job_formula_exit;
 			}
 		} else {	/* Write formula to a specific sched's sched_priv */
 			psched = (pbs_sched *) pobject;
-			rc = write_job_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+			rc = write_job_sort_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
 			if (rc != PBSE_NONE)
 				goto validate_job_formula_exit;
 		}
