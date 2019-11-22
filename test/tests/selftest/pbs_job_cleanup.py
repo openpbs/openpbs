@@ -74,3 +74,53 @@ class TestJobCleanup(TestSelf):
         t2 = time.time()
 
         self.logger.info("Time taken for job cleanup " + str(t2 - t1))
+
+    def test_del_large_num_jobs(self):
+        """
+        Test that the delete jobs functionality works correctly with large
+        number of jobs
+        """
+        num_jobs = 1000
+        a = {'resources_available.ncpus': 1,
+             'resources_available.mem': '2gb'}
+        self.server.create_vnodes('vnode', a, num_jobs, self.mom,
+                                  sharednode=False, expect=False)
+        self.server.expect(NODE, {'state=free': (GE, num_jobs)})
+
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'})
+
+        for i in range(num_jobs):
+            j = Job(TEST_USER)
+            self.server.submit(j)
+
+        self.scheduler.run_scheduling_cycle()
+        self.server.expect(JOB, {'job_state=R': num_jobs}, max_attempts=120)
+
+        self.server.cleanup_jobs()
+        self.server.expect(SERVER, {'total_jobs': 0})
+
+    def test_del_queued_jobs(self):
+        """
+        Test that the delete jobs functionality works correctly with large
+        number of queued jobs that do not have processes associated with them.
+        """
+        num_jobs = 1000
+        a = {'resources_available.ncpus': 1,
+             'resources_available.mem': '2gb'}
+        self.server.create_vnodes('vnode', a, num_jobs, self.mom,
+                                  sharednode=False, expect=False)
+        self.server.expect(NODE, {'state=free': (GE, num_jobs)})
+
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'})
+
+        for i in range(num_jobs):
+            j = Job(TEST_USER, attrs={ATTR_l + '.select': '1:ncpus=4'})
+            self.server.submit(j)
+
+        self.scheduler.run_scheduling_cycle()
+        self.server.expect(JOB, {'job_state=Q': num_jobs}, max_attempts=120)
+
+        self.server.cleanup_jobs()
+        self.server.expect(SERVER, {'total_jobs': 0})
