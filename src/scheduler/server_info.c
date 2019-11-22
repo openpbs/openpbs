@@ -114,6 +114,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+
 #include <pbs_ifl.h>
 #include <pbs_error.h>
 #include <log.h>
@@ -557,7 +558,7 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->node_group_enable = 0;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
 			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -931,6 +932,15 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				conf.preempt_min_wt_used = 1;
 			else
 				conf.preempt_min_wt_used = 0;
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+			if (sinfo->job_formula != NULL)
+				free(sinfo->job_formula);
+			sinfo->job_formula = read_formula();
+			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
+					"Job sorting formula and job_sort_key are incompatible.  "
+					"The job sorting formula will be used.");
+
 		}
 		attrp = attrp->next;
 	}
@@ -3401,12 +3411,9 @@ read_formula(void)
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
 	int len;
-	char pathbuf[MAXPATHLEN];
 	FILE *fp;
 
-
-	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
-	if ((fp = fopen(pathbuf, "r")) == NULL) {
+	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
 			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
 		return NULL;

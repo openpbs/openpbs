@@ -498,9 +498,6 @@ pbs_python_event_param_mod_disallow(void);
 extern int
 pbs_python_event_param_get_mod_flag(void);
 
-extern int
-validate_job_formula(attribute *pattr, void *pobject, int actmode);
-
 extern void
 pbs_python_set_interrupt(void);
 
