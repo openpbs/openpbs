@@ -693,6 +693,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	PyObject *retval;
 	char      *pStr;
 	int rc=0;
+	pid_t orig_pid;
 
 	if (!interp_data || !py_script) {
 		log_err(-1, __func__, "Either interp_data or py_script is NULL");
@@ -759,10 +760,17 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	py_script->global_dict = pdict;
 
+	orig_pid = getpid();
+
 	PyErr_Clear(); /* clear any exceptions before starting code */
 	/* precompile strings of code to bytecode objects */
 	retval = PyEval_EvalCode((PyObject *)py_script->py_code_obj,
 		pdict, pdict);
+
+	/* check for a fork of the hook, terminate fork immediately */
+	if (orig_pid != getpid())
+		exit(0);
+
 	/* check for exception */
 	if (PyErr_Occurred()) {
 		if (PyErr_ExceptionMatches(PyExc_KeyboardInterrupt)) {
