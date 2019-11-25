@@ -36,6 +36,11 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     yum-builddep -y ${SPEC_FILE}
     yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install -r ${REQ_FILE}
+    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+        echo -e "[storage-sig]\nname=CentOS Storage SIG \$releasever - \$basearch\nbaseurl=https://cbs.centos.org/repos/storage7-testing/\$basearch/os\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/storage-sig.repo
+        yum -y update
+        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel openafs-authlibs openafs-authlibs-devel
+    fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     _PRETTY_NAME=$(echo ${PRETTY_NAME} | awk -F[=\"] '{print $1}')
     _PRETTY_NAME=${_PRETTY_NAME# }
@@ -109,12 +114,19 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
     else 
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
+    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+      configure_opt="${configure_opt} --with-krbauth PATH_KRB5_CONFIG=/usr/bin/krb5-config"
+    fi
     ../configure CFLAGS="${_cflags}" ${configure_opt}
     if [ "x${ONLY_CONFIGURE}" == "x1" ];then
       exit 0
     fi
   else
-    ../configure CFLAGS="${_cflags}" --prefix /opt/pbs --enable-ptl
+    configure_opt='--prefix=/opt/pbs --enable-ptl'
+    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+      configure_opt="${configure_opt} --with-krbauth PATH_KRB5_CONFIG=/usr/bin/krb5-config"
+    fi
+    ../configure CFLAGS="${_cflags}" ${configure_opt}
   fi
   cd -
 fi
@@ -139,6 +151,11 @@ if [ "x${ONLY_TEST}" != "x1" ];then
     sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
     /etc/init.d/pbs restart
   fi
+fi
+
+if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+  echo "PTL with Kerberos support not implemented yet."
+  exit 0
 fi
 
 set +e
