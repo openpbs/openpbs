@@ -46,6 +46,7 @@ class TestPbsExecutePrologue(TestFunctional):
 
     PRE: Have a cluster of PBS with 3 mom hosts.
     """
+
     def setUp(self):
         if len(self.moms) != 3:
             self.skip_test(reason="need 3 mom hosts: -p moms=<m1>:<m2>:<m3>")
@@ -261,8 +262,9 @@ class TestPbsExecutePrologue(TestFunctional):
         ret = self.du.cat(hostname=host, filename=opath, runas=TEST_USER)
         _msg = "cat command failed with error: %s" % ret['err']
         self.assertEqual(ret['rc'], 0, _msg)
-        mom1 = ret['out'][2].split(".")[0]
-        mom2 = ret['out'][3].split(".")[0]
+        ret['out'] = ret['out'][-2:]
+        mom1 = ret['out'][0].split(".")[0]
+        mom2 = ret['out'][1].split(".")[0]
         self.exec_mom1 = self.moms[mom1]
         self.exec_mom2 = self.moms[mom2]
         self.exec_mom1.log_match("Job;%s;executed prologue hook" % jid)
