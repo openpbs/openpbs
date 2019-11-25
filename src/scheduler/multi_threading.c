@@ -174,15 +174,17 @@ init_multi_threading(int nthreads)
 	pthread_mutex_init(&result_lock, &attr);
 	pthread_mutex_init(&general_lock, &attr);
 
-	if (nthreads < 1) {
+	num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+	if (nthreads < 1 && num_cores > 2)
 		/* Create as many threads as half the number of cores */
-		num_cores = sysconf(_SC_NPROCESSORS_ONLN);
 		num_threads = num_cores / 2;
-	} else
+	else
 		num_threads = nthreads;
 
-	if (num_threads == 1)
+	if (num_threads <= 1) {
+		num_threads = 1;
 		return 1; /* main thread will act as the only worker thread */
+	}
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 			"", "Launching worker threads");

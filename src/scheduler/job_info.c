@@ -1037,7 +1037,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	resresv_arr[num_prev_jobs] = NULL;
 
 	tid = *((int *) pthread_getspecific(th_id_key));
-	if (tid != 0 || num_threads == 1) {
+	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_jquery(policy, pbs_sd, jobs, qinfo, 0, num_new_jobs - 1);
 		if (tdata == NULL) {
