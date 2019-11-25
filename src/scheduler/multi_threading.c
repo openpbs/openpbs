@@ -181,8 +181,10 @@ init_multi_threading(int nthreads)
 	else
 		num_threads = nthreads;
 
-	if (num_threads <= 1)
+	if (num_threads <= 1) {
+		num_threads = 1;
 		return 1; /* main thread will act as the only worker thread */
+	}
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 			"", "Launching worker threads");
