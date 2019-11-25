@@ -355,7 +355,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 #endif /* localmod 049 */
 
 	tid = *((int *) pthread_getspecific(th_id_key));
-	if (tid != 0 || num_threads == 1) {
+	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_nd_query(nodes, sinfo, 0, num_nodes - 1);
 		if (tdata == NULL) {
@@ -864,7 +864,7 @@ free_nodes(node_info **ninfo_arr)
 	num_nodes = count_array((void **) ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
-	if (tid != 0 || num_threads == 1) {
+	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_free_nodes(ninfo_arr, 0, num_nodes - 1);
 		if (tdata == NULL)
@@ -1559,7 +1559,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo,
 #endif /* localmod 049 */
 
 	tid = *((int *) pthread_getspecific(th_id_key));
-	if (tid != 0 || num_threads == 1) {
+	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_dup_nodes(flags, nsinfo, onodes, nnodes, 0, num_nodes - 1);
 		if (tdata == NULL) {
@@ -6313,7 +6313,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		num_nodes = count_array((void **) ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
-	if (tid != 0 || num_threads == 1) {
+	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
 		tdata = alloc_tdata_nd_eligible(pl, resresv, ninfo_arr, 0, num_nodes - 1);
 		if (tdata == NULL)
