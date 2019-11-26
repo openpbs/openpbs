@@ -511,7 +511,6 @@ req_confirmresv(struct batch_request *preq)
 	int sub = 0;
 	int resv_count = 0;
 	int is_degraded = 0;
-	long next_retry_time = 0;
 	char *execvnodes = NULL;
 	char *next_execvnode = NULL;
 	char **short_xc = NULL;
@@ -548,34 +547,16 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (strcmp(preq->rq_extend, PBS_RESV_CONFIRM_FAIL) == 0) {
 		if (is_degraded && !is_being_altered) {
-			long degraded_time = presv->ri_degraded_time;
-			DBPRT(("degraded_time of %s is %s", presv->ri_qs.ri_resvID, ctime(&degraded_time)));
-			next_retry_time = time_now + ((degraded_time - time_now)/2);
-			/* If reservation is still degraded, and time of degraded resv to start
-			 * is over cutoff from now, then set a time to try again.
-			 */
-			if (next_retry_time <= (degraded_time - reserve_retry_cutoff)) {
+			long retry_time;
+			retry_time = determine_resv_retry(presv);
 
-				set_resv_retry(presv, next_retry_time);
+			set_resv_retry(presv, retry_time);
 
-				str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
-				if (str_time != NULL) {
-					str_time[strlen(str_time)-1] = '\0';
-					(void)snprintf(log_buffer, sizeof(log_buffer), "Next attempt to reconfirm reservation will be made on %s", str_time);
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
-				}
-			} else {
-				/* reached a retry attempt that falls within the cutoff
-				 * When processing an advance reservation, unset retry attribute
-				 */
-				if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0) {
-					unset_resv_retry(presv);
-				} else {
-					/* When processing a standing reservation, set a retry time
-					 * past the end time of the soonest occurrence.
-					 */
-					set_resv_retry(presv, presv->ri_wattr[RESV_ATR_end].at_val.at_long + RESV_RETRY_DELAY);
-				}
+			str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
+			if (str_time != NULL) {
+				str_time[strlen(str_time) - 1] = '\0';
+				(void) snprintf(log_buffer, sizeof(log_buffer), "Next attempt to reconfirm reservation will be made on %s", str_time);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 			}
 		} else {
 			if (!is_being_altered)
@@ -625,17 +606,6 @@ req_confirmresv(struct batch_request *preq)
 		return;
 	}
 #endif /* localmod 122 */
-
-	/* Do not alter a reservation that started running when the reconfirmation
-	 * message was received. If a standing reservation, then set a retry time
-	 * past the end of this occurrence.
-	 */
-	if (presv->ri_qs.ri_state == RESV_RUNNING) {
-		if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
-			set_resv_retry(presv, presv->ri_wattr[RESV_ATR_end].at_val.at_long + 10);
-		req_reject(PBSE_TOOLATE, 0, preq);
-		return;
-	}
 
 	petime = &presv->ri_wattr[RESV_ATR_end];
 

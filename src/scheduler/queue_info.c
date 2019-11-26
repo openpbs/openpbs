@@ -968,9 +968,17 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 
 	if (oqinfo->resv != NULL) {
 		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->resresv_ind, oqinfo->resv->rank);
-		/* just incase we we didn't set the reservation cross pointer */
-		if (nqinfo->resv != NULL && nqinfo->resv->resv != NULL)
+		if (!nqinfo->resv->resv->is_standing) {
+			/* just incase we we didn't set the reservation cross pointer */
 			nqinfo->resv->resv->resv_queue = nqinfo;
+		} else {
+			/* For standing reservations, we need to restore the resv_queue pointers for all occurrences */
+			int i;
+			for(i = 0; nqinfo->server->resvs[i] != NULL; i++) {
+				if (!strcmp(nqinfo->server->resvs[i]->name, nqinfo->resv->name))
+					nqinfo->server->resvs[i]->resv->resv_queue = nqinfo;
+			}
+		}
 	}
 	nqinfo->jobs = dup_resource_resv_array(oqinfo->jobs,
 		nqinfo->server, nqinfo);

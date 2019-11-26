@@ -1951,7 +1951,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 *	if the queue is a reservation then the resources belong to it and not
 	 *	the server
 	 */
-	if (resresv->is_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
+	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
 
 		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') &&
 		    (policy->rel_on_susp != NULL))

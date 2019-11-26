@@ -44,7 +44,6 @@
  *
  * Functions included are:
  * 		string_dup()
- * 		concat_str()
  * 		add_str_to_unique_array()
  * 		add_str_to_array()
  * 		res_to_num()
@@ -131,50 +130,6 @@ string_dup(char *str)
 	}
 
 	strcpy(newstr, str);
-
-	return newstr;
-}
-
-/**
- * @brief
- *		concat_str - contactenate up to three strings together in newly
- *		     allocated memory
- *
- * @param[in]	str1	-	first string to concat
- * @param[in]	str2	-	second string to concat
- * @param[in]	str3	-	third string to concat -- could be NULL
- * @param[in]	append	-	boolean to determine if str1 should be freed
- *
- * @return	newly allocated string with strings concatenated
- *
- */
-char *
-concat_str(char *str1, char *str2, char *str3 , int append)
-{
-	char *newstr;
-	int len;
-
-	if (str1 == NULL && str2 != NULL) {
-		str1 = strdup(str2);
-		return str1;
-	}
-
-	if (str1 == NULL || str2 == NULL)
-		return NULL;
-
-	len = strlen(str1) + strlen(str2);
-	if (str3 != NULL)
-		len += strlen(str3);
-
-	if ((newstr = malloc(len + 1)) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	sprintf(newstr, "%s%s%s", str1, str2, str3 == NULL ? "" : str3);
-
-	if (append)
-		free(str1);
 
 	return newstr;
 }
