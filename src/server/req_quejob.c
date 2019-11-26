@@ -610,8 +610,8 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
+		free(namebuf);
 	}
-	free(namebuf);
 #endif          /* PBS_MOM */
 
 	(void)strcpy(pj->ji_qs.ji_jobid, jid);
