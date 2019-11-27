@@ -337,6 +337,18 @@ unlicense_socket_licensed_nodes(void)
 
 /**
  * @brief
+ *		clear_license_info	- It's a placeholder function
+ * 		which has intentionally kept empty.
+ * @return	void
+ */
+void
+clear_license_info(void)
+{
+	return;
+}
+
+/**
+ * @brief
  *		release_node_lic	- It's a placeholder function
  * 		which has intentionally kept empty.
  * @return zero
@@ -361,7 +373,7 @@ validate_sign(char *sign, void *pobj)
 
 /**
  * @brief
- *		unset_signature	- It's a placeholder function
+ *		check_sign	- It's a placeholder function
  * 		which has intentionally kept empty.
  * @return zero
  */
@@ -372,7 +384,7 @@ int check_sign(void *pobj, void *new)
 
 /**
  * @brief
- *		unset_signature	- It's a placeholder function
+ *		process_topology_info	- It's a placeholder function
  * 		which has intentionally kept empty.
  * @return	void
  */

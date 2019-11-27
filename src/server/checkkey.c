@@ -44,7 +44,6 @@
  *
  * Included public functions are:
  *
- *	pbs_get_hostid	returning host id.
  *	init_fl_license_attrs	initialize values of license structure
  */
 
@@ -74,8 +73,6 @@
 #include "work_task.h"
 #include "job.h"
 
-
-
 char *pbs_licensing_license_location  = NULL;
 long pbs_min_licenses		= PBS_MIN_LICENSING_LICENSES;
 long pbs_max_licenses		= PBS_MAX_LICENSING_LICENSES;
@@ -83,27 +80,16 @@ int  pbs_licensing_linger	= PBS_LIC_LINGER_TIME;
 
 /* Global Data Items: */
 extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
 
 extern pbs_net_t pbs_server_addr;
 unsigned long hostidnum;
 int ext_license_server = 0;
 int license_expired = 0;
 
-void
-check_expired_lic(struct work_task *ptask)
-{
-}
 
 void
 return_licenses(struct work_task *ptask)
 {
-}
-
-int
-pbs_get_licenses(int nlicense)
-{
-	return (0);
 }
 
 void
@@ -152,66 +138,9 @@ pbs_get_hostid(void)
 void
 init_fl_license_attrs(struct license_block *licenses)
 {
-	licenses->lb_trial = 0;
 	licenses->lb_glob_floating = 10000000;
 	licenses->lb_aval_floating = 10000000;
 	licenses->lb_used_floating = 0;
 	licenses->lb_high_used_floating = 0;
 	licenses->lb_do_task = 0;
-}
-
-int
-check_license(struct license_block *licenses)
-{
-	hostidnum = pbs_get_hostid();
-	return (0);
-}
-
-
-
-/*
- ************************************************************************
- *
- * 		Licensing Jobs Functions
- *
- ************************************************************************
- */
-
-int
-set_cpu_licenses_need(job *pjob, char *exec_vnode)
-{
-	return 1;
-}
-
-void
-allocate_cpu_licenses(job *pjob)
-{
-	if (pjob == NULL) {
-		log_err(PBSE_INTERNAL, "allocate_cpu_licenses",
-			"pjob is NULL so no action taken");
-		return;
-	}
-	/* The following line works around the check in set_nodes() */
-	pjob->ji_licalloc = 1;
-}
-
-void
-deallocate_cpu_licenses(job *pjob)
-{
-}
-
-void
-deallocate_cpu_licenses2(job *pjob, int totcpus)
-{
-}
-
-void
-clear_and_populate_svr_unlicensedjobs(void)
-{
-}
-
-void
-relicense_svr_unlicensedjobs(void)
-{
-
 }

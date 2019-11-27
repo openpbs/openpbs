@@ -53,7 +53,6 @@ extern "C" {
 #define ND_LIC_cloud_str	"c"
 
 struct license_block {
-	int  lb_trial;		/* non_zero if trial license */
 	int  lb_glob_floating;	/* number of floating licenses avail globally */
 	int  lb_aval_floating;	/* number of floating licenses avail locally  */
 	int  lb_used_floating;	/* number of floating licenses used           */
@@ -90,23 +89,24 @@ typedef enum node_topology_type ntt_t;
 	  pbs_licensing_license_location : "null" )
 
 enum licensing_backend {
-	LIC_SERVER,	/* reachable license server (to license CPUs) */
 	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
 	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
-	LIC_TRIAL,	/* nonzero number of trial license (to license CPUs) */
 	LIC_UNKNOWN  /* used to hold the value of previous lb */
 };
-
+struct	pbs_lic_counts {
+	long socket_lic_needed;
+	long node_lic_needed;
+	long nsockets;
+	long node_count;
+};
 extern struct license_block licenses;
 extern struct attribute *pbs_float_lic;
 extern void   init_fl_license_attrs(struct license_block *);
-extern int    check_license(struct license_block *);
 extern void   log_licenses(struct license_used *pu);
 extern void   init_licensing(void);
 extern int    status_licensing(void);
 extern int    checkin_licensing(void);
 extern void   close_licensing(void);
-extern int    pbs_get_licenses(int);
 extern int    count_needed_flic(int);
 extern void   relicense_nodes_floating(int);
 extern void   update_FLic_attr(void);
@@ -127,6 +127,7 @@ extern void	process_topology_info(void *, char *, ntt_t );
 extern void	unset_signature(void *, char *);
 extern	int	release_node_lic(void *);
 extern	int	validate_sign(char *, void *);
+extern void	clear_license_info();
 
 /* Licensing-related variables */
 extern int    ext_license_server;

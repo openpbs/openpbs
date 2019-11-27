@@ -204,8 +204,6 @@ extern struct	license_used  usedlicenses;
 extern int tpp_network_up; /* from pbsd_main.c - used only in case of TPP */
 extern struct work_task *global_ping_task;
 
-extern pbs_list_head svr_unlicensedjobs;
-
 extern unsigned int pbs_mom_port;
 
 extern char *msg_ngbluegene; 	/* BLUE GENE only */
@@ -3130,7 +3128,6 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 			}
 		}
 	}
-	deallocate_cpu_licenses2(pjob, totcpus);
 	if (totcpus > 0) {
 		snprintf(log_buffer, sizeof(log_buffer),  "deallocating %d cpu(s) from job %s", totcpus, jobid);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
@@ -6956,7 +6953,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	static size_t  ehbufsz2 = 0;
 	static char   *ehbuf = NULL;
 	static char   *ehbuf2 = NULL;
-	attribute	deallocated_attr;
 
 	if (ehbufsz == 0) {
 		/* allocate the basic buffer for exec_host string */
@@ -7222,8 +7218,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	/* now we have an array of the required nodes */
 
 	if (objtype == JOB_OBJECT) {
-		int cur_licneed;
-		int cpu_licenses_needed;
 		size_t ehlen;
 		size_t ehlen2;
 
@@ -7265,54 +7259,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			}
 		}
 
-		cur_licneed = pjob->ji_licneed;
-		/* If not server initialization.... */
-		/* if it is we ignore licensing, because the nodes are not yet up */
-		cpu_licenses_needed = set_cpu_licenses_need(pjob, execvnod);
-		deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
-
-		if (deallocated_attr.at_flags & ATR_VFLAG_SET) {
-			if (strcmp(deallocated_attr.at_val.at_str, execvnod_in) == 0) {
-				if (pjob->ji_licneed > 0) {
-					/* special case:
-					 * set_nodes() can be called to assign back
-					 * the exec_vnode_deallocated vnodes
-					 * (matches job's deallocated_exec_vnode's value).
-					 * This happens during job startup and also
-					 * when it is resumed from being suspended.
-					 * The deallocated vnodes are those that have been
-					 * released early from the job, for which the parent
-					 * mom has not fully given up the job, as there are
-					 * other of its vnodes still assigned to the job.
-					 * So cpu licenses assigned to the deallocated
-					 * vnodes still need to be accounted for, adding to
-					 * job's ji_licneed.
-					 */
-					pjob->ji_licneed += cur_licneed;
-				}
-			}
-		}
-
-		if (svr_init == FALSE) {
-			if (cpu_licenses_needed > 0) {
-				allocate_cpu_licenses(pjob);
-				if (pjob->ji_licalloc <= 0) {
-					free(phowl);
-					return (PBSE_LICENSEUNAV);
-				}
-			}
-		} else {
-			/* Idea is to allow previously running job to continue to */
-			/* run even though cpu licenses may not yet be available. */
-			pjob->ji_licalloc = 0;
-
-			/* add job to list of jobs to be relicensed later */
-			if (!is_linked(&svr_unlicensedjobs, &pjob->ji_unlicjobs)) {
-				append_link(&svr_unlicensedjobs, &pjob->ji_unlicjobs,
-					pjob);
-			}
-		}
-
 		/*
 		 * Add a "jobinfo" structure to each subnode of *pnode that
 		 * is specified.
@@ -7329,7 +7275,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					for (jp=snp->jobs; jp; jp=jp->next) {
 						if (jp->job != pjob) {
 							free(phowl);
-							deallocate_cpu_licenses(pjob);
 							return (PBSE_RESCUNAV);
 						}
 					}
@@ -7676,7 +7621,6 @@ free_nodes(job *pjob)
 	}
 	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HasNodes;
 
-	deallocate_cpu_licenses(pjob);
 	is_called_by_job_purge = 0;
 }
 

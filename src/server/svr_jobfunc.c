@@ -62,12 +62,6 @@
  *      state_char2int()   - returns the state from char form to int form.
  *		uniq_nameANDfile() - creates a unique filename and file for an object
  *		remove_deleted_resvs() - remove reservations marked RESV_FINISHED
- *		set_cpu_licenses_need()- set # of cpu licenses needed by a job
- *		allocate_cpu_licenses()- assign cpu licenses to a job
- *		deallocate_cpu_licenses()     - unassign cpu licenses from a job
- *		clear_and_populate_svr_unlicensedjobs() - empties then adds entries
- *												to svr_unlicensedjobs.
- *		relicense_svr_unlicensedjobs()- relicense jobs in svr_unlicensedjobs
  *      update_eligible_time() - calc eligible time and modify accrue_type
  *		determine_accruetype() - determines accruetype
  *		alter_eligibletime() - resets sampletime of job
@@ -169,7 +163,6 @@ extern char *msg_mombadmodify;
 extern struct server server;
 extern int  pbs_mom_port;
 extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
 extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
