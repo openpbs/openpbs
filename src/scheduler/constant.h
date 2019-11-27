@@ -522,7 +522,7 @@ enum nodepart
 	NP_LOW = 0,
 	NP_IGNORE_EXCL = 1,
 	NP_CREATE_REST = 2,
-	NP_NO_CACHE_UPDATE = 4
+	NP_NO_ADD_NP_ARR = 4
 	/* next 4, 8, etc */
 };
 

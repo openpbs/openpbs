@@ -577,7 +577,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							}
 						}
 					}
-					if (!(NP_NO_CACHE_UPDATE & flags)) {
+					if (!(NP_NO_ADD_NP_ARR & flags)) {
 						tmp_arr = add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
 						if (tmp_arr == NULL) {
 							free_node_partition_array(np_arr);
@@ -899,9 +899,10 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	npc = find_np_cache(*pnpc_arr, resnames, ninfo_arr);
 
 	if (npc == NULL) {
-		int flags;
+		int flags = NP_NO_ADD_NP_ARR;
 
-		flags = policy->only_explicit_psets ? NP_NO_CACHE_UPDATE : NP_CREATE_REST | NP_NO_CACHE_UPDATE;
+		if (policy->only_explicit_psets)
+			flags |= NP_CREATE_REST;
 
 		/* didn't find node partition cache, need to allocate and create */
 		nodepart = create_node_partitions(policy, ninfo_arr, resnames, flags, &num_parts);
