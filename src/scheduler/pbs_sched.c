@@ -167,7 +167,8 @@ on_segv(int sig)
 	if (thid != NULL && *thid != 0)
 		pthread_exit(NULL);
 
-	kill_threads();
+	if (num_threads > 1)
+		kill_threads();
 
 	/* we crashed less then 5 minutes ago, lets not restart ourself */
 	if ((segv_last_time - segv_start_time) < 300) {
