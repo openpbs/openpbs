@@ -90,11 +90,18 @@ class TestAcctLog(TestFunctional):
         self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)
 
         # Make sure emails are not truncated
-        mailfile = os.environ['MAIL']
+        try:
+            mailfile = os.environ['MAIL']
+        except KeyError:
+            self.skip_test(
+                "mail is not setup. " +
+                "Hence this step would be skipped. " +
+                "Please setup the mail.")
         if not os.path.isfile(mailfile):
-            self.logger.info("Mail file does not exist or mail is not setup.\
-                     Hence this step would be skipped. Please check manually.")
-            return 1
+            self.skip_test(
+                "Mail file does not exist. " +
+                "Hence this step would be skipped. " +
+                "Please check manually.")
         mailpass = 0
         for x in range(1, 5):
             fo = open(mailfile, 'r')
