@@ -2039,20 +2039,16 @@ check_queue_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	max_running = (int) lim_get(key, LI2RUNCTXSOFT(qi->liminfo));
 	free(key);
 
-	if ((max_running == SCHD_INFINITY) ||
-		(max_running > qi->sc.running)) {
-		qi->alljobcounts->soft_limit_preempt_bit = 0;
-		return (0);
+	/* at this point, we know a limit is set for PBS_ALL*/
+	used = find_counts_elm(qi->alljobcounts, PBS_ALL_ENTITY, NULL, &cnt, NULL);
+	if (max_running != SCHD_INFINITY && used > max_running) {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
 	} else {
-		/* at this point, we know a limit is set  for PBS_ALL*/
-		used = find_counts_elm(qi->alljobcounts, PBS_ALL_ENTITY, NULL, &cnt, NULL);
-		if (used > max_running) {
-			if (cnt != NULL)
-				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
-			return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
-		} else {
-			return (0);
-		}
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = 0;
+		return (0);
 	}
 
 }
@@ -2297,20 +2293,16 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	max_running = (int) lim_get(key, LI2RUNCTXSOFT(si->liminfo));
 	free(key);
 
-	if ((max_running == SCHD_INFINITY) ||
-		(max_running > si->sc.running)) {
-		si->alljobcounts->soft_limit_preempt_bit = 0;
-		return (0);
+	/* at this point, we know a limit is set for PBS_ALL*/
+	used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY , NULL, &cnt, NULL);
+	if (max_running != SCHD_INFINITY && used > max_running) {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
 	} else {
-		/* at this point, we know a limit is set  for PBS_ALL*/
-		used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY , NULL, &cnt, NULL);
-		if (used > max_running) {
-			if (cnt != NULL)
-				cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
-			return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
-		} else {
-			return (0);
-		}
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = 0;
+		return (0);
 	}
 }
 
