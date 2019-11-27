@@ -626,11 +626,7 @@ parse_config(char *fname)
 									error = 1;
 								else {
 									int err;
-#ifdef  WIN32
-									err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
 									err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
 									if (err != 0) {
 										snprintf(errbuf, sizeof(errbuf),
 											"error: %s file has a non-secure file access, errno: %d", filename, err);

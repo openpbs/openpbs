@@ -75,10 +75,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <signal.h>
-#ifndef WIN32
+
 #include <grp.h>
 #include <sys/resource.h>
-#endif
+
 #include <ctype.h>
 
 #include "pbs_ifl.h"
@@ -166,278 +166,12 @@ enum failover_state are_we_primary(void)
  *
  * @return	void
  */
-#ifndef WIN32
 void
 usage(char *prog)
 {
 	fprintf(stderr, "Usage: %s [-r other_pbs_comms][-t threads][-N]\n"
 			"       %s --version\n", prog, prog);
 }
-
-#else
-void WINAPI PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv);
-void WINAPI PbsCommHandler(DWORD dwControl);
-DWORD WINAPI main_thread(void *pv);
-
-/*
- * NOTE: Note the global state used by your service. Your service has a name,
- * state and a status handle used by SetServiceStatus.
- */
-const TCHAR * const     g_PbsCommName = __TEXT("PBS_COMM");
-HANDLE                  g_hthreadMain = 0;
-SERVICE_STATUS_HANDLE   g_ssHandle = 0;
-DWORD                   g_dwCurrentState = SERVICE_START_PENDING;
-
-void
-usage(char *prog)
-{
-	printf("================================================================================\n");
-	printf("Usage Info: %s [-R|-U|-N] [ -r other_pbs_comms] [-t threads]\n", prog);
-	printf("\nTo run in standalone mode: %s -N <other options...>\n", prog);
-	printf("To register as a service: %s -R\n", prog);
-	printf("To unregister the service: %s -U\n", prog);
-	printf("To run as a service: %s <other options...>\n", prog);
-	printf("To output PBSpro version and exit: %s --version\n", prog);
-	printf("================================================================================\n");
-
-}
-/**
- * @brief
- *		main - the initialization and main loop of pbs_comm
- *
- * @param[in]	argc	- argument count.
- * @param[in]	argv	- argument values.
- *
- * @return	int
- * @retval	0	- success
- */
-main(int argc, char *argv[])
-{
-	SC_HANDLE schManager;
-	SC_HANDLE schSelf;
-	int reg = 0;
-	int unreg = 0;
-	TCHAR	  szFileName[MAX_PATH];
-
-	/*the real deal or just pbs_version and exit*/
-
-	PRINT_VERSION_AND_EXIT(argc, argv);
-
-	if (argc > 1) {
-		if (strcmp(argv[1], "-R") == 0)
-			reg = 1;
-		else if (strcmp(argv[1], "-U") == 0)
-			unreg = 1;
-		else if (strcmp(argv[1], "-N") == 0)
-			stalone = 1;
-	}
-
-	if (reg || unreg) {
-		schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
-		if (schManager == 0) {
-			ErrorMessage("OpenSCManager");
-			return 1;
-		}
-
-		if (reg) {
-			GetModuleFileName(0, szFileName, sizeof(szFileName)/sizeof(*szFileName));
-			printf("Installing service %s\n", g_PbsCommName);
-			schSelf =
-				CreateService(schManager, g_PbsCommName, __TEXT("PBS COMM"),
-				SERVICE_ALL_ACCESS,
-				SERVICE_WIN32_OWN_PROCESS,
-				SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
-				replace_space(szFileName, ""), 0, 0, 0, 0, 0);
-
-			if (schSelf) {
-				printf("Service %s installed succesfully!\n", g_PbsCommName);
-			} else {
-				ErrorMessage("CreateService");
-				return 1;
-			}
-
-			if (schSelf != 0)
-				CloseServiceHandle(schSelf);
-		} else if (unreg) {
-			schSelf = OpenService(schManager, g_PbsCommName, DELETE);
-
-			if (schSelf) {
-				if (DeleteService(schSelf)) {
-					printf("Service %s uninstalled successfully!\n", g_PbsCommName);
-				} else {
-					ErrorMessage("DeleteService");
-					return 1;
-				}
-			} else {
-				ErrorMessage("OpenService failed");
-				return 1;
-			}
-			if (schSelf != 0)
-				CloseServiceHandle(schSelf);
-		}
-
-		if (schManager != 0)
-			CloseServiceHandle(schManager);
-	} else if (stalone) {
-		struct arg_param *pap;
-		int	i, j;
-
-		pap = create_arg_param();
-		if (pap == NULL) {
-			ErrorMessage("create_arg_param");
-			return 1;
-		}
-
-		pap->argc = argc-1;	/* don't pass the second argument */
-		for (i=j=0; i < argc; i++) {
-			if (i == 1)
-				continue;
-			pap->argv[j] = strdup(argv[i]);
-			j++;
-		}
-		main_thread((void *)pap);
-
-		free_arg_param(pap);
-	} else {	/* running as a service */
-		SERVICE_TABLE_ENTRY rgste[] = { {(TCHAR*)g_PbsCommName, PbsCommMain },
-			{ 0, 0 } };
-
-		if (getenv("PBS_CONF_FILE") == NULL) {
-			char conf_path[80];
-			char *p;
-			char psave;
-			struct stat sbuf;
-
-			if (p = strstr(argv[0], "exec")) {
-				psave = *p;
-				*p = '\0';
-				_snprintf(conf_path, 79, "%spbs.conf", argv[0]);
-				*p = psave;
-				if (stat(conf_path, &sbuf) == 0) {
-					setenv("PBS_CONF_FILE", conf_path, 1);
-				}
-			}
-		}
-		if (!StartServiceCtrlDispatcher(rgste)) {
-			ErrorMessage("StartServiceCntrlDispatcher");
-			return 1;
-		}
-	}
-	return (0);
-}
-/**
- * @brief
- *		PbsCommMain - getting used when pbs is running as a service in the server.
- *
- * @param[in]	dwArgc	- argument count.
- * @param[in]	rgszArgv- argument values.
- *
- * @return	void
- */
-void WINAPI
-PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv)
-{
-	DWORD	dwTID;
-	DWORD	dwWait;
-	SERVICE_STATUS	ss;
-	DWORD	i;
-	DWORD   exitCode = 0;
-
-	struct arg_param *pap;
-
-	g_ssHandle = RegisterServiceCtrlHandler(g_PbsCommName, PbsCommHandler);
-	if (g_ssHandle == 0) {
-		ErrorMessage("RegisterServiceCtrlHandler");
-		return 1;
-	}
-
-	pap = create_arg_param();
-	if (pap == NULL)
-		return;
-	pap->argc = dwArgc;
-
-	for (i=0; i < dwArgc; i++) {
-		pap->argv[i] = strdup(rgszArgv[i]);
-	}
-
-	g_hthreadMain = (HANDLE) _beginthreadex(0, 0,  main_thread, pap, 0, &dwTID);
-	if (g_hthreadMain == 0) {
-		(void)free_arg_param(pap);
-		ErrorMessage("CreateThread");
-		return 1;
-	}
-
-	dwWait = WaitForSingleObject(g_hthreadMain, INFINITE);
-	if (dwWait != WAIT_OBJECT_0) {
-		(void)free_arg_param(pap);
-		ErrorMessage("WaitForSingleObject");
-		return 1;
-	}
-	GetExitCodeThread(g_hthreadMain, &exitCode);
-
-	// NOTE: Update the global service state variable to indicate
-	//      that the server has STOPPED. Use this to ACK the SCM
-	//      that the service has stopped using SetServiceStatus.
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwServiceType        = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState       = SERVICE_STOPPED;
-	ss.dwControlsAccepted   = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-	if (exitCode == 0)
-		ss.dwWin32ExitCode = 0;
-	else if (exitCode == 1)
-		ss.dwWin32ExitCode = ERROR_BAD_CONFIGURATION;
-	else if (exitCode == 2)
-		ss.dwWin32ExitCode = CO_E_LAUNCH_PERMSSION_DENIED;
-
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-	free_arg_param(pap);
-}
-/**
- * @brief
- *		PbsCommHandler - PBS command handler.
- *
- * @param[in]	dwControl	- having the following values.
- * 								SERVICE_CONTROL_STOP or SERVICE_CONTROL_SHUTDOWN.
- *
- * @return	void
- */
-void WINAPI
-PbsCommHandler(DWORD dwControl)
-{
-	SERVICE_STATUS ss;
-	DWORD	dwWait;
-
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwServiceType        = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState       = g_dwCurrentState;
-	ss.dwControlsAccepted   = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-
-	switch (dwControl) {
-		case SERVICE_CONTROL_STOP:
-		case SERVICE_CONTROL_SHUTDOWN:
-			g_dwCurrentState    = SERVICE_STOP_PENDING;
-			ss.dwCurrentState   = g_dwCurrentState;
-			ss.dwCheckPoint     = 1;
-			ss.dwWaitHint       = 20000;
-			get_out = 1;
-			if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-			do {
-				ss.dwCheckPoint++;
-				if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-				dwWait = WaitForSingleObject(g_hthreadMain, 800);
-			} while (dwWait != WAIT_OBJECT_0 && ss.dwCheckPoint < 20);
-
-			CloseHandle(g_hthreadMain);
-
-			break;
-
-		default:
-			if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-			break;
-	}
-}
-#endif
 
 /**
  * @brief
@@ -500,37 +234,11 @@ lock_out(int fds, int op)
 {
 	int i;
 	int j;
-#ifndef WIN32
 	struct flock flock;
-#endif
 	char buf[100];
-#ifdef WIN32
-	/* seek to start in case of win32 as _locking locks/unlock
-	 * from current file pointer position
-	 */
-	(void) lseek(fds, (off_t) 0, SEEK_SET);
-#endif
 
 	j = 1; /* not fail over, try lock one time */
 
-#ifdef WIN32
-	for (i = 0; i < j; i++) {
-		/*
-		 * just lock/unlock the first 10 bytes of the file
-		 * so that we lock/unlock that same bytes each time
-		 * instead of based on the size, which would fail
-		 */
-		if (_locking(fds, op, 10) != -1) {
-			if (op == F_WRLCK) {
-				/* if write-lock, record pid in file */
-				(void)sprintf(buf, "%d\n", getpid());
-				(void)write(fds, buf, strlen(buf));
-			}
-			return;
-		}
-		sleep(2);
-	}
-#else
 	(void) lseek(fds, (off_t) 0, SEEK_SET);
 	flock.l_type = op;
 	flock.l_whence = SEEK_SET;
@@ -548,7 +256,7 @@ lock_out(int fds, int op)
 		}
 		sleep(2);
 	}
-#endif
+
 	(void) strcpy(log_buffer, "another PBS comm router running at the same port");
 	fprintf(stderr, "pbs_comm: %s\n", log_buffer);
 	exit(1);
@@ -583,7 +291,6 @@ set_limits()
 #endif	/* RLIMIT_CORE */
 
 #if defined(RLIM64_INFINITY)
-#ifndef WIN32
 	{
 		struct rlimit64 rlimit;
 
@@ -623,11 +330,8 @@ set_limits()
 		}
 #endif	/* RLIMIT_CORE */
 	}
-#endif	/* WIN32 */
 
 #else	/* setrlimit 32 bit */
-
-#ifndef WIN32
 	{
 		struct rlimit rlimit;
 
@@ -686,7 +390,6 @@ set_limits()
 		}
 #endif  /* not linux */
 	}
-#endif	/* WIN32 */
 #endif	/* !RLIM64_INFINITY */
 }
 
@@ -729,11 +432,7 @@ void
 pbs_close_stdfiles(void)
 {
 	static int already_done = 0;
-#ifdef WIN32
-#define NULL_DEVICE "nul"
-#else
 #define NULL_DEVICE "/dev/null"
-#endif
 
 	if (!already_done) {
 		(void)fclose(stdin);
@@ -748,7 +447,6 @@ pbs_close_stdfiles(void)
 	}
 }
 
-#ifndef WIN32
 /**
  * @brief
  *		Forks a background process and continues on that, while
@@ -781,7 +479,6 @@ go_to_background()
 	already_forked = 1;
 	return sid;
 }
-#endif	/* end the ifndef WIN32 */
 #endif	/* DEBUG is defined */
 
 /**
@@ -795,20 +492,9 @@ go_to_background()
  * @retval	0	- success
  * @retval	>0	- error
  */
-#ifdef WIN32
-DWORD WINAPI
-main_thread(void *pv)
-#else
 int
 main(int argc, char **argv)
-#endif	/* WIN32 */
 {
-#ifdef	WIN32
-	struct arg_param *p = (struct arg_param *)pv;
-	int      		argc;
-	char			**argv;
-	SERVICE_STATUS          ss;
-#endif	/* WIN32 */
 	char *name = NULL;
 	struct tpp_config conf;
 	int rpp_fd;
@@ -825,57 +511,27 @@ main(int argc, char **argv)
 	extern char *optarg;
 	int	are_primary;
 	int	num_var_env;
-#ifndef WIN32
 	struct sigaction act;
 	struct sigaction oact;
-#endif
 
-#ifndef WIN32
 	/*the real deal or just pbs_version and exit*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
-#endif
 
 	/* As a security measure and to make sure all file descriptors	*/
 	/* are available to us,  close all above stderr			*/
-#ifdef WIN32
-	_fcloseall();
-#else
+
 	i = sysconf(_SC_OPEN_MAX);
 	while (--i > 2)
 		(void)close(i); /* close any file desc left open by parent */
-#endif
 
 	/* If we are not run with real and effective uid of 0, forget it */
-#ifdef WIN32
-	argc = p->argc;
-	argv = p->argv;
-
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwCheckPoint = 0;
-	ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState = g_dwCurrentState;
-	ss.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-	ss.dwWaitHint = 6000;
-
-	if (g_ssHandle != 0)
-		SetServiceStatus(g_ssHandle, &ss);
-
-	if (!isAdminPrivilege(getlogin())) {
-		fprintf(stderr, "%s: Must be run by root\n", argv[0]);
-		return (2);
-	}
-
-#else
 	if ((getuid() != 0) || (geteuid() != 0)) {
 		fprintf(stderr, "%s: Must be run by root\n", argv[0]);
 		return (2);
 	}
-#endif	/* WIN32 */
 
 	/* set standard umask */
-#ifndef WIN32
 	umask(022);
-#endif
 
 	/* load the pbs conf file */
 	if (pbs_loadconf(0) == 0) {
@@ -885,36 +541,17 @@ main(int argc, char **argv)
 
 	umask(022);
 
-#ifdef	WIN32
-	save_env();
-#endif
 	/* The following is code to reduce security risks                */
 	/* start out with standard umask, system resource limit infinite */
 	if ((num_var_env = setup_env(pbs_conf.pbs_environment)) == -1) {
-#ifdef	WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_INVALID_ENVIRONMENT;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-		return (1);
-#else
 		exit(1);
-#endif	/* WIN32 */
 	}
 
-#ifndef WIN32
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
-#endif
 
 	log_event_mask = &pbs_conf.pbs_comm_log_events;
 	tpp_set_logmask(*log_event_mask);
-
-#ifdef WIN32
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
 
 	routers = pbs_conf.pbs_comm_routers;
 	numthreads = pbs_conf.pbs_comm_threads;
@@ -940,11 +577,7 @@ main(int argc, char **argv)
 		name = server_host;
 	} else {
 		if (gethostname(server_host, (sizeof(server_host) - 1)) == -1) {
-#ifndef WIN32
 			sprintf(log_buffer, "Could not determine my hostname, errno=%d", errno);
-#else
-			sprintf(log_buffer, "Could not determine my hostname, errno=%d", WSAGetLastError());
-#endif
 			fprintf(stderr, "%s\n", log_buffer);
 			return (1);
 		}
@@ -995,16 +628,6 @@ main(int argc, char **argv)
 	}
 
 	(void) snprintf(path_log, sizeof(path_log), "%s/%s", pbs_conf.pbs_home_path, PBS_COMM_LOGDIR);
-#ifdef WIN32
-	/*
-	 * let SCM wait 10 seconds for log_open() to complete
-	 * as it does network interface query which can take time
-	 */
-
-	ss.dwCheckPoint++;
-	ss.dwWaitHint = 60000;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#endif
 	(void) log_open(log_file, path_log);
 
 	/* set pbs_comm's process limits */
@@ -1026,12 +649,6 @@ main(int argc, char **argv)
 	} else if (are_primary == FAILOVER_CONFIG_ERROR) {
 		sprintf(log_buffer, "Failover configuration error");
 		log_err(-1, __func__, log_buffer);
-#ifdef WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_SERVICE_NOT_ACTIVE;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#endif
 		return (3);
 	}
 
@@ -1074,18 +691,8 @@ main(int argc, char **argv)
 	}
 
 #ifndef DEBUG
-#ifndef WIN32
 	if (stalone != 1)
 		go_to_background();
-#endif
-#endif
-
-
-#ifdef WIN32
-	ss.dwCheckPoint = 0;
-	g_dwCurrentState = SERVICE_RUNNING;
-	ss.dwCurrentState = g_dwCurrentState;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 #endif
 
 	if (already_forked == 0)
@@ -1103,10 +710,6 @@ main(int argc, char **argv)
 	pbs_close_stdfiles();
 #endif
 
-#ifdef WIN32
-	signal(SIGINT, stop_me);
-	signal(SIGTERM, stop_me);
-#else
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	act.sa_handler = hup_me;
@@ -1150,7 +753,6 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
-#endif 	/* WIN32 */
 
 	conf.node_type = TPP_ROUTER_NODE;
 	conf.numthreads = numthreads;

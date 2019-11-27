@@ -687,10 +687,6 @@ query_server_dyn_res(server_info *sinfo)
 	char buf[256];		/* buffer for reading from pipe */
 	schd_resource *res;		/* used for updating node resources */
 	FILE *fp;			/* for popen() for res_assn */
-#ifdef WIN32
-	struct  pio_handles	  pio;  /* for win_popen() for res_assn */
-	char			  cmd_line[512];
-#endif
 
 	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
@@ -703,32 +699,14 @@ query_server_dyn_res(server_info *sinfo)
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-#ifdef  WIN32
-			err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
 			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
 			if (err != 0) {
 				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", 
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
 					filename, res->name, err);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
-#ifdef	WIN32
-			/* In Windows, don't use popen() as this crashes if COMSPEC not set */
-			/* also, let's quote command line so that paths with spaces can be */
-			/* executed. */
-			snprintf(cmd_line, sizeof(cmd_line), "\"%s\"",
-				conf.dynamic_res[i].command_line);
 
-			if (((win_popen(cmd_line, "r", &pio, NULL) == 0) ||
-				((k = win_pread(&pio, buf, 255)) <= 0))) {
-				pipe_err = errno;
-				k = 0;
-			}
-			if (pio.hReadPipe_out != INVALID_HANDLE_VALUE) /* did win_popen() succeed? */
-				win_pclose(&pio);
-#else
 			if (((fp = popen(conf.dynamic_res[i].command_line, "r")) == NULL) ||
 				(fgets(buf, 256, fp) == NULL)) {
 				pipe_err = errno;
@@ -737,7 +715,7 @@ query_server_dyn_res(server_info *sinfo)
 				k = strlen(buf);
 			if (fp != NULL)
 				pclose(fp);
-#endif
+
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */

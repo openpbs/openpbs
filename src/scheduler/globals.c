@@ -177,9 +177,6 @@ char *cmp_aoename = NULL;
 char *sc_name = NULL;
 int sched_port = -1;
 char *logfile = NULL;
-#ifdef WIN32
-char path_log[_MAX_PATH];
-#else
+
 char path_log[_POSIX_PATH_MAX];
-#endif
 int dflt_sched = 0;

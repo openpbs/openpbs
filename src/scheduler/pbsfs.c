@@ -102,13 +102,6 @@ main(int argc, char *argv[])
 	PRINT_VERSION_AND_EXIT(argc, argv);
 	set_msgdaemonname("pbsfs");
 
-#ifdef WIN32
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
-
-
 	if (pbs_loadconf(0) <= 0)
 		exit(1);
 

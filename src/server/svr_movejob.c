@@ -35,11 +35,7 @@
  * trademark licensing policies.
  *
  */
-/**
- * @file	svr_migrate_data.c
- *
- * @brief
- * 		svr_migrate_data.c - functions to move a job to another queue
+/*
  *
  * Included functions are:
  * 	svr_movejob()
@@ -62,12 +58,6 @@
 #include <signal.h>
 #include <sys/types.h>
 
-#ifdef WIN32
-#include <windows.h>
-#include <io.h>
-#include "win.h"
-#include <sys/timeb.h>
-#else
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
@@ -78,7 +68,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#endif
 
 #include "libpbs.h"
 #include "pbs_error.h"
@@ -127,7 +116,7 @@ extern void post_sendmom(struct work_task *pwt);
 
 /* Global Data */
 
-#if !defined(WIN32) && !defined(H_ERRNO_DECLARED)
+#if !defined(H_ERRNO_DECLARED)
 extern int     h_errno;
 #endif
 extern char	*path_jobs;
@@ -150,19 +139,6 @@ extern int	scheduler_jobs_stat;
 extern	char	*path_hooks_workdir;
 extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid, void *parm1, void *parm2);
 
-#ifdef WIN32
-extern struct server server;
-extern char	 server_host[];
-extern char	 server_name[];
-extern	char	*log_file;
-extern	char	path_log[];
-extern  char    *path_rescdef;
-extern char     *path_users;
-extern	pbs_list_head svr_alljobs;
-extern time_t time_now;
-extern long	svr_history_enable;
-extern long	svr_history_duration;
-#endif
 
 /**
  * @brief
@@ -242,12 +218,7 @@ local_move(job *jobp, struct batch_request *req)
 	attribute *pattr;
 	long	newtype = -1;
 	long	time_msec;
-#ifdef	WIN32
-	struct	_timeb	tval;
-#else
 	struct timeval	tval;
-#endif
-
 
 	/* search for destination queue */
 	if ((qp = find_queuebyname(destination)) == NULL) {
@@ -290,13 +261,8 @@ local_move(job *jobp, struct batch_request *req)
 	strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME);
 	jobp->ji_qs.ji_queue[PBS_MAXQUEUENAME] = '\0';
 
-#ifdef WIN32
-	_ftime_s(&tval);
-	time_msec = (tval.time * 1000L) + tval.millitm;
-#else
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
-#endif
 
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
@@ -702,200 +668,6 @@ int
 send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	void (*post_func)(struct work_task *), struct batch_request *preq)
 {
-
-#ifdef WIN32
-	char	cmdline[80];
-	pio_handles	pio;
-	char	buf[4096];
-	struct work_task *ptask;
-	int	newstate;
-	int	newsub;
-	long	tempval;
-	char	script_name[MAXPATHLEN+1];
-
-	/* if job has a script read it from database */
-	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		if (svr_load_jobscript(jobp) == NULL) {
-			pbs_errno = PBSE_SYSTEM;
-			snprintf(log_buffer, sizeof(log_buffer),
-					"Failed to load job script for job %s",
-					jobp->ji_qs.ji_jobid);
-			log_err(pbs_errno, __func__, log_buffer);
-			win_pclose2(&pio);
-			return (-1);
-		}
-	}
-
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && small_job_files(jobp)) {
-		return (send_job_exec(jobp, hostaddr, port, preq));
-	}
-
-	(void)snprintf(log_buffer, sizeof(log_buffer), "big job files, sending via subprocess");
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
-
-	sprintf(cmdline, "%s/sbin/pbs_send_job", pbs_conf.pbs_exec_path);
-
-	if (win_popen(cmdline, "w", &pio, NULL) == 0) {
-		errno = GetLastError();
-		pbs_errno = errno;
-		(void)sprintf(log_buffer, "executing %s for job %s failed errno=%d", cmdline, jobp->ji_qs.ji_jobid, errno);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR,
-			jobp->ji_qs.ji_jobid, log_buffer);
-		/* force re-eval of job state out of Transit */
-		svr_evaljobstate(jobp, &newstate, &newsub, 1);
-		svr_setjobstate(jobp, newstate, newsub);
-
-		if (jobp->ji_script) {
-			free(jobp->ji_script);
-			jobp->ji_script = NULL;
-		}
-
-		win_pclose(&pio);
-		return (-1);
-	}
-
-	ptask = set_task(WORK_Deferred_Child, (long)pio.pi.hProcess, post_func, preq);
-	if (!ptask) {
-		log_err(errno, __func__, msg_err_malloc);
-		errno = ENOMEM;
-		pbs_errno = errno;
-		win_pclose(&pio);
-		/* force re-eval of job state out of Transit */
-		svr_evaljobstate(jobp, &newstate, &newsub, 1);
-		svr_setjobstate(jobp, newstate, newsub);
-		if (jobp->ji_script) {
-			free(jobp->ji_script);
-			jobp->ji_script = NULL;
-		}
-		return (-1);
-	} else {
-		ptask->wt_parm2 = jobp;
-		append_link(&((job *)jobp)->ji_svrtask, &ptask->wt_linkobj, ptask);
-	}
-
-	script_name[0] = '\0';
-	/* if job has a script read it from database */
-	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		/* write the job script to a temporary file */
-		if (svr_create_tmp_jobscript(jobp, &script_name) != 0) {
-			pbs_errno = PBSE_SYSTEM;
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Failed to create temporary job script for job %s",
-				jobp->ji_qs.ji_jobid);
-			log_err(pbs_errno, __func__, log_buffer);
-
-			if (jobp->ji_script) {
-				free(jobp->ji_script);
-				jobp->ji_script = NULL;
-			}
-			win_pclose2(&pio);
-			return (-1);
-		}
-	}
-
-	/* written the script, so free memory */
-	if (jobp->ji_script) {
-		free(jobp->ji_script);
-		jobp->ji_script = NULL;
-	}
-
-	addpid(pio.pi.hProcess);
-
-	/* our job is to calc eligible time accurately and save it */
-	/* on new server, accrue type should be calc afresh */
-	/* Note: if job is being sent for execution on mom, then don't calc eligible time */
-
-	if ((jobp->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) &&
-		(server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) &&
-		(move_type != MOVE_TYPE_Exec)) {
-		tempval = ((long)time_now - jobp->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += tempval;
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_MODCACHE;
-	}
-
-	/* in windows code, a child process "w32_send_job" handles the send
-	 * This needs the job information, so we save using the filesystem
-	 * This avoids the child process from having to "connect" to the database again
-	 * The file is deleted by the send_job child process when it has done recovering the job
-	 */
-	job_save_fs(jobp, SAVEJOB_FULLFORCE);	/* so the spawned process can get a fresh copy of job */
-
-	if (*jobp->ji_qs.ji_fileprefix != '\0')
-		sprintf(buf, "jobfile=%s%s\n", jobp->ji_qs.ji_fileprefix, JOB_FILE_SUFFIX);
-	else
-		sprintf(buf, "jobfile=%s%s\n", jobp->ji_qs.ji_jobid, JOB_FILE_SUFFIX);
-
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "destaddr=%ld\n", hostaddr);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "destport=%d\n", port);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "move_type=%d\n", move_type);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "in_server=%d\n", is_linked(&svr_alljobs, &jobp->ji_alljobs));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "server_name=%s\n", (server_name?server_name:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "server_host=%s\n", (server_host?server_host:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "server_addr=%ld\n", pbs_server_addr);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "server_port=%d\n", pbs_server_port_dis);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "log_file=%s\n", (log_file?log_file:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_log=%s\n", (path_log?path_log:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_jobs=%s\n", (path_jobs?path_jobs:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_spool=%s\n", (path_spool?path_spool:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_rescdef=%s\n", (path_rescdef?path_rescdef:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_users=%s\n", (path_users?path_users:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_hooks_workdir=%s\n",
-		(path_hooks_workdir?path_hooks_workdir:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "svr_history_enable=%ld\n", svr_history_enable);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "svr_history_duration=%ld\n", svr_history_duration);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags & \
-                                                ATR_VFLAG_SET) && \
-             (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1) )
-		strcpy(buf, "single_signon_password_enable=1\n");
-	else
-		strcpy(buf, "single_signon_password_enable=0\n");
-
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "script_name=%s\n", script_name);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	strcpy(buf, "quit\n");
-	win_pwrite(&pio, buf, strlen(buf));
-	win_pclose2(&pio);	/* closes all handles except the process handle */
-	return (2);
-#else
 	pbs_list_head	 attrl;
 	enum conn_type   cntype = ToServerDIS;
 	int		 con;
@@ -990,18 +762,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
-
-#ifdef WIN32
-	/* get host name */
-	/*
-	 * If host address is loopback address then do not resolve with dns
-	 * Use "localhost" as the host name.
-	 */
-	if ((htonl(hostaddr) == loopback_addr->sin_addr.s_addr)) {
-		(void)get_credential(LOCALHOST_SHORTNAME, jobp, PBS_GC_BATREQ,
-			&credbuf, &credlen);
-	} else {
-#endif
 		addr.s_addr = htonl(hostaddr);
 		hp = gethostbyaddr((void *)&addr, sizeof(struct in_addr), AF_INET);
 		if (hp == NULL) {
@@ -1013,10 +773,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 			(void)get_credential(hp->h_name, jobp, PBS_GC_BATREQ,
 				&credbuf, &credlen);
 		}
-#ifdef WIN32
-	}
-#endif
-
 	/* encode job attributes to be moved */
 
 	CLEAR_HEAD(attrl);
@@ -1157,11 +913,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 								LOG_INFO, jobp->ji_qs.ji_jobid,
 								log_buffer);
 						} else {
-#ifdef WIN32
-							secure_file(name_buf, "Administrators",
-								READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-							setmode(rfd, O_BINARY);
-#endif
 							len = strlen(reject_msg)+1;
 							/* write also trailing null char */
 							if (write(rfd, reject_msg, len) != len) {
@@ -1265,8 +1016,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 
 	exit(i);
 	return -1;		/* NOT REACHED */
-
-#endif /* !WIN32 */
 }
 
 /**
@@ -1340,16 +1089,9 @@ should_retry_route(int err)
 {
 	switch (err) {
 		case 0:
-#ifdef WIN32
-		case WSAEADDRINUSE:
-		case WSAEADDRNOTAVAIL:
-		case WSAECONNREFUSED:
-
-#else
 		case EADDRINUSE:
 		case EADDRNOTAVAIL:
 		case ECONNREFUSED:
-#endif
 		case PBSE_JOBEXIST:
 		case PBSE_SYSTEM:
 		case PBSE_INTERNAL:

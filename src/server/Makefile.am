@@ -95,7 +95,6 @@ pbs_server_bin_SOURCES = \
 	pbsd_main.c \
 	process_request.c \
 	queue_func.c \
-	queue_recov.c \
 	queue_recov_db.c \
 	reply_send.c \
 	req_delete.c \
@@ -134,7 +133,6 @@ pbs_server_bin_SOURCES = \
 	svr_mail.c \
 	svr_migrate_data.c \
 	svr_movejob.c \
-	svr_recov.c \
 	svr_recov_db.c \
 	svr_resccost.c \
 	svr_credfunc.c \
