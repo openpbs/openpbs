@@ -312,7 +312,6 @@ req_quejob(struct batch_request *preq)
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
-	char		*namebuf;
 	int		hook_errcode = 0;
 	int		hook_rc = 0;
 	char		hook_buf[HOOK_MSG_SIZE];
@@ -572,6 +571,7 @@ req_quejob(struct batch_request *preq)
 		/* unlink job from svr_alljobs since will be place on newjobs */
 		delete_link(&pj->ji_alljobs);
 	} else {
+		char *namebuf;
 		char basename[MAXPATHLEN + 1] = {0};
 
 		/* if not already here, allocate job struct */
@@ -610,8 +610,8 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
+		free(namebuf);
 	}
-	free(namebuf);
 #endif          /* PBS_MOM */
 
 	(void)strcpy(pj->ji_qs.ji_jobid, jid);
