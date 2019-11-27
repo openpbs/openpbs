@@ -137,6 +137,7 @@ extern long   pbs_max_licenses;
 extern int    pbs_licensing_linger;
 extern int    ping_license_server;	/* returns 0 if last manual  */
 /* ping to license server is ok; otherwise, returns 1 for not ok. */
+extern int    node_lic_flag;
 extern enum   licensing_backend prev_lb;
 extern enum   licensing_backend last_valid_attempt;
 #ifdef	__cplusplus
