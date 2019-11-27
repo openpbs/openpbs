@@ -114,9 +114,6 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
     else 
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-      configure_opt="${configure_opt} --with-krbauth PATH_KRB5_CONFIG=/usr/bin/krb5-config"
-    fi
     ../configure CFLAGS="${_cflags}" ${configure_opt}
     if [ "x${ONLY_CONFIGURE}" == "x1" ];then
       exit 0
