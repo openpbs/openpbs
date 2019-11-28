@@ -154,9 +154,6 @@ typedef struct taskfix_PRE19
 	int ti_exitstat;		/* exit status */
 	union {
 		int ti_hold[16]; 	/* reserved space */
-		struct {
-			int ti_jj;	/* has to have a member */
-		} ti_ext;
 	} ti_u;
 } taskfix_PRE19;
 

@@ -764,9 +764,6 @@ typedef struct	pbs_task {
 		int		ti_exitstat;	/* exit status */
 		union {
 			int	ti_hold[16];	/* reserved space */
-			struct {
-				int	ti_jj;	/* has to have a member */
-			} ti_ext;
 		} ti_u;
 	} ti_qs;
 } pbs_task;
