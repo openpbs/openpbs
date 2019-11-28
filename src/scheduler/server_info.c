@@ -378,8 +378,7 @@ query_server(status *pol, int pbs_sd)
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
-
-		allcts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 		if (sinfo->alljobcounts == NULL)
 			sinfo->alljobcounts = allcts;
 
@@ -528,6 +527,8 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
+			if(strstr(attrp->value, "o:") != NULL)
+				sinfo->has_all_limit = 1;
 		} else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, sinfo->liminfo);
 			if(strstr(attrp->value, "u:") != NULL)
@@ -536,6 +537,8 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
+			if(strstr(attrp->value, "o:") != NULL)
+				sinfo->has_all_limit = 1;
 		} else if (is_oldlimattr(attrp)) {
 			char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
@@ -1233,6 +1236,7 @@ new_server_info(int limallocflag)
 	sinfo->has_user_limit = 0;
 	sinfo->has_grp_limit = 0;
 	sinfo->has_proj_limit = 0;
+	sinfo->has_all_limit = 0;
 	sinfo->has_mult_express = 0;
 	sinfo->has_multi_vnode = 0;
 	sinfo->has_prime_queue = 0;
@@ -1293,7 +1297,6 @@ new_server_info(int limallocflag)
 	sinfo->num_hostsets = 0;
 	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
-	sinfo->soft_limit_preempt_bit = 0;
 
 	if ((limallocflag != 0))
 		sinfo->liminfo = lim_alloc_liminfo();
@@ -1821,7 +1824,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 			update_counts_on_run(cts, resresv->resreq);
 
-			allcts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (sinfo->alljobcounts == NULL)
 				sinfo->alljobcounts = allcts;
@@ -1937,7 +1940,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-			cts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			cts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
@@ -1957,7 +1960,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
 					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
 					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
-					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
+					int alllim = resresv->job->queue->has_all_limit || sinfo->has_all_limit;
+					if (alllim || (usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
 					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
 					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
 
@@ -2278,6 +2282,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->has_soft_limit = osinfo->has_soft_limit;
 	nsinfo->has_hard_limit = osinfo->has_hard_limit;
 	nsinfo->has_user_limit = osinfo->has_user_limit;
+	nsinfo->has_all_limit = osinfo->has_all_limit;
 	nsinfo->has_grp_limit = osinfo->has_grp_limit;
 	nsinfo->has_proj_limit = osinfo->has_proj_limit;
 	nsinfo->has_multi_vnode = osinfo->has_multi_vnode;
@@ -2455,7 +2460,6 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
-	nsinfo->soft_limit_preempt_bit = osinfo->soft_limit_preempt_bit;
 
 	return nsinfo;
 }
@@ -3592,7 +3596,7 @@ create_total_counts(server_info *sinfo, queue_info * qinfo,
 				sinfo->total_alljobcounts = dup_counts_list(sinfo->alljobcounts);
 			else
 				sinfo->total_alljobcounts = find_alloc_counts(
-					sinfo->total_alljobcounts, "o:" PBS_ALL_ENTITY);
+					sinfo->total_alljobcounts, PBS_ALL_ENTITY);
 		}
 	}
 	if (mode == QUEUE || mode == ALL) {
@@ -3625,7 +3629,7 @@ create_total_counts(server_info *sinfo, queue_info * qinfo,
 				qinfo->total_alljobcounts = dup_counts_list(qinfo->alljobcounts);
 			else if (resresv != NULL)
 				qinfo->total_alljobcounts = find_alloc_counts(
-					qinfo->total_alljobcounts, "o:" PBS_ALL_ENTITY);
+					qinfo->total_alljobcounts, PBS_ALL_ENTITY);
 		}
 	}
 	return;

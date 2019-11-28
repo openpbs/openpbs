@@ -372,6 +372,7 @@ struct server_info
 	unsigned has_user_limit:1;	/* server has user hard or soft limit */
 	unsigned has_grp_limit:1;	/* server has group hard or soft limit */
 	unsigned has_proj_limit:1;	/* server has project hard or soft limit */
+	unsigned has_all_limit:1;	/* server has PBS_ALL limits set on it */
 	unsigned has_prime_queue:1;	/* server has a primetime queue */
 	unsigned has_ded_queue:1;	/* server has a dedtime queue */
 	unsigned has_nonprime_queue:1;	/* server has a non primetime queue */
@@ -459,7 +460,6 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
-	int soft_limit_preempt_bit;	/* Overall preempt bit to mark server is over max run softlimits */
 #ifdef NAS
 	/* localmod 049 */
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
@@ -485,6 +485,7 @@ struct queue_info
 	unsigned has_user_limit:1;	/* queue has user hard or soft limit */
 	unsigned has_grp_limit:1;	/* queue has group hard or soft limit */
 	unsigned has_proj_limit:1;	/* queue has project hard or soft limit */
+	unsigned has_all_limit:1;	/* queue has PBS_ALL limits set on it */
 	struct server_info *server;	/* server where queue resides */
 	char *name;			/* queue name */
 	state_count sc;			/* number of jobs in different states */
@@ -527,7 +528,6 @@ struct queue_info
 	int num_topjobs;		/* current number of top jobs in this queue */
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
-	int soft_limit_preempt_bit;	/* Overall preempt bit to mark queue is over max run softlimits */
 };
 
 struct job_info
