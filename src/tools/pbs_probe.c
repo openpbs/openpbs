@@ -2803,13 +2803,13 @@ check_paths(struct infrastruct *pinf)
 	char	*realpath;
 
 
-    for (i=0; i<PBS_last; ++i) {
+	for (i=0; i<PBS_last; ++i) {
 		msg_table_set_defaults(pinf, SRC_pri, MSG_po);
-        if ((realpath = pinf->pri.pbs_mpug[i].realpath))
+		if ((realpath = pinf->pri.pbs_mpug[i].realpath))
 			check_owner_modes(realpath, &pinf->pri.pbs_mpug[i], 0);
 	}
 
-    for (i=0; i<PH_last; ++i) {    
+	for (i=0; i<PH_last; ++i) {    
 		msg_table_set_defaults(pinf, SRC_home, MSG_po);
 
 		if ((pmpug = pinf->home[i]) == NULL)
