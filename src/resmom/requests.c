@@ -389,11 +389,15 @@ fork_to_user(struct batch_request *preq)
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        /* singleshot ticket, without renewal */
-        if (pjob != NULL)
+	/* singleshot ticket, without renewal */
+	if (pjob != NULL)
 		init_ticket_from_job(pjob, NULL, ticket, CRED_SINGLESHOT);
-        else
+	else
 		init_ticket_from_req(preq->rq_extend, preq->rq_ind.rq_cpyfile.rq_jobid, ticket, CRED_SINGLESHOT);
+
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	singleshot_afslog(ticket);
+#endif
 #endif
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred ||

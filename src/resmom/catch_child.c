@@ -1603,6 +1603,16 @@ end_loop:
 				free(pobit);
 			}
 			ptask->ti_qs.ti_status = TI_STATE_DEAD;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+			if (signal_afslog(ptask, SIGTERM)) {
+				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					ptask->ti_job->ji_qs.ji_jobid, "sending SIGTERM to afslog process failed");
+			}
+#endif
+#endif
+
 			/*
 			 ** KLUDGE
 			 ** We need to save the value of the sid here just

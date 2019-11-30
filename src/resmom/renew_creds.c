@@ -128,7 +128,8 @@ extern int decode_block_base64(unsigned char *ascii_data, ssize_t ascii_len, uns
 static int get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_info);
 static int get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_info job_info);
 static krb5_error_code get_ticket_from_storage(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
-static krb5_error_code get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz, int cred_action);
+static krb5_error_code get_ticket_from_ccache(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
+static krb5_error_code get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
 static int init_ticket(struct krb_holder *ticket, int cred_action);
 
 static svrcred_data *find_cred_data_by_jobid(char *jobid);
@@ -157,12 +158,6 @@ init_ticket_from_req(char *principal, char *jobid, struct krb_holder *ticket, in
 		log_err(errno, __func__, buf);
 		return ret;
 	}
-
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	if (cred_action != CRED_DESTROY) {
-		setpag(0);
-	}
-#endif
 
 	ret = init_ticket(ticket, cred_action);
 	if (ret == 0) {
@@ -197,15 +192,51 @@ init_ticket_from_job(job *pjob, const task *ptask, struct krb_holder *ticket, in
 		return ret;
 	}
 
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	if (cred_action != CRED_DESTROY) {
-		setpag(pjob->ji_extended.ji_ext.ji_pag);
-		if (pjob->ji_extended.ji_ext.ji_pag == 0)
-			pjob->ji_extended.ji_ext.ji_pag = getpag();
-	}
-#endif
-
 	ret = init_ticket(ticket, cred_action);
+	if (ret == 0) {
+		ticket->got_ticket = 1;
+	}
+
+	return ret;
+}
+
+/**
+ * @brief
+ * 	init_ticket_from_ccache - Initialize a kerberos ticket from ccache file
+ *
+ * @param[in] pjob - job structure
+ * @param[in] ptask - optional - ptask associated with job
+ * @param[out] ticket - Kerberos ticket for initialization
+ *
+ * @return 	int
+ * @retval	0 on success
+ * @retval	!= 0 on error
+ */
+int
+init_ticket_from_ccache(job *pjob, const task *ptask, struct krb_holder *ticket)
+{
+	int ret;
+	char buf[LOG_BUF_SIZE];
+
+	if ((ret = get_job_info_from_job(pjob, ptask, ticket->job_info)) != 0)  {
+		snprintf(buf, sizeof(buf), "Could not fetch GSSAPI information from job (get_job_info_from_job returned %d).",ret);
+		log_err(errno, __func__, buf);
+		return ret;
+	}
+
+	if((ret = krb5_init_context(&ticket->context)) != 0) {
+		log_err(ret, __func__, "Failed to initialize kerberos context.");
+		return PBS_KRB5_ERR_CONTEXT_INIT;
+	}
+
+	if ((ret = get_ticket_from_ccache(ticket, buf, LOG_BUF_SIZE))) {
+		log_err(ret, __func__, buf);
+
+		snprintf(buf, sizeof(buf), "Could not get ticket: %s.", error_message(ret));
+		log_err(errno, __func__, buf);
+		return ret;
+	}
+
 	if (ret == 0) {
 		ticket->got_ticket = 1;
 	}
@@ -235,23 +266,30 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 		return PBS_KRB5_ERR_CONTEXT_INIT;
 	}
 
-	if (cred_action < CRED_SETENV) {
-		if ((ret = get_renewed_creds(ticket, buf, LOG_BUF_SIZE, cred_action)) != 0) {
-			char buf2[LOG_BUF_SIZE];
+	switch (cred_action) {
+		case CRED_SINGLESHOT:
+		case CRED_RENEWAL:
+			if ((ret = get_renewed_creds(ticket, buf, LOG_BUF_SIZE)) != 0) {
+				char buf2[LOG_BUF_SIZE * 2];
 
-			krb5_free_context(ticket->context);
-			snprintf(buf2, sizeof(buf2), "get_renewed_creds returned %d, %s", ret, buf);
-			log_err(errno, __func__, buf2);
-			return PBS_KRB5_ERR_GET_CREDS;
-		}
-	}
+				krb5_free_context(ticket->context);
+				snprintf(buf2, sizeof(buf2), "get_renewed_creds returned %d, %s", ret, buf);
+				log_err(errno, __func__, buf2);
+				return PBS_KRB5_ERR_GET_CREDS;
+			}
+			break;
 
-	if (cred_action == CRED_DESTROY) {
-		if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
-			snprintf(buf, sizeof(buf), "Could not resolve ccache name \"krb5_cc_resolve()\" : %s.", error_message(ret));
-			log_err(errno, __func__, buf);
-			return(ret);
-		}
+		case CRED_DESTROY:
+			if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
+				snprintf(buf, sizeof(buf), "Could not resolve ccache name \"krb5_cc_resolve()\" : %s.", error_message(ret));
+				log_err(errno, __func__, buf);
+				return(ret);
+			}
+			break;
+
+		case CRED_SETENV:
+		case CRED_CLOSE:
+			break;
 	}
 
 	if (vtable.v_envp != NULL)
@@ -261,31 +299,6 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 
 	return PBS_KRB5_OK;
 }
-
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-/**
- * @brief
- * 	do_afslog - tests the presence of AFS and do the AFS log if the test is true
- *
- * @param[in] context - GSS context
- * @param[in] job_info - eexec_job_info
- *
- * @return 	krb5_error_code
- * @retval	0
- */
-static krb5_error_code
-do_afslog(krb5_context context, eexec_job_info job_info)
-{
-	krb5_error_code ret = 0;
-
-	if(k_hasafs() && (ret = krb5_afslog(context, job_info->ccache, NULL, NULL)) != 0) {
-		/* ignore this error */
-		ret = 0;
-	}
-
-	return(ret);
-}
-#endif
 
 /**
  * @brief
@@ -338,7 +351,7 @@ store_ticket(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
  * @retval	error code on error
  */
 static krb5_error_code
-get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz, int cred_action)
+get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 {
 	krb5_error_code ret;
 	char strerrbuf[LOG_BUF_SIZE];
@@ -361,16 +374,6 @@ get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz, int 
 		seteuid(0);
 		return ret;
 	}
-
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	/* Login to AFS cells  */
-	if (cred_action < CRED_SETENV) {
-		if((ret = do_afslog(ticket->context, ticket->job_info))) {
-			seteuid(0);
-			return ret;
-		}
-	}
-#endif
 
 	/* Go root */
 	if(seteuid(0) < 0) {
@@ -468,6 +471,79 @@ out:
 
 /**
  * @brief
+ * 	get_ticket_from_ccache - Acquire a user ticket. The credentials are
+ *	read from ccache file.
+ *
+ * @param[in] ticket - ticket to be filled with credentials
+ * @param[out] errbuf - buffer to be filled on error
+ * @param[in] errbufsz - size of error buffer
+ *
+ * @return 	krb5_error_code
+ * @retval	0 on success
+ * @retval	error code on error
+ */
+static krb5_error_code
+get_ticket_from_ccache(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
+{
+	krb5_error_code ret = 0;
+	krb5_creds *mcreds = NULL;
+	int32_t flags;
+	krb5_auth_context auth_context = NULL;
+
+	if ((mcreds = malloc(sizeof(krb5_creds))) == NULL) {
+		log_err(errno, __func__, "Unable to allocate Memory!\n");
+		return KRB5KRB_ERR_GENERIC;
+	}
+	memset(mcreds, 0, sizeof(krb5_creds));
+
+	if((ret = krb5_copy_principal(ticket->context, ticket->job_info->client, &mcreds->client))) {
+		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+		snprintf(errbuf, errbufsz,"krb5_get_ticket - couldn't copy client principal - (%s)", krb5_err);
+		krb5_free_error_message(ticket->context, krb5_err);
+		goto out;
+	}
+
+	if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
+		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+		snprintf(errbuf, errbufsz, "krb5_cc_resolve failed; Error text: %s", krb5_err);
+		krb5_free_error_message(ticket->context, krb5_err);
+		goto out;
+	}
+
+	if ((ret = krb5_auth_con_init(ticket->context, &auth_context))) {
+		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+		snprintf(errbuf, errbufsz, "krb5_auth_con_init failed; Error text: %s", krb5_err);
+		krb5_free_error_message(ticket->context, krb5_err);
+		goto out;
+	}
+
+	krb5_auth_con_getflags(ticket->context, auth_context, &flags);
+	flags &= ~(KRB5_AUTH_CONTEXT_DO_TIME);
+	krb5_auth_con_setflags(ticket->context, auth_context, flags);
+
+	if ((ticket->job_info->creds = malloc(sizeof(krb5_creds))) == NULL) {
+		log_err(errno, __func__, "Unable to allocate Memory!\n");
+		ret = KRB5KRB_ERR_GENERIC;
+		goto out;
+	}
+	memset(ticket->job_info->creds, 0, sizeof(krb5_creds));
+
+	if ((ret = krb5_cc_retrieve_cred(ticket->context, ticket->job_info->ccache, 0, mcreds, ticket->job_info->creds))) {
+		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
+		snprintf(errbuf, errbufsz, "krb5_cc_retrieve_cred failed; Error text: %s", krb5_err);
+		krb5_free_error_message(ticket->context, krb5_err);
+		goto out;
+	}
+
+	ticket->job_info->endtime = ticket->job_info->creds->times.endtime;
+
+out:
+	krb5_free_creds(ticket->context, mcreds);
+	return ret;
+}
+
+/**
+ * @brief
  * 	get_ticket_ccname - Get ccname file name from ticket
  *
  * @param[in] ticket
@@ -543,6 +619,10 @@ free_ticket(struct krb_holder *ticket, int cred_action)
 				break;
 
 			case CRED_DESTROY:
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+				if (k_hasafs())
+					k_unlog();
+#endif
 				if ((ret = krb5_cc_destroy(ticket->context, ticket->job_info->ccache))) {
 					const char *krb5_err = krb5_get_error_message(ticket->context, ret);
 					log_err(ret, __func__, krb5_err);
@@ -551,10 +631,6 @@ free_ticket(struct krb_holder *ticket, int cred_action)
 
 				unlink(ticket->job_info->ccache_name);
 
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-				if (k_hasafs())
-					k_unlog();
-#endif
 				break;
 
 			case CRED_SETENV:
@@ -782,12 +858,12 @@ cred_by_job(job *pjob, int cred_action)
 	}
 
 	if (ret == PBS_KRB5_OK) {
-		sprintf(log_buffer, "%s for %s succeed",
+		sprintf(log_buffer, "credential %s for %s succeeded",
 			str_cred_actions[cred_action],
 			ticket->job_info->ccache_name);
 		log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 	} else {
-		sprintf(log_buffer, "%s for %s failed with error: %d",
+		sprintf(log_buffer, "credential %s for %s failed with error: %d",
 			str_cred_actions[cred_action],
 			ticket->job_info->ccache_name,
 			ret);
@@ -816,7 +892,23 @@ renew_job_cred(job *pjob)
 		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			pjob->ji_qs.ji_jobid, log_buffer);
 	}
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	pbs_task	*ptask;
 
+	for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
+				ptask;
+				ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask)) {
+		if (ptask->ti_job == pjob && ptask->ti_qs.ti_status == TI_STATE_RUNNING) {
+			ret = signal_afslog(ptask, SIGHUP);
+			if (ret) {
+				sprintf(log_buffer, "afslog SIGHUP failed for task: %8.8X",
+					ptask->ti_qs.ti_task);
+				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					ptask->ti_job->ji_qs.ji_jobid, log_buffer);
+			}
+		}
+	}
+#endif
 	/* we don't want mom to have ccache of some user... */
 	unsetenv("KRB5CCNAME");
 }
@@ -1093,6 +1185,317 @@ send_cred_sisters(job *pjob)
 }
 
 #if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+static volatile sig_atomic_t rec_signal = 0;
+static volatile struct krb_holder *afslog_ticket;
+
+#define AFSLOG_TIME_SLEEP 60 /* 1 minute */
+
+/**
+ * @brief
+ * 	do_afslog - tests the presence of AFS and do the AFS log if the test is true
+ *
+ * @param[in] context - GSS context
+ * @param[in] job_info - eexec_job_info
+ *
+ * @return 	krb5_error_code
+ * @retval	0
+ */
+static krb5_error_code
+do_afslog(krb5_context context, eexec_job_info job_info)
+{
+	krb5_error_code ret = 0;
+
+	if(k_hasafs() && (ret = krb5_afslog(context, job_info->ccache, NULL, NULL)) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "krb5_afslog failed, error: %d", ret);
+		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,	job_info->jobid, log_buffer);
+
+		/* ignore this error */
+		ret = 0;
+	}
+
+	return(ret);
+}
+
+/**
+ * @brief
+ * 	singleshot_afslog - do imminent afslog, no process started
+ *
+ * @param[in] ticket - kerberos ticket
+ *
+ */
+void
+singleshot_afslog(struct krb_holder *ticket) {
+	if(k_hasafs()) {
+		k_setpag();
+		do_afslog(ticket->context, ticket->job_info);
+	}
+}
+
+/**
+ * @brief
+ * 	do_afslog_on_signal - AFS log signal handler
+ *
+ * @param[in] signal - received signal
+ *
+ */
+static void
+do_afslog_on_signal(int signal) {
+	krb5_error_code ret;
+
+	if (signal == SIGHUP) {
+		if ((ret = do_afslog(afslog_ticket->context, afslog_ticket->job_info))) {
+			return;
+		}
+	} else {
+		rec_signal = signal;
+	}
+}
+
+/**
+ * @brief
+ * 	wait_afslog - in AFS log process wait for signal HUP for do AFS log or
+ *	0 for terminate
+ *
+ * @param[in] signal - received signal
+ *
+ */
+static void
+wait_afslog() {
+	// initialize signal catcher
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = do_afslog_on_signal;
+	sigaction(SIGTERM, &sa, NULL);
+	sa.sa_handler = do_afslog_on_signal;
+	sigaction(SIGHUP, &sa, NULL);
+
+	while (rec_signal == 0) {
+		sleep(AFSLOG_TIME_SLEEP);
+	}
+}
+
+/**
+ * @brief
+ * 	start_afslog - fork AFS log process for a specific job task,
+ *	save PID file and do AFS log for the task. The AFS log need to be done
+ *	in the child of original process who set the pag.
+ *
+ * @param[in] ptask - job task
+ * @param[in] ticket - kerberos ticket associated with process
+ * @param[in] fd1 - read socket - need to be closed in forked process
+ * @param[in] fd2 - write socker - need to be closed in forked process
+ *
+ * @return 	int
+ * @retval	PBSGSS_OK on success
+ * @retval	!= PBSGSS_OK otherwise
+ */
+int
+start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
+	char buf[LOG_BUF_SIZE * 2] ;
+	char errbuf[LOG_BUF_SIZE];
+	int ret = PBS_KRB5_OK;
+	char pid_file[MAXPATHLEN];
+	int local_ticket = 0;
+
+	if(!k_hasafs())
+		return PBS_KRB5_OK;
+
+	if (ptask == NULL)
+		return PBS_KRB5_ERR_INTERNAL;
+
+	job *pjob = ptask->ti_job;
+
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_fileprefix, (unsigned int)ptask->ti_qs.ti_task);
+	else
+		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_jobid, (unsigned int)ptask->ti_qs.ti_task);
+
+	int fd = open(pid_file, O_CREAT|O_EXCL|O_WRONLY, 0600);
+	if (fd == -1) {
+		/* another afslog process is running ? */
+		snprintf(buf, sizeof(buf), "opening PID file for afslog process (%s) uid = %d", pid_file, getuid());
+		log_err(errno, __func__, buf);
+		return PBS_KRB5_ERR_CANT_OPEN_FILE;
+	}
+
+	/* Go user */
+	if(seteuid(pjob->ji_qs.ji_un.ji_momt.ji_exuid) < 0) {
+		strerror_r(errno, errbuf, sizeof(errbuf));
+		snprintf(buf, sizeof(buf), "Could not set uid using \"setuid()\": %s.", errbuf);
+		log_err(errno, __func__, buf);
+
+		return PBS_KRB5_ERR_INTERNAL;
+	}
+
+	if (ticket == NULL) {
+		ticket = alloc_ticket();
+		if (ticket == NULL)
+			return PBS_KRB5_ERR_INTERNAL;
+
+		if ((ret = init_ticket_from_ccache(pjob, NULL, ticket)) != PBS_KRB5_OK) {
+			if (local_ticket)
+				free_ticket(ticket, CRED_RENEWAL);
+
+			/* job without a principal */
+			/* not an error, but do nothing */
+			if (ret == PBS_KRB5_ERR_NO_KRB_PRINC)
+				return PBS_KRB5_OK;
+
+			return ret;
+		}
+
+		local_ticket = 1;
+	}
+
+	afslog_ticket = ticket;
+
+	k_setpag();
+
+	do_afslog(afslog_ticket->context, afslog_ticket->job_info);
+
+	int pid = fork();
+	if (pid < 0) {
+		/* Go root on error */
+		if(seteuid(0) < 0) {
+			strerror_r(errno, errbuf, sizeof(errbuf));
+			snprintf(buf, sizeof(buf), "Could not reset root priviledges: %s.", errbuf);
+			log_err(errno, __func__, buf);
+
+			return PBS_KRB5_ERR_INTERNAL;
+		}
+
+		log_err(errno, __func__, "fork() failed");
+		close(fd);
+
+		return PBS_KRB5_ERR_INTERNAL;
+	}
+
+	if (pid > 0) {
+		/* Go root in parent */
+		if(seteuid(0) < 0) {
+			strerror_r(errno ,errbuf, sizeof(errbuf));
+			snprintf(buf, sizeof(buf), "Could not reset root priviledges: %s.", errbuf);
+			log_err(errno, __func__, buf);
+
+			return PBS_KRB5_ERR_INTERNAL;
+		}
+
+		snprintf(buf, sizeof(buf), "%d\n", pid);
+		ret = write(fd, buf, strlen(buf));
+		if (ret == -1) {
+			log_err(errno, __func__, "writing pid failed");
+			goto out;
+		}
+
+		snprintf(log_buffer, sizeof(buf), "afslog for task %8.8X started, pid: %d",
+			ptask->ti_qs.ti_task, pid);
+		log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+
+		ret = PBS_KRB5_OK;
+
+		out:
+			if (fd != -1) {
+				fsync(fd);
+				close(fd);
+			}
+
+		if (local_ticket)
+			free_ticket(ticket, CRED_RENEWAL);
+
+		return ret;
+	}
+
+	close(fd);
+
+	if (fd1 >= 0)
+		close(fd1);
+	if (fd2 >= 0)
+		close(fd2);
+
+	if (setsid() == -1)
+		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "afslog could not setsid");
+
+	wait_afslog();
+
+	if (local_ticket)
+		free_ticket(ticket, CRED_RENEWAL);
+
+	exit(0);
+}
+
+/**
+ * @brief
+ * 	signal_afslog - send signal to the specific job task in order to do
+ *	AFS log or terminate the process on job exit.
+ *
+ * @param[in] ptask - job task
+ * @param[in] signal - signal to send
+ *
+ * @return 	int
+ * @retval	PBSGSS_OK on success
+ * @retval	!= PBSGSS_OK otherwise
+ */
+int
+signal_afslog(const task *ptask, int signal) {
+	char buf[LOG_BUF_SIZE] ;
+	char pid_file[MAXPATHLEN];
+	FILE *fd;
+	struct stat cache_info;
+
+	if (ptask == NULL)
+		return PBS_KRB5_ERR_INTERNAL;
+
+	job *pjob = ptask->ti_job;
+	if (pjob == NULL)
+		return PBS_KRB5_ERR_INTERNAL;
+
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_fileprefix, (unsigned int)ptask->ti_qs.ti_task);
+	else
+		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_jobid, (unsigned int)ptask->ti_qs.ti_task);
+
+	fd = fopen(pid_file, "r");
+	if (fd == NULL) {
+		snprintf(buf, sizeof(buf), "Failed to open pidfile: %s", pid_file);
+		log_err(errno, __func__, buf);
+
+		return PBS_KRB5_ERR_CANT_OPEN_FILE;
+	}
+
+	int pid = 0;
+	if (fscanf(fd, "%d", &pid) < 1) {
+			pid = -1;
+	}
+
+	fclose(fd);
+
+	if (pid >= 0) {
+		if (kill(pid, signal) != 0) {
+			snprintf(buf, sizeof(buf), "afslog for task %8.8X could not send signal %d to PID %d.",
+				(unsigned int)ptask->ti_qs.ti_task, signal, pid);
+			log_err(errno, __func__, buf);
+
+			return PBS_KRB5_ERR_KILL_PROCESS;
+		} else {
+			sprintf(log_buffer, "afslog for task %8.8X, signal %d sent to pid %d",
+				(unsigned int)ptask->ti_qs.ti_task, signal, pid);
+			log_record(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+	} else {
+		snprintf(buf, sizeof(buf), "afslog for task %8.8X failed to get pid from pidfile: %s",
+			(unsigned int)ptask->ti_qs.ti_task, pid_file);
+		log_err(errno, __func__, buf);
+
+		return PBS_KRB5_ERR_KILL_PROCESS;
+	}
+
+	if (signal != SIGHUP && stat(pid_file, &cache_info) == 0) {
+		unlink(pid_file);
+	}
+
+	return PBS_KRB5_OK;
+}
+
 /**
  * @brief
  * 	getpag - recognize afs pag in groups and return the pag.
@@ -1133,113 +1536,6 @@ getpag()
 		free(grplist);
 
 	return pag;
-}
-
-/**
- * @brief
- * 	setpag - if afs pag != 0 is provided then the pag is added to groups
- *	if the pag is not provided, a new pag is set
- *
- * @param[in] pag - the pag group id
- *
- */
-void
-setpag(int32_t pag)
-{
-	gid_t *grplist = NULL;
-	int    numsup;
-	static int   maxgroups = 0;
-
-	if (k_hasafs() == 0)
-		return;
-
-	if (pag == 0) {
-		k_setpag();
-		return;
-	}
-
-	/* first remove any other pag - for sure */
-	removepag();
-
-	maxgroups = (int)sysconf(_SC_NGROUPS_MAX);
-
-	grplist = calloc((size_t)maxgroups, sizeof(gid_t));
-	if (grplist == NULL)
-		return;
-
-	/* get the current list of groups */
-	numsup = getgroups(maxgroups, grplist);
-
-	grplist[numsup++] = pag;
-
-	if (setgroups((size_t)numsup, grplist) != -1) {
-		free(grplist);
-		return;
-	}
-
-	if (grplist)
-		free(grplist);
-
-	return;
-}
-
-/**
- * @brief
- * 	removepag - if afs pag is set then it is removed from groups
- *
- */
-void
-removepag()
-{
-	gid_t *grplist = NULL;
-	int    numsup;
-	static int   maxgroups = 0;
-	int32_t pag;
-	int i;
-	int found;
-
-	if (k_hasafs() == 0)
-		return;
-
-	if ((pag = getpag()) == 0)
-		return;
-
-	maxgroups = (int)sysconf(_SC_NGROUPS_MAX);
-
-	grplist = calloc((size_t)maxgroups, sizeof(gid_t));
-	if (grplist == NULL)
-		return;
-
-	/* get the current list of groups */
-	numsup = getgroups(maxgroups, grplist);
-
-	i = 0;
-	found = 0;
-	for (i = 0; i < numsup; i++) {
-		if (grplist[i] == pag) {
-			numsup--;
-			found = i;
-			break;
-		}
-	}
-
-	if (found) {
-		for (i = found; i < numsup; i++)
-			grplist[i] = grplist[i + 1];
-	} else {
-		free(grplist);
-		return;
-	}
-
-	if (setgroups((size_t)numsup, grplist) != -1) {
-		free(grplist);
-		return;
-	}
-
-	if (grplist)
-		free(grplist);
-
-	return;
 }
 #endif
 #endif
