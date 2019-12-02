@@ -602,6 +602,7 @@ prt_nodes(char *nodes, int no_newl)
 	int  i, l;
 	char linebuf[78];
 	char *rest;
+	char *saveptr;
 	char *token;
 	char *token_cp;
 	char *subtoken;
@@ -614,7 +615,11 @@ prt_nodes(char *nodes, int no_newl)
 		return;
 
 	i = 0;
-	rest = nodes;
+	rest = malloc(strlen(nodes) + 1);
+	if(rest)
+		strcpy(rest, nodes);
+	else
+		exit_qstat("out of memory");
 	while ((token = strtok_r(rest, "+", &rest))){
 		token_cp = (char*)malloc(strlen(token) + 1);
 		if(token_cp)
