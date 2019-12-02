@@ -9,6 +9,7 @@ RUN yum install -y \
     libedit-devel \
     libical-devel \
     libtool \
+    libtool-ltdl-devel \
     libX11-devel \
     libXext \
     libXft \
