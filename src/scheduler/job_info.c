@@ -3479,7 +3479,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				"Simulation: Preempted enough work to run job");
 			rc = sim_run_update_resresv(npolicy, nhjob, ns_arr, NO_ALLPART);
 			break;
-		} else if (old_errorcode == err->error_code && err->rdef != NULL) {
+		} else if (old_errorcode == err->error_code) {
+			if (err->rdef != NULL) {
 			/* If the error code matches, make sure the resource definition is also matching.
 			 * If the definition does not match that means the error is because of some other
 			 * resource and we need to filter again.
@@ -3487,9 +3488,13 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			 * by select_index_to_preempt function. This will make select_index_to_preempt
 			 * start looking at the jobs from the place it left in the previous call.
 			 */
-			if (old_rdef != err->rdef)
-				filter_again = 1;
-			else {
+				if (old_rdef != err->rdef)
+					filter_again = 1;
+				else {
+					skipto = indexfound;
+					filter_again = 0;
+				}
+			} else {
 				skipto = indexfound;
 				filter_again = 0;
 			}
@@ -5147,7 +5152,6 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 	struct resresv_filter *inp;
 	int index;
 	resource_req *req_scan;
-	struct status *policy;
 
 	if (arg == NULL || job == NULL)
 		return 0;
@@ -5291,16 +5295,12 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			if (job->job->queue != inp->job->job->queue)
 				return 0;
 		case INSUFFICIENT_SERVER_RESOURCE:
-			policy = inp->job->server->policy;
-			/* Check that the resource is not the one that gets translated to select.
-			 * If the control is here that means the resource must be present in resources
+			/* If the control is here that means the resource must be present in resources
 			 * line and it must also be a RASSN resource because this error number is relevant
 			 * to RASSN resources only.
 			 */
-			if (resdef_exists_in_array(policy->resdef_to_check_rassn_select, inp->err->rdef) == 0) {
-				if (find_resource_req(job->resreq, inp->err->rdef))
-					return 1;
-			}
+			if (find_resource_req(job->resreq, inp->err->rdef))
+				return 1;
 			break;
 		default:
 			return 0;

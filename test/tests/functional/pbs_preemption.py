@@ -531,3 +531,29 @@ exit 3
                              'sbin', 'pbs_server') + ' -t create'
             self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
             self.fail('TC failed as workq2 recovery failed')
+
+    def test_insufficient_server_rassn_select_resc(self):
+        """
+        Set a rassn_select resource (like ncpus or mem) ons server and
+        check if scheduler is able to preempt a lower priority job when
+        resource in contention is this rassn_select resource.
+        """
+
+        a = {ATTR_rescavail + ".ncpus": "8"}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        # Make resource ncpu available on server
+        a = {ATTR_rescavail + ".ncpus": 4}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {ATTR_l + '.select': '1:ncpus=3'}
+        j = Job(TEST_USER, attrs=a)
+        jid_low = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_low)
+
+        a = {ATTR_l + '.select': '1:ncpus=3', ATTR_q: 'expressq'}
+        j = Job(TEST_USER, attrs=a)
+        jid_high = self.server.submit(j)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
+
