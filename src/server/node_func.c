@@ -2340,6 +2340,8 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	static char		**str_arr = NULL;
 	static long int		  str_arr_len = 0;
 	attribute		  new;
+	struct sockaddr_in check_ip;
+	int is_node_name_ip;
 
 	if ((val == NULL) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
@@ -2377,7 +2379,13 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
-		if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
+		is_node_name_ip = inet_pton(AF_INET, p, &(check_ip.sin_addr)) ;
+		if(!is_node_name_ip) {
+			if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
+				strncpy(buf, p, (sizeof(buf) - 1));
+				buf[sizeof(buf) - 1] = '\0';
+			}
+		} else {
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
