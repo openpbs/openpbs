@@ -360,13 +360,9 @@ set_limits()
 					(char *) __func__, msg_corelimit);
 				corelimit.rlim_cur = RLIM_INFINITY;
 			} else
-#ifdef	_SX
-				corelimit.rlim_cur =
-					atol(pbs_conf.pbs_core_limit);
-#else
 				corelimit.rlim_cur =
 					(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
+
 			(void)setrlimit(RLIMIT_CORE, &corelimit);
 		}
 #endif	/* RLIMIT_CORE */

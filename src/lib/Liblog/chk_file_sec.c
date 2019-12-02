@@ -282,11 +282,9 @@ chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 			}
 
 			assert(S_ISLNK(sbuf.st_mode) == 0);
-#if	defined(_SX)
-			rc = teststat(&sbuf, 1, sticky, S_IWOTH);
-#else
+
 			rc = teststat(&sbuf, 1, sticky, S_IWGRP|S_IWOTH);
-#endif
+
 			if (rc != 0)
 				goto chkerr;
 

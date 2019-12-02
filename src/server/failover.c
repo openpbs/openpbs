@@ -145,33 +145,6 @@ rel_handshake(struct work_task *pwt)
 	free_br((struct batch_request *)pwt->wt_parm1);
 }
 
-/**
- * @brief
- * 		Anything old enough to not have utimes() needs this.
- * 		This function sets the file access and modification times of the file - path.
- *
- * @param[in]	path - file location
- * @param[in]	times - pointer to the timeval structure
- * 						which stores access time and modification time
- * @return 	int
- * @retval	0	- Successful
- * @retval	-1	- Failure
- */
-#if	defined(_SX)
-int
-utimes(const char *path, const struct timeval *times)
-{
-	struct utimbuf	utimar, *utp = NULL;
-
-	if (times != NULL) {
-		utimar.actime = times[0].tv_sec;
-		utimar.modtime = times[1].tv_sec;
-		utp = &utimar;
-	}
-
-	return (utime(path, utp));
-}
-#endif	/* _SX */
 
 /**
  * @brief
