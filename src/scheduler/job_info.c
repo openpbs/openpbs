@@ -5295,10 +5295,6 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			if (job->job->queue != inp->job->job->queue)
 				return 0;
 		case INSUFFICIENT_SERVER_RESOURCE:
-			/* If the control is here that means the resource must be present in resources
-			 * line and it must also be a RASSN resource because this error number is relevant
-			 * to RASSN resources only.
-			 */
 			if (find_resource_req(job->resreq, inp->err->rdef))
 				return 1;
 			break;

@@ -556,4 +556,3 @@ exit 3
         jid_high = self.server.submit(j)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
-
