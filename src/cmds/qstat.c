@@ -602,7 +602,6 @@ prt_nodes(char *nodes, int no_newl)
 	int  i, l;
 	char linebuf[78];
 	char *rest;
-	char *saveptr;
 	char *token;
 	char *token_cp;
 	char *subtoken;
