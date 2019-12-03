@@ -314,6 +314,7 @@ req_quejob(struct batch_request *preq)
 	mom_hook_output_t hook_output;
 	int		hook_errcode = 0;
 	int		hook_rc = 0;
+	int		isrpp;
 	char		hook_buf[HOOK_MSG_SIZE];
 	hook		*last_phook = NULL;
 	unsigned int	hook_fail_action = 0;
@@ -549,13 +550,14 @@ req_quejob(struct batch_request *preq)
 
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
+			isrpp = preq->isrpp;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
 				BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
-				if (!preq->isrpp) {
+				if (!isrpp) {
 					pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
 				} else {
 					struct sockaddr_in* addr = rpp_getaddr(sock);
