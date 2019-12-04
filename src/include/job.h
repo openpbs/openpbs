@@ -764,14 +764,6 @@ typedef struct	pbs_task {
 		int		ti_exitstat;	/* exit status */
 		union {
 			int	ti_hold[16];	/* reserved space */
-			struct {
-#ifdef _SX
-				pid_t	ti_parent;
-				id_t	ti_jid;
-#else
-				int	ti_jj;	/* has to have a member */
-#endif
-			} ti_ext;
 		} ti_u;
 	} ti_qs;
 } pbs_task;
@@ -868,6 +860,7 @@ typedef struct	infoent {
 #define IM_UPDATE_JOB		23
 #define IM_EXEC_PROLOGUE	24
 #define IM_CRED 		25
+#define IM_PMIX			26
 
 #define IM_ERROR		99
 #define IM_ERROR2		100

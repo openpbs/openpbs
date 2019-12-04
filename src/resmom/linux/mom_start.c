@@ -65,6 +65,9 @@
 #include "pbs_nodes.h"
 #include "mom_mach.h"
 #include "mom_func.h"
+#ifdef PMIX
+#include "mom_pmix.h"
+#endif
 #include "resmon.h"
 #include "mom_vnode.h"
 #include "libutil.h"
@@ -2507,6 +2510,11 @@ scan_for_terminated(void)
 			ptask->ti_qs.ti_task);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			pjob->ji_qs.ji_jobid, log_buffer);
+
+#ifdef PMIX
+		/* Inform PMIx that the task has exited. */
+		pbs_pmix_notify_exit(pjob, ptask->ti_qs.ti_exitstat, NULL);
+#endif
 
 		/*
 		 ** After the top process(shell) of the TASK exits, check if the

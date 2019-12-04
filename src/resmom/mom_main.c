@@ -82,6 +82,7 @@
 #include	<limits.h>
 #include	<sys/types.h>
 #include	<sys/stat.h>
+#include	<arpa/inet.h>
 
 #include	"libpbs.h"
 #include	"pbs_ifl.h"
@@ -125,7 +126,9 @@
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
 #include	"pbs_reliable.h"
-#include	<arpa/inet.h>
+#ifdef PMIX
+#include	"mom_pmix.h"
+#endif /* PMIX */
 
 #include	"renew_creds.h"
 
@@ -136,6 +139,7 @@
 #ifndef	PRIO_MIN
 #define		PRIO_MIN	-20
 #endif
+#include	"pbs_undolr.h"
 
 
 /*
@@ -1163,13 +1167,9 @@ initialize(void)
 				__func__, msg_corelimit);
 			corelimit.rlim_cur = RLIM_INFINITY;
 		} else
-#ifdef	_SX
-			corelimit.rlim_cur =
-				atol(pbs_conf.pbs_core_limit);
-#else
 			corelimit.rlim_cur =
 				(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
+
 		/* get system core limit */
 		(void)getrlimit(RLIMIT_CORE, &orig_core_limit);
 
@@ -6568,6 +6568,10 @@ finish_loop(time_t waittime)
 		wait_request(1, NULL);
 	}
 #else
+#ifdef PBS_UNDOLR_ENABLED
+	if (sigusr1_flag)
+		undolr();
+#endif
 	if (do_debug_report)
 		debug_report();
 	if (termin_child) {
@@ -9165,10 +9169,13 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
-	sigaction(SIGUSR1, &act, NULL);
 #ifdef	SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
+#ifdef PBS_UNDOLR_ENABLED
+	act.sa_handler = catch_sigusr1;
+#endif
+	sigaction(SIGUSR1, &act, NULL);
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */
@@ -9235,11 +9242,8 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tval, NULL);
 	time_now = tval.tv_sec;
-#ifdef	_SX
-	srand48(tval.tv_usec);
-#else
+
 	srandom(tval.tv_usec);
-#endif	/* _SX */
 #endif	/* !WIN32 */
 
 	ret_size = 4096;
@@ -9805,6 +9809,10 @@ main(int argc, char *argv[])
 	initialize();
 #endif	/* WIN32 */
 
+#ifdef PMIX
+	pbs_pmix_server_init(msg_daemonname);
+#endif
+
 	/*
 	 * Now at last, we are ready to do some work, the following section
 	 * constitutes the "main" loop of MOM
@@ -10063,7 +10071,7 @@ main(int argc, char *argv[])
 			nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 			/* check for job stuck waiting for Svr to ack obit */
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
+			if (!pjob->ji_hook_running_bg_on && pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
 				pjob->ji_sampletim < time_now - 45) {
 				send_obit(pjob, 0);	/* resend obit */
 			}
@@ -10319,6 +10327,11 @@ main(int argc, char *argv[])
 	}
 
 	cleanup();
+
+#ifdef PMIX
+	PMIx_server_finalize();
+#endif
+
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
 	log_close(1);

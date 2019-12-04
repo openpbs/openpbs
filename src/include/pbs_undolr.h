@@ -36,23 +36,8 @@
  *
  */
 
-
-
-
-/*
- *	This is a list of read only queue attributes
- *
- *	FORMAT:
- *		attr1,
- * 		attr2,	<--- important the last has a comma after it
- *
- * 	This file will be used for the initialization of an array
- *
- */
-
-ATTR_total,
-ATTR_count,
-ATTR_rescassn,
-ATTR_HasNodes,
-
-
+#ifdef PBS_UNDOLR_ENABLED
+extern int sigusr1_flag;
+extern void catch_sigusr1(int);
+extern void undolr();
+#endif

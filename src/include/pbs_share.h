@@ -59,8 +59,8 @@
 #define FORMULA_ACCRUE_TYPE 	"accrue_type"
 
 /* Well known file to store job sorting formula */
-#define FORMULA_ATTR_PATH "server_priv/sched_formula"
-#define FORMULA_ATTR_PATH_SCHED "sched_priv/sched_formula"
+#define FORMULA_FILENAME "sched_formula"
+#define FORMULA_ATTR_PATH "server_priv/" FORMULA_FILENAME
 
 /* Constant to check preempt_targets for NONE */
 #define TARGET_NONE "NONE"

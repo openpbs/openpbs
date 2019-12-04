@@ -76,7 +76,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef WIN32
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <sys/wait.h>
@@ -86,7 +85,7 @@
 #ifdef _POSIX_MEMLOCK
 #include <sys/mman.h>
 #endif	/* _POSIX_MEMLOCK */
-#endif	/* not WIN32 */
+
 #include "pbs_ifl.h"
 #include <assert.h>
 #include <ctype.h>
@@ -96,12 +95,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef WIN32
-#include <io.h>
-#include <windows.h>
-#include <process.h>
-#include "win.h"
-#endif
+
 #include "ticket.h"
 #ifdef linux
 #include <sys/prctl.h>
@@ -140,6 +134,7 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
+#include "pbs_undolr.h"
 
 /* External functions called */
 
@@ -187,12 +182,6 @@ pbs_db_conn_t *svr_db_conn = NULL; /* server's global database connection pointe
 pbs_db_conn_t *conn = NULL;  /* pointer to work out a valid connection - later assigned to svr_db_conn */
 
 int		stalone = 0;	/* is program running not as a service ? */
-#ifdef WIN32
-char		*acctlog_spacechar = NULL; /* subst for spaces appearing */
-/* in username, groupname,    */
-/* account name, and script   */
-/* entries of acct log file   */
-#endif
 char	       *acct_file = NULL;
 char	        daemonname[PBS_MAXHOSTNAME+8];
 int		used_unix_licenses  = 0;
@@ -313,23 +302,7 @@ struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
 AVL_IX_DESC *AVL_jctx = NULL;
-
-#ifdef WIN32
-void WINAPI PbsServerMain(DWORD dwArgc, LPTSTR *rgszArgv);
-void WINAPI PbsServerHandler(DWORD dwControl);
-DWORD WINAPI main_thread(void *pv);
-
-/*
- * NOTE: Note the global state used by your service. Your service has a name,
- * state and a status handle used by SetServiceStatus.
- */
-const TCHAR * const     g_PbsServerName = __TEXT("PBS_SERVER");
-HANDLE                  g_hthreadMain = 0;
-SERVICE_STATUS_HANDLE   g_ssHandle = 0;
-DWORD                   g_dwCurrentState = SERVICE_START_PENDING;
-#else
 sigset_t	allsigs;
-#endif
 
 int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
 
@@ -394,7 +367,6 @@ static int lockfds = -1;
 static int  already_forked = 0; /* we check this variable even in non-debug mode, so dont condition compile it */
 
 #ifndef DEBUG
-#ifndef WIN32
 /**
  * @brief
  *		Forks a background process and continues on that, while
@@ -430,7 +402,6 @@ go_to_background()
 	already_forked = 1;
 	return sid;
 }
-#endif	/* end the ifndef WIN32 */
 #endif	/* DEBUG is defined */
 
 /**
@@ -505,11 +476,7 @@ rpp_request(int fd)
 		int	stream;
 
 		if ((stream = rpp_poll()) == -1) {
-#ifdef WIN32
-			/* workaround to a win2k winsock bug */
-			if (errno != 10054)
-#endif
-				log_err(errno, __func__, "rpp_poll");
+			log_err(errno, __func__, "rpp_poll");
 			break;
 		}
 		if (stream == -2)
@@ -578,11 +545,7 @@ void
 pbs_close_stdfiles(void)
 {
 	static int already_done = 0;
-#ifdef WIN32
-#define NULL_DEVICE "nul"
-#else
 #define NULL_DEVICE "/dev/null"
-#endif
 
 	if (!already_done) {
 		FILE *dummyfile;
@@ -685,67 +648,6 @@ log_tppmsg(int level, const char *objname, char *mess)
 	DBPRT(("\n"));
 }
 
-#ifdef WIN32
-/**
- * @brief
- * 		make_server_auto_restart: tell SCM to auto restart the current pbs_server
- * 		this works best when the primary server and secondary server are not
- * 		running on the same machine.
- * 		The confirm flag allows for a reset service's failure config.
- *
- * @param[in]	confirm	- if 1, then restart service on failure
- */
-void
-make_server_auto_restart(int confirm)
-{
-
-	SC_HANDLE schManager;
-	SC_HANDLE schSelf;
-	TCHAR	  szFileName[MAX_PATH];
-	SERVICE_FAILURE_ACTIONS sfa;
-	SC_ACTION               sca[1];
-
-	schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
-	if (schManager == 0) {
-		log_err(-1, __func__, "failed to open SCM mgr");
-		return;
-	}
-
-
-	GetModuleFileName(0, szFileName,
-		sizeof(szFileName)/sizeof(*szFileName));
-	schSelf = OpenService(schManager, g_PbsServerName, SERVICE_ALL_ACCESS);
-
-	if (schSelf == 0) {
-		log_err(-1, "auto_restart_server",
-			"failed to open PBS_SERVER service");
-
-		if (schManager != 0)
-			CloseServiceHandle(schManager);
-		return;
-	}
-
-	sca[0].Type = SC_ACTION_RESTART;
-	sca[0].Delay = 1*1000;	/* restart in 1 sec */
-	sfa.dwResetPeriod = INFINITE;
-	sfa.lpRebootMsg = NULL;
-	sfa.lpCommand = NULL;
-	if (confirm)
-		sfa.cActions = 1;
-	else
-		sfa.cActions = 0;
-	sfa.lpsaActions = sca;
-	ChangeServiceConfig2(schSelf, SERVICE_CONFIG_FAILURE_ACTIONS, &sfa);
-
-
-	if (schSelf != 0)
-		CloseServiceHandle(schSelf);
-
-	if (schManager != 0)
-		CloseServiceHandle(schManager);
-}
-#endif /* WIN32 */
-
 /**
  * @brief
  * 		reap_child() - reap dead child processes
@@ -759,21 +661,11 @@ static void
 reap_child(void)
 {
 	struct work_task *ptask;
-#ifdef WIN32
-	HANDLE		  pid;
-#else
 	pid_t		  pid;
-#endif
 	int		  statloc;
 
 	while (1) {
-
-#ifdef WIN32
-		if ((pid = waitpid((HANDLE)-1, &statloc, WNOHANG)) == (HANDLE)-1)
-#else
-		if ((pid = waitpid((pid_t)-1, &statloc, WNOHANG)) == (pid_t)-1)
-#endif	/* WIN32 */
-		{
+		if ((pid = waitpid((pid_t)-1, &statloc, WNOHANG)) == (pid_t)-1) {
 			if (errno == ECHILD) {
 				reap_child_flag = 0;
 				return;
@@ -789,12 +681,7 @@ reap_child(void)
 		ptask = (struct work_task *)GET_NEXT(task_list_event);
 		while (ptask) {
 			if ((ptask->wt_type == WORK_Deferred_Child) &&
-#ifdef WIN32
-				((HANDLE)ptask->wt_event == pid))
-#else
-				(ptask->wt_event == pid))
-#endif
-			{
+				(ptask->wt_event == pid)) {
 				ptask->wt_type = WORK_Deferred_Cmp;
 				ptask->wt_aux = (int)statloc;	/* exit status */
 				svr_delay_entry++;	/* see next_task() */
@@ -831,20 +718,10 @@ can_schedule()
  *
  * @par MT-safe: No
  */
-#ifdef WIN32
-DWORD WINAPI
-main_thread(void *pv)
-#else
 int
 main(int argc, char **argv)
-#endif	/* WIN32 */
 {
-#ifdef	WIN32
-	struct arg_param	*p = (struct arg_param *)pv;
-	int      		argc;
-	char			**argv;
-	SERVICE_STATUS          ss;
-#endif	/* WIN32 */
+
 	int			are_primary;
 	int			c, rc;
 	int			i;
@@ -866,9 +743,9 @@ main(int argc, char **argv)
 	char			hook_msg[HOOK_MSG_SIZE];
 	pbs_sched		*psched;
 	char			*keep_daemon_name = NULL;
-#ifndef WIN32
+
 	pid_t			sid = -1;
-#endif
+
 	long			*state;
 	time_t			waittime;
 #ifdef _POSIX_MEMLOCK
@@ -913,65 +790,24 @@ main(int argc, char **argv)
 		pbs_python_svr_initialize_interpreter_data;
 	svr_interp_data.destroy_interpreter_data =
 		pbs_python_svr_destroy_interpreter_data;
-#ifndef WIN32
 	/*the real deal or just pbs_version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
-#endif
 
 	/* As a security measure and to make sure all file descriptors	*/
 	/* are available to us,  close all above stderr			*/
-#ifdef WIN32
-	_fcloseall();
-#else
 	i = sysconf(_SC_OPEN_MAX);
 	while (--i > 2)
 		(void)close(i); /* close any file desc left open by parent */
-#endif
-
 
 	/* If we are not run with real and effective uid of 0, forget it */
-#ifdef WIN32
-	argc = p->argc;
-	argv = p->argv;
-
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwCheckPoint = 0;
-	ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState = g_dwCurrentState;
-	ss.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-	ss.dwWaitHint = 6000;
-
-	if (g_ssHandle != 0)
-		SetServiceStatus(g_ssHandle, &ss);
-	/* load the pbs conf file */
-	if (pbs_loadconf(0) == 0) {
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_BAD_CONFIGURATION;
-		if (g_ssHandle != 0)
-			SetServiceStatus(g_ssHandle, &ss);
-		return (1);
-	}
-	if (!isAdminPrivilege(getlogin())) {
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = CO_E_LAUNCH_PERMSSION_DENIED;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-		fprintf(stderr, "%s: Must be run by root\n", argv[0]);
-		return (1);
-	}
-#else
 	if ((getuid() != 0) || (geteuid() != 0)) {
 		fprintf(stderr, "%s: Must be run by root\n", argv[0]);
 		return (1);
 	}
-#endif	/* WIN32 */
 
 	/* set standard umask */
-#ifndef WIN32
 	umask(022);
-#endif
 
 	/* set single threaded mode */
 	pbs_client_thread_set_single_threaded_mode();
@@ -980,37 +816,13 @@ main(int argc, char **argv)
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
-#ifdef WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_OUTOFMEMORY;
-		if (g_ssHandle != 0)
-			SetServiceStatus(g_ssHandle, &ss);
-#else
 		log_err(-1, "pbsd_main",
 			"Unable to initialize thread context");
 		return (1);
-#endif
 	}
-#ifndef WIN32
 
 	if (pbs_loadconf(0) == 0)
 		return (1);
-
-#endif
-#ifdef WIN32
-	if (!pbs_conf.start_server) {
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_BAD_ENVIRONMENT;
-		if (g_ssHandle != 0)
-			SetServiceStatus(g_ssHandle, &ss);
-		return (0);
-	}
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
 
 	/* find out who we are (hostname) */
 	server_host[0] = '\0';
@@ -1029,15 +841,7 @@ main(int argc, char **argv)
 	}
 	if ((server_host[0] == '\0') ||
 	    (get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-#ifdef WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_BAD_CONFIGURATION;
-		if (g_ssHandle != 0)
-				SetServiceStatus(g_ssHandle, &ss);
-#else
 		log_err(-1, "pbsd_main", "Unable to get my host name");
-#endif
 		return (-1);
 	}
 
@@ -1183,11 +987,6 @@ main(int argc, char **argv)
 					return (1);
 				}
 				break;
-			case 's':
-#ifdef WIN32
-				acctlog_spacechar = optarg;
-				break;
-#endif
 			case 'P':	/* set node ping frequency (seconds between) */
 				svr_ping_rate = atoi(optarg);
 				if (svr_ping_rate < 1) {
@@ -1211,18 +1010,6 @@ main(int argc, char **argv)
 		return (1);
 	}
 
-#ifdef WIN32
-	if (acctlog_spacechar == NULL) {
-		acctlog_spacechar = strdup("");
-		if (acctlog_spacechar == NULL) {
-			(void)fprintf(stderr,
-				"%s: acctlog_spacechar malloc failed\n",
-				argv[0]);
-			return (1);
-		}
-	}
-#endif
-
 	/* make sure no other server is running with this home directory */
 
 	(void)sprintf(lockfile, "%s/%s/server.lock", pbs_conf.pbs_home_path,
@@ -1231,12 +1018,6 @@ main(int argc, char **argv)
 		strcat(lockfile, ".secondary");
 	} else if (are_primary == FAILOVER_CONFIG_ERROR) {
 		log_err(-1, msg_daemonname, "neither primary or secondary server");
-#ifdef WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState       = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_SERVICE_NOT_ACTIVE;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#endif
 		return (3);
 	}
 
@@ -1250,19 +1031,9 @@ main(int argc, char **argv)
 			msg_daemonname);
 		(void)fprintf(stderr, "%s\n", log_buffer);
 		log_err(errno, msg_daemonname, log_buffer);
-#ifdef WIN32
-		g_dwCurrentState = SERVICE_STOPPED;
-		ss.dwCurrentState       = g_dwCurrentState;
-		ss.dwWin32ExitCode = ERROR_SERVICE_ALREADY_RUNNING;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#endif
 		return (2);
 	}
 
-#ifdef WIN32
-	secure_file(lockfile, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-#endif
 	server.sv_started = time(&time_now);	/* time server started */
 
 	CLEAR_HEAD(svr_requests);
@@ -1344,16 +1115,6 @@ main(int argc, char **argv)
 	log_event_mask = &server.sv_attr[SRV_ATR_log_events].at_val.at_long;
 	(void)sprintf(path_log, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 
-#ifdef WIN32
-	/*
-	 * let SCM wait 10 seconds for log_open() to complete
-	 * as it does network interface query which can take time
-	 */
-
-	ss.dwCheckPoint++;
-	ss.dwWaitHint = 60000;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#endif
 	(void)log_open(log_file, path_log);
 	(void)sprintf(log_buffer, msg_startup1, PBS_VERSION, server_init_type);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
@@ -1373,20 +1134,6 @@ main(int argc, char **argv)
 		fprintf(stderr, "%s\n", log_buffer);
 		exit(1);
 	}
-
-#ifdef WIN32
-	/* Let's do an extra validity check */
-
-	if (check_executor() == 1) { /* failed on check for root */
-		log_err(-1, msg_daemonname, winlog_buffer);
-		return (3);
-	}
-	if (strlen(winlog_buffer) > 0) {
-
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
-			LOG_WARNING, msg_daemonname, winlog_buffer);
-	}
-#endif
 
 	/*Initialize security library's internal data structures*/
 
@@ -1464,7 +1211,6 @@ main(int argc, char **argv)
 
 	} else {
 		/* we believe we are a secondary server */
-#ifndef WIN32
 #ifndef DEBUG
 		/* go into the background and become own sess/process group */
 		if (stalone == 0) {
@@ -1472,7 +1218,7 @@ main(int argc, char **argv)
 				return (2);
 		}
 #endif /* DEBUG */
-#endif /* WIN32 */
+
 		/* will not attempt to lock again if go_to_background was already called */
 		if (already_forked == 0)
 			lock_out(lockfds, F_WRLCK);
@@ -1492,36 +1238,6 @@ main(int argc, char **argv)
 	 * Initialize the server objects and perform specified recovery
 	 * will be left in the server's private directory
 	 */
-
-#ifdef WIN32
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
-		LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname,
-		"securing PBS misc files");
-
-	/* let SCM wait 20 seconds for secure_misc_files() to complete */
-	ss.dwCheckPoint++;
-	ss.dwWaitHint = 20000;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-	secure_misc_files();
-
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
-		LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname,
-		"securing PBS server files");
-
-	/* let SCM wait 30 seconds for secure_server_files() to complete */
-	ss.dwCheckPoint++;
-	ss.dwWaitHint = 30000;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-	secure_server_files();
-
-	/* let SCM wait 30 seconds for pbsd_init() to complete */
-	ss.dwCheckPoint++;
-	ss.dwWaitHint = 30000;  /* let SCM wait 20 seconds before giving up */
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-#endif
 
 #ifdef linux
 	/*
@@ -1571,7 +1287,6 @@ try_db_again:
 		sleep(db_delay);     /* dont burn the CPU looping too fast */
 		update_svrlive();    /* indicate we are alive */
 #ifndef DEBUG
-#ifndef WIN32
 		if (server_init_type != RECOV_UPDATEDB &&
 			server_init_type != RECOV_CREATE &&
 			stalone == 0 &&	already_forked == 0 && try_db >= 4) {
@@ -1580,7 +1295,6 @@ try_db_again:
 			if ((sid = go_to_background()) == -1)
 				return (2);
 		}
-#endif	/* end the ifndef WIN32 */
 #endif	/* DEBUG is defined */
 		try_db ++;
 	}
@@ -1709,9 +1423,6 @@ try_db_again:
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, LOG_NOTICE,
 			PBS_EVENTCLASS_SERVER, msg_daemonname, msg_svrdown);
 		acct_close();
-#ifdef WIN32
-		destroypids();
-#endif
 		stop_db();
 		log_close(1);
 		return (0);
@@ -1733,25 +1444,17 @@ try_db_again:
 	/* go into the background and become own sess/process group */
 
 #ifndef DEBUG
-
-#ifndef WIN32
 	if (stalone == 0 && already_forked == 0) {
 		if ((sid = go_to_background()) == -1) {
 			stop_db();
 			return (2);
 		}
 	}
-#endif	/* end the ifndef WIN32 */
 	pbs_close_stdfiles();
 #else	/* DEBUG is defined */
-#ifndef WIN32
 	sid = getpid();
 	(void)setvbuf(stdout, NULL, _IOLBF, 0);
 	(void)setvbuf(stderr, NULL, _IOLBF, 0);
-#else	/* WIN32 */
-	(void)setvbuf(stdout, NULL, _IONBF, 0);
-	(void)setvbuf(stderr, NULL, _IONBF, 0);
-#endif
 #endif	/* end the ifndef DEBUG */
 
 	/* Protect from being killed by kernel */
@@ -1765,7 +1468,6 @@ try_db_again:
 	}
 #endif	/* _POSIX_MEMLOCK */
 
-#ifndef WIN32
 	sigemptyset(&allsigs);
 	sigaddset(&allsigs, SIGHUP);	/* remember to block these */
 	sigaddset(&allsigs, SIGINT);	/* during critical sections */
@@ -1774,7 +1476,6 @@ try_db_again:
 	/* block signals while we do things */
 	if (sigprocmask(SIG_BLOCK, &allsigs, NULL) == -1)
 		log_err(errno, msg_daemonname, "sigprocmask(BLOCK)");
-#endif /* WIN32 */
 
 	/* initialize the network interface */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -1873,12 +1574,8 @@ try_db_again:
 		while (--tryport > 0) {
 			if ((privfd = rpp_bind(tryport)) != -1)
 				break;
-#ifdef WIN32
-			errno = WSAGetLastError();
-			if ((errno != WSAEADDRINUSE) && (errno != WSAEADDRNOTAVAIL))
-#else
+
 			if ((errno != EADDRINUSE) && (errno != EADDRNOTAVAIL))
-#endif 	/* WIN32 */
 				break;
 		}
 		if (privfd == -1) {
@@ -1914,15 +1611,11 @@ try_db_again:
 				 * this is to get PBS_CONF_FILE if specified.*/
 				workenv = environ;
 				environ = origevp;
-#ifdef WIN32
-				snprintf(schedcmd, sizeof(schedcmd), "net start pbs_sched");
-				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
-				(void)wsystem(schedcmd, INVALID_HANDLE_VALUE);
-#else
+
 				snprintf(schedcmd, sizeof(schedcmd), "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
 				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
 				(void)system(schedcmd);
-#endif /* WIN32 */
+
 				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
 					PBS_EVENTCLASS_SERVER, LOG_CRIT,
 					msg_daemonname, log_buffer);
@@ -1941,18 +1634,9 @@ try_db_again:
 	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
 	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
 
-#ifdef WIN32
-	sprintf(log_buffer, msg_startup2, getpid(), pbs_server_port_dis,
-		pbs_scheduler_port, pbs_mom_port, pbs_rm_port);
-
-	ss.dwCheckPoint = 0;
-	g_dwCurrentState = SERVICE_RUNNING;
-	ss.dwCurrentState = g_dwCurrentState;
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-#else
 	sprintf(log_buffer, msg_startup2, sid, pbs_server_port_dis,
 		pbs_scheduler_port, pbs_mom_port, pbs_rm_port);
-#endif /* WIN32 */
+
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, msg_daemonname, log_buffer);
 
@@ -2147,25 +1831,21 @@ try_db_again:
 			rpp_request(42);
 		}
 
-#ifdef WIN32
-		/* check completion of any child process */
-		reap_child();
-#else
 		if (reap_child_flag)
 			reap_child();
-#endif	/* WIN32 */
 
 		/* wait for a request and process it */
 		if (wait_request(waittime, priority_context) != 0) {
 			log_err(-1, msg_daemonname, "wait_requst failed");
 		}
-#ifdef WIN32
-		connection_idlecheck();
-#else
 
 		if (reap_child_flag)	/* check again incase signal arrived */
 			reap_child();	/* before they were blocked          */
-#endif /* WIN32 */
+
+#ifdef PBS_UNDOLR_ENABLED
+		if (sigusr1_flag)
+			undolr();
+#endif
 
 		if (*state == SV_STATE_SHUTSIG)
 			(void)svr_shutdown(SHUT_SIG);	/* caught sig */
@@ -2299,13 +1979,8 @@ try_db_again:
 	log_close(1);
 	free(keep_daemon_name); /* logs closed, can free here */
 
-#ifdef WIN32
-	destroypids();
-	destroy_env_avltree();
-#else
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
-#endif
 	(void)unlink(lockfile);
 
 	if (*state == SV_STATE_SECIDLE) {
@@ -2314,12 +1989,6 @@ try_db_again:
 		 * recycle itself (found Secondary active);
 		 * re-execv the Server, keeps things clean
 		 */
-#ifdef WIN32
-		make_server_auto_restart(1);
-		/* make it look like a failure so that server will auto */
-		/* restart */
-		exit(1);
-#else
 		DBPRT(("Failover: reexecing %s as %s ", server_host, argv[0]))
 		sprintf(log_buffer, "%s restarting as %s", server_host,
 			are_primary == FAILOVER_PRIMARY ? "primary":"secondary");
@@ -2331,7 +2000,6 @@ try_db_again:
 			execve(log_buffer, argv, origevp);
 		}
 		DBPRT(("Failover: execv failed\n"))
-#endif /* WIN32 */
 	}
 	return (0);
 }
@@ -2467,37 +2135,14 @@ lock_out(int fds, int op)
 {
 	int	     i;
 	int	     j;
-#ifndef WIN32
 	struct flock flock;
-#endif
 	char	     buf[100];
-#ifdef WIN32
-	struct stat  sbuf;
-
-	if (fstat(fds, &sbuf) == -1) {
-		log_err(errno, "lock_out", "can't stat lock file");
-		exit(1);
-	}
-#endif
 
 	if (pbs_conf.pbs_secondary == NULL)
 		j = 1;		/* not fail over, try lock one time */
 	else
 		j = 30;		/* fail over, try for a minute */
 
-#ifdef WIN32
-	for (i = 0; i < j; i++) {
-		if (_locking(fds, op, (long)sbuf.st_size) != -1) {
-			if (op == F_WRLCK) {
-				/* if write-lock, record pid in file */
-				(void)sprintf(buf, "%d\n", getpid());
-				(void)write(fds, buf, strlen(buf));
-			}
-			return;
-		}
-		sleep(2);
-	}
-#else
 	(void)lseek(fds, (off_t)0, SEEK_SET);
 	flock.l_type   = op;
 	flock.l_whence = SEEK_SET;
@@ -2515,7 +2160,7 @@ lock_out(int fds, int op)
 		}
 		sleep(2);
 	}
-#endif
+
 	(void)strcpy(log_buffer, "another server running");
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
 		LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname,
@@ -2524,292 +2169,6 @@ lock_out(int fds, int op)
 	exit(1);
 }
 
-#ifdef WIN32
-/**
- * @brief
- *		usage - prints the usage in terminal if the user mistype in terminal
- *
- * @param[in]	prog	- program name which will be typed in the terminal along wih arguments.
- *
- * @return	void
- */
-void
-usage(char *prog)
-{
-	printf("================================================================================\n");
-	printf("Usage Info: %s [-R|-U|-N|-C] [-a active] [-d config_path] [-e mask] [-p port] "
-		"[-A acctfile] [-s acctlog_spacechar_substitute] [-L logfile] [-M mom_port] "
-		"[-R momRPP_port] [-S scheduler_port] [-t type]\n", prog);
-	printf("\nTo run as a standalone server: %s -N <other options...>\n", prog);
-	printf("\nTo run the server in -t create mode and then exit: %s -C\n", prog);
-	printf("To register as a service: %s -R\n", prog);
-	printf("To unregister the service: %s -U\n", prog);
-	printf("To run as a service: %s <other options...>\n", prog);
-	printf("To output PBSpro version and exit: %s --version\n", prog);
-	printf("================================================================================\n");
-
-}
-/**
- * @brief
- *		main - the initialization and main loop of pbs_comm
- *
- * @param[in]	argc	- argument count.
- * @param[in]	argv	- argument values.
- *
- * @return	int
- * @retval	0	- success
- */
-main(int argc, char *argv[])
-{
-	SC_HANDLE schManager;
-	SC_HANDLE schSelf;
-	int reg = 0;
-	int unreg = 0;
-	TCHAR	  szFileName[MAX_PATH];
-
-	/*the real deal or just pbs_version and exit*/
-
-	PRINT_VERSION_AND_EXIT(argc, argv);
-
-	if (argc > 1) {
-		if (strcmp(argv[1], "-R") == 0)
-			reg = 1;
-		else if (strcmp(argv[1], "-U") == 0)
-			unreg = 1;
-		else if (strcmp(argv[1], "-N") == 0)
-			stalone = 1;
-		else if (strcmp(argv[1], "-C") == 0) {
-			stalone = 2;
-			server_init_type = RECOV_CREATE;
-		}
-	}
-
-	if (reg || unreg) {
-		schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
-		if (schManager == 0) {
-			ErrorMessage("OpenSCManager");
-			return 1;
-		}
-
-		if (reg) {
-			GetModuleFileName(0, szFileName, sizeof(szFileName)/sizeof(*szFileName));
-			printf("Installing service %s\n", g_PbsServerName);
-			schSelf =
-				CreateService(schManager, g_PbsServerName, __TEXT("PBS SERVER"),
-				SERVICE_ALL_ACCESS,
-				SERVICE_WIN32_OWN_PROCESS,
-				SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
-				replace_space(szFileName, ""), 0, 0, 0, 0, 0);
-
-			if (schSelf) {
-				printf("Service %s installed successfully!\n", g_PbsServerName);
-			} else {
-				ErrorMessage("CreateService");
-				return 1;
-			}
-
-			if (schSelf != 0)
-				CloseServiceHandle(schSelf);
-		} else if (unreg) {
-			schSelf = OpenService(schManager, g_PbsServerName, DELETE);
-
-			if (schSelf) {
-				if (DeleteService(schSelf)) {
-					printf("Service %s uninstalled successfully!\n", g_PbsServerName);
-				} else {
-					ErrorMessage("DeleteService");
-					return 1;
-				}
-			} else {
-				ErrorMessage("OpenService failed");
-				return 1;
-			}
-			if (schSelf != 0)
-				CloseServiceHandle(schSelf);
-		}
-
-		if (schManager != 0)
-			CloseServiceHandle(schManager);
-	} else if (stalone) {
-		struct arg_param *pap;
-		int	i, j;
-
-		pap = create_arg_param();
-		if (pap == NULL) {
-			ErrorMessage("create_arg_param");
-			return 1;
-		}
-
-		pap->argc = argc-1;	/* don't pass the second argument */
-		for (i=j=0; i < argc; i++) {
-			if (i == 1)
-				continue;
-			if ((pap->argv[j] = strdup(argv[i])) == NULL) {
-				free_arg_param(pap);
-				ErrorMessage("strdup");
-				return 1;
-			}
-			j++;
-		}
-		main_thread((void *)pap);
-
-		free_arg_param(pap);
-	} else {	/* running as a service */
-		SERVICE_TABLE_ENTRY rgste[] = { {(TCHAR*)g_PbsServerName, PbsServerMain },
-			{ 0, 0 } };
-
-		if (getenv("PBS_CONF_FILE") == NULL) {
-			char *p;
-
-			if (p = strstr(argv[0], "exec")) {
-				struct stat sbuf;
-				char psave;
-				char conf_path[80];
-
-				psave = *p;
-				*p = '\0';
-				_snprintf(conf_path, 79, "%spbs.conf", argv[0]);
-				*p = psave;
-				if (stat(conf_path, &sbuf) == 0) {
-					setenv("PBS_CONF_FILE", conf_path, 1);
-				}
-			}
-		}
-		if (!StartServiceCtrlDispatcher(rgste)) {
-			ErrorMessage("StartServiceCntrlDispatcher");
-			return 1;
-		}
-	}
-	return (0);
-}
-/**
- * @brief
- *		PbsServerMain - Pbs server main logic
- *
- * @param[in]	dwArgc	- argument count.
- * @param[in]	rgszArgv- argument values.
- *
- * @return	void
- */
-void WINAPI
-PbsServerMain(DWORD dwArgc, LPTSTR *rgszArgv)
-{
-	DWORD	dwTID;
-	DWORD	dwWait;
-	SERVICE_STATUS	ss;
-	DWORD	i;
-
-	struct arg_param *pap;
-
-	g_ssHandle = RegisterServiceCtrlHandler(g_PbsServerName, PbsServerHandler);
-	if (g_ssHandle == 0) {
-		ErrorMessage("RegisterServiceCtrlHandler");
-		return 1;
-	}
-
-	pap = create_arg_param();
-	if (pap == NULL)
-		return;
-	pap->argc = dwArgc;
-
-	for (i=0; i < dwArgc; i++) {
-		if ((pap->argv[i] = strdup(rgszArgv[i])) == NULL) {
-			free_arg_param(pap);
-			ErrorMessage("strdup");
-			return 1;
-		}
-	}
-
-	g_hthreadMain = (HANDLE) _beginthreadex(0, 0,  main_thread, pap, 0, &dwTID);
-	if (g_hthreadMain == 0) {
-		(void)free_arg_param(pap);
-		ErrorMessage("CreateThread");
-		return 1;
-	}
-
-	dwWait = WaitForSingleObject(g_hthreadMain, INFINITE);
-	if (dwWait != WAIT_OBJECT_0) {
-		(void)free_arg_param(pap);
-		ErrorMessage("WaitForSingleObject");
-		return 1;
-	}
-
-	// NOTE: Update the global service state variable to indicate
-	//      that the server has STOPPED. Use this to ACK the SCM
-	//      that the service has stopped using SetServiceStatus.
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwServiceType        = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState       = SERVICE_STOPPED;
-	ss.dwControlsAccepted   = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-
-	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-	free_arg_param(pap);
-}
-/**
- * @brief
- *		PbsServerHandler - PBS Server handler.
- *
- * @param[in]	dwControl	- having the following values.
- * 								SERVICE_CONTROL_STOP or SERVICE_CONTROL_SHUTDOWN.
- *
- * @return	void
- */
-void WINAPI
-PbsServerHandler(DWORD dwControl)
-{
-	SERVICE_STATUS ss;
-	DWORD	dwWait;
-
-	ZeroMemory(&ss, sizeof(ss));
-	ss.dwServiceType        = SERVICE_WIN32_OWN_PROCESS;
-	ss.dwCurrentState       = g_dwCurrentState;
-	ss.dwControlsAccepted   = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-
-	switch (dwControl) {
-		case SERVICE_CONTROL_STOP:
-		case SERVICE_CONTROL_SHUTDOWN:
-			// DONE: When you receive a stop request, update the global state
-			//      variable to indicate that a STOP is pending. You need
-			//      to then ACK the SCM by calling SetServiceStatus. Set
-			//      the check point to 1 and the wait hint to 1 second,
-			//      since we are going to wait for the server to shutdown.
-
-			if ((are_we_primary() == FAILOVER_PRIMARY) ||
-				(are_we_primary() == FAILOVER_NONE)) {
-				g_dwCurrentState    = SERVICE_STOP_PENDING;
-				ss.dwCurrentState   = g_dwCurrentState;
-				ss.dwCheckPoint     = 1;
-				ss.dwWaitHint       = 20000;
-				if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-
-				server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_SHUTSIG;
-				log_err(-1, "PbsServerHandler", "set SVR_ATR_STATE to SV_STATE_SHUTSIG");
-			} else {
-				/* Secondary Server */
-				ss.dwCheckPoint = 0;
-				g_dwCurrentState = SERVICE_RUNNING;
-				ss.dwCurrentState = g_dwCurrentState;
-				if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-				return;
-			}
-
-			do {
-				ss.dwCheckPoint++;
-				if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-				dwWait = WaitForSingleObject(g_hthreadMain, 800);
-			} while (dwWait != WAIT_OBJECT_0 && ss.dwCheckPoint < 20);
-
-			CloseHandle(g_hthreadMain);
-
-			break;
-
-		default:
-			if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
-			break;
-	}
-}
-#endif
 
 /**
  * @brief
@@ -3185,38 +2544,6 @@ setup_db_connection(char *host, int timeout, int have_db_control)
 
 /**
  * @brief
- *		Create a database stop file.
- *
- * @par Functionality:
- *		This function touches a pbs_dbclose file in the datastore
- *		directory. The pbs_ds_monitor process stops the database on
- *		seeing the existence of this file.
- *
- * @return -  Error code
- * @retval  0 -  Succeeded in creating the file
- * @retval  -1 - Failed
- *
- */
-#ifdef WIN32
-static int
-touch_db_stop_file(void)
-{
-	HANDLE hFile;
-	char closefile[MAXPATHLEN + 1];
-	snprintf(closefile, MAXPATHLEN, "%s\\datastore\\pbs_dbclose", pbs_conf.pbs_home_path);
-
-	hFile = CreateFile(closefile, GENERIC_READ | GENERIC_WRITE,
-		0, NULL, OPEN_ALWAYS, 0, NULL);
-
-	if (hFile != INVALID_HANDLE_VALUE) {
-		CloseHandle(hFile);
-		return 0;
-	}
-	return -1;
-}
-#else
-/**
- * @brief
  * 		touch_db_stop_file	- create a touch file when db is stopped.
  *
  * @return	int
@@ -3239,4 +2566,3 @@ touch_db_stop_file(void)
 	close(fd);
 	return 0;
 }
-#endif

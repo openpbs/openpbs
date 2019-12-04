@@ -111,6 +111,8 @@
 #include	"config.h"
 #include	"fifo.h"
 #include	"globals.h"
+#include	"pbs_undolr.h"
+#include	"multi_threading.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;
@@ -128,7 +130,7 @@ char		*configfile = NULL;	/* name of file containing
 extern char		*msg_daemonname;
 char		**glob_argv;
 char		usage[] =
-	"[-d home][-L logfile][-p file][-I schedname][-S port][-R port][-n][-N][-c clientsfile]";
+	"[-d home][-L logfile][-p file][-I schedname][-S port][-R port][-n][-N][-c clientsfile][-t num threads]";
 struct	sockaddr_in	saddr;
 sigset_t	allsigs;
 int		pbs_rm_port;
@@ -159,6 +161,14 @@ extern char *msg_startup1;
 void
 on_segv(int sig)
 {
+	int *thid;
+
+	thid = (int *) pthread_getspecific(th_id_key);
+	if (thid != NULL && *thid != 0)
+		pthread_exit(NULL);
+
+	if (num_threads > 1)
+		kill_threads();
 
 	/* we crashed less then 5 minutes ago, lets not restart ourself */
 	if ((segv_last_time - segv_start_time) < 300) {
@@ -201,6 +211,12 @@ sigfunc_pipe(int sig)
 void
 die(int sig)
 {
+	int *thid;
+
+	thid = (int *) pthread_getspecific(th_id_key);
+
+	if (thid != NULL && *thid != 0)
+		pthread_exit(NULL);	/* Kill worker threads */
 
 	if (sig > 0) {
 		sprintf(log_buffer, "caught signal %d", sig);
@@ -211,6 +227,8 @@ die(int sig)
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 				__func__, "abnormal termination");
 	}
+
+	schedexit();
 
 	{
 		int csret;
@@ -434,20 +452,26 @@ read_config(char *file)
 void
 restart(int sig)
 {
+	int *thid;
 
-	if (sig) {
-		log_close(1);
-		log_open(logfile, path_log);
-		sprintf(log_buffer, "restart on signal %d", sig);
-	} else {
-		sprintf(log_buffer, "restart command");
+	thid = (int *) pthread_getspecific(th_id_key);
+
+	if (thid == NULL || *thid == 0) {
+		if (sig) {
+			log_close(1);
+			log_open(logfile, path_log);
+			sprintf(log_buffer, "restart on signal %d", sig);
+		} else {
+			sprintf(log_buffer, "restart command");
+		}
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
+				log_buffer);
+		if (configfile) {
+			if (read_config(configfile) != 0)
+				die(0);
+		}
+		schedule(SCH_CONFIGURE, -1, NULL);
 	}
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
-	if (configfile) {
-		if (read_config(configfile) != 0)
-			die(0);
-	}
-	schedule(SCH_CONFIGURE, -1, NULL);
 }
 
 #ifdef NAS /* localmod 030 */
@@ -900,7 +924,6 @@ main(int argc, char *argv[])
 	time_t		now;
 #endif /* localmod 031 */
 	int		stalone = 0;
-	int		schedinit();
 #ifdef _POSIX_MEMLOCK
 	int		do_mlockall = 0;
 #endif	/* _POSIX_MEMLOCK */
@@ -911,10 +934,15 @@ main(int argc, char *argv[])
 #ifdef  RLIMIT_CORE
 	int      	char_in_cname = 0;
 #endif  /* RLIMIT_CORE */
+	int nthreads = -1;
+	int num_cores;
+	char *endp = NULL;
 
 	/*the real deal or show version and exit?*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
+
+	num_cores = sysconf(_SC_NPROCESSORS_ONLN);
 
 	if(set_msgdaemonname("pbs_sched")) {
 		fprintf(stderr, "Out of memory\n");
@@ -928,8 +956,6 @@ main(int argc, char *argv[])
 	}
 #endif	/* DEBUG */
 
-	/* set single threaded mode */
-	pbs_client_thread_set_single_threaded_mode();
 	/* disable attribute verification */
 	set_no_attribute_verification();
 
@@ -943,6 +969,8 @@ main(int argc, char *argv[])
 	if (pbs_loadconf(0) == 0)
 		return (1);
 
+	nthreads = pbs_conf.pbs_sched_threads;
+
 	glob_argv = argv;
 	segv_start_time = segv_last_time = time(NULL);
 
@@ -951,7 +979,7 @@ main(int argc, char *argv[])
 	pbs_rm_port = pbs_conf.manager_service_port;
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NS:I:R:d:p:c:a:n")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NS:I:R:d:p:c:a:nt:")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -1008,6 +1036,22 @@ main(int argc, char *argv[])
 				break;
 			case 'n':
 				opt_no_restart = 1;
+				break;
+			case 't':
+				nthreads = strtol(optarg, &endp, 10);
+				if (*endp != '\0') {
+					fprintf(stderr, "%s: bad num threads value\n", optarg);
+					errflg = 1;
+				}
+				if (nthreads < 1) {
+					fprintf(stderr, "%s: bad num threads value (should be in range 1-99999)\n", optarg);
+					errflg = 1;
+				}
+				if (nthreads > num_cores) {
+					fprintf(stderr, "%s: cannot be larger than number of cores %d, using number of cores instead\n",
+							optarg, num_cores);
+					nthreads = num_cores;
+				}
 				break;
 			default:
 				errflg = 1;
@@ -1095,13 +1139,9 @@ main(int argc, char *argv[])
 			} else if (char_in_cname == 1)
 				corelimit.rlim_cur = RLIM_INFINITY;
 			else
-#ifdef	_SX
-				corelimit.rlim_cur =
-					atol(pbs_conf.pbs_core_limit);
-#else
 				corelimit.rlim_cur =
 					(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
+
 			(void)setrlimit(RLIMIT_CORE, &corelimit);
 		}
 #endif  /* RLIMIT_CORE */
@@ -1230,10 +1270,17 @@ main(int argc, char *argv[])
 	sigaddset(&allsigs, SIGHUP);    /* remember to block these */
 	sigaddset(&allsigs, SIGINT);    /* during critical sections */
 	sigaddset(&allsigs, SIGTERM);   /* so we don't get confused */
+	sigaddset(&allsigs, SIGUSR1);
 	act.sa_mask = allsigs;
 
 	act.sa_handler = restart;       /* do a restart on SIGHUP */
 	sigaction(SIGHUP, &act, NULL);
+
+#ifdef PBS_UNDOLR_ENABLED	
+	extern void catch_sigusr1(int);
+	act.sa_handler = catch_sigusr1;
+	sigaction(SIGUSR1, &act, NULL);
+#endif
 
 #ifdef NAS /* localmod 030 */
 	act.sa_handler = soft_cycle_interrupt; /* do a cycle interrupt on */
@@ -1256,17 +1303,6 @@ main(int argc, char *argv[])
 		act.sa_handler = on_segv;
 		sigaction(SIGSEGV, &act, NULL);
 		sigaction(SIGBUS, &act, NULL);
-	}
-
-	/*
-	 *  Local initialization stuff
-	 */
-	if (schedinit()) {
-		(void) sprintf(log_buffer,
-			"local initialization failed, terminating");
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-				__func__, log_buffer);
-		exit(1);
 	}
 
 #ifndef	DEBUG
@@ -1302,11 +1338,7 @@ main(int argc, char *argv[])
 	freopen("/dev/null", "r", stdin);
 
 	/* write schedulers pid into lockfile */
-#ifdef WIN32
-	lseek(lockfds, (off_t)0, SEEK_SET);
-#else
 	(void)ftruncate(lockfds, (off_t)0);
-#endif
 	(void)sprintf(log_buffer, "%ld\n", (long)pid);
 	(void)write(lockfds, log_buffer, strlen(log_buffer));
 
@@ -1324,6 +1356,17 @@ main(int argc, char *argv[])
 
 	sprintf(log_buffer, "%s startup pid %ld", argv[0], (long)pid);
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+
+	/*
+	 *  Local initialization stuff
+	 */
+	if (schedinit(nthreads)) {
+		(void) sprintf(log_buffer,
+			"local initialization failed, terminating");
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				__func__, log_buffer);
+		exit(1);
+	}
 
 	rpp_fd = -1;
 	if (pbs_conf.pbs_use_tcp == 1) {
@@ -1418,6 +1461,11 @@ main(int argc, char *argv[])
 			continue;
 		}
 
+#ifdef PBS_UNDOLR_ENABLED
+		if (sigusr1_flag)
+			undolr();
+#endif
+
 		if (pbs_conf.pbs_use_tcp == 0 && rpp_fd != -1 && FD_ISSET(rpp_fd, &fdset)) {
 			if (rpp_io() == -1)
 				log_err(errno, __func__, "rpp_io");
@@ -1472,6 +1520,7 @@ main(int argc, char *argv[])
 				log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 		}
 	}
+	schedexit();
 
 	sprintf(log_buffer, "%s normal finish pid %ld", argv[0], (long)pid);
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);

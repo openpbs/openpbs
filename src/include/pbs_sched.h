@@ -66,7 +66,10 @@ extern "C" {
 
 #define SC_STATUS_LEN 	10
 
-/*attributes for the server's sched object*/
+/*
+ * Attributes for the server's sched object
+ * Must be the same order as listed in sched_attr_def (master_sched_attr_def.xml)
+ */
 enum sched_atr {
 	SCHED_ATR_SchedHost,
 	SCHED_ATR_version,
@@ -92,6 +95,7 @@ enum sched_atr {
 	SCHED_ATR_preempt_order,
 	SCHED_ATR_preempt_sort,
 	SCHED_ATR_log_events,
+	SCHED_ATR_job_sort_formula,
 #include "site_sched_attr_enum.h"
 	/* This must be last */
 	SCHED_ATR_LAST
@@ -121,6 +125,7 @@ extern int find_assoc_sched_jid(char *jid, pbs_sched **target_sched);
 extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
 extern pbs_sched *find_sched_from_sock(int sock);
 extern pbs_sched *find_sched(char *sched_name);
+extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
 
 #ifdef	__cplusplus
 }

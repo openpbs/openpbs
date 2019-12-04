@@ -91,20 +91,13 @@ noinst_HEADERS = \
 	pbs_python.h \
 	pbs_python_private.h \
 	pbs_share.h \
+	pbs_undolr.h \
 	pbs_version.h \
 	placementsets.h \
 	portability.h \
 	port_forwarding.h \
 	provision.h \
 	qmgr.h \
-	qmgr_node_public.h \
-	qmgr_node_readonly.h \
-	qmgr_que_public.h \
-	qmgr_que_readonly.h \
-	qmgr_sched_public.h \
-	qmgr_sched_readonly.h \
-	qmgr_svr_public.h \
-	qmgr_svr_readonly.h \
 	queue.h \
 	reservation.h \
 	resmon.h \

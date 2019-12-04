@@ -238,7 +238,9 @@ struct pbs_config
 	long  pbs_comm_log_events;      /* log_events for pbs_comm process, default 0 */
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
+	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
+	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
@@ -300,7 +302,9 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
+#define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
+#define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif
@@ -385,23 +389,14 @@ enum accrue_types {
 #define ERRORNO        errno
 #endif
 
-#if defined(__STDC__)
-#define C89
-#if defined(__STDC_VERSION__)
-#define C90
-#if (__STDC_VERSION__ >= 199409L)
-#define C94
-#endif
-#if (__STDC_VERSION__ >= 199901L)
-#define C99
-#endif
-#endif
-#endif
-
-#if !defined(C99) && !defined(__cplusplus) 
+#ifdef WIN32
 typedef enum { false, true } bool;
 #else
+#if HAVE__BOOL
 #include "stdbool.h"
+#else
+typedef enum { false, true } bool;
+#endif
 #endif
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs

@@ -1,7 +1,27 @@
 # base image for building pbspro
 FROM centos:7
 # install dependencies for building
-RUN yum install -y gcc make rpm-build libtool hwloc-devel libX11-devel \
-	libXt-devel libedit-devel libical-devel ncurses-devel perl \
-	postgresql-devel python-devel tcl-devel  tk-devel swig expat-devel \
-	openssl-devel libXext libXft git
+RUN yum install -y \
+    expat-devel \
+    gcc \
+    git \
+    hwloc-devel \
+    libedit-devel \
+    libical-devel \
+    libtool \
+    libX11-devel \
+    libXext \
+    libXft \
+    libXt-devel \
+    make \
+    ncurses-devel \
+    openssl-devel \
+    perl \
+    postgresql-contrib \
+    postgresql-devel \
+    python3 \
+    python3-devel \
+    rpm-build \
+    swig \
+    tcl-devel \
+    tk-devel

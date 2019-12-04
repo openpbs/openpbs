@@ -319,7 +319,7 @@ new_resdef(void)
 	resdef *newdef;
 
 	if ((newdef = calloc(1, sizeof(resdef))) == NULL) {
-		log_err(errno, "new_resdef", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 

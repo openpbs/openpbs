@@ -993,6 +993,11 @@ chk_vnode_pool(attribute *pattr, void *pobject, int actmode)
 	return (PBSE_NONE);
 }
 
+int
+validate_job_formula(attribute *pattr, void *pobject, int actmode)
+{
+	return (PBSE_NONE);
+}
 /*
  *	END of "dummy" functions. ---------------------------------------->
  */

@@ -1809,10 +1809,7 @@ record_finish_exec(int sd)
 
 	ptask->ti_qs.ti_sid = sjr.sj_session;
 	ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-#ifdef	_SX
-	ptask->ti_qs.ti_u.ti_ext.ti_parent = sjr.sj_parent;
-	ptask->ti_qs.ti_u.ti_ext.ti_jid = sjr.sj_jid;
-#endif
+
 	strcpy(ptask->ti_qs.ti_parentjobid, pjob->ji_qs.ji_jobid);
 	if (task_save(ptask) == -1) {
 		(void)sprintf(log_buffer, "Task save failed");
@@ -2332,7 +2329,7 @@ get_failed_moms_and_vnodes(job *pjob, int pipefd, int prolo_pipefd, vnl_t **vnl_
 	/* now prune_exec_vnode taking away vnodes managed by moms
 	 * in job's node_fail_list, and also satisfy the original
 	 * job schedselect
-         */
+	 */
 	if (prune_exec_vnode(pjob, NULL, vnl_fails, vnl_good, err_msg, LOG_BUF_SIZE) != 0) {
 		return (1);
 	}
@@ -2869,17 +2866,17 @@ void
 finish_exec(job *pjob)
 {
 	char			**argv = NULL;
-	char	   		buf[2*MAXPATHLEN+5];
-	pid_t      		cpid;
+	char			buf[(2 * MAXPATHLEN) + 5];
+	pid_t			cpid;
 	struct passwd		*pwdp;		/* for uid, shell, home dir */
-	int	   		i, j, k;
+	int			i, j, k;
 	pbs_socklen_t		len;
-	int	   		is_interactive = 0;
+	int			is_interactive = 0;
 	int			numthreads;
 	attribute		*pattr;
 	attribute		*pattri;
 #if SHELL_INVOKE == 1
-	int	   		pipe_script[] = {-1, -1};
+	int			pipe_script[] = {-1, -1};
 #endif
 	char			*pts_name;	/* name of slave pty */
 	char			*shell;
@@ -2902,7 +2899,7 @@ finish_exec(job *pjob)
 	int			port_out, port_err;
 	struct startjob_rtn	sjr;
 #if MOM_ALPS
-	struct startjob_rtn     ack;
+	struct startjob_rtn	ack;
 #endif
 	pbs_task			*ptask;
 	struct	array_strings	*vstrs;
@@ -3250,12 +3247,12 @@ finish_exec(job *pjob)
 #endif
 
 	/*
-	 ** Fork the child process that will become the job.
+	 * Fork the child process that will become the job.
 	 */
 	cpid = fork_me(-1);
 	if (cpid > 0) {
 		conn_t *conn = NULL;
-		char	*s, *d, holdbuf[2*MAXPATHLEN+5];
+		char	*s, *d, holdbuf[(2 * MAXPATHLEN) + 5];
 
 		/* the parent side, still the main man, uhh that is MOM */
 
@@ -3577,7 +3574,7 @@ finish_exec(job *pjob)
 	vtable.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		EXTRA_ENV_PTRS;
 	vtable.v_used   = 0;
-	vtable.v_envp = (char **)malloc(vtable.v_ensize * sizeof(char *));
+	vtable.v_envp = (char **)calloc(vtable.v_ensize, sizeof(char *));
 	if (vtable.v_envp == NULL) {
 		log_err(ENOMEM, __func__, "out of memory");
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -4836,10 +4833,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 		ptask->ti_qs.ti_sid = sjr.sj_session;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-#ifdef	_SX
-		ptask->ti_qs.ti_u.ti_ext.ti_parent = sjr.sj_parent;
-		ptask->ti_qs.ti_u.ti_ext.ti_jid = sjr.sj_jid;
-#endif
+
 		(void)task_save(ptask);
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
@@ -6115,13 +6109,7 @@ start_exec(job *pjob)
 		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags |= ATR_VFLAG_SET;
 
 		for (i = 0; i < 33; i += sizeof(long)) {
-			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long),
-#ifdef	_SX
-				(unsigned long)lrand48()
-#else
-				(unsigned long)random()
-#endif
-				);
+			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long), (unsigned long)random());
 		}
 		DBPRT(("===== COOKIE %s\n", tt))
 	}
@@ -6390,7 +6378,7 @@ fork_me(int conn)
 		(void)mom_close_poll();
 		net_close(conn);	/* close all but for the current */
 	} else if (pid < 0)
-		log_err(errno, "fork_me", "fork failed");
+		log_err(errno, __func__, "fork failed");
 
 	return (pid);
 }

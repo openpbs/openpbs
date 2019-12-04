@@ -626,11 +626,7 @@ parse_config(char *fname)
 									error = 1;
 								else {
 									int err;
-#ifdef  WIN32
-									err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
 									err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
 									if (err != 0) {
 										snprintf(errbuf, sizeof(errbuf),
 											"error: %s file has a non-secure file access, errno: %d", filename, err);
@@ -919,31 +915,27 @@ init_config()
 	memset(&conf, 0, sizeof(struct config));
 	memset(&cstat, 0, sizeof(struct status));
 
-	if ((conf.prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))
-		== NULL) {
-		log_err(errno, "init_config", "Error allocating memory");
+	if ((conf.prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info)
-		)) == NULL) {
-		log_err(errno, "init_config", "Error allocating memory");
+	if ((conf.non_prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.non_prime_sort, 0, (MAX_SORTS + 1) *
 		sizeof(struct sort_info));
 
-	if ((conf.prime_node_sort = malloc((MAX_SORTS + 1) *
-		sizeof(struct sort_info))) == NULL) {
-		log_err(errno, "init_config", "Error allocating memory");
+	if ((conf.prime_node_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_node_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_node_sort = malloc((MAX_SORTS + 1) *
-		sizeof(struct sort_info))) == NULL) {
-		log_err(errno, "init_config", "Error allocating memory");
+	if ((conf.non_prime_node_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.non_prime_node_sort, 0, (MAX_SORTS + 1) *

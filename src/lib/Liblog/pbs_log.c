@@ -855,7 +855,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 #endif
 	int    rc = 0;
 	FILE  *savlog;
-	static char slogbuf[LOG_BUF_SIZE];
+	char slogbuf[LOG_BUF_SIZE];
 	struct timeval tp;
 	char microsec_buf[8] = {0};
 

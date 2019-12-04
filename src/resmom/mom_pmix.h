@@ -35,74 +35,41 @@
  * trademark licensing policies.
  *
  */
-#ifndef	_QMGR_QUE_PUBLIC_H
-#define	_QMGR_QUE_PUBLIC_H
-/*
- *	This is a list of public queue attributes
- *
- *	FORMAT:
- *		attr1,
- * 		attr2,	<--- important the last has a comma after it
- *
- * 	This file will be used for the initialization of an array
- *
+/**
+ * @file	mom_pmix.h
  */
 
-ATTR_aclgren,
-ATTR_aclgroup,
-ATTR_aclhten,
-ATTR_aclhost,
-ATTR_acluren,
-ATTR_acluser,
-ATTR_chkptmin,
-ATTR_enable,
-ATTR_fromroute,
-ATTR_killdelay,
-ATTR_maxarraysize,
-ATTR_maxque,
-ATTR_maxgrprun,
-ATTR_maxrun,
-ATTR_maxuserrun,
-ATTR_maxuserres,
-ATTR_maxgroupres,
-ATTR_maxgrprunsoft,
-ATTR_maxuserrunsoft,
-ATTR_maxuserressoft,
-ATTR_maxgroupressoft,
-ATTR_NodeGroupKey,
-ATTR_p,
-ATTR_qtype,
-ATTR_rescavail,
-ATTR_rescdflt,
-ATTR_rescmax,
-ATTR_rescmin,
-ATTR_rndzretry,
-ATTR_routedest,
-ATTR_altrouter,
-ATTR_routeheld,
-ATTR_routewait,
-ATTR_routeretry,
-ATTR_routelife,
-ATTR_rsvexpdt,
-ATTR_rsvsync,
-ATTR_start,
-ATTR_ReqCredEnable,
-ATTR_ReqCred,
-ATTR_DefaultChunk,
-ATTR_max_run,
-ATTR_max_run_soft,
-ATTR_max_run_res,
-ATTR_max_run_res_soft,
-ATTR_max_queued,
-ATTR_max_queued_res,
-ATTR_queued_jobs_threshold,
-ATTR_queued_jobs_threshold_res,
-ATTR_backfill_depth,
-ATTR_comment,
-#ifdef NAS
-/* localmod 046 */
-ATTR_maxstarve,
-/* localmod 034 */
-ATTR_maxborrow,
+#ifndef _MOM_PMIX_H
+#define _MOM_PMIX_H
+#ifdef  __cplusplus
+extern "C" {
 #endif
-#endif	/* _QMGR_QUE_PUBLIC_H */
+
+#include <pbs_config.h>
+
+#ifdef PMIX
+
+#include <pmix_server.h>
+#include "job.h"
+
+extern void
+pbs_pmix_server_init(char *);
+
+extern void
+pbs_pmix_register_client(job *, int, char ***);
+
+extern void
+pbs_pmix_notify_exit(job *pjob, int exitstat, char *msg);
+
+extern int
+pbs_pmix_job_join_extra(job *, hnodent *);
+
+extern int
+pbs_pmix_job_clean_extra(job *);
+
+#endif /* PMIX */
+
+#ifdef  __cplusplus
+}
+#endif
+#endif /* _MOM_PMIX_H */

@@ -36,33 +36,17 @@
  *
  */
 
-/*
- *	This is a list of public node attributes
- *
- *	FORMAT:
- *		attr1,
- * 		attr2,	<--- important the last has a comma after it
- *
- * 	This file will be used for the initialization of an array.  Also,
- *	attributes listed here get printed on a qmgr print operation to be
- *	fed back into qmgr to restore a configuration.
- *
- *
- */
+#ifndef SRC_SCHEDULER_MULTI_THREADING_H_
+#define SRC_SCHEDULER_MULTI_THREADING_H_
 
-ATTR_NODE_Mom,
-ATTR_NODE_Port,
-ATTR_NODE_state,
-ATTR_NODE_Sharing,
-ATTR_p,
-ATTR_rescavail,
-ATTR_queue,
-ATTR_maxrun,
-ATTR_maxuserrun,
-ATTR_maxgrprun,
-ATTR_comment,
-ATTR_NODE_NoMultiNode,
-ATTR_NODE_resv_enable,
-ATTR_PNames,
-ATTR_NODE_ProvisionEnable,
-ATTR_NODE_current_aoe,
+#include "data_types.h"
+
+#define MT_CHUNK_SIZE_MIN 1024
+#define MT_CHUNK_SIZE_MAX 8192
+
+int init_multi_threading(int nthreads);
+void kill_threads(void);
+void *worker(void *);
+void queue_work_for_threads(th_task_info *task);
+
+#endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */

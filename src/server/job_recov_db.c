@@ -569,7 +569,7 @@ db_err:
  *	Save resv to database
  *
  * @see
- * 		job_or_resv_save_db, svr_migrate_data_from_fs
+ * 		job_or_resv_save_db
  *
  * @param[in]	presv - The resv to save
  * @param[in]   updatetype:

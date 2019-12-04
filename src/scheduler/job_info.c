@@ -122,6 +122,7 @@
 #include "resource.h"
 #include "server_info.h"
 #include "attribute.h"
+#include "multi_threading.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -493,187 +494,79 @@ static struct fc_translation_table fctt[] = {
 #define	ERR2COMMENT(code)	(fctt[(code) - RET_BASE].fc_comment)
 #define	ERR2INFO(code)		(fctt[(code) - RET_BASE].fc_info)
 
+
 /**
- * @brief
- * 		create an array of jobs in a specified queue
+ * @brief	pthread routine for querying a chunk of jobs
  *
- * @par NOTE:
- * 		anything reservation related needs to happen in
- *		query_reservations().  Since it is called after us,
- *		reservations aren't available at this point.
+ * @param[in,out]	data - th_data_query_jinfo object for the querying
  *
- * @param[in]	policy	-	policy info
- * @param[in]	pbs_sd	-	connection to pbs_server
- * @param[in]	qinfo	-	queue to get jobs from
- * @param[in]	pjobs   -	possible job array to add too
- * @param[in]	queue_name	-	the name of the queue to query (local/remote)
- *
- * @return	pointer to the head of a list of jobs
- * @par MT-safe: No
+ * @return void
  */
-resource_resv **
-query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name)
+void
+query_jobs_chunk(th_data_query_jinfo *data)
 {
-	/* pbs_selstat() takes a linked list of attropl structs which tell it
-	 * what information about what jobs to return.  We want all jobs which are
-	 * in a specified queue
-	 */
-	struct attropl opl = { NULL, ATTR_q, NULL, NULL, EQ };
-	static struct attropl opl2[2] = { { &opl2[1], ATTR_state, NULL, "Q", EQ},
-		{ NULL, ATTR_array, NULL, "True", NE} };
-	static struct attrl *attrib = NULL;
-	int i;
-
-	/* linked list of jobs returned from pbs_selstat() */
 	struct batch_status *jobs;
-
-	/* current job in jobs linked list */
-	struct batch_status *cur_job;
-
-	/* array of internal scheduler structures for jobs */
 	resource_resv **resresv_arr;
-
-	/* current job in resresv_arr array */
-	resource_resv *resresv;
-
-	/* number of jobs in resresv_arr */
-	int num_jobs = 0;
-	/* number of jobs in pjobs */
-	int num_prev_jobs;
-
-
-	/* how starving is a starving job */
-	long starve_num;
-
-	/* string to look up a group_info */
-	char fairshare_name[100];
-
-	/* used to add the resources_used to resource list */
-	resource_req *req;
-
+	server_info *sinfo;
+	queue_info *qinfo;
+	int sidx;
+	int eidx;
+	int num_jobs_chunk;
+	int i;
+	int jidx;
+	struct batch_status *cur_job;
 	schd_error *err;
-
-	/* used for pbs_geterrmsg() */
-	char *errmsg;
-
-	/* Determine start, end, and duration */
-	resource_req *walltime_req = NULL;
-	resource_req *soft_walltime_req = NULL;
-	time_t start;
-	time_t end;
 	time_t server_time;
-	long duration;
-	char *jobattrs[] = {
-			ATTR_p,
-			ATTR_qtime,
-			ATTR_qrank,
-			ATTR_etime,
-			ATTR_stime,
-			ATTR_N,
-			ATTR_state,
-			ATTR_substate,
-			ATTR_sched_preempted,
-			ATTR_comment,
-			ATTR_released,
-			ATTR_euser,
-			ATTR_egroup,
-			ATTR_project,
-			ATTR_resv_ID,
-			ATTR_altid,
-			ATTR_SchedSelect,
-			ATTR_array_id,
-			ATTR_node_set,
-			ATTR_array,
-			ATTR_array_index,
-			ATTR_topjob_ineligible,
-			ATTR_array_indices_remaining,
-			ATTR_execvnode,
-			ATTR_l,
-			ATTR_rel_list,
-			ATTR_used,
-			ATTR_accrue_type,
-			ATTR_eligible_time,
-			ATTR_estimated,
-			ATTR_c,
-			ATTR_r,
-			NULL
-	};
+	int pbs_sd;
+	status *policy;
 
-	if (policy == NULL || qinfo == NULL || queue_name == NULL)
-		return pjobs;
-
-	opl.value = queue_name;
-
-	if (qinfo->is_peer_queue)
-		opl.next = &opl2[0];
-
-	server_time = qinfo->server->server_time;
-
-	if (attrib == NULL) {
-		for (i = 0; jobattrs[i] != NULL; i++) {
-			struct attrl *temp_attrl = NULL;
-
-			temp_attrl = new_attrl();
-			temp_attrl->name = strdup(jobattrs[i]);
-			temp_attrl->next = attrib;
-			temp_attrl->value = "";
-			attrib = temp_attrl;
-		}
-	}
-
-	/* get jobs from PBS server */
-	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, "S")) == NULL) {
-		if (pbs_errno > 0) {
-			errmsg = pbs_geterrmsg(pbs_sd);
-			if (errmsg == NULL)
-				errmsg = "";
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, "job_info", 
-				 "pbs_selstat failed: %s (%d)", errmsg, pbs_errno);
-		}
-		return pjobs;
-	}
-
-	/* count the number of new jobs */
-	cur_job = jobs;
-	while (cur_job != NULL) {
-		num_jobs++;
-		cur_job = cur_job->next;
-	}
-
-	/* if there are previous jobs, count those too */
-	num_prev_jobs = count_array((void **)pjobs);
-	num_jobs += num_prev_jobs;
-
-
-	/* allocate enough space for all the jobs and the NULL sentinal */
-	if (pjobs != NULL)
-		resresv_arr = (resource_resv **)
-			realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1));
-	else
-		resresv_arr = (resource_resv **)
-			malloc(sizeof(resource_resv*) * (num_jobs + 1));
-
-	if (resresv_arr == NULL) {
-		log_err(errno, "query_jobs", "Error allocating memory");
-		pbs_statfree(jobs);
-		return NULL;
-	}
-	resresv_arr[num_prev_jobs] = NULL;
+	jobs = data->jobs;
+	sinfo = data->sinfo;
+	qinfo = data->qinfo;
+	pbs_sd = data->pbs_sd;
+	policy = data->policy;
+	sidx = data->sidx;
+	eidx = data->eidx;
+	num_jobs_chunk = eidx - sidx + 1;
 
 	err = new_schd_error();
 	if(err == NULL) {
-		free_resource_resv_array(resresv_arr);
-		return NULL;
+		log_err(errno, __func__, MEM_ERR_MSG);
+		data->error = 1;
+		return;
 	}
 
-	i = num_prev_jobs;
-	for (cur_job = jobs; cur_job != NULL; cur_job = cur_job->next) {
+	resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *) * (num_jobs_chunk + 1));
+	if (resresv_arr == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		data->error = 1;
+		return;
+	}
+	resresv_arr[0] = NULL;
+
+	server_time = sinfo->server_time;
+
+	/* Move to the linked list item corresponding to the 'start' index */
+	for (cur_job = jobs, i = 0; i < sidx && cur_job != NULL; cur_job = cur_job->next, i++)
+		;
+
+	for (i = sidx, jidx = 0; i <= eidx && cur_job != NULL; cur_job = cur_job->next, i++) {
 		char *selectspec = NULL;
-		if ((resresv = query_job(cur_job, qinfo->server, err)) ==NULL) {
+		resource_resv *resresv;
+		resource_req *req;
+		resource_req *walltime_req = NULL;
+		resource_req *soft_walltime_req = NULL;
+		char fairshare_name[100];
+		long duration;
+		time_t start;
+		time_t end;
+		long starve_num;
+
+		if ((resresv = query_job(cur_job, sinfo, err)) == NULL) {
+			data->error = 1;
 			free_schd_error(err);
-			pbs_statfree(jobs);
 			free_resource_resv_array(resresv_arr);
-			return NULL;
+			return;
 		}
 
 		/* do a validity check to see if the job is sane.  If we're peering and
@@ -701,7 +594,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		}
 
 		resresv->job->queue = qinfo;
-
 #ifdef NAS /* localmod 040 */
 		/* we modify nodect to be the same value for all jobs in queues that are
 		 * configured to ignore nodect key sorting, for two reasons:
@@ -758,11 +650,11 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			resresv->job->parent_job = find_resource_resv(resresv_arr, resresv->job->array_id);
 
 		/* For jobs that have an exec_vnode, we create a "select" based
-		 * on its exec_vnode.  We do this so if we ever need to run the job 
+		 * on its exec_vnode.  We do this so if we ever need to run the job
 		 * again, we will replace the job on the exact vnodes/resources it originally used.
 		 */
 		if (resresv->job->is_suspended && resresv->job->resreleased != NULL)
-			/* For jobs that are suspended and have resource_released, the "select" 
+			/* For jobs that are suspended and have resource_released, the "select"
 			* we create is based off of resources_released instead of the exec_vnode.
 			*/
 			selectspec = create_select_from_nspec(resresv->job->resreleased);
@@ -814,7 +706,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		else /* set to virtual job infinity: 5 years */
 			duration = JOB_INFINITY;
 
-
 		if (walltime_req != NULL)
 			resresv->hard_duration = (long)walltime_req->amount;
 		else if (resresv->min_duration != UNSPECIFIED)
@@ -844,7 +735,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 						convert_duration_to_str(duration, timebuf, 128);
 						update_job_attr(pbs_sd, resresv, ATTR_estimated, "soft_walltime", timebuf, NULL, UPDATE_NOW);
 					}
-				} else 
+				} else
 					/* Job has exceeded its walltime.  It'll soon be killed and be put into the exiting state.
 					 * Change the duration of the job to match the current situation and assume it will end in
 					 * now + EXITING_TIME
@@ -856,7 +747,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			resresv->end = end;
 		}
 		resresv->duration = duration;
-
 
 		if (qinfo->is_peer_queue) {
 			resresv->is_peer_ob = 1;
@@ -887,8 +777,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			sprintf(fairshare_name, "%s:%s", resresv->group, resresv->user);
 #endif /* localmod 058 */
 			if (resresv->server->fairshare !=NULL) {
-				resresv->job->ginfo = find_alloc_ginfo(fairshare_name,
-					resresv->server->fairshare->root);
+				resresv->job->ginfo = find_alloc_ginfo(fairshare_name, resresv->server->fairshare->root);
 			}
 			else
 				resresv->job->ginfo = NULL;
@@ -949,15 +838,293 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			update_job_can_not_run(pbs_sd, resresv, err);
 			clear_schd_error(err);
 		}
-
-		resresv_arr[i++] = resresv;
-		resresv_arr[i] = NULL;	/* Make array searchable */
-
+		resresv_arr[jidx++] = resresv;
 	}
-	resresv_arr[i] = NULL;
+
+	resresv_arr[jidx] = NULL;
+	data->oarr = resresv_arr;
+
+	free_schd_error(err);
+}
+
+/**
+ * @brief	Allocates th_data_query_jinfo for multi-threading of query_jobs
+ *
+ * @param[in]	policy	-	policy info
+ * @param[in]	pbs_sd	-	connection to pbs_server
+ * @param[in]	jobs	-	batch_status of jobs
+ * @param[in]	qinfo	-	queue to get jobs from
+ * @param[in]	sidx	-	start index for the jobs list for the thread
+ * @param[in]	eidx	-	end index for the jobs list for the thread
+ *
+ * @return th_data_query_jinfo *
+ * @retval a newly allocated th_data_query_jinfo object
+ * @retval NULL for malloc error
+ */
+static inline th_data_query_jinfo *
+alloc_tdata_jquery(status *policy, int pbs_sd, struct batch_status *jobs, queue_info *qinfo,
+		int sidx, int eidx)
+{
+	th_data_query_jinfo *tdata = NULL;
+
+	tdata = malloc(sizeof(th_data_query_jinfo));
+	if (tdata == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+	tdata->error = 0;
+	tdata->jobs = jobs;
+	tdata->oarr = NULL; /* Will be filled by the thread routine */
+	tdata->sinfo = qinfo->server;
+	tdata->qinfo = qinfo;
+	tdata->pbs_sd = pbs_sd;
+	tdata->policy = policy;
+	tdata->sidx = sidx;
+	tdata->eidx = eidx;
+
+	return tdata;
+}
+
+/**
+ * @brief
+ * 		create an array of jobs in a specified queue
+ *
+ * @par NOTE:
+ * 		anything reservation related needs to happen in
+ *		query_reservations().  Since it is called after us,
+ *		reservations aren't available at this point.
+ *
+ * @param[in]	policy	-	policy info
+ * @param[in]	pbs_sd	-	connection to pbs_server
+ * @param[in]	qinfo	-	queue to get jobs from
+ * @param[in]	pjobs   -	possible job array to add too
+ * @param[in]	queue_name	-	the name of the queue to query (local/remote)
+ *
+ * @return	pointer to the head of a list of jobs
+ * @par MT-safe: No
+ */
+resource_resv **
+query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name)
+{
+	/* pbs_selstat() takes a linked list of attropl structs which tell it
+	 * what information about what jobs to return.  We want all jobs which are
+	 * in a specified queue
+	 */
+	struct attropl opl = { NULL, ATTR_q, NULL, NULL, EQ };
+	static struct attropl opl2[2] = { { &opl2[1], ATTR_state, NULL, "Q", EQ},
+		{ NULL, ATTR_array, NULL, "True", NE} };
+	static struct attrl *attrib = NULL;
+	int i;
+
+	/* linked list of jobs returned from pbs_selstat() */
+	struct batch_status *jobs;
+
+	/* current job in jobs linked list */
+	struct batch_status *cur_job;
+
+	/* array of internal scheduler structures for jobs */
+	resource_resv **resresv_arr;
+
+	/* number of jobs in resresv_arr */
+	int num_jobs = 0;
+	/* number of jobs in pjobs */
+	int num_prev_jobs;
+	int num_new_jobs;
+
+	/* used for pbs_geterrmsg() */
+	char *errmsg;
+
+	/* for multi-threading */
+	int chunk_size;
+	int j;
+	int jidx;
+	th_data_query_jinfo *tdata = NULL;
+	th_task_info *task = NULL;
+	int num_tasks;
+	int th_err = 0;
+	resource_resv ***jinfo_arrs_tasks;
+	int tid;
+
+	char *jobattrs[] = {
+			ATTR_p,
+			ATTR_qtime,
+			ATTR_qrank,
+			ATTR_etime,
+			ATTR_stime,
+			ATTR_N,
+			ATTR_state,
+			ATTR_substate,
+			ATTR_sched_preempted,
+			ATTR_comment,
+			ATTR_released,
+			ATTR_euser,
+			ATTR_egroup,
+			ATTR_project,
+			ATTR_resv_ID,
+			ATTR_altid,
+			ATTR_SchedSelect,
+			ATTR_array_id,
+			ATTR_node_set,
+			ATTR_array,
+			ATTR_array_index,
+			ATTR_topjob_ineligible,
+			ATTR_array_indices_remaining,
+			ATTR_execvnode,
+			ATTR_l,
+			ATTR_rel_list,
+			ATTR_used,
+			ATTR_accrue_type,
+			ATTR_eligible_time,
+			ATTR_estimated,
+			ATTR_c,
+			ATTR_r,
+			NULL
+	};
+
+	if (policy == NULL || qinfo == NULL || queue_name == NULL)
+		return pjobs;
+
+	opl.value = queue_name;
+
+	if (qinfo->is_peer_queue)
+		opl.next = &opl2[0];
+
+	if (attrib == NULL) {
+		for (i = 0; jobattrs[i] != NULL; i++) {
+			struct attrl *temp_attrl = NULL;
+
+			temp_attrl = new_attrl();
+			temp_attrl->name = strdup(jobattrs[i]);
+			temp_attrl->next = attrib;
+			temp_attrl->value = "";
+			attrib = temp_attrl;
+		}
+	}
+
+	/* get jobs from PBS server */
+	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, "S")) == NULL) {
+		if (pbs_errno > 0) {
+			errmsg = pbs_geterrmsg(pbs_sd);
+			if (errmsg == NULL)
+				errmsg = "";
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, "job_info",
+					"pbs_selstat failed: %s (%d)", errmsg, pbs_errno);
+		}
+		return pjobs;
+	}
+
+	/* count the number of new jobs */
+	cur_job = jobs;
+	while (cur_job != NULL) {
+		num_jobs++;
+		cur_job = cur_job->next;
+	}
+	num_new_jobs = num_jobs;
+
+	/* if there are previous jobs, count those too */
+	num_prev_jobs = count_array((void **) pjobs);
+	num_jobs += num_prev_jobs;
+
+
+	/* allocate enough space for all the jobs and the NULL sentinal */
+	resresv_arr = (resource_resv **) realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1));
+
+	if (resresv_arr == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		pbs_statfree(jobs);
+		return NULL;
+	}
+	resresv_arr[num_prev_jobs] = NULL;
+
+	tid = *((int *) pthread_getspecific(th_id_key));
+	if (tid != 0 || num_threads <= 1) {
+		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
+		tdata = alloc_tdata_jquery(policy, pbs_sd, jobs, qinfo, 0, num_new_jobs - 1);
+		if (tdata == NULL) {
+			pbs_statfree(jobs);
+			return NULL;
+		}
+		query_jobs_chunk(tdata);
+
+		if (tdata->error || tdata->oarr == NULL) {
+			pbs_statfree(jobs);
+			return NULL;
+		}
+
+		for (j = 0, jidx = num_prev_jobs; tdata->oarr[j] != NULL; j++) {
+			resresv_arr[jidx++] = tdata->oarr[j];
+		}
+		free(tdata->oarr);
+		free(tdata);
+		resresv_arr[jidx] = NULL;
+	} else {
+		chunk_size = num_new_jobs / num_threads;
+		chunk_size = (chunk_size > MT_CHUNK_SIZE_MIN) ? chunk_size : MT_CHUNK_SIZE_MIN;
+		chunk_size = (chunk_size < MT_CHUNK_SIZE_MAX) ? chunk_size : MT_CHUNK_SIZE_MAX;
+		for (j = 0, num_tasks = 0; num_new_jobs > 0;
+				num_tasks++, j += chunk_size, num_new_jobs -= chunk_size) {
+			tdata = alloc_tdata_jquery(policy, pbs_sd, jobs, qinfo, j, j + chunk_size - 1);
+			if (tdata == NULL) {
+				th_err = 1;
+				break;
+			}
+			task = malloc(sizeof(th_task_info));
+			if (task == NULL) {
+				free(tdata);
+				log_err(errno, __func__, MEM_ERR_MSG);
+				th_err = 1;
+				break;
+			}
+			task->task_id = num_tasks;
+			task->task_type = TS_QUERY_JOB_INFO;
+			task->thread_data = (void*) tdata;
+
+			pthread_mutex_lock(&work_lock);
+			ds_enqueue(work_queue, (void*) task);
+			pthread_cond_signal(&work_cond);
+			pthread_mutex_unlock(&work_lock);
+		}
+		jinfo_arrs_tasks = malloc(num_tasks * sizeof(resource_resv**));
+		if (jinfo_arrs_tasks == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			th_err = 1;
+		}
+		/* Get results from worker threads */
+		for (i = 0; i < num_tasks;) {
+			pthread_mutex_lock(&result_lock);
+			while (ds_queue_is_empty(result_queue))
+				pthread_cond_wait(&result_cond, &result_lock);
+			while (!ds_queue_is_empty(result_queue)) {
+				task = (th_task_info*) ds_dequeue(result_queue);
+				tdata = (th_data_query_jinfo*) task->thread_data;
+				if (tdata->error)
+					th_err = 1;
+				jinfo_arrs_tasks[task->task_id] = tdata->oarr;
+				free(tdata);
+				free(task);
+				i++;
+			}
+			pthread_mutex_unlock(&result_lock);
+		}
+		if (th_err) {
+			pbs_statfree(jobs);
+			free_resource_resv_array(resresv_arr);
+			return NULL;
+		}
+		/* Assemble job info objects from various threads into the resresv_arr */
+		for (i = 0, jidx = num_prev_jobs; i < num_tasks; i++) {
+			if (jinfo_arrs_tasks[i] != NULL) {
+				for (j = 0; jinfo_arrs_tasks[i][j] != NULL; j++) {
+					resresv_arr[jidx++] = jinfo_arrs_tasks[i][j];
+				}
+				free(jinfo_arrs_tasks[i]);
+			}
+		}
+		resresv_arr[jidx] = NULL;
+		free(jinfo_arrs_tasks);
+	}
 
 	pbs_statfree(jobs);
-	free_schd_error(err);
 
 	return resresv_arr;
 }
@@ -1259,7 +1426,7 @@ new_job_info()
 	job_info *jinfo;
 
 	if ((jinfo = (job_info *) malloc(sizeof(job_info))) == NULL) {
-		log_err(errno, "new_job_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -3312,7 +3479,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				"Simulation: Preempted enough work to run job");
 			rc = sim_run_update_resresv(npolicy, nhjob, ns_arr, NO_ALLPART);
 			break;
-		} else if (old_errorcode == err->error_code && err->rdef != NULL) {
+		} else if (old_errorcode == err->error_code) {
+			if (err->rdef != NULL) {
 			/* If the error code matches, make sure the resource definition is also matching.
 			 * If the definition does not match that means the error is because of some other
 			 * resource and we need to filter again.
@@ -3320,9 +3488,13 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			 * by select_index_to_preempt function. This will make select_index_to_preempt
 			 * start looking at the jobs from the place it left in the previous call.
 			 */
-			if (old_rdef != err->rdef)
-				filter_again = 1;
-			else {
+				if (old_rdef != err->rdef)
+					filter_again = 1;
+				else {
+					skipto = indexfound;
+					filter_again = 0;
+				}
+			} else {
 				skipto = indexfound;
 				filter_again = 0;
 			}
@@ -3785,6 +3957,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 {
 	resource_resv *subjob;	/* job_info structure for new subjob */
 	range *tmp;			/* a tmp ptr to hold the queued_indices ptr */
+	schd_error *err;
 
 	if (array == NULL || array->job == NULL)
 		return NULL;
@@ -3792,16 +3965,22 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 	if (!array->job->is_array)
 		return NULL;
 
+	err = new_schd_error();
+	if (err == NULL)
+		return NULL;
+
 	/* so we don't dup the queued_indices for the subjob */
 	tmp = array->job->queued_subjobs;
 	array->job->queued_subjobs = NULL;
 
-	subjob = dup_resource_resv(array, array->server, array->job->queue);
+	subjob = dup_resource_resv(array, array->server, array->job->queue, err);
 
 	array->job->queued_subjobs = tmp;
 
-	if (subjob == NULL)
+	if (subjob == NULL) {
+		free_schd_error(err);
 		return NULL;
+	}
 
 	subjob->job->is_begin = 0;
 	subjob->job->is_array = 0;
@@ -3822,6 +4001,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 
 	subjob->rank =  get_sched_rank();
 
+	free_schd_error(err);
 	return subjob;
 }
 
@@ -4972,7 +5152,6 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 	struct resresv_filter *inp;
 	int index;
 	resource_req *req_scan;
-	struct status *policy;
 
 	if (arg == NULL || job == NULL)
 		return 0;
@@ -5116,16 +5295,8 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			if (job->job->queue != inp->job->job->queue)
 				return 0;
 		case INSUFFICIENT_SERVER_RESOURCE:
-			policy = inp->job->server->policy;
-			/* Check that the resource is not the one that gets translated to select.
-			 * If the control is here that means the resource must be present in resources
-			 * line and it must also be a RASSN resource because this error number is relevant
-			 * to RASSN resources only.
-			 */
-			if (resdef_exists_in_array(policy->resdef_to_check_rassn_select, inp->err->rdef) == 0) {
-				if (find_resource_req(job->resreq, inp->err->rdef))
-					return 1;
-			}
+			if (find_resource_req(job->resreq, inp->err->rdef))
+				return 1;
 			break;
 		default:
 			return 0;

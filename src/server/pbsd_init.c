@@ -73,14 +73,6 @@
 #include <sys/stat.h>
 #include <libutil.h>
 
-#ifdef WIN32
-
-#include <direct.h>
-#include <windows.h>
-#include <io.h>
-#include "win.h"
-
-#else	/* !WIN32 */
 #include <dirent.h>
 #include <grp.h>
 #include <netdb.h>
@@ -89,8 +81,6 @@
 #include <sys/param.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-
-#endif 	/* WIN32 */
 
 #include "libpbs.h"
 #include "pbs_ifl.h"
@@ -123,6 +113,7 @@
 #include "hook.h"
 #include "hook_func.h"
 #include "pbs_share.h"
+#include "pbs_undolr.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -203,10 +194,6 @@ extern pbs_db_conn_t	*svr_db_conn;
 
 extern	pbs_list_head	svr_allhooks;
 
-
-#ifdef WIN32
-extern int	stalone;
-#endif
 
 /* External Functions Called */
 
@@ -392,10 +379,10 @@ pbsd_init(int type)
 	int	 rc;
 	struct stat statbuf;
 	char	hook_msg[HOOK_MSG_SIZE];
-#ifndef WIN32
+
 	struct sigaction act;
 	struct sigaction oact;
-#endif
+
 	struct tm	*ptm;
 	pbs_db_job_info_t	dbjob;
 	pbs_db_resv_info_t	dbresv;
@@ -408,22 +395,15 @@ pbsd_init(int type)
 	int buf_len = 0;
 	pbs_sched *psched;
 
-#ifndef WIN32
 #ifdef  RLIMIT_CORE
 	int      char_in_cname = 0;
 #endif  /* RLIMIT_CORE */
-#endif  /* WIN32 */
-
-#ifdef WIN32
-	save_env();
-#endif
 
 	/* The following is code to reduce security risks                */
 
 	if (setup_env(pbs_conf.pbs_environment)==-1)
 		return (-1);
 
-#ifndef WIN32
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
 
@@ -440,10 +420,8 @@ pbsd_init(int type)
 		}
 	}
 #endif	/* RLIMIT_CORE */
-#endif  /* WIN32 */
 
-#if defined(RLIM64_INFINITY)
-#ifndef WIN32
+
 	{
 		struct rlimit64 rlimit;
 
@@ -477,85 +455,8 @@ pbsd_init(int type)
 		}
 #endif	/* RLIMIT_CORE */
 	}
-#endif	/* WIN32 */
-
-#else	/* setrlimit 32 bit */
-
-#ifndef WIN32
-	{
-		struct rlimit rlimit;
-		int curerror;
-
-		rlimit.rlim_cur = RLIM_INFINITY;
-		rlimit.rlim_max = RLIM_INFINITY;
-		(void)setrlimit(RLIMIT_CPU,   &rlimit);
-#ifdef	RLIMIT_RSS
-		(void)setrlimit(RLIMIT_RSS  , &rlimit);
-#endif	/* RLIMIT_RSS */
-#ifdef	RLIMIT_VMEM
-		(void)setrlimit(RLIMIT_VMEM  , &rlimit);
-#endif	/* RLIMIT_VMEM */
-#ifdef	RLIMIT_CORE
-		if (pbs_conf.pbs_core_limit) {
-			struct rlimit corelimit;
-			corelimit.rlim_max = RLIM_INFINITY;
-			if (strcmp("unlimited", pbs_conf.pbs_core_limit) == 0)
-				corelimit.rlim_cur = RLIM_INFINITY;
-			else if (char_in_cname == 1) {
-				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_WARNING,
-					__func__, msg_corelimit);
-				corelimit.rlim_cur = RLIM_INFINITY;
-			} else
-#ifdef	_SX
-				corelimit.rlim_cur =
-					atol(pbs_conf.pbs_core_limit);
-#else
-				corelimit.rlim_cur =
-					(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
-			(void)setrlimit(RLIMIT_CORE, &corelimit);
-		}
-#endif	/* RLIMIT_CORE */
-#ifndef linux
-		(void)setrlimit(RLIMIT_FSIZE, &rlimit);
-		(void)setrlimit(RLIMIT_DATA,  &rlimit);
-		(void)setrlimit(RLIMIT_STACK, &rlimit);
-#else
-		if (getrlimit(RLIMIT_STACK, &rlimit) != -1) {
-			if((rlimit.rlim_cur != RLIM_INFINITY) && (rlimit.rlim_cur < MIN_STACK_LIMIT)) {
-				rlimit.rlim_cur = MIN_STACK_LIMIT;
-				rlimit.rlim_max = MIN_STACK_LIMIT;
-				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
-					curerror = errno;
-					sprintf(log_buffer, "Stack limit setting failed");
-					log_err(curerror, __func__, log_buffer);
-					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
-					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
-					exit(1);
-				}
-			}
-		} else {
-			curerror = errno;
-			sprintf(log_buffer, "Getting current Stack limit failed");
-			log_err(curerror, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
-			exit(1);
-		}
-#endif  /* not linux */
-	}
-#endif	/* WIN32 */
-#endif	/* !RLIM64_INFINITY */
 
 	/* 1. set up to catch or ignore various signals */
-
-#ifdef WIN32
-	signal(SIGABRT, stop_me);
-	signal(SIGILL, stop_me);
-	signal(SIGINT, stop_me);
-	signal(SIGSEGV, stop_me);
-	signal(SIGTERM, stop_me);
-#else
 	sigemptyset(&act.sa_mask);
 	act.sa_flags   = 0;
 	act.sa_handler = change_logs;
@@ -596,37 +497,22 @@ pbsd_init(int type)
 		log_err(errno, __func__, "sigaction for PIPE");
 		return (2);
 	}
+	if (sigaction(SIGUSR2, &act, &oact) != 0) {
+		log_err(errno, __func__, "sigaction for USR2");
+		return (2);
+	}	
+
+#ifdef PBS_UNDOLR_ENABLED	
+	act.sa_handler = catch_sigusr1;
+#endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
 	}
-	if (sigaction(SIGUSR2, &act, &oact) != 0) {
-		log_err(errno, __func__, "sigaction for USR2");
-		return (2);
-	}
-#endif 	/* WIN32 */
 
 	/* 2. check security and set up various global variables we need */
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef WIN32
-	/* For windows, DO NOT check full path - allow Windows system */
-	/* to put in appropriate defaults for permission */
-	rc  = chk_file_sec(path_jobs,   1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-
-	/* my version of lstat() using Windows call is more reliable */
-	if (lstat(path_users, &statbuf) != 0) {
-		(void)CreateDirectory(path_users, 0);
-		secure_file(path_users, NULL, 0);
-	}
-
-	rc |= chk_file_sec(path_users,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-	rc |= chk_file_sec(path_hooks,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-	rc |= chk_file_sec(path_hooks_workdir,  1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-	rc |= chk_file_sec(path_spool,  1, 1, 0, 0);	/* allows others to write */
-	rc |= chk_file_sec(path_acct,	1, 1, WRITES_MASK^FILE_WRITE_EA, 0);
-	rc |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-#else
 	rc  = chk_file_sec(path_jobs,   1, 0, S_IWGRP|S_IWOTH, 1);
 	if (stat(path_users, &statbuf) != 0)
 		(void)mkdir(path_users, 0750);
@@ -636,7 +522,7 @@ pbsd_init(int type)
 	rc |= chk_file_sec(path_spool,  1, 1, 0, 0);
 	rc |= chk_file_sec(path_acct,	1, 1, S_IWGRP|S_IWOTH, 0);
 	rc |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 1);
-#endif	/* WIN32 */
+
 	if (rc) {
 		log_err(-1, __func__, "chk_file_sec has a failure");
 		return (3);
@@ -666,10 +552,7 @@ pbsd_init(int type)
 	/*    and sched db					  */
 	rc =svr_recov_db();
 	if ((rc != 0) && (type != RECOV_CREATE)) {
-#ifdef WIN32
-		if (stalone == 1)
-#endif
-			need_y_response(type, "no server database exists");
+		need_y_response(type, "no server database exists");
 		type = RECOV_CREATE;
 	}
 	if (type != RECOV_CREATE) {
@@ -764,10 +647,7 @@ pbsd_init(int type)
 		}
 	} else {	/* init type is "create" */
 		if (rc == 0) {		/* server was loaded */
-#ifdef WIN32
-			if (stalone == 1)
-#endif
-				need_y_response(type, "server database exists");
+			need_y_response(type, "server database exists");
 
 			/* reinitialize schema by dropping PBS schema */
 			if (pbs_db_truncate_all(svr_db_conn) == -1) {
@@ -792,10 +672,6 @@ pbsd_init(int type)
 
 	fd = open(path_usedlicenses, O_RDONLY, 0400);
 
-#ifdef WIN32
-	if (fd != -1)
-		setmode(fd, O_BINARY);
-#endif
 	if ((fd == -1) ||
 		(read(fd, &usedlicenses, sizeof(usedlicenses)) !=
 		sizeof(usedlicenses))) {
@@ -1201,13 +1077,7 @@ pbsd_init(int type)
 		return (-1);
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef WIN32
-	secure_file(path_track, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-	setmode(fd, O_BINARY);
-	if (chk_file_sec(path_track,  0, 0, WRITES_MASK^FILE_WRITE_EA, 0) != 0)
-#else
 	if (chk_file_sec(path_track,  0, 0, S_IWGRP|S_IWOTH, 0) != 0)
-#endif
 		return (-1);
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
@@ -1273,13 +1143,7 @@ pbsd_init(int type)
 		return (-1);
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef WIN32
-	secure_file(path_prov_track, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-	setmode(fd, O_BINARY);
-	if (chk_file_sec(path_prov_track,  0, 0, WRITES_MASK^FILE_WRITE_EA, 0) != 0)
-#else
 	if (chk_file_sec(path_prov_track,  0, 0, S_IWGRP|S_IWOTH, 0) != 0)
-#endif
 		return (-1);
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
@@ -1334,11 +1198,7 @@ pbsd_init(int type)
 
 		for (i = 0; i < server.sv_provtracksize; i++) {
 			server.sv_prov_track[i].pvtk_mtime = 0;
-#ifdef	WIN32
-			server.sv_prov_track[i].pvtk_pid = INVALID_HANDLE_VALUE;
-#else
 			server.sv_prov_track[i].pvtk_pid = -1;
-#endif
 			server.sv_prov_track[i].pvtk_vnode = NULL;
 			server.sv_prov_track[i].pvtk_aoe_req = NULL;
 			server.sv_prov_track[i].prov_vnode_info = NULL;
@@ -1429,14 +1289,6 @@ pbsd_init(int type)
 	/* trigger degraded reservations on offlined nodes */
 	degrade_offlined_nodes_reservations();
 
-#ifdef WIN32
-	/* Under WIN32, create structure that will be used to track child processes. */
-	if (initpids() == 0) {
-		log_err(-1, __func__, "Creating pid handles table failed!");
-		return (-1);
-	}
-#endif
-
 	hook_track_recov();
 
 	/* Check to see that jobs in the maintenance_jobs attribute on a node still exist
@@ -1508,9 +1360,7 @@ pbsd_init(int type)
 	send_rescdef(0);
 	hook_track_save(NULL, -1); /* refresh path_hooks_tracking file */
 
-#ifndef WIN32
 	(void)set_task(WORK_Immed, time_now, memory_debug_log, NULL);
-#endif /* !WIN32 */
 
 	return (0);
 }
@@ -1664,10 +1514,7 @@ pbsd_init_job(job *pjob, int type)
 	/* now based on the initialization type */
 
 	if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
-#ifdef WIN32
-		if (stalone == 1)
-#endif
-			need_y_response(type, "jobs exists");
+		need_y_response(type, "jobs exists");
 		init_abt_job(pjob);
 
 	} else {

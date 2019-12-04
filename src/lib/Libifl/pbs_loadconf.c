@@ -121,7 +121,9 @@ struct pbs_config pbs_conf = {
 	0,					/* default comm logevent mask */
 	4,					/* default number of threads */
 	NULL,					/* mom short name override */
-	0					/* high resolution timestamp logging */
+	NULL,					/* pbs_lr_save_path */
+	0,					/* high resolution timestamp logging */
+	0					/* number of scheduler threads */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
@@ -560,10 +562,19 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
 				free(pbs_conf.pbs_mom_node_name);
 				pbs_conf.pbs_mom_node_name = strdup(conf_value);
+			} else if (!strcmp(conf_name, PBS_CONF_LR_SAVE_PATH)) {
+				free(pbs_conf.pbs_lr_save_path);
+				if ((pbs_conf.pbs_lr_save_path = strdup(conf_value)) == NULL) {
+					goto err;
+				}
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_SCHED_THREADS)) {
+				if (sscanf(conf_value, "%u", &uvalue) == 1)
+					pbs_conf.pbs_sched_threads = uvalue;
 			}
 #ifdef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_REMOTE_VIEWER)) {
@@ -798,6 +809,10 @@ __pbs_loadconf(int reload)
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
 	}
+	if ((gvalue = getenv(PBS_CONF_SCHED_THREADS)) != NULL) {
+		if (sscanf(gvalue, "%u", &uvalue) == 1)
+			pbs_conf.pbs_sched_threads = uvalue;
+	}
 
 #ifdef WIN32
 	if ((gvalue = getenv(PBS_CONF_REMOTE_VIEWER)) != NULL) {
@@ -1022,6 +1037,10 @@ err:
 	if (pbs_conf.pbs_core_limit) {
 		free(pbs_conf.pbs_core_limit);
 		pbs_conf.pbs_core_limit = NULL;
+	}
+	if (pbs_conf.pbs_lr_save_path) {
+		free(pbs_conf.pbs_lr_save_path);
+		pbs_conf.pbs_lr_save_path = NULL;
 	}
 
 	pbs_conf.load_failed = 1;
