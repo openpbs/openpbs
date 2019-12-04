@@ -249,6 +249,7 @@ worker(void *tid)
 	pthread_setspecific(th_id_key, tid);
 	ntid = *(int *)tid;
 
+	/* Block HUPs, if we ever unblock this, we'll need to modify 'restart()' to handle MT */
 	sigemptyset(&set);
 	sigaddset(&set, SIGHUP);
 
