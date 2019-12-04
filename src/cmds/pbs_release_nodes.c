@@ -51,8 +51,9 @@
 #include <pbs_version.h>
 
 #define USAGE	"usage: pbs_release_nodes [-j job_identifier] host_or_vnode1 host_or_vnode2 ...\n"
-#define USAGE2	"usage: pbs_release_nodes [-j job_identifier] -a\n"
-#define USAGE3	"       pbs_release_nodes --version\n"
+#define USAGE2	"       pbs_release_nodes [-j job_identifier] -a\n"
+#define USAGE3	"       pbs_release_nodes [-j job_identifier] -k <select string>\n"
+#define USAGE4	"       pbs_release_nodes --version\n"
 
 int
 main(int argc, char **argv, char **envp) /* pbs_release_nodes */
@@ -65,6 +66,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 	char job_id_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
 	char rmt_server[MAXSERVERNAME];
+	char *keep_opt = NULL;
 	int  len;
 	char *node_list = NULL;
 	int connect;
@@ -72,7 +74,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 	int k;
 	int all_opt = 0;
 
-#define GETOPT_ARGS "j:a"
+#define GETOPT_ARGS "j:k:a"
 
 	/*test for real deal or just version and exit*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -90,6 +92,9 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 				strncpy(job_id, optarg, PBS_MAXCLTJOBID);
 				job_id[PBS_MAXCLTJOBID-1] = '\0';
 				break;
+			case 'k':
+				keep_opt = optarg;
+				break;
 			case 'a':
 				all_opt = 1;
 				break;
@@ -104,12 +109,23 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 		job_id[PBS_MAXCLTJOBID-1] = '\0';
 	}
 
+	if (all_opt && keep_opt) {
+		errflg++;
+		fprintf(stderr, "pbs_release_nodes: -a and -k options cannot be used together\n");
+	}
+
+	if ((optind != argc) && keep_opt) {
+		errflg++;
+		fprintf(stderr, "pbs_release_nodes: cannot supply node list with -k option\n");
+	}
+
 	if (errflg ||
-		((optind == argc) && !all_opt) ||
+		((optind == argc) && !(all_opt || keep_opt)) ||
 		((optind != argc) && all_opt) ) {
 		fprintf(stderr, USAGE);
 		fprintf(stderr, USAGE2);
 		fprintf(stderr, USAGE3);
+		fprintf(stderr, USAGE4);
 		exit(2);
 	}
 
@@ -159,7 +175,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 			break;
 		}
 
-		stat = pbs_relnodesjob(connect, job_id_out, node_list, NULL);
+		stat = pbs_relnodesjob(connect, job_id_out, node_list, keep_opt);
 		if (stat && (pbs_errno == PBSE_UNKJOBID)) {
 			if (locate_job(job_id_out, server_out, rmt_server)) {
 				/*

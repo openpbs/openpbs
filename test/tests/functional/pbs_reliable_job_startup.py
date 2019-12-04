@@ -345,14 +345,14 @@ class TestPbsReliableJobStartup(TestFunctional):
         FIB37 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                              'pbs_python') + \
             ' -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(37)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(37))\\\")"'
 
         self.fib37_value = 24157817
 
         FIB40 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                              'pbs_python') + \
             ' -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
-return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(40)\\\")"'
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(40))\\\")"'
 
         # job submission arguments
         self.script = {}

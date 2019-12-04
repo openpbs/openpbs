@@ -210,8 +210,10 @@ static char *pbs_o_que = "PBS_O_QUEUE=";
  * 		validate_perm_res_in_select -	checks to see if the resources
  * 		appearing in select spec 'val' are  valid based on
  * 		"caller's" permission level (i.e. resc_access_perm).
+ * 		optionally checks if the resources exist based on val_exist parameter
  *
  * @param[in]	val	-	select spec 'val'
+ * @param[in]	val_exist	-	validate if res exists in server def
  *
  * @return	error code
  * @retval	0	: success
@@ -224,8 +226,8 @@ static char *pbs_o_que = "PBS_O_QUEUE=";
  *		So upon PBS_INVALSELECTRES return, be sure to
  *		issue req_reject().
 */
-static int
-validate_perm_res_in_select(char *val)
+int
+validate_perm_res_in_select(char *val, int val_exist)
 {
 	char        *chunk;
 	int 	     nchk;
@@ -261,6 +263,10 @@ validate_perm_res_in_select(char *val)
 							return PBSE_SYSTEM;
 						return PBSE_INVALSELECTRESC;
 					}
+				} else if (val_exist) {
+					if ((resc_in_err = strdup(pkvp[j].kv_keyw)) == NULL)
+						return PBSE_SYSTEM;
+					return PBSE_UNKRESC;
 				}
 			} /* for */
 		} /* if */
@@ -351,7 +357,7 @@ req_quejob(struct batch_request *preq)
 			((psatl->al_value != NULL) &&
 			(psatl->al_value[0] != '\0'))) {
 
-			if ((rc=validate_perm_res_in_select(psatl->al_value)) != 0) {
+			if ((rc = validate_perm_res_in_select(psatl->al_value, 0)) != 0) {
 				req_reject(rc, 0, preq);
 				return;
 			}

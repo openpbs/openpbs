@@ -202,6 +202,42 @@ char *extend;
 	if (pbs_client_thread_init_thread_context() != 0)
 		return pbs_errno;
 
+	/* first verify the resource list in keep_select option */
+	if (extend) {
+		struct attrl *attrib = NULL;
+		char ebuff[200], *erp, *emsg = NULL;
+		int i;
+		struct pbs_client_thread_connect_context *con;
+		if ((i = set_resources(&attrib, extend, 1, &erp))) {
+			if (i > 1) {
+				snprintf(ebuff, sizeof(ebuff), "illegal -k value: %s\n", pbs_parse_err_msg(i));
+				emsg = strdup(ebuff);
+			} else
+				emsg = strdup("illegal -k value\n");
+			pbs_errno = PBSE_INVALSELECTRESC;
+		} else {
+			if (!attrib || strcmp(attrib->resource, "select")) {
+				emsg = strdup("only a \"select=\" string is valid in -k option\n");
+				pbs_errno = PBSE_IVALREQ;
+			} else
+				pbs_errno = PBSE_NONE;
+		}
+		if (pbs_errno) {
+			if ((con = pbs_client_thread_find_connect_context(c))) {
+				if (con->th_ch_errtxt)
+					free(con->th_ch_errtxt);
+				con->th_ch_errtxt = emsg;
+				con->th_ch_errno = pbs_errno;
+			} else
+				connection[c].ch_errtxt = emsg;
+			return pbs_errno;
+		}
+		rc = pbs_verify_attributes(c, PBS_BATCH_RelnodesJob,
+			MGR_OBJ_JOB, MGR_CMD_NONE, (struct attropl *) attrib);
+		if (rc)
+			return rc;
+	}
+
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)

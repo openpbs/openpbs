@@ -12341,6 +12341,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	r_input.execvnode = execvnode;
 	r_input.exechost = exechost;
 	r_input.exechost2 = exechost2;
+	r_input.schedselect = schedselect;
 	r_input.p_new_exec_vnode = &new_exec_vnode;
 	r_input.p_new_exec_host[0] = &new_exec_host;
 	r_input.p_new_exec_host[1] = &new_exec_host2;
@@ -12349,7 +12350,6 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	if (vnodelist != NULL) {
 		relnodes_input_vnodelist_init(&r_input_vnlist);
 		r_input_vnlist.vnodelist = vnodelist;
-		r_input_vnlist.schedselect = schedselect;
 		rc = pbs_release_nodes_given_nodelist(&r_input, &r_input_vnlist, err_msg, LOG_BUF_SIZE);
 		snprintf(log_buffer, sizeof(log_buffer), "release_nodes_given_nodelist: AFT rc=%d jobid=%s vnodelist=%s execvnode=%s exechost=%s exechost2=%s schedselect=%s new_exec_vnode=%s new_exec_host=%s new_exec_host2=%s new_schedselect=%s", rc, jobid, vnodelist, execvnode, exechost?exechost:"null", exechost2?exechost2:"null", schedselect, new_exec_vnode, new_exec_host, new_exec_host2, new_schedselect);
 		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);

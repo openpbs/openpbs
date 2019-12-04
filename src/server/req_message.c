@@ -78,7 +78,7 @@ static void post_message_req(struct work_task *);
 extern char *msg_messagejob;
 
 extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
-
+extern int  validate_perm_res_in_select(char *val, int val_exist);
 
 
 /**
@@ -271,11 +271,12 @@ req_relnodesjob(struct batch_request *preq)
 {
 	int             jt;		/* job type */
 	job		*pjob;
-	int		rc;
+	int		rc = PBSE_NONE;
 	char		*jid;
 	int		i, offset;
 	char		*nodeslist = NULL;
 	char		msg[LOG_BUF_SIZE];
+	char		*keep_select = NULL;
 
  
 	if (preq == NULL)
@@ -341,7 +342,18 @@ req_relnodesjob(struct batch_request *preq)
 	if ((nodeslist != NULL) && (nodeslist[0] == '\0')) {
 		nodeslist = NULL;
 	}
-	rc = free_sister_vnodes(pjob, nodeslist, msg, LOG_BUF_SIZE, preq);
+
+	if (preq->rq_extend && *preq->rq_extend) {
+		keep_select = strchr(preq->rq_extend, '=');
+		if (!keep_select || !*(keep_select+1))
+			rc = PBSE_INVALSELECTRESC;
+		if (rc || (rc = validate_perm_res_in_select(++keep_select, 1))) {
+			req_reject(rc, 0, preq);
+			return;
+		}
+	}
+
+	rc = free_sister_vnodes(pjob, nodeslist, keep_select, msg, LOG_BUF_SIZE, preq);
 
 	if (rc != 0) {
 		reply_text(preq, PBSE_SYSTEM, msg);

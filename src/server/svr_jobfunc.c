@@ -5907,6 +5907,86 @@ send_job_exec_update_exit:
 }
 
 /**
+ *
+ * @brief
+ *	Extracts mom hostnames from exechostx and adds it to list
+ *
+ * @param[in/out]	to_head - destination reliable_job_node list
+ * @param[in]	exechostx - string in exechost format
+ *
+ * @return 	void
+ */
+static void
+populate_mom_list(pbs_list_head *to_head, char *exechostx)
+{
+	char *hostn = NULL, *last = NULL, *peh;
+	int  hasprn = 0;
+
+	if ((to_head == NULL) || (exechostx == NULL) || !*exechostx)
+		return;
+
+	peh = strdup(exechostx);
+	if (peh == NULL) {
+		log_err(errno, __func__, "strdup error");
+		return;
+	}
+
+	CLEAR_HEAD((*to_head));
+
+	for (hostn = parse_plus_spec_r(peh, &last, &hasprn);
+			hostn;
+			hostn = parse_plus_spec_r(last, &last, &hasprn) ) {
+		if (reliable_job_node_add(to_head, strtok(hostn, ":/")) == -1) {
+			free(peh);
+			return;
+		}
+	}
+	free(peh);
+	return;
+}
+
+/**
+ * @brief
+ *	returns a copy of partial select string representing the MS (first) chunk
+ *	Note - caller to free the returned string pointer
+ *
+ * @param[in]		select_str - pointer to complete schedselect string
+ *
+ * @return char *
+ * @retval ptr	pointer to malloc'd string containing ms (first) chunk's select str
+ *
+ * @note
+ * caller to free the returned string pointer
+*/
+static char *
+get_ms_select_chunk(char *select_str)
+{
+	char *slast, *selbuf, *psubspec, *retval = NULL;
+	int   hpn;
+
+    if (select_str == NULL) {
+            log_err(-1, __func__, "bad param passed");
+	return (NULL);
+    }
+
+    selbuf = strdup(select_str);
+    if (selbuf == NULL) {
+            log_err(errno, __func__, "strdup fail");
+	return (NULL);
+    }
+    psubspec = parse_plus_spec_r(selbuf, &slast, &hpn);
+
+    if (psubspec) {
+    	while(*psubspec && !isalpha(*(psubspec++))) ; /* one line loop */
+
+    	if (!(retval = strdup(--psubspec)))
+    		log_err(errno, __func__, "strdup fail");
+    }
+
+    free(selbuf);
+    return retval;
+}
+/**
  * @brief
  *	Recreates the pjob's exec_vnode, updating at the same time
  *	its corresponding exec_host and exec_host2 attributes
@@ -5917,6 +5997,9 @@ send_job_exec_update_exit:
  *				freed whose parent mom is a sister mom.
  *				if NULL, releases all the sister
  *				vnodes assigned to 'pjob'
+ * @param[in]		keep_select - non-NULL means it's a select string that
+ *				describes vnodes to be kept while freeing all other vnodes
+ *				assigned to 'pjob' whose parent mom is a sister mom.
  * @param[out]  err_msg - if function returns != 0 (failure), return
  *			  any error message in this buffer.
  * @param[int]	err_msg_sz - size of 'err_msg' buf.
@@ -5925,7 +6008,7 @@ send_job_exec_update_exit:
  * @reval 1	for error
 */
 int
-recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
+recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
 						int err_msg_sz)
 {
 	char	*exec_vnode = NULL;
@@ -5944,6 +6027,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	int		rc = 1;
 	relnodes_input_t		r_input;
 	relnodes_input_vnodelist_t	r_input_vnlist;
+	relnodes_input_select_t r_input_keep_select;
+	pbs_list_head	succeeded_mom_list;
 
 	if (pjob == NULL) {
 		log_err(-1, __func__, "bad job parameter");
@@ -5995,24 +6080,39 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	r_input.execvnode = exec_vnode;
 	r_input.exechost = exec_host;
 	r_input.exechost2 = exec_host2;
+	r_input.schedselect = schedselect;
 	r_input.p_new_exec_vnode = &new_exec_vnode;
 	r_input.p_new_exec_host[0] = &new_exec_host;
 	r_input.p_new_exec_host[1] = &new_exec_host2;
 	r_input.p_new_schedselect = &new_select;
 
-	relnodes_input_vnodelist_init(&r_input_vnlist);
-	r_input_vnlist.vnodelist = vnodelist;
-	r_input_vnlist.schedselect = schedselect;
-	r_input_vnlist.deallocated_nodes_orig = deallocated_execvnode;
-	r_input_vnlist.p_new_deallocated_execvnode = &new_deallocated_execvnode;
+	if (keep_select == NULL) {
+		relnodes_input_vnodelist_init(&r_input_vnlist);
+		r_input_vnlist.vnodelist = vnodelist;
+		r_input_vnlist.deallocated_nodes_orig = deallocated_execvnode;
+		r_input_vnlist.p_new_deallocated_execvnode = &new_deallocated_execvnode;
 
-	rc = pbs_release_nodes_given_nodelist(&r_input, &r_input_vnlist, err_msg, err_msg_sz);
+		rc = pbs_release_nodes_given_nodelist(&r_input, &r_input_vnlist, err_msg, err_msg_sz);
+	} else {
+		int select_str_sz = 0;
+		relnodes_input_select_init(&r_input_keep_select);
+		r_input_keep_select.select_str = get_ms_select_chunk(schedselect);  /* has to be freed later */
+		select_str_sz = strlen(r_input_keep_select.select_str) + 1;
+		pbs_strcat(&r_input_keep_select.select_str, &select_str_sz, "+");
+		pbs_strcat(&r_input_keep_select.select_str, &select_str_sz, keep_select);
+		populate_mom_list(&succeeded_mom_list, exec_host2);
+		r_input_keep_select.succeeded_mom_list = &succeeded_mom_list;
+
+		rc = pbs_release_nodes_given_select(&r_input, &r_input_keep_select, err_msg, err_msg_sz);
+		free(r_input_keep_select.select_str);
+		reliable_job_node_free(&succeeded_mom_list);
+	}
 
 	if (rc != 0) {
 		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_exec_vnode[0] != '\0') {
+	if (new_exec_vnode && (new_exec_vnode[0] != '\0')) {
 
 		if (strcmp(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str,
 						 new_exec_vnode) == 0) {
@@ -6056,9 +6156,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		(void)update_resources_list(pjob, ATTR_l,
 			JOB_ATR_resource, new_exec_vnode, INCR, 0,
 				JOB_ATR_resource_orig);
+	} else {
+		log_err(-1, __func__, "new_exec_vnode is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_deallocated_execvnode[0] != '\0') {
+	if ((keep_select == NULL) && new_deallocated_execvnode && (new_deallocated_execvnode[0] != '\0')) {
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
 			NULL,
@@ -6067,7 +6170,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		pjob->ji_modified = 1;
 	}
 
-	if (new_exec_host[0] != '\0') {
+	if (new_exec_host && (new_exec_host[0] != '\0')) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
@@ -6090,9 +6193,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 			NULL,
 			new_exec_host);
 		pjob->ji_modified = 1;
+	} else {
+		log_err(-1, __func__, "new_exec_host is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_exec_host2[0] != '\0') {
+	if (new_exec_host2 && (new_exec_host2[0] != '\0')) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
@@ -6100,9 +6206,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 			NULL,
 			new_exec_host2);
 		pjob->ji_modified = 1;
+	} else {
+		log_err(-1, __func__, "new_exec_host2 is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_select[0] != '\0') {
+	if (new_select && (new_select[0] != '\0')) {
 		prdefsl = find_resc_def(svr_resc_def, "select",
 							svr_resc_size);
 		/* re-generate "select" resource */
@@ -6140,13 +6249,21 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
 					&pjob->ji_wattr[(int)JOB_ATR_resource]);
 
+	} else {
+		log_err(-1, __func__, "new_select is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 recreate_exec_vnode_exit:
-	free(new_exec_vnode);
-	free(new_exec_host);
-	free(new_exec_host2);
-	free(new_select);
-	free(new_deallocated_execvnode);
+	if (new_exec_vnode)
+		free(new_exec_vnode);
+	if (new_exec_host)
+		free(new_exec_host);
+	if (new_exec_host2)
+		free(new_exec_host2);
+	if (new_select)
+		free(new_select);
+	if (new_deallocated_execvnode)
+		free(new_deallocated_execvnode);
 
 	return (rc);
 }
