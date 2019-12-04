@@ -5018,6 +5018,8 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 	char    *p;
 	char	hook_name[MAXPATHLEN+1];
 	hook	*phook;
+	job	*pjob = NULL;
+	int	hook_running = 0;
 
 	p = strstr(preq->rq_ind.rq_hookfile.rq_filename, HOOK_FILE_SUFFIX);
 	if ((p == NULL) || (strcmp(p, HOOK_FILE_SUFFIX) != 0)) {
@@ -5030,7 +5032,16 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 		strcat(p, HOOK_FILE_SUFFIX);
 		if ((phook = find_hook(hook_name)) != NULL) {
 #ifndef WIN32
-			if (phook->event & HOOK_EVENT_EXECJOB_END) {
+			pjob = (job *)GET_NEXT(svr_alljobs);
+			while (pjob) {
+				/* See if any asynchronous hook is running */
+				if (pjob->ji_hook_running_bg_on) {
+					hook_running = 1;
+					break;
+				}
+				pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+			}
+			if (hook_running && phook->event & HOOK_EVENT_EXECJOB_END) {
 				/** 
 				 * This event runs hook in the background,
 				 * and it's deferred task created while

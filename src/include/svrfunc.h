@@ -187,6 +187,7 @@ extern job  *create_subjob(job *parent, char *newjid, int *rc);
 extern char *cvt_range(struct ajtrkhd *t, int state);
 extern job  *find_arrayparent(char *subjobid);
 extern int   get_subjob_state(job *parent, int offset);
+extern int   get_subjob_discarding(job *parent, int offset);
 extern char *mk_subjob_id(job *parent, int offset);
 extern void  set_subjob_tblstate(job *, int, int);
 extern void  update_subjob_state(job *, int newstate);

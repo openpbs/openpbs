@@ -1127,13 +1127,14 @@ is_request(int stream, int version)
 									JOB_SVFLG_HERE)	/* MS */
 								(void)send_sisters(pjob,
 								IM_DELETE_JOB, NULL);
+							free(jobid);
+							jobid = NULL;
+							break;
 						}
-					else {
-					    mom_deljob(pjob);
-					    free(phook_output->reject_errcode);
-					    free(phook_output);
-					    free(phook_input);
-					}
+					mom_deljob(pjob);
+					free(phook_output->reject_errcode);
+					free(phook_output);
+					free(phook_input);
 				}
 			}
 			if ((ret=is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS) {
