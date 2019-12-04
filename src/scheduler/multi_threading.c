@@ -251,12 +251,6 @@ worker(void *tid)
 
 	sigemptyset(&set);
 	sigaddset(&set, SIGHUP);
-	sigaddset(&set, SIGPIPE);
-
-#ifdef NAS
-	sigaddset(&set, SIGUSR1);
-	sigaddset(&set, SIGUSR2);
-#endif
 
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,

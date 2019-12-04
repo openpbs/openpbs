@@ -164,27 +164,30 @@ on_segv(int sig)
 	int *thid;
 
 	thid = (int *) pthread_getspecific(th_id_key);
-	if (thid != NULL && *thid != 0)
+
+	if (thid == NULL || *thid == 0) {
+		/* we crashed less then 5 minutes ago, lets not restart ourself */
+		if ((segv_last_time - segv_start_time) < 300) {
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+					"on_segv",
+					"received a sigsegv within 5 minutes of start: aborting.");
+			schedexit();
+			abort();
+		}
+
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "on_segv",
+				"received segv and restarting");
+
+		schedexit();
+
+		if (fork() > 0) { /* the parent rexec's itself */
+			sleep(10); /* allow the child to die */
+			execv(glob_argv[0], glob_argv);
+			exit(3);
+		} else
+			abort(); /* allow to core and exit */
+	} else
 		pthread_exit(NULL);
-
-	if (num_threads > 1)
-		kill_threads();
-
-	/* we crashed less then 5 minutes ago, lets not restart ourself */
-	if ((segv_last_time - segv_start_time) < 300) {
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "on_segv", "received a sigsegv within 5 minutes of start: aborting.");
-		abort();
-	}
-
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "on_segv", "received segv and restarting");
-
-	if (fork() > 0) { /* the parent rexec's itself */
-		sleep(10);		/* allow the child to die */
-		execv(glob_argv[0], glob_argv);
-		exit(3);
-	}
-	else
-		abort();			/* allow to core and exit */
 }
 
 /**
@@ -215,33 +218,33 @@ die(int sig)
 
 	thid = (int *) pthread_getspecific(th_id_key);
 
-	if (thid != NULL && *thid != 0)
-		pthread_exit(NULL);	/* Kill worker threads */
-
-	if (sig > 0) {
-		sprintf(log_buffer, "caught signal %d", sig);
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			__func__, log_buffer);
-	}
-	else {
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-				__func__, "abnormal termination");
-	}
-
-	schedexit();
-
-	{
-		int csret;
-		if ((csret = CS_close_app()) != CS_SUCCESS) {
-			/*had some problem closing the security library*/
-
-			sprintf(log_buffer, "problem closing security library (%d)", csret);
-			log_err(-1, "pbs_sched", log_buffer);
+	if (thid == NULL || *thid == 0) {
+		if (sig > 0) {
+			sprintf(log_buffer, "caught signal %d", sig);
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				__func__, log_buffer);
 		}
-	}
+		else {
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+					__func__, "abnormal termination");
+		}
 
-	log_close(1);
-	exit(1);
+		schedexit();
+
+		{
+			int csret;
+			if ((csret = CS_close_app()) != CS_SUCCESS) {
+				/*had some problem closing the security library*/
+
+				sprintf(log_buffer, "problem closing security library (%d)", csret);
+				log_err(-1, "pbs_sched", log_buffer);
+			}
+		}
+
+		log_close(1);
+		exit(1);
+	} else
+		pthread_exit(NULL);
 }
 
 /**
