@@ -1680,7 +1680,7 @@ try_db_again:
 	if (!svr_interp_data.pbs_python_types_loaded ||
 			!svr_interp_data.interp_started ||
 			!svr_interp_data.data_initialized) {
-		log_err(-1, msg_daemonname, "Failed to start python interpreter!");
+		log_err(-1, msg_daemonname, "Failed to start Python interpreter!");
 		stop_db();
 		free(keep_daemon_name);
 		return (1);
