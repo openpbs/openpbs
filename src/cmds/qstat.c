@@ -601,13 +601,13 @@ prt_nodes(char *nodes, int no_newl)
 {
 	int  i, len;
 	char linebuf[78];
-	char *rest;
-	char *saveptr;
-	char *token;
-	char *token_cp;
-	char *subtoken;
+	char *rest = NULL;
+	char *saveptr = NULL;
+ 	char *token = NULL;
+	char *token_cp = NULL;
+	char *subtoken = NULL;
 	char *node_name = NULL;
-	char *chunk;
+	char *chunk = NULL;
 	struct sockaddr_in check_ip;
 	int ret = 0;
 
@@ -668,10 +668,14 @@ prt_nodes(char *nodes, int no_newl)
 		printf((no_newl ? "%s\n" : "   %s\n"), show_nonprint_chars(linebuf));
 	} else if (no_newl)
 		printf("\n");
-	if (token_cp)
+	if (token_cp) {
 		free(token_cp);
-	if (rest)
+		token_cp = NULL;
+	}
+	if (rest) {
 		free(rest);
+		rest = NULL;
+	}
 }
 
 /**
