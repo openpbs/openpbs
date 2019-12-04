@@ -62,8 +62,8 @@ class TestQstat(TestFunctional):
         self.logger.info('Sleep for 7 seconds to let at least one job finish.')
         time.sleep(7)
 
-        qstat_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
         qstat_cmd_pt = [qstat_cmd, '-pt', str(jid)]
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_pt)
 
@@ -112,8 +112,8 @@ class TestQstat(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        qstat_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
         qstat_cmd_n = [qstat_cmd, '-n', str(jid)]
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_n)
         self.assertEqual(ret['rc'], 0,
@@ -130,8 +130,8 @@ class TestQstat(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        qstat_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
         qstat_cmd_n = [qstat_cmd, '-n', str(jid)]
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_n)
         self.assertEqual(ret['rc'], 0,
