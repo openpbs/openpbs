@@ -764,6 +764,82 @@ DIS_tcp_funcs()
 
 /**
  * @brief
+ *	-resets tcp buffers size to the default size
+ *
+ * @param[in] fd - socket descriptor
+ * @param[in] on_release - indication connection is closing
+ *
+ * @return	Void
+ *
+ */
+void
+DIS_tcp_reset_buffers_size(int fd, int on_release)
+{
+	int rc;
+	struct tcp_chan *tcp;
+
+	if ((fd < 0) || (fd >= tcparraymax))
+		return;
+
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+
+	tcp = tcparray[fd];
+	if (tcp) {
+		if (tcp->readbuf.tdis_bufsize > THE_BUF_SIZE) {
+			free(tcp->readbuf.tdis_thebuf);
+			tcp->readbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+			assert(tcp->readbuf.tdis_thebuf != NULL);
+			tcp->readbuf.tdis_bufsize = THE_BUF_SIZE;
+		}
+
+		if (tcp->writebuf.tdis_bufsize > THE_BUF_SIZE) {
+			free(tcp->writebuf.tdis_thebuf);
+			tcp->writebuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+			assert(tcp->writebuf.tdis_thebuf != NULL);
+			tcp->writebuf.tdis_bufsize = THE_BUF_SIZE;
+		}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		if (tcp->gsschan->readbuf.tdis_bufsize > DIS_GSS_BUF_SIZE) {
+			free(tcp->gsschan->readbuf.tdis_thebuf);
+			tcp->gsschan->readbuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+			assert(tcp->gsschan->readbuf.tdis_thebuf);
+			tcp->gsschan->readbuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		}
+
+		if (tcp->gsschan->writebuf.tdis_bufsize > DIS_GSS_BUF_SIZE) {
+			free(tcp->gsschan->writebuf.tdis_thebuf);
+			tcp->gsschan->writebuf.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+			assert(tcp->gsschan->writebuf.tdis_thebuf);
+			tcp->gsschan->writebuf.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		}
+
+		if (tcp->gsschan->gss_readbuf.tdis_bufsize > THE_BUF_SIZE) {
+			free(tcp->gsschan->gss_readbuf.tdis_thebuf);
+			tcp->gsschan->gss_readbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+			assert(tcp->gsschan->gss_readbuf.tdis_thebuf);
+			tcp->gsschan->gss_readbuf.tdis_bufsize = THE_BUF_SIZE;
+		}
+
+		/* cleartext buffer is used between tcp setups
+		 * the size can not be decreased on setup - it could corrupt valid data */
+		if (on_release && (tcp->gsschan->cleartext.tdis_bufsize > DIS_GSS_BUF_SIZE)) {
+			free(tcp->gsschan->cleartext.tdis_thebuf);
+			tcp->gsschan->cleartext.tdis_thebuf = malloc(DIS_GSS_BUF_SIZE);
+			assert(tcp->gsschan->cleartext.tdis_thebuf != NULL);
+			tcp->gsschan->cleartext.tdis_bufsize = DIS_GSS_BUF_SIZE;
+		}
+#endif
+
+	}
+
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+}
+
+/**
+ * @brief
  * 	-DIS_tcp_setup - setup supports routines for dis, "data is strings", to
  * 	use tcp stream I/O.  Also initializes an array of pointers to
  *	buffers and a buffer to be used for the given fd.
@@ -860,6 +936,8 @@ DIS_tcp_setup(int fd)
 
 	rc = pbs_client_thread_unlock_tcp();
 	assert(rc == 0);
+
+	DIS_tcp_reset_buffers_size(fd, 0);
 }
 
 /**
@@ -888,4 +966,6 @@ void DIS_tcp_release(int fd)
 	rc = pbs_client_thread_unlock_tcp();
 	assert(rc == 0);
 #endif
+
+	DIS_tcp_reset_buffers_size(fd, 1);
 }
