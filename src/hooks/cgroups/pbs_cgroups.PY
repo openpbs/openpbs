@@ -999,34 +999,33 @@ class HookUtils(object):
         # The memory limits are interdependent and might fail when set.
         # There are three limits. Worst case scenario is to loop three
         # times in order to set them all.
+        mem_on_node = 0
         for _ in range(3):
             result = True
             if 'memory' in cgroup.subsystems:
                 val = node.get_memory_on_node()
+                mem_on_node = val
                 if val is not None and val > 0:
-                    if not cgroup.cfg['vnode_per_numa_node']:
-                        event.vnode_list[host].resources_available['mem'] = \
-                            pbs.size(convert_size(val, 'kb'))
+                    try:
+                        cgroup.set_limit('mem', val)
+                    except Exception:
+                        result = False
+                val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
+                # Note that True is morphed to 1 and False is morphed
+                # to 0, which allows different per-host or per-vnode
+                # settings when polymorphic cfg file support is there
+                # 0 means "never swap even if there is swap"
+                # 1 means "only swap if you have to, but not proactively"
                 try:
-                    cgroup.set_limit('mem', val)
-                except Exception:
-                    result = False
-                try:
-                    # Note that True is morphed to 1 and False is morphed
-                    # to 0, which allows different per-host or per-vnode
-                    # settings when polymorphic cfg file support is there
-                    # 0 means "never swap even if there is swap"
-                    # 1 means "only swap if you have to, but not proactively"
-                    val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
                     cgroup.set_swappiness(val)
                 except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                '%s: Failed to set swappiness' % caller_name())
             if 'memsw' in cgroup.subsystems:
                 val = node.get_vmem_on_node()
+                if val < mem_on_node:
+                    val = mem_on_node
                 if val is not None and val > 0:
-                    event.vnode_list[host].resources_available['vmem'] = \
-                        pbs.size(convert_size(val, 'kb'))
                     try:
                         cgroup.set_limit('vmem', val)
                     except Exception:
@@ -1034,8 +1033,6 @@ class HookUtils(object):
             if 'hugetlb' in cgroup.subsystems:
                 val = node.get_hpmem_on_node()
                 if val is not None and val > 0:
-                    event.vnode_list[host].resources_available['hpmem'] = \
-                        pbs.size(convert_size(val, 'kb'))
                     try:
                         cgroup.set_limit('hpmem', val)
                     except Exception:
@@ -1390,11 +1387,13 @@ class NodeUtils(object):
                 val -= node_resv_hpmem
                 numa_nodes[num]['hpmem'] = val
                 val = size_as_int(numa_nodes[num]['MemTotal'])
-                val -= val % (1024 * 1024)
+                # do not round down -- do that only when reporting to svr
+                # val -= val % (1024 * 1024)
                 val -= node_resv_mem
                 numa_nodes[num]['mem'] = val
                 val = host_vmem / num_numa_nodes
-                val -= val % (1024 * 1024)
+                # do not round down -- do that only when reporting to svr
+                # val -= val % (1024 * 1024)
                 val -= node_resv_vmem
                 numa_nodes[num]['vmem'] = val
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s' % (caller_name(), numa_nodes))
@@ -1731,8 +1730,8 @@ class NodeUtils(object):
                 else:
                     total = 0
                     break
-            # Round down to nearest MB
-            total -= total % (1024 * 1024)
+            # Do not round down to nearest MB
+            # total -= total % (1024 * 1024)
             if total > 0:
                 return size_as_int(total)
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1762,8 +1761,8 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved mem: %d' % reserved)
         # Calculate remaining memory
         remaining = total - reserved
-        # Round down to nearest MB
-        remaining -= remaining % (1024 * 1024)
+        # Do not round down to nearest MB
+        # remaining -= remaining % (1024 * 1024)
         if remaining <= 0:
             raise ValueError('Too much reserved memory')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining mem: %d' % remaining)
@@ -1786,8 +1785,8 @@ class NodeUtils(object):
                 else:
                     total = 0
                     break
-            # Round down to nearest MB
-            total -= total % (1024 * 1024)
+            # Do not round down to nearest MB
+            # total -= total % (1024 * 1024)
             if total > 0:
                 return size_as_int(total)
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1824,8 +1823,8 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved vmem: %d' % reserved)
         # Calculate remaining vmem
         remaining = total - reserved
-        # Round down to nearest MB
-        remaining -= remaining % (1024 * 1024)
+        # Do not round down to nearest MB
+        # remaining -= remaining % (1024 * 1024)
         if remaining <= 0:
             raise ValueError('Too much reserved vmem')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining vmem: %d' % remaining)
@@ -1848,8 +1847,8 @@ class NodeUtils(object):
                 else:
                     total = 0
                     break
-            # Round down to nearest MB
-            total -= total % (1024 * 1024)
+            # Do not round down to nearest MB
+            # total -= total % (1024 * 1024)
             if total > 0:
                 return size_as_int(total)
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1991,21 +1990,25 @@ class NodeUtils(object):
                                     host_resc_avail['ncpus']))
                 elif key == 'MemTotal':
                     mem = self.get_memory_on_node(memtotal=val)
-                    mem = pbs.size(convert_size(mem, 'kb'))
+                    mem -= 1024 * 1024  # remove 1MB to handle jitter
+                    if mem < 0:
+                        mem = 0
+                    mem -= mem % (1024 * 1024)
+                    mem = pbs.size(convert_size(mem, 'mb'))
                     if vnodes:
                         # set the value on the host to 0
-                        host_resc_avail['mem'] = pbs.size('0kb')
-                        host_resc_avail['vmem'] = pbs.size('0kb')
+                        host_resc_avail['mem'] = pbs.size('0')
+                        host_resc_avail['vmem'] = pbs.size('0')
                     else:
                         if 'mem' not in host_resc_avail:
-                            host_resc_avail['mem'] = pbs.size('0kb')
+                            host_resc_avail['mem'] = pbs.size('0')
                         if not isinstance(host_resc_avail['mem'], pbs.size):
-                            host_resc_avail['mem'] = pbs.size('0kb')
+                            host_resc_avail['mem'] = pbs.size('0')
                         host_resc_avail['mem'] += mem
                         if 'vmem' not in host_resc_avail:
-                            host_resc_avail['vmem'] = pbs.size('0kb')
+                            host_resc_avail['vmem'] = pbs.size('0')
                         if not isinstance(host_resc_avail['vmem'], pbs.size):
-                            host_resc_avail['vmem'] = pbs.size('0kb')
+                            host_resc_avail['vmem'] = pbs.size('0')
                         host_resc_avail['vmem'] += mem
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
                                    (caller_name(), vnode_name,
@@ -2014,14 +2017,27 @@ class NodeUtils(object):
                     # Used for the natural vnode
                     if vnodes:
                         # Set the value on the natural vnode to zero
-                        host_resc_avail['hpmem'] = pbs.size(0)
+                        host_resc_avail['hpmem'] = pbs.size('0')
+                    else:
+                        val = node.get_hpmem_on_node()
+                        val -= 1024 * 1024  # remove 1MB to handle jitter
+                        if val < 0:
+                            val = 0
+                        val -= val % (1024 * 1024)  # round down to MB
+                        host_resc_avail['hpmem'] = \
+                            pbs.size(convert_size(val, 'mb'))
                 elif key in ['mem', 'vmem', 'hpmem']:
                     # Used for vnodes per NUMA socket
                     if vnodes:
                         mem_val = val
                         if isinstance(val, float):
                             mem_val = int(val)
-                        vnode_resc_avail[key] = pbs.size(mem_val)
+                        mem_val -= 1024 * 1024  # protect ourselves from jitter
+                        if mem_val < 0:
+                            mem_val = 0
+                        mem_val -= mem_val % (1024 * 1024)
+                        vnode_resc_avail[key] = \
+                            pbs.size(convert_size(mem_val, 'mb'))
                 elif isinstance(val, list):
                     pass
                 elif isinstance(val, dict):
@@ -2628,7 +2644,7 @@ class CgroupUtils(object):
         defaults['cgroup']['memory']['default'] = '0MB'
         defaults['cgroup']['memory']['reserve_percent'] = 0
         defaults['cgroup']['memory']['reserve_amount'] = '0MB'
-        defaults['cgroup']['memory']['swappiness'] = 10
+        defaults['cgroup']['memory']['swappiness'] = 1
         defaults['cgroup']['memsw'] = {}
         defaults['cgroup']['memsw']['enabled'] = False
         defaults['cgroup']['memsw']['exclude_hosts'] = []
@@ -3577,9 +3593,15 @@ class CgroupUtils(object):
             req_mem = size_as_int(requested['mem'])
             avail_mem = available['memory']
             if req_mem > avail_mem:
-                pbs.logmsg(pbs.EVENT_DEBUG4,
+                if self.cfg['vnode_per_numa_node']:
+                    # scheduler is not supposed to let this happen
+                    debug_level = pbs.EVENT_ERROR
+                else:
+                    # can happen if chunk needs to be split over sockets
+                    debug_level = pbs.EVENT_DEBUG4
+                pbs.logmsg(debug_level,
                            ('Insufficient memory on socket(s) '
-                            '%s: requested:%s, assigned:%s') %
+                            '%s: requested:%s, available:%s') %
                            (socketlist, req_mem, available['memory']))
                 return {}
             if 'mem' not in assigned:
@@ -5176,7 +5198,6 @@ def main():
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
         event.reject(msg)
-
 
 # The following block is skipped if this is a unit testing environment.
 if (__name__ == 'builtins') or (__name__ == '__builtin__'):
