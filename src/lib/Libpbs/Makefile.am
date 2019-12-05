@@ -38,7 +38,10 @@
 
 lib_LTLIBRARIES = libpbs.la
 
-libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
+libpbs_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	-I$(top_srcdir)/src/lib/Libtpp \
+	@KRB5_CFLAGS@
 
 #
 # There are specific rules that must be followed when updating the library
@@ -79,7 +82,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/check_job_script.c \
 	../Libcmds/chk_Jrange.c \
 	../Libcmds/ck_job_name.c \
-	../Libcmds/cnt2mom.c \
 	../Libcmds/cnt2server.c \
 	../Libcmds/cvtdate.c \
 	../Libcmds/get_attr.c \
@@ -98,6 +100,7 @@ libpbs_la_SOURCES = \
 	../Libcmds/prt_job_err.c \
 	../Libcmds/set_attr.c \
 	../Libcmds/set_resource.c \
+	../Libdis/dis_helpers.c \
 	../Libdis/dis.c \
 	../Libdis/dis_.h \
 	../Libdis/discui_.c \
@@ -144,6 +147,8 @@ libpbs_la_SOURCES = \
 	../Libecl/ecl_verify_object_name.c \
 	../Libecl/pbs_client_thread.c \
 	../Libifl/advise.c \
+	../Libifl/auth.c \
+	../Libifl/conn_table.c \
 	../Libifl/dec_Authen.c \
 	../Libifl/dec_CopyHookFile.c \
 	../Libifl/dec_DelHookFile.c \
@@ -219,7 +224,6 @@ libpbs_la_SOURCES = \
 	../Libifl/int_preempt_jobs.c \
 	../Libifl/list_link.c \
 	../Libifl/PBS_attr.c \
-	../Libifl/PBS_data.c \
 	../Libifl/pbs_authors.c \
 	../Libifl/pbs_get_attribute_errors.c \
 	../Libifl/pbs_geterrmg.c \
@@ -265,18 +269,14 @@ libpbs_la_SOURCES = \
 	../Libifl/ifl_pointers.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \
-	../Libifl/tcp_dis_gss.c \
 	../Libifl/tcp_dis.c \
 	../Libifl/tm.c \
 	../Libifl/xml_encode_decode.c \
 	../Liblog/pbs_messages.c \
 	../Libsec/cs_standard.c \
 	../Libutil/misc_utils.c \
-	../Libutil/munge_supp.c \
 	../Libutil/pbs_secrets.c \
 	../Libutil/pbs_aes_encrypt.c \
-	../Libutil/krb5_util.c \
-	../Libutil/pbs_gss.c \
 	../Libnet/hnls.c \
 	ecl_job_attr_def.c \
 	ecl_svr_attr_def.c \
@@ -336,4 +336,3 @@ ecl_resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
 	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml \
 		-s /dev/null -e $@ -a resc
-

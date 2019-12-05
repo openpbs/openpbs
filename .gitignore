@@ -43,6 +43,7 @@
 .settings/
 .autotools
 .csettings/
+.devcontainer/
 
 # Files used by ctags
 tags
@@ -211,6 +212,7 @@ src/tools/pbs_sleep
 src/unsupported/pbs_diag
 src/unsupported/pbs_dtj
 src/unsupported/pbs_rmget
+src/unsupported/renew-test/renew-test
 
 # Generated source files
 src/include/pbs_version.h

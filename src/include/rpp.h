@@ -62,18 +62,13 @@ extern "C" {
 /* TPP specific definitions and structures */
 #define TPP_DEF_ROUTER_PORT 17001
 
-/* TPP authentication types */
-#define TPP_AUTH_RESV_PORT	1
-#define TPP_AUTH_EXTERNAL	2
-
 struct tpp_config {
 	int    node_type; /* leaf, proxy */
 	char   **routers; /* other proxy names (and backups) to connect to */
 	int    numthreads;
 	char   *node_name; /* list of comma separated node names */
-	char   auth_type;
-	void * (*get_ext_auth_data)(int auth_type, int *data_len, char *ebuf, int ebufsz);
-	int    (*validate_ext_auth_data) (int auth_type, void *data, int data_len, char *ebuf, int ebufsz);
+	char   auth_type[MAXAUTHNAME + 1];
+	int    is_auth_resvport;
 	int    compress;
 	int    tcp_keepalive; /* use keepalive? */
 	int    tcp_keep_idle;
@@ -94,14 +89,9 @@ struct tpp_config {
 extern int	tpp_init(struct tpp_config *conf);
 extern void tpp_set_app_net_handler(void (*app_net_down_handler)(void *data),
 void (*app_net_restore_handler)(void *data));
-extern void DIS_tpp_setup(int);
 extern void tpp_set_logmask(long logmask);
 extern void set_tpp_funcs(void (*log_fn)(int, const char *, char *));
-extern int set_tpp_config(struct pbs_config *pbs_conf,
-	struct tpp_config *tpp_conf, char *nodename,
-	int port, char *routers, int compress, int auth_type,
-	void* (*cb_get_ext_auth_data)(int auth_type, int *data_len, char *ebuf, int ebufsz),
-	int (*cb_validate_ext_auth_data) (int auth_type, void *data, int data_len, char *ebuf, int ebufsz));
+extern int set_tpp_config(struct pbs_config *, struct tpp_config *, char *, int, char *);
 /*
  **	Common Function prototypes (rpp or tpp)
  */
@@ -124,8 +114,7 @@ extern int			(*pfn_rpp_skip)(int, size_t);
 extern int			(*pfn_rpp_eom)(int);
 extern int			(*pfn_rpp_getc)(int);
 extern int			(*pfn_rpp_putc)(int, int);
-extern void			(*pfn_DIS_rpp_reset)();
-extern void			(*pfn_DIS_rpp_setup)(int);
+extern void			(*pfn_DIS_rpp_funcs)();
 extern void			(*pfn_rpp_add_close_func)(int, void (*func)(int));
 
 #define rpp_open(x, y)		(*pfn_rpp_open)(x, y)
@@ -147,8 +136,7 @@ extern void			(*pfn_rpp_add_close_func)(int, void (*func)(int));
 #define rpp_eom(x)		(*pfn_rpp_eom)(x)
 #define rpp_getc(x)		(*pfn_rpp_getc)(x)
 #define rpp_putc(x, y)		(*pfn_rpp_putc)(x, y)
-#define DIS_rpp_reset()		(*pfn_DIS_rpp_reset)()
-#define DIS_rpp_setup(x)	(*pfn_DIS_rpp_setup)(x)
+#define DIS_rpp_funcs()		(*pfn_DIS_rpp_funcs)()
 #define rpp_add_close_func(x, y) (*pfn_rpp_add_close_func)(x, y)
 
 extern char	*netaddr(struct sockaddr_in *);

@@ -2236,7 +2236,7 @@ retry:
 		goto retry;
 	}
 
-	DIS_tcp_setup(news);
+	DIS_tcp_funcs();
 	version = disrsi(news, &ret);
 	if (ret != DIS_SUCCESS) {
 		/*
@@ -4944,7 +4944,6 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 	HANDLE h_event, h_event_parent;
 	HANDLE h_sock_event;
 	OVERLAPPED o_overlap;
-	int svr_sock = -1;
 	HANDLE handles[2];
 	time_t connect_time = 0;
 	time_t cred_connect_time = time(0); /* Record current time to compare against the credential timeout value of 30 mins */
@@ -4985,7 +4984,7 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 		if (!ConnectNamedPipe(h_pipe, &o_overlap)) {
 			pipe_rc = GetLastError();
 			if (pipe_rc == ERROR_IO_PENDING) {
-				if (svr_sock == -1) { /* first time */
+				if (sd_svr == -1) { /* first time */
 					if (SetEvent(h_event_parent) == 0)
 						goto error;
 					/* do wait for single object */
@@ -5003,7 +5002,7 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 					if (!ResetEvent(h_event))
 						goto error;
 
-					if (WSAEventSelect(svr_sock, h_sock_event,
+					if (WSAEventSelect(sd_svr, h_sock_event,
 						FD_CLOSE | FD_READ) != 0)
 						goto error;
 
@@ -5025,7 +5024,7 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 					if (rc == WAIT_TIMEOUT)
 						goto out;
 					if (rc == WAIT_OBJECT_0 + 1) {
-						if (recv(svr_sock, &rc, 1, MSG_OOB) < 1) {
+						if (recv(sd_svr, &rc, 1, MSG_OOB) < 1) {
 							goto out;
 						}
 					}
@@ -5065,7 +5064,6 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 		}
 
 		if (sd_svr != -1) {
-			svr_sock = pbs_connection_getsocket(sd_svr);
 			rc = do_submit2(retmsg);
 		}
 
@@ -5340,7 +5338,6 @@ static void
 do_daemon_stuff(void)
 {
 	int sock, bindfd;
-	int svr_sock;
 	struct sockaddr_un s_un;
 	struct sockaddr from;
 	socklen_t fromlen;
@@ -5375,15 +5372,14 @@ do_daemon_stuff(void)
 		exit(1); /* dont go to error */
 
 	FD_ZERO(&readset);
-	svr_sock = pbs_connection_getsocket(sd_svr);
 	if (listen(bindfd, 1) != 0) {
 		err_op = "listen";
 		goto error;
 	}
 
 	FD_SET(bindfd, &readset);
-	FD_SET(svr_sock, &readset);
-	maxfd = (bindfd > svr_sock) ? bindfd : svr_sock;
+	FD_SET(sd_svr, &readset);
+	maxfd = (bindfd > sd_svr) ? bindfd : sd_svr;
 	while (1) {
 
 		err_op = "";
@@ -5415,8 +5411,8 @@ do_daemon_stuff(void)
 			cred_timeout = 1;
 		}
 
-		if (FD_ISSET(svr_sock, &workset)) {
-			if (recv(svr_sock, &rc, 1, MSG_OOB) < 1)
+		if (FD_ISSET(sd_svr, &workset)) {
+			if (recv(sd_svr, &rc, 1, MSG_OOB) < 1)
 				goto out;
 		}
 

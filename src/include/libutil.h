@@ -212,16 +212,6 @@ int pbs_asprintf(char **dest, const char *fmt, ...);
  */
 int float_digits(double fl, int digits);
 
-/* munge related routines, no win32 */
-#ifndef WIN32
-int pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz);
-char *pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz);
-#endif
-
-/* callback routines from TPP to handle all types of external authentication, available on all platforms */
-void *get_ext_auth_data(int auth_type, int *data_len, char *ebuf, int ebufsz);
-int validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int ebufsz);
-
 /* Various helper functions in hooks processing */
 int starts_with_triple_quotes(char *str);
 int ends_with_triple_quotes(char *str, int strip_quotes);
@@ -303,13 +293,13 @@ get_preemption_order(struct preempt_ordering *porder, int req, int used);
 /**
  * Begin collecting performance stats (e.g. walltime)
  */
-void 
+void
 perf_stat_start(char *instance);
 
 /**
  * Remove a performance stats entry.
  */
-void 
+void
 perf_stat_remove(char *instance);
 
 /**

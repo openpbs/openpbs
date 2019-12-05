@@ -90,7 +90,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 		return (DIS_PROTO);
 
 	/* dis_umaxd would be initialized by prior call to dis_init_tables */
-	switch (c = (*dis_getc)(stream)) {
+	switch (c = dis_getc(stream)) {
 		case '-':
 		case '+':
 			negate = c == '-';
@@ -99,7 +99,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			*ndigs = count;
 			*dval = 0.0;
 			do {
-				if ((c = (*dis_getc)(stream)) < '0' || c > '9') {
+				if ((c = dis_getc(stream)) < '0' || c > '9') {
 					if (c < 0)
 						return (DIS_EOD);
 					return (DIS_NONDIGIT);
@@ -108,7 +108,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			} while (--count);
 			if ((count = *nskips) > 0) {
 				count--;
-				switch ((*dis_getc)(stream)) {
+				switch (dis_getc(stream)) {
 					case '5':
 						if (count == 0)
 							break;
@@ -123,7 +123,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 					case '3':
 					case '4':
 						if (count > 0 &&
-							(*disr_skip)(stream, (size_t)count) < 0)
+							disr_skip(stream, (size_t)count) < 0)
 							return (DIS_EOD);
 						break;
 					default:
@@ -147,7 +147,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			if (count > 1) {
 				if (count > dis_umaxd)
 					break;
-				if ((*dis_gets)(stream, dis_buffer + 1, count - 1) !=
+				if (dis_gets(stream, dis_buffer + 1, count - 1) !=
 					count - 1)
 					return (DIS_EOD);
 				cp = dis_buffer;
@@ -206,10 +206,6 @@ disrf(int stream, int *retval)
 
 	assert(retval != NULL);
 	assert(stream >= 0);
-	assert(dis_getc != NULL);
-	assert(dis_gets != NULL);
-	assert(disr_skip != NULL);
-	assert(disr_commit != NULL);
 
 	dval = 0.0;
 	if ((locret = disrd_(stream, 1, &ndigs, &nskips, &dval, 0)) == DIS_SUCCESS) {
@@ -239,7 +235,7 @@ disrf(int stream, int *retval)
 			}
 		}
 	}
-	if ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0)
+	if (disr_commit(stream, locret == DIS_SUCCESS) < 0)
 		locret = DIS_NOCOMMIT;
 	*retval = locret;
 	return (dval);

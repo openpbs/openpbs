@@ -89,6 +89,7 @@
 #include "server_limits.h"
 #include "pbs_version.h"
 #include "pbs_undolr.h"
+#include "auth.h"
 
 char daemonname[PBS_MAXHOSTNAME+8];
 extern char	*msg_corelimit;
@@ -477,6 +478,12 @@ go_to_background()
 }
 #endif	/* DEBUG is defined */
 
+static void
+auth_logger(int type, int objclass, int severity, const char *objname, const char *text)
+{
+	tpp_log_func(severity, objname, (char *)text);
+}
+
 /**
  * @brief
  *		main - the initialization and main loop of pbs_comm
@@ -660,15 +667,7 @@ main(int argc, char **argv)
 		return (1);
 	}
 
-	rc = 0;
-	if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
-		rc = set_tpp_config(&pbs_conf, &conf, host, port, routers, pbs_conf.pbs_use_compression,
-				TPP_AUTH_RESV_PORT, NULL, NULL);
-	} else {
-		/* for all non-resv-port based authentication use a callback from TPP */
-		rc = set_tpp_config(&pbs_conf, &conf, host, port, routers, pbs_conf.pbs_use_compression,
-				TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
-	}
+	rc = set_tpp_config(&pbs_conf, &conf, host, port, routers);
 	if (rc == -1) {
 		(void) sprintf(log_buffer, "Error setting TPP config");
 		log_err(-1, __func__, log_buffer);
@@ -742,12 +741,21 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for USR2");
 		return (2);
 	}
-#ifdef PBS_UNDOLR_ENABLED	
+#ifdef PBS_UNDOLR_ENABLED
 	act.sa_handler = catch_sigusr1;
 #endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR1");
 		return (2);
+	}
+
+	if (!pbs_conf.is_auth_resvport) {
+		if (load_auth_lib()) {
+			log_err(-1, "pbs_comm", "Failed to load auth lib");
+			return 2;
+		}
+
+		auth_set_config(auth_logger, pbs_conf.pbs_home_path);
 	}
 
 	conf.node_type = TPP_ROUTER_NODE;
@@ -801,6 +809,7 @@ main(int argc, char **argv)
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
 	(void)unlink(lockfile);
+	unload_auth_lib();
 
 	return 0;
 }

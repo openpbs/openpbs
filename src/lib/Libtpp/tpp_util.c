@@ -69,6 +69,7 @@
 #include "pbs_error.h"
 
 #include "rpp.h"
+#include "dis.h"
 #include "tpp_common.h"
 #include "tpp_platform.h"
 
@@ -88,6 +89,407 @@ static pthread_once_t tpp_once_ctrl = PTHREAD_ONCE_INIT; /* once ctrl to initial
 long tpp_log_event_mask = 0;
 
 void (*tpp_log_func)(int level, const char *id, char *mess) = NULL;
+
+/* default keepalive values */
+#define DEFAULT_TCP_KEEPALIVE_TIME 30
+#define DEFAULT_TCP_KEEPALIVE_INTVL 10
+#define DEFAULT_TCP_KEEPALIVE_PROBES 3
+#define DEFAULT_TCP_USER_TIMEOUT 60000
+
+#define PBS_TCP_KEEPALIVE "PBS_TCP_KEEPALIVE" /* environment string to search for */
+
+/* extern functions called from this file into the tpp_transport.c */
+static pbs_tcp_chan_t * tppdis_get_user_data(int sd);
+
+/**
+ * @brief
+ *	Get the user buffer associated with the tpp channel. If no buffer has
+ *	been set, then allocate a tppdis_chan structure and associate with
+ *	the given tpp channel
+ *
+ * @param[in] - fd - Tpp channel to which to get/associate a user buffer
+ *
+ * @retval	NULL - Failure
+ * @retval	!NULL - Buffer associated with the tpp channel
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+static pbs_tcp_chan_t *
+tppdis_get_user_data(int fd)
+{
+	void *data = tpp_get_user_data(fd);
+	if (data == NULL) {
+		if (errno != ENOTCONN) {
+			/* fd connected, but first time - so call setup */
+			dis_setup_chan(fd, (pbs_tcp_chan_t * (*)(int))&tpp_get_user_data);
+			/* get the buffer again*/
+			data = tpp_get_user_data(fd);
+		}
+	}
+	return (pbs_tcp_chan_t *)data;
+}
+
+/**
+ * @brief
+ *	Setup dis function pointers to point to tpp_dis routines
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+void
+DIS_tpp_funcs()
+{
+	pfn_transport_get_chan = tppdis_get_user_data;
+	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) &tpp_set_user_data;
+	pfn_transport_chan_free_extra = NULL;
+	pfn_transport_recv = tpp_recv;
+	pfn_transport_send = tpp_send;
+}
+
+
+/**
+ * @brief
+ *	Helper function called by PBS daemons to set the tpp configuration to
+ *	be later used during tpp_init() call.
+ *
+ * @param[in] pbs_conf - Pointer to the Pbs_config structure
+ * @param[out] tpp_conf - The tpp configuration structure duly filled based on
+ *			  the input parameters
+ * @param[in] nodenames - The comma separated list of name of this side of the communication.
+ * @param[in] port     - The port at which this side is identified.
+ * @param[in] routers  - Array of router addresses ended by a null entry
+ *			 router addresses are of the form "host:port"
+ * @param[in] compress - Whether compression of data must be done
+ *
+ *
+ * @retval Error code
+ * @return -1 - Failure
+ * @return  0 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+int
+set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *nodenames, int port, char *r)
+{
+	int i;
+	int num_routers = 0;
+	char *routers = NULL;
+	char *s, *t, *ctx;
+	char *nm;
+	int len, hlen;
+	char *token, *saveptr, *tmp;
+	char *formatted_names = NULL;
+
+	/* before doing anything else, initialize the key to the tls
+	 * its okay to call this function multiple times since it
+	 * uses a pthread_once functionality to initialize key only once
+	 */
+	if (tpp_init_tls_key() != 0) {
+		/* can only use prints since tpp key init failed */
+		fprintf(stderr, "Failed to initialize tls key\n");
+		return -1;
+	}
+
+	if (r) {
+		routers = strdup(r);
+		if (!routers) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Out of memory allocating routers");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, __func__, log_buffer);
+			return -1;
+		}
+	}
+
+	if (!nodenames) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP node name not set");
+		fprintf(stderr, "%s\n", log_buffer);
+		tpp_log_func(LOG_CRIT, NULL, log_buffer);
+		return -1;
+	}
+
+	if (port == -1) {
+		struct sockaddr_in in;
+		int sd;
+		int rc;
+		tpp_addr_t *addr;
+
+		if ((sd = tpp_sock_socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "tpp_sock_socket() error, errno=%d", errno);
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			return -1;
+		}
+
+		/* bind this socket to a reserved port */
+		in.sin_family = AF_INET;
+		in.sin_addr.s_addr = INADDR_ANY;
+		in.sin_port = 0;
+		memset(&(in.sin_zero), '\0', sizeof(in.sin_zero));
+		if ((rc = tpp_sock_bind(sd, (struct sockaddr *) &in, sizeof(in))) == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "tpp_sock_bind() error, errno=%d", errno);
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			tpp_sock_close(sd);
+			return -1;
+		}
+
+		addr = tpp_get_local_host(sd);
+		if (addr) {
+			port = addr->port;
+			free(addr);
+		}
+
+		if (port == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP client could not detect port to use");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			tpp_sock_close(sd);
+			return -1;
+		}
+		/* don't close this socket */
+		tpp_set_close_on_exec(sd);
+	}
+
+	/* add port information to the node names and format into a single string as desired by TPP */
+	len = 0;
+	token = strtok_r(nodenames, ",", &saveptr);
+	while (token) {
+		nm = mk_hostname(token, port);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		hlen = strlen(nm);
+		if ((tmp = realloc(formatted_names, len + hlen + 2)) == NULL) { /* 2 for command and null char */
+			free(formatted_names);
+			free(nm);
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make formatted node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		formatted_names = tmp;
+
+		if (len == 0) {
+			strcpy(formatted_names, nm);
+		} else {
+			strcat(formatted_names, ",");
+			strcat(formatted_names, nm);
+		}
+		free(nm);
+
+		len += hlen + 2;
+
+		token = strtok_r(NULL, ",", &saveptr);
+	}
+
+	tpp_conf->node_name = formatted_names;
+	tpp_conf->node_type = TPP_LEAF_NODE;
+	tpp_conf->numthreads = 1;
+
+	memset(tpp_conf->auth_type, '\0', sizeof(tpp_conf->auth_type));
+	strcpy(tpp_conf->auth_type, pbs_conf->auth_method);
+	tpp_conf->is_auth_resvport = pbs_conf->is_auth_resvport;
+
+	if (tpp_conf->is_auth_resvport) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP set to use reserved port authentication");
+	} else {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP set to use external authentication");
+	}
+	tpp_log_func(LOG_INFO, NULL, log_buffer);
+
+#ifdef PBS_COMPRESSION_ENABLED
+	tpp_conf->compress = pbs_conf->pbs_use_compression;
+#else
+	tpp_conf->compress = 0;
+#endif
+
+	/* set default parameters for keepalive */
+	tpp_conf->tcp_keepalive = 1;
+	tpp_conf->tcp_keep_idle = DEFAULT_TCP_KEEPALIVE_TIME;
+	tpp_conf->tcp_keep_intvl = DEFAULT_TCP_KEEPALIVE_INTVL;
+	tpp_conf->tcp_keep_probes = DEFAULT_TCP_KEEPALIVE_PROBES;
+	tpp_conf->tcp_user_timeout = DEFAULT_TCP_USER_TIMEOUT;
+
+	/* if set, read them from environment variable PBS_TCP_KEEPALIVE */
+	if ((s = getenv(PBS_TCP_KEEPALIVE))) {
+		/*
+		 * The format is a comma separated list of values in order, for the following variables,
+		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes,tcp_user_timeout
+		 */
+		tpp_conf->tcp_keepalive = 0;
+		t = strtok_r(s, ",", &ctx);
+		if (t) {
+			/* this has to be the tcp_keepalive_enable value */
+			if (atol(t) == 1) {
+				tpp_conf->tcp_keepalive = 1;
+
+				/* parse other values only if this is enabled */
+				if ((t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_time */
+					tpp_conf->tcp_keep_idle = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_intvl */
+					tpp_conf->tcp_keep_intvl = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_probes */
+					tpp_conf->tcp_keep_probes = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/*tcp_user_timeout */
+					tpp_conf->tcp_user_timeout = (int) atol(t);
+				}
+
+				/* emit a log depicting what we are going to use as keepalive */
+				snprintf(log_buffer, TPP_LOGBUF_SZ,
+						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
+						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
+			} else {
+				snprintf(log_buffer, TPP_LOGBUF_SZ, "tcp keepalive disabled");
+			}
+		}
+		tpp_log_func(LOG_CRIT, NULL, log_buffer);
+	}
+
+	tpp_conf->buf_limit_per_conn = 5000; /* size in KB, TODO: load from pbs.conf */
+
+	if (pbs_conf->pbs_use_ft == 1)
+		tpp_conf->force_fault_tolerance = 1;
+	else
+		tpp_conf->force_fault_tolerance = 0;
+
+	if (routers && routers[0] != '\0') {
+		char *p = routers;
+		char *q;
+
+		num_routers = 1;
+
+		while (*p) {
+			if (*p == ',')
+				num_routers++;
+			p++;
+		}
+
+		tpp_conf->routers = malloc(sizeof(char *) * (num_routers + 1));
+		if (!tpp_conf->routers) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating routers array");
+			if (routers)
+				free(routers);
+			return -1;
+		}
+
+		p = routers;
+
+		/* trim leading spaces, if any */
+		while (*p && (*p == ' ' || *p == '\t'))
+			p++;
+
+		q = p;
+		i = 0;
+		while (*p) {
+			if (*p == ',') {
+				*p = 0;
+				tpp_conf->routers[i++] = strdup(q);
+
+				p++; /* go past the null char and trim any spaces */
+				while (*p && (*p == ' ' || *p == '\t'))
+					p++;
+
+				q = p;
+			}
+			p++;
+		}
+
+		nm = mk_hostname(q, TPP_DEF_ROUTER_PORT);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make router name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+		tpp_conf->routers[i++] = nm;
+		tpp_conf->routers[i++] = NULL;
+
+	} else {
+		tpp_conf->routers = NULL;
+	}
+
+	for (i = 0; i < num_routers; i++) {
+		if (tpp_conf->routers[i] == NULL || strcmp(tpp_conf->routers[i], tpp_conf->node_name) == 0) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Router name NULL or points to same node endpoint %s",
+				(tpp_conf->routers[i]) ?(tpp_conf->routers[i]) : "");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+
+			if (tpp_conf->routers)
+				free(tpp_conf->routers);
+			return -1;
+		}
+	}
+
+	if (routers)
+		free(routers);
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Setup tpp function pointers (used to dynamically interchange code to use
+ *	either TPP or RPP
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+void
+set_tpp_funcs(void (*log_fn)(int, const char *, char *))
+{
+	pfn_rpp_open = tpp_open;
+	pfn_rpp_bind = tpp_bind;
+	pfn_rpp_poll = tpp_poll;
+	pfn_rpp_io = tpp_io;
+	pfn_rpp_read = tpp_recv;
+	pfn_rpp_write = tpp_send;
+	pfn_rpp_close = tpp_close;
+	pfn_rpp_destroy = (void (*)(int)) &tpp_close;
+	pfn_rpp_localaddr = tpp_localaddr;
+	pfn_rpp_getaddr = tpp_getaddr;
+	pfn_rpp_flush = dis_flush;
+	pfn_rpp_shutdown = tpp_shutdown;
+	pfn_rpp_terminate = tpp_terminate;
+	pfn_rpp_rcommit = disr_commit;
+	pfn_rpp_wcommit = disw_commit;
+	pfn_rpp_skip = disr_skip;
+	pfn_rpp_eom = tpp_eom;
+	pfn_rpp_getc = dis_getc;
+	pfn_rpp_putc = NULL;
+	pfn_DIS_rpp_funcs = DIS_tpp_funcs;
+	pfn_rpp_add_close_func = tpp_add_close_func;
+	tpp_log_func = log_fn;
+}
 
 /**
  * @brief
@@ -363,7 +765,7 @@ tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data)
 		tpp_log_func(LOG_CRIT, __func__, "Failed to destroy attribute");
 		return -1;
 	}
-#endif 
+#endif
 	return rc;
 }
 
@@ -520,7 +922,7 @@ tpp_init_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -567,7 +969,7 @@ tpp_wrlock_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -592,7 +994,7 @@ tpp_unlock_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -632,7 +1034,7 @@ tpp_parse_hostname(char *full, int *port)
 	char *host = NULL;
 
 	*port = TPP_DEF_ROUTER_PORT;
-	if ((host = strdup(full)) == NULL) 
+	if ((host = strdup(full)) == NULL)
 		return NULL;
 
 	if ((p = strstr(host, ":"))) {
@@ -1418,7 +1820,11 @@ tpp_validate_hdr(int tfd, char *pkt_start)
 	type = *((unsigned char *) data);
 
 	if ((data_len < 0 || type >= TPP_LAST_MSG) ||
-		(data_len > TPP_SEND_SIZE && type != TPP_DATA && type != TPP_MCAST_DATA && type != TPP_GSS_WRAP)) {
+		(data_len > TPP_SEND_SIZE &&
+			type != TPP_DATA &&
+			type != TPP_MCAST_DATA &&
+			type != TPP_ENCRYPTED_DATA &&
+			type != TPP_AUTH_CTX)) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				 "tfd=%d, Received invalid packet type with type=%d? data_len=%d", tfd, type, data_len);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1438,7 +1844,7 @@ tpp_validate_hdr(int tfd, char *pkt_start)
  * @retval  NULL  - call failed
  *
  * @par MT-safe: Yes
- * 
+ *
  **/
 tpp_addr_t *
 tpp_get_addresses(char *names, int *count)
@@ -1468,10 +1874,10 @@ tpp_get_addresses(char *names, int *count)
 			free(node_names);
 			return NULL;
 		}
-		
+
 		*p = '\0';
 		port = atol(p+1);
-		
+
 		addrs_tmp = tpp_sock_resolve_host(token, &tmp_count); /* get all ipv4 addresses */
 		if (addrs_tmp) {
 			tpp_addr_t *tmp;

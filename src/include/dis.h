@@ -41,13 +41,10 @@
 extern "C" {
 #endif
 
-
 #include <string.h>
 #include <limits.h>
 #include <float.h>
 #include "Long.h"
-
-#include "pbs_gss.h"
 
 #ifndef TRUE
 #define TRUE	1
@@ -195,25 +192,69 @@ int diswl_(int stream, dis_long_double_t value, unsigned int ndigs);
 int diswf(int stream, double value);
 #endif
 
+int diswull(int stream, u_Long value);
+u_Long disrull(int stream, int *retval);
+
 extern const char *dis_emsg[];
 
 /* the following routines set/control DIS over tcp */
+extern void DIS_tcp_funcs();
 
-#ifdef WIN32
-extern void     DIS_tcparray_init(void);
-#endif
+#define PBS_DIS_BUFSZ 8192
 
-extern void DIS_tcp_funcs(void);
-extern void DIS_tcp_reset(int fd, int rw);
-extern void DIS_tcp_setup(int fd);
-extern int  DIS_tcp_wflush(int fd);
-extern void DIS_tcp_release(int fd);
+#define DIS_WRITE_BUF 0
+#define DIS_READ_BUF 1
 
-extern void tcp_set_extra(int fd, void *extra);
-extern void *tcp_get_extra(int fd);
+typedef struct pbs_dis_buf {
+	size_t tdis_lead;
+	size_t tdis_trail;
+	size_t tdis_eod;
+	size_t tdis_bufsize;
+	char *tdis_thebuf;
+} pbs_dis_buf_t;
 
-int diswull(int stream, u_Long value);
-u_Long disrull(int stream, int *retval);
+typedef struct pbs_tcp_chan {
+	pbs_dis_buf_t readbuf;
+	pbs_dis_buf_t writebuf;
+	int authctx_status;
+	int is_encrypted;
+	void *extra;
+} pbs_tcp_chan_t;
+
+void transport_chan_set_extra(int, void *);
+void * transport_chan_get_extra(int);
+void transport_chan_set_encrypted(int);
+int transport_chan_is_encrypted(int);
+void transport_chan_set_authctx_status(int, int);
+int transport_chan_get_authctx_status(int);
+void dis_clear_buf(pbs_dis_buf_t *);
+void dis_reset_buf(int, int);
+int disr_skip(int, size_t);
+int dis_getc(int);
+int dis_gets(int, char *, size_t);
+int dis_puts(int, const char *, size_t);
+int disr_commit(int, int);
+int disw_commit(int, int);
+int dis_flush(int);
+void dis_setup_chan(int, pbs_tcp_chan_t * (*)(int));
+void dis_destroy_chan(int);
+
+pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
+int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
+void (*pfn_transport_chan_free_extra)(void *);
+int (*pfn_transport_recv)(int, void *, int);
+int (*pfn_transport_send)(int, void *, int);
+
+#define transport_recv(x, y, z) (*pfn_transport_recv)(x, y, z)
+#define transport_send(x, y, z) (*pfn_transport_send)(x, y, z)
+#define transport_get_chan(x) (*pfn_transport_get_chan)(x)
+#define transport_set_chan(x, y) (*pfn_transport_set_chan)(x, y)
+#define transport_chan_free_extra(x) \
+	do { \
+		if (pfn_transport_chan_free_extra != NULL) { \
+			(*pfn_transport_chan_free_extra)(x); \
+		} \
+	} while(0)
 
 #ifdef	__cplusplus
 }

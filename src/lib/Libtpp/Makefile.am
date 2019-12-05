@@ -38,17 +38,16 @@
 
 noinst_LIBRARIES = libtpp.a
 
-libtpp_a_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
+libtpp_a_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@KRB5_CFLAGS@
 
 libtpp_a_SOURCES = \
 	tpp_client.c \
 	tpp_common.h \
-	tpp_dis.c \
 	tpp_em.c \
 	tpp_platform.c \
 	tpp_platform.h \
 	tpp_router.c \
 	tpp_transport.c \
-	tpp_util.c \
-	tpp_gss.c
-
+	tpp_util.c

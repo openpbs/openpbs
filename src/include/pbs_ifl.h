@@ -489,13 +489,6 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 	EQ, NE, GE, GT, LE, LT, DFLT
 };
 
-/* PBS supported authentication methods */
-enum pbs_auth_method {
-	AUTH_RESV_PORT,      /* Reserved port authentication */
-	AUTH_MUNGE,           /* MUNGE Authentication */
-	AUTH_GSS           /* GSS Authentication */
-};
-
 /* shutdown manners externally visible */
 #define SHUT_IMMEDIATE	0
 #define SHUT_DELAY	1

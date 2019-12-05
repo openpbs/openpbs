@@ -39,19 +39,6 @@
 
 #include "dis_.h"
 
-/**
- * @file	disc.c
- * @brief
- *	Routines to read and write down a stream
- */
-int (*dis_getc)(int stream)					= NULL;
-int (*dis_puts)(int stream, const char *string, size_t count)	= NULL;
-int (*dis_gets)(int stream, char *string, size_t count)	= NULL;
-
-int (*disr_skip)(int stream, size_t nskips)			= NULL;
-int (*disw_commit)(int stream, int commit)			= NULL;
-int (*disr_commit)(int stream, int commit)			= NULL;
-
 const char *dis_emsg[] = {"No error",
 	"Input value too large to convert to this type",
 	"Tried to write floating point infinity",
@@ -70,7 +57,7 @@ long dis_buffsize = DIS_BUFSIZ;
 
 /**
  * @brief
- * 	called once per process to initialize the dis tables 
+ * 	called once per process to initialize the dis tables
  *
  */
 

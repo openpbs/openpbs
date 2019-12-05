@@ -176,17 +176,7 @@ main(int argc, char *argv[])
 		set_tpp_funcs(log_tppmsg);
 
 		/* call tpp_init */
-		rc = 0;
-		if (pbs_conf.auth_method == AUTH_MUNGE)
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression,
-								TPP_AUTH_EXTERNAL,
-								get_ext_auth_data, validate_ext_auth_data);
-		else
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression,
-								TPP_AUTH_RESV_PORT,
-								NULL, NULL);
+		rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
 		if (rc == -1) {
 			fprintf(stderr, "Error setting TPP config\n");
 			return -1;

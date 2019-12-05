@@ -29,7 +29,6 @@ extern unsigned char pbs_aes_iv[];
  *
  * @param[in]	uncrypted - The input data to encrypt
  * @param[out]	credtype  - The credential type
- * @param[in]	len 	  - Length of input data to be encrypted
  * @param[out]	credbuf	  - The buffer containing the encrypted data
  * @param[out]	outlen	  - Length of the buffer containing encrypted data
  *
@@ -39,10 +38,11 @@ extern unsigned char pbs_aes_iv[];
  *
  */
 int
-pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen)
+pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen)
 {
         int plen, len2 = 0;
         unsigned char *cblk;
+        size_t len = strlen(uncrypted) + 1;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         EVP_CIPHER_CTX real_ctx;
@@ -88,15 +88,6 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
         return 0;
 }
 
-/*
- * Convenience wrapper for encrypting a string password
- */
-int
-pbs_encrypt_pwd(char *str, int *credtype, char **credbuf, size_t *credlen)
-{
-        return pbs_encrypt_data(str, credtype, strlen(str) + 1, credbuf, credlen);
-}
-
 /**
  * @brief
  *	Decrypt the encrypted input data using AES decryption.
@@ -106,7 +97,6 @@ pbs_encrypt_pwd(char *str, int *credtype, char **credbuf, size_t *credlen)
  * @param[in]   credtype  - The credential type
  * @param[in]	len	      - The length of crypted
  * @param[out]	uncrypted - The decrypted data
- * @param[out]  outlen    - The length of the decrypted data
  *
  * @return      int
  * @retval	-1 - Failure
@@ -114,7 +104,7 @@ pbs_encrypt_pwd(char *str, int *credtype, char **credbuf, size_t *credlen)
  *
  */
 int
-pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen)
+pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
 {
         unsigned char *cblk;
         int plen, len2 = 0;
@@ -156,22 +146,7 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
         CIPHER_CONTEXT_CLEAN(ctx);
 
         *uncrypted = (char *)cblk;
-        *outlen = plen + len2;
+        (*uncrypted)[plen + len2] = '\0';
 
         return 0;
-}
-
-/*
- * Convenience wrapper for encrypting a string password
- */
-int
-pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **str)
-{
-        size_t outlen;
-        int ret;
-
-        if ((ret = pbs_decrypt_data(crypted, credtype, len, str, &outlen)) == 0)
-                (*str)[outlen] = 0; /* set a null character at the end */
-
-        return ret;
 }

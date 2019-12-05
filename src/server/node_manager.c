@@ -159,7 +159,6 @@
 #include	"log.h"
 #include	"rpp.h"
 #include	"dis.h"
-#include	"dis_init.h"
 #include	"resmon.h"
 #include	"mom_server.h"
 #include	"pbs_license.h"
@@ -1233,7 +1232,7 @@ mom_ping_need(mominfo_t *pmom, int force_hello, int once)
 				psvrmom->msr_stream);
 			log_err(-1, __func__, log_buffer);
 		}
-		psvrmom->msr_stream &= ~INUSE_NEED_ADDRS;
+		psvrmom->msr_state &= ~INUSE_NEED_ADDRS;
 	}
 
 	if (com == IS_HELLO) {
@@ -1513,8 +1512,8 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	if (pnode->nd_state & INUSE_PROV) {
-		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||	
-			(pnode->nd_state == INUSE_PROV)) { /* INUSE_FREE is 0 */	
+		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
+			(pnode->nd_state == INUSE_PROV)) { /* INUSE_FREE is 0 */
 
 			attribute    *pala;
 			resource_def *prd;
@@ -1525,7 +1524,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 			if (pala && prd && (prc = find_resc_entry(pala, prd))) {
 				if (strncmp(prc->rs_value.at_val.at_arst->as_string[0],
 					"cray_compute", 12) == 0)  {
-					
+
 					/**
  					 * Unlike other nodes, in compute-node
  					 * provisioning, MOM node does not restart
@@ -1534,8 +1533,8 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
  					 * called here.
  					 */
 
-					DBPRT(("%s: calling [is_vnode_prov_done] from set_vnode_state, type = %d\n", __func__, type))	
-					is_vnode_prov_done(pnode->nd_name);	
+					DBPRT(("%s: calling [is_vnode_prov_done] from set_vnode_state, type = %d\n", __func__, type))
+					is_vnode_prov_done(pnode->nd_name);
 				}
 			}
 		}
@@ -2326,7 +2325,7 @@ stat_update(int stream)
 			    (schedselect_entry->al_value != NULL) &&
 			    (cur_execvnode != NULL) &&
 			    (strcmp(cur_execvnode, execvnode_entry->al_value) != 0) &&
-			    (cur_schedselect != NULL) && 
+			    (cur_schedselect != NULL) &&
 			    (strcmp(cur_schedselect, schedselect_entry->al_value) != 0)) {
 
 				/* decreements everything found in exec_vnode */
@@ -2348,7 +2347,7 @@ stat_update(int stream)
 					&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
 					NULL, NULL,
 		  			pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
-				
+
 				if (assign_hosts(pjob, execvnode_entry->al_value, 1) == 0) {
 					resource_def *prdefsl;
 					resource     *presc;
@@ -4416,7 +4415,7 @@ mom_running_jobs(int stream)
 			 * calls to issue_signal would reset RPP DIS routines to TCP
 			 * revert back to RPP routines before continuing
 			 */
-			DIS_rpp_reset();
+			DIS_rpp_funcs();
 		}
 
 		/* all other cases - job left as is */
@@ -5610,7 +5609,7 @@ write_single_node_state(struct pbsnode *np)
 	int     isoff;
 	int     hascomment;
 	int     hascurrentaoe;
-	pbs_db_attr_info_t attr;	
+	pbs_db_attr_info_t attr;
 	pbs_db_attr_list_t attr_list;
 	extern char	*get_vnode_state_str(char *);
 
@@ -6741,7 +6740,7 @@ build_execvnode(job *pjob, char *nds)
 
 	*outbuf = '\0';
 
-       /* 
+       /*
         * if the number of nodes identified for ndarray (nnodes) are not equal
         * to the number of nodes identified by parse_plus_spec, then
         * the vnode specification is invalid.

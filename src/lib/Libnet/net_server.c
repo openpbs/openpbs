@@ -101,16 +101,14 @@ static void	*poll_context;  /* This is the context of the descriptors being poll
 void 	*priority_context;
 static int      init_poll_context();  /* Initialize the tpp context */
 static void	(*read_func[2])(int);
-static int	(*ready_read_func)(int);
+static int	(*ready_read_func)(conn_t *);
 static char	logbuf[256];
 
 /* Private function within this file */
-static int 	connection_find_usable_index(int);
-static int 	connection_find_actual_index(int);
+static int 	conn_find_usable_index(int);
+static int 	conn_find_actual_index(int);
 static void 	accept_conn();
 static void 	cleanup_conn(int);
-
-extern void DIS_tcp_release(int fd);
 
 /**
  * @brief
@@ -134,7 +132,7 @@ extern void DIS_tcp_release(int fd);
  * @par MT-safe: No
  */
 static int
-connection_find_usable_index(int sd)
+conn_find_usable_index(int sd)
 {
 	void *p;
 	unsigned int new_conns_array_size = 0;
@@ -179,7 +177,7 @@ connection_find_usable_index(int sd)
  *
  */
 static int
-connection_find_actual_index(int sd)
+conn_find_actual_index(int sd)
 {
 	if (sd >= 0 && sd < conns_array_size) {
 		if (svr_conn[sd])
@@ -211,7 +209,7 @@ connection_find_actual_index(int sd)
 conn_t *
 get_conn(int sd)
 {
-	int idx = connection_find_actual_index(sd);
+	int idx = conn_find_actual_index(sd);
 	if (idx < 0)
 		return NULL;
 
@@ -326,7 +324,7 @@ init_network(unsigned int port)
  * @retval	-1	error
  */
 int
-init_network_add(int sd, int (*readyreadfunc)(int), void (*readfunc)(int))
+init_network_add(int sd, int (*readyreadfunc)(conn_t *), void (*readfunc)(int))
 {
 	static int		initialized = 0;
 	enum conn_type  type;
@@ -491,7 +489,7 @@ engage_authentication(conn_t *pconn)
 static int
 process_socket(int sock)
 {
-	int idx = connection_find_actual_index(sock);
+	int idx = conn_find_actual_index(sock);
 	if (idx < 0) {
 		return -1;
 	}
@@ -507,9 +505,19 @@ process_socket(int sock)
 		}
 	}
 
-	if ((svr_conn[idx]->cn_ready_func == NULL) ||
-		(svr_conn[idx]->cn_ready_func(svr_conn[idx]->cn_sock))) /* in case of error we still need call cn_func e.g. because of EOF */
-		svr_conn[idx]->cn_func(svr_conn[idx]->cn_sock);
+	if (svr_conn[idx]->cn_ready_func != NULL) {
+		int ret = 0;
+		ret = svr_conn[idx]->cn_ready_func(svr_conn[idx]);
+		if (ret == -1) {
+			close_conn(sock);
+			return -1;
+		} else if (ret == 0) {
+			/* no data for cn_func */
+			return 0;
+		}
+		/* EOF will be handled in cn_func */
+	}
+	svr_conn[idx]->cn_func(svr_conn[idx]->cn_sock);
 	return 0;
 }
 
@@ -619,7 +627,7 @@ wait_request(time_t waittime, void *priority_context)
 			}
 #endif
 			if (prio_sock_processed) {
-				int idx = connection_find_actual_index(em_fd);
+				int idx = conn_find_actual_index(em_fd);
 				if (idx < 0)
 					continue;
 				if (svr_conn[idx]->cn_prio_flag == 1)
@@ -661,7 +669,7 @@ accept_conn(int sd)
 	struct sockaddr_in from;
 	pbs_socklen_t fromsize;
 
-	int idx = connection_find_actual_index(sd);
+	int idx = conn_find_actual_index(sd);
 	if (idx == -1)
 		return;
 
@@ -715,7 +723,7 @@ accept_conn(int sd)
  * @retval      NULL - failure.
  */
 conn_t *
-add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(int), void (*func)(int))
+add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int))
 {
 	return add_conn_priority(sd, type, addr, port, ready_func, func, 0);
 }
@@ -740,12 +748,12 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*r
  * @retval	NULL - failure.
  */
 conn_t *
-add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(int), void (*func)(int), int priority_flag)
+add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag)
 {
 	int 	idx;
 	conn_t *conn;
 
-	idx = connection_find_usable_index(sd);
+	idx = conn_find_usable_index(sd);
 	if (idx == -1)
 		return NULL;
 
@@ -818,7 +826,7 @@ add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port
 int
 add_conn_data(int sd, void * data)
 {
-	int idx = connection_find_actual_index(sd);
+	int idx = conn_find_actual_index(sd);
 	if (idx < 0) {
 		return -1;
 	}
@@ -844,7 +852,7 @@ add_conn_data(int sd, void * data)
 void *
 get_conn_data(int sd)
 {
-	int idx = connection_find_actual_index(sd);
+	int idx = conn_find_actual_index(sd);
 	if (idx < 0) {
 		snprintf(logbuf, sizeof(logbuf), "could not find index for the socket %d", sd);
 		log_err(-1, __func__, logbuf);
@@ -887,13 +895,12 @@ close_conn(int sd)
 #endif
 		return;
 
-	idx = connection_find_actual_index(sd);
+	idx = conn_find_actual_index(sd);
 	if (idx == -1)
 		return;
 
-	if (svr_conn[idx]->cn_active == FromClientDIS
-		|| svr_conn[idx]->cn_active == ToServerDIS) {
-		DIS_tcp_release(sd);
+	if (svr_conn[idx]->cn_active != ChildPipe) {
+		dis_destroy_chan(sd);
 	}
 
 	if (svr_conn[idx]->cn_active != ChildPipe) {
@@ -961,11 +968,11 @@ cleanup_conn(int idx)
 	/* Remove connection from the linked list */
 	delete_link(&svr_conn[idx]->cn_link);
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	svr_conn[idx]->cn_physhost[0] = '\0';
-	free(svr_conn[idx]->cn_credid);
-	svr_conn[idx]->cn_credid = NULL;
-#endif
+	if (svr_conn[idx]->cn_credid) {
+		free(svr_conn[idx]->cn_credid);
+		svr_conn[idx]->cn_credid = NULL;
+	}
 
 	/* Free the connection memory */
 	free(svr_conn[idx]);
@@ -1004,6 +1011,7 @@ net_close(int but)
 		if(sock != but) {
 			svr_conn[sock]->cn_oncl = NULL;
 			close_conn(sock);
+			destroy_connection(sock);
 		}
 	}
 
@@ -1029,7 +1037,7 @@ net_close(int but)
 pbs_net_t
 get_connectaddr(int sd)
 {
-	int idx = connection_find_actual_index(sd);
+	int idx = conn_find_actual_index(sd);
 	if (idx == -1)
 		return (0);
 
@@ -1060,7 +1068,7 @@ get_connecthost(int sd, char *namebuf, int size)
 	char	dst[INET_ADDRSTRLEN + 1]; /* for inet_ntop */
 #endif
 
-	int	idx = connection_find_actual_index(sd);
+	int	idx = conn_find_actual_index(sd);
 	if (idx == -1)
 		return (-1);
 
@@ -1156,7 +1164,7 @@ init_poll_context(void)
 	}
 	if ((tpp_em_add_fd(poll_context, sd_dummy, EM_IN) == -1)) {
 		int err = errno;
-		snprintf(logbuf, sizeof(logbuf), 
+		snprintf(logbuf, sizeof(logbuf),
 			"Could not add socket %d to the read set", sd_dummy);
 		log_err(err, __func__, logbuf);
 		CLOSESOCKET(sd_dummy);

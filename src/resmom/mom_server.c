@@ -71,7 +71,6 @@
 #include	"net_connect.h"
 #include	"rpp.h"
 #include	"dis.h"
-#include	"dis_init.h"
 #include 	"pbs_nodes.h"
 #include	"placementsets.h"
 #include	"resmon.h"

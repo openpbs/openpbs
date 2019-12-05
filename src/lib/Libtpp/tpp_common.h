@@ -150,7 +150,7 @@ typedef struct {
  */
 typedef struct {
 	unsigned char type;
-	unsigned char auth_type;
+	char auth_type[MAXAUTHNAME + 1];
 } tpp_auth_pkt_hdr_t;
 /* the authentication data follows this packet */
 
@@ -246,16 +246,15 @@ typedef struct {
 
 /* tpp internal message header types */
 enum TPP_MSG_TYPES {
-	TPP_CTL_AUTH = 0,
-        TPP_CTL_JOIN ,
-        TPP_CTL_LEAVE,
-        TPP_DATA,
-        TPP_CTL_MSG,
-        TPP_CLOSE_STRM,
-        TPP_MCAST_DATA,
-        TPP_GSS_CTX,
-        TPP_GSS_WRAP,
-        TPP_LAST_MSG
+	TPP_CTL_JOIN = 1,
+	TPP_CTL_LEAVE,
+	TPP_DATA,
+	TPP_CTL_MSG,
+	TPP_CLOSE_STRM,
+	TPP_MCAST_DATA,
+	TPP_AUTH_CTX,
+	TPP_ENCRYPTED_DATA,
+	TPP_LAST_MSG
 };
 
 #define TPP_MSG_NOROUTE         1
@@ -394,6 +393,12 @@ typedef struct {
 	void *avl_data; /* data created by the avl tree functions for the TPP threads */
 } tpp_tls_t;
 
+typedef struct {
+	void *authctx;
+	void *cleartext;
+	int cleartext_len;
+} conn_auth_t;
+
 tpp_que_elem_t* tpp_enque(tpp_que_t *l, void *data);
 void *tpp_deque(tpp_que_t *l);
 tpp_que_elem_t* tpp_que_del_elem(tpp_que_t *l, tpp_que_elem_t *n);
@@ -402,7 +407,7 @@ tpp_que_elem_t* tpp_que_ins_elem(tpp_que_t *l, tpp_que_elem_t *n,
 /* End - routines and headers to manage FIFO queues */
 
 void tpp_log_err(int errnum, char *routine, char *text);
-
+void DIS_tpp_funcs();
 int tpp_send(int sd, void *data, int len);
 int tpp_recv(int sd, void *data, int len);
 int tpp_ready_fds(int *sds, int len);
@@ -414,6 +419,7 @@ int tpp_init_tls_key(void);
 tpp_tls_t *tpp_get_tls(void);
 char *tpp_get_logbuf(void);
 char *mk_hostname(char *host, int port);
+int tpp_eom(int fd);
 int tpp_open(char *dest_host, unsigned int port);
 int tpp_bind(unsigned int port);
 int tpp_io(void);
@@ -430,7 +436,7 @@ void tpp_router_shutdown(void);
 void tpp_router_terminate(void);
 void tpp_free_tls(void);
 
-int tpp_transport_connect(char *hostname, int authtype, int delay, void *ctx, int *ret_tfd);
+int tpp_transport_connect(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd);
 int tpp_transport_vsend(int tfd, tpp_chunk_t *chunk, int count);
 int tpp_transport_isresvport(int tfd);
 int tpp_transport_vsend_extra(int tfd, tpp_chunk_t *chunk, int count, void *extra);
@@ -453,8 +459,7 @@ void tpp_transport_set_conn_ctx(int tfd, void *ctx);
 void *tpp_transport_get_conn_ctx(int tfd);
 void *tpp_transport_get_thrd_context(int tfd);
 int tpp_transport_wakeup_thrd(int tfd);
-int tpp_transport_connect_spl(char *hostname, int authtype,
-	int delay, void *ctx, int *ret_tfd, void *tctx);
+int tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd, void *tctx);
 int tpp_transport_close(int tfd);
 
 int tpp_init_lock(pthread_mutex_t *lock);
@@ -479,9 +484,7 @@ int tpp_set_close_on_exec(int fd);
 void tpp_free_pkt(tpp_packet_t *pkt);
 int tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned int src_sd, char err_num, char *msg);
 int tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data);
-int tpp_set_user_data_del_fnc(int sd, void (*fnc)(int));
 void tpp_add_close_func(int sd, void (*func)(int));
-int tpp_inner_eom(int sd);
 int tpp_set_keep_alive(int fd, struct tpp_config *cnf);
 
 void *tpp_deflate(void *inbuf, unsigned int inlen, unsigned int *outlen);
@@ -501,6 +504,7 @@ tpp_addr_t *tpp_get_connected_host(int sock);
 int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);
 tpp_addr_t *tpp_sock_resolve_host(char *host, int *count);
 
+const char * tpp_transport_get_conn_hostname(int tfd);
 void tpp_transport_set_conn_extra(int tfd, void *extra);
 
 char *tpp_netaddr(tpp_addr_t *);
@@ -690,16 +694,6 @@ void print_packet_hdr(const char *fnc, void *data, int len);
 #define		TPP_DBPRT(x)
 #define		PRTPKTHDR(id, data, len)
 
-#endif
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-void
-gss_transport_set_handlers(int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
-	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
-	int (*pkt_handler)(int, void *data, int len, void *, void *extra),
-	int (*close_handler)(int, int, void *, void *extra),
-	int (*post_connect_handler)(int sd, void *data, void *ctx, void *extra),
-	int (*timer_handler)(time_t now));
 #endif
 
 #endif

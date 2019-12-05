@@ -61,7 +61,9 @@ extern "C" {
  */
 
 #include "pbs_share.h"
+#include "attribute.h"
 #include "libpbs.h"
+#include "net_connect.h"
 
 /*
  * The rest of this stuff is for the Batch Request Structure
@@ -239,19 +241,11 @@ struct rq_register {
 };
 
 
-/* Authenticate resv_port */
-struct rq_authen_resvport {
-	unsigned int    rq_port;
-};
-
-/* Authenticate using external mechanism (e.g. Munge/AMS etc) */
-struct rq_authen_external {
-	unsigned char rq_auth_type;
-	union {
-		struct {
-			char rq_authkey[PBS_AUTH_KEY_LEN];
-		} rq_munge;
-	} rq_authen_un; /* allows easy adding other external authentications in future */
+/* Authenticate request */
+struct rq_auth {
+	unsigned rq_is_auth_resvport;
+	char rq_auth_type[MAXAUTHNAME + 1];
+	unsigned int rq_port;
 };
 
 /* Deferred Scheduler Reply */
@@ -339,8 +333,7 @@ struct batch_request {
 	struct batch_reply  rq_reply;	  /* the reply area for this request */
 
 	union indep_request {
-		struct rq_authen_resvport	rq_authen_resvport;
-		struct rq_authen_external	rq_authen_external;
+		struct rq_auth		rq_auth;
 		int			rq_connect;
 		struct rq_queuejob	rq_queuejob;
 		struct rq_jobcred       rq_jobcred;
@@ -410,7 +403,7 @@ extern void  req_confirmresv(struct batch_request *req);
 extern void  req_connect(struct batch_request *req);
 extern void  req_defschedreply(struct batch_request *req);
 extern void  req_locatejob(struct batch_request *req);
-extern void  req_manager(struct batch_request *req);
+extern void  req_manager(struct batch_request *req, conn_t *conn);
 extern void  req_movejob(struct batch_request *req);
 extern void  req_register(struct batch_request *req);
 extern void  req_releasejob(struct batch_request *req);
@@ -435,8 +428,7 @@ extern void req_cred(struct batch_request *preq);
 
 /* PBS Batch Request Decode/Encode routines */
 
-extern int decode_DIS_AuthenResvPort(int socket, struct batch_request *);
-extern int decode_DIS_AuthExternal(int socket, struct batch_request *);
+extern int decode_DIS_Authenticate(int socket, struct batch_request *);
 extern int decode_DIS_CopyFiles(int socket, struct batch_request *);
 extern int decode_DIS_CopyFiles_Cred(int socket, struct batch_request *);
 extern int decode_DIS_JobCred(int socket, struct batch_request *);

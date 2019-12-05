@@ -65,22 +65,22 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 	struct batch_reply	*reply = NULL;
 	int			rc = -1;
 	char			*ret = NULL;
-	int			sock = connection[connect].ch_socket;
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	/* first, set up the body of the Modify Reservation request */
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_ModifyResv, pbs_current_user)) ||
-		(rc = encode_DIS_ModifyResv(sock, resv_id, attrib)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+	if ((rc = encode_DIS_ReqHdr(connect, PBS_BATCH_ModifyResv, pbs_current_user)) ||
+		(rc = encode_DIS_ModifyResv(connect, resv_id, attrib)) ||
+		(rc = encode_DIS_ReqExtend(connect, extend))) {
+			if (set_conn_errtxt(connect, dis_emsg[rc]) != 0) {
+				pbs_errno = PBSE_SYSTEM;
 				return NULL;
+			}
 			if (pbs_errno == PBSE_PROTOCOL)
 				return NULL;
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(connect)) {
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
@@ -98,4 +98,3 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 	}
 	return ret;
 }
-

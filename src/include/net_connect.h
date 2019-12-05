@@ -65,7 +65,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define PBS_NET_CONN_NOTIMEOUT	   0x04
 #define PBS_NET_CONN_FROM_QSUB_DAEMON	0x08
 #define PBS_NET_CONN_FORCE_QSUB_UPDATE	0x10
-#define PBS_NET_CONN_GSSAPIAUTH 0x20
+#define PBS_NET_CONN_TO_SCHED	0x20
 
 #define	QSUB_DAEMON	"qsub-daemon"
 
@@ -141,7 +141,6 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 
 #define B_RESERVED	0x1	/* need reserved port */
 #define B_SVR		0x2	/* generate server type auth message */
-#define B_EXTERNAL	0x4 /* External authentication framework like munge to be used */
 
 /**
  * @brief
@@ -176,8 +175,8 @@ enum conn_type {
 
 /* functions available in libnet.a */
 
-conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(int), void (*func)(int));
-conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(int), void (*func)(int), int priority_flag);
+conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int));
+conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
 void close_socket(int sock);
@@ -191,7 +190,7 @@ pbs_net_t get_hostaddr(char *hostname);
 int  compare_short_hostname(char *shost, char *lhost);
 unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);
-int  init_network_add(int sock, int (*readyreadfunc)(int), void (*readfunc)(int));
+int  init_network_add(int sock, int (*readyreadfunc)(conn_t *), void (*readfunc)(int));
 void net_close(int);
 int  wait_request(time_t waittime, void *priority_context);
 extern void *priority_context;
@@ -208,12 +207,11 @@ struct connection {
 	int		cn_sock;	/* socket descriptor */
 	pbs_net_t	cn_addr;	/* internet address of client */
 	int		cn_sockflgs;	/* file status flags - fcntl(F_SETFL) */
-	int		cn_handle;	/* handle for API, see svr_connect() */
 	unsigned int	cn_port;	/* internet port number of client */
 	unsigned short  cn_authen;	/* authentication flags */
 	enum conn_type	cn_active;	/* idle or type if active */
 	time_t		cn_lasttime;	/* time last active */
-	int		(*cn_ready_func)(int); /* true if data rdy for cn_func */
+	int		(*cn_ready_func)(conn_t *); /* true if data rdy for cn_func */
 	void		(*cn_func)(int); /* read function when data rdy */
 	void		(*cn_oncl)(int); /* func to call on close */
 	unsigned short	cn_prio_flag;	/* flag for a priority socket */
@@ -221,13 +219,10 @@ struct connection {
 	/* credential checking */
 	time_t          cn_timestamp;
 	void            *cn_data;         /* pointer to some data for cn_func */
-	char            cn_username[PBS_MAXUSER];
+	char            cn_username[PBS_MAXUSER + 1];
 	char            cn_hostname[PBS_MAXHOSTNAME + 1];
 	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        char            *cn_credid;
-        char            cn_physhost[PBS_MAXHOSTNAME + 1];
-#endif
+	char            *cn_credid;
+	char            cn_physhost[PBS_MAXHOSTNAME + 1];
 };
 #endif	/* _NET_CONNECT_H */

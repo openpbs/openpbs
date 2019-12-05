@@ -320,7 +320,7 @@ close_secondary(int sock)
 	if (!conn)
 		return;
 
-	if (Secondary_connection == conn->cn_handle)
+	if (Secondary_connection == conn->cn_sock)
 		Secondary_connection = -1;
 
 	DBPRT(("Failover: close secondary on socket %d\n", sock))
@@ -351,11 +351,11 @@ put_failover(int sock, struct batch_request *request)
 
 
 	DBPRT(("Failover: sending FO(%d) request\n", request->rq_ind.rq_failover))
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_FailOver, pbs_current_user))==0)
 		if ((rc = diswui(sock, request->rq_ind.rq_failover)) == 0)
 			if ((rc=encode_DIS_ReqExtend(sock, 0)) == 0)
-				rc = DIS_tcp_wflush(sock);
+				rc = dis_flush(sock);
 	return rc;
 }
 
@@ -422,8 +422,7 @@ req_failover(struct batch_request *preq)
 			/* Mark the connection as non-expiring */
 
 			conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
-
-			Secondary_connection = socket_to_handle(preq->rq_conn);
+			Secondary_connection = preq->rq_conn;
 			conn->cn_func = process_Dreply;
 			net_add_close_func(preq->rq_conn, close_secondary);
 
@@ -745,7 +744,6 @@ static int
 alt_conn(pbs_net_t addr, unsigned int sec)
 {
 	int sock;
-	int mode;
 	struct sigaction act;
 
 	act.sa_handler = alm_handler;
@@ -753,10 +751,7 @@ alt_conn(pbs_net_t addr, unsigned int sec)
 	act.sa_flags = 0;
 	sigaction(SIGALRM, &act, 0);
 	alarm(sec);
-	mode = B_RESERVED;
-	if (pbs_conf.auth_method == AUTH_MUNGE)
-		mode = B_EXTERNAL|B_SVR;
-	sock = client_to_svr(addr, pbs_server_port_dis, mode);
+	sock = client_to_svr(addr, pbs_server_port_dis, B_RESERVED);
 	alarm(0);
 	if (sock < 0)
 		sock = -1;
@@ -770,9 +765,9 @@ alt_conn(pbs_net_t addr, unsigned int sec)
  * @brief
  * 	Function to check if stonith script exists at PBS_HOME/server_priv/stonith.
  * 	If it does then invoke the script for execution.
- * 
+ *
  * @param[in]	node - hostname of the node, that needs to brought down.
- * 
+ *
  * @return	Error code
  * @retval	 0 - stonith script executed successfully or script does not exist.
  * @retval      -1 - stonith script failed to bring down node.
@@ -789,7 +784,7 @@ check_and_invoke_stonith(char *node)
 	int		rc = 0;
 	int		fd = 0;
 	struct stat	stbuf;
-	
+
 	if (node == NULL )
 		return -1;
 
@@ -805,12 +800,12 @@ check_and_invoke_stonith(char *node)
 	}
 
 	/* create unique filename by appending pid */
-	snprintf(out_err_fl, sizeof(out_err_fl), 
+	snprintf(out_err_fl, sizeof(out_err_fl),
 		"%s/spool/stonith_out_err_fl_%s_%d", pbs_conf.pbs_home_path, node, getpid());
 
 	/* execute stonith script and redirect output to file */
 	snprintf(stonith_cmd, sizeof(stonith_cmd), "%s %s > %s 2>&1", stonith_fl, node, out_err_fl);
-	snprintf(log_buffer, LOG_BUF_SIZE, 
+	snprintf(log_buffer, LOG_BUF_SIZE,
 		"Executing STONITH script to bring down primary at %s", pbs_conf.pbs_server_name);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
@@ -818,12 +813,12 @@ check_and_invoke_stonith(char *node)
 	rc = system(stonith_cmd);
 
 	if (rc != 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE, 
+		snprintf(log_buffer, LOG_BUF_SIZE,
 			"STONITH script execution failed, script exit code: %d", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_CRIT,
 			msg_daemonname, log_buffer);
 	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE, 
+		snprintf(log_buffer, LOG_BUF_SIZE,
 			"STONITH script executed successfully");
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			  msg_daemonname, log_buffer);
@@ -842,7 +837,7 @@ check_and_invoke_stonith(char *node)
 
 			if (read(fd, out_err_msg, stbuf.st_size) == -1) {
 				close(fd);
-				snprintf(log_buffer, LOG_BUF_SIZE, 
+				snprintf(log_buffer, LOG_BUF_SIZE,
 					"%s: read failed, errno: %d", out_err_fl, errno);
 				log_err(errno, __func__, log_buffer);
 				free(out_err_msg);
@@ -859,9 +854,9 @@ check_and_invoke_stonith(char *node)
 	}
 
 	if (out_err_msg) {
-		snprintf(log_buffer, LOG_BUF_SIZE, 
+		snprintf(log_buffer, LOG_BUF_SIZE,
 			"%s, exit_code: %d.", out_err_msg, rc);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, 
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			msg_daemonname, log_buffer);
 		free(out_err_msg);
 	}
@@ -981,7 +976,6 @@ be_secondary(time_t delay)
 	time_t			 mytime = 0;
 	time_t			 takeov_on_nocontact;
 	conn_t			 *conn;
-	int			 mode;
 	int			 rc = 0;
 
 	/*
@@ -1039,11 +1033,7 @@ be_secondary(time_t delay)
 				if (sec_sock >= 0)
 					close_conn(sec_sock);
 
-				mode = B_RESERVED;
-				if (pbs_conf.auth_method == AUTH_MUNGE)
-					mode = B_EXTERNAL|B_SVR;
-
-				sec_sock = client_to_svr(primaddr, pbs_server_port_dis, mode);
+				sec_sock = client_to_svr(primaddr, pbs_server_port_dis, B_RESERVED);
 				if (sec_sock < 0) {
 
 					/* failed to reconnect to primary */
@@ -1209,7 +1199,7 @@ be_secondary(time_t delay)
 				/* Invoke stonith, to make sure primary is down */
 				rc = check_and_invoke_stonith(pbs_conf.pbs_primary);
 				if (rc) {
-					snprintf(log_buffer, LOG_BUF_SIZE, 
+					snprintf(log_buffer, LOG_BUF_SIZE,
 						"Secondary will attempt taking over again");
 					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 						msg_daemonname, log_buffer);

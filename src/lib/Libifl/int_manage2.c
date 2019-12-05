@@ -71,27 +71,23 @@
  *
  */
 int
-PBSD_mgr_put(int c, int function, int command, int objtype, char *objname, 
+PBSD_mgr_put(int c, int function, int command, int objtype, char *objname,
 		struct attropl *aoplp, char *extend, int rpp, char **msgid)
 {
 	int rc;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, function, pbs_current_user)) ||
-		(rc = encode_DIS_Manage(sock, command, objtype, objname, aoplp)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, function, pbs_current_user)) ||
+		(rc = encode_DIS_Manage(c, command, objtype, objname, aoplp)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 				return (pbs_errno = PBSE_SYSTEM);
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
@@ -99,12 +95,12 @@ PBSD_mgr_put(int c, int function, int command, int objtype, char *objname,
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 	return 0;

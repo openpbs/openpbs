@@ -57,6 +57,7 @@
 #include "pbs_share.h"
 
 
+extern void DIS_tpp_funcs();
 /* External Global Data Items Referenced */
 
 extern time_t time_now;
@@ -87,20 +88,13 @@ req_connect(struct batch_request *preq)
 	if (preq->rq_extend != NULL) {
 		if (strcmp(preq->rq_extend, QSUB_DAEMON) == 0)
 			conn->cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
-		else if (strcmp(preq->rq_extend, SC_DAEMON) == 0)
-			conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL;
 	}
 
-
-	if ((conn->cn_authen &
-		(PBS_NET_CONN_AUTHENTICATED|PBS_NET_CONN_FROM_PRIVIL))==0) {
-		reply_ack(preq);
-	} else
-		req_reject(PBSE_BADCRED, 0, preq);
+	reply_ack(preq);
 }
 
-/** 
- * @brief     
+/**
+ * @brief
  *		req_authenResvPort - Authenticate a user connection based on the (new)
  *		pbs_iff information.  Pbs_iff will contact the server on a privileged
  *		port and identify the user who has made an existing, but yet unused,
@@ -114,7 +108,7 @@ req_authenResvPort(struct batch_request *preq)
 {
 	pbs_net_t	req_addr;
 	conn_t		*cp;
-	uint		authrequest_port = preq->rq_ind.rq_authen_resvport.rq_port;
+	uint		authrequest_port = preq->rq_ind.rq_auth.rq_port;
 
 	cp = get_conn(preq->rq_conn);
 	if (!cp) {
@@ -137,6 +131,11 @@ req_authenResvPort(struct batch_request *preq)
 				/* time stamp just for the record */
 				cp->cn_timestamp = time_now;
 				cp->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+				if (preq->isrpp)
+					DIS_tpp_funcs();
+				else
+					DIS_tcp_funcs();
+				transport_chan_set_authctx_status(cp->cn_sock, AUTH_STATUS_CTX_READY);
 			}
 			reply_ack(preq);
 			return;

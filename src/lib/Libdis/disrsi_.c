@@ -70,19 +70,17 @@ disrsi_(int stream, int *negate, unsigned *value, unsigned count, int recursv)
 	assert(value != NULL);
 	assert(count);
 	assert(stream >= 0);
-	assert(dis_getc != NULL);
-	assert(dis_gets != NULL);
 
 	if (++recursv > DIS_RECURSIVE_LIMIT)
 		return (DIS_PROTO);
 	/* dis_umaxd would be initialized by prior call to dis_init_tables */
-	switch (c = (*dis_getc)(stream)) {
+	switch (c = dis_getc(stream)) {
 		case '-':
 		case '+':
 			*negate = c == '-';
 			if (count > dis_umaxd)
 				goto overflow;
-			if ((*dis_gets)(stream, dis_buffer, count) != count)
+			if (dis_gets(stream, dis_buffer, count) != count)
 				return (DIS_EOD);
 			if (count == dis_umaxd) {
 				if (memcmp(dis_buffer, dis_umax, dis_umaxd) > 0)
@@ -112,7 +110,7 @@ disrsi_(int stream, int *negate, unsigned *value, unsigned count, int recursv)
 			if (count > 1) {
 				if (count > dis_umaxd)
 					break;
-				if ((*dis_gets)(stream, dis_buffer + 1, count - 1) !=
+				if (dis_gets(stream, dis_buffer + 1, count - 1) !=
 					count - 1)
 					return (DIS_EOD);
 				cp = dis_buffer;

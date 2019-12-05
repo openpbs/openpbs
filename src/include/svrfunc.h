@@ -83,7 +83,6 @@ extern int   schedule_high(pbs_sched *);
 extern void  shutdown_nodes(void);
 extern char *site_map_user(char *, char *);
 extern char *site_map_resvuser(char *, char *);
-extern int   socket_to_handle(int);
 extern void  svr_disconnect(int);
 extern void  svr_disconnect_with_wait_option(int, int);
 extern int   svr_connect(pbs_net_t, unsigned int, void (*)(int), enum conn_type, int rpp);

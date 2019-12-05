@@ -69,13 +69,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\include\acct.h" />
+    <ClInclude Include="..\..\src\include\auth.h" />
     <ClInclude Include="..\..\src\include\attribute.h" />
     <ClInclude Include="..\..\src\include\batch_request.h" />
     <ClInclude Include="..\..\src\include\bitfield.h" />
     <ClInclude Include="..\..\src\include\cmds.h" />
     <ClInclude Include="..\..\src\include\credential.h" />
     <ClInclude Include="..\..\src\include\dis.h" />
-    <ClInclude Include="..\..\src\include\dis_init.h" />
     <ClInclude Include="..\..\src\include\getopt.h" />
     <ClInclude Include="..\..\src\include\job.h" />
     <ClInclude Include="..\..\src\include\libpbs.h" />

@@ -315,7 +315,7 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
 			uath, ACL_User) == 0) {
 			/* not in list, next check if listed as a manager */
 
-			if ((svr_get_privilege(preq->rq_user, preq->rq_host) &
+			if ((svr_get_privilege(pcred->cn_username, pcred->cn_physhost) &
 				(ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0)
 				return (PBSE_PERM);
 		}

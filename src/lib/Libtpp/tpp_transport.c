@@ -74,6 +74,7 @@
 #include "rpp.h"
 #include "tpp_common.h"
 #include "tpp_platform.h"
+#include "auth.h"
 
 #define TPP_CONN_DISCONNECTED   1 /* Channel is disconnected */
 #define TPP_CONN_INITIATING     2 /* Channel is initiating */
@@ -155,7 +156,7 @@ static  char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentat
 static thrd_data_t **thrd_pool; /* array of threads - holds the thread pool */
 static int num_threads;       /* number of threads in the thread pool */
 
-static int auth_type = -1;
+static int is_auth_resvport = -1;
 static int last_thrd = -1;    /* global index to rotate work amongst threads */
 static int max_con = MAX_CON; /* nfiles */
 
@@ -168,7 +169,7 @@ static struct tpp_config *tpp_conf;  /* store a pointer to the tpp_config suppli
 typedef struct {
 	char *hostname; /* the host name to connect to */
 	int port;       /* the port to connect to */
-	int auth_type;  /* the type of authentication - PRIV_PORT is for now */
+	int is_auth_resvport;  /* bind to resv port? */
 } conn_param_t;
 
 /*
@@ -205,10 +206,6 @@ conns_array_type_t *conns_array = NULL; /* array of physical connections */
 int conns_array_size = 0;                    /* the size of physical connection array */
 pthread_mutex_t cons_array_lock;             /* mutex used to synchronize array ops */
 pthread_mutex_t thrd_array_lock;             /* mutex used to synchronize thrd assignment */
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-int tpp_gss_set_extra_host(void *extra, char *hostname);
-#endif
 
 /* function forward declarations */
 static void *work(void *v);
@@ -608,7 +605,7 @@ tpp_transport_init(struct tpp_config *conf)
 	if (conf->node_type == TPP_ROUTER_NODE) {
 		char *host;
 		int port;
-		
+
 		if ((host = tpp_parse_hostname(conf->node_name, &port)) == NULL) {
 			tpp_log_func(LOG_CRIT, __func__, "Out of memory parsing pbs_comm name");
 			return -1;
@@ -627,7 +624,7 @@ tpp_transport_init(struct tpp_config *conf)
 	}
 
 	tpp_conf = conf;
-	auth_type = conf->auth_type;
+	is_auth_resvport = conf->is_auth_resvport;
 	num_threads = conf->numthreads;
 
 	for (i = 0; i < conf->numthreads; i++) {
@@ -786,7 +783,7 @@ alloc_conn(int tfd)
  *	a leaf.
  *
  * @param[in] hostname - hostname to connect to
- * @param[in] authtype - The type of authentication mechanism to use
+ * @param[in] is_auth_resvport - bind to resv port?
  * @param[in] delay    - Connect after delay of this much seconds
  * @param[in] ctx      - Associate the passed ctx with the connection fd
  * @param[in] tctx     - Transport thrd context of the caller
@@ -803,7 +800,7 @@ alloc_conn(int tfd)
  *
  */
 int
-tpp_transport_connect_spl(char *hostname, int authtype, int delay, void *ctx, int *ret_tfd, void *tctx)
+tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd, void *tctx)
 {
 	phy_conn_t *conn;
 	int fd;
@@ -846,7 +843,7 @@ tpp_transport_connect_spl(char *hostname, int authtype, int delay, void *ctx, in
 		free(host);
 		return -1;
 	}
-	conn->conn_params->auth_type = authtype;
+	conn->conn_params->is_auth_resvport = is_auth_resvport;
 	conn->conn_params->hostname = host;
 	conn->conn_params->port = port;
 
@@ -866,7 +863,7 @@ tpp_transport_connect_spl(char *hostname, int authtype, int delay, void *ctx, in
  *	tpp_transport_connect_spl with the tctx parameter as NULL.
  *
  * @param[in] hostname - hostname to connect to
- * @param[in] authtype - The type of authentication mechanism to use
+ * @param[in] is_auth_resvport - bind to resv port?
  * @param[in] delay    - Connect after delay of this much seconds
  * @param[in] ctx	   - Associate the passed ctx with the connection fd
  * @param[out] ret_tfd - The fd of the connection returned
@@ -882,9 +879,9 @@ tpp_transport_connect_spl(char *hostname, int authtype, int delay, void *ctx, in
  *
  */
 int
-tpp_transport_connect(char *hostname, int authtype, int delay, void *ctx, int *ret_tfd)
+tpp_transport_connect(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd)
 {
-	return tpp_transport_connect_spl(hostname, authtype, delay, ctx, ret_tfd, NULL);
+	return tpp_transport_connect_spl(hostname, is_auth_resvport, delay, ctx, ret_tfd, NULL);
 }
 
 /**
@@ -1229,7 +1226,7 @@ tpp_transport_isresvport(int tfd)
  * @return	Error code
  * @retval	1	Failure
  * @retval	0	Success
- * 
+ *
  * @par Side Effects:
  *	None
  *
@@ -1305,7 +1302,7 @@ add_transport_conn(phy_conn_t *conn)
 		int fd = conn->sock_fd;
 
 		/* authentication */
-		if (conn->conn_params->auth_type == TPP_AUTH_RESV_PORT) {
+		if (conn->conn_params->is_auth_resvport) {
 			int tryport;
 			int start;
 			int rc = -1;
@@ -1313,7 +1310,7 @@ add_transport_conn(phy_conn_t *conn)
 			srand(time(NULL));
 			start = (rand() % (IPPORT_RESERVED - 1)) + 1;
 			tryport = start;
-			
+
 			while (1) {
 				struct sockaddr_in serveraddr;
 				/* bind this socket to a reserved port */
@@ -1791,7 +1788,7 @@ work(void *v)
 				tpp_sock_close(newfd);
 				return NULL;
 			}
-			conn->conn_params->auth_type = auth_type;
+			conn->conn_params->is_auth_resvport = is_auth_resvport;
 			conn->conn_params->hostname = strdup(tpp_netaddr_sa(&clientaddr));
 			conn->conn_params->port = ntohs(((struct sockaddr_in *) &clientaddr)->sin_port);
 
@@ -1931,7 +1928,7 @@ handle_disconnect(phy_conn_t *conn)
 	 */
 	if (tpp_enque(&conn->td->close_conn_que, conn) == NULL)
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory queueing close connection");
-	
+
 	return 0;
 }
 
@@ -2472,17 +2469,17 @@ tpp_transport_terminate()
 	 * calls pthread_mutex_destroy, so don't call them.
 	 * Also never log anything from a terminate handler
 	 *
-	 * Don't bother to free any TPP data as well, as the forked 
+	 * Don't bother to free any TPP data as well, as the forked
 	 * process is usually short lived and no point spending time
-	 * freeing space on a short lived forked process. Besides, 
-	 * the TPP thread which is lost after fork might have been in 
+	 * freeing space on a short lived forked process. Besides,
+	 * the TPP thread which is lost after fork might have been in
 	 * between using these data when the fork happened, so freeing
 	 * some structures might be dangerous.
 	 *
-	 * Thus the only thing we do here is to close file/sockets 
+	 * Thus the only thing we do here is to close file/sockets
 	 * so that the kernel can recognize when a close happens from the
 	 * main process.
-	 * 
+	 *
 	 */
 	tpp_log_func = tpp_dummy_logfunc;
 
@@ -2504,6 +2501,25 @@ tpp_transport_terminate()
 
 /**
  * @brief
+ *	Retrive hostname associated with given file descriptor of physical connection
+ *
+ * @param[in] tfd - Descriptor to the physical connection
+ *
+ */
+const char *
+tpp_transport_get_conn_hostname(int tfd)
+{
+	int slot_state;
+	phy_conn_t *conn;
+	conn = get_transport_atomic(tfd, &slot_state);
+	if (conn) {
+		return ((const char *)(conn->conn_params->hostname));
+	}
+	return NULL;
+}
+
+/**
+ * @brief
  *	Function associates some extra structure with physical connection
  *
  * @param[in] tfd - Descriptor to the physical connection
@@ -2518,8 +2534,5 @@ tpp_transport_set_conn_extra(int tfd, void *extra)
 	conn = get_transport_atomic(tfd, &slot_state);
 	if (conn) {
 		conn->extra = extra;
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		tpp_gss_set_extra_host(extra, conn->conn_params->hostname);
-#endif
 	}
 }

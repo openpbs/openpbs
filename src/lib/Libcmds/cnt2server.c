@@ -54,8 +54,7 @@
 
 #include <errno.h>
 #include "cmds.h"
-
-#include "pbs_gss.h"
+#include "auth.h"
 
 /**
  * @brief
@@ -72,13 +71,6 @@ int
 cnt2server_extend(char *server, char *extend)
 {
 	int connect;
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (!getenv("PBSPRO_IGNORE_KERBEROS") && !pbs_gss_can_get_creds()) {
-		fprintf(stderr, "No Kerberos credentials found.\n");
-		exit(1);
-	}
-#endif
 
 	connect = pbs_connect_extend(server, extend);
 	if (connect <= 0) {

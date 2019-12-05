@@ -78,7 +78,8 @@ struct pbs_config pbs_conf = {
 	0,					/* start_sched */
 	0,					/* start comm */
 	0,					/* locallog */
-	AUTH_RESV_PORT,				/* default to reserved port authentication */
+	AUTH_RESVPORT_NAME,			/* default to reserved port authentication */
+	1,					/* default true for resvport auth */
 	0,					/* sched_modify_event */
 	0,					/* syslogfac */
 	3,					/* syslogsvr - LOG_ERR from syslog.h */
@@ -582,18 +583,13 @@ __pbs_loadconf(int reload)
 				pbs_conf.pbs_conf_remote_viewer = strdup(conf_value);
 			}
 #endif
-#ifndef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
-				if (!strcasecmp(conf_value, "MUNGE")) {
-				   pbs_conf.auth_method = AUTH_MUNGE;
-				} else if (!strcasecmp(conf_value, "GSS")) {
-					pbs_conf.auth_method = AUTH_GSS;
-				} else {
-					fprintf(stderr, "pbsconf error: illegal value for %s\n",PBS_CONF_AUTH);
-					goto err;
+				int i = 0;
+				memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
+				for (i = 0; i < strlen(conf_value); i++) {
+					pbs_conf.auth_method[i] = tolower(conf_value[i]);
 				}
 			}
-#endif
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
 		fclose(fp);
@@ -819,7 +815,6 @@ __pbs_loadconf(int reload)
 		free(pbs_conf.pbs_conf_remote_viewer);
 		pbs_conf.pbs_conf_remote_viewer = strdup(gvalue);
 	}
-	
 #endif
 
 	/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
@@ -933,18 +928,19 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
-#ifndef WIN32
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {
-		if (!strcasecmp(gvalue, "MUNGE")) {
-			pbs_conf.auth_method = AUTH_MUNGE;
-		} else if (!strcasecmp(gvalue, "GSS")) {
-			pbs_conf.auth_method = AUTH_GSS;
-		} else {
-			fprintf(stderr, "pbsconf error: illegal value for %s\n",PBS_CONF_AUTH);
-			goto err;
+		int i = 0;
+		memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
+		for (i = 0; i < strlen(gvalue); i++) {
+			pbs_conf.auth_method[i] = tolower(gvalue[i]);
 		}
 	}
-#endif
+
+	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) == 0) {
+		pbs_conf.is_auth_resvport = 1;
+	} else {
+		pbs_conf.is_auth_resvport = 0;
+	}
 
 	pbs_conf.pbs_tmpdir = pbs_get_tmpdir();
 

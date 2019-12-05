@@ -52,7 +52,7 @@
 /**
  * @brief
  *	-Pass-through call to send preempt jobs batch request
- * 
+ *
  * @param[in] connect - connection handler
  * @param[in] preempt_jobs_list - list of jobs to be preempted
  *
@@ -66,25 +66,23 @@ PBSD_preempt_jobs(int connect, char **preempt_jobs_list)
 	struct batch_reply *reply = NULL;
 	preempt_job_info *ppj_reply = NULL;
 	preempt_job_info *ppj_temp = NULL;
-
 	int rc = -1;
-	int sock = 0;
 
-	sock = connection[connect].ch_socket;
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	/* first, set up the body of the Preempt Jobs request */
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_PreemptJobs, pbs_current_user)) ||
-		(rc = encode_DIS_PreemptJobs(sock, preempt_jobs_list)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+	if ((rc = encode_DIS_ReqHdr(connect, PBS_BATCH_PreemptJobs, pbs_current_user)) ||
+		(rc = encode_DIS_PreemptJobs(connect, preempt_jobs_list)) ||
+		(rc = encode_DIS_ReqExtend(connect, NULL))) {
+			if (set_conn_errtxt(connect, dis_emsg[rc]) != 0) {
+				pbs_errno = PBSE_SYSTEM;
 				return NULL;
+			}
 			if (pbs_errno == PBSE_PROTOCOL)
 				return NULL;
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(connect)) {
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
@@ -110,4 +108,3 @@ PBSD_preempt_jobs(int connect, char **preempt_jobs_list)
 	}
 	return ppj_reply;
 }
-

@@ -76,7 +76,7 @@ is_compose(int stream, int command)
 
 	if (stream < 0)
 		return DIS_EOF;
-	DIS_rpp_reset();
+	DIS_rpp_funcs();
 
 	ret = diswsi(stream, IS_PROTOCOL);
 	if (ret != DIS_SUCCESS)
@@ -176,7 +176,7 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  *	-PBSD_rdytocmt This function does the Ready To Commit sub-function of
  *	the Queue Job request.
  *
- * @param[in] connect - socket fd
+ * @param[in] c - socket fd
  * @param[in] jobid - job identifier
  * @param[in] rpp - indication for rpp to use or not
  * @param[in] msgid - message id
@@ -188,49 +188,46 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  */
 
 int
-PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
+PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
 {
 	int     rc;
 	struct batch_reply *reply;
-	int     sock;
 
 	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc=encode_DIS_ReqHdr(sock, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(sock, jobid))  ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
+	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
+		(rc = encode_DIS_JobId(c, jobid))  ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
 		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock))
+	if (dis_flush(c))
 		return (pbs_errno = PBSE_PROTOCOL);
 
 	/* read reply */
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 
 	PBSD_FreeReply(reply);
 
-	return connection[connect].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -238,7 +235,7 @@ PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
  *	-PBS_commit.c This function does the Commit sub-function of
  *	the Queue Job request.
  *
- * @param[in] connect - socket fd
+ * @param[in] c - socket fd
  * @param[in] jobid - job identifier
  * @param[in] rpp - indication for rpp to use or not
  * @param[in] msgid - message id
@@ -250,48 +247,45 @@ PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
  */
 
 int
-PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
+PBSD_commit(int c, char *jobid, int rpp, char **msgid)
 {
 	struct batch_reply *reply;
 	int rc;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_Commit, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(sock, jobid)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Commit, pbs_current_user)) ||
+		(rc = encode_DIS_JobId(c, jobid)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
 		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 
 	PBSD_FreeReply(reply);
 
-	return connection[connect].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -322,39 +316,36 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 {
 	struct batch_reply   *reply;
 	int	rc;
-	int	sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
 	if (jobid == NULL)
 		jobid = "";	/* use null string for null pointer */
 
-	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
-		(rc = encode_DIS_JobFile(sock, seq, buf, len, jobid, which)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
+	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
+		(rc = encode_DIS_JobFile(c, seq, buf, len, jobid, which)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
 		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
@@ -364,7 +355,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 
 	PBSD_FreeReply(reply);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -412,7 +403,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	if (rpp)
 		return (rc);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -456,7 +447,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 	if (rpp)
 		return (rc);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 
@@ -510,7 +501,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 	if (rpp)
 		return rc;
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -532,19 +523,16 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
  */
 
 char *
-PBSD_queuejob(int connect, char *jobid, char *destin, struct attropl *attrib, char *extend, int rpp, char **msgid)
+PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *extend, int rpp, char **msgid)
 {
 	struct batch_reply *reply;
 	char  *return_jobid = NULL;
 	int    rc;
-	int    sock;
 
 	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS) {
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS) {
 			pbs_errno = PBSE_PROTOCOL;
 			return return_jobid;
 		}
@@ -552,43 +540,42 @@ PBSD_queuejob(int connect, char *jobid, char *destin, struct attropl *attrib, ch
 
 	/* first, set up the body of the Queue Job request */
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_QueueJob, pbs_current_user)) ||
-		(rc = encode_DIS_QueueJob(sock, jobid, destin, attrib)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_QueueJob, pbs_current_user)) ||
+		(rc = encode_DIS_QueueJob(c, jobid, destin, attrib)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;
-			} else {
-				pbs_errno = PBSE_PROTOCOL;
+				return NULL;
 			}
+			pbs_errno = PBSE_PROTOCOL;
 		}
 		return return_jobid;
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 
 		return (""); /* return something NON-NULL for rpp */
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		return return_jobid;
 	}
 
 	/* read reply from stream into presentation element */
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 	if (reply == NULL) {
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (reply->brp_choice &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Queue) {
 		pbs_errno = PBSE_PROTOCOL;
-	} else if (connection[connect].ch_errno == 0) {
+	} else if (get_conn_errno(c) == 0) {
 		return_jobid = strdup(reply->brp_un.brp_jid);
 		if (return_jobid == NULL) {
 			pbs_errno = PBSE_SYSTEM;

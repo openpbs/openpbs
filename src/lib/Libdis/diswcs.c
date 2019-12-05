@@ -78,14 +78,12 @@ diswcs(int stream, const char *value, size_t nchars)
 {
 	int		retval;
 
-	assert(disw_commit != NULL);
-	assert(dis_puts != NULL);
 	assert(nchars <= UINT_MAX);
 
 	retval = diswui_(stream, (unsigned)nchars);
 	if (retval == DIS_SUCCESS && nchars > 0 &&
-		(*dis_puts)(stream, value, nchars) != nchars)
+		dis_puts(stream, value, nchars) != nchars)
 		retval = DIS_PROTO;
-	return (((*disw_commit)(stream, retval == DIS_SUCCESS) < 0) ?
+	return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : retval);
 }

@@ -189,6 +189,22 @@ extern "C" {
 /* Default value of preempt_sort */
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
+#define AUTH_RESVPORT_NAME "resvport"
+#define MAXAUTHNAME 100
+
+enum AUTH_ROLE {
+	AUTH_ROLE_UNKNOWN = 0,
+	AUTH_CLIENT,
+	AUTH_SERVER,
+	AUTH_ROLE_LAST
+};
+
+enum AUTH_CTX_STATUS {
+	AUTH_STATUS_UNKNOWN = 0,
+	AUTH_STATUS_CTX_ESTABLISHING,
+	AUTH_STATUS_CTX_READY
+};
+
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -198,7 +214,8 @@ struct pbs_config
 	unsigned start_sched:1;		/* should the scheduler be started */
 	unsigned start_comm:1; 		/* should the comm daemon be started */
 	unsigned locallog:1;			/* do local logging */
-	unsigned auth_method;		/* set auth_method to use */
+	char auth_method[MAXAUTHNAME + 1];	/* set auth_method to use */
+	unsigned is_auth_resvport;		/* is resvport auth? */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -471,8 +488,6 @@ DECLDIR int      PBSD_ucred(int, char *, int, char *, int);
 
 #else
 
-extern int pbs_connection_getsocket(int);
-
 extern int pbs_connect_noblk(char *, int);
 
 extern int pbs_connection_set_nodelay(int);
@@ -567,4 +582,3 @@ extern const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1];
 #endif
 
 #endif	/* _PBS_INTERNAL_H */
-

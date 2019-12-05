@@ -96,8 +96,6 @@ static int  __pbs_client_thread_lock_conntable(void);
 static int  __pbs_client_thread_unlock_conntable(void);
 static int  __pbs_client_thread_lock_conf(void);
 static int  __pbs_client_thread_unlock_conf(void);
-static int  __pbs_client_thread_lock_tcp(void);
-static int  __pbs_client_thread_unlock_tcp(void);
 static int  __pbs_client_thread_init_thread_context(void);
 static int  __pbs_client_thread_init_connect_context(int connect);
 static int  __pbs_client_thread_destroy_connect_context(int connect);
@@ -135,12 +133,6 @@ int (*pfn_pbs_client_thread_lock_conf)(void)
 int (*pfn_pbs_client_thread_unlock_conf)(void)
 = &__pbs_client_thread_unlock_conf;
 
-int (*pfn_pbs_client_thread_lock_tcp)(void)
-= &__pbs_client_thread_lock_tcp;
-
-int (*pfn_pbs_client_thread_unlock_tcp)(void)
-= &__pbs_client_thread_unlock_tcp;
-
 int (*pfn_pbs_client_thread_init_thread_context)(void)
 = &__pbs_client_thread_init_thread_context;
 
@@ -158,7 +150,6 @@ static pthread_once_t post_init_key_once = PTHREAD_ONCE_INIT;
 
 static pthread_mutex_t pbs_client_thread_conntable_mutex; /* for conn table */
 static pthread_mutex_t pbs_client_thread_conf_mutex; /* for pbs_loadconf */
-static pthread_mutex_t pbs_client_thread_tcp_mutex; /* for tcp_dis table */
 static pthread_mutexattr_t attr;
 
 
@@ -226,20 +217,6 @@ __pbs_client_thread_lock_conf_single_threaded(void)
 /** single threaded mode dummy function definition */
 static int
 __pbs_client_thread_unlock_conf_single_threaded(void)
-{
-	return 0;
-}
-
-/** single threaded mode dummy function definition */
-static int
-__pbs_client_thread_lock_tcp_single_threaded(void)
-{
-	return 0;
-}
-
-/** single threaded mode dummy function definition */
-static int
-__pbs_client_thread_unlock_tcp_single_threaded(void)
 {
 	return 0;
 }
@@ -367,10 +344,6 @@ pbs_client_thread_set_single_threaded_mode(void)
 		__pbs_client_thread_lock_conf_single_threaded;
 	pfn_pbs_client_thread_unlock_conf =
 		__pbs_client_thread_unlock_conf_single_threaded;
-	pfn_pbs_client_thread_lock_tcp =
-		__pbs_client_thread_lock_tcp_single_threaded;
-	pfn_pbs_client_thread_unlock_tcp =
-		__pbs_client_thread_unlock_tcp_single_threaded;
 	pfn_pbs_client_thread_init_thread_context =
 		__pbs_client_thread_init_thread_context_single_threaded;
 	pfn_pbs_client_thread_init_connect_context =
@@ -413,9 +386,6 @@ pbs_client_thread_set_single_threaded_mode(void)
 static void
 __init_thread_data(void)
 {
-	pthread_mutex_t *ch_mutex;
-	int i;
-
 	if ((__pbs_client_thread_init_rc =
 		pthread_key_create(&key_tls,
 		&__pbs_client_thread_destroy_thread_data)) != 0)
@@ -463,23 +433,6 @@ __init_thread_data(void)
 		pthread_mutex_init(&pbs_client_thread_conf_mutex, &attr))
 		!= 0)
 		return;
-
-	/*
-	 * initialize the process-wide tcp mutex
-	 * Recursive mutex
-	 */
-	if ((__pbs_client_thread_init_rc =
-		pthread_mutex_init(&pbs_client_thread_tcp_mutex, &attr))
-		!= 0)
-		return;
-
-	/* now initialize all the connection level mutexes */
-	for (i = 0; i < NCONNECTS; i++) {
-		ch_mutex = &(connection[i].ch_mutex);
-		if ((__pbs_client_thread_init_rc =
-			pthread_mutex_init(ch_mutex, &attr)) != 0)
-			return;
-	}
 
 	pthread_mutexattr_destroy(&attr);
 	return;
@@ -1032,22 +985,14 @@ static int
 __pbs_client_thread_lock_connection(int connect)
 {
 	struct pbs_client_thread_connect_context *con;
-	pthread_mutex_t *mutex;
+	pthread_mutex_t *mutex = NULL;
 
-	/*
-	 * check if connect is within NCONNECTS
-	 * if not, locking on uninitalized memory can
-	 * hang the app
-	 */
-	if (connect >= NCONNECTS) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return pbs_errno;
+	if ((mutex = get_conn_mutex(connect)) == NULL) {
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
-	mutex = &(connection[connect].ch_mutex);
 	if (pthread_mutex_lock(mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	con = pbs_client_thread_find_connect_context(connect);
@@ -1059,22 +1004,15 @@ __pbs_client_thread_lock_connection(int connect)
 		if ((con = pbs_client_thread_add_connect_context(connect))
 			== NULL) {
 			(void)pthread_mutex_unlock(mutex);
-			pbs_errno = PBSE_SYSTEM;
-			return pbs_errno;
+			return (pbs_errno = PBSE_SYSTEM);
 		}
 	}
 
 	/* copy stuff from con to connection handle slot */
-	connection[connect].ch_errno = con->th_ch_errno;
-	if (con->th_ch_errtxt) {
-		if (connection[connect].ch_errtxt)
-			free(connection[connect].ch_errtxt);
-		connection[connect].ch_errtxt = strdup(con->th_ch_errtxt);
-		if (connection[connect].ch_errtxt == NULL) {
-			(void)pthread_mutex_unlock(mutex);
-			pbs_errno = PBSE_SYSTEM;
-			return pbs_errno;
-		}
+	set_conn_errno(connect, con->th_ch_errno);
+	if (set_conn_errtxt(connect, con->th_ch_errtxt) != 0) {
+		(void)pthread_mutex_unlock(mutex);
+		return (pbs_errno = PBSE_SYSTEM);;
 	}
 	return 0;
 }
@@ -1105,40 +1043,32 @@ __pbs_client_thread_lock_connection(int connect)
 static int
 __pbs_client_thread_unlock_connection(int connect)
 {
-	pthread_mutex_t *mutex;
-	struct pbs_client_thread_connect_context *con;
+	pthread_mutex_t *mutex = NULL;
+	struct pbs_client_thread_connect_context *con = NULL;
+	char *errtxt = NULL;
 
-	/*
-	 * check if connect is within NCONNECTS
-	 * if not, locking on uninitalized memory can
-	 * hang the app
-	 */
-	if (connect >= NCONNECTS) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return pbs_errno;
+	if ((mutex = get_conn_mutex(connect)) == NULL) {
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	con = pbs_client_thread_find_connect_context(connect);
 	if (con == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	/* copy stuff from con to connection handle slot */
-	con->th_ch_errno = connection[connect].ch_errno;
-	if (connection[connect].ch_errtxt) {
+	con->th_ch_errno = get_conn_errno(connect);
+	errtxt = get_conn_errtxt(connect);
+	if (errtxt) {
 		if (con->th_ch_errtxt)
 			free(con->th_ch_errtxt);
-		con->th_ch_errtxt =
-			strdup(connection[connect].ch_errtxt);
+		con->th_ch_errtxt = strdup(errtxt);
 		if (con->th_ch_errtxt == NULL)
 			return (pbs_errno = PBSE_SYSTEM);
 	}
 
-	mutex = &(connection[connect].ch_mutex);
 	if (pthread_mutex_unlock(mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	return 0;
@@ -1238,55 +1168,6 @@ __pbs_client_thread_unlock_conf(void)
 	}
 	return 0;
 }
-
-
-/**
- * @brief
- *	Locks the tcp level mutex
- *
- * @retval	0 (success)
- * @retval	pbs_errno (failure)
- *
- * @par Side-effects:
- *	Sets pbs_errno
- *
- * @par Reentrancy:
- *	Reentrant
- */
-static int
-__pbs_client_thread_lock_tcp(void)
-{
-	if (pthread_mutex_lock(&pbs_client_thread_tcp_mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
-	}
-	return 0;
-}
-
-
-/**
- * @brief
- *	Unlocks the tcp level mutex
- *
- * @retval	0 (success)
- * @retval	pbs_errno (failure)
- *
- * @par Side-effects:
- *	Sets pbs_errno
- *
- * @par Reentrancy:
- *	Reentrant
- */
-static int
-__pbs_client_thread_unlock_tcp(void)
-{
-	if (pthread_mutex_unlock(&pbs_client_thread_tcp_mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
-	}
-	return 0;
-}
-
 
 /**
  * @brief

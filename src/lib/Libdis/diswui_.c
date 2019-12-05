@@ -66,13 +66,12 @@ diswui_(int stream, unsigned value)
 	char		*cp;
 
 	assert(stream >= 0);
-	assert(dis_puts != NULL);
 
 	cp = discui_(&dis_buffer[DIS_BUFSIZ], value, &ndigs);
 	*--cp = '+';
 	while (ndigs > 1)
 		cp = discui_(cp, ndigs, &ndigs);
-	if ((*dis_puts)(stream, cp, (size_t)(&dis_buffer[DIS_BUFSIZ] - cp)) < 0)
+	if (dis_puts(stream, cp, (size_t)(&dis_buffer[DIS_BUFSIZ] - cp)) < 0)
 		return (DIS_PROTO);
 	return (DIS_SUCCESS);
 }

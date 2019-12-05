@@ -1431,10 +1431,11 @@ mgr_queue_delete(struct batch_request *preq)
  *		Sets the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_set(struct batch_request *preq)
+mgr_server_set(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -1446,7 +1447,7 @@ mgr_server_set(struct batch_request *preq)
 	while (plist) {
 		if (find_attr(svr_attr_def, plist->al_name, SRV_ATR_LAST) >= 0) {
 			if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
-				if (!is_local_root(preq->rq_user, preq->rq_host)) {
+				if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 					reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);
 					return;
 				}
@@ -1480,10 +1481,11 @@ mgr_server_set(struct batch_request *preq)
  *		Clears the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_unset(struct batch_request *preq)
+mgr_server_unset(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -1512,7 +1514,7 @@ mgr_server_unset(struct batch_request *preq)
 			}
 		} else if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
 			/*Only root at server host can unset server attribute "acl_roots".*/
-			if (!is_local_root(preq->rq_user, preq->rq_host)) {
+			if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 				reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);
 				return;
 			}
@@ -4716,11 +4718,14 @@ mgr_resource_unset(struct batch_request *preq)
  *		the object and the operation to be performed on it.  Then the
  *		appropriate function is called to perform the operation.
  *
- * @param[in]	preq	- The request containing information about the resource to
- * 		     				perform the operation.
+ * @param[in]	preq	- The request containing information about the resource to perform the operation.
+ * @param[in]	conn	- connection structure assosiated with preq
+ *
+ * @return void
+ *
  */
 void
-req_manager(struct batch_request *preq)
+req_manager(struct batch_request *preq, conn_t *conn)
 {
 	int obj_name_len;
 
@@ -4755,7 +4760,7 @@ req_manager(struct batch_request *preq)
 					break;
 
 				case MGR_OBJ_SITE_HOOK:
-					if (!is_local_root(preq->rq_user, preq->rq_host)) {
+					if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 						sprintf(log_buffer,
 							"%s@%s is unauthorized to access hooks data from server %s",
 							preq->rq_user, preq->rq_host, server_host);
@@ -4808,7 +4813,7 @@ req_manager(struct batch_request *preq)
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_set(preq);
+					mgr_server_set(preq, conn);
 					break;
 				case MGR_OBJ_SCHED:
 					if (obj_name_len == 0) {
@@ -4827,7 +4832,7 @@ req_manager(struct batch_request *preq)
 					break;
 				case MGR_OBJ_SITE_HOOK:
 				case MGR_OBJ_PBS_HOOK:
-					if (!is_local_root(preq->rq_user, preq->rq_host)) {
+					if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 						sprintf(log_buffer,
 							"%s@%s is unauthorized to access hooks data from server %s",
 							preq->rq_user, preq->rq_host, server_host);
@@ -4858,7 +4863,7 @@ req_manager(struct batch_request *preq)
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_unset(preq);
+					mgr_server_unset(preq, conn);
 					break;
 				case MGR_OBJ_QUEUE:
 					mgr_queue_unset(preq);
@@ -4868,7 +4873,7 @@ req_manager(struct batch_request *preq)
 					break;
 				case MGR_OBJ_SITE_HOOK:
 				case MGR_OBJ_PBS_HOOK:
-					if (!is_local_root(preq->rq_user, preq->rq_host)) {
+					if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 						sprintf(log_buffer,
 							"%s@%s is unauthorized to access hooks data from server %s",
 							preq->rq_user, preq->rq_host,
@@ -4905,7 +4910,7 @@ req_manager(struct batch_request *preq)
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SITE_HOOK:
 				case MGR_OBJ_PBS_HOOK:
-					if (!is_local_root(preq->rq_user, preq->rq_host)) {
+					if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 						sprintf(log_buffer,
 							"%s@%s is unauthorized to access hooks data from server %s",
 							preq->rq_user, preq->rq_host, server_host);
@@ -4931,7 +4936,7 @@ req_manager(struct batch_request *preq)
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SITE_HOOK:
 				case MGR_OBJ_PBS_HOOK:
-					if (!is_local_root(preq->rq_user, preq->rq_host)) {
+					if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
 						sprintf(log_buffer,
 							"%s@%s is unauthorized to access hooks data from server %s",
 							preq->rq_user, preq->rq_host, server_host);

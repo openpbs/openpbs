@@ -80,9 +80,6 @@ PBSD_ucred(int c, char *user, int type, char *buf, int len)
 {
 	int			rc;
 	struct batch_reply	*reply = NULL;
-	int			sock;
-
-	sock = connection[c].ch_socket;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -93,13 +90,12 @@ PBSD_ucred(int c, char *user, int type, char *buf, int len)
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return pbs_errno;
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc =encode_DIS_ReqHdr(sock, PBS_BATCH_UserCred, pbs_current_user)) ||
-		(rc = encode_DIS_UserCred(sock, user, type, buf, len)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc =encode_DIS_ReqHdr(c, PBS_BATCH_UserCred, pbs_current_user)) ||
+		(rc = encode_DIS_UserCred(c, user, type, buf, len)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -107,7 +103,7 @@ PBSD_ucred(int c, char *user, int type, char *buf, int len)
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
@@ -117,7 +113,7 @@ PBSD_ucred(int c, char *user, int type, char *buf, int len)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
@@ -143,7 +139,6 @@ PBSD_user_migrate(int c, char *tohost)
 {
 	int			rc;
 	struct batch_reply	*reply = NULL;
-	int			sock;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -154,15 +149,13 @@ PBSD_user_migrate(int c, char *tohost)
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return pbs_errno;
 
-	sock = connection[c].ch_socket;
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc =encode_DIS_ReqHdr(sock, PBS_BATCH_UserMigrate,
+	if ((rc =encode_DIS_ReqHdr(c, PBS_BATCH_UserMigrate,
 		pbs_current_user)) ||
-		(rc = encode_DIS_UserMigrate(sock, tohost)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+		(rc = encode_DIS_UserMigrate(c, tohost)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -170,7 +163,7 @@ PBSD_user_migrate(int c, char *tohost)
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
@@ -180,7 +173,7 @@ PBSD_user_migrate(int c, char *tohost)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
