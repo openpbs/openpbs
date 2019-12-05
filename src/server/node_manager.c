@@ -3452,12 +3452,20 @@ setup_pnames(char *namestr)
 	}
 
 	if (resc_added > 0) {
-
+		int pyrc;
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, "setup_pnames",
 			"Restarting Python interpreter as resourcedef file has changed.");
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pbs_python_ext_start_interpreter(&svr_interp_data);
+		pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
+		if (pyrc != 0) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
+			/*
+			 * FIXME:
+			 * Should we return an error?
+			 * If so, does anything need to be undone?
+			 */
+		}
 
 		send_rescdef(1);
 	}
@@ -4163,12 +4171,20 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	}
 
 	if (vn_resc_added > 0) {
-
+		int pyrc;
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, "update2_to_vnode",
 			"Restarting Python interpreter as resourcedef file has changed.");
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pbs_python_ext_start_interpreter(&svr_interp_data);
+		pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
+		if (pyrc != 0) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
+			/*
+			 * FIXME:
+			 * Should we return an error?
+			 * If so, does anything need to be undone?
+			 */
+		}
 
 		send_rescdef(1);
 	}
