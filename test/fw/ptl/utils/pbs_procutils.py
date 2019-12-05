@@ -43,6 +43,7 @@ import logging
 import socket
 import os
 import json
+from unittest.mock import sentinel
 from ptl.utils.pbs_dshutils import DshUtils
 
 
@@ -248,11 +249,9 @@ class ProcInfo(object):
         self.command = None
 
     def __str__(self):
-        return "%s pid: %s rss: %s vsz: %s pcpu: %s pmem: %s \
-               size: %s cputime: %s command: %s" % \
-               (self.name, str(self.pid), str(self.rss), str(self.vsz),
-                str(self.pcpu), str(self.pmem), str(self.size),
-                str(self.cputime), self.command)
+        return (f"{self.name} pid: {self.pid} rss: {self.rss} vsz: "
+                f"{self.vsz} pcpu: {self.pcpu} pmem: {self.pmem} size: "
+                f"{self.size} cputime: {self.cputime} command: {self.command}")
 
 
 class ProcMonitor(threading.Thread):
@@ -282,12 +281,19 @@ class ProcMonitor(threading.Thread):
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
 
-    def get_system_stats(self, nw_protocols=['TCP']):
+    def get_system_stats(self, nw_protocols=sentinel):
         """
         Run system monitoring
         """
+        if nw_protocols is sentinel:
+            self.skipTest("network protocol values is not set.")
         cmd = 'sar -rSub -n %s 1 1' % ','.join(nw_protocols)
-        rv = self.du.run_cmd(cmd=cmd, as_script=True)
+        try:
+            rv = self.du.run_cmd(cmd=cmd, as_script=True)
+        except BaseException:
+            msg = f"Is sar package installed"
+            self.logger.error(msg)
+            self.skipTest(msg)
         op = rv['out'][2:]
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
@@ -314,7 +320,7 @@ class ProcMonitor(threading.Thread):
                         _to_db['cputime'] = _per_proc.cputime
                         _to_db['name'] = _per_proc.name
                         self.db_proc_info.append(_to_db)
-            self.get_system_stats()
+            self.get_system_stats(nw_protocols=['TCP'])
             _sys_info = {}
             _sys_info['name'] = "System"
             _sys_info['time'] = time.ctime(timenow)
