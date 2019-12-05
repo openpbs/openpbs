@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_release_nodes 1B "18 May 2018" Local "PBS Professional"
+.TH pbs_release_nodes 1B "15 October 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_release_nodes 
 \- release vnodes assigned to a PBS job
@@ -59,6 +59,8 @@ all vnodes not on the primary execution host that are assigned to a
 running job via the 
 .I -a 
 option.
+
+Can be used on jobs and subjobs, but not on job arrays or ranges of subjobs.
 
 .B Caveats and Restrictions
 .br
@@ -95,7 +97,7 @@ used with list of vnode names.
 
 .IP "-j <job ID>" 10
 
-Specifies the job ID for the job whose vnode(s) are to be released.
+Specifies the job ID for the job or subjob whose vnode(s) are to be released.
 
 .IP "(no options)" 10
 Without the 
@@ -133,7 +135,7 @@ To release specific vnodes:
 .br
 .I pbs_release_nodes [-j <job ID>] <vnode name> [<vnode name>] ...]
 
-To release all of a job�s vnodes that are not on the primary execution host:
+To release all of a job's vnodes that are not on the primary execution host:
 .br
 .I pbs_release_nodes [-j <job ID>] -a
 

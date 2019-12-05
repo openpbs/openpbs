@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_statresv 3B "15 November 2019" Local "PBS Professional"
+.TH pbs_statvnode 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_statresv 
-\- get status of PBS reservation(s)
+.B pbs_statvnode
+\- get status of PBS vnode(s) on execution hosts
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
@@ -44,18 +44,20 @@
 .sp
 .nf
 .B struct batch_status *
-.B pbs_statresv(int connect, char *target, struct attrl *output_attribs, 
-.B \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
+.B pbs_statvnode(int connect, char *target, struct attrl *output_attribs, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
+
 .SH DESCRIPTION
-Issues a batch request to get the status of PBS reservation(s).
+Issues a batch request to get the status of PBS vnodes on execution hosts.
 
 Generates a 
-.I Status Reservation 
-(71) batch request and sends it to the server over the connection specified by 
+.I Status Node 
+(58) batch request and sends it to the server over the connection specified by 
 .I connect.
 
-Returns specified attributes or all attributes of specified reservation or all reservations.
+Returns specified attributes or all attributes of specified execution
+host vnode or all execution host vnodes.
 
 .SH ARGUMENTS
 .IP connect 8
@@ -64,26 +66,14 @@ Return value of
 Specifies connection handle over which to send batch request to server.
 
 .IP target 8
-ID of reservation whose attributes are to be reported.  If this
+Name of execution host vnode whose attributes are to be reported.  If this
 argument is a null pointer or points to a null string, returns
-attributes of all reservations the user is authorized to query.
-.br
-Format for advance reservation:
-.br
-.I R<sequence number>.<server name>
-.br
-Format for standing reservation:
-.br
-.I S<sequence number>.<server name>
-.br
-Format for maintenance reservation:
-.br
-.I M<sequence number>.<server name>
+attributes of all execution host vnodes known to the server.
 
 .IP output_attribs 8
-Pointer to a list of attributes to  return.  If this argument is null,
-returns all attributes.  Each attribute is described in an
-.I attrl 
+Pointer to a list of attributes to return.  If this argument is null,
+returns all attributes.  Each attribute is described in an 
+.I attrl
 structure, defined in pbs_ifl.h as:
 .nf
 struct attrl {
@@ -98,11 +88,11 @@ struct attrl {
 Character string for extensions to command.  Not currently used.
 .LP
 .B Members of attrl Structure
-
-.IP name  8
+.br
+.IP name 8
 Points to a string containing the name of the attribute.  
 
-.IP resource
+.IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.  Otherwise,
 .I resource 
@@ -115,9 +105,9 @@ Points to a string containing the value of the attribute or resource.
 Points to next attribute in list.  A null pointer terminates the list.
 
 .SH RETURN VALUE
-Returns a pointer to a list of 
+Returns a pointer to a list of
 .I batch_status 
-structures describing the reservation(s).  
+structures describing the vnode(s).
 
 If an error occurred, the routine returns a null pointer, and the
 error number is available in the global integer 
@@ -137,12 +127,12 @@ struct batch_status {
 }
 .fi
 
-.SH CLEANUP
+.SH CLEANUP 
 You must free the list of 
 .I batch_status 
 structures when no longer needed, by calling 
 .B pbs_statfree().
 
 .SH SEE ALSO
-pbs_rstat(1B), pbs_connect(3B), pbs_statfree(3B)
+qstat(1B), pbs_connect(3B), pbs_statfree(3B)
 

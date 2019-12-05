@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qalter 1B "29 November 2017" Local "PBS Professional"
+.TH qalter 1B "1 May 2019" Local "PBS Professional"
 .SH NAME
 .B qalter 
 \- alter PBS job
@@ -1161,7 +1161,7 @@ Allowed values for
 .IP PRIVATE
 PBS creates a job-specific directory for staging and execution.
 
-.IP HOME or unset
+.IP "HOME or unset"
 PBS uses the user's home directory for staging and execution.
 .RE
 .LP
