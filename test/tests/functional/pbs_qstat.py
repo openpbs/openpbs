@@ -104,6 +104,10 @@ class TestQstat(TestFunctional):
             self.assertFalse(ret['err'][0], ret_msg)
 
     def test_qstat_n_ip(self):
+        """
+        Test qstat -n output reports the correct node name
+        when node is created using IP address as name of the node.
+        """
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         ipaddr = socket.gethostbyname(self.mom.hostname)
         attr_A = {'Mom': self.mom.hostname}
@@ -124,6 +128,10 @@ class TestQstat(TestFunctional):
                       "node created using IP address")
 
     def test_qstat_n_fqdn(self):
+        """
+        Test qstat -n output reports task slot and processor info
+        when node is created using FQDN.
+        """
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.hostname)
         self.server.expect(NODE, {'state=free': 1})

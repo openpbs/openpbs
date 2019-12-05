@@ -607,6 +607,7 @@ prt_nodes(char *nodes, int no_newl)
 	char *token_cp = NULL;
 	char *subtoken = NULL;
 	char *node_name = NULL;
+	char *node_name_bkp = NULL;
 	char *chunk = NULL;
 	struct sockaddr_in check_ip;
 	int ret = 0;
@@ -640,13 +641,14 @@ prt_nodes(char *nodes, int no_newl)
 			/* Node name is not an IP address */
 			pbs_asprintf(&node_name, "%s%s", strtok(subtoken, "."), chunk);
 		}
+		/* Backing up node_name as we are modifying the pointer further in the code */
+		node_name_bkp = node_name;
 		len = strlen(node_name);
 		if (i + len < 77) {
-			while (len) {
-				linebuf[i++] = *node_name++;
-				len--;
+			for (;len > 0; i++, len--) {
+				linebuf[i] = *node_name++;
 			}
-			/* Appedning a  '+' here because we want to maintain the
+			/* Appending a  '+' here because we want to maintain the
 			 * exec_host format i.e. <host1>/<T1>*<P1>[+<host2>/<T2>*<P2>+.
 			 */
 			linebuf[i++] = '+';
@@ -654,10 +656,8 @@ prt_nodes(char *nodes, int no_newl)
 			/* flush line and start next */
 			linebuf[i] = '\0';
 			printf((no_newl ? "%s" : "   %s\n"), show_nonprint_chars(linebuf));
-			i = 0;
-			while (len) {
-				linebuf[i++] = *node_name++;
-				len--;
+			for (i = 0;len > 0; i++, len--) {
+				linebuf[i] = *node_name++;
 			}
 			linebuf[i++] = '+';
 		}
@@ -668,14 +668,12 @@ prt_nodes(char *nodes, int no_newl)
 		printf((no_newl ? "%s\n" : "   %s\n"), show_nonprint_chars(linebuf));
 	} else if (no_newl)
 		printf("\n");
-	if (token_cp) {
-		free(token_cp);
-		token_cp = NULL;
-	}
-	if (rest) {
-		free(rest);
-		rest = NULL;
-	}
+	free(token_cp);
+	free(rest);
+	free(node_name_bkp);
+	token_cp = NULL;
+	rest = NULL;
+	node_name_bkp = NULL;
 }
 
 /**
