@@ -60,6 +60,8 @@ notrans_dist_man1_MANS = \
 
 notrans_dist_man3_MANS = \
 	man3/pbs_alterjob.3B \
+	man3/pbs_asyrunjob.3B \
+	man3/pbs_confirmresv.3B \
 	man3/pbs_connect.3B \
 	man3/pbs_default.3B \
 	man3/pbs_deljob.3B \
@@ -73,6 +75,7 @@ notrans_dist_man3_MANS = \
 	man3/pbs_movejob.3B \
 	man3/pbs_msgjob.3B \
 	man3/pbs_orderjob.3B \
+	man3/pbs_preempt_jobs.3B \
 	man3/pbs_rerunjob.3B \
 	man3/pbs_rescreserve.3B \
 	man3/pbs_relnodesjob.3B \
@@ -84,6 +87,7 @@ notrans_dist_man3_MANS = \
 	man3/pbs_stagein.3B \
 	man3/pbs_statfree.3B \
 	man3/pbs_stathook.3B \
+	man3/pbs_stathost.3B \
 	man3/pbs_statjob.3B \
 	man3/pbs_statnode.3B \
 	man3/pbs_statque.3B \
@@ -91,6 +95,7 @@ notrans_dist_man3_MANS = \
 	man3/pbs_statrsc.3B \
 	man3/pbs_statsched.3B \
 	man3/pbs_statserver.3B \
+	man3/pbs_statvnode.3B \
 	man3/pbs_submit.3B \
 	man3/pbs_submit_resv.3B \
 	man3/pbs_tclapi.3B \
