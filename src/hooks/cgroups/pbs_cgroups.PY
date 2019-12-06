@@ -1010,13 +1010,17 @@ class HookUtils(object):
                         cgroup.set_limit('mem', val)
                     except Exception:
                         result = False
-                val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
-                # Note that True is morphed to 1 and False is morphed
-                # to 0, which allows different per-host or per-vnode
-                # settings when polymorphic cfg file support is there
-                # 0 means "never swap even if there is swap"
-                # 1 means "only swap if you have to, but not proactively"
+                    # Setting rss_available already done in create_vnodes
+                    # if not cgroup.cfg['vnode_per_numa_node']:
+                    #    event.vnode_list[host].resources_available['mem'] =
+                    #        pbs.size(convert_size(val, 'mb'))
                 try:
+                    # Note that True is morphed to 1 and False is morphed
+                    # to 0, which allows different per-host or per-vnode
+                    # settings when polymorphic cfg file support is there
+                    # 0 means "never swap even if there is swap"
+                    # 1 means "only swap if you have to, but not proactively"
+                    val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
                     cgroup.set_swappiness(val)
                 except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
@@ -1990,7 +1994,9 @@ class NodeUtils(object):
                                     host_resc_avail['ncpus']))
                 elif key == 'MemTotal':
                     mem = self.get_memory_on_node(memtotal=val)
-                    mem -= 1024 * 1024  # remove 1MB to handle jitter
+                    # remove X MB - handle jitter in MemTotal observed in field
+                    mem -= (1024 * 1024
+                            * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
                     if mem < 0:
                         mem = 0
                     mem -= mem % (1024 * 1024)
@@ -2020,7 +2026,10 @@ class NodeUtils(object):
                         host_resc_avail['hpmem'] = pbs.size('0')
                     else:
                         val = node.get_hpmem_on_node()
-                        val -= 1024 * 1024  # remove 1MB to handle jitter
+                        # remove X MB - handle jitter in mem reported by OS
+                        val -= (1024 * 1024
+                                * self.cfg['cgroup']['hpmem']
+                                          ['vnode_hidden_mb'])
                         if val < 0:
                             val = 0
                         val -= val % (1024 * 1024)  # round down to MB
@@ -2032,7 +2041,13 @@ class NodeUtils(object):
                         mem_val = val
                         if isinstance(val, float):
                             mem_val = int(val)
-                        mem_val -= 1024 * 1024  # protect ourselves from jitter
+                        # remove X MB - handle jitter in mem reported by OS
+                        key_to_subsys = ({'mem': 'memory',
+                                          'vmem': 'memsw',
+                                          'hpmem': 'hugetlb'})
+                        mem_val -= (1024 * 1024
+                                * self.cfg['cgroup'][key_to_subsys[key]]
+                                                    ['vnode_hidden_mb'])
                         if mem_val < 0:
                             mem_val = 0
                         mem_val -= mem_val % (1024 * 1024)
@@ -2636,6 +2651,7 @@ class CgroupUtils(object):
         defaults['cgroup']['hugetlb']['default'] = '0MB'
         defaults['cgroup']['hugetlb']['reserve_percent'] = 0
         defaults['cgroup']['hugetlb']['reserve_amount'] = '0MB'
+        defaults['cgroup']['hugetlb']['vnode_hidden_mb'] = 1
         defaults['cgroup']['memory'] = {}
         defaults['cgroup']['memory']['enabled'] = False
         defaults['cgroup']['memory']['exclude_hosts'] = []
@@ -2644,6 +2660,7 @@ class CgroupUtils(object):
         defaults['cgroup']['memory']['default'] = '0MB'
         defaults['cgroup']['memory']['reserve_percent'] = 0
         defaults['cgroup']['memory']['reserve_amount'] = '0MB'
+        defaults['cgroup']['memory']['vnode_hidden_mb'] = 1
         defaults['cgroup']['memory']['swappiness'] = 1
         defaults['cgroup']['memsw'] = {}
         defaults['cgroup']['memsw']['enabled'] = False
@@ -2652,6 +2669,7 @@ class CgroupUtils(object):
         defaults['cgroup']['memsw']['default'] = '0MB'
         defaults['cgroup']['memsw']['reserve_percent'] = 0
         defaults['cgroup']['memsw']['reserve_amount'] = '0MB'
+        defaults['cgroup']['memsw']['vnode_hidden_mb'] = 0
         defaults['cgroup']['net_cls'] = {}
         defaults['cgroup']['net_cls']['enabled'] = False
         defaults['cgroup']['net_prio'] = {}
@@ -2693,6 +2711,12 @@ class CgroupUtils(object):
             with open(config_file, 'r') as desc:
                 config = merge_dict(defaults,
                                     json.load(desc, object_hook=decode_dict))
+            # config file entries denotes reserved _swap_
+            # but vnode_hidden_mb used in code for vmem relies
+            # on total for physical plus swap (i.e. memsw)
+            config['cgroup']['memsw']['vnode_hidden_mb'] += \
+                config['cgroup']['memory']['vnode_hidden_mb']
+
         except IOError:
             raise CgroupConfigError('I/O error reading config file')
         pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -5198,6 +5222,7 @@ def main():
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
         event.reject(msg)
+
 
 # The following block is skipped if this is a unit testing environment.
 if (__name__ == 'builtins') or (__name__ == '__builtin__'):
