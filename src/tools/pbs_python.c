@@ -2571,7 +2571,6 @@ main(int argc, char *argv[], char *envp[])
 		char	perf_label[MAXBUF];
 		char	perf_action[MAXBUFLEN];
 		char	*sp;
-		int pyrc;
 
 		the_input[0] = '\0';
 		the_output[0] = '\0';
@@ -2907,8 +2906,7 @@ main(int argc, char *argv[], char *envp[])
 			(struct python_script **) &py_script);
 
 		hook_perf_stat_start(perf_label, HOOK_PERF_START_PYTHON, 0);
-		pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
-		if (pyrc != 0) {
+		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 			fprintf(stderr, "Failed to start Python interpreter");
 			exit(1);
 		}

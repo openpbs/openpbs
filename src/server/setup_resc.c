@@ -78,23 +78,12 @@ struct resc_sum *svr_resc_sum;
 void
 restart_python_interpreter(const char *caller)
 {
-	int pyrc;
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 		LOG_INFO, (char *) caller,
 		"Restarting Python interpreter as resourcedef file has changed.");
-	pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
-	if (pyrc != 0) {
+	if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 		log_err(PBSE_INTERNAL, (char *) caller, "Failed to restart Python interpreter");
-		/*
-		 * FIXME:
-		 * Should we return an error?
-		 */
 	}
-	/*
-	 * FIXME:
-	 * This is called in 4 places within req_manager.c.  If we return an error,
-	 * how should we respond in the calling function?
-	 */
 }
 #endif
 

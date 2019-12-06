@@ -784,8 +784,6 @@ main(int argc, char **argv)
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
 
-	int pyrc;
-
 	/* set python interp data */
 	svr_interp_data.data_initialized = 0;
 	svr_interp_data.init_interpreter_data =
@@ -1677,8 +1675,7 @@ try_db_again:
 	if ((pc=strchr(svr_interp_data.local_host_name, '.')) != NULL)
 		*pc = '\0';
 
-	pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
-	if (pyrc != 0) {
+	if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 		log_err(-1, msg_daemonname, "Failed to start Python interpreter");
 		stop_db();
 		free(keep_daemon_name);

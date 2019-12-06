@@ -5239,13 +5239,11 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	if ((time(NULL) - previous_restart) < min_restart_interval)
 		restart_python = 0;
 	if (restart_python) {
-		int pyrc;
 		char *line;
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__,
 			"Restarting Python interpreter to reduce mem usage");
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
-		if (pyrc != 0) {
+		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
 			goto event_set_exit;
 		}

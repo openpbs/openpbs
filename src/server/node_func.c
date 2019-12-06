@@ -1433,13 +1433,11 @@ setup_nodes_fs(int preprocess)
 		}
 
 		if (resc_added > 0) {
-			int pyrc;
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, "setup_nodes_fs",
 			"Restarting Python interpreter as resourcedef file has changed.");
 			pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-			pyrc = pbs_python_ext_start_interpreter(&svr_interp_data);
-			if (pyrc != 0) {
+			if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 				sprintf(log_buffer, "%s",
 					"Failed to restart Python interpreter");
 				goto errtoken2;
