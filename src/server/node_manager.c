@@ -4173,7 +4173,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
 		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
 			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
-			return PBSE_PYTHON_UNINITIALIZED;
+			return PBSE_INTERNAL;
 		}
 
 		send_rescdef(1);
