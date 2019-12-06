@@ -281,24 +281,23 @@ class ProcMonitor(threading.Thread):
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
 
-    def get_system_stats(self, nw_protocols=sentinel):
+    def get_system_stats(self, nw_protocols=None):
         """
         Run system monitoring
         """
-        if nw_protocols is sentinel:
-            self.skipTest("network protocol values is not set.")
+        # if no protocols set, use default
+        if not nw_protocols:
+            nw_protocols = ['TCP']
         cmd = 'sar -rSub -n %s 1 1' % ','.join(nw_protocols)
-        try:
-            rv = self.du.run_cmd(cmd=cmd, as_script=True)
-        except BaseException:
-            msg = f"Is sar package installed"
-            self.logger.error(msg)
-            self.skipTest(msg)
+        rv = self.du.run_cmd(cmd=cmd, as_script=True)
+        if rv['err']:
+            return False
         op = rv['out'][2:]
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
         for i in range(0, len(op), 2):
             self.sysstat.update(dict(zip(op[i], op[i + 1])))
+        return True
 
     def run(self):
         """
@@ -320,17 +319,17 @@ class ProcMonitor(threading.Thread):
                         _to_db['cputime'] = _per_proc.cputime
                         _to_db['name'] = _per_proc.name
                         self.db_proc_info.append(_to_db)
-            self.get_system_stats(nw_protocols=['TCP'])
-            _sys_info = {}
-            _sys_info['name'] = "System"
-            _sys_info['time'] = time.ctime(timenow)
-            _sys_info['sysload'] = os.getloadavg()[0]
-            _sys_info['pmemused'] = self.sysstat['%memused']
-            _sys_info['psystem'] = self.sysstat['%system']
-            _sys_info['pswpused'] = self.sysstat['%swpused']
-            _sys_info['rtps'] = self.sysstat['rtps']
-            _sys_info['wtps'] = self.sysstat['wtps']
-            self.db_proc_info.append(_sys_info)
+            if self.get_system_stats(nw_protocols=['TCP']):
+                _sys_info = {}
+                _sys_info['name'] = "System"
+                _sys_info['time'] = time.ctime(timenow)
+                _sys_info['sysload'] = os.getloadavg()[0]
+                _sys_info['pmemused'] = self.sysstat['%memused']
+                _sys_info['psystem'] = self.sysstat['%system']
+                _sys_info['pswpused'] = self.sysstat['%swpused']
+                _sys_info['rtps'] = self.sysstat['rtps']
+                _sys_info['wtps'] = self.sysstat['wtps']
+                self.db_proc_info.append(_sys_info)
             with open('proc_monitor.json', 'a+', encoding='utf-8') as proc:
                 json.dump(
                     self.db_proc_info,
