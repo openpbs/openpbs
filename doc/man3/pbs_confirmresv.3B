@@ -33,33 +33,27 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_orderjob 3B "15 November 2019" Local "PBS Professional"
+.TH pbs_confirmresv 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_orderjob 
-\- swap positions of two PBS batch jobs
-
+.B pbs_confirmresv 
+\- confirm a PBS reservation 
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
 #include <pbs_ifl.h>
 .sp
 .nf
-.B int pbs_orderjob(int connect, char *job_id1, char *job_id2, 
-.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
+.B int pbs_confirmresv(int connect, char *reservationID, char *location,
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 
 .SH DESCRIPTION
-Issues a batch request to swap the positions of two jobs.
+Issues a batch request to confirm a PBS advance, standing, or maintenance reservation.
 
-Generates an 
-.I Order Job 
-(50) batch request and sends it to the server over the connection specified by 
+This function generates a 
+.I Confirm Reservation 
+(75) batch request and sends it to the server over the connection specified by 
 .I connect.
-
-Can be used on jobs and job arrays.  Can be used on jobs in different
-queues.  Both jobs must be at the same server.
-
-You cannot swap positions of jobs that are running.
 
 .SH ARGUMENTS
 .IP connect 8
@@ -67,26 +61,75 @@ Return value of
 .B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
-.IP "jobID1, jobID2" 8
-IDs of jobs to be swapped.
+.IP reservationID 8
+Reservation to be confirmed.  
 .br
-Format for a job:
+Format for advance reservation:
 .br
-.I <sequence number>.<server name>
+.I R<sequence number>.<server name>
 .br
-Format for a job array:
+Format for standing reservation:
 .br
-.I <sequence number>[].<server name>
+.I S<sequence number>.<server name>
+.br
+Format for maintenance reservation:
+.br
+.I M<sequence number>.<server name>
+
+.IP location 8
+String describing vnodes and resources to be used for reservation.  
+Format:
+.br
+.I (<vchunk>)[+(<vchunk>) ...]
+.br
+where 
+.I vchunk 
+has the format
+.br
+.nf
+.I <vnode name>:<vnode resources>[+<vnode name>:<vnode 
+.br
+.I resources> ...]
+.fi
+.br
+and where
+.I vnode resources
+has the format
+.br
+.I <resource name>=<value>[:<resource name>=<value> ...]
+
+Example:
+.nf
+-H (VnodeA:mem=100kb:ncpus=1)+ 
+.br 
+     (VnodeB:mem=100kb:ncpus=2+ VnodeC:mem=100kb)
+.fi
+.LP
+
+.IP start_time 8
+Unsigned long containing start time in seconds since epoch.  Used only
+for ASAP reservations (reservations created by using
+.I pbs_ralter -W qmove=<jobID> 
+on an existing job).  
 
 .IP extend 8
-Character string for extensions to command.  Not currently used.
+Character string for specifying confirmation/non-confirmation action:
+.RS 11
+To confirm a normal reservation, pass in PBS_RESV_CONFIRM_SUCCESS.
+.br
+To have an unconfirmed reservation deleted, pass in PBS_RESV_CONFIRM_FAIL.
+.br
+To have the scheduler set the time when it will try to reconfirm a
+degraded reservation, pass in PBS_RESV_CONFIRM_FAIL.
+.RE
 
 .SH RETURN VALUE
 The routine returns 0 (zero) on success.
 
-If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer 
+On error, the routine returns a non-zero exit value, and the error
+number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO
-qmove(1B), qorder(1B), qsub(1B), pbs_connect(3B)
+pbs_rdel(1B), pbs_connect(3B)
+

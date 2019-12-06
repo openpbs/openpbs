@@ -33,124 +33,110 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_submit 3B "3 March 2015" Local "PBS Professional"
+.TH pbs_submit 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-pbs_submit - submit a PBS batch job
+.B pbs_submit 
+\- submit a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
 #include <pbs_ifl.h>
 .sp
-
-.B char *pbs_submit(\^int\ connect, struct\ attropl\ *attrib, 
-.B char\ *script, 
-.br
-.B\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char\ *destination, char\ *extend)
+.nf
+.B char *pbs_submit(int connect, struct attropl *attrib_list, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *jobscript,  char *destqueue, char *extend)
+.fi
 
 .SH DESCRIPTION
-Issue a batch request to submit a new batch job.
-.LP
-A
-.I "Queue Job"
-batch request is generated and sent to the server over the connection
-specified by
-.I connect 
-which is the return value of \f3pbs_connect\f1().
-The job will be submitted to the queue specified by
-.I destination .
-.LP
-The parameter,
-.I attrib ,
-is a list of
-.I attropl
-structures which is defined in pbs_ifl.h as:
-.sp
-.Ty
+Issues a batch request to submit a new batch job.
+
+Generates a 
+.I Queue Job 
+(1) batch request and sends it to the server over the connection specified by 
+.I connect.
+
+Submits job to specified queue at connected server, or if no queue is
+specified, to default queue at connected server.
+
+.SH ARGUMENTS
+.IP connect 8
+Return value of 
+.B pbs_connect().  
+Specifies connection handle over which to send batch request to server.
+
+.IP attrib_list 8
+Pointer to a list of attributes explicitly requested for
+job.  Each attribute is described in an 
+.I attropl 
+structure, defined in pbs_ifl.h as:
 .nf
-    struct attrl {
-        char   *name;
-        char   *resource;
-        char   *value;
-        struct attrl *next;
-        enum batch_op op;
-    };
+struct attropl {
+        struct attropl *next;
+        char           *name;
+        char           *resource;
+        char           *value;
+        enum batch_op  op;
+};
 .fi
-.sp
-The
-.I attrib
-list is terminated by the first entry where
-.I next
-is a null pointer.
+
+For any attribute that is not specified or that is a null pointer, PBS
+takes the default action for that attribute.  The default action is
+to assign the default value or to not pass the attribute with the job;
+the action depends on the attribute.
+
+.IP jobscript 8
+Pointer to path to job script.  Can be absolute or relative.  Relative
+path begins with the directory where the user submits the job.
+
+If null pointer or pointer to null string, no script is passed with job.
+
+.IP destqueue 8
+Pointer to name of destination queue at connected server.  If this is
+a null pointer or points to a null string, the job is submitted to the
+default queue at the connected server.
+
+.IP extend 8
+Character string for extensions to command.  Not currently used.
 .LP
-The
-.I name
-member points to a string which is the name of the attribute.  The
-.I value
-member points to a string which is the value of the attribute.
-The attribute names are defined in pbs_job_attributes(7B).
-.br
-.LP
-If an attribute is not named in the
-.I attrib
-array, the default action will be taken.  It will either be assigned
-the default value or will not be passed with the job.  The action
-depends on the attribute.
-If
-.I attrib
-itself is a null pointer, then the default action will be taken for
-each attribute.
-.LP
-Associated with an attribute of type ATTR_l (the letter ell)
-is a resource name indicated by
+
+.B Members of attropl Structure
+.IP next 8
+Points to next attribute in list.  A null pointer terminates the list.
+
+.IP name 8
+Points to a string containing the name of the attribute.  
+
+.IP resource 8
+Points to a string containing the name of a resource.  Used only when
+the specified attribute contains resource information.  Otherwise,
 .I resource 
-in the
-.I attrl
-structure.
-All other attribute types should have a pointer to a null string for
-.I resource .
-.LP
-The
-.I op
-member is forced to a value of 
-.I SET
-by pbs_submit().
-.LP
-The parameter,
-.I script ,
-is the path name to the job script.  If the path name is relative, it will
-be expanded to the processes current working directory.  If 
-.I script
-is a null pointer or the path name pointed to
-is specified as the null string, no script is passed with the job.
-.LP
-The
-.I destination
-parameter specifies the destination for the job.  It is specified as:
-.RS 4
-.I [queue]
-.RE
-If
-.I destination
-is the null string or the queue is not specified, the destination will be
-the default queue at the connected server.
-.LP
-The parameter,
-.I extend ,
-is reserved for implementation-defined extensions.
-.LP
-The return value is a character string which is the
-.I job_identifier
-assigned to the job by the server.
-The space for the 
-.I job_identifier
-string is allocated by \f3pbs_submit\f1()
-and should be released via a call to \f3free\f1()
-by the user when no longer needed.
-.SH "SEE ALSO"
-qsub(1B) and pbs_connect(3B)
-.SH DIAGNOSTICS
-When the batch request generated by pbs_submit()
-function has been completed successfully by a batch server, the routine will
-return a pointer to a character string which is the job identifier of the
-submitted batch job.
-Otherwise, a null pointer is returned and the error code is set in pbs_error.
+should be a null pointer.  
+
+.IP value 8
+Points to a string containing the value of the attribute or resource.  
+
+.IP op 8
+Operation to perform on the attribute or resource.  In this command,
+the only allowed operator is 
+.I SET.
+
+.SH RETURN VALUE
+Returns a pointer to a character string containing the job ID assigned
+by the server.
+
+If an error occurred, the routine returns a null pointer, and the
+error number is available in the global integer 
+.I pbs_errno.
+
+.SH CLEANUP
+
+The space for the job ID returned by 
+.B pbs_submit() 
+is allocated by 
+.B pbs_submit().  
+Free it via a call to 
+.B free() 
+when you no longer need it.
+
+.SH SEE ALSO
+qsub(1B), pbs_connect(3B)

@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qmsg 1B "15 December 2017" Local "PBS Professional"
+.TH qmsg 1B "15 October 2019" Local "PBS Professional"
 .SH NAME
 .B qmsg 
 - write message string into one or more job output files
@@ -60,7 +60,7 @@ command does not directly write the message into the files of the job.
 
 The 
 .B qmsg 
-command cannot be used on job arrays, subjobs, or ranges of
+command can be used on jobs and subjobs, but not on job arrays or ranges of
 subjobs.
 
 .SH OPTIONS
@@ -88,13 +88,19 @@ is not a newline, a newline character is added when written to the job's file.
 .IP "job ID" 8
 The job(s) to receive the message string.  This operand follows the 
 .I message string
-operand.  Cannot be a job array, subjob, or range of subjobs.  The 
+operand.  Can be a job or subjob.  Cannot be a job array or range of subjobs.  The 
 .B qmsg 
 command accepts one or more
 .I job ID
-operands of the form:
+operands.
+.br
+Format for job:
 .br
 .I <sequence number>[.<server name>][@<server name>]
+.br
+Format for subjob. Note that a subjob has square brackets around its index number:
+.br
+.I <sequence number>[<index>][.<server name>][@<server name>]
 
 .SH STANDARD ERROR
 The 

@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qrun 8B "19 February 2018" Local "PBS Professional"
+.TH qrun 8B "12 November 2019" Local "PBS Professional"
 .SH NAME
 .B qrun 
 \- run a PBS batch job now
@@ -219,7 +219,7 @@ be allocated to other jobs.
 
 .IP "-H -" 3
 Runs the job on the set of resources to which it is already assigned.
-You can run a job on the set of resources already assigned to the juob, without having to list the resources, by using the 
+You can run a job on the set of resources already assigned to the job, without having to list the resources, by using the 
 .I -
 (dash) argument to the
 .I -H 

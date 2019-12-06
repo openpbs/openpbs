@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rdel 1B "18 May 2018" Local "PBS Professional"
+.TH pbs_rdel 1B "15 October 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_rdel 
-\- delete a PBS advance or standing reservation 
+\- delete a PBS advance, standing, or maintenance reservation 
 .SH SYNOPSIS
 .B pbs_rdel
 <reservation ID>[,<reservation ID>...]
@@ -75,6 +75,10 @@ For an advance reservation this has the form:
 For a standing reservation this has the form:
 .RS 4
 .I "S<sequence number>[.<server name>][@<remote server>]"
+.RE
+For a maintenance reservation this has the form:
+.RS 4
+.I "M<sequence number>[.<server name>][@<remote server>]"
 .RE
 
 .I @<remote server> 
