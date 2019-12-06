@@ -600,7 +600,7 @@ static void
 prt_nodes(char *nodes, int no_newl)
 {
 	int  i, len;
-	char linebuf[78];
+	char linebuf[CHAR_LINE_LIMIT];
 	char *rest = NULL;
 	char *saveptr = NULL;
  	char *token = NULL;
@@ -644,7 +644,7 @@ prt_nodes(char *nodes, int no_newl)
 		/* Backing up node_name as we are modifying the pointer further in the code */
 		node_name_bkp = node_name;
 		len = strlen(node_name);
-		if (i + len < 77) {
+		if (i + len < CHAR_LINE_LIMIT - 1) {
 			for (;len > 0; i++, len--) {
 				linebuf[i] = *node_name++;
 			}
