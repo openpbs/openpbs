@@ -644,8 +644,8 @@ prt_nodes(char *nodes, int no_newl)
 		/* Backing up node_name as we are modifying the pointer further in the code */
 		node_name_bkp = node_name;
 		len = strlen(node_name);
-		if (i + len < CHAR_LINE_LIMIT - 1) {
-			for (;len > 0; i++, len--) {
+		if (i + len < (CHAR_LINE_LIMIT - 1)) {
+			for (; len > 0; i++, len--) {
 				linebuf[i] = *node_name++;
 			}
 			/* Appending a  '+' here because we want to maintain the
@@ -656,7 +656,7 @@ prt_nodes(char *nodes, int no_newl)
 			/* flush line and start next */
 			linebuf[i] = '\0';
 			printf((no_newl ? "%s" : "   %s\n"), show_nonprint_chars(linebuf));
-			for (i = 0;len > 0; i++, len--) {
+			for (i = 0; len > 0; i++, len--) {
 				linebuf[i] = *node_name++;
 			}
 			linebuf[i++] = '+';
