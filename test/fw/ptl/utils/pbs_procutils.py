@@ -285,26 +285,28 @@ class ProcMonitor(threading.Thread):
         """
         Run system monitoring
         """
+        timenow = int(time.time())
         # if no protocols set, use default
         if not nw_protocols:
             nw_protocols = ['TCP']
         cmd = 'sar -rSub -n %s 1 1' % ','.join(nw_protocols)
         rv = self.du.run_cmd(cmd=cmd, as_script=True)
         if rv['err']:
-            return False
+            return None
         op = rv['out'][2:]
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
+        self.sysstat['name'] = "System"
+        self.sysstat['time'] = time.ctime(timenow)
         for i in range(0, len(op), 2):
             self.sysstat.update(dict(zip(op[i], op[i + 1])))
-        return True
+        return self.sysstat
 
     def run(self):
         """
         Run the process monitoring
         """
         while not self.stop_thread.is_set():
-            timenow = int(time.time())
             self._pu.get_proc_info(name=self.name, regexp=self.regexp)
             for _p in self._pu.processes.values():
                 for _per_proc in _p:
@@ -319,16 +321,8 @@ class ProcMonitor(threading.Thread):
                         _to_db['cputime'] = _per_proc.cputime
                         _to_db['name'] = _per_proc.name
                         self.db_proc_info.append(_to_db)
-            if self.get_system_stats(nw_protocols=['TCP']):
-                _sys_info = {}
-                _sys_info['name'] = "System"
-                _sys_info['time'] = time.ctime(timenow)
-                _sys_info['sysload'] = os.getloadavg()[0]
-                _sys_info['pmemused'] = self.sysstat['%memused']
-                _sys_info['psystem'] = self.sysstat['%system']
-                _sys_info['pswpused'] = self.sysstat['%swpused']
-                _sys_info['rtps'] = self.sysstat['rtps']
-                _sys_info['wtps'] = self.sysstat['wtps']
+            _sys_info = self.get_system_stats(nw_protocols=['TCP'])
+            if _sys_info is not None:
                 self.db_proc_info.append(_sys_info)
             with open('proc_monitor.json', 'a+', encoding='utf-8') as proc:
                 json.dump(
