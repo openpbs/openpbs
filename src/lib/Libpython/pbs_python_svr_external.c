@@ -584,10 +584,7 @@ pbs_python_do_vnode_set(void)
 void
 pbs_python_set_interrupt(void)
 {
-
-#ifdef PYTHON
-	PyErr_SetInterrupt();
-#endif
+	return;
 }
 
 /**
