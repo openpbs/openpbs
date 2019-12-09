@@ -14218,6 +14218,11 @@ class Job(ResourceResv):
         """
         Create a job that eats cpu indefinitely or for the given
         duration of time
+
+        :param duration: The duration, in seconds, to sleep
+        :type duration: int
+        :param mom: the MoM object on which to execute the job
+        :type mom: str
         """
         if self.du is None:
             self.du = DshUtils()
@@ -14235,7 +14240,10 @@ class Job(ResourceResv):
                                   'bin', 'pbs_python')
         a = {ATTR_S: shell_path}
         self.set_attributes(a)
-        self.du.chmod(path=script_path, mode=0o755)
+        mode = 0o755
+        if not self.du.chmod(path=script_path, mode=mode, sudo=True):
+            raise AssertionError("Failed to set permissions for file %s"
+                                 " to %s" % (script_path, oct(mode)))
         self.set_execargs(script_path, duration)
 
 
