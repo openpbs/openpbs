@@ -207,7 +207,7 @@ extern char *pbs_python_daemon_name;  /* pbs_python_external.c */
 
 
 /* -- BEGIN pbs_python_external.c implementations -- */
-extern void pbs_python_ext_start_interpreter(
+extern int pbs_python_ext_start_interpreter(
 	struct python_interpreter_data *interp_data);
 extern void pbs_python_ext_shutdown_interpreter(
 	struct python_interpreter_data *interp_data);

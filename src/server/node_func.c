@@ -1437,7 +1437,11 @@ setup_nodes_fs(int preprocess)
 				LOG_INFO, "setup_nodes_fs",
 			"Restarting Python interpreter as resourcedef file has changed.");
 			pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-			pbs_python_ext_start_interpreter(&svr_interp_data);
+			if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
+				sprintf(log_buffer, "%s",
+					"Failed to restart Python interpreter");
+				goto errtoken2;
+			}
 
 			send_rescdef(1);
 		}
