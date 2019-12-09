@@ -37,6 +37,7 @@
 
 import sys
 import logging
+import unittest
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
@@ -128,6 +129,8 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
+        if not issubclass(cls, unittest.TestCase) or cls is unittest.TestCase:
+            return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:
             self.wantClass(cls.__bases__[0])
