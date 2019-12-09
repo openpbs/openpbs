@@ -135,9 +135,13 @@ class PTLTestInfo(Plugin):
     def _get_hierarchy(self, cls, level=0):
         delim = '    ' * level
         msg = [delim + cls.__name__]
-        subclses = cls.__subclasses__()
-        for subcls in subclses:
-            msg.extend(self._get_hierarchy(subcls, level + 1))
+        try:
+            subclses = cls.__subclasses__()
+        except TypeError:
+            pass
+        else:
+            for subcls in subclses:
+                msg.extend(self._get_hierarchy(subcls, level + 1))
         return msg
 
     def _print_suite_info(self, suite):
