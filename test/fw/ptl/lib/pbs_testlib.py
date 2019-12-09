@@ -2083,12 +2083,17 @@ class BatchUtils(object):
         of it, if it is made of alphanumeric values only, return
         it as a string, if it is of type size, i.e., with a memory
         unit such as b,kb,mb,gb then return the converted size to
-        kb without the unit
+        kb without the unit, if value is a dictionary string return 
+        dictionary value
 
         :param value: attribute/resource value
         :type value: str or int
         :returns: int or float or string
         """
+        if re.search('\'{\".*\":.*',str(value)):
+            value = eval(eval(str(value)))
+            return value
+        
         if value is None or isinstance(value, collections.Callable):
             return value
 
