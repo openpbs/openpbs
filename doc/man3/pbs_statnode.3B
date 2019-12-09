@@ -33,124 +33,113 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_statnode 3B "2 February 2016" Local "PBS Professional"
+.TH pbs_statnode 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_statnode, pbs_statvnode, pbs_stathost
-\- obtain status of PBS vnodes or hosts
+.B pbs_statnode
+\- get status of PBS execution host(s)
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
 #include <pbs_ifl.h>
 .sp
-.B struct batch_status *pbs_stathost(\^int\ connect, char\ *id, struct\ attrl\ *attrib, char\ *extend)
-.sp
-.B struct batch_status *pbs_statnode(\^int\ connect, char\ *id, struct\ attrl\ *attrib, char\ *extend)
-.sp
-.B struct batch_status *pbs_statvnode(\^int\ connect, char\ *id, struct\ attrl\ *attrib, char\ *extend)
-.sp
-.B void pbs_statfree(\^struct batch_status *psj\^)
+.nf
+.B struct batch_status *
+.B pbs_statnode(int connect, char *target, struct attrl *output_attribs, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
+.fi
 
 .SH DESCRIPTION
-Issue a batch request to obtain the status of PBS execution hosts or vnodes.
-.LP
-pbs_stathost returns information about the single host named in the call or
-about all hosts known to the PBS Server.
-.LP
-pbs_statnode is identical to pbs_stathost in function.   It is retained for
-backward compatibility.
-.LP
-pbs_statvnode returns information about the single virtual node (vnode) named
-in the call or about all vnodes  known to the PBS Server.
-.LP
-A
-.I "Status Node"
-batch request is generated and sent to the server over the connection
-specified by
-.I connect 
-which is the return value of \f3pbs_connect\f1().
-.LP
-The 
-.I id
-is the name of a host for pbs_stathost, or a vnode for pbs_statvnode,
-or the null string.  If 
-.I id
-specifies a name, the status of that host or vnode will be returned.  If the
-.I id
-is a null string (or null pointer), the status of all hosts or
-vnodes at the server will be returned.
-.LP
-The parameter,
-.I attrib ,
-is a pointer to an
-.I attrl 
-structure which is defined in pbs_ifl.h as:
-.sp
-.Ty
+Issues a batch request to get the status of PBS execution hosts.
+
+Generates a 
+.I Status Node 
+(58) batch request and sends it to the server over the connection specified by 
+.I connect.
+
+Returns specified attributes or all attributes of specified execution
+host or all execution hosts.  If an execution host has multiple
+vnodes, this command reports aggregated information from the vnodes
+for that host.
+
+Identical to 
+.B pbs_stathost(); 
+retained for backward compatibility.
+
+.SH ARGUMENTS
+.IP connect 8
+Return value of 
+.B pbs_connect().  
+Specifies connection handle over which to send batch request to server.
+
+.IP target 8
+Name of execution host whose attributes are to be reported.  If this
+argument is a null pointer or points to a null string, returns
+attributes of all execution hosts known to the server.
+
+.IP output_attribs 8
+Pointer to a list of attributes to return.  If this argument is null,
+returns all attributes.  Each attribute is described in an 
+.I attrl
+structure, defined in pbs_ifl.h as:
 .nf
-    struct attrl {
-        struct attrl *next;
+struct attrl {
         char         *name;
         char         *resource;
         char         *value;
-    };
+        struct attrl *next;
+};
 .fi
-.sp
-The
-.I attrib
-list is terminated by the first entry where
-.I next
-is a null pointer.  If 
-.I attrib
-is given, then only the attributes in the list are returned by the server.
-Otherwise, all the attributes of a node are returned.
-When an
-.I attrib
-list is specified, the
-.I name
-member is a pointer to an attribute name.
-The
-.I resource
-member is not used and must be a pointer to a null string.
-The
-.I value
-member should always be a pointer to a null string.
+
+.IP extend 8
+Character string for extensions to command.  Not currently used.
 .LP
-The parameter,
-.I extend ,
-is reserved for implementation-defined extensions.
-.LP
-The return value is a pointer to a list of
-.I batch_status
-structures, which is defined in pbs_ifl.h as:
-.sp
-.Ty
+.B Members of attrl Structure
+.br
+.IP name 8
+Points to a string containing the name of the attribute.  
+
+.IP resource 8
+Points to a string containing the name of a resource.  Used only when
+the specified attribute contains resource information.  Otherwise,
+.I resource 
+should be a null pointer.
+
+.IP value 8
+Points to a string containing the value of the attribute or resource.  
+
+.IP next 8
+Points to next attribute in list.  A null pointer terminates the list.
+
+.SH RETURN VALUE
+Returns a pointer to a list of
+.I batch_status 
+structures describing the execution host(s).
+
+If an error occurred, the routine returns a null pointer, and the
+error number is available in the global integer 
+.I pbs_errno.
+
+.B The batch_status Structure
+.br
+The 
+.I batch_status 
+structure is defined in pbs_ifl.h as
 .nf
-    struct batch_status {
+struct batch_status {
         struct batch_status *next;
         char                *name;
         struct attrl        *attribs;
         char                *text;
-    }
+}
 .fi
-.LP
-It is up the user to free the structure when no longer needed, by calling
-\f3pbs_statfree\f1().
-.LP
 
-The vnode state value can be one or more comma-separated strings.
-All vnode states are documented in the pbs_node_attributes.7B man page.
 
-.SH DIAGNOSTICS
-When the batch request generated by 
-.B "pbs_stathost(), pbs_statnode(),"
-or
-.B pbs_statvnode()
-function has been completed successfully by a batch server, the routine will
-return a pointer to the batch_status structure.
-Otherwise, a null pointer is returned and the error code
-is set in the global integer pbs_errno.
+.SH CLEANUP 
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
+.B pbs_statfree().
 
 .SH SEE ALSO
-qstat(1B),
-pbs_connect(3B)
+qstat(1B), pbs_connect(3B), pbs_statfree(3B)
 

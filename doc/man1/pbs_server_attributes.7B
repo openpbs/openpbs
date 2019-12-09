@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_server_attributes 7B "21 February 2019" Local "PBS Professional"
+.TH pbs_server_attributes 7B "3 December 2019" Local "PBS Professional"
 .SH NAME
 pbs_server_attributes 
 \- PBS server attributes
@@ -655,6 +655,8 @@ it shows only
 and 
 .I Unused_Nodes.
 .br
+When no licensing is set, displays node license info.
+.br
 Readable by all; settable by PBS only.
 .br
 Format: 
@@ -701,8 +703,7 @@ Python type:
 .br
 Default value:
 .RS 11
-.I Avail_Global:0 Avail_Local:0 Used:0 High_Use:0 
-.I Avail_Sockets:0 Unused_Sockets:0 Avail_Nodes:0 Unused_Nodes:0
+.I Avail_Nodes:0 Unused_Nodes:0
 .RE
 
 .IP log_events 8
@@ -726,7 +727,6 @@ The username from which server-generated mail is sent to users.
 Mail is sent 
 .B to
 this address upon failover.
-On Windows, requires fully qualified mail address.
 .br
 Readable by all; settable by Manager.
 .br
@@ -1258,6 +1258,10 @@ Python type:
 .br
 Default: No default
 
+.IP pbs_license_file_location 8
+.B Deprecated.  
+Do not use.
+
 .IP pbs_license_info 8
 Location of license information.  Can be port number and hostname of
 license server, or local pathname to the actual license file
@@ -1278,7 +1282,7 @@ where
 .I host1, host2, ... hostN 
 can be IP addresses, and the license file can be listed first or last.
 .br
-Delimiter between items is colon (":") for Linux and semi-colon (";") for Windows.  
+Delimiter between items is colon (":").
 .RE
 .IP 
 Python type: 
@@ -1916,7 +1920,10 @@ The server will run first any jobs that were running when it
 was shut down.
 
 .IP "Idle                  pbs.SV_STATE_IDLE" 3
-The server is running.  Scheduling has been turned off.
+The server is running.  The default scheduler's 
+.I scheduling
+attribute is 
+.I False.
 
 .IP "Scheduling            pbs.SV_STATE_ACTIVE" 3
 The server is running.  The scheduler is in a scheduling cycle.
@@ -1958,11 +1965,8 @@ once; PBS remembers it for future job execution.
 Users submitting jobs must specify a password for each job.
 .RE
 .IP
-Default on Linux: 
+Default: 
 .I False
-.br
-Default on Windows: 
-.I True
 
 .IP state_count 8
 List of the number of jobs in each state in the complex.  Suspended

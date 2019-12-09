@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_mkdirs 8B "19 October 2017" Local "PBS Professional"
+.TH pbs_mkdirs 8B "19 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_mkdirs
 - For Windows. Create, or fix the permissions of, the directories and files used by PBS
@@ -43,7 +43,7 @@
 .B pbs_mkdirs
 .br
 .B pbs_mkdirs 
-[ mom | sched | server ]
+[ mom ]
 .br
 
 .SH DESCRIPTION
@@ -82,35 +82,14 @@ PBS_HOME/mom_priv
 PBS_HOME/mom_logs
 .RE
 
-.IP "sched" 5
-The 
-.B pbs_mkdirs 
-command examines the following additional items:
-.RS 10
-PBS_HOME/sched_priv
-.br
-PBS_HOME/sched_logs
-.RE
-
-.IP "server" 5
-The 
-.B pbs_mkdirs 
-command examines the following additional items:
-.RS 10
-PBS_HOME/server_priv
-.br
-PBS_HOME/server_logs
-.RE
 
 .IP "(no options)" 5
 The 
 .B pbs_mkdirs 
 command examines all of the files and directories
-specified for each of the 
-.I mom, server, 
-and 
-.I sched 
-options.
+specified for the 
+.I mom
+option.
 
 
 .SH SEE ALSO

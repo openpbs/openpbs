@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_snapshot 8B "4 March 2019" Local "PBS Professional"
+.TH pbs_snapshot 8B "20 September 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_snapshot
 - Linux only.  Capture PBS data to be used for diagnostics
@@ -46,7 +46,7 @@
 .RS 12
 [--accounting-logs=<number of days>] 
 .br
-[--additional-hosts=<hostname list>]
+[--additional-hosts=<hostname list>] [--basic]
 .br
 [--daemon-logs=<number of days>] 
 [-H <server host>]
@@ -72,12 +72,16 @@ command detects which daemon or daemons are running on the host where
 it is collecting information, and captures daemon and system data
 accordingly.  If no PBS daemons are running, the command collects
 system information.  The output tarball contains information about the
-host designated via the 
+host specified via the 
 .I -H 
 option, or if that is not specified, the
 local host.  If you specify additional hosts, the command creates a
 tarball for each additional host and includes it as a sub-tarball in
 the output.
+
+If you want to capture only PBS configuration information, use the 
+.I --basic
+option.
 
 .B Required Privilege
 .br
@@ -156,6 +160,34 @@ Format for
 is a comma-separated list of one or more hostnames: 
 .br
 .I <hostname>[, <hostname> ...]
+
+.IP "--basic" 5
+Captures PBS configuration information only.  Captures the following:
+.nf
+
+Output File                   Description of Captured Information
+------------------------------------------------------------------
+server/qstat_Bf.out           Output of qstat -Bf
+server/qstat_Qf.out           Output of qstat -Qf
+scheduler/qmgr_lsched.out     Output of qmgr -c 'list sched'
+node/pbsnodes_va.out          Output of pbsnodes -va
+reservation/pbs_rstat_f.out   Output of pbs_rstat -f
+job/qstat_f.out               Output of qstat -f
+hook/qmgr_lpbshook.out        Output of qmgr -c 'list pbshook'
+sched_priv/ for each          Copy of each scheduler's 
+scheduler instance            sched_priv directory
+server_priv/resourcedef       Copy of server_priv/resourcedef file  
+pbs.conf                      Copy of /etc/pbs.conf on server host    
+pbs_snapshot.log              Log of pbs_snapshot execution
+ctime                         Timestamp of when the snapshot
+                              was taken
+.fi
+
+Can be combined with other options such as 
+.I --accounting-logs
+and 
+.I --daemon-logs
+in order to capture additional information.
 
 .IP "--daemon-logs=<number of days>" 5
 Specifies number of days of daemon logs to be collected; this count
@@ -293,319 +325,223 @@ and
 .B pbsnodes -av -F json.  
 .br
 The main tarball contains the following directory structure, files, and tarballs:
-        
+.nf
 Directory  Directory
-.br
-or File\ \ \ \ Contents\ \ \ \ \ \ \ \ \ \ \ \ \ Description
-.br
+or File    Contents             Description
 ------------------------------------------------------------------------
-.br
 server/         
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_B.out\ \ \ \ \ \ \ \ \ \ Output of qstat -B
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_Bf.out         Output of qstat -Bf
-.br
-\ \ \ \ \ \ \ \ \ \ \ qmgr_ps.out          Output of qmgr print server
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_Q.out          Output of qstat -Q
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_Qf.out         Output of qstat -Qf
-.br
-\ \ \ \ \ \ \ \ \ \ \ qmgr_pr.out          Output of qmgr print resource
-.br
+           qstat_B.out          Output of qstat -B
+           qstat_Bf.out         Output of qstat -Bf
+           qmgr_ps.out          Output of qmgr print server
+           qstat_Q.out          Output of qstat -Q
+           qstat_Qf.out         Output of qstat -Qf
+           qmgr_pr.out          Output of qmgr print resource
 
 server_priv/                    Copy of the PBS_HOME/server_priv 
-.br
                                 directory.   
-.br
                                 Core files are captured separately; 
-.br
-                                see 
+.fi
+.RS 32
+see
 .I core_file_bt/.  
-.br
+.RE
+.nf
 
-\ \ \ \ \ \ \ \ \ \ \ accounting/          Accounting logs from 
-.br
+           accounting/          Accounting logs from 
                                 PBS_HOME/server_priv/accounting/ 
-.br
                                 directory for the number of days 
-.br
-                                specified via
+.fi
+.RS 32
+specified via 
 .I --accounting-logs 
 option
-.br
+.RE
+.nf
 
 server_logs/                    Server logs from the 
-.br
                                 PBS_HOME/server_logs directory for the
-.br
                                 number of days specified 
-.br
-                                via
+.fi
+.RS 32
+via
 .I --daemon-logs 
 option
-.br
+.RE
+.nf
 
 job/            
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat.out            Output of qstat
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_f.out          Output of qstat -f
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_f_F_json.out   Output of qstat -f -F json
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_t.out          Output of qstat -t
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_tf.out         Output of qstat -tf
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_x.out          Output of qstat -x
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_xf.out         Output of qstat -xf
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_ns.out         Output of qstat -ns
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_fx_F_dsv.out   Output of qstat -fx -F dsv
-.br
-\ \ \ \ \ \ \ \ \ \ \ qstat_f_F_dsv.out    Output of qstat -f -F dsv
-.br
+           qstat.out            Output of qstat
+           qstat_f.out          Output of qstat -f
+           qstat_f_F_json.out   Output of qstat -f -F json
+           qstat_t.out          Output of qstat -t
+           qstat_tf.out         Output of qstat -tf
+           qstat_x.out          Output of qstat -x
+           qstat_xf.out         Output of qstat -xf
+           qstat_ns.out         Output of qstat -ns
+           qstat_fx_F_dsv.out   Output of qstat -fx -F dsv
+           qstat_f_F_dsv.out    Output of qstat -f -F dsv
 node/           
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_va.out      Output of pbsnodes -va
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_a.out       Output of pbsnodes -a
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avSj.out    Output of pbsnodes -avSj
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_aSj.out     Output of pbsnodes -aSj
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avS.out     Output of pbsnodes -avS
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_aS.out      Output of pbsnodes -aS
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_aFdsv.out   Output of pbsnodes -aF dsv
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avFdsv.out  Output of pbsnodes -avF dsv
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbsnodes_avFjson.out Output of pbsnodes -avF json
-.br
-\ \ \ \ \ \ \ \ \ \ \ qmgr_pn_default.out  Output of qmgr print node @default
-.br
+           pbsnodes_va.out      Output of pbsnodes -va
+           pbsnodes_a.out       Output of pbsnodes -a
+           pbsnodes_avSj.out    Output of pbsnodes -avSj
+           pbsnodes_aSj.out     Output of pbsnodes -aSj
+           pbsnodes_avS.out     Output of pbsnodes -avS
+           pbsnodes_aS.out      Output of pbsnodes -aS
+           pbsnodes_aFdsv.out   Output of pbsnodes -aF dsv
+           pbsnodes_avFdsv.out  Output of pbsnodes -avF dsv
+           pbsnodes_avFjson.out Output of pbsnodes -avF json
+           qmgr_pn_default.out  Output of qmgr print node @default
 
 mom_priv/                       Copy of the PBS_HOME/mom_priv 
-.br
                                 directory.
-.br
                                 Core files are captured separately; 
-.br
                                 see core_file_bt/.  
-.br
 
 mom_logs/                       MoM logs from the PBS_HOME/mom_logs 
-.br
                                 directory for the number of days 
-.br
-                                specified via
-.I --daemon-logs 
-option 
-.br
-
-comm_logs/                      Comm logs from the PBS_HOME/comm_logs 
-.br
-                                directory for the number of days 
-.br
-                                specified via 
-.I --daemon-logs 
-option  
-.br
-
-sched_priv/                     Copy of the PBS_HOME/sched_priv 
-.br
-                                directory, with all files.
-.br
-                                Core files are not captured; 
-.br
-                                see core_file_bt/. 
-.br
-
-sched_logs/                     Scheduler logs from the 
-.br
-                                PBS_HOME/sched_logs directory for 
-.br
-                                the number of days specified 
-.br
-                                via 
-.I --daemon-logs 
-option    
-.br
-
-sched_priv_<multisched name>/   Copy of the 
-.br
-                                PBS_HOME/sched_priv_<multisched_name>
-.br
-                                directory, with all files.
-.br
-                                Core files are not captured; 
-.br
-                                see core_file_bt/. 
-.br
-
-sched_logs_<multisched name>/   Scheduler logs from the 
-.br
-                                PBS_HOME/sched_logs_<multisched_name> 
-.br
-                                directory for the number
-.br
-                                of days specified
-.br
-                                via 
-.I --daemon-logs 
-option    
-.br
-
-reservation/            
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbs_rstat_f.out      Output of pbs_rstat -f
-.br
-
-\ \ \ \ \ \ \ \ \ \ \ pbs_rstat.out        Output of pbs_rstat
-.br
-
-scheduler/              
-.br
-\ \ \ \ \ \ \ \ \ \ \ qmgr_lsched.out      Output of qmgr list sched
-.br
-
-hook/           
-.br
-\ \ \ \ \ \ \ \ \ \ \ qmgr_ph_default.out  Output of qmgr print hook @default
-.br
-
-\ \ \ \ \ \ \ \ \ \ \ qmgr_lpbshook.out    Output of qmgr list pbshook
-.br
-
-datastore/              
-.br
-\ \ \ \ \ \ \ \ \ \ \ pg_log/              Copy of the 
-.br
-                                PBS_HOME/datastore/pg_log directory 
-.br
-                                for the number of days specified 
-.br
-                                via 
+.fi
+.RS 32
+via
 .I --daemon-logs 
 option
-.br
+.RE
+.nf
+
+comm_logs/                      Comm logs from the PBS_HOME/comm_logs 
+                                directory for the number of days 
+.fi
+.RS 32
+specified via 
+.I --daemon-logs 
+option
+.RE
+.nf  
+
+sched_priv/                     Copy of the PBS_HOME/sched_priv 
+                                directory, with all files.
+                                Core files are not captured; 
+                                see core_file_bt/. 
+
+sched_logs/                     Scheduler logs from the 
+                                PBS_HOME/sched_logs directory for 
+                                the number of days specified 
+.fi
+.RS 32
+via
+.I --daemon-logs 
+option    
+.RE
+.nf
+
+sched_priv_<multisched name>/   Copy of the 
+                                PBS_HOME/sched_priv_<multisched_name>
+                                directory, with all files.
+                                Core files are not captured; 
+                                see core_file_bt/. 
+
+sched_logs_<multisched name>/   Scheduler logs from the 
+                                PBS_HOME/sched_logs_<multisched_name> 
+                                directory for the number
+                                of days specified
+.fi
+.RS 32
+via
+.I --daemon-logs 
+option    
+.RE
+.nf
+
+reservation/            
+           pbs_rstat_f.out      Output of pbs_rstat -f
+
+           pbs_rstat.out        Output of pbs_rstat
+
+scheduler/              
+           qmgr_lsched.out      Output of qmgr list sched
+
+hook/           
+           qmgr_ph_default.out  Output of qmgr print hook @default
+
+           qmgr_lpbshook.out    Output of qmgr list pbshook
+
+datastore/              
+           pg_log/              Copy of the 
+                                PBS_HOME/datastore/pg_log directory 
+                                for the number of days specified 
+.fi
+.RS 32
+via
+.I --daemon-logs 
+option
+.RE
+.nf
 
 core_file_bt/                   Stack backtrace from core files 
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ sched_priv/          Files containing the output of thread 
-.br
+           sched_priv/          Files containing the output of thread 
                                 apply all backtrace full on all core 
-.br
                                 files captured from PBS_HOME/sched_priv
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ sched_priv_          Files containing the output of thread 
-.br
-\ \ \ \ \ \ \ \ \ \ \ <multisched name>/   apply all backtrace full on all core 
-.br
+           sched_priv_          Files containing the output of thread 
+           <multisched name>/   apply all backtrace full on all core 
                                 files captured from PBS_HOME/sched_priv
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ server_priv/         Files containing the output of thread 
-.br 
+           server_priv/         Files containing the output of thread 
                                 apply all backtrace full on all core 
-.br
                                 files captured from 
-.br
                                 PBS_HOME/server_priv
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ mom_priv/            Files containing the output of thread 
-.br
+           mom_priv/            Files containing the output of thread 
                                 apply all backtrace full on all core 
-.br
                                 files captured from PBS_HOME/mom_priv
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ misc/                Files containing the output of thread 
-.br
+           misc/                Files containing the output of thread 
                                 apply all backtrace full on any other 
-.br
                                 core files found inside PBS_HOME
-.br
 
 system/         
-.br
-\ \ \ \ \ \ \ \ \ \ \ pbs_probe_v.out      Output of pbs_probe -v
-.br
+           pbs_probe_v.out      Output of pbs_probe -v
 
-\ \ \ \ \ \ \ \ \ \ \ pbs_hostn_v.out      Output of pbs_hostn -v $(hostname)
-.br
+           pbs_hostn_v.out      Output of pbs_hostn -v $(hostname)
 
-\ \ \ \ \ \ \ \ \ \ \ pbs_environment      Copy of PBS_HOME/pbs_environment file
-.br
+           pbs_environment      Copy of PBS_HOME/pbs_environment file
 
-\ \ \ \ \ \ \ \ \ \ \ os_info              Information about the OS
-.br
+           os_info              Information about the OS
 
-\ \ \ \ \ \ \ \ \ \ \ process_info         List of processes running on the system 
-.br
+           process_info         List of processes running on the system 
                                 when the snapshot was taken.  Output of
-.br
                                 ps -aux | grep [p]bs on Linux systems,
-.br
                                 or tasklist /v on Windows systems
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ ps_leaf.out          Output of ps -leaf.  Linux only.
-.br
+           ps_leaf.out          Output of ps -leaf.  Linux only.
 
-\ \ \ \ \ \ \ \ \ \ \ lsof_pbs.out         Output of lsof | grep [p]bs.
-.br
+           lsof_pbs.out         Output of lsof | grep [p]bs.
                                 Linux only.
-.br
-\ \ \ \ \ \ \ \ \ \ \ etc_hosts            Copy of /etc/hosts file.  Linux only.
-.br
+           etc_hosts            Copy of /etc/hosts file.  Linux only.
 
-\ \ \ \ \ \ \ \ \ \ \ etc_nsswitch_conf    Copy of /etc/nsswitch.conf file.
-.br
+           etc_nsswitch_conf    Copy of /etc/nsswitch.conf file.
                                 Linux only.
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ vmstat.out           Output of the command vmstat.  
-.br
+           vmstat.out           Output of the command vmstat.  
                                 Linux only.
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ df_h.out             Output of the command df -h.  
-.br
+           df_h.out             Output of the command df -h.  
                                 Linux only.
-.br
 
-\ \ \ \ \ \ \ \ \ \ \ dmesg.out            Output of the dmesg command.  
-.br
+           dmesg.out            Output of the dmesg command.  
                                 Linux only.
-.br
 
 pbs.conf                        Copy of the pbs.conf file on the 
-.br
                                 server host    
-.br
 
 ctime                           Contains the time in seconds since 
                                 epoch when the snapshot was taken    
-.br
 
-pbs_snapshot.log                Log messages written by 
-.B pbs_snapshot
+pbs_snapshot.log                Log messages written by pbs_snapshot
     
-.br
 <remote hostname>.tgz           Tarball of output from running the 
-.br
                                 pbs_snapshot command at a remote host
+.fi
 
 .SH Examples
 .IP "pbs_snapshot -o /tmp" 5
