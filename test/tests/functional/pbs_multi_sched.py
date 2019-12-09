@@ -601,7 +601,6 @@ class TestMultipleSchedulers(TestFunctional):
         sched_logs = os.path.join(
             self.server.pbs_conf['PBS_HOME'], 'sched_logs_sc1')
         a = {'sched_port': 15050,
-             'sched_host': self.server.hostname,
              'sched_priv': sched_priv,
              'sched_log': sched_logs,
              'scheduling': 'True',
