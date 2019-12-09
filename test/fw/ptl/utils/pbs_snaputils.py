@@ -669,6 +669,7 @@ class _PBSSnapUtils(object):
             self.log_filename = os.path.basename(self.log_path)
         else:
             self.log_filename = None
+        self.filecmdnotfound = False
 
         # finalize() is called by the context's __exit__() automatically
         # however, finalize() is non-reenterant, so set a flag to keep
@@ -1137,8 +1138,15 @@ quit()
             self.logger.debug("Could not find file path " + str(file_path))
             return False
 
+        filecmd = "file"
+        cmdpath = self.du.which(exe=filecmd)
+        # du.which returns the input cmd name if it can't find the cmd
+        if cmdpath is filecmd:
+            self.filecmdnotfound = True
+            return False
+
         # Get the header of this file
-        ret = self.du.run_cmd(cmd=["file", file_path], sudo=self.with_sudo)
+        ret = self.du.run_cmd(cmd=[cmdpath, file_path], sudo=self.with_sudo)
         if ret['err'] is not None and len(ret['err']) != 0:
             self.logger.error(
                 "\'file\' command failed with error: " + ret['err'] +
@@ -1913,6 +1921,10 @@ quit()
         if self.create_tar and self.log_path is not None:
             snap_logpath = os.path.join(self.snapdir, self.log_filename)
             self.__add_to_archive(snap_logpath, self.log_path)
+
+        if self.filecmdnotfound:
+            self.logger.info("Warning: file command not found, "
+                             "can't capture traces from any core files")
 
         # Cleanup
         if self.create_tar:

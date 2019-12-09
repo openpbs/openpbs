@@ -35,20 +35,52 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-pbs_conf=${PBS_CONF_FILE:-/etc/pbs.conf}
-if [ -r "${pbs_conf}" ]; then
-	. ${pbs_conf}
+ptllibpath=
+ptlbinpath=
+
+if [ -f "/etc/debian_version" ]; then
+        ptl_prefix_lib=$( dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
 else
-	echo "***" >&2
-	echo "*** No PBS_CONF_FILE found, exiting" >&2
-	echo "***" >&2
-	exit 1
+        ptl_prefix_lib=$( rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
+fi
+if [ "x${ptl_prefix_lib}" != "x" ]; then
+        python_dir=$( /bin/ls -1 ${ptl_prefix_lib} )
+        prefix=$( dirname ${ptl_prefix_lib} )
+
+        ptllibpath=${prefix}/lib/${python_dir}/site-packages
+        ptlbinpath=${prefix}/bin
+else
+        conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
+        if [ -r "${conf}" ]; then
+                # we only need PBS_EXEC from pbs.conf
+                __PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
+                if [ "X${__PBS_EXEC}" != "X" ]; then
+                        # Define PATH and PYTHONPATH for the users
+                        PTL_PREFIX=$( dirname ${__PBS_EXEC} )/ptl
+                        python_dir=$( /bin/ls -1 ${PTL_PREFIX}/lib )/site-packages
+                        if [ -d "${PTL_PREFIX}/bin" ];then
+                            ptllibpath=${PTL_PREFIX}/lib/${python_dir}
+                        fi
+                        if [ -d "${PTL_PREFIX}/lib/${python_dir}" ];then
+                            ptlbinpath=${PTL_PREFIX}/bin
+                        fi
+                fi
+                unset __PBS_EXEC
+                unset PTL_PREFIX
+                unset conf
+                unset python_dir
+        fi
 fi
 
-export PYTHONPATH=${PBS_EXEC}/unsupported/fw:${PYTHONPATH}
+export PYTHONPATH=${ptllibpath}:${PYTHONPATH}
+
+if [ -z $ptlbinpath ];then
+    echo "Error: PTL bin path not found"
+    exit 1
+fi
 
 if [ -x "${PBS_EXEC}/python/bin/python" ]; then
-	${PBS_EXEC}/python/bin/python ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+	${PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot "${@}"
 else
-	python3 ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+	python3 ${ptlbinpath}/pbs_snapshot "${@}"
 fi
