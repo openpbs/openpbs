@@ -2380,15 +2380,13 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
 		is_node_name_ip = inet_pton(AF_INET, p, &(check_ip.sin_addr)) ;
-		if(!is_node_name_ip) {
-			if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
-				strncpy(buf, p, (sizeof(buf) - 1));
-				buf[sizeof(buf) - 1] = '\0';
-			}
-		} else {
+		if(!is_node_name_ip)
+			is_node_name_ip = inet_pton(AF_INET6, p, &(check_ip.sin_addr)) ;
+		if(is_node_name_ip || get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
+		
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;
