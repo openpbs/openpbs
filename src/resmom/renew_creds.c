@@ -676,7 +676,7 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 		return PBS_KRB5_ERR_NO_KRB_PRINC;
 	}
 
-	if (krb_principal == NULL) // memory allocation error
+	if (krb_principal == NULL) /* memory allocation error */
 		return PBS_KRB5_ERR_INTERNAL;
 
 	if (ptask == NULL) {
@@ -1261,7 +1261,7 @@ do_afslog_on_signal(int signal) {
  */
 static void
 wait_afslog() {
-	// initialize signal catcher
+	/* initialize signal catcher */
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = do_afslog_on_signal;
