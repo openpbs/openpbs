@@ -2090,7 +2090,7 @@ class BatchUtils(object):
         :type value: str or int
         :returns: int or float or string
         """
-        if re.search('\'{\".*\":.*', str(value)):
+        if re.search('(\{.*:.*[,]?.*\})', str(value)):
             value = eval(eval(str(value)))
             return value
 
