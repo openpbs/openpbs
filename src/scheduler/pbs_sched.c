@@ -166,7 +166,10 @@ on_segv(int sig)
 {
 	int ret_lock = -1;
 
-	ret_lock = pthread_mutex_trylock(&cleanup_lock);
+	/* We want any other threads to block here, we want them alive until abort() is called
+	 * as it dumps core for all threads
+	 */
+	ret_lock = pthread_mutex_lock(&cleanup_lock);
 	if (ret_lock != 0)
 		pthread_exit(NULL);
 
@@ -174,24 +177,23 @@ on_segv(int sig)
 	if ((segv_last_time - segv_start_time) < 300) {
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 				"received a sigsegv within 5 minutes of start: aborting.");
-		schedexit();
-		pthread_mutex_unlock(&cleanup_lock);
 		abort();
+
+		/* This will never really be executed, but it'll make sure that only 1 thread calls abort */
+		pthread_mutex_unlock(&cleanup_lock);
 	}
 
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 			"received segv and restarting");
 
-	schedexit();
-
 	if (fork() > 0) { /* the parent rexec's itself */
 		sleep(10); /* allow the child to die */
-		execv(glob_argv[0], glob_argv);
 		pthread_mutex_unlock(&cleanup_lock);
+		execv(glob_argv[0], glob_argv);
 		exit(3);
 	} else {
-		pthread_mutex_unlock(&cleanup_lock);
 		abort(); /* allow to core and exit */
+		pthread_mutex_unlock(&cleanup_lock);
 	}
 }
 
