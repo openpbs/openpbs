@@ -1942,7 +1942,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					 * want to have the job in our array once.
 					 */
 					if (find_resource_resv_by_indrank(ninfo_arr[i]->job_arr,
-						job->rank, -1) == NULL) {
+						-1, job->rank) == NULL) {
 						if (ninfo_arr[i]->has_hard_limit) {
 						cts = find_alloc_counts(ninfo_arr[i]->group_counts,
 							job->group);
@@ -2053,7 +2053,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 	if (resresv->is_job) {
 		ninfo->num_jobs++;
-		if (find_resource_resv_by_indrank(ninfo->job_arr, resresv->rank, resresv->resresv_ind) == NULL) {
+		if (find_resource_resv_by_indrank(ninfo->job_arr, resresv->resresv_ind, resresv->rank) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->job_arr, resresv, NO_FLAGS);
 			if (tmp_arr == NULL)
 				return;
@@ -2064,7 +2064,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	}
 	else if (resresv->is_resv) {
 		ninfo->num_run_resv++;
-		if (find_resource_resv_by_indrank(ninfo->run_resvs_arr, resresv->rank, resresv->resresv_ind) == NULL) {
+		if (find_resource_resv_by_indrank(ninfo->run_resvs_arr, resresv->resresv_ind, resresv->rank) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->run_resvs_arr, resresv, NO_FLAGS);
 			if (tmp_arr == NULL)
 				return;

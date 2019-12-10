@@ -2783,7 +2783,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	if (ojinfo->resv != NULL) {
 		njinfo->resv = find_resource_resv_by_indrank(nqinfo->server->resvs,
-			ojinfo->resv->rank, ojinfo->resv->resresv_ind);
+			ojinfo->resv->resresv_ind, ojinfo->resv->rank);
 	}
 
 	njinfo->resused = dup_resource_req_list(ojinfo->resused);
@@ -3020,7 +3020,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		}
 
 		for (i = 0; i < no_of_jobs; i++) {
-			job = find_resource_resv_by_indrank(sinfo->running_jobs, jobs[i], -1);
+			job = find_resource_resv_by_indrank(sinfo->running_jobs, -1, jobs[i]);
 			if (job != NULL) {
 				if ((preempt_jobs_list[i] = strdup(job->name)) == NULL) {
 					log_err(errno, __func__, MEM_ERR_MSG);
@@ -3121,7 +3121,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
 				"Preempted work didn't run job - rerun it");
 			for (i = 0; i < preempted_count; i++) {
-				job = find_resource_resv_by_indrank(sinfo->jobs, preempted_list[i], -1);
+				job = find_resource_resv_by_indrank(sinfo->jobs, -1, preempted_list[i]);
 				if (job != NULL && !job->job->is_running) {
 					clear_schd_error(serr);
 					if (run_update_resresv(policy, pbs_sd, sinfo, job->job->queue, job, NULL, RURR_NO_FLAGS, serr) == 0) {
@@ -3300,6 +3300,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		free_schd_error_list(full_err);
 		return NULL;
 	}
+	pjobs[0] = NULL;
 
 	if (sinfo->preempt_targets_enable) {
 		preempt_targets_req = find_resource_req(hjob->resreq, getallres(RES_PREEMPT_TARGETS));
@@ -3326,7 +3327,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		return NULL;
 	}
 	npolicy = nsinfo->policy;
-	nhjob = find_resource_resv_by_indrank(nsinfo->jobs, hjob->rank, hjob->resresv_ind);
+	nhjob = find_resource_resv_by_indrank(nsinfo->jobs, hjob->resresv_ind, hjob->rank);
 	prev_prio = nhjob->job->preempt;
 
 	if (nsinfo->preempt_targets_enable) {
@@ -3401,6 +3402,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	skipto = 0;
 	while ((indexfound = select_index_to_preempt(npolicy, nhjob, rjobs_subset, skipto, err, fail_list)) != NO_JOB_FOUND) {
 		struct preempt_ordering *po;
+		int dont_preempt_job = 0;
+		int ind = 0;
 
 		if (indexfound == ERR_IN_SELECT) {
 			/* System error occurred, no need to proceed */
@@ -3426,11 +3429,45 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
+		/* Check if any of the previously preempted job increased its preemption priority */
+		for (ind = 0; pjobs[ind] != NULL; ind++) {
+			if (pjobs[ind]->job->preempt >= nhjob->job->preempt) {
+				dont_preempt_job = 1;
+				break;
+			}
+		}
+		/* Check if the job we just ended increases its priority. If so, don't preempt this job */
+		if (dont_preempt_job || pjob->job->preempt >= nhjob->job->preempt) {
+			schd_error *tmp_err = new_schd_error();
+			clear_schd_error(tmp_err);
+			remove_resresv_from_array(rjobs_subset, pjob);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
+				  "Preempting this job will escalate its priority or priority of other jobs, ignoring it");
+			if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
+				pjob->job->queue, pjob, NO_ALLPART, tmp_err)) != NULL) {
+				sim_run_update_resresv(npolicy, pjob, ns_arr, NO_ALLPART);
+			} else {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name,
+					  "Trouble finding preemptable candidates");
+				free_schd_error_list(full_err);
+				free_server(nsinfo);
+				free(pjobs);
+				free(prjobs);
+				free_schd_error(err);
+				return NULL;
+			}
+			if (indexfound > 0)
+				skipto = indexfound-1;
+			else
+				skipto = 0;
+			continue;
+		}
+
 		if (pjob->end_event != NULL)
 			delete_event(nsinfo, pjob->end_event);
 
-		pjobs[j] = pjob;
-		j++;
+		pjobs[j++] = pjob;
+		pjobs[j] = NULL;
 
 		if (err != NULL) {
 			old_errorcode = err->error_code;
@@ -5146,8 +5183,11 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 	if (job->job->is_running == 0)
 		return 0;
 
-	if (job->job->preempt >= inp->job->job->preempt)
+	if (job->job->preempt >= inp->job->job->preempt) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, job->name,
+			  "Preempting this job will escalate its priority or priority of other jobs, ignoring it");
 		return 0;
+	}
 
 	switch (inp->err->error_code) {
 		case SERVER_USER_RES_LIMIT_REACHED:
@@ -5360,7 +5400,6 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 				return NULL;
 			}
 			return temp;
-
 		default:
 			/* For all other errors return the copy of list back again */
 			temp = malloc((arr_length + 1) * sizeof(resource_resv *));

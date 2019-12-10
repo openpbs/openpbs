@@ -1756,8 +1756,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			set_preempt_prio(resresv, qinfo, sinfo);
 		}
 
-		/* update_preemption_on_run() must be called post queue/server update */
-		update_preemption_on_run(sinfo, rr);
+		/* update_preemption_priority() must be called post queue/server update */
+		update_preemption_priority(sinfo, rr);
 
 		if (sinfo->policy->fair_share)
 			update_usage_on_run(rr);
@@ -1979,7 +1979,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)
 		return 0;
 
-	if ((njob = find_resource_resv_by_indrank(nsinfo->jobs, topjob->rank, topjob->resresv_ind)) == NULL) {
+	if ((njob = find_resource_resv_by_indrank(nsinfo->jobs, topjob->resresv_ind, topjob->rank)) == NULL) {
 		free_server(nsinfo);
 		return 0;
 	}

@@ -1299,7 +1299,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 				 * all_resresv list, so no need to search using start time of job
 				 */
 				event_ptr = find_resource_resv_by_indrank(nsinfo->all_resresv, 
-					    oep->rank, oep->resresv_ind);
+					    oep->resresv_ind, oep->rank);
 
 			if (event_ptr == NULL) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, ote->name,
@@ -1802,7 +1802,7 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 		te != NULL && (end == 0 || te->event_time < end);
 		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
 		resresv = (resource_resv *) te->event_ptr;
-		if (incl_arr == NULL || find_resource_resv_by_indrank(incl_arr, resresv->rank, -1) !=NULL) {
+		if (incl_arr == NULL || find_resource_resv_by_indrank(incl_arr, -1, resresv->rank) !=NULL) {
 			if (resresv != exclude) {
 				req = resresv->resreq;
 
