@@ -14241,7 +14241,8 @@ class Job(ResourceResv):
         a = {ATTR_S: shell_path}
         self.set_attributes(a)
         mode = 0o755
-        if not self.du.chmod(path=script_path, mode=mode, sudo=True):
+        if not self.du.chmod(hostname=mom, path=script_path, mode=mode,
+                             sudo=True):
             raise AssertionError("Failed to set permissions for file %s"
                                  " to %s" % (script_path, oct(mode)))
         self.set_execargs(script_path, duration)
