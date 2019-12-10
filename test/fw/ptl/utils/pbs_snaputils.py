@@ -1765,7 +1765,7 @@ quit()
                     # itself with sudo, not the cmd
                     # So, append sudo as a prefix to the cmd instead
                     cmd_list_cpy[0] = (' '.join(self.du.sudo_cmd) +
-                                       cmd_list_cpy[0])
+                                       ' ' + cmd_list_cpy[0])
             else:
                 as_script = False
                 if key in sudo_cmds:
