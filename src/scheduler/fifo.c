@@ -569,8 +569,8 @@ schedule(int cmd, int sd, char *runjobid)
 			 * This is required since there is a probability that scheduler's configuration has been changed at
 			 * server through qmgr.
 			 */
-			if (!update_svr_schedobj(connector, 0, 0)) {
-				log_err(-1, __func__, "update_svr_schedobj failed");
+			if (!validate_sched_attrs(connector)) {
+				log_err(-1, __func__, "validate_sched_attrs failed");
 				return 0;
 			}
 			break;
@@ -2689,8 +2689,6 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	static int svr_knows_me = 0;
 	int err;
 	struct attropl*attribs, *patt;
-	struct batch_status *ss = NULL;
-	struct batch_status *all_ss = NULL; /* all scheduler objects */
 	char sched_host[PBS_MAXHOSTNAME + 1];
 
 	/* This command is only sent on restart of the server */
@@ -2700,20 +2698,8 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	if ((cmd != SCH_SCHEDULE_NULL && cmd != SCH_ATTRS_CONFIGURE && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
 		return 1;
 
-	/* Stat the scheduler to get details of sched */
-	all_ss = pbs_statsched(connector, NULL, NULL);
-	ss = bs_find(all_ss, sc_name);
-
-	if (ss == NULL) {
-		sprintf(log_buffer, "Unable to retrieve the scheduler attributes from server");
-		log_err(-1, __func__, log_buffer);
-		pbs_statfree(all_ss);
+	if (!validate_sched_attrs(connector))
 		return 0;
-	}
-	if (!sched_settings_frm_svr(ss))
-		return 0;
-
-	pbs_statfree(all_ss);
 
 	/* update the sched with new values */
 	attribs = calloc(4, sizeof(struct attropl));
@@ -2759,3 +2745,45 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	free(attribs);
 	return 1;
 }
+
+/**
+ * @brief
+ *	Validates the sched object attributes changed from Server.
+ *
+ * @param[in] connector - socket descriptor to server
+ *
+ * @retval Error code
+ * @return 0 - Failure
+ * @return 1 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ *
+ */
+int
+validate_sched_attrs(int connector)
+{
+	struct batch_status *ss = NULL;
+	struct batch_status *all_ss = NULL;
+
+	/* Stat the scheduler to get details of sched */
+
+	all_ss = pbs_statsched(connector, NULL, NULL);
+	ss = bs_find(all_ss, sc_name);
+
+	if (ss == NULL) {
+		log_err(-1, __func__,  "Unable to retrieve the scheduler attributes from server");
+		pbs_statfree(all_ss);
+		return 0;
+	}
+	if (!sched_settings_frm_svr(ss)) {
+		pbs_statfree(all_ss);
+		return 0;
+	}
+
+	pbs_statfree(all_ss);
+
+	return 1;
+}
+

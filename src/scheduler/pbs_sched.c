@@ -118,6 +118,7 @@ struct		connect_handle connection[NCONNECTS];
 int		connector;
 int		server_sock;
 int		second_connection = -1;
+static int	update_svr = 1;
 
 #define		START_CLIENTS	2	/* minimum number of clients */
 #define		MAX_PORT_NUM 65535
@@ -1483,8 +1484,11 @@ main(int argc, char *argv[])
 		cmd = server_command(&runjobid);
 
 		if (connector >= 0) {
-			/* update sched object attributes on server */
-			update_svr_schedobj(connector, cmd, alarm_time);
+			if (update_svr) {
+				/* update sched object attributes on server */
+				update_svr_schedobj(connector, cmd, alarm_time);
+				update_svr = 0;
+			}
 
 			if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
 				log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
