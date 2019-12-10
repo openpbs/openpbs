@@ -95,7 +95,7 @@ class HookHelper(object):
         defaults = {
             'post_timeout': 30,
             'delete_timeout': 30,
-            'unix_socket_file': '/var/run/jacsd/jacsd.sock',
+            'unix_socket_file': '/var/run/atomd/atomd.sock',
         }
         constants = {
             'version_uri': '/rm/v1',
