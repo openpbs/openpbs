@@ -2091,7 +2091,7 @@ class BatchUtils(object):
         :returns: int or float or string
         """
         if re.search('(\{.*:.*[,]?.*\})', str(value)):
-            value = eval(eval(str(value)))
+            value = json.loads(eval(str(value)))
             return value
 
         if value is None or isinstance(value, collections.Callable):
