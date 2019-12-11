@@ -1377,18 +1377,18 @@ class _server_attribute:
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
-    def __init__(self, al_name: str, al_resc: str, al_value: str, al_op: int, al_flags: int):
-        self.al_name = al_name
-        self.al_resc = al_resc
-        self.al_value = al_value
-        self.al_op = al_op
-        self.al_flags = al_flags
-        self.al_sisters = []
+    def __init__(self, name: str, resc: str, value: str, op: int, flags: int):
+        self.name = name
+        self.resc = resc
+        self.value = value
+        self.op = op
+        self.flags = flags
+        self.sisters = []
     #: m(__init__)
 
 
     def __str__(self):
-        #   return f"{self.al_name}:{self.al_resc}:{self.al_value}:{self.al_op}:{self.al_flags}"
+        #   return f"{self.name}:{self.resc}:{self.value}:{self.op}:{self.flags}"
         return "%s:%s:%s:%s:%s" % self.tup()
     #: m(__str__)
 
@@ -1396,7 +1396,7 @@ class _server_attribute:
         """returns the string values from the attribute flags."""
         lst = []
         for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
-            if self.al_flags & mask:
+            if self.flags & mask:
                 lst.append(value)
         return lst
     #: m(extract_flags_str)
@@ -1405,13 +1405,13 @@ class _server_attribute:
         """returns the integer values from the attribute flags."""
         lst = []
         for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
-            if self.al_flags & mask:
+            if self.flags & mask:
                 lst.append(mask)
         return lst
     #: m(extract_flags_int)
 
     def tup(self):
-        return self.al_name, self.al_resc, self.al_value, self.al_op, self.al_flags, self.al_sisters
+        return self.name, self.resc, self.value, self.op, self.flags, self.sisters
     #: m(tup)
 
 
@@ -1434,19 +1434,19 @@ class _management:
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
 
-    def __init__(self, cmd, objtype, objname, rq_time, rq_reply__brp_code,
-        rq_reply__brp_auxcode, rq_reply__brp_choice, rq_reply__brp_txt,
-        rq_attrs, connect_server=None):
+    def __init__(self, cmd, objtype, objname, request_time, reply_code,
+        reply_auxcode, reply_choice, reply_txt,
+        attribs, connect_server=None):
         """__init__"""
         self.cmd = cmd
         self.objtype = objtype
         self.objname = objname
-        self.rq_time = rq_time
-        self.rq_reply__brp_code = rq_reply__brp_code
-        self.rq_reply__brp_auxcode = rq_reply__brp_auxcode
-        self.rq_reply__brp_choice = rq_reply__brp_choice
-        self.rq_reply__brp_txt = rq_reply__brp_txt
-        self.rq_attrs = rq_attrs
+        self.request_time = request_time
+        self.reply_code = reply_code
+        self.reply_auxcode = reply_auxcode
+        self.reply_choice = reply_choice
+        self.reply_txt = reply_txt
+        self.attribs = attribs
         self._readonly = True
         self._connect_server = connect_server
     #: m(__init__)

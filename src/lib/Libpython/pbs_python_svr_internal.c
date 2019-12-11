@@ -5774,6 +5774,10 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		//pass rq_attr as a list of tuple(Option(str,None), Option(str,None), Option(str,None))
 		py_attr = svrattrl_list_to_pyobject(&rqj->rq_manager.rq_attr);
+		if (!py_attr){
+			log_err(PBSE_INTERNAL, __func__, "could not build the list of server attributes");
+			goto event_set_exit;
+		}
 
 		py_margs = Py_BuildValue("(iisliiisO)",
 			rqj->rq_manager.rq_cmd,
@@ -12617,7 +12621,7 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 			py_server_attribute = Py_None;
 		} else {
 			svrattrl *slist = NULL;
-			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "al_sisters");
+			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "sisters");
 			if (py_slist) {
 				for(slist = plist->al_sister; slist != NULL; slist = slist->al_sister) {
 					PyObject *py_server_attribute_sister = svrattrl_to_server_attribute(slist);
@@ -12628,7 +12632,7 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 				}
 				Py_CLEAR(py_slist);
 			} else {
-				log_err(PBSE_INTERNAL, __func__, "failed to acquire al_sisters in server_attribute object");
+				log_err(PBSE_INTERNAL, __func__, "failed to acquire sisters in server_attribute object");
 			}
 		}
 		PyList_Append(py_list, py_server_attribute);
