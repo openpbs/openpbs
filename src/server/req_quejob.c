@@ -223,7 +223,7 @@ static char *pbs_o_que = "PBS_O_QUEUE=";
  * @note
  *		NOTE:	'resc_in_err' is a malloced-string which is used and
  *		freed inside req_reject().
- *		So upon PBS_INVALSELECTRES return, be sure to
+ *		So upon PBS_INVALSELECTRES or PBSE_UNKRESC return, be sure to
  *		issue req_reject().
 */
 int
@@ -261,12 +261,12 @@ validate_perm_res_in_select(char *val, int val_exist)
 					if ((presc->rs_flags & resc_access_perm) == 0) {
 						if ((resc_in_err = strdup(pkvp[j].kv_keyw)) == NULL)
 							return PBSE_SYSTEM;
-						return PBSE_INVALSELECTRESC;
+						return PBSE_INVALSELECTRESC; /* for freeing resc_in_err please read "NOTE" above in function brief*/
 					}
 				} else if (val_exist) {
 					if ((resc_in_err = strdup(pkvp[j].kv_keyw)) == NULL)
 						return PBSE_SYSTEM;
-					return PBSE_UNKRESC;
+					return PBSE_UNKRESC; /* for freeing resc_in_err please read "NOTE" above in function brief*/
 				}
 			} /* for */
 		} /* if */

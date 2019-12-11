@@ -405,6 +405,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.mpiprocs': 4,
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
@@ -414,6 +415,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.mpiprocs': 2,
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
@@ -505,6 +507,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
                     'Resource_List.select': args['qsub_sel'],
@@ -513,6 +516,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
                           'Resource_List.select': args['qsub_sel_after'],
@@ -579,6 +583,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
                     'Resource_List.select': args['qsub_sel'],
@@ -587,6 +592,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
                           'Resource_List.select': args['qsub_sel_after'],
@@ -659,6 +665,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.longres': 35,
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
@@ -668,6 +675,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.longres': 18,
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
@@ -741,6 +749,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.sizres': '35kb',
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
@@ -750,6 +759,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.sizres': '18kb',
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
@@ -824,6 +834,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.fltres': '35.4',
                     'Resource_List.ncpus': 11,
                     'Resource_List.nodect': 5,
@@ -833,6 +844,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.fltres': '18.2',
                           'Resource_List.ncpus': 6,
                           'Resource_List.nodect': 3,
@@ -957,6 +969,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.longres': 35,
                     'Resource_List.fltres': '35.4',
                     'Resource_List.sizres': '35kb',
@@ -968,6 +981,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.longres': 18,
                           'Resource_List.sizres': '18kb',
                           'Resource_List.fltres': '18.2',
@@ -1031,6 +1045,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             }
 
         job_stat = {'job_state': 'R',
+                    'substate': 42,
                     'Resource_List.mpiprocs': 4,
                     'Resource_List.ncpus': 31,
                     'Resource_List.nodect': 5,
@@ -1040,6 +1055,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         args['job_stat'] = job_stat
 
         job_stat_after = {'job_state': 'R',
+                          'substate': 42,
                           'Resource_List.mpiprocs': 2,
                           'Resource_List.ncpus': 16,
                           'Resource_List.nodect': 3,

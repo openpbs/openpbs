@@ -4085,7 +4085,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 #ifndef PBS_MOM
 					} else {
 						if ((rc = resc_limit_insert_other_res(have, pkvp[j].kv_keyw, pkvp[j].kv_val, TRUE))) {
-							sprintf(log_buffer, "failed to insert resource %s", pkvp[j].kv_keyw);
+							snprintf(log_buffer, sizeof(log_buffer), "failed to insert resource %s", pkvp[j].kv_keyw);
 							log_err(-1, __func__, log_buffer);
 							goto release_nodes_exit;
 						}
@@ -4115,7 +4115,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 							x == 1;
 							x = parse_resc_equal_string(last, &word, &value, &last)) {
 							if ((rc = resc_limit_insert_other_res(have, word, value, FALSE))) {
-								sprintf(log_buffer, "failed to insert resource %s", word);
+								snprintf(log_buffer, sizeof(log_buffer), "failed to insert resource %s", word);
 								log_err(-1, __func__, log_buffer);
 								goto release_nodes_exit;
 							}

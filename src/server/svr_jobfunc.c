@@ -5934,8 +5934,8 @@ populate_mom_list(pbs_list_head *to_head, char *exechostx)
 	CLEAR_HEAD((*to_head));
 
 	for (hostn = parse_plus_spec_r(peh, &last, &hasprn);
-			hostn;
-			hostn = parse_plus_spec_r(last, &last, &hasprn) ) {
+		hostn;
+		hostn = parse_plus_spec_r(last, &last, &hasprn) ) {
 		if (reliable_job_node_add(to_head, strtok(hostn, ":/")) == -1) {
 			free(peh);
 			return;
@@ -5965,14 +5965,14 @@ get_ms_select_chunk(char *select_str)
 	int   hpn;
 
     if (select_str == NULL) {
-            log_err(-1, __func__, "bad param passed");
-	return (NULL);
+    	log_err(-1, __func__, "bad param passed");
+    	return (NULL);
     }
 
     selbuf = strdup(select_str);
     if (selbuf == NULL) {
-            log_err(errno, __func__, "strdup fail");
-	return (NULL);
+    	log_err(errno, __func__, "strdup fail");
+    	return (NULL);
     }
     psubspec = parse_plus_spec_r(selbuf, &slast, &hpn);
 
@@ -6254,16 +6254,11 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		goto recreate_exec_vnode_exit;
 	}
 recreate_exec_vnode_exit:
-	if (new_exec_vnode)
-		free(new_exec_vnode);
-	if (new_exec_host)
-		free(new_exec_host);
-	if (new_exec_host2)
-		free(new_exec_host2);
-	if (new_select)
-		free(new_select);
-	if (new_deallocated_execvnode)
-		free(new_deallocated_execvnode);
+	free(new_exec_vnode);
+	free(new_exec_host);
+	free(new_exec_host2);
+	free(new_select);
+	free(new_deallocated_execvnode);
 
 	return (rc);
 }
