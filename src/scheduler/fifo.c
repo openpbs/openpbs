@@ -1181,8 +1181,14 @@ schedexit(void)
 	}
 
 	/* Kill all worker threads */
-	if (num_threads > 1)
-		kill_threads();
+	if (num_threads > 1) {
+		int *thid;
+
+		thid = (int *) pthread_getspecific(th_id_key);
+
+		if (*thid == 0)
+			kill_threads();
+	}
 }
 
 /**

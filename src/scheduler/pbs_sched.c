@@ -151,6 +151,9 @@ extern int do_hard_cycle_interrupt;
 static int	engage_authentication(struct connect_handle *);
 
 extern char *msg_startup1;
+
+static pthread_mutex_t cleanup_lock;
+
 /**
  * @brief
  * 		cleanup after a segv and re-exec.  Trust as little global mem
@@ -161,30 +164,34 @@ extern char *msg_startup1;
 void
 on_segv(int sig)
 {
-	int *thid;
+	int ret_lock = -1;
 
-	thid = (int *) pthread_getspecific(th_id_key);
-	if (thid != NULL && *thid != 0)
+	/* We want any other threads to block here, we want them alive until abort() is called
+	 * as it dumps core for all threads
+	 */
+	ret_lock = pthread_mutex_lock(&cleanup_lock);
+	if (ret_lock != 0)
 		pthread_exit(NULL);
-
-	if (num_threads > 1)
-		kill_threads();
 
 	/* we crashed less then 5 minutes ago, lets not restart ourself */
 	if ((segv_last_time - segv_start_time) < 300) {
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "on_segv", "received a sigsegv within 5 minutes of start: aborting.");
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
+				"received a sigsegv within 5 minutes of start: aborting.");
+
+		/* Not unlocking mutex on purpose, we need to hold on to it until the process is killed */
 		abort();
 	}
 
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "on_segv", "received segv and restarting");
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
+			"received segv and restarting");
 
 	if (fork() > 0) { /* the parent rexec's itself */
-		sleep(10);		/* allow the child to die */
+		sleep(10); /* allow the child to die */
 		execv(glob_argv[0], glob_argv);
 		exit(3);
+	} else {
+		abort(); /* allow to core and exit */
 	}
-	else
-		abort();			/* allow to core and exit */
 }
 
 /**
@@ -211,12 +218,11 @@ sigfunc_pipe(int sig)
 void
 die(int sig)
 {
-	int *thid;
+	int ret_lock = -1;
 
-	thid = (int *) pthread_getspecific(th_id_key);
-
-	if (thid != NULL && *thid != 0)
-		pthread_exit(NULL);	/* Kill worker threads */
+	ret_lock = pthread_mutex_trylock(&cleanup_lock);
+	if (ret_lock != 0)
+		pthread_exit(NULL);
 
 	if (sig > 0) {
 		sprintf(log_buffer, "caught signal %d", sig);
@@ -452,26 +458,19 @@ read_config(char *file)
 void
 restart(int sig)
 {
-	int *thid;
-
-	thid = (int *) pthread_getspecific(th_id_key);
-
-	if (thid == NULL || *thid == 0) {
-		if (sig) {
-			log_close(1);
-			log_open(logfile, path_log);
-			sprintf(log_buffer, "restart on signal %d", sig);
-		} else {
-			sprintf(log_buffer, "restart command");
-		}
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
-				log_buffer);
-		if (configfile) {
-			if (read_config(configfile) != 0)
-				die(0);
-		}
-		schedule(SCH_CONFIGURE, -1, NULL);
+	if (sig) {
+		log_close(1);
+		log_open(logfile, path_log);
+		sprintf(log_buffer, "restart on signal %d", sig);
+	} else {
+		sprintf(log_buffer, "restart command");
 	}
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+	if (configfile) {
+		if (read_config(configfile) != 0)
+			die(0);
+	}
+	schedule(SCH_CONFIGURE, -1, NULL);
 }
 
 #ifdef NAS /* localmod 030 */
@@ -937,6 +936,7 @@ main(int argc, char *argv[])
 	int nthreads = -1;
 	int num_cores;
 	char *endp = NULL;
+	pthread_mutexattr_t attr;
 
 	/*the real deal or show version and exit?*/
 
@@ -1440,6 +1440,12 @@ main(int argc, char *argv[])
 			die(0);
 		}
 	}
+
+	/* Initialize cleanup lock */
+	if (init_mutex_attr_recursive(&attr) == 0)
+		die(0);
+
+	pthread_mutex_init(&cleanup_lock, &attr);
 
 	FD_ZERO(&fdset);
 	for (go=1; go;) {
