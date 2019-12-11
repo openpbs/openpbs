@@ -61,6 +61,7 @@
 #include "pbs_json.h"
 #include "pbs_internal.h"
 #include "libutil.h"
+#include <arpa/inet.h>
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -598,55 +599,81 @@ trunc_value(char *value, int len, int wide_len, int wide)
 static void
 prt_nodes(char *nodes, int no_newl)
 {
-	int  i;
-	char linebuf[78];
-	char *stp;
-	int   vnodeid = 0;
+	int  i, len;
+	char linebuf[CHAR_LINE_LIMIT];
+	char *rest = NULL;
+	char *saveptr = NULL;
+ 	char *token = NULL;
+	char *token_cp = NULL;
+	char *subtoken = NULL;
+	char *node_name = NULL;
+	char *node_name_bkp = NULL;
+	char *chunk = NULL;
+	struct sockaddr_in check_ip;
+	int ret = 0;
 
 	if ((nodes == NULL) || (*nodes == '\0'))
 		return;
 
 	i = 0;
-	stp = nodes;
-	while (*nodes != '\0') {
-		if (*stp == '[')
-			vnodeid = 1;
-		else if (*stp == ']')
-			vnodeid = 0;
-		if ((vnodeid == 0) &&
-			((*stp == '.') || (*stp == '+') || (*stp == '\0'))) {
-			/* does node fit into line? */
-			if (i + stp - nodes < 77) {
-				while (nodes < stp)
-					linebuf[i++] = *nodes++;
-			} else {
-				/* flush line and start next */
-				linebuf[i] = '\0';
-				if (no_newl)
-					printf("%s", show_nonprint_chars(linebuf));
-				else
-					printf("   %s\n", show_nonprint_chars(linebuf));
-				i = 0;
-				while (nodes < stp)
-					linebuf[i++] = *nodes++;
-			}
-
-			/* strip off domain name to keep string short */
-			while ((*stp != '+') && (*stp != ':') && (*stp != '\0'))
-				stp++;
-			nodes = stp++;
+	rest = strdup(nodes);
+	if (rest == NULL)
+		exit_qstat("out of memory");
+	/* The exec_host string has the format <host1>/<T1>*<P1>[+<host2>/<T2>*<P2>+... ].
+	 * We are using '+' delimiter to find each <host1>/<T1>*<P1> string.
+	 */
+	token = strtok_r(rest, "+", &saveptr);
+	while (token != NULL) {
+		token_cp = strdup(token);
+		if (token_cp == NULL)
+			exit_qstat("out of memory");
+		/* We are using '/' delimiter to extract the <host1> value
+		 * from <host1>/<T1>*<P1> string. We use the <host1> to identify if
+		 * the node is created using IP address.
+		 */
+		subtoken = strtok(token, "/");
+		chunk = token_cp + strlen(subtoken);
+		ret = inet_pton(AF_INET, subtoken, &(check_ip.sin_addr));
+		if (ret == 1) {
+			/* node name is an IP address */
+			pbs_asprintf(&node_name, "%s%s", subtoken, chunk);
 		} else {
-			stp++;
+			/* Node name is not an IP address */
+			pbs_asprintf(&node_name, "%s%s", strtok(subtoken, "."), chunk);
 		}
+		/* Backing up node_name as we are modifying the pointer further in the code */
+		node_name_bkp = node_name;
+		len = strlen(node_name);
+		if (i + len < (CHAR_LINE_LIMIT - 1)) {
+			for (; len > 0; i++, len--) {
+				linebuf[i] = *node_name++;
+			}
+			/* Appending a  '+' here because we want to maintain the
+			 * exec_host format i.e. <host1>/<T1>*<P1>[+<host2>/<T2>*<P2>+.
+			 */
+			linebuf[i++] = '+';
+		} else {
+			/* flush line and start next */
+			linebuf[i] = '\0';
+			printf((no_newl ? "%s" : "   %s\n"), show_nonprint_chars(linebuf));
+			for (i = 0; len > 0; i++, len--) {
+				linebuf[i] = *node_name++;
+			}
+			linebuf[i++] = '+';
+		}
+		token = strtok_r(NULL, "+", &saveptr);
 	}
-	if (i != 0) {
-		linebuf[i] = '\0';
-		if (no_newl)
-			printf("%s\n", show_nonprint_chars(linebuf));
-		else
-			printf("   %s\n", show_nonprint_chars(linebuf));
+	if (i > 0) {
+		linebuf[--i] = '\0';
+		printf((no_newl ? "%s\n" : "   %s\n"), show_nonprint_chars(linebuf));
 	} else if (no_newl)
 		printf("\n");
+	free(token_cp);
+	free(rest);
+	free(node_name_bkp);
+	token_cp = NULL;
+	rest = NULL;
+	node_name_bkp = NULL;
 }
 
 /**
