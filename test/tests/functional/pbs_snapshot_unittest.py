@@ -803,6 +803,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         except KeyError:
             self.fail("mom_priv/config not found in %s's snapshot" % host2)
 
+    @skipOnShasta
     def test_snapshot_obf_stress(self):
         """
         A stress test to make sure that snapshot --obufscate really obfuscates

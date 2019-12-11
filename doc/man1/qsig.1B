@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qsig 1B "4 March 2019" Local "PBS Professional"
+.TH qsig 1B "15 October 2019" Local "PBS Professional"
 .SH NAME
 .B qsig 
 \- signal a PBS batch job
@@ -179,7 +179,11 @@ Resumes a job that was suspended using the
 .I admin-suspend 
 signal, without waiting for its scheduler.   Cannot be used on jobs that were suspended with 
 .I suspend 
-signal.  
+signal. When the last 
+.I admin-suspended
+job has been 
+.I admin_resumed, 
+the vnode leaves the maintenance state.
 .br
 Syntax:
 .I qsig -s admin-resume <job ID>

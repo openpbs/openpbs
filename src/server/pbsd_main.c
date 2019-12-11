@@ -1677,7 +1677,12 @@ try_db_again:
 	if ((pc=strchr(svr_interp_data.local_host_name, '.')) != NULL)
 		*pc = '\0';
 
-	pbs_python_ext_start_interpreter(&svr_interp_data);
+	if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
+		log_err(-1, msg_daemonname, "Failed to start Python interpreter");
+		stop_db();
+		free(keep_daemon_name);
+		return (1);
+	}
 
 	/* check and enable the prov attributes */
 	set_srv_prov_attributes();

@@ -75,14 +75,19 @@ struct resc_sum *svr_resc_sum;
  *
  * @param[in]	caller	-	The name of the calling function (for logging)
  */
-void
+int
 restart_python_interpreter(const char *caller)
 {
+	int rc;
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 		LOG_INFO, (char *) caller,
 		"Restarting Python interpreter as resourcedef file has changed.");
 	pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-	pbs_python_ext_start_interpreter(&svr_interp_data);
+	rc = pbs_python_ext_start_interpreter(&svr_interp_data);
+	if (rc != 0) {
+		log_err(PBSE_INTERNAL, (char *) caller, "Failed to restart Python interpreter");
+	}
+	return rc;
 }
 #endif
 

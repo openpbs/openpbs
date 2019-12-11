@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_node_attributes 7B "4 March 2019" Local "PBS Professional"
+.TH pbs_node_attributes 7B "2 December 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_node_attributes 
 \- attributes of PBS vnodes
@@ -445,6 +445,7 @@ Default:
 .I False
 
 .IP queue 8
+.B Deprecated.  
 The queue with which this vnode is associated.  Each vnode can be
 associated with at most 1 queue.  Queues can be associated with
 multiple vnodes.  Any jobs in a queue that has associated vnodes can

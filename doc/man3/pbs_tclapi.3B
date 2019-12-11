@@ -33,10 +33,11 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_tclapi 3B "6 March 2019" Local "PBS Professional"
+.TH pbs_tclapi 3B "4 December 2019" Local "PBS Professional"
 .SH NAME
 pbs_tclapi \- PBS TCL Application Programming Interface 
 .SH DESCRIPTION
+.B Deprecated.  
 The
 .B pbs_tclapi
 is a subset of the PBS external API wrapped in a TCL
