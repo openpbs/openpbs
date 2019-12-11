@@ -177,10 +177,9 @@ on_segv(int sig)
 	if ((segv_last_time - segv_start_time) < 300) {
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 				"received a sigsegv within 5 minutes of start: aborting.");
-		abort();
 
-		/* This will never really be executed, but it'll make sure that only 1 thread calls abort */
-		pthread_mutex_unlock(&cleanup_lock);
+		/* Not unlocking mutex on purpose, we need to hold on to it until the process is killed */
+		abort();
 	}
 
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
@@ -188,12 +187,10 @@ on_segv(int sig)
 
 	if (fork() > 0) { /* the parent rexec's itself */
 		sleep(10); /* allow the child to die */
-		pthread_mutex_unlock(&cleanup_lock);
 		execv(glob_argv[0], glob_argv);
 		exit(3);
 	} else {
 		abort(); /* allow to core and exit */
-		pthread_mutex_unlock(&cleanup_lock);
 	}
 }
 
@@ -248,8 +245,6 @@ die(int sig)
 			log_err(-1, "pbs_sched", log_buffer);
 		}
 	}
-
-	pthread_mutex_unlock(&cleanup_lock);
 
 	log_close(1);
 	exit(1);
@@ -1451,20 +1446,9 @@ main(int argc, char *argv[])
 	}
 
 	/* Initialize cleanup lock */
-	if (pthread_mutexattr_init(&attr) != 0) {
-		fprintf(stderr, "pthread_mutexattr_init failed\n");
-		return -1;
-	}
-	if (pthread_mutexattr_settype(&attr,
-#if defined (linux)
-			PTHREAD_MUTEX_RECURSIVE_NP
-#else
-			PTHREAD_MUTEX_RECURSIVE
-#endif
-	)) {
-		fprintf(stderr, "pthread_mutexattr_settype failed\n");
-		return -1;
-	}
+	if (init_mutex_attr_recursive(&attr) == 0)
+		die(0);
+
 	pthread_mutex_init(&cleanup_lock, &attr);
 
 	FD_ZERO(&fdset);
