@@ -581,7 +581,6 @@ struct job_info
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
-	resource_resv *parent_job;	/* parent job if we are a subjob*/
 
 	/* job array information */
 	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
