@@ -1377,9 +1377,9 @@ class _server_attribute:
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
-    def __init__(self, name: str, resc: str, value: str, op: int, flags: int):
+    def __init__(self, name: str, resource: str, value: str, op: int, flags: int):
         self.name = name
-        self.resc = resc
+        self.resource = resource
         self.value = value
         self.op = op
         self.flags = flags
@@ -1435,7 +1435,7 @@ class _management:
     _attributes_hook_set = {}
 
     def __init__(self, cmd, objtype, objname, request_time, reply_code,
-        reply_auxcode, reply_choice, reply_txt,
+        reply_auxcode, reply_choice, reply_text,
         attribs, connect_server=None):
         """__init__"""
         self.cmd = cmd
@@ -1445,7 +1445,7 @@ class _management:
         self.reply_code = reply_code
         self.reply_auxcode = reply_auxcode
         self.reply_choice = reply_choice
-        self.reply_txt = reply_txt
+        self.reply_text = reply_text
         self.attribs = attribs
         self._readonly = True
         self._connect_server = connect_server
