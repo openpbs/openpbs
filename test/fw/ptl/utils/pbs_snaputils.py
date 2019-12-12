@@ -669,6 +669,15 @@ class _PBSSnapUtils(object):
             self.log_filename = os.path.basename(self.log_path)
         else:
             self.log_filename = None
+        self.capture_core_files = True
+
+        filecmd = "file"
+        self.filecmd = self.du.which(exe=filecmd)
+        # du.which returns the input cmd name if it can't find the cmd
+        if self.filecmd is filecmd:
+            self.capture_core_files = False
+            self.logger.info("Warning: file command not found, "
+                             "can't capture traces from any core files")
 
         # finalize() is called by the context's __exit__() automatically
         # however, finalize() is non-reenterant, so set a flag to keep
@@ -1133,12 +1142,16 @@ quit()
 
         :returns: True if this was a valid core file, otherwise False
         """
+        if not self.capture_core_files:
+            return False
+
         if not self.du.isfile(path=file_path, sudo=self.with_sudo):
             self.logger.debug("Could not find file path " + str(file_path))
             return False
 
         # Get the header of this file
-        ret = self.du.run_cmd(cmd=["file", file_path], sudo=self.with_sudo)
+        ret = self.du.run_cmd(cmd=[self.filecmd, file_path],
+                              sudo=self.with_sudo)
         if ret['err'] is not None and len(ret['err']) != 0:
             self.logger.error(
                 "\'file\' command failed with error: " + ret['err'] +
@@ -1757,7 +1770,7 @@ quit()
                     # itself with sudo, not the cmd
                     # So, append sudo as a prefix to the cmd instead
                     cmd_list_cpy[0] = (' '.join(self.du.sudo_cmd) +
-                                       cmd_list_cpy[0])
+                                       ' ' + cmd_list_cpy[0])
             else:
                 as_script = False
                 if key in sudo_cmds:
