@@ -2091,7 +2091,7 @@ class BatchUtils(object):
         :returns: int or float or string
         """
         if re.search('(\{.*:.*[,]?.*\})', str(value)):
-            value = ast.literal_eval(eval(str(value)))
+            value = ast.literal_eval(ast.literal_eval(str(value)))
             return value
 
         if value is None or isinstance(value, collections.Callable):
