@@ -129,3 +129,34 @@ get_hostaddr(char *hostname)
 	freeaddrinfo(pai);
 	return (res);
 }
+
+/**
+ * @brief
+ * 		compare a short hostname with a FQ host match if same up to dot
+ *
+ * @param[in]	shost	- short hostname
+ * @param[in]	lhost	- FQ host
+ *
+ * @return	int
+ * @retval	0	- match
+ * @retval	1	- no match
+ */
+int
+compare_short_hostname(char *shost, char *lhost)
+{
+	size_t   len;
+	char    *pdot;
+
+	if ((shost == NULL) || (lhost == NULL))
+		return 1;
+
+	if ((pdot = strchr(shost, '.')) != NULL)
+		len = (size_t)(pdot - shost);
+	else
+		len = strlen(shost);
+	if ((strncasecmp(shost, lhost, len) == 0) &&
+		((*(lhost+len) == '.') || (*(lhost+len) == '\0')))
+		return 0;	/* match */
+	else
+		return 1;	/* no match */
+}
