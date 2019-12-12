@@ -792,10 +792,14 @@ __pbs_connect_extend(char *server, char *extend_data)
 			(i = encode_DIS_ReqExtend(connection[out].ch_socket,
 			extend_data))) {
 			pbs_errno = PBSE_SYSTEM;
+			CLOSESOCKET(connection[out].ch_socket);
+			connection[out].ch_inuse = 0;
 			return -1;
 		}
 		if (DIS_tcp_wflush(connection[out].ch_socket)) {
 			pbs_errno = PBSE_SYSTEM;
+			CLOSESOCKET(connection[out].ch_socket);
+			connection[out].ch_inuse = 0;
 			return -1;
 		}
 
@@ -804,6 +808,8 @@ __pbs_connect_extend(char *server, char *extend_data)
 			/* failed to read reply from the given connection point,
 			 * connection might be dropped by the TCP stack.
 			 */
+			CLOSESOCKET(connection[out].ch_socket);
+			connection[out].ch_inuse = 0;
 			return -1;
 		}
 		PBSD_FreeReply(reply);
@@ -817,8 +823,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 
 	/*Get the socket port for engage_authentication() */
 	socknamelen = sizeof(sockname);
-	if (getsockname(connection[out].ch_socket, (struct sockaddr *)&sockname, &socknamelen))
+	if (getsockname(connection[out].ch_socket, (struct sockaddr *)&sockname, &socknamelen)) {
+		pbs_errno = PBSE_SYSTEM;
+		CLOSESOCKET(connection[out].ch_socket);
+		connection[out].ch_inuse = 0;
 		return -1;
+	}
 
 	if (engage_authentication(connection[out].ch_socket,
 		server,
