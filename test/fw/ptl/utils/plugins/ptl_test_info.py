@@ -129,7 +129,8 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
-        if not issubclass(cls, unittest.TestCase) or cls is PBSTestSuite or cls is unittest.TestCase:
+        if not issubclass(cls, unittest.TestCase) or cls is PBSTestSuite \
+                or cls is unittest.TestCase:
             return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:
