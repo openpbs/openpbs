@@ -477,6 +477,18 @@ struct jbdscrd {
 #define TKMFLG_REVAL_IND_REMAINING 0x02 /* Flag to re-evaluate "array_indices_remaining" */
 #define TKMFLG_CHK_ARRAY           0x04 /* chk_array_doneness() already in call stack*/
 
+/* Structure for block job reply processing */
+struct block_job_reply {
+	char jobid[PBS_MAXSVRJOBID + 1];
+	char client[PBS_MAXHOSTNAME + 1];
+	int port;
+	int exitstat;
+	time_t reply_time;	/* The timestamp at which the block job tried it's first attempt to reply */
+	char *msg;	/* Abort message to be send to client */
+	int fd;
+};
+#define BLOCK_JOB_REPLY_TIMEOUT 60
+
 /*
  * THE JOB
  *
