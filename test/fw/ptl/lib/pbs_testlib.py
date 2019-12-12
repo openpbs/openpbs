@@ -14214,34 +14214,34 @@ class Job(ResourceResv):
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
 
-    def create_eatcpu_job(self, duration=None, mom=None):
+    def create_eatcpu_job(self, duration=None, hostname=None):
         """
         Create a job that eats cpu indefinitely or for the given
         duration of time
 
         :param duration: The duration, in seconds, to sleep
         :type duration: int
-        :param mom: the MoM object on which to execute the job
-        :type mom: str
+        :param hostname: hostname on which to execute the job
+        :type hostname: str or None
         """
         if self.du is None:
             self.du = DshUtils()
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        if not self.du.is_localhost(mom):
+        if not self.du.is_localhost(hostname):
             d = pwd.getpwnam(self.username).pw_dir
-            ret = self.du.run_copy(hosts=mom, src=script_path, dest=d)
+            ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
                 raise AssertionError("Failed to copy file %s to %s"
-                                     % (script_path, mom))
+                                     % (script_path, hostname))
             script_path = os.path.join(d, "eatcpu.py")
-        pbs_conf = self.du.parse_pbs_config(mom)
+        pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')
         a = {ATTR_S: shell_path}
         self.set_attributes(a)
         mode = 0o755
-        if not self.du.chmod(hostname=mom, path=script_path, mode=mode,
+        if not self.du.chmod(hostname=hostname, path=script_path, mode=mode,
                              sudo=True):
             raise AssertionError("Failed to set permissions for file %s"
                                  " to %s" % (script_path, oct(mode)))
