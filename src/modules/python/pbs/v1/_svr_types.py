@@ -1388,7 +1388,7 @@ class _server_attribute:
 
 
     def __str__(self):
-        #   return f"{self.name}:{self.resc}:{self.value}:{self.op}:{self.flags}"
+        #   return f"{self.name}:{self.resource}:{self.value}:{self.op}:{self.flags}"
         return "%s:%s:%s:%s:%s" % self.tup()
     #: m(__str__)
 
@@ -1411,7 +1411,7 @@ class _server_attribute:
     #: m(extract_flags_int)
 
     def tup(self):
-        return self.name, self.resc, self.value, self.op, self.flags, self.sisters
+        return self.name, self.resource, self.value, self.op, self.flags, self.sisters
     #: m(tup)
 
 
