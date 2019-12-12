@@ -934,12 +934,11 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                     if not fpath.startswith(sched_priv_dir):
                         self.fail("Unexpected file " + fpath + " captured")
 
-    @classmethod
-    def tearDownClass(self):
+    def tearDown(self):
         # Delete the snapshot directories and tarballs created
         for snap_dir in self.snapdirs:
             self.du.rm(path=snap_dir, recursive=True, force=True)
         for snap_tar in self.snaptars:
             self.du.rm(path=snap_tar, sudo=True, force=True)
 
-        TestFunctional.tearDownClass()
+        TestFunctional.tearDown(self)
