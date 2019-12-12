@@ -800,6 +800,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 		}
 
 		reply = PBSD_rdrpy(out);
+		if (reply == NULL) {
+			/* failed to read reply from the given connection point,
+			 * connection might be dropped by the TCP stack.
+			 */
+			return -1;
+		}
 		PBSD_FreeReply(reply);
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	}
