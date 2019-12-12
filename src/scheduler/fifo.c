@@ -1181,8 +1181,14 @@ schedexit(void)
 	}
 
 	/* Kill all worker threads */
-	if (num_threads > 1)
-		kill_threads();
+	if (num_threads > 1) {
+		int *thid;
+
+		thid = (int *) pthread_getspecific(th_id_key);
+
+		if (*thid == 0)
+			kill_threads();
+	}
 }
 
 /**
@@ -1545,15 +1551,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	}
 	else {
 		if (resresv->is_job && resresv->job->is_subjob) {
-			if (resresv->job->parent_job == NULL) {
-				resresv->job->parent_job =
-				find_resource_resv(sinfo->jobs, resresv->job->array_id);
-			}
-			array = resresv->job->parent_job;
+			array = find_resource_resv(sinfo->jobs, resresv->job->array_id);
 			rr = resresv;
-		}
-
-		else if(resresv->is_job && resresv->job->is_array) {
+		} else if (resresv->is_job && resresv->job->is_array) {
 			array = resresv;
 			rr = queue_subjob(resresv, sinfo, qinfo);
 			if(rr == NULL) {

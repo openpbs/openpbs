@@ -48,5 +48,6 @@ int init_multi_threading(int nthreads);
 void kill_threads(void);
 void *worker(void *);
 void queue_work_for_threads(th_task_info *task);
+int init_mutex_attr_recursive(pthread_mutexattr_t *attr);
 
 #endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */

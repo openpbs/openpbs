@@ -62,8 +62,8 @@ class TestQstat(TestFunctional):
         self.logger.info('Sleep for 7 seconds to let at least one job finish.')
         time.sleep(7)
 
-        qstat_cmd = \
-            os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
         qstat_cmd_pt = [qstat_cmd, '-pt', str(jid)]
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_pt)
 
@@ -102,3 +102,50 @@ class TestQstat(TestFunctional):
                               as_script=True)
         if ret['rc'] != 0:
             self.assertFalse(ret['err'][0], ret_msg)
+
+    def test_qstat_n_ip(self):
+        """
+        Test qstat -n output reports the correct node name
+        when node is created using IP address as name of the node.
+        """
+        self.server.manager(MGR_CMD_DELETE, NODE, None, '')
+        ipaddr = socket.gethostbyname(self.mom.hostname)
+        attr_A = {'Mom': self.mom.hostname}
+        self.server.manager(MGR_CMD_CREATE, NODE, id=ipaddr, attrib=attr_A)
+        self.server.expect(NODE, {'state=free': 1})
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
+        qstat_cmd_n = [qstat_cmd, '-n', str(jid)]
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_n)
+        self.assertEqual(ret['rc'], 0,
+                         'Qstat returned with non-zero exit status')
+        qstat_out = '\n'.join(ret['out'])
+        self.assertIn(ipaddr, qstat_out,
+                      "Incorrect node name in qstat -n when "
+                      "node created using IP address")
+
+    def test_qstat_n_fqdn(self):
+        """
+        Test qstat -n output reports task slot and processor info
+        when node is created using FQDN.
+        """
+        self.server.manager(MGR_CMD_DELETE, NODE, None, '')
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.hostname)
+        self.server.expect(NODE, {'state=free': 1})
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qstat')
+        qstat_cmd_n = [qstat_cmd, '-n', str(jid)]
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_n)
+        self.assertEqual(ret['rc'], 0,
+                         'Qstat returned with non-zero exit status')
+        qstat_out = '\n'.join(ret['out'])
+        self.assertNotEqual(re.search(r"%s/([0-9]+)"
+                            % re.escape(self.mom.shortname),
+                            qstat_out), None, "The exec host does not"
+                            " contain the task slot number")
