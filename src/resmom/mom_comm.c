@@ -880,6 +880,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	char	*execvnode = NULL;
 	char	*exechost = NULL;
 	char	*exechost2 = NULL;
+	char	*schedselect = NULL;
 	int	rc = 1;
 	char	*new_exec_vnode = NULL;
 	char	*new_exec_host = NULL;
@@ -916,6 +917,11 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 		exechost2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
 	}
 
+	if (((pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) != 0) &&
+	    (pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str != NULL)) {
+		schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+	}
+
 	if ((exechost == NULL) && (exechost2 == NULL)) {
 		log_err(-1, __func__, "no exechost nor exechost2");
 		goto prune_exec_vnode_exit;
@@ -932,6 +938,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	r_input.execvnode = execvnode;
 	r_input.exechost = exechost;
 	r_input.exechost2 = exechost2;
+	r_input.schedselect = schedselect;
 	r_input.p_new_exec_vnode = &new_exec_vnode;
 	r_input.p_new_exec_host[0] = &new_exec_host;
 	r_input.p_new_exec_host[1] = &new_exec_host2;

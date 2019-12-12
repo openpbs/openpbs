@@ -127,9 +127,9 @@ class TestPbsReliableJobStartup(TestFunctional):
 
         self.logger.info("EHOST1=%s" % (ehost1,))
         self.logger.info("EHOST2=%s" % (ehost2,))
-        if cmp(ehost1, ehost2) != 0:
-            return False
-        return True
+        if ehost1 == ehost2:
+            return True
+        return False
 
     def match_accounting_log(self, atype, jid, exec_host, exec_vnode,
                              mem, ncpus, nodect, place, select):

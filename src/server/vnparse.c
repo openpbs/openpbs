@@ -2486,7 +2486,7 @@ typedef struct resc_limit_entry {
  */
 #define IN_EXECVNODE_FLAG	ATR_VFLAG_HOOK
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 /**
  * @brief
  * compare lexicographically the names of resources in the resource list contained in
@@ -2536,10 +2536,10 @@ resc_limit_list_cmp_name(resc_limit_t *left, resc_limit_t *right)
 		return -1;
 
 	for (pres_l = (resource *)GET_NEXT(left->rl_oth_res),
-			pres_r = (resource *)GET_NEXT(right->rl_oth_res);
-			pres_l && pres_r;
-			pres_l = (resource *)GET_NEXT(pres_l->rs_link),
-			pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
+		pres_r = (resource *)GET_NEXT(right->rl_oth_res);
+		pres_l && pres_r;
+		pres_l = (resource *)GET_NEXT(pres_l->rs_link),
+		pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
 		int cmp_res;
 		if ((cmp_res = strcasecmp(pres_l->rs_defin->rs_name, pres_r->rs_defin->rs_name)))
 			return cmp_res;
@@ -2597,10 +2597,10 @@ resc_limit_list_cmp_val(resc_limit_t *left, resc_limit_t *right)
 		return -1;
 
 	for (pres_l = (resource *)GET_NEXT(left->rl_oth_res),
-			pres_r = (resource *)GET_NEXT(right->rl_oth_res);
-			pres_l && pres_r;
-			pres_l = (resource *)GET_NEXT(pres_l->rs_link),
-			pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
+		pres_r = (resource *)GET_NEXT(right->rl_oth_res);
+		pres_l && pres_r;
+		pres_l = (resource *)GET_NEXT(pres_l->rs_link),
+		pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
 		int cmp_res;
 		if (pres_l->rs_defin->rs_type == ATR_TYPE_BOOL)
 			cmp_res = pres_l->rs_value.at_val.at_long - pres_r->rs_value.at_val.at_long;
@@ -2646,7 +2646,7 @@ add_to_resc_limit_list_sorted(pbs_list_head *phead, resc_limit_t *resc)
 		p_res_cur = p_entry_cur->resc;
 
 		if (p_res_cur != NULL) {
-#ifdef PBS_MOM
+#if defined(PBS_MOM) || defined(PBS_PYTHON)
 			/* order according to increasing # of cpus
 			 * if same # of cpus, use increasing amt of mem
 			 */
@@ -2745,7 +2745,7 @@ add_to_resc_limit_list_as_head(pbs_list_head *phead, resc_limit_t *resc)
 	return (0);
 }
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 /**
  * @brief
  *	inserts the resource in the resc_limit_t in lexically increasing order of
@@ -2868,7 +2868,7 @@ resc_limit_free_res_list(pbs_list_head *pl_head)
 	resource *next;
 	resource *pr;
 
-	if (pl_head == NULL)
+	if ((pl_head == NULL) || (pl_head->ll_next == NULL))
 		return;
 
 	pr = (resource *)GET_NEXT(*pl_head);
@@ -3133,7 +3133,7 @@ map_need_to_have_resources(char *buf, size_t buf_sz, char *have_resc,
 	} else if ( strcmp(have_resc, "accelerator_memory") == 0) {
 		sizemap_need_to_have_resources(buf, buf_sz,
 			have_resc, have_val, &need->rl_accel_mem);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	} else {
 		resource *pneed;
 		for (pneed = (resource *)GET_NEXT(need->rl_oth_res);
@@ -3186,7 +3186,7 @@ map_need_to_have_resources(char *buf, size_t buf_sz, char *have_resc,
 static int
 add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 {
-#ifdef PBS_MOM
+#if defined(PBS_MOM) || defined(PBS_PYTHON)
 	int 		rc;
 	char 		buf[LOG_BUF_SIZE];
 	char 		buf_val[LOG_BUF_SIZE];
@@ -3243,7 +3243,7 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 	return (0);
 }
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 /** 
  * @brief
  *	Check if other resources in 'have' satisfy the remaining
@@ -3359,7 +3359,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 	int		hasprn = 0;
 	int		j;
 	int		entry = 0;
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	resource	*presnew, *pres, *pneed;
 #endif
 
@@ -3375,7 +3375,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 	    (need->rl_vmem > have->rl_vmem) ||
 	    (need->rl_naccels > have->rl_naccels) ||
 	    (need->rl_accel_mem > have->rl_accel_mem)
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 		|| check_other_res(need,have)
 #endif
 		) {
@@ -3385,7 +3385,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 	memset(&map_need, 0, sizeof(resc_limit_t));
 	resc_limit_init(&map_need);
 
-#ifdef PBS_MOM
+#if defined(PBS_MOM) || defined(PBS_PYTHON)
 	map_need.rl_ncpus = need->rl_ncpus;
 	map_need.rl_mem = need->rl_mem;
 	map_need.rl_ssi = need->rl_ssi;
@@ -3789,6 +3789,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 #else
 	struct pbsnode	*pnode = NULL;
 	char		e2buf[PBS_MAXHOSTNAME+1+6+16];
+#ifndef PBS_PYTHON
 	char		*extra_res = NULL;
 	resource	*pres;
 	char		*sched_select = NULL;
@@ -3798,6 +3799,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	int		hasprnschsel = 0;
 	char		*tmp_chunk_spec = NULL;
 	int		tmp_chunk_ct;
+#endif
 #endif
 
 	if ((r_input == NULL) || (r_input2 == NULL) || (r_input->jobid == NULL) || (r_input->execvnode == NULL) || (r_input->exechost == NULL) || (r_input->exechost2 == NULL) || (r_input->schedselect == NULL) || (err_msg == NULL) || (err_msg_sz <= 0)) {
@@ -3823,7 +3825,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 		goto release_nodes_exit;
 	}
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	sched_select = expand_select_spec(r_input->schedselect);
 	if (sched_select == NULL) {
 		log_err(errno, __func__, "strdup error");
@@ -3868,15 +3870,15 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	parent_mom = NULL;
 	for (chunk = parse_plus_spec_r(exec_vnode, &last, &hasprn),
 	     chunk1 = parse_plus_spec_r(exec_host, &last1, &hasprn1),
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	     chunkschsel = parse_plus_spec_r(sched_select, &lastschsel, &hasprnschsel),
 #endif
 	     chunk2 = parse_plus_spec_r(exec_host2,&last2, &hasprn2);
 	     (chunk != NULL) && (chunk1 != NULL)
-#ifndef PBS_MOM
-			&& (chunkschsel != NULL)
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
+		&& (chunkschsel != NULL)
 #endif
-			&& (chunk2 != NULL);
+		&& (chunk2 != NULL);
 	     chunk = parse_plus_spec_r(last, &last, &hasprn) ) {
 
 		paren += hasprn;
@@ -4082,7 +4084,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 					} else if (
 						strcmp(pkvp[j].kv_keyw, "accelerator_memory") == 0) {
 						have->rl_accel_mem += to_kbsize(pkvp[j].kv_val);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 					} else {
 						if ((rc = resc_limit_insert_other_res(have, pkvp[j].kv_keyw, pkvp[j].kv_val, TRUE))) {
 							snprintf(log_buffer, sizeof(log_buffer), "failed to insert resource %s", pkvp[j].kv_keyw);
@@ -4101,7 +4103,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 						found_paren = 0;
 					}
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 					if (!(have->chunkspec = strdup(chunkschsel + 2))) { /* +2 is to skip past '1:' */
 						log_err(errno, __func__, "strdup error");
 						goto release_nodes_exit;
@@ -4195,7 +4197,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 							&hasprn1),
 			chunk2 = parse_plus_spec_r(last2, &last2,
 							&hasprn2);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 			chunkschsel = parse_plus_spec_r(lastschsel, &lastschsel,
 							&hasprnschsel);
 #endif
@@ -4291,7 +4293,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 					need.rl_naccels = atol(skv[j].kv_val);
 				else if (strcmp(skv[j].kv_keyw, "accelerator_memory") == 0)
 					need.rl_accel_mem = to_kbsize(skv[j].kv_val);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 				else {
 					if ((rc = resc_limit_insert_other_res(&need, skv[j].kv_keyw, skv[j].kv_val, FALSE))) {
 						sprintf(log_buffer, "failed to insert resource %s", skv[j].kv_keyw);
@@ -4312,7 +4314,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				have2 = p_entry->resc;
 				new_chunkstr = satisfy_chunk_need(&need, have2, &vnl_good);
 				if (new_chunkstr != NULL) {
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 					coagulate_append_sched_sel(new_schedselect, have2->chunkspec, tmp_chunk_spec, &tmp_chunk_ct);
 #endif
 					if (l > 0) {
@@ -4363,7 +4365,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 					need.rl_vmem, need.rl_naccels,
 						need.rl_accel_mem);
         			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, r_input->jobid, log_buffer);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 				for (pres = (resource *)GET_NEXT(need.rl_oth_res);
 					pres != NULL;
 					pres = (resource *)GET_NEXT(pres->rs_link)) {
@@ -4394,7 +4396,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 					need.rl_vmem, need.rl_naccels,
 						need.rl_accel_mem);
         			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, r_input->jobid, log_buffer);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 				for (pres = (resource *)GET_NEXT(need.rl_oth_res);
 					pres != NULL;
 					pres = (resource *)GET_NEXT(pres->rs_link)) {
@@ -4429,7 +4431,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 		goto release_nodes_exit;
 	}
 
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	coagulate_append_sched_sel(new_schedselect, "", tmp_chunk_spec, &tmp_chunk_ct);
 	rc = do_schedselect(new_schedselect, NULL, NULL, NULL, &tmpstr);
 	free(new_schedselect);
@@ -4452,7 +4454,7 @@ release_nodes_exit:
 	free(exec_vnode);
 	free(exec_host);
 	free(exec_host2);
-#ifndef PBS_MOM
+#if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	free(sched_select);
 	free(res_in_exec_vnode);
 	if (tmp_chunk_spec)

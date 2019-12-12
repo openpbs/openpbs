@@ -178,6 +178,9 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         """
         for res in res_list:
             self.server.manager(MGR_CMD_CREATE, RSC, res.a, id=res.res_name)
+            # below delay of 1 second is to avoid intermittent issue of
+            # incomplete resourcedef file
+            time.sleep(1)
 
     def config_nodes(self, node_conf):
         """
@@ -186,7 +189,6 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         self.mom_list = []
         self.vnode_dict = {}
         # Now start setting up and creating the vnodes
-        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
         for (mom, conf) in zip(self.momArr, node_conf):
             if mom.has_vnode_defs():
@@ -245,6 +247,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         self.hostD = self.momD.shortname
         self.hostE = self.momE.shortname
 
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
         if sys.platform in ('cygwin', 'win32'):
             SLEEP_CMD = "pbs-sleep"
         else:
