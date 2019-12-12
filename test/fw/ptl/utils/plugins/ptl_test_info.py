@@ -129,7 +129,7 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
-        if not issubclass(cls, unittest.TestCase) or cls is unittest.TestCase:
+        if not issubclass(cls, unittest.TestCase) or cls is PBSTestSuite:
             return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:
@@ -251,7 +251,7 @@ class PTLTestInfo(Plugin):
             self.__ts_tree[n]['tclist'] = tcs
 
     def finalize(self, result):
-        if self.list_test or self.gen_ts_tree:
+        if (self.list_test and not self.suites) or self.gen_ts_tree:
             suites = list(self._tree.keys())
         else:
             suites = self.suites
