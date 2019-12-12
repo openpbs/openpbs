@@ -213,17 +213,16 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 
 	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
 		attribute *part_attr;
+		if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, DEFAULT_PARTITION) == 0) {
+			*target_sched = dflt_scheduler;
+			return 1;
+		}
 		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
 			if (part_attr->at_flags & ATR_VFLAG_SET) {
-				int k;
-				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
-					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
-									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
-						*target_sched = psched;
-						return 1;
-					}
+				if(!strcmp(part_attr->at_val.at_str, pq->qu_attr[QA_ATR_partition].at_val.at_str)) {
+					*target_sched = psched;
+					return 1;
 				}
 			}
 		}
@@ -576,7 +575,7 @@ was_job_alteredmoved(job *pjob)
  * 		set_scheduler_flag - set the flag to call the Scheduler
  *		certain flag values should not be overwritten
  *
- * @param[in]	flag	-	pointer to job in question.
+ * @param[in]	flag	-	scheduler command.
  * @parm[in] psched -   pointer to sched object. Then set the flag only for this object.
  *                                     NULL. Then set the flag for all the scheduler objects.
  */

@@ -2109,6 +2109,50 @@ locate_new_job(struct batch_request *preq, char *jobid)
 
 #ifndef PBS_MOM	/* SERVER only */
 /**
+ * @brief  Function to notify relevant scheduler of the command passed to this function
+ *
+ * @param[in] cmd - The command that is to be notified to the scheduler
+ * @param[in] resv - The reservation related to the command
+ *
+ * @return void
+ *
+ */
+void notify_scheds_about_resv(int cmd, resc_resv *resv)
+{
+	pbs_sched *psched;
+	char *partition_name = NULL;
+
+	if (resv != NULL && resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
+		partition_name = resv->ri_wattr[(int)RESV_ATR_partition].at_val.at_str;
+
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		if (partition_name != NULL) {
+			if (strcmp(partition_name, DEFAULT_PARTITION) == 0) {
+				if (dflt_scheduler->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+					set_scheduler_flag(cmd, dflt_scheduler);
+					resv->req_sched_count++;
+				}
+				break;
+			} else {
+				pbs_sched *tmp;
+				tmp = find_sched_from_partition(partition_name);
+				if (tmp != NULL && (tmp->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1)) {
+					set_scheduler_flag(cmd, tmp);
+					resv->req_sched_count++;
+					break;
+				}
+			}
+		} else {
+			if (psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+				set_scheduler_flag(cmd, psched);
+				resv->req_sched_count++;
+			}
+		}
+	}
+	return;
+}
+
+/**
  * @brief
  *		"resvSub" Batch Request processing routine
  *
@@ -2836,8 +2880,14 @@ req_resvSub(struct batch_request *preq)
 	 * and let the scheduler know that something new
 	 * is available for consideration
 	 */
+<<<<<<< HEAD
 	if (!is_maintenance && !is_resv_from_job)
 		set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
+=======
+	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+	if (!is_maintenance)
+		notify_scheds_about_resv(SCH_SCHEDULE_NEW, presv);
+>>>>>>> 561e5aa... Support for reservation in multi-sched environment
 }
 
 static struct dont_set_in_max {

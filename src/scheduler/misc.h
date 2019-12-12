@@ -170,6 +170,17 @@ int count_array(void **arr);
 int remove_ptr_from_array(void **arr, void *ptr);
 
 /*
+ *	remove_str_from_array - remove a string from a ptr list and move
+ *				the rest of the pointers up to fill the hole
+ *				Pointer array size will not change - an extra
+ *				NULL is added to the end
+ *
+ *	returns non-zero if the str was successfully removed from the array
+ *		zero if the array has not been modified
+ */
+int remove_str_from_array(char **arr, char *str);
+
+/*
  *      is_valid_pbs_name - is str a valid pbs username (POSIX.1 + ' ')
  *                          a valid name is: alpha numeric '-' '_' '.' or ' '
  */

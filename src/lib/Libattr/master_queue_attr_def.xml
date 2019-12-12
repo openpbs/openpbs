@@ -1019,7 +1019,7 @@
 	</member_verify_function>
     </attributes>
     <attributes> 
-	/* ATTR_partition */
+	/* QA_ATR_partition */
 	<member_name><both>ATTR_partition</both></member_name>	<!-- partition --> 
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>

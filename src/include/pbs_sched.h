@@ -127,6 +127,7 @@ extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
 extern pbs_sched *find_sched_from_sock(int sock);
 extern pbs_sched *find_sched(char *sched_name);
 extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
+extern pbs_sched *find_sched_from_partition(char *partition);
 
 #ifdef	__cplusplus
 }

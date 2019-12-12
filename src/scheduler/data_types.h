@@ -398,7 +398,7 @@ struct server_info
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
 	long sched_cycle_len;		/* length of cycle in seconds */
-	char **partitions;		/* partitions associated */
+	char *partition;		/* partition associated */
 	long opt_backfill_fuzzy_time;	/* time window for fuzzy backfill opt */
 	char **node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
@@ -505,7 +505,6 @@ struct queue_info
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
-	node_info **nodes_in_partition; /* array of nodes associated with the queue's partition */
 	counts *group_counts;		/* group resource and running counts */
 	counts *project_counts;		/* project resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
@@ -747,6 +746,7 @@ struct resv_info
 	enum resv_states resv_substate;			/* reservation substate */
 	queue_info 	 *resv_queue;			/* general resv: queue which is owned by resv */
 	node_info 	 **resv_nodes;			/* node universe for reservation */
+	char		 *partition;			/* name of the partition in which the reservation was confirmed */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -949,7 +949,6 @@ struct resresv_set
 	char *user;			/* user of set, can be NULL */
 	char *group;			/* group of set, can be NULL */
 	char *project;			/* project of set, can be NULL */
-	char *partition;		/* partition of set, can be NULL */
 	selspec *select_spec;		/* select spec of set */
 	place *place_spec;		/* place spec of set */
 	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */

@@ -693,8 +693,7 @@ server_command(char **jid)
 			free(jid2);
 		}
 	} else {
-		log_event(PBSEVENT_DEBUG, LOG_DEBUG,
-			PBS_EVENTCLASS_SERVER, __func__,
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 			"warning: timed-out getting second_connection");
 	}
 

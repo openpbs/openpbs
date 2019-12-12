@@ -184,7 +184,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 
-		if (queue_in_partition(qinfo, sinfo->partitions)) {
+		if (queue_in_partition(qinfo, sinfo->partition)) {
 			/* check if the queue is a dedicated time queue */
 			if (conf.ded_prefix[0] != '\0')
 				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
@@ -219,10 +219,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 				qinfo->num_nodes = count_array((void **) qinfo->nodes);
 
-			} else if (qinfo->partition != NULL) {
-				qinfo->nodes_in_partition = node_filter(sinfo->nodes, sinfo->num_nodes,
-						node_partition_cmp, (void *) qinfo->partition, 0);
-				qinfo->num_nodes = count_array((void **) qinfo->nodes_in_partition);
 			}
 
 			if (ret != QUEUE_NOT_EXEC) {
@@ -566,7 +562,6 @@ new_queue_info(int limallocflag)
 	qinfo->server	 = NULL;
 	qinfo->resv		 = NULL;
 	qinfo->nodes	 = NULL;
-	qinfo->nodes_in_partition = NULL;
 	qinfo->alljobcounts	 = NULL;
 	qinfo->group_counts  = NULL;
 	qinfo->project_counts  = NULL;
@@ -826,8 +821,6 @@ free_queue_info(queue_info *qinfo)
 		free(qinfo->running_jobs);
 	if (qinfo->nodes != NULL)
 		free(qinfo->nodes);
-	if (qinfo->nodes_in_partition != NULL)
-		free(qinfo->nodes_in_partition);
 	if (qinfo->alljobcounts != NULL)
 		free_counts_list(qinfo->alljobcounts);
 	if (qinfo->group_counts != NULL)
@@ -991,10 +984,6 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 		nqinfo->nodes = node_filter(nsinfo->nodes, nsinfo->num_nodes,
 			node_queue_cmp, (void *) nqinfo->name, 0);
 
-	if (oqinfo->nodes_in_partition != NULL)
-		nqinfo->nodes_in_partition = node_filter(nsinfo->nodes, nsinfo->num_nodes,
-			node_partition_cmp, (void *) oqinfo->partition, 0);
-
 	if (oqinfo->partition != NULL) {
 		nqinfo->partition = string_dup(oqinfo->partition);
 		if (nqinfo->partition == NULL) {
@@ -1060,7 +1049,7 @@ node_queue_cmp(node_info *ninfo, void *arg)
  *      queue_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	qinfo		-  queue information
- * @param[in]	partitions	-  array of partitions associated to scheduler
+ * @param[in]	partition	-  partition associated to scheduler
  *
  * @return	a node_info filled with information from node
  *
@@ -1069,10 +1058,10 @@ node_queue_cmp(node_info *ninfo, void *arg)
  * @retval	0	: if failure
  */
 int
-queue_in_partition(queue_info *qinfo, char **partitions)
+queue_in_partition(queue_info *qinfo, char *partition)
 {
 	if (dflt_sched) {
-		if (qinfo->partition == NULL)
+		if (qinfo->partition == NULL || (strcmp(qinfo->partition, DEFAULT_PARTITION) == 0))
 			return 1;
 		else
 			return 0;
@@ -1080,7 +1069,7 @@ queue_in_partition(queue_info *qinfo, char **partitions)
 	if (qinfo->partition == NULL)
 		return 0;
 
-	if (is_string_in_arr(partitions, qinfo->partition))
+	if (strcmp(partition, qinfo->partition) == 0)
 		return 1;
 	else
 		return 0;

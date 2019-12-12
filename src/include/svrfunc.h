@@ -358,6 +358,7 @@ extern int   node_avail_complex(spec_and_context *pcon, int *navail, int *nalloc
 extern int   node_reserve(spec_and_context *pcon, pbs_resource_t tag);
 extern void  node_unreserve(pbs_resource_t handle);
 extern int   node_spec(struct spec_and_context *, int);
+extern void notify_scheds_about_resv(int cmd, resc_resv *resv);
 #endif	/* _RESERVATION_H */
 
 #ifdef	_LIST_LINK_H

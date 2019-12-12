@@ -1133,12 +1133,13 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
  * @param[in]	policy	-	policy info
  * @param[in]	name	-	the name of the node partition
  * @param[in]	nodes	-	the nodes to create the placement set with
+ * @param[in]	flags	-	flags which change operations of node partition creation
  *
  * @return	node_partition * - the node partition
  * @NULL	: on error
  */
 node_partition *
-create_specific_nodepart(status *policy, char *name, node_info **nodes)
+create_specific_nodepart(status *policy, char *name, node_info **nodes, int flags)
 {
 	node_partition *np;
 	int i, j;
@@ -1169,12 +1170,14 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes)
 	j = 0;
 	for (i = 0; i < cnt; i++) {
 		if (!nodes[i]->is_stale) {
-			tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
-			if (tmp_arr == NULL) {
-				free_node_partition(np);
-				return NULL;
+			if (!(flags & NP_NO_ADD_NP_ARR)) {
+				tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
+				if (tmp_arr == NULL) {
+					free_node_partition(np);
+					return NULL;
+				}
+				nodes[i]->np_arr = tmp_arr;
 			}
-			nodes[i]->np_arr = tmp_arr;
 
 			np->ninfo_arr[j] = nodes[i];
 			j++;
@@ -1215,7 +1218,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	char *resstr[] = {"host", NULL};
 	int num;
 
-	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes);
+	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
@@ -1268,7 +1271,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		queue_info *qinfo = sinfo->queues[i];
 
 		if (qinfo->has_nodes)
-			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes);
+			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes, NO_FLAGS);
 
 		if (sinfo->node_group_enable && (qinfo->has_nodes || qinfo->node_group_key)) {
 			if (qinfo->has_nodes)
@@ -1379,7 +1382,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	node_partition_update_array(policy, sinfo->hostsets);
 
 	if ((flags & NO_ALLPART) == 0)
-			node_partition_update(policy, sinfo->allpart);
+		node_partition_update(policy, sinfo->allpart);
 
 	sort_all_nodepart(policy, sinfo);
 
