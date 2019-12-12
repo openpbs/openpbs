@@ -641,14 +641,6 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		if ((resresv->job->is_running) && (resresv->job->stime == UNSPECIFIED))
 			resresv->job->stime = server_time + 1;
 
-		/* Assumption: Parent job array will be queried before running subjobs.
-		 * This is because the subjobs do not become real jobs until after they are run
-		 * If this assumption is ever proven false, nothing bad will really
-		 * happen.  This is here for consistencies sake mostly.
-		 */
-		if(resresv->job->array_id != NULL)
-			resresv->job->parent_job = find_resource_resv(resresv_arr, resresv->job->array_id);
-
 		/* For jobs that have an exec_vnode, we create a "select" based
 		 * on its exec_vnode.  We do this so if we ever need to run the job
 		 * again, we will replace the job on the exact vnodes/resources it originally used.
@@ -1480,7 +1472,6 @@ new_job_info()
 	jinfo->array_id = NULL;
 	jinfo->array_index = UNSPECIFIED;
 	jinfo->queued_subjobs = NULL;
-	jinfo->parent_job = NULL;
 	jinfo->attr_updates = NULL;
 	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
@@ -2799,8 +2790,6 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	njinfo->array_index = ojinfo->array_index;
 	njinfo->array_id = string_dup(ojinfo->array_id);
-	if(njinfo->parent_job != NULL )
-		njinfo->parent_job = find_resource_resv_by_indrank(nqinfo->jobs, ojinfo->parent_job->rank, ojinfo->parent_job->resresv_ind);
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
 
 	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes);
@@ -3989,15 +3978,12 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 	subjob->job->is_subjob = 1;
 	subjob->job->array_index = index;
 	subjob->job->array_id = string_dup(array->name);
-	subjob->job->parent_job = array;
 
 	free(subjob->name);
 	if (subjob_name != NULL)
 		subjob->name = subjob_name;
 	else
 		subjob->name = create_subjob_name(array->name, index);
-
-	subjob->job->parent_job = array;
 
 	subjob->rank =  get_sched_rank();
 
@@ -4190,9 +4176,6 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 				free(subjob_name);
 				/* Set tmparr to something so we're not considered an error */
 				tmparr = sinfo->jobs;
-				/* check of array parent is not set then set that here */
-				if (rresv->job->parent_job == NULL)
-					rresv->job->parent_job = array;
 			}
 			else if ((rresv = create_subjob_from_array(array, subjob_index,
 				subjob_name)) != NULL) {
