@@ -109,7 +109,6 @@ extern int expand_resc_array(char *rname, int rtype, int rflag);
 extern void cnvrt_timer_init(void);
 extern int validate_nodespec(char *str);
 extern long longto_kbsize(char *val);
-extern int compare_short_hostname(char *shost, char *lhost);
 extern int is_vnode_up(char *vname);
 extern char* convert_long_to_time(long l);
 extern int svr_chk_history_conf(void);
