@@ -1096,6 +1096,8 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             "pbs_release_nodes: Unknown resource: <undefined res name>"
         5. pbs_release_nodes -j <job-id> -k <unsatisfying/non-sub select>
             "pbs_release_nodes: Server returned error 15010 for job"
+        6. pbs_release_nodes -j <job-id> -k <high node count>
+            "pbs_release_nodes: Server returned error 15010 for job"
         """
 
         n1 = n_conf({'resources_available.ncpus': '1'})
@@ -1152,3 +1154,248 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         self.assertNotEqual(ret['rc'], 0)
         self.assertTrue(ret['err'][0].startswith(
             'pbs_release_nodes: Server returned error 15010 for job'))
+
+        # 6. "pbs_release_nodes: Server returned error 15010 for job"
+        cmd = [self.rel_nodes_cmd, '-j', jid, '-k', '5']
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     runas=TEST_USER)
+        self.assertNotEqual(ret['rc'], 0)
+        self.assertTrue(ret['err'][0].startswith(
+            'pbs_release_nodes: Server returned error 15010 for job'))
+
+    def test_node_count(self, rel_user=TEST_USER, use_script=False):
+        """
+        submit job with below select string
+        'select=ncpus=1+2:ncpus=2+2:ncpus=3:mpiprocs=2'
+        release nodes except the MS and 2 nodes
+        """
+        n1 = n_conf({'resources_available.ncpus': '1'})
+        n2 = n_conf({'resources_available.ncpus': '2'})
+        n3 = n_conf({'resources_available.ncpus': '3'})
+
+        nc_list = [n1, n2, n2, n3, n3]
+        # 1. configure the cluster
+        self.config_nodes(nc_list)
+
+        args = {
+            'qsub_sel': 'ncpus=1+2:ncpus=2+2:ncpus=3:mpiprocs=2',
+            'keep_sel': '2',
+            'sched_sel': '1:ncpus=1+2:ncpus=2+2:ncpus=3:mpiprocs=2',
+            'expected_res': self.flatten_node_res(nc_list),
+            'rel_user': rel_user,
+            'qsub_sel_after': '1:ncpus=1+2:ncpus=2',
+            'sched_sel_after': '1:ncpus=1+2:ncpus=2',
+            'expected_res_after': self.flatten_node_res([n1, n2, n2])
+            }
+
+        job_stat = {'job_state': 'R',
+                    'substate': 42,
+                    'Resource_List.mpiprocs': 4,
+                    'Resource_List.ncpus': 11,
+                    'Resource_List.nodect': 5,
+                    'Resource_List.select': args['qsub_sel'],
+                    'schedselect': args['sched_sel']}
+
+        args['job_stat'] = job_stat
+
+        job_stat_after = {'job_state': 'R',
+                          'substate': 42,
+                          'Resource_List.ncpus': 5,
+                          'Resource_List.nodect': 3,
+                          'Resource_List.select': args['qsub_sel_after'],
+                          'schedselect': args['sched_sel_after']}
+
+        if use_script is True:
+            args['use_script'] = True
+
+        args['job_stat_after'] = job_stat_after
+        tc = test_config(**args)
+        self.common_tc_flow(tc)
+
+    def test_node_count_as_root(self):
+        """
+        submit job with below select string
+        'select=ncpus=1+2:ncpus=2+2:ncpus=3:mpiprocs=2'
+        as root release nodes except the MS and 2 nodes
+        """
+        self.test_node_count(rel_user=ROOT_USER)
+
+    def test_node_count_using_script(self):
+        """
+        Like test_node_count test except instead of calling
+        pbs_release_nodes from a command line, it is executed
+        inside the job script of a running job. Same results.
+        """
+        self.jobscript = \
+            "#!/bin/sh\n" + \
+            "trap 'pbs_release_nodes -k 2" + \
+            ";sleep 1000;exit 0' 2\n" + \
+            "sleep 1000\n" + \
+            "exit 0"
+        self.test_node_count(use_script=True)
+
+    def test_node_count_with_mixed_custom_res(self):
+        """
+        submit job with select string containing a mix of all types of
+        custom resources
+        'select=ncpus=1+ncpus=2:model=abc:longres=7:sizres=7k:fltres=7.1+
+        ncpus=2:model=def:bigmem=true:longres=9:sizres=9k:fltres=9.1+ncpus=3:
+        model=def:bigmem=true:longres=9:sizres=9k:fltres=9.1+ncpus=3:
+        model=xyz:longres=10:sizres=10k:fltres=10.1'
+        release nodes except the MS and 2 nodes
+        """
+        # 1. create a custom string resources
+        str_res = 'model'
+        model_a = 'abc'
+        model_b = 'def'
+        model_c = 'xyz'
+        bool_res = 'bigmem'
+        long_res = 'longres'
+        size_res = 'sizres'
+        float_res = 'fltres'
+
+        self.create_res(
+            [
+                new_res(str_res, self.res_s_h),
+                new_res(bool_res, self.res_b_h),
+                new_res(long_res, self.res_l_nh),
+                new_res(size_res, self.res_sz_nh),
+                new_res(float_res, self.res_f_nh)
+            ])
+
+        # 2. add the custom resource to sched_config
+        self.scheduler.add_resource(str_res)
+        self.scheduler.add_resource(long_res)
+        self.scheduler.add_resource(size_res)
+        self.scheduler.add_resource(float_res)
+
+        n1 = n_conf({'resources_available.ncpus': '1'})
+        n2_a = n_conf({'resources_available.ncpus': '2',
+                       'resources_available.'+str_res: model_a,
+                       'resources_available.'+long_res: '7',
+                       'resources_available.'+size_res: '7kb',
+                       'resources_available.'+float_res: '7.1'})
+        n2_b = n_conf({'resources_available.ncpus': '2',
+                       'resources_available.'+str_res: model_b,
+                       'resources_available.'+bool_res: 'True',
+                       'resources_available.'+long_res: '9',
+                       'resources_available.'+size_res: '9kb',
+                       'resources_available.'+float_res: '9.1'})
+        n3_b = n_conf({'resources_available.ncpus': '3',
+                       'resources_available.'+str_res: model_b,
+                       'resources_available.'+bool_res: 'True',
+                       'resources_available.'+long_res: '9',
+                       'resources_available.'+size_res: '9kb',
+                       'resources_available.'+float_res: '9.1'})
+        n3_c = n_conf({'resources_available.ncpus': '3',
+                       'resources_available.'+str_res: model_c,
+                       'resources_available.'+long_res: '10',
+                       'resources_available.'+size_res: '10kb',
+                       'resources_available.'+float_res: '10.1'})
+
+        nc_list = [n1, n2_a, n2_b, n3_b, n3_c]
+        # 3. configure the cluster
+        self.config_nodes(nc_list)
+
+        args = {
+            'qsub_sel': 'ncpus=1+ncpus=2:model='+model_a+':'+long_res+'=7:' +
+            size_res+'=7k:'+float_res+'=7.1+ncpus=2:model='+model_b+':' +
+            bool_res+'=true:'+long_res+'=9:'+size_res+'=9k:'+float_res +
+            '=9.1+ncpus=3:model='+model_b+':'+bool_res+'=true:'+long_res +
+            '=9:'+size_res+'=9k:'+float_res+'=9.1+ncpus=3:model='+model_c +
+            ':'+long_res+'=10:'+size_res+'=10k:'+float_res+'=10.1',
+            'keep_sel': '2',
+            'sched_sel': '1:ncpus=1+1:ncpus=2:model='+model_a+':'+long_res +
+            '=7:'+size_res+'=7kb:'+float_res+'=7.1+1:ncpus=2:model='+model_b +
+            ':'+bool_res+'=True:'+long_res+'=9:'+size_res+'=9kb:'+float_res +
+            '=9.1+1:ncpus=3:model='+model_b+':'+bool_res+'=True:'+long_res +
+            '=9:'+size_res+'=9kb:'+float_res+'=9.1+1:ncpus=3:model='+model_c +
+            ':'+long_res+'=10:'+size_res+'=10kb:'+float_res+'=10.1',
+            'expected_res': self.flatten_node_res(nc_list),
+            'rel_user': TEST_USER,
+            'qsub_sel_after': '1:ncpus=1+1:ncpus=2:model=' +
+            model_a+':'+long_res+'=7:'+size_res+'=7kb:'+float_res +
+            '=7.1+1:ncpus=3:model='+model_c+':'+long_res+'=10:'+size_res +
+            '=10kb:'+float_res+'=10.1',
+            'sched_sel_after': '1:ncpus=1+1:ncpus=2:model=' +
+            model_a+':'+long_res+'=7:'+size_res+'=7kb:'+float_res +
+            '=7.1+1:ncpus=3:model='+model_c+':'+long_res+'=10:'+size_res +
+            '=10kb:'+float_res+'=10.1',
+            'expected_res_after': self.flatten_node_res([n1, n2_a, n3_c])
+            }
+
+        job_stat = {'job_state': 'R',
+                    'substate': 42,
+                    'Resource_List.longres': 35,
+                    'Resource_List.fltres': '35.4',
+                    'Resource_List.sizres': '35kb',
+                    'Resource_List.ncpus': 11,
+                    'Resource_List.nodect': 5,
+                    'Resource_List.select': args['qsub_sel'],
+                    'schedselect': args['sched_sel']}
+
+        args['job_stat'] = job_stat
+
+        job_stat_after = {'job_state': 'R',
+                          'substate': 42,
+                          'Resource_List.longres': 17,
+                          'Resource_List.sizres': '17kb',
+                          'Resource_List.fltres': '17.2',
+                          'Resource_List.ncpus': 6,
+                          'Resource_List.nodect': 3,
+                          'Resource_List.select': args['qsub_sel_after'],
+                          'schedselect': args['sched_sel_after']}
+
+        args['job_stat_after'] = job_stat_after
+        tc = test_config(**args)
+        self.common_tc_flow(tc)
+
+    def test_node_count_schunk_use_case(self):
+        """
+        submit job with below select string
+        'ncpus=1+2:ncpus=6+2:ncpus=9:mpiprocs=2'
+        cluster is configured such that we get 4 superchunks
+        release nodes except the MS and 2 nodes
+        """
+        n1 = n_conf({'resources_available.ncpus': '1'})
+        n2 = n_conf({'resources_available.ncpus': '2'}, 3)
+        n3 = n_conf({'resources_available.ncpus': '3'}, 3)
+
+        nc_list = [n1, n2, n2, n3, n3]
+        # 1. configure the cluster
+        self.config_nodes(nc_list)
+
+        args = {
+            'qsub_sel': 'ncpus=1+2:ncpus=6+2:ncpus=9:mpiprocs=2',
+            'keep_sel': '2',
+            'sched_sel': '1:ncpus=1+2:ncpus=6+2:ncpus=9:mpiprocs=2',
+            'expected_res': self.flatten_node_res(
+                [n1, n2, n2, n2, n2, n2, n2, n3, n3, n3, n3, n3, n3]),
+            'rel_user': TEST_USER,
+            'qsub_sel_after': '1:ncpus=1+2:ncpus=6',
+            'sched_sel_after': '1:ncpus=1+2:ncpus=6',
+            'expected_res_after': self.flatten_node_res(
+                [n1, n2, n2, n2, n2, n2, n2])
+            }
+
+        job_stat = {'job_state': 'R',
+                    'substate': 42,
+                    'Resource_List.mpiprocs': 4,
+                    'Resource_List.ncpus': 31,
+                    'Resource_List.nodect': 5,
+                    'Resource_List.select': args['qsub_sel'],
+                    'schedselect': args['sched_sel']}
+
+        args['job_stat'] = job_stat
+
+        job_stat_after = {'job_state': 'R',
+                          'substate': 42,
+                          'Resource_List.ncpus': 13,
+                          'Resource_List.nodect': 3,
+                          'Resource_List.select': args['qsub_sel_after'],
+                          'schedselect': args['sched_sel_after']}
+
+        args['job_stat_after'] = job_stat_after
+
+        tc = test_config(**args)
+        self.common_tc_flow(tc)
