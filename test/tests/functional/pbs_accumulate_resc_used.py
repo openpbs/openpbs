@@ -35,6 +35,7 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 from tests.functional import *
+import ast
 
 
 @requirements(num_moms=3)
@@ -1252,11 +1253,16 @@ time.sleep(15)
 
         # Verify the resource values
         a = {'resources_used.foo_i': 29,
-             'resources_used.foo_f': 0.29,
-             'resources_used.foo_str':
-             "\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\'"}
+             'resources_used.foo_f': 0.29}
+        a_dict = {'eight': 8, 'seven': 7, 'nine': 9}
+
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            offset=5, id=jid, interval=1)
+        # check for dictionary resource
+        job_status = self.server.status(JOB, id=jid, extend='x')
+        job_str_resource = dict(job_status[0])['resources_used.foo_str']
+        job_str_resource = ast.literal_eval(ast.literal_eval(job_str_resource))
+        self.assertEqual(job_str_resource, a_dict)
 
         # Restart server while hook is still executing
         self.server.restart()
@@ -1264,6 +1270,11 @@ time.sleep(15)
         # Verify that values again
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            id=jid)
+        # check for dictionary resource
+        job_status = self.server.status(JOB, id=jid, extend='x')
+        job_str_resource = dict(job_status[0])['resources_used.foo_str']
+        job_str_resource = ast.literal_eval(ast.literal_eval(job_str_resource))
+        self.assertEqual(job_str_resource, a_dict)
 
     def test_mom_down2(self):
         """
@@ -1319,11 +1330,16 @@ else:
         self.server.expect(JOB,
                            {'job_state': 'F',
                             'resources_used.foo_i': '19',
-                            'resources_used.foo_f': '0.19',
-                            'resources_used.foo_str':
-                            '\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\''},
+                            'resources_used.foo_f': '0.19'},
                            offset=10, id=jid, interval=1, extend='x',
                            attrop=PTL_AND)
+        a_dict = {'eight': 8, 'nine': 9, 'seven': 7}
+
+        # check for dictionary resource
+        job_status = self.server.status(JOB, id=jid, extend='x')
+        job_str_resource = dict(job_status[0])['resources_used.foo_str']
+        job_str_resource = ast.literal_eval(ast.literal_eval(job_str_resource))
+        self.assertEqual(job_str_resource, a_dict)
 
         # Bring the mom back up
         self.momB.start()
