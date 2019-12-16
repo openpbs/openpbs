@@ -43,7 +43,6 @@ import logging
 import socket
 import os
 import json
-from unittest.mock import sentinel
 from ptl.utils.pbs_dshutils import DshUtils
 
 
@@ -249,9 +248,11 @@ class ProcInfo(object):
         self.command = None
 
     def __str__(self):
-        return (f"{self.name} pid: {self.pid} rss: {self.rss} vsz: "
-                f"{self.vsz} pcpu: {self.pcpu} pmem: {self.pmem} size: "
-                f"{self.size} cputime: {self.cputime} command: {self.command}")
+        return "%s pid: %s rss: %s vsz: %s pcpu: %s pmem: %s \
+               size: %s cputime: %s command: %s" % \
+               (self.name, str(self.pid), str(self.rss), str(self.vsz),
+                str(self.pcpu), str(self.pmem), str(self.size),
+                str(self.cputime), self.command)
 
 
 class ProcMonitor(threading.Thread):
@@ -269,7 +270,6 @@ class ProcMonitor(threading.Thread):
         self._pu = ProcUtils()
         self.stop_thread = threading.Event()
         self.db_proc_info = []
-        self.sysstat = {}
 
     def set_frequency(self, value=60):
         """
@@ -286,6 +286,7 @@ class ProcMonitor(threading.Thread):
         Run system monitoring
         """
         timenow = int(time.time())
+        sysstat = {}
         # if no protocols set, use default
         if not nw_protocols:
             nw_protocols = ['TCP']
@@ -296,11 +297,11 @@ class ProcMonitor(threading.Thread):
         op = rv['out'][2:]
         op = [i.split()[2:] for i in op if
               (i and not i.startswith('Average'))]
-        self.sysstat['name'] = "System"
-        self.sysstat['time'] = time.ctime(timenow)
+        sysstat['name'] = "System"
+        sysstat['time'] = time.ctime(timenow)
         for i in range(0, len(op), 2):
-            self.sysstat.update(dict(zip(op[i], op[i + 1])))
-        return self.sysstat
+            sysstat.update(dict(zip(op[i], op[i + 1])))
+        return sysstat
 
     def run(self):
         """
