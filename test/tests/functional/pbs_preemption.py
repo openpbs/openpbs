@@ -571,17 +571,8 @@ exit 3
         a = {'resources_available.ncpus': 8}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
-        a = {'type': 'long', 'flag': 'nh'}
-        self.server.manager(MGR_CMD_CREATE, RSC, a, id='foo')
-
-        a = {'resources_available.foo': 6}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
-        self.scheduler.add_resource('foo')
-
         a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=4]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
-        a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=6]"}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq2')
 
         p = "express_queue, normal_jobs, queue_softlimits"
         a = {'preempt_prio': p}
@@ -589,29 +580,30 @@ exit 3
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
 
         # Submit 4 jobs requesting 1 ncpu each in workq
-        a = {ATTR_l + '.select=1:ncpus': 1}
+        a = {ATTR_l + '.select': '1:ncpus=1'}
         jid_list = []
         for _ in range(4):
-            j = Job(attrs=a)
+            j = Job(TEST_USER, a)
             jid = self.server.submit(j)
             jid_list.append(jid)
 
         # Submit 5th job that will make all the job in workq to go over its
         # softlimits
-        a = {ATTR_l + '.select=1:ncpus=1:foo': 4}
-        j = Job(attrs=a)
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state=R': 5})
 
-        # Submit a job in workq2 which requests for 4 ncpus and 3 foo resource
-        a = {ATTR_l + '.select=1:ncpus=4:foo': 3, ATTR_q: 'workq2'}
-        j = Job(attrs=a)
+        # Submit a job in workq2 which requests for 4 ncpus
+        a = {ATTR_l + '.select': '1:ncpus=4', ATTR_q: 'workq2'}
+        j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
-        msg = ";Preempting this job will escalate its priority"
-        self.scheduler.log_match(jid_list[4] + msg)
+        msg = ";Preempting job will escalate its priority"
+        for job_id in jid_list[0:-1]:
+                self.scheduler.log_match(job_id + msg)
 
     def test_preemption_priority_escalation_2(self):
         """
@@ -642,8 +634,6 @@ exit 3
         # this resource are over soft limits.
         a = {'max_run_res_soft.foo': "[u:PBS_GENERIC=0]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
-        a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=10]"}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq2')
 
         p = "express_queue, normal_jobs, queue_softlimits"
         a = {'preempt_prio': p}
@@ -653,29 +643,28 @@ exit 3
         # Submit 4 jobs requesting 1 ncpu each in workq
         jid_list = []
         for index in range(4):
-            a = {ATTR_l + '.select=1:ncpus=1:foo': 2}
+            a = {ATTR_l + '.select': '1:ncpus=1:foo=2'}
             if (index == 2):
                 # Since this job is not requesting foo, preempting one job
                 # from this queue will escalate its preemption priority to
                 # normal and scheduler will not attempt to preempt it.
-                a = {ATTR_l + '.select=1:ncpus': 1}
-            j = Job(attrs=a)
+                a = {ATTR_l + '.select': '1:ncpus=1'}
+            j = Job(TEST_USER, a)
             jid = self.server.submit(j)
             jid_list.append(jid)
             time.sleep(1)
 
         # Submit 5th job that will make all the job in workq to go over its
         # softlimits because if resource ncpus
-        time.sleep(1)
-        a = {ATTR_l + '.select=1:ncpus=2:foo': 2}
-        j = Job(attrs=a)
+        a = {ATTR_l + '.select': '1:ncpus=2:foo=2'}
+        j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state=R': 5})
 
         # Submit a job in workq2 which requests for 8 ncpus and 3 foo resource
-        a = {ATTR_l + '.select=1:ncpus=8:foo': 3, ATTR_q: 'workq2'}
-        j = Job(attrs=a)
+        a = {ATTR_l + '.select': '1:ncpus=8:foo=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[5])

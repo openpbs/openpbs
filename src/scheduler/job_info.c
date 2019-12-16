@@ -3442,11 +3442,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			clear_schd_error(tmp_err);
 			remove_resresv_from_array(rjobs_subset, pjob);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
-				  "Preempting this job will escalate its priority or priority of other jobs, ignoring it");
-			if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
-				pjob->job->queue, pjob, NO_ALLPART, tmp_err)) != NULL) {
-				sim_run_update_resresv(npolicy, pjob, ns_arr, NO_ALLPART);
-			} else {
+				  "Preempting job will escalate its priority or priority of other jobs, not preempting it");
+			if (sim_run_update_resresv(npolicy, pjob, ns_arr, NO_ALLPART) != 1) {
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name,
 					  "Trouble finding preemptable candidates");
 				free_schd_error_list(full_err);
@@ -3457,7 +3454,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				return NULL;
 			}
 			if (indexfound > 0)
-				skipto = indexfound-1;
+				skipto = indexfound - 1;
 			else
 				skipto = 0;
 			continue;
@@ -5183,11 +5180,8 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 	if (job->job->is_running == 0)
 		return 0;
 
-	if (job->job->preempt >= inp->job->job->preempt) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, job->name,
-			  "Preempting this job will escalate its priority or priority of other jobs, ignoring it");
+	if (job->job->preempt >= inp->job->job->preempt)
 		return 0;
-	}
 
 	switch (inp->err->error_code) {
 		case SERVER_USER_RES_LIMIT_REACHED:
