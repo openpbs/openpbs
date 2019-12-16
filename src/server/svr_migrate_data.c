@@ -157,7 +157,6 @@ extern void *job_or_resv_recov_fs(char *filename, int objtype);
 extern char *build_path(char *parent, char *name, char *sufix);
 
 #ifdef NAS /* localmod 005 */
-extern int setup_nodes_fs(int preprocess);
 
 extern int resv_save_db(resc_resv *presv, int updatetype);
 
