@@ -53,7 +53,8 @@
 #define USAGE	"usage: pbs_release_nodes [-j job_identifier] host_or_vnode1 host_or_vnode2 ...\n"
 #define USAGE2	"       pbs_release_nodes [-j job_identifier] -a\n"
 #define USAGE3	"       pbs_release_nodes [-j job_identifier] -k <select string>\n"
-#define USAGE4	"       pbs_release_nodes --version\n"
+#define USAGE4	"       pbs_release_nodes [-j job_identifier] -k <node count>\n"
+#define USAGE5	"       pbs_release_nodes --version\n"
 
 int
 main(int argc, char **argv, char **envp) /* pbs_release_nodes */

@@ -208,7 +208,15 @@ char *extend;
 		char ebuff[200], *erp, *emsg = NULL;
 		int i;
 		struct pbs_client_thread_connect_context *con;
-		if ((i = set_resources(&attrib, extend, 1, &erp))) {
+		char nd_ct_selstr[20];
+		char *endptr = NULL;
+
+		strtol(extend, &endptr, 10);
+
+		if (!*endptr) {
+			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", extend);
+			extend = nd_ct_selstr;
+		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
 			if (i > 1) {
 				snprintf(ebuff, sizeof(ebuff), "illegal -k value: %s\n", pbs_parse_err_msg(i));
 				emsg = strdup(ebuff);
