@@ -123,7 +123,6 @@ extern int node_recov_db_raw(void *, pbs_list_head *);
 extern int save_attr_db(pbs_db_conn_t *, pbs_db_attr_info_t *,	struct attribute_def *, struct attribute *, int , int);
 extern int recov_attr_db(pbs_db_conn_t *, void *, pbs_db_attr_info_t *, struct attribute_def *, struct attribute *, int , int);
 extern int pbsd_init(int);
-extern int setup_nodes_fs(int);
 extern int resv_save_db(resc_resv *, int);
 extern int svr_chk_histjob(job *);
 extern int chk_and_update_db_svrhost(void);
