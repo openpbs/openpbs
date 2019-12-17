@@ -105,7 +105,7 @@ char *pbs_python_daemon_name;
  *	DEBUG3; otherwise, DEBUG2.
  */
 
-void
+int
 pbs_python_ext_start_interpreter(
 	struct python_interpreter_data *interp_data)
 {
@@ -155,12 +155,12 @@ pbs_python_ext_start_interpreter(
 	if (rc != 0) {
 		log_err(-1, __func__,
 			"--> PBS Python library directory not found <--");
-		return;
+		goto ERROR_EXIT;
 	}
 	if (!S_ISDIR(sbuf.st_mode)) {
 		log_err(-1, __func__,
 			"--> PBS Python library path is not a directory <--");
-		return;
+		goto ERROR_EXIT;
 	}
 
 	if (interp_data) {
@@ -169,12 +169,12 @@ pbs_python_ext_start_interpreter(
 			log_event(evtype, PBS_EVENTCLASS_SERVER,
 				LOG_INFO, interp_data->daemon_name,
 				"--> Python interpreter already started <--");
-			return;
-		}
+			goto SUCCESS_EXIT;
+		} /* else { we are not started but ready } */
 	} else { /* we need to allocate memory */
 		log_err(-1, __func__,
 			"--> Passed NULL for interpreter data <--");
-		return;
+		goto ERROR_EXIT;
 	}
 
 	Py_NoSiteFlag = 1;
@@ -192,7 +192,7 @@ pbs_python_ext_start_interpreter(
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
 		log_err(-1, "PyImport_ExtendInittab",
 			"--> Failed to initialize Python interpreter <--");
-		return;
+		goto ERROR_EXIT;
 	}
 
 
@@ -249,17 +249,19 @@ pbs_python_ext_start_interpreter(
 	}
 
 	interp_data->pbs_python_types_loaded = 1; /* just in case */
-	return;
-
+SUCCESS_EXIT:
+	return 0;
 ERROR_EXIT:
-	pbs_python_ext_shutdown_interpreter(interp_data);
-	return;
+	if (interp_data->interp_started) {
+		pbs_python_ext_shutdown_interpreter(interp_data);
+	}
+	return 1;
 #else  /* !PYTHON */
 	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
 		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, "start_python",
 		"--> Python interpreter not built in <--");
-	return;
+	return 0;
 #endif /* PYTHON */
 }
 
@@ -693,6 +695,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	PyObject *retval;
 	char      *pStr;
 	int rc=0;
+	pid_t orig_pid;
 
 	if (!interp_data || !py_script) {
 		log_err(-1, __func__, "Either interp_data or py_script is NULL");
@@ -759,10 +762,17 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 
 	py_script->global_dict = pdict;
 
+	orig_pid = getpid();
+
 	PyErr_Clear(); /* clear any exceptions before starting code */
 	/* precompile strings of code to bytecode objects */
 	retval = PyEval_EvalCode((PyObject *)py_script->py_code_obj,
 		pdict, pdict);
+
+	/* check for a fork of the hook, terminate fork immediately */
+	if (orig_pid != getpid())
+		exit(0);
+
 	/* check for exception */
 	if (PyErr_Occurred()) {
 		if (PyErr_ExceptionMatches(PyExc_KeyboardInterrupt)) {

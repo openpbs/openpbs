@@ -77,7 +77,6 @@
  * 	cross_link_mom_vnode()
  * 	update2_to_vnode()
  * 	check_and_set_multivnode()
- * 	compare_short_hostname()
  * 	mom_running_jobs()
  * 	is_request()
  * 	write_single_node_state()
@@ -3452,12 +3451,16 @@ setup_pnames(char *namestr)
 	}
 
 	if (resc_added > 0) {
-
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, "setup_pnames",
 			"Restarting Python interpreter as resourcedef file has changed.");
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pbs_python_ext_start_interpreter(&svr_interp_data);
+		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
+			free(workcopy);
+			free(newbuffer);
+			return 1;
+		}
 
 		send_rescdef(1);
 	}
@@ -4163,12 +4166,14 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	}
 
 	if (vn_resc_added > 0) {
-
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, "update2_to_vnode",
 			"Restarting Python interpreter as resourcedef file has changed.");
 		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pbs_python_ext_start_interpreter(&svr_interp_data);
+		if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart Python interpreter");
+			return PBSE_INTERNAL;
+		}
 
 		send_rescdef(1);
 	}
@@ -4286,36 +4291,6 @@ check_and_set_multivnode(struct pbsnode *pnode)
 			}
 		}
 	}
-}
-
-/**
- * @brief
- * 		compare a short hostname with a FQ host match if same up to dot
- * @see
- * 		node_np_action
- *
- * @param[in]	shost	- short hostname
- * @param[in]	lhost	- FQ host
- *
- * @return	int
- * @retval	0	- match
- * @retval	1	- no match
- */
-int
-compare_short_hostname(char *shost, char *lhost)
-{
-	size_t   len;
-	char    *pdot;
-
-	if ((pdot = strchr(shost, '.')) != NULL)
-		len = (size_t)(pdot - shost);
-	else
-		len = strlen(shost);
-	if ((strncasecmp(shost, lhost, len) == 0) &&
-		((*(lhost+len) == '.') || (*(lhost+len) == '\0')))
-		return 0;	/* match */
-	else
-		return 1;	/* no match */
 }
 
 /**

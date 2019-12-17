@@ -116,6 +116,7 @@
 #include "limits_if.h"
 #include "pbs_version.h"
 #include "buckets.h"
+#include "multi_threading.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -125,10 +126,6 @@
 static prev_job_info *last_running = NULL;
 static int last_running_size = 0;
 
-#ifdef WIN32
-extern void win_toolong(void);
-#endif
-
 extern int	second_connection;
 extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
 
@@ -136,15 +133,14 @@ extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
  * @brief
  * 		initialize conf struct and parse conf files
  *
- * @param[in]	argc	-	passed in from main (may be 0)
- * @param[in]	argv	-	passed in from main (may be NULL)
+ * @param[in]	nthreads - number of worker threads to launch, < 1 to use num cores
  *
  * @return	Success/Failure
  * @retval	0	: success
  * @retval	!= 0	: failure
  */
 int
-schedinit(void)
+schedinit(int nthreads)
 {
 	char zone_dir[MAXPATHLEN];
 	struct tm *tmptr;
@@ -270,6 +266,15 @@ schedinit(void)
 	}
 
 #endif
+
+	/* (Re-)Initialize multithreading */
+	if (num_threads == 0 || (nthreads > 0 && nthreads != num_threads)) {
+		if (init_multi_threading(nthreads) != 1) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+					  "", "Error initializing pthreads");
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -594,7 +599,7 @@ schedule(int cmd, int sd, char *runjobid)
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				  "reconfigure", "Scheduler is reconfiguring");
 			reset_global_resource_ptrs();
-			if(schedinit() != 0) {
+			if(schedinit(-1) != 0) {
 				return 0;
 			}
 			break;
@@ -1153,6 +1158,40 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 }
 
 /**
+ * @brief	cleanup routine for scheduler exit
+ *
+ * @param	void
+ *
+ * @return void
+ */
+void
+schedexit(void)
+{
+	int i;
+
+	/* close any open connections to peers */
+	for (i = 0; (i < NUM_PEERS) &&
+		(conf.peer_queues[i].local_queue != NULL); i++) {
+		if (conf.peer_queues[i].peer_sd >= 0) {
+			/* When peering "local", do not disconnect server */
+			if (conf.peer_queues[i].remote_server != NULL)
+				pbs_disconnect(conf.peer_queues[i].peer_sd);
+			conf.peer_queues[i].peer_sd = -1;
+		}
+	}
+
+	/* Kill all worker threads */
+	if (num_threads > 1) {
+		int *thid;
+
+		thid = (int *) pthread_getspecific(th_id_key);
+
+		if (*thid == 0)
+			kill_threads();
+	}
+}
+
+/**
  * @brief
  *		end_cycle_tasks - stuff which needs to happen at the end of a cycle
  *
@@ -1196,6 +1235,7 @@ end_cycle_tasks(server_info *sinfo)
 	}
 
 	got_sigpipe = 0;
+
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		"", "Leaving Scheduling Cycle");
 }
@@ -1511,15 +1551,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	}
 	else {
 		if (resresv->is_job && resresv->job->is_subjob) {
-			if (resresv->job->parent_job == NULL) {
-				resresv->job->parent_job =
-				find_resource_resv(sinfo->jobs, resresv->job->array_id);
-			}
-			array = resresv->job->parent_job;
+			array = find_resource_resv(sinfo->jobs, resresv->job->array_id);
 			rr = resresv;
-		}
-
-		else if(resresv->is_job && resresv->job->is_array) {
+		} else if (resresv->is_job && resresv->job->is_array) {
 			array = resresv;
 			rr = queue_subjob(resresv, sinfo, qinfo);
 			if(rr == NULL) {
@@ -2573,12 +2607,8 @@ sched_settings_frm_svr(struct batch_status *status)
 						priv_dir_update_fail = 1;
 					} else {
 						/* write schedulers pid into lockfile */
-						#ifdef WIN32
-							lseek(lockfds, (off_t)0, SEEK_SET);
-						#else
-							(void)ftruncate(lockfds, (off_t)0);
-						#endif
-							(void)sprintf(log_buffer, "%d\n", getpid());
+						(void)ftruncate(lockfds, (off_t)0);
+						(void)sprintf(log_buffer, "%d\n", getpid());
 						(void)write(lockfds, log_buffer, strlen(log_buffer));
 						close(lockfds);
 						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, "reconfigure", 

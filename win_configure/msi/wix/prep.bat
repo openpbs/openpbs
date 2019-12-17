@@ -74,9 +74,6 @@ for %%a in (
     )
 )
 
-REM Remove unneccesory files from bin directory
-del /F /Q "%PBS_EXECDIR%\bin\pbs_dataservice.bat"
-
 echo Copying necessory files for PBS_EXEC\sbin
 for %%a in (
     "%WINBUILDDIR%\src\pbs_iff\%BUILD_TYPE%\*.exe"

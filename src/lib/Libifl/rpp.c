@@ -1810,27 +1810,6 @@ __rpp_recv_pkt(int fd)
 	 **	Pete Wyckoff for finding this.
 	 */
 	for (;;) {
-#ifdef	_SX
-		fd_set			fdset;
-		struct	timeval		tv;
-
-		FD_ZERO(&fdset);
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
-
-		FD_SET(fd, &fdset);
-		i = select(FD_SETSIZE, &fdset, NULL, NULL, &tv);
-		if (i == 0) {
-			free(data);
-			return -3;
-		} else if (i == -1) {
-			if (errno == EINTR)
-				continue;
-			free(data);
-			return -1;
-		}
-#endif
-
 		len = recvfrom(fd, data, RPP_PKT_SIZE, 0,
 			(struct sockaddr *)&addr, &flen);
 

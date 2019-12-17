@@ -8471,6 +8471,7 @@ class Server(PBSService):
             select_xt = 'x'
         jobs = self.status(JOB, extend=select_xt)
         job_ids = sorted(list(set([x['id'] for x in jobs])))
+        running_jobs = sorted([j['id'] for j in jobs if j['job_state'] == 'R'])
         host_pid_map = {}
         for job in jobs:
             exec_host = job.get('exec_host', None)
@@ -8494,24 +8495,21 @@ class Server(PBSService):
                 a = {'scheduling': 'False'}
                 self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
                              runas=ROOT_USER)
-                self.expect(SCHED, a, id=sc['id'])
         try:
             self.deljob(id=job_ids, extend=delete_xt,
                         runas=ROOT_USER, wait=False)
         except PbsDeljobError:
             pass
         st = int(time.time())
-        running_job = False
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
-                if chunks:
-                    running_job = True
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
-            if running_job is True:
-                _msg = job_ids[-1] + ';'
+            if running_jobs:
+                last_running_job = running_jobs[-1]
+                _msg = last_running_job + ';'
                 _msg += 'Job Obit notice received has error 15001'
                 try:
                     self.log_match(_msg, starttime=st, interval=10,
@@ -14216,28 +14214,37 @@ class Job(ResourceResv):
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
 
-    def create_eatcpu_job(self, duration=None, mom=None):
+    def create_eatcpu_job(self, duration=None, hostname=None):
         """
         Create a job that eats cpu indefinitely or for the given
         duration of time
+
+        :param duration: The duration, in seconds, to sleep
+        :type duration: int
+        :param hostname: hostname on which to execute the job
+        :type hostname: str or None
         """
         if self.du is None:
             self.du = DshUtils()
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        if not self.du.is_localhost(mom):
+        if not self.du.is_localhost(hostname):
             d = pwd.getpwnam(self.username).pw_dir
-            ret = self.du.run_copy(hosts=mom, src=script_path, dest=d)
+            ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
                 raise AssertionError("Failed to copy file %s to %s"
-                                     % (script_path, mom))
+                                     % (script_path, hostname))
             script_path = os.path.join(d, "eatcpu.py")
-        pbs_conf = self.du.parse_pbs_config(mom)
+        pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')
         a = {ATTR_S: shell_path}
         self.set_attributes(a)
-        self.du.chmod(path=script_path, mode=0o755)
+        mode = 0o755
+        if not self.du.chmod(hostname=hostname, path=script_path, mode=mode,
+                             sudo=True):
+            raise AssertionError("Failed to set permissions for file %s"
+                                 " to %s" % (script_path, oct(mode)))
         self.set_execargs(script_path, duration)
 
 

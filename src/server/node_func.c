@@ -1194,8 +1194,6 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
  *
  *		If routine returns -1, then "log_buffer" contains a message to
  *		be logged.
- * @see
- * 		svr_migrate_data_from_fs
  *
  * @param[in]	preprocess	- arg set for first call to just scan for old style properties
  * 					and create matching boolean resources. On second call,
@@ -1439,7 +1437,11 @@ setup_nodes_fs(int preprocess)
 				LOG_INFO, "setup_nodes_fs",
 			"Restarting Python interpreter as resourcedef file has changed.");
 			pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-			pbs_python_ext_start_interpreter(&svr_interp_data);
+			if (pbs_python_ext_start_interpreter(&svr_interp_data) != 0) {
+				sprintf(log_buffer, "%s",
+					"Failed to restart Python interpreter");
+				goto errtoken2;
+			}
 
 			send_rescdef(1);
 		}
@@ -2342,6 +2344,8 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	static char		**str_arr = NULL;
 	static long int		  str_arr_len = 0;
 	attribute		  new;
+	struct sockaddr_in check_ip;
+	int is_node_name_ip;
 
 	if ((val == NULL) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
@@ -2379,10 +2383,12 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
-		if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
+		is_node_name_ip = inet_pton(AF_INET, p, &(check_ip.sin_addr)) ;
+		if(is_node_name_ip || get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
+		
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;

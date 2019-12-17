@@ -207,7 +207,7 @@ extern char *pbs_python_daemon_name;  /* pbs_python_external.c */
 
 
 /* -- BEGIN pbs_python_external.c implementations -- */
-extern void pbs_python_ext_start_interpreter(
+extern int pbs_python_ext_start_interpreter(
 	struct python_interpreter_data *interp_data);
 extern void pbs_python_ext_shutdown_interpreter(
 	struct python_interpreter_data *interp_data);
@@ -497,9 +497,6 @@ pbs_python_event_param_mod_disallow(void);
 
 extern int
 pbs_python_event_param_get_mod_flag(void);
-
-extern int
-validate_job_formula(attribute *pattr, void *pobject, int actmode);
 
 extern void
 pbs_python_set_interrupt(void);

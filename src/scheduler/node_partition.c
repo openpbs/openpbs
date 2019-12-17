@@ -420,7 +420,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 
 	if ((np_arr = (node_partition **)
 		malloc((num_nodes + 1) * sizeof(node_partition *))) == NULL) {
-		log_err(errno, "create_node_partitions", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -472,7 +472,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							tmp_arr = realloc(np_arr,
 								(np_arr_size * 2 + 1) * sizeof(node_partition *));
 							if (tmp_arr == NULL) {
-								log_err(errno, "create_node_partitions", MEM_ERR_MSG);
+								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
 								if (free_str == 1)
 									free(str);
@@ -577,12 +577,14 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 							}
 						}
 					}
-					tmp_arr = add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
-					if (tmp_arr == NULL) {
-						free_node_partition_array(np_arr);
-						return NULL;
+					if (!(NP_NO_ADD_NP_ARR & flags)) {
+						tmp_arr = add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
+						if (tmp_arr == NULL) {
+							free_node_partition_array(np_arr);
+							return NULL;
+						}
+						nodes[node_i]->np_arr = tmp_arr;
 					}
-					nodes[node_i]->np_arr = tmp_arr;
 
 					np_arr[np_i]->ninfo_arr[i] = nodes[node_i];
 					i++;
@@ -768,7 +770,7 @@ new_np_cache(void)
 	np_cache *npc;
 
 	if ((npc = malloc(sizeof(np_cache))) == NULL) {
-		log_err(errno, "new_np_cache", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -897,10 +899,13 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	npc = find_np_cache(*pnpc_arr, resnames, ninfo_arr);
 
 	if (npc == NULL) {
+		int flags = NP_NO_ADD_NP_ARR;
+
+		if (policy->only_explicit_psets)
+			flags |= NP_CREATE_REST;
+
 		/* didn't find node partition cache, need to allocate and create */
-		nodepart = create_node_partitions(policy, ninfo_arr, resnames,
-			policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
-			&num_parts);
+		nodepart = create_node_partitions(policy, ninfo_arr, resnames, flags, &num_parts);
 		if (nodepart != NULL) {
 			if (sort_func != NULL)
 				qsort(nodepart, num_parts, sizeof(node_partition *), sort_func);

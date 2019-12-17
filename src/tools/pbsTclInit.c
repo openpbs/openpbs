@@ -136,13 +136,6 @@ main(int argc, char *argv[])
 	}
 	set_logfile(stderr);
 
-#ifdef WIN32
-	if (winsock_init()) {
-		return 1;
-	}
-	Tcl_FindExecutable(argv[0]);
-#endif
-
 	/* load the pbs conf file */
 	if (pbs_loadconf(0) == 0) {
 		fprintf(stderr, "%s: Configuration error\n", argv[0]);
@@ -151,13 +144,7 @@ main(int argc, char *argv[])
 
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf(tbuf_env,
-#ifdef WIN32
-                                "%s/lib/tcl%s",
-#else
-                                "%s/tcltk/lib/tcl%s",
-#endif
-				pbs_conf.pbs_exec_path, TCL_VERSION);
+			sprintf(tbuf_env, "%s/tcltk/lib/tcl%s", pbs_conf.pbs_exec_path, TCL_VERSION);
 			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}
@@ -190,14 +177,12 @@ main(int argc, char *argv[])
 
 		/* call tpp_init */
 		rc = 0;
-#ifndef WIN32
 		if (pbs_conf.auth_method == AUTH_MUNGE)
 			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression,
 								TPP_AUTH_EXTERNAL,
 								get_ext_auth_data, validate_ext_auth_data);
 		else
-#endif
 			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression,
 								TPP_AUTH_RESV_PORT,

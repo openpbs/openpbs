@@ -69,7 +69,7 @@
 int
 init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 {
-	krb5_error_code ret;
+	krb5_error_code ret = KRB5KRB_ERR_GENERIC;
 	krb5_context context = NULL;
 	krb5_principal pbs_service = NULL;
 	krb5_keytab keytab = NULL;

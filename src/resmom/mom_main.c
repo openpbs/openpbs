@@ -1167,13 +1167,9 @@ initialize(void)
 				__func__, msg_corelimit);
 			corelimit.rlim_cur = RLIM_INFINITY;
 		} else
-#ifdef	_SX
-			corelimit.rlim_cur =
-				atol(pbs_conf.pbs_core_limit);
-#else
 			corelimit.rlim_cur =
 				(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
+
 		/* get system core limit */
 		(void)getrlimit(RLIMIT_CORE, &orig_core_limit);
 
@@ -9246,11 +9242,8 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tval, NULL);
 	time_now = tval.tv_sec;
-#ifdef	_SX
-	srand48(tval.tv_usec);
-#else
+
 	srandom(tval.tv_usec);
-#endif	/* _SX */
 #endif	/* !WIN32 */
 
 	ret_size = 4096;
@@ -10078,7 +10071,7 @@ main(int argc, char *argv[])
 			nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 			/* check for job stuck waiting for Svr to ack obit */
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
+			if (!pjob->ji_hook_running_bg_on && pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
 				pjob->ji_sampletim < time_now - 45) {
 				send_obit(pjob, 0);	/* resend obit */
 			}

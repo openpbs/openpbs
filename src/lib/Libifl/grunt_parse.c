@@ -207,13 +207,12 @@ parse_resc_equal_string(char  *start, char **name, char **value, char **last)
 int
 parse_node_resc_r(char *str, char **nodep, int *pnelem, int *nlkv, struct key_value_pair **kv)
 {
-	int	      i;
-	int	      nelm = 0;
-	static char  *pc;
-	char	     *word;
-	char	     *value;
-	char	     *last;
-
+	int i;
+	int nelm = 0;
+	char *pc;
+	char *word;
+	char *value;
+	char *last;
 
 	if (str == NULL)
 		return (PBSE_INTERNAL);
@@ -541,8 +540,8 @@ char *
 parse_plus_spec_r(char *selstr, char **last, int *hp)
 {
 	int		haveparen = 0;
-	static char    *pe;
-	char           *ps;
+	char    *pe;
+	char    *ps;
 
 	if ((selstr == NULL) || (strlen(selstr)) == 0)
 		return NULL;
@@ -583,8 +582,10 @@ parse_plus_spec_r(char *selstr, char **last, int *hp)
 	}
 
 	if (*ps) {
-		*last = pe;
-		*hp = haveparen;
+		if (last != NULL)
+			*last = pe;
+		if (hp != NULL)
+			*hp = haveparen;
 		return ps;
 	} else
 		return NULL;
@@ -599,7 +600,7 @@ parse_plus_spec_r(char *selstr, char **last, int *hp)
  *	called with null to continue where left off.
  *
  * @param[in] selstr - string holding select specs
- * @param[in] rc - flag
+ * @param[out] rc - flag
  *
  * @return 	A pointer to next substring
  * @retval	next substring (char *)
@@ -650,3 +651,4 @@ parse_plus_spec(char *selstr, int *rc)
 
 	return (parse_plus_spec_r(ps, &pe, &hp));
 }
+

@@ -51,11 +51,9 @@
 #include "dis.h"
 #include "sched_cmds.h"
 
-#ifndef WIN32
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
-#endif
 
 #if defined(FD_SET_IN_SYS_SELECT_H)
 #include <sys/select.h>

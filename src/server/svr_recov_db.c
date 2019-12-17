@@ -134,10 +134,6 @@ update_svrlive()
 		fdlive = open(path_svrlive, O_WRONLY | O_CREAT, 0600);
 		if (fdlive < 0)
 			return -1;
-#ifdef WIN32
-		secure_file(path_svrlive, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-#endif
 	}
 	(void)utimes(path_svrlive, NULL);
 	return 0;

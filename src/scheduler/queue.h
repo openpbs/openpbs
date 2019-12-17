@@ -35,23 +35,25 @@
  * trademark licensing policies.
  *
  */
+#ifndef SRC_SCHEDULER_QUEUE_H_
+#define SRC_SCHEDULER_QUEUE_H_
 
+#define QUEUE_DS_MIN_SIZE 512	/* Minimum size of the queue data structure */
 
-/*
- *	This is a list of read only server attributes
- *
- *	FORMAT:
- *		attr1,
- * 		attr2,	<--- important the last has a comma after it
- *
- * 	This file will be used for the initialization of an array
- *
- */
+typedef struct ds_queue ds_queue;
 
-ATTR_rescassn,
-ATTR_count,
-ATTR_status,
-ATTR_SvrHost,
-ATTR_total,
-ATTR_FLicenses,
-ATTR_run_version,
+struct ds_queue {
+	int min_size;
+	long front;
+	long rear;
+	long q_size;
+	void **content_arr;
+};
+
+ds_queue *new_ds_queue(void);
+void free_ds_queue(ds_queue *queue);
+int ds_enqueue(ds_queue *queue, void *obj);
+void *ds_dequeue(ds_queue *queue);
+int ds_queue_is_empty(ds_queue *queue);
+
+#endif /* SRC_SCHEDULER_QUEUE_H_ */

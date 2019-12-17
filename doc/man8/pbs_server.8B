@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_server 8B "19 February 2018" Local "PBS Professional"
+.TH pbs_server 8B "20 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_server 
 - start a PBS batch server
@@ -73,8 +73,7 @@ exits with an error.
 To ensure that the 
 .B pbs_server
 command is not runnable by the general user community, the server
-runs only if its real and effective uid is zero.  You must be root 
-on Linux or Admin on Windows.
+runs only if its real and effective uid is zero.  You must be root.
 
 .SH OPTIONS
 .IP "-A <acctfile>" 10
@@ -158,9 +157,7 @@ Default:
 .I 15002
 
 .IP "-N" 10
-The server runs in standalone mode. On Windows, it does not register
-as a Windows service.  On other platforms, MoM does not detach from the 
-current session. 
+Runs the server in standalone mode.
 
 .IP "-p <port number>" 10
 Specifies the port number on which the server is to listen for batch requests.
@@ -309,14 +306,6 @@ command:
 or send a SIGTERM:
 .br
 .I \ \ \ kill <server PID>
-
-.B Stopping the Server on Windows
-.br
-if you're running "pbs_server -N" for a standalone mode server,
-use:
-.br
-.I \ \ \ <cntrl>-<break>
-
 
 .SH EXIT STATUS
 .IP Zero

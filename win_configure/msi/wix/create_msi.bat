@@ -32,7 +32,7 @@ REM
 REM Use of Altair’s trademarks, including but not limited to "PBS™",
 REM "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 REM trademark licensing policies.
-setlocal
+setlocal enabledelayedexpansion
 @echo on
 
 cd "%~dp0..\..\..\..\"
@@ -69,7 +69,11 @@ for /F "tokens=3 USEBACKQ" %%F IN (`findstr /l /c:" pbs_version " %PBS_SPEC_FILE
     set PBS_VERSION=%%F
 )
 for /F "tokens=1-3 delims=." %%F IN ("%PBS_VERSION%") DO (
-    set PBS_SHORT_VERSION=%%F.%%G.%%H
+    set MAJOR_V=%%F
+    if "!MAJOR_V:~0,2!"=="20" (
+        set MAJOR_V=!MAJOR_V:~2,4!
+    )
+    set PBS_SHORT_VERSION=!MAJOR_V!.%%G.%%H
 )
 
 set PBS_PRODUCT_NAME=%PBS_PRODUCT_NAME% %PBS_VERSION%

@@ -68,7 +68,8 @@ pbs_server_bin_LDADD = \
 	@PYTHON_LIBS@ \
 	-lssl \
 	-lcrypto \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@libundolr_lib@
 
 pbs_server_bin_SOURCES = \
 	accounting.c \
@@ -94,7 +95,6 @@ pbs_server_bin_SOURCES = \
 	pbsd_main.c \
 	process_request.c \
 	queue_func.c \
-	queue_recov.c \
 	queue_recov_db.c \
 	reply_send.c \
 	req_delete.c \
@@ -133,7 +133,6 @@ pbs_server_bin_SOURCES = \
 	svr_mail.c \
 	svr_migrate_data.c \
 	svr_movejob.c \
-	svr_recov.c \
 	svr_recov_db.c \
 	svr_resccost.c \
 	svr_credfunc.c \
@@ -155,11 +154,7 @@ pbs_comm_LDADD = \
 	-lpthread \
 	@libz_lib@ \
 	@socket_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@libundolr_lib@
 
 pbs_comm_SOURCES = pbs_comm.c
-
-if UNDOLR_ENABLED
-pbs_server_bin_LDADD += @libundolr_lib@
-pbs_comm_LDADD += @libundolr_lib@
-endif

@@ -295,7 +295,7 @@ dis_gss_read_buff(int fd, struct gss_disbuf *tp, uint32_t ct)
 	len = tp->tdis_bufsize - tp->tdis_eod;
 
 	if (len < ct) {
-		size_t ru = (ct + tp->tdis_lead) / DIS_GSS_BUF_SIZE;
+		size_t ru = (ct + tp->tdis_lead + tp->tdis_eod) / DIS_GSS_BUF_SIZE;
 		tp->tdis_bufsize = (ru + 1) * DIS_GSS_BUF_SIZE;
 		tmcp = (char *) realloc(tp->tdis_thebuf, sizeof(char) * tp->tdis_bufsize);
 		if (tmcp == NULL) {
