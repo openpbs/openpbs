@@ -90,9 +90,12 @@ exit 1
         return jid1, jid2, jid3
 
     def insert_checkpoint_script(self, chk_script):
-        chk_file = self.du.create_temp_file(body=chk_script)
-        self.du.chmod(path=chk_file, mode=0o755)
-        self.du.chown(path=chk_file, uid=0, gid=0, sudo=True)
+        chk_file = self.du.create_temp_file(hostname=self.mom.hostname,
+                                            body=chk_script)
+        self.du.chmod(hostname=self.mom.hostname,
+                      path=chk_file, mode=0o755)
+        self.du.chown(hostname=self.mom.hostname,
+                      path=chk_file, uid=0, gid=0, sudo=True)
         c = {'$action': 'checkpoint_abort 30 !' + chk_file + ' %sid'}
         self.mom.add_config(c)
 
