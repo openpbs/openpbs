@@ -2089,6 +2089,7 @@ class BatchUtils(object):
         :type value: str or int
         :returns: int or float or string
         """
+
         if value is None or isinstance(value, collections.Callable):
             return value
 
