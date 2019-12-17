@@ -253,7 +253,7 @@ class TestReservations(TestFunctional):
         self.server.expect(RESV, exp_attr, id=rid, offset=30)
 
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.server.shortname)
+                           id=self.mom.shortname)
 
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl', 'queue': rid.split('.')[0]}
@@ -516,7 +516,7 @@ class TestReservations(TestFunctional):
         interfere with longer term reservations with jobs inside
         """
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
@@ -560,7 +560,7 @@ class TestReservations(TestFunctional):
         start = now + 30
         a = {'reserve_start': start, 'reserve_end': start + 300,
              'Resource_List.select': '1:ncpus=1:vnode=' +
-                                     self.server.shortname,
+                                     self.mom.shortname,
              'Resource_List.place': 'excl'}
 
         r = Reservation(TEST_USER, a)
@@ -577,7 +577,7 @@ class TestReservations(TestFunctional):
         self.server.expect(RESV, a, id=rid, offset=sleep_time)
 
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.server.shortname)
+                           id=self.mom.shortname)
 
     def test_multiple_asap_resv(self):
         """
@@ -585,7 +585,7 @@ class TestReservations(TestFunctional):
         """
         self.server.manager(MGR_CMD_SET, NODE,
                             {'resources_available.ncpus': 1},
-                            id=self.server.shortname)
+                            id=self.mom.shortname)
 
         job_attrs = {'Resource_List.select': '1:ncpus=1',
                      'Resource_List.walltime': '1:00:00'}
