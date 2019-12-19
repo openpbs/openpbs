@@ -98,6 +98,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/poll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "pbs_ifl.h"
@@ -1472,6 +1473,135 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 /**
  * @brief
+ *		check_block_wt	-	A worktask to reply to the blocked job client
+ *
+ * @param[in]	ptask	-	work_task structure
+ */
+void
+check_block_wt(struct work_task *ptask)
+{
+	struct block_job_reply *blockj = ptask->wt_parm1;
+	struct pollfd fds[1];
+	int rc;
+	pbs_socklen_t	len = sizeof(rc);
+	int conn = 0;
+	int ret = 0;
+	int check_error;
+
+	if (blockj->fd == -1) {
+		int sock_flags;
+		struct hostent		*hp;
+		struct sockaddr_in	remote;
+
+		if ((hp = gethostbyname(blockj->client)) == NULL) {
+			sprintf(log_buffer, "client host %s not found for block job %s",
+			blockj->client, blockj->jobid);
+			goto err;
+		}
+
+		memset(&remote, 0, sizeof(remote));
+		memcpy(&remote.sin_addr, hp->h_addr, hp->h_length);
+		remote.sin_port = htons((unsigned short)blockj->port);
+		remote.sin_family = hp->h_addrtype;
+
+		if ((blockj->fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+			sprintf(log_buffer, "Failed to create socket for job %s", blockj->jobid);
+			goto err;
+		}
+
+		/* Set socket to Non-blocking */
+		sock_flags = fcntl(blockj->fd, F_GETFL, 0);
+		if (fcntl(blockj->fd, F_SETFL, sock_flags | O_NONBLOCK) == -1) {
+			sprintf(log_buffer, "Failed to set non-blocking flag on socket for job %s", 
+			blockj->jobid);
+			goto err;
+		}
+
+		conn = connect(blockj->fd, (struct sockaddr *)&remote, sizeof(remote));
+		if ((conn == -1) && !(errno == EINPROGRESS || errno == EWOULDBLOCK)) {
+			goto retry;
+		}
+	}
+
+	while (1) {
+		fds[0].fd = blockj->fd;
+		fds[0].events  = POLLOUT;
+		fds[0].revents = 0;
+
+		rc = poll(fds, (nfds_t)1, 0);
+		if (rc == -1) {
+			if ((errno != EAGAIN) && (errno != EINTR))
+				break;
+		} else
+			break;	/* no error */
+	}
+
+	if (rc <= 0)
+		goto retry;
+
+	rc = 0;
+	check_error = getsockopt(fds[0].fd, SOL_SOCKET, SO_ERROR, &rc, &len);
+	if ((rc != 0) || (check_error != 0) || (fds[0].revents != POLLOUT))
+		goto retry;
+
+	rc = CS_server_auth(blockj->fd);
+	if ((rc != CS_SUCCESS) && (rc != CS_AUTH_CHECK_PORT)) {
+		sprintf(log_buffer, "Unable to authenticate with %s:%d", blockj->client, blockj->port);
+		goto err;
+	}
+
+	/*
+	**	All ready to talk... now send the info.
+	*/
+
+	DIS_tcp_setup(blockj->fd);
+	ret = diswsi(blockj->fd, 1);		/* version */
+	if (ret != DIS_SUCCESS)
+		goto err;
+	ret = diswst(blockj->fd, blockj->jobid);
+	if (ret != DIS_SUCCESS)
+		goto err;
+	if (blockj->msg == NULL) {
+		ret = diswst(blockj->fd, "");
+	} else {
+		ret = diswst(blockj->fd, blockj->msg);
+	}
+	if (ret != DIS_SUCCESS)
+		goto err;
+	ret = diswsi(blockj->fd, blockj->exitstat);
+	if (ret != DIS_SUCCESS)
+		goto err;
+	(void)DIS_tcp_wflush(blockj->fd);
+
+	sprintf(log_buffer, "%s: Write successful to client %s for job %s ", __func__,
+	blockj->client, blockj->jobid);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_NOTICE, blockj->jobid, log_buffer);
+	CS_close_socket(blockj->fd);
+	goto end;
+
+retry:
+	if ((time(0) - blockj->reply_time) < BLOCK_JOB_REPLY_TIMEOUT) {
+		set_task(WORK_Timed, time_now + 10, check_block_wt, blockj);
+		return;
+	} else {
+		sprintf(log_buffer, "Unable to reply to client %s for job %s", 
+		blockj->client, blockj->jobid);
+	}
+err:
+	if (ret != DIS_SUCCESS) {
+		sprintf(log_buffer, "DIS error while replying to client %s for job %s",
+		blockj->client, blockj->jobid);
+	}
+	log_err(-1, __func__, log_buffer);
+end:
+	if (blockj->fd != -1) 
+		close(blockj->fd);
+	free(blockj->msg);
+	free(blockj);
+}
+
+/**
+ * @brief
  *		check_block	-	See if "block" is set and send reply.
  *
  * @param[in,out]	pjob	-	job structure
@@ -1481,16 +1611,9 @@ void
 check_block(job *pjob, char *message)
 {
 	int			port;
-	int			ret;
 	char			*phost;
 	char			*jobid = pjob->ji_qs.ji_jobid;
-	struct hostent		*hp;
-#ifdef WIN32
-	struct in_addr		addr;
-#endif
-	int			sock;
-	struct sockaddr_in	remote;
-	short			remote_sin_family;
+	struct 			block_job_reply *blockj; 
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
 		return;
@@ -1519,90 +1642,25 @@ check_block(job *pjob, char *message)
 			jobid, log_buffer);
 		return;
 	}
-	if ((hp = gethostbyname(phost)) == NULL) {
-		sprintf(log_buffer, "%s: host %s not found", __func__, phost);
+
+	blockj = (struct block_job_reply *)malloc(sizeof(struct block_job_reply));
+	if (blockj == NULL){
+		sprintf(log_buffer, "%s: Unable to allocate memory for the job %s", __func__, jobid);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
 			jobid, log_buffer);
 		return;
 	}
-	remote_sin_family = hp->h_addrtype;
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		sprintf(log_buffer, "%s: socket %s", __func__, strerror(errno));
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-			jobid, log_buffer);
-		return;
-	}
-	memset(&remote, 0, sizeof(remote));
-	memcpy(&remote.sin_addr, hp->h_addr, hp->h_length);
 
-	remote.sin_port = htons((unsigned short)port);
-	remote.sin_family = remote_sin_family;
-	if (connect(sock, (struct sockaddr *)&remote, sizeof(remote)) == -1) {
-		sprintf(log_buffer, "%s: connect %s(%s:%d) %s", __func__, phost,
-			inet_ntoa(remote.sin_addr), port, strerror(errno));
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-			jobid, log_buffer);
-#ifdef WIN32
-		closesocket(sock);
-#else
-		close(sock);
-#endif
-		return;
-	}
+	blockj->msg = strdup(message);
+	strncpy(blockj->client, phost, PBS_MAXHOSTNAME);
+	blockj->client[PBS_MAXHOSTNAME - 1] = '\0';
+	blockj->port = port;
+	blockj->fd = -1;
+	blockj->reply_time = time(NULL);
+	blockj->exitstat = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
+	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);	
 
-	ret = CS_server_auth(sock);
-	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_CHECK_PORT)) {
-
-		sprintf(log_buffer,
-			"Unable to authenticate with , %s (%s:%d)", phost,
-			inet_ntoa(remote.sin_addr), remote.sin_port);
-
-		log_joberr(-1, __func__, log_buffer, jobid);
-		goto done;
-	}
-
-	/*
-	 **	All ready to talk... now send the info.
-	 */
-
-	DIS_tcp_setup(sock);
-	ret = diswsi(sock, 1);		/* version */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswst(sock, jobid);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswst(sock, message);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswsi(sock, pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	(void)DIS_tcp_wflush(sock);
-
-	goto done;
-
-err:
-	sprintf(log_buffer, "%s: write %s(%s:%d) %s", __func__, phost,
-		inet_ntoa(remote.sin_addr), port, dis_emsg[ret]);
-	log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-		jobid, log_buffer);
-
-done:
-	if ((ret = CS_close_socket(sock)) != CS_SUCCESS) {
-
-		sprintf(log_buffer, "Problem closing security context, %s (%s:%d)",
-			phost, inet_ntoa(remote.sin_addr), port);
-
-		log_joberr(-1, __func__, log_buffer, jobid);
-	}
-
-#ifdef WIN32
-	closesocket(sock);
-#else
-	close(sock);
-#endif
-
+	set_task(WORK_Timed, time_now + 10, check_block_wt, blockj);
 	return;
 }
 
