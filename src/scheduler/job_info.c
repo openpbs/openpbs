@@ -3350,11 +3350,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		else {
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name, 
 				"Limited running jobs used for preemption from %d to 0: No jobs to preempt", nsinfo->sc.running);
-			free_server(nsinfo);
-			free_schd_error_list(full_err);
-			free(pjobs);
-			free(prjobs);
-			return NULL;
+			pjobs_list = NULL;
+			goto cleanup;
 		}
 
 	}
@@ -3380,23 +3377,16 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	err = dup_schd_error(full_err);	/* only first element */
 	if(err == NULL) {
-		free_schd_error_list(full_err);
-		free_server(nsinfo);
-		free(pjobs);
-		free(prjobs);
 		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
+		pjobs_list = NULL;
+		goto cleanup;
 	}
 
 	rjobs_subset = filter_preemptable_jobs(rjobs, nhjob, err);
 	if (rjobs_subset == NULL) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name, "Found no preemptable candidates");
-		free_schd_error_list(full_err);
-		free_server(nsinfo);
-		free(pjobs);
-		free(prjobs);
-		free_schd_error(err);
-		return NULL;
+		pjobs_list = NULL;
+		goto cleanup;
 	}
 
 	skipto = 0;
@@ -3407,13 +3397,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		if (indexfound == ERR_IN_SELECT) {
 			/* System error occurred, no need to proceed */
-			free_server(nsinfo);
-			free(pjobs);
-			free(prjobs);
-			free_schd_error_list(full_err);
-			free_schd_error(err);
 			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
+			pjobs_list = NULL;
+			goto cleanup;
 		}
 		pjob = rjobs_subset[indexfound];
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
@@ -3429,29 +3415,25 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
-		/* Check if any of the previously preempted job increased its preemption priority */
+		/* Check if any of the previously preempted job increased its preemption priority to be more than the
+		 * high priority job */
 		for (ind = 0; pjobs[ind] != NULL; ind++) {
-			if (pjobs[ind]->job->preempt >= nhjob->job->preempt) {
+			if (pjobs[ind]->job->preempt > nhjob->job->preempt) {
 				dont_preempt_job = 1;
 				break;
 			}
 		}
-		/* Check if the job we just ended increases its priority. If so, don't preempt this job */
-		if (dont_preempt_job || pjob->job->preempt >= nhjob->job->preempt) {
-			schd_error *tmp_err = new_schd_error();
-			clear_schd_error(tmp_err);
+		/* Check if the job we just ended increases its preemption priority to be more than the high priority job.
+		 * If so, don't preempt this job */
+		if (dont_preempt_job || pjob->job->preempt > nhjob->job->preempt) {
 			remove_resresv_from_array(rjobs_subset, pjob);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
 				  "Preempting job will escalate its priority or priority of other jobs, not preempting it");
 			if (sim_run_update_resresv(npolicy, pjob, ns_arr, NO_ALLPART) != 1) {
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name,
 					  "Trouble finding preemptable candidates");
-				free_schd_error_list(full_err);
-				free_server(nsinfo);
-				free(pjobs);
-				free(prjobs);
-				free_schd_error(err);
-				return NULL;
+				pjobs_list = NULL;
+				goto cleanup;
 			}
 			if (indexfound > 0)
 				skipto = indexfound - 1;
@@ -3487,12 +3469,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				nj = queue_subjob(nhjob, nsinfo, nhjob->job->queue);
 
 				if (nj == NULL) {
-					free_server(nsinfo);
-					free(pjobs);
-					free(prjobs);
-					free_schd_error_list(full_err);
-					free_schd_error(err);
-					return NULL;
+					pjobs_list = NULL;
+					goto cleanup;
 				}
 				nhjob = nj;
 			}
@@ -3531,12 +3509,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			rjobs_subset = filter_preemptable_jobs(rjobs, nhjob, err);
 			if (rjobs_subset == NULL) {
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, nhjob->name, "Found no preemptable candidates");
-				free_schd_error_list(full_err);
-				free_server(nsinfo);
-				free(pjobs);
-				free(prjobs);
-				free_schd_error(err);
-				return NULL;
+				pjobs_list = NULL;
+				goto cleanup;
 			}
 			filter_again = 0;
 			skipto = 0;
@@ -3574,13 +3548,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if (rc > 0) {
 		if ((pjobs_list = calloc((j + 1), sizeof(int))) == NULL) {
-			free_server(nsinfo);
-			free(pjobs);
-			free(prjobs);
-			free_schd_error_list(full_err);
-			free_schd_error(err);
 			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
+			goto cleanup;
 		}
 
 		for (j--, i = 0; j >= 0 ; j--) {
@@ -3614,7 +3583,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		} else
 			*no_of_jobs = i;
 	}
-
+cleanup:
 	free_server(nsinfo);
 	free(pjobs);
 	free(prjobs);

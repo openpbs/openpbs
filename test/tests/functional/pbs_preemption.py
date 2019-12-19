@@ -571,10 +571,12 @@ exit 3
         a = {'resources_available.ncpus': 8}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
-        a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=4]"}
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER) + "=4]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
 
-        p = "express_queue, normal_jobs, queue_softlimits"
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER2) + "=2]"}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
@@ -595,14 +597,23 @@ exit 3
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state=R': 5})
 
-        # Submit a job in workq2 which requests for 4 ncpus
-        a = {ATTR_l + '.select': '1:ncpus=4', ATTR_q: 'workq2'}
-        j = Job(TEST_USER, a)
+        # Submit a job in workq2 which requests for 3 ncpus, this job will
+        # make user2 go over its soft limits
+        a = {ATTR_l + '.select': '1:ncpus=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        # Submit a job in workq2 which requests for 1 ncpus, this job will
+        # not preempt because if it does then all TEST_USER jobs will move
+        # from being over queue softlimits to normal.
+        a = {ATTR_l + '.select': '1:ncpus=1', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
         jid = self.server.submit(j)
         jid_list.append(jid)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = ";Preempting job will escalate its priority"
-        for job_id in jid_list[0:-1]:
+        for job_id in jid_list[0:-2]:
                 self.scheduler.log_match(job_id + msg)
 
     def test_preemption_priority_escalation_2(self):
