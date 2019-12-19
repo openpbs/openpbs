@@ -1660,7 +1660,7 @@ check_block(job *pjob, char *message)
 	blockj->exitstat = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
 	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);	
 
-	set_task(WORK_Timed, time_now + 10, check_block_wt, blockj);
+	set_task(WORK_Immed, 0, check_block_wt, blockj);
 	return;
 }
 
