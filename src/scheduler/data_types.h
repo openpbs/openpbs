@@ -461,8 +461,6 @@ struct server_info
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
 #ifdef NAS
-	/* localmod 049 */
-	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
 #endif
@@ -707,8 +705,6 @@ struct node_info
 	/* localmod 034 */
 	int	sh_cls;			/* Share class supplied by node */
 	int	sh_type;		/* Share type of node */
-	/* localmod 049 */
-	int   NASrank;		/* NAS order in which nodes were queried */
 #endif
 
 	char *current_aoe;		/* AOE name instantiated on node */
