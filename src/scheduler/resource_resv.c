@@ -649,41 +649,23 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	nresresv->node_set_str = dup_string_array(oresresv->node_set_str);
 
 	nresresv->resresv_ind = oresresv->resresv_ind;
-#ifdef NAS /* localmod 049 */
-	nresresv->node_set = copy_node_ptr_array(oresresv->node_set, nsinfo->nodes, nsinfo);
-#else
 	nresresv->node_set = copy_node_ptr_array(oresresv->node_set, nsinfo->nodes);
-#endif /* localmod 049 */
 
 	if (oresresv->is_job) {
 		nresresv->is_job = 1;
 		nresresv->job = dup_job_info(oresresv->job, nqinfo, nsinfo);
 		if (nresresv->job != NULL) {
 			if (nresresv->job->resv !=NULL) {
-#ifdef NAS /* localmod 049 */
-				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-					nresresv->job->resv->resv->resv_nodes, NULL);
-				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nresresv->job->resv->ninfo_arr, NULL);
-#else
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
 					nresresv->job->resv->resv->resv_nodes);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
 					nresresv->job->resv->ninfo_arr);
-#endif /* localmod 049 */
 			}
 			else {
-#ifdef NAS /* localmod 049 */
-				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-					nsinfo->nodes, nsinfo);
-				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nsinfo->nodes, nsinfo);
-#else
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
 					nsinfo->nodes);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
 					nsinfo->nodes);
-#endif /* localmod 049 */
 			}
 		}
 	}
@@ -691,17 +673,10 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 		nresresv->is_resv = 1;
 		nresresv->resv = dup_resv_info(oresresv->resv, nsinfo);
 
-#ifdef NAS /* localmod 049 */
-		nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-			nsinfo->nodes, nsinfo);
-		nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-			nsinfo->nodes, nsinfo);
-#else
 		nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
 			nsinfo->nodes);
 		nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
 			nsinfo->nodes);
-#endif /* localmod 049 */
 	}
 	else  { /* error */
 		free_resource_resv(nresresv);

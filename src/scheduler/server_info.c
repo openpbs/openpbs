@@ -1146,9 +1146,6 @@ free_server_info(server_info *sinfo)
 #ifdef NAS
 	/* localmod 034 */
 	site_free_shares(sinfo);
-	/* localmod 049 */
-	if (sinfo->nodes_by_NASrank != NULL)
-		free(sinfo->nodes_by_NASrank);
 #endif
 }
 
@@ -1306,8 +1303,6 @@ new_server_info(int limallocflag)
 #ifdef NAS
 	/* localmod 034 */
 	sinfo->share_head = NULL;
-	/* localmod 049 */
-	sinfo->nodes_by_NASrank = NULL;
 #endif
 
 	return sinfo;
@@ -2293,11 +2288,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->num_nodes = osinfo->num_nodes;
 
 	/* dup the nodes, if there are any nodes */
-#ifdef NAS /* localmod 049 */
-	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS, 1);
-#else
 	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS);
-#endif /* localmod 049 */
 	
 	if (nsinfo->has_nodes_assoc_queue) {
 		nsinfo->unassoc_nodes =

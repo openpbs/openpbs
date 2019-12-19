@@ -850,12 +850,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	if (rinfo->resv_queue != NULL)
 		nrinfo->resv_queue = find_queue_info(sinfo->queues, rinfo->queuename);
 
-	if (rinfo->resv_nodes != NULL)
-#ifdef NAS /* localmod 049 */
-		nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS, 0);
-#else
-		nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS);
-#endif /* localmod 049 */
+	nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS);
 
 	return nrinfo;
 }
