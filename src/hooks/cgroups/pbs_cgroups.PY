@@ -115,6 +115,8 @@ else:
     import copy
     import operator
     import fnmatch
+    import math
+    import pprint
     try:
         import json
     except Exception:
@@ -154,13 +156,6 @@ class UserError(Exception):
     pass
 
 
-class JobValueError(UserError):
-    """
-    Errors in PBS job resource values.
-    """
-    pass
-
-
 class CgroupBusyError(ProcessingError):
     """
     Errors when the cgroup is busy.
@@ -185,6 +180,13 @@ class CgroupLimitError(AdminError):
 class CgroupProcessingError(ProcessingError):
     """
     Errors processing cgroup.
+    """
+    pass
+
+
+class JobValueError(Exception):
+    """
+    Errors in PBS job resource values.
     """
     pass
 
@@ -1010,20 +1012,12 @@ class HookUtils(object):
                         cgroup.set_limit('mem', val)
                     except Exception:
                         result = False
-                    # Setting rss_available already done in create_vnodes
-                    # if not cgroup.cfg['vnode_per_numa_node']:
-                    #    event.vnode_list[host].resources_available['mem'] =
-                    #        pbs.size(convert_size(val, 'mb'))
                 try:
-                    # Note that True is morphed to 1 and False is morphed
-                    # to 0, which allows different per-host or per-vnode
-                    # settings when polymorphic cfg file support is there
-                    # 0 means "never swap even if there is swap"
-                    # 1 means "only swap if you have to, but not proactively"
                     val = int(cgroup.cfg['cgroup']['memory']['swappiness'])
                     cgroup.set_swappiness(val)
                 except Exception:
-                    pbs.logmsg(pbs.EVENT_DEBUG2,
+                    # error is not fatal, do not set result to False
+                    pbs.logmsg(pbs.EVENT_DEBUG,
                                '%s: Failed to set swappiness' % caller_name())
             if 'memsw' in cgroup.subsystems:
                 val = node.get_vmem_on_node()
@@ -1359,7 +1353,11 @@ class NodeUtils(object):
                             convert_size(entries[3] + entries[4], 'kb')
                     elif entries[2] == 'HugePages_Total:':
                         numa_nodes[num]['HugePages_Total'] = int(entries[3])
-        # Spread memory resources across NUMA nodes
+        # Adjust NUMA nodes wrt reserved memory resource
+        # note that the get_* routines only work because this routine
+        # is called in the constructor; that constructor first
+        # sets self.numa_nodes to the empty dict, which triggers
+        # the get_* routines to use the non-NUMA section
         num_numa_nodes = len(numa_nodes)
         if self.cfg['vnode_per_numa_node'] and num_numa_nodes > 0:
             # Huge page memory
@@ -1367,23 +1365,31 @@ class NodeUtils(object):
             host_resv_hpmem = host_hpmem - self.get_hpmem_on_node()
             if host_resv_hpmem < 0:
                 host_resv_hpmem = 0
-            node_resv_hpmem = host_resv_hpmem / num_numa_nodes
+            node_resv_hpmem = int(math.ceil(host_resv_hpmem / num_numa_nodes))
             node_resv_hpmem -= (node_resv_hpmem %
                                 size_as_int(self.meminfo['Hugepagesize']))
             # Physical memory
             host_mem = self.get_memory_on_node(ignore_reserved=True)
-            host_resv_mem = host_mem - self.get_memory_on_node()
+            host_mem_net = self.get_memory_on_node(ignore_reserved=False)
+
+            pbs.logmsg(pbs.EVENT_DEBUG4, 
+                       '%s: gross mem = %s, net mem = %s' 
+                        % (caller_name(), host_mem, host_mem_net))
+
+
+            host_resv_mem = host_mem - host_mem_net
             if host_resv_mem < 0:
                 host_resv_mem = 0
-            node_resv_mem = host_resv_mem / num_numa_nodes
+            node_resv_mem = int(math.ceil(host_resv_mem / num_numa_nodes))
             node_resv_mem -= node_resv_mem % (1024 * 1024)
-            # Virtual memory
-            host_vmem = self.get_vmem_on_node(ignore_reserved=True)
-            host_resv_vmem = host_vmem - self.get_vmem_on_node()
-            if host_resv_vmem < 0:
-                host_resv_vmem = 0
-            node_resv_vmem = host_resv_vmem / num_numa_nodes
-            node_resv_vmem -= node_resv_vmem % (1024 * 1024)
+            # Swap to be added to virtual memory
+            # net values, taking into account reserved memory
+            host_vmem_net = self.get_vmem_on_node(ignore_reserved=False)
+            node_swapmem = int(math.floor((host_vmem_net - host_mem_net)
+                                          / num_numa_nodes))
+            if node_swapmem < 0:
+                node_swapmem = 0
+            node_swapmem -= node_swapmem % (1024 * 1024)
             # Set the NUMA node values
             for num in numa_nodes:
                 val = numa_nodes[num]['HugePages_Total']
@@ -1395,10 +1401,9 @@ class NodeUtils(object):
                 # val -= val % (1024 * 1024)
                 val -= node_resv_mem
                 numa_nodes[num]['mem'] = val
-                val = host_vmem / num_numa_nodes
+                val += node_swapmem
                 # do not round down -- do that only when reporting to svr
                 # val -= val % (1024 * 1024)
-                val -= node_resv_vmem
                 numa_nodes[num]['vmem'] = val
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s' % (caller_name(), numa_nodes))
         return numa_nodes
@@ -1730,14 +1735,15 @@ class NodeUtils(object):
             # Caller wants the sum of all NUMA nodes
             for nnid in self.numa_nodes:
                 if 'mem' in self.numa_nodes[nnid]:
-                    total += size_as_int(self.numa_nodes[nnid]['mem'])
+                    total += self.numa_nodes[nnid]['mem']
                 else:
+                    # NUMA node unreliable, make sure other method is used
                     total = 0
                     break
             # Do not round down to nearest MB
             # total -= total % (1024 * 1024)
             if total > 0:
-                return size_as_int(total)
+                return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Failed to obtain memory using NUMA node method' %
                        caller_name())
@@ -1754,7 +1760,7 @@ class NodeUtils(object):
             raise
         if total <= 0:
             raise ValueError('Total node memory value invalid')
-        pbs.logmsg(pbs.EVENT_DEBUG4, 'total mem: %d' % total)
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'total visible mem: %d' % total)
         # Calculate reserved memory
         reserved = 0
         if not ignore_reserved:
@@ -1773,7 +1779,7 @@ class NodeUtils(object):
         amount = convert_size(str(remaining), 'kb')
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Returning: %s' %
                    (caller_name(), amount))
-        return size_as_int(remaining)
+        return remaining
 
     def get_vmem_on_node(self, vmemtotal=None, ignore_reserved=False):
         """
@@ -1781,21 +1787,30 @@ class NodeUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         total = 0
+        # If NUMA nodes were not yet discovered then get totals
+        # using non-NUMA methods
         if self.numa_nodes and self.cfg['vnode_per_numa_node']:
-            # Caller wants the sum of all NUMA nodes
+            # Caller wants the sum of all NUMA nodes, and they were
+            # computed earlier
             for nnid in self.numa_nodes:
                 if 'vmem' in self.numa_nodes[nnid]:
-                    total += size_as_int(self.numa_nodes[nnid]['vmem'])
+                    total += self.numa_nodes[nnid]['vmem']
                 else:
                     total = 0
                     break
             # Do not round down to nearest MB
             # total -= total % (1024 * 1024)
             if total > 0:
-                return size_as_int(total)
+                return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Failed to obtain vmem using NUMA node method' %
                        caller_name())
+        # Calculate total vmem; start with visible or usable physical memory
+        total = self.get_memory_on_node(None, ignore_reserved)
+        if ignore_reserved:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'total visible mem: %d' % total)
+        else:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'total usable mem: %d' % total)
         # Calculate total swap
         try:
             if vmemtotal is None:
@@ -1811,22 +1826,20 @@ class NodeUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: No swap space detected' %
                        caller_name())
+            swap = 0
         pbs.logmsg(pbs.EVENT_DEBUG4, 'total swap: %d' % swap)
-        # Calculate total vmem
-        total = self.get_memory_on_node()
-        pbs.logmsg(pbs.EVENT_DEBUG4, 'total mem: %d' % total)
-        total += swap
-        pbs.logmsg(pbs.EVENT_DEBUG4, 'total vmem: %d' % total)
-        # Calculate reserved vmem
+        # Calculate reserved swap
         reserved = 0
         if not ignore_reserved:
             reserve_pct = int(self.cfg['cgroup']['memsw']['reserve_percent'])
-            reserved += int(total * (reserve_pct / 100.0))
+            reserved += int(swap * (reserve_pct / 100.0))
             reserve_amount = self.cfg['cgroup']['memsw']['reserve_amount']
             reserved += size_as_int(reserve_amount)
-        pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved vmem: %d' % reserved)
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved swap: %d' % reserved)
+            if reserved > swap:
+                reserved = swap
         # Calculate remaining vmem
-        remaining = total - reserved
+        remaining = total + swap - reserved
         # Do not round down to nearest MB
         # remaining -= remaining % (1024 * 1024)
         if remaining <= 0:
@@ -1835,7 +1848,7 @@ class NodeUtils(object):
         amount = convert_size(str(remaining), 'kb')
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Returning: %s' %
                    (caller_name(), amount))
-        return size_as_int(remaining)
+        return remaining
 
     def get_hpmem_on_node(self, hpmemtotal=None, ignore_reserved=False):
         """
@@ -1847,14 +1860,14 @@ class NodeUtils(object):
             # Caller wants the sum of all NUMA nodes
             for nnid in self.numa_nodes:
                 if 'hpmem' in self.numa_nodes[nnid]:
-                    total += size_as_int(self.numa_nodes[nnid]['hpmem'])
+                    total += self.numa_nodes[nnid]['hpmem']
                 else:
                     total = 0
                     break
             # Do not round down to nearest MB
             # total -= total % (1024 * 1024)
             if total > 0:
-                return size_as_int(total)
+                return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Failed to obtain memory using NUMA node method' %
                        caller_name())
@@ -1896,7 +1909,7 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Returning: %s' %
                    (caller_name(), amount))
         # Remove any bytes beyond the last MB
-        return size_as_int(remaining)
+        return remaining
 
     def create_vnodes(self, vntype=None):
         """
@@ -1941,6 +1954,33 @@ class NodeUtils(object):
 
         vnode_msg_cpu = '%s: vnode_list[%s].resources_available[ncpus] = %d'
         vnode_msg_mem = '%s: vnode_list[%s].resources_available[mem] = %s'
+
+        # Some kernel drivers "reserve" memory on /proc/meminfo
+        # and this is not reflected in the node meminfo; if necessary,
+        # adjust the values published as resources_available.mem
+        # on the per-socket vnodes by the difference spread over nodes
+        adjust_bytes_per_node = 0
+        if vnodes:
+            num_numa_nodes = len(self.numa_nodes)
+            total_nodemem = 0
+            for num in self.numa_nodes:
+                total_nodemem += size_as_int(self.numa_nodes[num]['MemTotal'])
+            total_hostmem = size_as_int(self.meminfo['MemTotal'])
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       '%s: host memtotal %s; node memtotal %s'
+                       % (caller_name(),
+                          str(total_hostmem), str(total_nodemem)))
+            if total_hostmem < total_nodemem:
+                adjust_bytes_per_node = \
+                    int(math.ceil((total_nodemem-total_hostmem)
+                                  / float(num_numa_nodes)))
+                pbs.logmsg(pbs.EVENT_DEBUG,
+                           '%s: host memtotal %s < node memtotal %s, '
+                           'adjusting each vnode mem down by %s bytes'
+                           % (caller_name(),
+                              str(total_hostmem), str(total_nodemem),
+                              str(adjust_bytes_per_node)))
+
         for nnid in self.numa_nodes:
             if vnodes:
                 vnode_key = vnode_name + '[%d]' % nnid
@@ -1979,7 +2019,7 @@ class NodeUtils(object):
                         # set the vnode value
                         vnode_resc_avail['ncpus'] = threads
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_cpu %
-                                   (caller_name(), vnode_name,
+                                   (caller_name(), vnode_key,
                                     vnode_resc_avail['ncpus']))
                     else:
                         if 'ncpus' not in host_resc_avail:
@@ -2045,6 +2085,7 @@ class NodeUtils(object):
                         key_to_subsys = ({'mem': 'memory',
                                           'vmem': 'memsw',
                                           'hpmem': 'hugetlb'})
+                        mem_val -= adjust_bytes_per_node
                         mem_val -= (1024 * 1024
                                 * self.cfg['cgroup'][key_to_subsys[key]]
                                                     ['vnode_hidden_mb'])
@@ -2075,8 +2116,11 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode list: %s' %
                    (caller_name(), str(vnode_list)))
         if vnodes:
-            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode_resc_avail: %s' %
-                       (caller_name(), vnode_resc_avail))
+            for nnid in self.numa_nodes:
+                vnode_key = vnode_name + '[%d]' % nnid
+                vnode_resc_avail = vnode_list[vnode_key].resources_available
+                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s vnode_resc_avail: %s' %
+                           (caller_name(), vnode_key, vnode_resc_avail))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
                    (caller_name(), host_resc_avail))
         return True
@@ -2444,6 +2488,9 @@ class CgroupUtils(object):
         # "enabled" boolean (which will now _always_ be defined)
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Config file parsing" % caller_name())
         vntype = self.vntype
+        # avoid crashes in fnmatch if no vntype was specified on the host
+        if not vntype:
+            vntype = "__UNKNOWN__"
         for key_found, value_found in config_dict.iteritems():
             if isinstance(value_found, dict):
                 # subsection found
@@ -4585,7 +4632,15 @@ class CgroupUtils(object):
         self.cleanup_hook_data(local_jobs)
         self.cleanup_env_files(local_jobs)
         remaining = 0
-        for key in self.paths:
+        # Always do systemd first, to prevent it from "mirroring"
+        # that directory into other hierarchies behind our back
+        if 'systemd' in self.paths:
+            keys_to_process = \
+                (['systemd']
+                 + [x for x in self.paths if x != 'systemd'])
+        else:
+            keys_to_process = [x for x in self.paths]
+        for key in keys_to_process:
             path = os.path.dirname(self._cgroup_path(key))
             # Identify any orphans and append an orphan suffix
             pattern = self._systemd_subdir_wildcard()
@@ -4641,29 +4696,42 @@ class CgroupUtils(object):
             with Timeout(self.cfg['kill_timeout'],
                          'Timed out deleting cgroup for job: %s' % jobid):
                 self._delete_slice(jobid)
-                for key in self.paths:
-                    cgroup_path = self._cgroup_path(key)
-                    path = os.path.dirname(self._cgroup_path(key))
-                    pattern = self._systemd_subdir_wildcard()
-                    for subdir in glob.glob(os.path.join(path, pattern)):
-                        # Make sure it matches exactly
-                        dname = os.path.basename(subdir)
-                        subdir_jobid = self._systemd_subdir_to_jobid(dname)
-                        subdir_parent = os.path.dirname(subdir)
-                        if subdir_jobid != jobid:
-                            continue
-                        # Make sure it still exists
-                        if not os.path.isdir(subdir):
-                            continue
-                        # Remove it
-                        if not self._remove_cgroup(subdir_parent, jobid):
-                            pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
-                                       'delete cgroup for job %s' %
-                                       (caller_name(), jobid))
-            finished = True
+                while not finished:
+                    # can loop 'as fast as possible':
+                    # _remove_cgroup has delay
+                    failure = False
+                    if 'systemd' in self.paths:
+                        keys_to_process = \
+                            (['systemd']
+                             + [x for x in self.paths if x != 'systemd'])
+                    else:
+                        keys_to_process = [x for x in self.paths]
+                    for key in keys_to_process:
+                        cgroup_path = self._cgroup_path(key)
+                        path = os.path.dirname(self._cgroup_path(key))
+                        pattern = self._systemd_subdir_wildcard()
+                        for subdir in glob.glob(os.path.join(path, pattern)):
+                            # Make sure it matches exactly
+                            dname = os.path.basename(subdir)
+                            subdir_jobid = self._systemd_subdir_to_jobid(dname)
+                            subdir_parent = os.path.dirname(subdir)
+                            if subdir_jobid != jobid:
+                                continue
+                            # Make sure it still exists
+                            if not os.path.isdir(subdir):
+                                continue
+                            # Remove it
+                            if not self._remove_cgroup(subdir_parent, jobid):
+                                pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
+                                           'delete cgroup for job %s' %
+                                           (caller_name(), jobid))
+                                failure = True
+                    if not failure:
+                        finished = True
         except TimeoutError:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Timed out removing cgroup '
                        'for %s' % (caller_name(), jobid))
+            finished = false  # interrupted, so not sure we're done
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Error removing cgroup '
                        'for %s: %s' % (caller_name(), jobid, exc))
@@ -5239,5 +5307,8 @@ if (__name__ == 'builtins') or (__name__ == '__builtin__'):
                    str(traceback.format_exc().strip().splitlines()))
         pbs.event().reject(str(traceback.format_exc().strip().splitlines()))
     finally:
-        pbs.logmsg(pbs.EVENT_DEBUG, 'Hook ended: %s (elapsed time: %0.4lf)' %
-                   (pbs.event().hook_name, (time.time() - START)))
+        pbs.logmsg(pbs.EVENT_DEBUG, 'Hook ended: %s, '
+                   'event_type %s (elapsed time: %0.4lf)' %
+                   (pbs.event().hook_name,
+                    str(pbs.event().type),
+                    (time.time() - START)))
