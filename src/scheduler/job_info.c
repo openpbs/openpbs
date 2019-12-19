@@ -3416,7 +3416,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
 		/* Check if any of the previously preempted job increased its preemption priority to be more than the
-		 * high priority job */
+		 * high priority job
+		 */
 		for (ind = 0; pjobs[ind] != NULL; ind++) {
 			if (pjobs[ind]->job->preempt > nhjob->job->preempt) {
 				dont_preempt_job = 1;
@@ -3424,7 +3425,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			}
 		}
 		/* Check if the job we just ended increases its preemption priority to be more than the high priority job.
-		 * If so, don't preempt this job */
+		 * If so, don't preempt this job
+		 */
 		if (dont_preempt_job || pjob->job->preempt > nhjob->job->preempt) {
 			remove_resresv_from_array(rjobs_subset, pjob);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name,
