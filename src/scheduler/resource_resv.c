@@ -750,8 +750,8 @@ find_resource_resv(resource_resv **resresv_arr, char *name)
  * 		find a resource_resv by index in all_resresv array or by unique numeric rank
  *
  * @param[in]	resresv_arr	-	array of resource_resvs to search
- * @param[in]	rank        -	rank of resource_resv to find
  * @param[in]	index	    -	index of resource_resv to find
+ * @param[in]	rank        -	rank of resource_resv to find
  *
  * @return	resource_resv *
  * @retval resource_resv	: if found
@@ -759,7 +759,7 @@ find_resource_resv(resource_resv **resresv_arr, char *name)
  *
  */
 resource_resv *
-find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index)
+find_resource_resv_by_indrank(resource_resv **resresv_arr, int index, int rank)
 {
 	int i;
 	if (resresv_arr == NULL)
@@ -1995,7 +1995,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 	}
 
 	for (i = 0, j = 0; resresv_arr[i] != NULL; i++) {
-		resresv = find_resource_resv_by_indrank(tot_arr, resresv_arr[i]->rank, resresv_arr[i]->resresv_ind);
+		resresv = find_resource_resv_by_indrank(tot_arr, resresv_arr[i]->resresv_ind, resresv_arr[i]->rank);
 
 		if (resresv != NULL) {
 			new_resresv_arr[j] = resresv;

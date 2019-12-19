@@ -556,3 +556,131 @@ exit 3
         jid_high = self.server.submit(j)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
+
+    def test_preemption_priority_escalation(self):
+        """
+        Test that scheduler does not try preempting a job that escalates its
+        preemption priority when preempted.
+        """
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER) + "=4]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER2) + "=2]"}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
+        a = {'preempt_prio': p}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
+
+        # Submit 4 jobs requesting 1 ncpu each in workq
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        jid_list = []
+        for _ in range(4):
+            j = Job(TEST_USER, a)
+            jid = self.server.submit(j)
+            jid_list.append(jid)
+
+        # Submit 5th job that will make all the job in workq to go over its
+        # softlimits
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state=R': 5})
+
+        # Submit a job in workq2 which requests for 3 ncpus, this job will
+        # make user2 go over its soft limits
+        a = {ATTR_l + '.select': '1:ncpus=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        # Submit a job in workq2 which requests for 1 ncpus, this job will
+        # not preempt because if it does then all TEST_USER jobs will move
+        # from being over queue softlimits to normal.
+        a = {ATTR_l + '.select': '1:ncpus=1', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        msg = ";Preempting job will escalate its priority"
+        for job_id in jid_list[0:-2]:
+                self.scheduler.log_match(job_id + msg)
+
+    def test_preemption_priority_escalation_2(self):
+        """
+        Test that scheduler does not try preempting a job that escalates its
+        preemption priority when preempted. But in this case ensure that the
+        job whose preemption priority gets escalated is one of the running
+        jobs that scheduler is yet to preempt in simulated universe.
+        """
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        a = {'resources_available.ncpus': 10}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'type': 'long', 'flag': 'nh'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='foo')
+
+        a = {'resources_available.foo': 10}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        self.scheduler.add_resource('foo')
+
+        a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=5]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+        # Set a soft limit on resource foo to 0 so that all jobs requesting
+        # this resource are over soft limits.
+        a = {'max_run_res_soft.foo': "[u:PBS_GENERIC=0]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+
+        p = "express_queue, normal_jobs, queue_softlimits"
+        a = {'preempt_prio': p}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
+
+        # Submit 4 jobs requesting 1 ncpu each in workq
+        jid_list = []
+        for index in range(4):
+            a = {ATTR_l + '.select': '1:ncpus=1:foo=2'}
+            if (index == 2):
+                # Since this job is not requesting foo, preempting one job
+                # from this queue will escalate its preemption priority to
+                # normal and scheduler will not attempt to preempt it.
+                a = {ATTR_l + '.select': '1:ncpus=1'}
+            j = Job(TEST_USER, a)
+            jid = self.server.submit(j)
+            jid_list.append(jid)
+            time.sleep(1)
+
+        # Submit 5th job that will make all the job in workq to go over its
+        # softlimits because if resource ncpus
+        a = {ATTR_l + '.select': '1:ncpus=2:foo=2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state=R': 5})
+
+        # Submit a job in workq2 which requests for 8 ncpus and 3 foo resource
+        a = {ATTR_l + '.select': '1:ncpus=8:foo=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[5])
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[2])
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[0])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[1])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[3])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[4])

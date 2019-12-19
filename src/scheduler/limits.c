@@ -2756,6 +2756,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 	sch_resource_t	max_gengroup_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -2794,7 +2795,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 			if (max_group_res_soft < used) {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -2803,11 +2804,15 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		} else if (max_gengroup_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic group soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 /**
@@ -2917,6 +2922,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 	sch_resource_t	max_genuser_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -2956,7 +2962,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 			if (max_user_res_soft < used) {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -2965,11 +2971,15 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		} else if (max_genuser_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic user soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 /**
@@ -3544,6 +3554,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 	sch_resource_t	max_genproject_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -3583,7 +3594,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 			if (max_project_res_soft < used){
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -3592,11 +3603,15 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		} else if (max_genproject_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic project soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 

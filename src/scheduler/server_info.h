@@ -331,11 +331,11 @@ void update_universe_on_end(status *policy, resource_resv *resresv, char *job_st
 int set_resource(schd_resource *res, char *val, enum resource_fields field);
 
 /*
- *	update_preemption_on_run - update preemption status when a
- *   					resource resv is run
+ *	update_preemption_priority - update preemption status when a
+ *   					resource resv runs/ends
  *	returns nothing
  */
-void update_preemption_on_run(server_info *sinfo, resource_resv *resresv);
+void update_preemption_priority(server_info *sinfo, resource_resv *resresv);
 
 /*
  *	add_resource_list - add one resource list to another

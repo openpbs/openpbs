@@ -1861,7 +1861,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 {
 	resource_req *req;		/* resource request from job */
 	schd_resource *res;		/* resource on server */
-	int i;
 
 	if (sinfo == NULL ||  resresv == NULL)
 		return;
@@ -1945,37 +1944,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-		}
-	}
-
-	/* The only thing which will change preemption priorities in the middle of
-	 * a scheduling cycle is soft user/group/project limits.  If a user, group,
-	 * or project  goes under a limit because of this job ending, we need to mark
-	 * those jobs differently
-	 */
-	if (cstat.preempting && resresv->is_job) {
-		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
-			for (i = 0; sinfo->jobs[i] != NULL; i++) {
-				if (sinfo->jobs[i]->job != NULL) {
-					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
-					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
-					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
-					int alllim = resresv->job->queue->has_all_limit || sinfo->has_all_limit;
-					if (alllim || (usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
-					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
-					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
-
-						set_preempt_prio(sinfo->jobs[i],
-							sinfo->jobs[i]->job->queue, sinfo);
-				}
-			}
-
-			/* now that we've set all the preempt levels, we need to count them */
-			memset(sinfo->preempt_count, 0, NUM_PPRIO * sizeof(int));
-			for (i = 0; sinfo->running_jobs[i] != NULL; i++)
-				if (!sinfo->running_jobs[i]->job->can_not_preempt)
-					sinfo->
-					preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
 		}
 	}
 }
@@ -3116,6 +3084,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
 #ifdef NAS /* localmod 057 */
 	site_update_on_end(sinfo, qinfo, resresv);
 #endif /* localmod 057 */
+	update_preemption_priority(sinfo, resresv);
 }
 
 /**
@@ -3325,8 +3294,8 @@ resolve_indirect_resources(node_info **nodes)
 
 /**
  * @brief
- * 		update_preemption_on_run - update preemption status when a
- *		job is run
+ * 		update_preemption_priority - update preemption status when a
+ *		job runs/ends
  *
  * @param[in]	sinfo 	- server where job was run
  * @param[in]	resresv - job which was run
@@ -3334,8 +3303,8 @@ resolve_indirect_resources(node_info **nodes)
  * @return	void
  *
  * @note
- * 		Must be called after update_server_on_run() and
- *		update_queue_on_run()
+ * 		Must be called after update_server_on_run/end() and
+ *		update_queue_on_run/end()
  *
  * @note
  * 		The only thing which will change preemption priorities
@@ -3346,7 +3315,7 @@ resolve_indirect_resources(node_info **nodes)
  * @par MT-Safe:	no
  */
 void
-update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
+update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 {
 	int i;
 
