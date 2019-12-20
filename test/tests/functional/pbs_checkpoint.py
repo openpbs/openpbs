@@ -55,14 +55,8 @@ class TestCheckpoint(TestFunctional):
 kill $1
 exit 0
 """
-        self.abort_file = self.du.create_temp_file(hostname=self.mom.hostname,
-                                                   body=abort_script)
-        self.du.chmod(hostname=self.mom.hostname,
-                      path=self.abort_file, mode=0o755)
-        self.du.chown(hostname=self.mom.hostname, path=self.abort_file,
-                      uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
-        self.mom.add_config(c)
+        self.abort_file = self.mom.add_checkpoint_script(
+            body=abort_script, mode=0o755, uid=0, gid=0, runas=ROOT_USER)
         self.platform = self.du.get_platform()
         if self.platform != 'cray' and self.platform != 'craysim':
             self.attrs = {ATTR_l + '.select': '1:ncpus=1',
@@ -148,7 +142,6 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
         j1 = Job(TEST_USER, self.attrs)
-        j1.set_sleep_time(80)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 

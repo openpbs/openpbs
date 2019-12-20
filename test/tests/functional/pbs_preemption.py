@@ -89,16 +89,6 @@ exit 1
 
         return jid1, jid2, jid3
 
-    def insert_checkpoint_script(self, chk_script):
-        chk_file = self.du.create_temp_file(hostname=self.mom.hostname,
-                                            body=chk_script)
-        self.du.chmod(hostname=self.mom.hostname,
-                      path=chk_file, mode=0o755)
-        self.du.chown(hostname=self.mom.hostname,
-                      path=chk_file, uid=0, gid=0, sudo=True)
-        c = {'$action': 'checkpoint_abort 30 !' + chk_file + ' %sid'}
-        self.mom.add_config(c)
-
     def submit_and_preempt_jobs(self, preempt_order='R', order=None,
                                 job_array=False, extra_attrs=None):
         """
@@ -189,14 +179,16 @@ exit 1
         """
         Test that a job is preempted with checkpoint
         """
-        self.insert_checkpoint_script(self.chk_script)
+        self.mom.add_checkpoint_script(body=self.chk_script, mode=0o755,
+                                       uid=0, gid=0, sudo=True)
         self.submit_and_preempt_jobs(preempt_order='C')
 
     def test_preempt_checkpoint_requeue(self):
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
-        self.insert_checkpoint_script(self.chk_script_fail)
+        self.mom.add_checkpoint_script(body=self.chk_script, mode=0o755,
+                                       uid=0, gid=0, sudo=True)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
     def test_preempt_requeue(self):
@@ -245,7 +237,8 @@ exit 1
         """
         Test that when checkpoint fails, a job is correctly deleted
         """
-        self.insert_checkpoint_script(self.chk_script_fail)
+        self.mom.add_checkpoint_script(body=self.chk_script_fail, mode=0o755,
+                                       uid=0, gid=0, sudo=True)
         self.submit_and_preempt_jobs(preempt_order='CD')
 
     def test_preempt_rerunable_false(self):
@@ -262,8 +255,8 @@ exit 1
         # in CLI mode Checkpoint requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
         self.server.set_op_mode(PTL_CLI)
-
-        self.insert_checkpoint_script(self.chk_script)
+        self.mom.add_checkpoint_script(body=self.chk_script, mode=0o755,
+                                       uid=0, gid=0, sudo=True)
         a = {'Checkpoint': 'n'}
         self.submit_and_preempt_jobs(preempt_order='CD', extra_attrs=a)
 
@@ -383,7 +376,8 @@ exit 1
         abort_script = """#!/bin/bash
 exit 3
 """
-        self.insert_checkpoint_script(abort_script)
+        self.mom.add_checkpoint_script(body=abort_script, mode=0o755,
+                                       uid=0, gid=0, sudo=True)
         # submit two jobs to regular queue
         attrs = {'Resource_List.select': '1:ncpus=1', 'Rerunable': 'n'}
         j1 = Job(TEST_USER, attrs)
