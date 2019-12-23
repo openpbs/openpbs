@@ -989,13 +989,8 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                 exit 0
                 """
         pbs_home = self.mom.pbs_conf['PBS_HOME']
-        self.mom.add_checkpoint_script(
-            body=chk_script,
-            mode=0o755,
-            dirname=pbs_home,
-            uid=0,
-            gid=0,
-            sudo=True)
+        self.mom.add_checkpoint_abort_script(body=chk_script,
+                                             mode=0o755)
         self.helper_test_preempt_release_all("C")
 
     def test_server_restart_with_suspened_job(self):

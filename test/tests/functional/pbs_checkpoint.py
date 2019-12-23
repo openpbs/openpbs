@@ -55,8 +55,8 @@ class TestCheckpoint(TestFunctional):
 kill $1
 exit 0
 """
-        self.abort_file = self.mom.add_checkpoint_script(
-            body=abort_script, mode=0o755, uid=0, gid=0, runas=ROOT_USER)
+        self.abort_file = self.mom.add_checkpoint_abort_script(
+            body=abort_script, mode=0o755)
         self.platform = self.du.get_platform()
         if self.platform != 'cray' and self.platform != 'craysim':
             self.attrs = {ATTR_l + '.select': '1:ncpus=1',
