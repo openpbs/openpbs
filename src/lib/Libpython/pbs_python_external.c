@@ -57,6 +57,7 @@
 #include <pythonrun.h>          /* For Py_SetPythonHome */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <unistd.h>
 #include <wchar.h>
 
@@ -118,6 +119,12 @@ pbs_python_ext_start_interpreter(
 	char pbs_python_destlib2[MAXPATHLEN+1];
 	int  evtype;
 	int  rc;
+#ifndef WIN32
+	struct sigaction act;
+	struct sigaction oact;
+#else
+	void *oact;
+#endif
 
 	/*
 	 * initialize the convenience global pbs_python_daemon_name, as it is
@@ -195,10 +202,44 @@ pbs_python_ext_start_interpreter(
 		goto ERROR_EXIT;
 	}
 
+#ifndef WIN32
+	/*
+	 * Temporary set SIGINT to SIG_DFL, so Py_InitializeEx can setup proper SIGINT handler
+	 * see https://github.com/python/cpython/blob/3.6/Modules/signalmodule.c#L1280
+	 * as per above, If SIGINT is not set to SIG_DFL then Python won't register it's SIGINT handler
+	 * Which means Python won't raise KeyBoardInterrupt on PyErr_SetInterrupt()
+	 * instead it will throw NoneType not callable error
+	 */
+	sigemptyset(&act.sa_mask);
+	act.sa_flags   = 0;
+	act.sa_handler = SIG_DFL;
+	if (sigaction(SIGINT, &act, &oact) != 0) {
+		log_err(errno, __func__, "Failed to set SIG_DFL on SIGINT");
+		return 1;
+	}
+#else
+	oact = signal(SIGINT, SIG_DFL);
+	if (oact == SIG_ERR) {
+		log_err(errno, __func__, "Failed to set SIG_DFL on SIGINT");
+		return 1;
+	}
+#endif
+	/*
+	 * arg '1' means to not skip init of signals
+	 * we want signals to propagate to the executing
+	 * Python script to be able to interrupt it
+	 */
+	Py_InitializeEx(1);
 
-	Py_InitializeEx(1);  /* arg '1' means to not skip init of signals -    */
-	/* we want signals to propagate to the executing  */
-	/* Python script to be able to interrupt it       */
+	/* revert SIGINT to original sig handler */
+#ifndef WIN32
+	if (sigaction(SIGINT, &oact, NULL) != 0) {
+#else
+	if (signal(SIGINT, oact) == SIG_ERR) {
+#endif
+		log_err(errno, __func__, "Failed to revert signal handler for SIGINT");
+		return 1;
+	}
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;
@@ -926,5 +967,3 @@ ERROR_EXIT:
 
 
 #endif /* PYTHON */
-
-
