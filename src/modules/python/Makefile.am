@@ -36,11 +36,11 @@
 # trademark licensing policies.
 #
 
-pbsmoduledir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs
+pbsmoduledir = $(libdir)/python/altair/pbs
 
 pbsmodule_PYTHON = pbs/__init__.py
 
-pbsv1moduledir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs/v1
+pbsv1moduledir = $(libdir)/python/altair/pbs/v1
 
 pbsv1module_PYTHON = \
 	$(top_builddir)/src/lib/Libpython/pbs_ifl.py \
@@ -58,7 +58,7 @@ pbsv1module_PYTHON = \
 
 
 
-pbshooksdir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs_hooks
+pbshooksdir = $(libdir)/python/altair/pbs_hooks
 
 dist_pbshooks_DATA = \
 	pbs_hooks/PBS_power.HK \

@@ -1107,7 +1107,7 @@ initialize(void)
 	 * the default lenfth of the AVL_IX_REC is accessed, it must be
 	 * through xxrp or the compiler will complain about accessing
 	 * memory beyond the size of the structure.
-	 * 
+	 *
 	 */
 	union {
 		AVL_IX_REC	xrp;
@@ -2455,7 +2455,7 @@ set_job_launch_delay(char *value)
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 		"job_launch_delay", value);
 	i = strtol(value, &endp, 10);
- 
+
 	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
 		return HANDLER_FAIL;	/* error */
 	job_launch_delay = i;
@@ -8220,7 +8220,6 @@ main(int argc, char *argv[])
 	char				*configscriptaction = NULL;
 	char				*inputfile = NULL;
 	char				*scriptname = NULL;
-	char 				pbs_python_home[MAXPATHLEN + 1];
 	resource			*prscput;
 	resource			*prswall;
 	char				*getopt_str;
@@ -8267,13 +8266,8 @@ main(int argc, char *argv[])
 	int					do_mlockall = 0;
 #endif
 
-#ifdef PYTHON
-	PyObject			*path;
-	PyObject 			*retval =  NULL;
-	char				*buf;
-	char				py_version[4];
-#endif
-
+	char python_binpath[MAXPATHLEN + 1] = {'\0'};
+	wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
 
 #ifdef WIN32
 	_fcloseall();	/* Close any inherited extra files, leaving stdin-err open */
@@ -9586,79 +9580,27 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
+	Py_IgnoreEnvironmentFlag = 1;
 
-        /* Setting PYTHONHOME */
-        Py_IgnoreEnvironmentFlag = 1;
-        memset((char *)pbs_python_home, '\0', MAXPATHLEN + 1);
-        snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
-                pbs_conf.pbs_exec_path);
-        if (file_exists(pbs_python_home)) {
-                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
-                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
-                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
-                Py_SetPythonHome(tmp_pbs_python_home);
-        }
-
-	Py_Initialize();
-
-	path = PySys_GetObject("path");
-#ifdef WIN32
-	pbs_asprintf(&buf, "%s/Lib", pbs_python_home);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
+#ifndef WIN32
+	snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
 #else
-	/* Identify the version of the Python interpreter */
-	strncpy(py_version, Py_GetVersion(), 3);
-	py_version[3] = '\0';
-
-	/* list of possible paths to Python modules (mom imports json) */
-	pbs_asprintf(&buf, "%s/lib/python%s", pbs_python_home, py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib/python/python%s", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib/python/python%s/lib-dynload", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib64/python/python%s", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib64/python/python%s/lib-dynload", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
+	snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
+	forward2back_slash(python_binpath);
 #endif
-	PySys_SetObject("path", path);
+	if (!file_exists(python_binpath)) {
+#ifdef PYTHON_BIN_PATH
+		snprintf(python_binpath, MAXPATHLEN, "%s", PYTHON_BIN_PATH);
+		if (!file_exists(python_binpath))
+#endif
+		{
+			log_err(-1, __func__, "Python executable not found!");
+			return 3;
+		}
+	}
+	mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+	Py_SetProgramName(w_python_binpath);
+	Py_Initialize();
 #endif
 
 #ifndef	WIN32

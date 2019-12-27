@@ -112,8 +112,7 @@ ERROR_EXIT:
 int
 pbs_python_modify_syspath(const char *dirname, int pos)
 {
-	PyObject *sys_mod_obj = NULL; /* 'sys' module  */
-	PyObject *sys_mod_path_attr = NULL; /* sys.path */
+	PyObject *path = NULL; /* 'sys.path'  */
 	PyObject *pystr_dirname = NULL;
 
 	if (!dirname) {
@@ -133,27 +132,17 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	}
 
 	/* if sucess we ger a NEW ref */
-	if (!(sys_mod_obj = PyImport_ImportModule("sys"))) {/* failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:import sys module",
+	if (!(path = PySys_GetObject("path"))) {/* failed */
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:PySys_GetObject failed",
 			__func__);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
 		pbs_python_write_error_to_log(log_buffer);
 		goto ERROR_EXIT;
 	}
 
-	/* if sucess we ger a NEW ref */
-	if (!(sys_mod_path_attr =
-		PyObject_GetAttrString(sys_mod_obj, "path"))) {/* failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s:could not retrieve path attribute",
-			__func__);
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		pbs_python_write_error_to_log(log_buffer);
-		goto ERROR_EXIT;
-	}
-
-	if (PyList_Check(sys_mod_path_attr)) {
+	if (PyList_Check(path)) {
 		if (pos == -1) {
-			if (PyList_Append(sys_mod_path_attr, pystr_dirname) == -1) {
+			if (PyList_Append(path, pystr_dirname) == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1,
 #ifdef NAS /* localmod 005 */
 					"%s:could not append to list pos:<%ld>",
@@ -168,7 +157,7 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 				goto ERROR_EXIT;
 			}
 		} else {
-			if (PyList_Insert(sys_mod_path_attr, pos, pystr_dirname) == -1) {
+			if (PyList_Insert(path, pos, pystr_dirname) == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1,
 #ifdef NAS /* localmod 005 */
 					"%s:could not append to list pos:<%ld>",
@@ -191,7 +180,7 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	{
 		PyObject *obj_repr;
 		char *str;
-		obj_repr = PyObject_Repr(sys_mod_path_attr);
+		obj_repr = PyObject_Repr(path);
 		str = pbs_python_object_str(obj_repr);
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "--> Python module path is now: %s <--", str);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
@@ -200,14 +189,11 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 	}
 
 	Py_CLEAR(pystr_dirname);
-	Py_CLEAR(sys_mod_obj);
-	Py_CLEAR(sys_mod_path_attr);
+	PySys_SetObject("path", path);
 	return 0;
 
 ERROR_EXIT:
 	Py_CLEAR(pystr_dirname);
-	Py_CLEAR(sys_mod_obj);
-	Py_CLEAR(sys_mod_path_attr);
 	return -1;
 }
 

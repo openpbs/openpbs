@@ -89,7 +89,39 @@ char *pbs_python_daemon_name;
 /*
  * ===================   BEGIN   EXTERNAL ROUTINES  ===================
  */
+static int
+set_py_progname(void)
+{
+#ifdef PYTHON
+	char python_binpath[MAXPATHLEN + 1] = {'\0'};
+	wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
 
+#ifndef WIN32
+	snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
+#else
+	snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
+	forward2back_slash(python_binpath);
+#endif
+	if (!file_exists(python_binpath)) {
+#ifdef PYTHON_BIN_PATH
+		snprintf(python_binpath, MAXPATHLEN, "%s", PYTHON_BIN_PATH);
+		if (!file_exists(python_binpath))
+#endif
+		{
+			log_err(-1, __func__, "Python executable not found!");
+			goto set_py_progname_err;
+		}
+	}
+	mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+	Py_SetProgramName(w_python_binpath);
+	return 0;
+
+set_py_progname_err:
+	return 1;
+#else
+	return 0;
+#endif
+}
 
 /**
  *
@@ -107,16 +139,13 @@ char *pbs_python_daemon_name;
  */
 
 int
-pbs_python_ext_start_interpreter(
-	struct python_interpreter_data *interp_data)
+pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 {
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
-
 	struct stat sbuf;
-	char pbs_python_home[MAXPATHLEN+1];
-	char pbs_python_destlib[MAXPATHLEN+1];
-	char pbs_python_destlib2[MAXPATHLEN+1];
+	char pbs_python_destlib[MAXPATHLEN + 1] = {'\0'};
+	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
 	int  evtype;
 	int  rc;
 #ifndef WIN32
@@ -141,12 +170,6 @@ pbs_python_ext_start_interpreter(
 	else
 		evtype = PBSEVENT_DEBUG2;
 
-	memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
-	memset((char *)pbs_python_destlib, '\0', MAXPATHLEN+1);
-	memset((char *)pbs_python_destlib2, '\0', MAXPATHLEN+1);
-
-	snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
-		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib64/python/altair",
 		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib64/python/altair/pbs/v1",
@@ -188,12 +211,8 @@ pbs_python_ext_start_interpreter(
 	Py_FrozenFlag = 1;
 	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
-	if (file_exists(pbs_python_home)) {
-		wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
-		wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
-		mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
-		Py_SetPythonHome(tmp_pbs_python_home);
-	}
+
+	set_py_progname();
 
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {
@@ -241,6 +260,7 @@ pbs_python_ext_start_interpreter(
 		log_err(errno, __func__, "Failed to revert signal handler for SIGINT");
 		return 1;
 	}
+
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;
@@ -365,17 +385,9 @@ pbs_python_ext_quick_start_interpreter(void)
 {
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
+	char pbs_python_destlib[MAXPATHLEN + 1] = {'\0'};
+	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
 
-	char pbs_python_home[MAXPATHLEN+1];
-	char pbs_python_destlib[MAXPATHLEN+1];
-	char pbs_python_destlib2[MAXPATHLEN+1];
-
-	memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
-	memset((char *)pbs_python_destlib, '\0', MAXPATHLEN+1);
-	memset((char *)pbs_python_destlib2, '\0', MAXPATHLEN+1);
-
-	snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
-		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib, MAXPATHLEN, "%s/lib/python/altair",
 		pbs_conf.pbs_exec_path);
 	snprintf(pbs_python_destlib2, MAXPATHLEN, "%s/lib/python/altair/pbs/v1",
@@ -385,12 +397,7 @@ pbs_python_ext_quick_start_interpreter(void)
 	Py_FrozenFlag = 1;
 	Py_OptimizeFlag = 2;            /* TODO make this a compile flag variable */
 	Py_IgnoreEnvironmentFlag = 1;   /* ignore PYTHONPATH and PYTHONHOME */
-	if (file_exists(pbs_python_home)) {
-		wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
-		wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
-		mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
-		Py_SetPythonHome(tmp_pbs_python_home);
-	}
+	set_py_progname();
 
 	/* we make sure our top level module is initialized */
 	if ((PyImport_ExtendInittab(pbs_python_inittab_modules) != 0)) {

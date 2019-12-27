@@ -1397,7 +1397,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					in_data[0] = '\0';
 					continue;
 				}
-				if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) { 
+				if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) {
 					rc = add_to_svrattrl_list_sorted(event_vnode_fail_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
 				} else {
 					rc = add_to_svrattrl_list_sorted(event_vnode_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
@@ -2294,7 +2294,7 @@ main(int argc, char *argv[], char *envp[])
 		struct python_interpreter_data *interp_data);
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
-	
+
 	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
@@ -2382,36 +2382,36 @@ main(int argc, char *argv[], char *envp[])
 		int ll;
 		char *pc, *pc2;
 
-#ifdef SYSTEM_PYTHON_PATH
-		pbs_asprintf(&python_path, "%s", SYSTEM_PYTHON_PATH);
-		pc = strdup(SYSTEM_PYTHON_PATH);
-		if (pc == NULL) {
-			fprintf(stderr, "Out of memory\n");
-			free(python_path);
-			return 1;
-		}
-		pc2 = strstr(pc,"bin/python");
-		if (pc2 == NULL) {
-			fprintf(stderr, "Python executable not found!\n");
-			free(python_path);
-			return 1;
-		}
-		*pc2 = '\0';
-		if (strlen(pc) > 0) {
-			snprintf(python_prefix, MAXPATHLEN, "%s", pc);
-			free(pc);
-		} else {
-			fprintf(stderr, "Python home not found!\n");
-			free(python_path);
-			return 1;
-		}
-		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
-#else
 		snprintf(python_prefix, sizeof(python_prefix), "%s/python",
 			pbs_conf.pbs_exec_path);
-		pbs_asprintf(&python_path, "%s/bin/python", python_prefix);
-		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
-#endif
+		pbs_asprintf(&python_path, "%s/bin/python3", python_prefix);
+		if (file_exists(python_path)) {
+			snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
+		} else {
+			pbs_asprintf(&python_path, "%s", PYTHON_BIN_PATH);
+			pc = strdup(PYTHON_BIN_PATH);
+			if (pc == NULL) {
+				fprintf(stderr, "Out of memory\n");
+				free(python_path);
+				return 1;
+			}
+			pc2 = strstr(pc,"bin/python");
+			if (pc2 == NULL) {
+				fprintf(stderr, "Python executable not found!\n");
+				free(python_path);
+				return 1;
+			}
+			*pc2 = '\0';
+			if (strlen(pc) > 0) {
+				snprintf(python_prefix, MAXPATHLEN, "%s", pc);
+				free(pc);
+			} else {
+				fprintf(stderr, "Python home not found!\n");
+				free(python_path);
+				return 1;
+			}
+			snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
+		}
 
 		/* Linux/Unix: Create a local environment block (i.e. lenvp)    */
 		/* containing PYTHONHOME setting, and give to execve() when it	*/

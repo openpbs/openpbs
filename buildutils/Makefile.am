@@ -41,6 +41,4 @@ EXTRA_DIST = \
 	compile \
 	depcomp \
 	missing \
-	pbs_mach_type \
-	python-autoconf.py
-
+	pbs_mach_type
