@@ -207,8 +207,8 @@ pbs_python_ext_start_interpreter(
 	 * Temporary set SIGINT to SIG_DFL, so Py_InitializeEx can setup proper SIGINT handler
 	 * see https://github.com/python/cpython/blob/3.6/Modules/signalmodule.c#L1280
 	 * as per above, If SIGINT is not set to SIG_DFL then Python won't register it's SIGINT handler
-	 * Which means Python won't raise KeyBoardInterrupt on PyErr_SetInterrupt()
-	 * instead it will throw NoneType not callable error
+	 * which means Python won't raise KeyBoardInterrupt on PyErr_SetInterrupt()
+	 * instead it will throw NoneType object is not callable exception
 	 */
 	sigemptyset(&act.sa_mask);
 	act.sa_flags   = 0;
@@ -233,10 +233,11 @@ pbs_python_ext_start_interpreter(
 
 	/* revert SIGINT to original sig handler */
 #ifndef WIN32
-	if (sigaction(SIGINT, &oact, NULL) != 0) {
+	if (sigaction(SIGINT, &oact, NULL) != 0)
 #else
-	if (signal(SIGINT, oact) == SIG_ERR) {
+	if (signal(SIGINT, oact) == SIG_ERR)
 #endif
+	{
 		log_err(errno, __func__, "Failed to revert signal handler for SIGINT");
 		return 1;
 	}
