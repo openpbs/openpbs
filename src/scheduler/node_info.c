@@ -694,6 +694,7 @@ new_node_info()
 	new->is_busy = 0;
 	new->is_job_busy = 0;
 	new->is_stale = 0;
+	new->is_maintenance = 0;
 	new->is_provisioning = 0;
 	new->is_multivnoded = 0;
 	new->has_ghost_job = 0;
@@ -1008,7 +1009,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_sharing = ninfo->is_busy = ninfo->is_job_busy = 0;
 		ninfo->is_stale = ninfo->is_provisioning = ninfo->is_exclusive = 0;
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
-		ninfo->is_sleeping = 0;
+		ninfo->is_sleeping = ninfo->is_maintenance = 0;
 
 		strcpy(statebuf, state);
 		tok = strtok_r(statebuf, ",", &saveptr);
@@ -1081,6 +1082,8 @@ remove_node_state(node_info *ninfo, char *state)
 		ninfo->is_provisioning = 0;
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 0;
+	else if (!strcmp(state, ND_maintenance))
+		ninfo->is_maintenance = 0;
 	else {
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
 			   ninfo->name, "Unknown Node State: %s on remove operation", state);
@@ -1092,7 +1095,7 @@ remove_node_state(node_info *ninfo, char *state)
 		&& !ninfo->is_job_exclusive && !ninfo->is_resv_exclusive
 		&& !ninfo->is_offline && !ninfo->is_job_busy && !ninfo->is_stale
 		&& !ninfo->is_provisioning && !ninfo->is_sharing
-		&& !ninfo->is_unknown  && !ninfo->is_down)
+		&& !ninfo->is_unknown  && !ninfo->is_down && !ninfo->is_maintenance)
 		ninfo->is_free = 1;
 
 	return 0;
@@ -1150,6 +1153,8 @@ add_node_state(node_info *ninfo, char *state)
 		ninfo->is_provisioning = 1;
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 1;
+	else if (!strcmp(state, ND_maintenance))
+		ninfo->is_maintenance = 1;
 	else if (!strcmp(state, ND_sleep)) {
 		if(ninfo->server->power_provisioning)
 			ninfo->is_sleeping = 1;
@@ -1673,6 +1678,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->is_pbsnode = onode->is_pbsnode;
 	nnode->is_job_busy = onode->is_job_busy;
 	nnode->is_stale = onode->is_stale;
+	nnode->is_maintenance = onode->is_maintenance;
 	nnode->is_provisioning = onode->is_provisioning;
 	nnode->is_multivnoded = onode->is_multivnoded;
 
@@ -4868,6 +4874,9 @@ node_state_to_str(node_info *ninfo)
 
 	if (ninfo->is_sleeping)
 		return ND_sleep;
+	
+	if (ninfo->is_maintenance)
+		return ND_maintenance;
 
 	/* default */
 	return ND_state_unknown;
