@@ -42,6 +42,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <memory.h>
+#include <arpa/inet.h>
 #include "portability.h"
 #include "server_limits.h"
 #include "pbs_ifl.h"
@@ -146,9 +147,22 @@ compare_short_hostname(char *shost, char *lhost)
 {
 	size_t   len;
 	char    *pdot;
+	int	is_shost_ip;
+	int	is_lhost_ip;
+	struct	sockaddr_in check_ip;
 
 	if ((shost == NULL) || (lhost == NULL))
 		return 1;
+
+	/* check if hostnames given are in IPV4 dotted-decimal form: ddd.ddd.ddd.ddd */
+	is_shost_ip = inet_pton(AF_INET, shost, &(check_ip.sin_addr));
+	is_lhost_ip = inet_pton(AF_INET, lhost, &(check_ip.sin_addr));
+	if ((is_shost_ip > 0) || (is_lhost_ip > 0)) {
+		if (strcasecmp(shost, lhost) == 0)
+			return 0;
+		return 1;
+	}
+
 
 	if ((pdot = strchr(shost, '.')) != NULL)
 		len = (size_t)(pdot - shost);
