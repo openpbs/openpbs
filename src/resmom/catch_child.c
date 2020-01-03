@@ -1107,9 +1107,8 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 
 	/* now send info to server via rpp */
 
-	if (!(pjob->ji_last_resc_updated < time_now - min_check_poll))	{
+	if (pjob->ji_last_resc_updated >= (time_now - min_check_poll))
 		send_resc_used(cmd, 1, &rused);
-	} 
 
 	/* free svrattrl list */
 
@@ -1165,7 +1164,7 @@ update_jobs_status(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 			time_now = time(NULL);
-			if (pjob->ji_last_resc_updated > time_now - min_check_poll)	
+			if (pjob->ji_last_resc_updated >= (time_now - min_check_poll))	
 				continue;
 
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
