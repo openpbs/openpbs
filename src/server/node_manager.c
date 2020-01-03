@@ -717,10 +717,13 @@ node_down_requeue(struct work_task *pwt)
 						if (pj->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long != 0) {
 							pj->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 							if (pj->ji_acctrec != NULL) {
-								tmp_acctrec = realloc(pj->ji_acctrec, strlen(pj->ji_acctrec) + strlen(log_buffer) + 2);
+								tmp_acctrec = malloc(strlen(pj->ji_acctrec) + strlen(log_buffer) + 2);
 								if (tmp_acctrec != NULL) {
 									sprintf(tmp_acctrec, "%s %s", pj->ji_acctrec, log_buffer);
+									free(pj->ji_acctrec);
 									pj->ji_acctrec = tmp_acctrec;
+								} else {
+									log_err(ENOMEM, __func__, "malloc failed for tmp_acctrec");
 								}
 							} else {
 								pj->ji_acctrec = strdup(log_buffer);
