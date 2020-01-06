@@ -158,7 +158,8 @@ compare_short_hostname(char *shost, char *lhost)
 	is_shost_ip = inet_pton(AF_INET, shost, &(check_ip.sin_addr));
 	is_lhost_ip = inet_pton(AF_INET, lhost, &(check_ip.sin_addr));
 	if ((is_shost_ip > 0) || (is_lhost_ip > 0)) {
-		if (strcasecmp(shost, lhost) == 0)
+		/* ((3 * 4) + 3) = 15 characters, max length dotted decimal addr */
+		if (strncmp(shost, lhost, 15) == 0)
 			return 0;
 		return 1;
 	}
