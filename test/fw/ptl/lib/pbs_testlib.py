@@ -13454,14 +13454,14 @@ class MoM(PBSService):
         return "\n".join(vdef)
 
     def add_checkpoint_abort_script(self, dirname=None, body=None,
-                                    mode=None, abort_time=30):
+                                    abort_time=30):
         """
         Add checkpoint script in the mom config.
         returns: a temp file for checkpoint script
         """
         chk_file = self.du.create_temp_file(hostname=self.hostname, body=body,
                                             dirname=dirname)
-        self.du.chmod(hostname=self.hostname, path=chk_file, mode=mode)
+        self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
         self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER)
         c = {'$action': 'checkpoint_abort ' +
              str(abort_time) + ' !' + chk_file + ' %sid'}

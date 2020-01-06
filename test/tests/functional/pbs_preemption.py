@@ -179,14 +179,14 @@ exit 1
         """
         Test that a job is preempted with checkpoint
         """
-        self.mom.add_checkpoint_abort_script(body=self.chk_script, mode=0o755)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='C')
 
     def test_preempt_checkpoint_requeue(self):
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
-        self.mom.add_checkpoint_abort_script(body=self.chk_script, mode=0o755)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
     def test_preempt_requeue(self):
@@ -235,8 +235,7 @@ exit 1
         """
         Test that when checkpoint fails, a job is correctly deleted
         """
-        self.mom.add_checkpoint_abort_script(body=self.chk_script_fail,
-                                             mode=0o755)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CD')
 
     def test_preempt_rerunable_false(self):
@@ -253,7 +252,7 @@ exit 1
         # in CLI mode Checkpoint requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
         self.server.set_op_mode(PTL_CLI)
-        self.mom.add_checkpoint_abort_script(body=self.chk_script, mode=0o755)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         a = {'Checkpoint': 'n'}
         self.submit_and_preempt_jobs(preempt_order='CD', extra_attrs=a)
 
@@ -373,7 +372,7 @@ exit 1
         abort_script = """#!/bin/bash
 exit 3
 """
-        self.mom.add_checkpoint_abort_script(body=abort_script, mode=0o755)
+        self.mom.add_checkpoint_abort_script(body=abort_script)
         # submit two jobs to regular queue
         attrs = {'Resource_List.select': '1:ncpus=1', 'Rerunable': 'n'}
         j1 = Job(TEST_USER, attrs)
