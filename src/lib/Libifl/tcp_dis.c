@@ -89,6 +89,7 @@
 #include "pbs_gss.h"
 
 #define THE_BUF_SIZE 1024
+volatile int reply_timedout = 0; /* for reply_send.c -- was alarm handler called? */
 
 struct tcpdisbuf {
 	size_t	tdis_lead;
@@ -385,10 +386,18 @@ __DIS_tcp_wflush(int fd)
 			/* not ready in TIMEOUT_SHORT seconds, fail   */
 			/* redo the poll if EINTR		      */
 			do {
-				pollfds[0].fd = fd;
-				pollfds[0].events = POLLOUT;
-				pollfds[0].revents = 0;
-				j = poll(pollfds, 1, PBS_DIS_TCP_TIMEOUT_SHORT * 1000);
+				if (reply_timedout) {
+					/* caught alarm - timeout spanning several writes for one reply */
+					/* alarm set up in dis_reply_write() */
+					/* treat identically to poll timeout */
+					j = 0;
+					reply_timedout = 0;
+				} else {
+					pollfds[0].fd = fd;
+					pollfds[0].events = POLLOUT;
+					pollfds[0].revents = 0;
+					j = poll(pollfds, 1, pbs_tcp_timeout * 1000);
+				}
 			} while ((j == -1) && (errno == EINTR));
 
 			if (j == 0) {
