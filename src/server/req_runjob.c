@@ -381,7 +381,7 @@ req_runjob(struct batch_request *preq)
 			/* job already running */
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
-		} else if (get_subjob_discarding(parent, i) == 1) {
+		} else if (get_subjob_discarding(parent, offset) == 1) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
