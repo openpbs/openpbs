@@ -1497,7 +1497,7 @@ class BatchUtils(object):
         try:
             with open(filename, mode) as f:
                 self.display_dictlist(l, f)
-        except BaseException:
+        except:
             self.logger.error('error writing to file ' + filename)
             raise
 
@@ -1547,7 +1547,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except BaseException:
+        except:
             self.logger.error('error converting nodes to vnode def')
             return None
 
@@ -1564,7 +1564,7 @@ class BatchUtils(object):
         :type name: str
         :param fmt: Optional formatting string, uses %n for
                     object name, %a for attributes, for example
-                    a format of '%nE{\}nE{\}t%aE{\}n' will display
+                    a format of r'%nE{\}nE{\}t%aE{\}n' will display
                     objects with their name starting on the first
                     column, a new line, and attributes indented by
                     a tab followed by a new line at the end.
@@ -1747,10 +1747,11 @@ class BatchUtils(object):
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
                 elif (not l[i].startswith(' ') and i > count and
-                      l[i-count].startswith('\t')):
+                      l[i - count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
-                    if ((i+1) < len(l) and not l[i+1].startswith(('\t', ' '))):
+                    if ((i + 1) < len(l)
+                            and not l[i + 1].startswith(('\t', ' '))):
                         count += 1
                     else:
                         count = 1
@@ -1862,7 +1863,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except BaseException:
+        except:
             self.logger.error('error converting file ' + fpath + ' to batch')
             return None
 
@@ -1882,7 +1883,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'w') as f:
                 self.display_batch_status(bs, writer=f)
-        except BaseException:
+        except:
             self.logger.error('error converting batch status to file')
 
     def batch_to_vnodedef(self, bs):
@@ -5135,7 +5136,7 @@ class Server(PBSService):
             try:
                 rescs = self.status(RSC)
                 rescs = [r['id'] for r in rescs]
-            except BaseException:
+            except:
                 rescs = []
             if len(rescs) > 0:
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
@@ -5191,7 +5192,7 @@ class Server(PBSService):
                     if 'queue' in node.keys():
                         self.manager(MGR_CMD_UNSET, NODE, 'queue',
                                      node['id'])
-            except BaseException:
+            except:
                 pass
             self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
@@ -5299,7 +5300,7 @@ class Server(PBSService):
         try:
             with open(outfile, mode) as f:
                 json.dump(conf, f)
-        except BaseException:
+        except:
             self.logger.error('Error processing file ' + outfile)
             return False
 
@@ -8540,7 +8541,7 @@ class Server(PBSService):
             if len(resvs) > 0:
                 try:
                     self.delresv(resvs, runas=ROOT_USER)
-                except BaseException:
+                except:
                     pass
                 reservations = self.status(RESV, runas=ROOT_USER)
 
@@ -11546,7 +11547,7 @@ class Scheduler(PBSService):
         try:
             with open(outfile, mode) as f:
                 cPickle.dump(sconf, f)
-        except BaseException:
+        except:
             self.logger.error('error saving configuration ' + outfile)
             return False
 
@@ -13292,7 +13293,7 @@ class MoM(PBSService):
         try:
             with open(outfile, mode) as f:
                 cPickle.dump(mconf, f)
-        except BaseException:
+        except:
             self.logger.error('error saving configuration to ' + outfile)
             return False
 
@@ -13452,6 +13453,21 @@ class MoM(PBSService):
         vdef += ["\n"]
         del attribs
         return "\n".join(vdef)
+
+    def add_checkpoint_abort_script(self, dirname=None, body=None,
+                                    abort_time=30):
+        """
+        Add checkpoint script in the mom config.
+        returns: a temp file for checkpoint script
+        """
+        chk_file = self.du.create_temp_file(hostname=self.hostname, body=body,
+                                            dirname=dirname)
+        self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
+        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort ' +
+             str(abort_time) + ' !' + chk_file + ' %sid'}
+        self.add_config(c)
+        return chk_file
 
     def parse_config(self):
         """
