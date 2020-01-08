@@ -4016,7 +4016,7 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
 static void
 timed_send_rescdef()
 {
-	send_rescdef(0);
+	send_rescdef(1);
 	rescdef_wt_g = NULL;
 }
 
