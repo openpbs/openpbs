@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 2003-2019 Altair Engineering, Inc. All rights reserved.
+# Copyright (C) 2003-2020 Altair Engineering, Inc. All rights reserved.
 # Copyright notice does not imply publication.
 #
 # ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade Secret
