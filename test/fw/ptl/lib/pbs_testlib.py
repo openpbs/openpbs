@@ -4256,7 +4256,7 @@ class PBSService(PBSObject):
                 # Load hooks
                 elif k == "hooks":
                     fpath = self.du.create_temp_file()
-                    print_hooks = '\n'.join(v)
+                    print_hooks = '\n'.join(v['qmgr_print_hook'])
                     with open(fpath, 'w') as f:
                         f.write(print_hooks)
                     file_qmgr = open(fpath)
@@ -4307,7 +4307,7 @@ class PBSService(PBSObject):
                 continue
             k = str(node_atb)
             v = str(val)
-            execcmd = "set node %s %s=%s" % (node_name, k, v)
+            execcmd = "set node %s %s='%s'" % (node_name, k, v)
             cmd = [qmgr, "-c", execcmd]
             ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
                                   level=logging.DEBUG)
