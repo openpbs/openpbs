@@ -119,7 +119,7 @@ class TestProvisioningJob(TestFunctional):
 
     def test_execjob_begin_hook_on_os_provisioned_job(self):
         """
-            Test the execjob_begin hook is seen by OS provisioned job.
+        Test the execjob_begin hook is seen by OS provisioned job.
         """
         a = {'resources_available.aoe': 'osimage1'}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)

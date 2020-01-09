@@ -631,6 +631,7 @@ struct node_info
 	unsigned is_busy:1;		/* load on node is too high to schedule */
 	unsigned is_job_busy:1;	/* ntype = cluster all vp's allocated */
 	unsigned is_stale:1;		/* node is unknown by mom */
+	unsigned is_maintenance:1;	/* node is in maintenance */
 
 	/* node types */
 	unsigned is_pbsnode:1;	/* this is a PBS node */
