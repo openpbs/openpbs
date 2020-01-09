@@ -8266,9 +8266,6 @@ main(int argc, char *argv[])
 	int					do_mlockall = 0;
 #endif
 
-	char python_binpath[MAXPATHLEN + 1] = {'\0'};
-	wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
-
 #ifdef WIN32
 	_fcloseall();	/* Close any inherited extra files, leaving stdin-err open */
 #else
@@ -9578,28 +9575,7 @@ main(int argc, char *argv[])
 	cleanup_hooks_in_path_spool(0);
 
 #ifdef PYTHON
-	Py_NoSiteFlag = 1;
-	Py_FrozenFlag = 1;
-	Py_IgnoreEnvironmentFlag = 1;
-
-#ifndef WIN32
-	snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
-#else
-	snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
-	forward2back_slash(python_binpath);
-#endif
-	if (!file_exists(python_binpath)) {
-#ifdef PYTHON_BIN_PATH
-		snprintf(python_binpath, MAXPATHLEN, "%s", PYTHON_BIN_PATH);
-		if (!file_exists(python_binpath))
-#endif
-		{
-			log_err(-1, __func__, "Python executable not found!");
-			return 3;
-		}
-	}
-	mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
-	Py_SetProgramName(w_python_binpath);
+	set_py_progname();
 	Py_Initialize();
 #endif
 

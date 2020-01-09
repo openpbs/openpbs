@@ -117,6 +117,7 @@
 #include "pbs_version.h"
 #include "buckets.h"
 #include "multi_threading.h"
+#include "pbs_python.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -147,8 +148,6 @@ schedinit(int nthreads)
 
 #ifdef PYTHON
 	char *errstr;
-	char python_binpath[MAXPATHLEN + 1] = {'\0'};
-	wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;
@@ -201,16 +200,7 @@ schedinit(int nthreads)
 	Py_FrozenFlag = 1;
 	Py_IgnoreEnvironmentFlag = 1;
 
-	snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
-	if (!file_exists(python_binpath)) {
-		snprintf(python_binpath, MAXPATHLEN, "%s", PYTHON_BIN_PATH);
-		if (!file_exists(python_binpath)) {
-			log_err(-1, __func__, "Python executable not found!");
-			return -1;
-		}
-	}
-	mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
-	Py_SetProgramName(w_python_binpath);
+	set_py_progname();
 	Py_Initialize();
 
 	PyRun_SimpleString(

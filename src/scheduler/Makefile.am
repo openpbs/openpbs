@@ -39,11 +39,14 @@
 lib_LIBRARIES = libpbs_sched.a
 
 libpbs_sched_a_CPPFLAGS = \
+	-DNO_PBS_PYTHON_INITTAB \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
 	-pthread \
 	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
 libpbs_sched_a_SOURCES = \
+	$(top_builddir)/src/lib/Libpython/common_python_utils.c \
+	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
 	buckets.c \
 	buckets.h \
 	check.c \
@@ -139,4 +142,3 @@ dist_sysconf_DATA = \
 	pbs_holidays.2017 \
 	pbs_resource_group \
 	pbs_sched_config
-

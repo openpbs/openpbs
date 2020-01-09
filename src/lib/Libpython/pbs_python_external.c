@@ -89,39 +89,6 @@ char *pbs_python_daemon_name;
 /*
  * ===================   BEGIN   EXTERNAL ROUTINES  ===================
  */
-static int
-set_py_progname(void)
-{
-#ifdef PYTHON
-	char python_binpath[MAXPATHLEN + 1] = {'\0'};
-	wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
-
-#ifndef WIN32
-	snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
-#else
-	snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
-	forward2back_slash(python_binpath);
-#endif
-	if (!file_exists(python_binpath)) {
-#ifdef PYTHON_BIN_PATH
-		snprintf(python_binpath, MAXPATHLEN, "%s", PYTHON_BIN_PATH);
-		if (!file_exists(python_binpath))
-#endif
-		{
-			log_err(-1, __func__, "Python executable not found!");
-			goto set_py_progname_err;
-		}
-	}
-	mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
-	Py_SetProgramName(w_python_binpath);
-	return 0;
-
-set_py_progname_err:
-	return 1;
-#else
-	return 0;
-#endif
-}
 
 /**
  *
