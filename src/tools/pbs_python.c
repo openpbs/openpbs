@@ -2338,7 +2338,7 @@ main(int argc, char *argv[], char *envp[])
 		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
 	/* last entry is left with null pointer */
 
-	if (!get_py_progname(&p_python_path, MAXPATHLEN + 1)) {
+	if (get_py_progname(&p_python_path, MAXPATHLEN + 1)) {
 		log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
 		return -1;
 	}

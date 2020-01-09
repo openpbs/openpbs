@@ -103,7 +103,7 @@ set_py_progname(void)
 	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
 
 	if (w_python_binpath[0] == '\0') {
-		if (!get_py_progname(&ptr, MAXPATHLEN + 1)) {
+		if (get_py_progname(&ptr, MAXPATHLEN + 1)) {
 			log_err(-1, __func__, "Failed to find python binary path!");
 			return 1;
 		}
