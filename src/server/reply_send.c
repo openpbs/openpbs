@@ -188,9 +188,10 @@ dis_reply_write(int sfds, struct batch_request *preq)
 	int rc;
 	struct batch_reply *preply = &preq->rq_reply;
 #ifndef WIN32
-      struct sigaction act, oact;
+	struct sigaction act, oact;
 #endif
-
+	time_t  old_tcp_timeout;
+	old_tcp_timeout = pbs_tcp_timeout;
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
 
 	if (preq->isrpp) {
@@ -227,6 +228,7 @@ dis_reply_write(int sfds, struct batch_request *preq)
         (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
     }
 #endif
+	pbs_tcp_timeout = old_tcp_timeout;
 	if (rc) {
 		char hn[PBS_MAXHOSTNAME+1];
 
