@@ -350,7 +350,6 @@ AC_CONFIG_FILES([
 	pbspro.spec
 	Makefile
 	buildutils/Makefile
-	buildutils/pbs_mkdirs
 	doc/Makefile
 	test/Makefile
 	test/fw/Makefile

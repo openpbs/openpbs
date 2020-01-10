@@ -44,30 +44,20 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
     )
   )
   AS_IF([test "x$with_python" != "x"],
-    [PYTHON="$with_python/bin/python3"]
+    [PYTHON="$with_python/bin/python3"] [PYTHON_CONFIG="$with_python/bin/python3-config"],
+    [PYTHON_CONFIG="python3-config"]
   )
   AM_PATH_PYTHON([3.5])
   AS_IF([test "$PYTHON_VERSION" != "3.5" -a "$PYTHON_VERSION" != "3.6" -a "$PYTHON_VERSION" != "3.7"],
     AC_MSG_ERROR([Python must be version 3.5, 3.6 or 3.7]))
-  [PYTHON_INCLUDES=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --includes`]
+  [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes`]
   AC_SUBST(PYTHON_INCLUDES)
-  [PYTHON_CFLAGS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --cflags`]
+  [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags`]
   AC_SUBST(PYTHON_CFLAGS)
-  [PYTHON_LDFLAGS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --ldflags`]
+  [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags`]
   AC_SUBST(PYTHON_LDFLAGS)
-  [PYTHON_LIBS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --libs`]
+  [PYTHON_LIBS=`$PYTHON_CONFIG --libs`]
   AC_SUBST(PYTHON_LIBS)
-  [PBS_PYTHON_DESTLIB="python/altair"]
-  AC_SUBST(PBS_PYTHON_DESTLIB)
-  [PYTHON_STD_DESTLIB="python/python${PYTHON_VERSION}"]
-  AC_SUBST(PYTHON_STD_DESTLIB)
-  [PYTHON_STD_DESTSHAREDLIB="python/python${PYTHON_VERSION}/shared"]
-  AC_SUBST(PYTHON_STD_DESTSHAREDLIB)
-  [PYTHON_PBS_IFL_OBJ="pbs_ifl_wrap.o"]
-  AC_SUBST(PYTHON_PBS_IFL_OBJ)
   AC_DEFINE([PYTHON], [], [Defined when Python is available])
-  AS_IF([test "x$with_python" == "x"],
-    [AC_DEFINE_UNQUOTED([SYSTEM_PYTHON_PATH], ["$PYTHON"], [Python executable path])]
-  )
+  AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])
 ])
-

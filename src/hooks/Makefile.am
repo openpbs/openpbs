@@ -36,10 +36,9 @@
 # trademark licensing policies.
 #
 
-pbshooksdir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs_hooks
+pbshooksdir = $(libdir)/python/altair/pbs_hooks
 
 dist_pbshooks_DATA = \
 	cgroups/pbs_cgroups.HK \
 	cgroups/pbs_cgroups.PY \
 	cgroups/pbs_cgroups.CF
-
