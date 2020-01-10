@@ -178,9 +178,6 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         """
         for res in res_list:
             self.server.manager(MGR_CMD_CREATE, RSC, res.a, id=res.res_name)
-            # below delay of 1 second is to avoid intermittent issue of
-            # incomplete resourcedef file
-            time.sleep(1)
 
     def config_nodes(self, node_conf):
         """
