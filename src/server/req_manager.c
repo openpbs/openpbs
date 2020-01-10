@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -76,12 +76,9 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#ifdef WIN32
-#include <Winsock2.h>
-#include <Ws2tcpip.h>
-#else
+
 #include <arpa/inet.h>
-#endif
+
 #include "libpbs.h"
 #include <ctype.h>
 #include <memory.h>
@@ -196,47 +193,6 @@ struct pul_store {
 	int len;		/* length */
 };
 
-#ifdef WIN32
-#if (_WIN32_WINNT < 0x0600)
-/**
- * @brief
- * 		Implementation of InetPton() for Windows versions prior to Vista
- *
- * @param[in]	fam	- address family
- * @param[in]	src_const	- text representation of IP address
- * @param[out]	dst	- buffer to store the binary representation of address
- *
- * @return	Integer
- * @retval	0	- Failure
- * @retval	1	- Success
- */
-int
-InetPton(int fam, const char *src_const, void *dst)
-{
-	struct sockaddr_storage buf;
-	size_t bufsize = sizeof(buf);
-	char src[INET6_ADDRSTRLEN+1];
-
-	ZeroMemory(&buf, bufsize);
-	strncpy(src, src_const, (INET6_ADDRSTRLEN + 1));
-	src[INET6_ADDRSTRLEN] = '\0';
-	if (WSAStringToAddress(src, fam, NULL, (struct sockaddr *)&buf , &bufsize) == 0) {
-		switch(fam) {
-			case AF_INET:
-				*(struct in_addr *)dst = ((struct sockaddr_in *)&buf)->sin_addr;
-				return 1;
-			case AF_INET6:
-				*(struct in6_addr *)dst = ((struct sockaddr_in6 *)&buf)->sin6_addr;
-				return 1;
-			default:
-				return 0;
-		}
-	}
-	return 0;
-}
-#endif /* _WIN32_WINNT < 0x0600 */
-#endif /* WIN32 */
-
 /**
  * @brief
  * 		is_local_root: returns TRUE if <user>@<host> corresponds to the local
@@ -254,46 +210,6 @@ is_local_root(user, host)
 char *user;
 char *host;
 {
-#ifdef WIN32
-	char  server_host_netbios[MAX_COMPUTERNAME_LENGTH+1];
-	DWORD hsize = MAX_COMPUTERNAME_LENGTH;
-
-	char  current_domain[PBS_MAXHOSTNAME+1];
-	char  server_host_domain[PBS_MAXHOSTNAME+1];
-	char  cur_server_host[PBS_MAXHOSTNAME+1];
-	char user_s[PBS_MAXHOSTNAME+ UNLEN+2];
-	char *p = NULL;
-	char *p0 = NULL;
-	int ch = '\\';
-
-	/* Try to match requesting host against: 		  */
-	/*    localhost						  */
-	/*    <server_host> 			 		  */
-	/*    re-obtained server hostname                         */
-	/*    <server_host_netbios_name>         		  */
-	/*    <server_host_netbios_name>.<windows_domain>         */
-
-	cur_server_host[0] = '\0';
-
-	if (gethostname(cur_server_host, (sizeof(cur_server_host) - 1)) == -1)
-		get_fullhostname(cur_server_host, cur_server_host, (sizeof(cur_server_host) - 1));
-	if ( isAdminPrivilege(user) && \
-	    ( (strcasecmp(host, server_host) == 0)  || \
-		/* Added LOCALHOST_SHORTNAME */
-	(strcasecmp(host, LOCALHOST_SHORTNAME) == 0)  || \
-	      ((cur_server_host[0] != '\0') && \
-		strcasecmp(host, cur_server_host) == 0)  || \
-
-	(GetComputerName(server_host_netbios, &hsize) && \
-	      	(strcasecmp(host, server_host_netbios) == 0)) || \
-
-	(GetComputerDomainName(current_domain) && \
-		sprintf(server_host_domain, "%s.%s", server_host_netbios,
-	current_domain) && \
-		(strcasecmp(host, server_host_domain) == 0)) ) ) {
-		return (TRUE);
-	}
-#else
 	/* Similar method used in svr_get_privilege() */
 	if (strcmp(user, PBS_DEFAULT_ADMIN) == 0) {
 		int is_local = 0;
@@ -324,7 +240,6 @@ char *host;
 		if (is_local != 0)
 			return (TRUE);
 	}
-#endif
 	return (FALSE);
 
 }
@@ -2866,9 +2781,6 @@ make_host_addresses_list(char *phost, u_long **pul)
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#ifdef WIN32
-	int		num_ip;
-#endif
 
 	if ((phost == 0) || (*phost == '\0'))
 		return (PBSE_SYSTEM);
@@ -3215,14 +3127,9 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 			strncpy(realfirsthost, pnode->nd_attr[(int)ND_ATR_Mom].at_val.at_arst->as_string[0], (sizeof(realfirsthost) - 1));
 			realfirsthost[PBS_MAXHOSTNAME] = '\0';
-#ifdef WIN32
-			if ((InetPton(AF_INET, realfirsthost, &(sa4.sin_addr)) != 1) &&
-					(InetPton(AF_INET6, realfirsthost, &(sa6.sin6_addr)) != 1))
-#else
+
 			if ((inet_pton(AF_INET, realfirsthost, &(sa4.sin_addr)) != 1) &&
-					(inet_pton(AF_INET6, realfirsthost, &(sa6.sin6_addr)) != 1))
-#endif
-			{
+					(inet_pton(AF_INET6, realfirsthost, &(sa6.sin6_addr)) != 1)) {
 				/* Not an IPv4 or IPv6 address, truncate it. */
 				pc = strchr(realfirsthost, '.');
 				if (pc)

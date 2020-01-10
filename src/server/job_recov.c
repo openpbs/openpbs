@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -317,8 +317,6 @@ job_save_fs(job *pjob, int updatetype)
  *		are recovered from the disk.  Space to hold the above is
  *		malloc-ed as needed.
  *
- * @see
- * 		svr_migrate_data_from_fs
  *
  * @param[in]	filename	- Name of job file to load job from
  *
@@ -806,8 +804,6 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
  *		and its dependencies are recovered from the disk.
  *		Space to hold the above is malloc-ed as needed.
  *
- * @see
- * 		svr_migrate_data_from_fs
  *
  * @param[in] filename - Name of file to load object from
  * @param[in] objtype - Type of object

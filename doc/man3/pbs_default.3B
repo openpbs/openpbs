@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_default 3B "August 2011" Local "PBS Professional"
+.TH pbs_default 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_default 
-- return the name of the default PBS server
+\- return the name of the default PBS server
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
@@ -45,23 +45,16 @@
 .B char *pbs_default()
 
 .SH DESCRIPTION
-A character string is returned containing the name of the default
-PBS server.
-The default server is defined
-by (a) the setting of the environment
-variable
-.B PBS_DEFAULT
-which contains a destination, or (b) by adding the parameter
-.B PBS_SERVER
-to the global configuration file /etc/pbs.conf.
+Returns a pointer to a character string containing the name of the default PBS server.  
 
-.SH DIAGNOSTICS
-If the default server cannot be determined, a NULL value is
-returned.
+The default server is specified in the PBS_DEFAULT environment
+variable or the PBS_SERVER parameter in /etc/pbs.conf.
 
-.SH SEE ALSO
-qsub(1B),
-pbs_connect(3B), pbs_disconnect(3B),
-and the 
-.B PBS Professional Programmer's Guide
+.SH RETURN VALUE
+On success, returns a pointer to a character string containing the
+name of the default PBS server.  You do not need to free the character string.
+
+Returns null if it cannot determine the name of the default server.
+
+
 

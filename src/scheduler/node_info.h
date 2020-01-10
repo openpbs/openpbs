@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -44,6 +44,7 @@ extern "C" {
 #include "data_types.h"
 #include <pbs_ifl.h>
 
+void query_node_info_chunk(th_data_query_ninfo *data);
 
 /*
  *      query_nodes - query all the nodes associated with a server
@@ -55,6 +56,12 @@ node_info **query_nodes(int pbs_sd, server_info *sinfo);
  *                        put it in a node_info struct for easier access
  */
 node_info *query_node_info(struct batch_status *node, server_info *sinfo);
+
+/*
+ * pthread routine for freeing up a node_info array
+ */
+void
+free_node_info_chunk(th_data_free_ninfo *data);
 
 /*
  *      free_nodes - free all the nodes in a node_info array
@@ -120,15 +127,12 @@ node_info *find_node_info(node_info **ninfo_arr, char *nodename);
  */
 node_info *dup_node(node_info *oninfo, server_info *nsinfo);
 
+void dup_node_info_chunk(th_data_dup_nd_info *data);
 
 /*
  *      dup_nodes - duplicate an array of nodes
  */
-#ifdef NAS /* localmod 049 */
-node_info **dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags, int allocNASrank);
-#else
 node_info **dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags);
-#endif /* localmod 049 */
 
 /*
  *      set_node_type - set the node type bits
@@ -199,13 +203,7 @@ int should_talk_with_mom(node_info *ninfo);
  *                            This means we have to use the names from the
  *                            first array and find them in the second array
  */
-#ifdef NAS /* localmod 049 */
-node_info **copy_node_ptr_array(node_info  **oarr, node_info  **narr, server_info *sinfo);
-#else
 node_info **copy_node_ptr_array(node_info  **oarr, node_info  **narr);
-#endif /* localmod 049 */
-
-
 
 /*
  *      create_execvnode - create an execvnode to run a multi-node job
@@ -234,20 +232,12 @@ void free_nspec(nspec *ns);
 /*
  *      dup_nspec - duplicate an nspec
  */
-#ifdef NAS /* localmod 049 */
-nspec *dup_nspec(nspec *ons, node_info **ninfo_arr, server_info *sinfo);
-#else
 nspec *dup_nspec(nspec *ons, node_info **ninfo_arr);
-#endif /* localmod 049 */
 
 /*
  *      dup_nspecs - duplicate an array of nspecs
  */
-#ifdef NAS /* localmod 049 */
-nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr, server_info *sinfo);
-#else
 nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr);
-#endif /* localmod 049 */
 
 /*
  *	empty_nspec_array - free the contents of an nspec array but not
@@ -660,8 +650,15 @@ void set_current_aoe(node_info *node, char *aoe);
  */
 void set_current_eoe(node_info *node, char *eoe);
 
+/*
+ * Check eligibility for a chunk of nodes, a supplementary function to check_node_array_eligibility
+ */
+void
+check_node_eligibility_chunk(th_data_nd_eligible *data);
+
 /* check nodes for eligibility and mark them ineligible if not */
-void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl, schd_error *err);
+void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl,
+		int num_nodes, schd_error *err);
 
 int node_in_partition(node_info *ninfo, char **partitions);
 /* add a node to a node array*/

@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_hook_attributes 7B "15 January 2019" Local "PBS Professional"
+.TH pbs_hook_attributes 7B "20 September 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_hook_attributes 
 \- attributes of PBS hooks
@@ -106,22 +106,24 @@ event cannot be combined with any other events.
 Valid events: 
 .RS 11
 .nf
-"queuejob"
-"modifyjob" 
-"movejob" 
-"resvsub" 
-"runjob"
-"periodic"
-"provision"
+"exechost_periodic"
+"exechost_startup" 
+"execjob_attach"
 "execjob_begin"
 "execjob_end"
-execjob_prologue"
 "execjob_epilogue" 
-"execjob_preterm" 
 "execjob_launch" 
-"execjob_attach"
-"exechost_startup" 
-"exechost_periodic"
+"execjob_postsuspend"
+"execjob_preresume"
+"execjob_preterm" 
+"execjob_prologue"
+"modifyjob" 
+"movejob" 
+"periodic"
+"provision"
+"queuejob"
+"resvsub" 
+"runjob"
 "" (meaning no event)
 .fi
 .RE

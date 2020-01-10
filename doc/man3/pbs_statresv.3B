@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,108 +33,116 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_statresv 3B "8 October 2012" Local "PBS Professional"
+.TH pbs_statresv 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-pbs_statresv - obtain status information about reservations
+.B pbs_statresv 
+\- get status of PBS reservation(s)
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
 #include <pbs_ifl.h>
 .sp
-.B struct batch_status *pbs_statresv(\^int\ connect, char\ *id, 
-.B struct\ attrl\ *attrib, char *extend)
-.sp
-.B void pbs_statfree(\^struct batch_status *psj\^)
-
-.SH DESCRIPTION
-Issue a batch request to obtain the status of a specified reservation or
-a set of reservations at a destination.
-.LP
-A
-.I "Status Reservation"
-batch request is generated and sent to the server over the connection
-specified by
-.I connect 
-which is the return value of \f3pbs_connect\f1().
-.LP
-The parameter,
-.I id ,
-is a reservation identifier.  A reservation identifier is of the form:
-.RS 4
-.I "R<sequence_number>.<server>"
-.RE
-.LP
-If
-.I id
-is the null pointer or a null string, the status of each reservation at the
-server which the user is authorized to see is returned.
-.LP
-The parameter,
-.I attrib ,
-is a pointer to an
-.I attrl 
-structure which is defined in pbs_ifl.h as:
-.sp
-.Ty
 .nf
-    struct attrl {
-        struct attrl *next;
+.B struct batch_status *
+.B pbs_statresv(int connect, char *target, struct attrl *output_attribs, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
+.fi
+.SH DESCRIPTION
+Issues a batch request to get the status of PBS reservation(s).
+
+Generates a 
+.I Status Reservation 
+(71) batch request and sends it to the server over the connection specified by 
+.I connect.
+
+Returns specified attributes or all attributes of specified reservation or all reservations.
+
+.SH ARGUMENTS
+.IP connect 8
+Return value of 
+.B pbs_connect().  
+Specifies connection handle over which to send batch request to server.
+
+.IP target 8
+ID of reservation whose attributes are to be reported.  If this
+argument is a null pointer or points to a null string, returns
+attributes of all reservations the user is authorized to query.
+.br
+Format for advance reservation:
+.br
+.I R<sequence number>.<server name>
+.br
+Format for standing reservation:
+.br
+.I S<sequence number>.<server name>
+.br
+Format for maintenance reservation:
+.br
+.I M<sequence number>.<server name>
+
+.IP output_attribs 8
+Pointer to a list of attributes to  return.  If this argument is null,
+returns all attributes.  Each attribute is described in an
+.I attrl 
+structure, defined in pbs_ifl.h as:
+.nf
+struct attrl {
         char         *name;
         char         *resource;
         char         *value;
-    };
+        struct attrl *next;
+};
 .fi
-.sp
-The
-.I attrib
-list is terminated by the first entry where
-.I next
-is a null pointer.  If 
-.I attrib
-is given, then only the attributes in the list are returned by the server.
-Otherwise, all the attributes of a reservation are returned.
-When an
-.I attrib
-list is specified, the
-.I name
-member is a pointer to a attribute name as listed in pbs_submit_resv(3).  The
-.I resource
-member is only used if the name member is ATTR_l, otherwise it should be a
-pointer to a null string.
-The
-.I value
-member should always be a pointer to a null string.
+
+.IP extend 8
+Character string for extensions to command.  Not currently used.
 .LP
-The parameter,
-.I extend ,
-is reserved for implementation-defined extensions.
-.LP
-The return value 
-is a pointer to a list of
-.I batch_status
-structures or the null pointer if no reservations can be queried for status.
-The batch_status structure is defined in pbs_ifl.h as
-.sp
-.Ty
+.B Members of attrl Structure
+
+.IP name  8
+Points to a string containing the name of the attribute.  
+
+.IP resource
+Points to a string containing the name of a resource.  Used only when
+the specified attribute contains resource information.  Otherwise,
+.I resource 
+should be a null pointer.
+
+.IP value 8
+Points to a string containing the value of the attribute or resource.  
+
+.IP next 8
+Points to next attribute in list.  A null pointer terminates the list.
+
+.SH RETURN VALUE
+Returns a pointer to a list of 
+.I batch_status 
+structures describing the reservation(s).  
+
+If an error occurred, the routine returns a null pointer, and the
+error number is available in the global integer 
+.I pbs_errno.
+
+.B The batch_status Structure
+.br
+The 
+.I batch_status 
+structure is defined in pbs_ifl.h as
 .nf
-    struct batch_status {
+struct batch_status {
         struct batch_status *next;
         char                *name;
         struct attrl        *attribs;
         char                *text;
-    }
+}
 .fi
-.LP
-It is up the user to free the structure when no longer needed, by calling
-\f3pbs_statfree\f1().
-.LP
-.SH "SEE ALSO"
-pbs_rstat(1B) and pbs_connect(3B)
-.SH DIAGNOSTICS
-When the batch request generated by \f3pbs_statresv\f1()
-function has been completed successfully and the status of each reservation 
-has been returned by the batch server, the routine will return a pointer to 
-the list of batch_status structures.
-If no reservations were available to query or an error occurred, a null 
-pointer is returned.  The global integer pbs_errno should be examined to 
-determine the cause.
+
+.SH CLEANUP
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
+.B pbs_statfree().
+
+.SH SEE ALSO
+pbs_rstat(1B), pbs_connect(3B), pbs_statfree(3B)
+

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -41,8 +41,7 @@ from tests.functional import *
 class TestEntityLimits(TestFunctional):
 
     """
-    This test suite tests working of queued_jobs_threshold, max_queued,
-    queued_jobs_threshold_res and max_queued_res.
+    This test suite tests working of FGC limits
 
     PBS supports entity limits at queue and server level. And these limits
     can be applied for a user, group, project or overall.
@@ -846,3 +845,191 @@ class TestEntityLimits(TestFunctional):
                                             e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted.")
+
+    def test_pbs_all_soft_limits(self):
+        """
+        Set resource soft limit on server for PBS_ALL and see that the job
+        requesting this resource is susceptible to preemption
+        """
+        # set max_run_res_soft on mem for PBS_ALL
+        a = {'max_run_res_soft.mem': '[o:PBS_ALL=256mb]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 4,
+             'resources_available.mem': '2gb'}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # set preempt prio on the scheduler
+        t = "express_queue, normal_jobs, server_softlimits"
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_prio': t})
+
+        # submit a job that requests mem and exceeds soft limit
+        attr = {'Resource_List.select': '1:ncpus=2:mem=1gb'}
+        j1 = Job(attrs=attr)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # Sleep for a second and submit another job requesting all ncpus left
+        # Sleep is required so that scheduler sorts the most recently started
+        # job to the top of the preemptible candidates when it tries
+        # preemption
+        time.sleep(1)
+        attr = {'Resource_List.select': '1:ncpus=2'}
+        j2 = Job(attrs=attr)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        # Submit third job (normal priority) that will try to preempt the
+        # job which is running over its softlimits (which is J1 here).
+        j3 = Job(attrs=attr)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        # Now that no job is over its soft limits, if we submit another
+        # normal priority job, it should stay queued
+        j4 = Job(attrs=attr)
+        jid4 = self.server.submit(j4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+
+    def test_user_soft_limits(self):
+        """
+        Set resource soft limit on server for a user and see that the job
+        requesting this resource submitted by same user are susceptible
+        to preemption
+        """
+        # set max_run_res_soft on mem for TEST_USER
+        a = {'max_run_res_soft.mem': '[u:' + str(TEST_USER) + '=256mb]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 4,
+             'resources_available.mem': '2gb'}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # set preempt prio on the scheduler
+        t = "express_queue, normal_jobs, server_softlimits"
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_prio': t})
+
+        # submit a job as TEST_USER that requests mem and exceeds soft limit
+        attr = {'Resource_List.select': '1:ncpus=2:mem=1gb'}
+        j1 = Job(TEST_USER, attrs=attr)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # Sleep for a second and submit another job requesting all ncpus left
+        # Sleep is required so that scheduler sorts the most recently started
+        # job to the top of the preemptible candidates when it tries
+        # preemption
+        time.sleep(1)
+        attr = {'Resource_List.select': '1:ncpus=2'}
+        j2 = Job(TEST_USER, attrs=attr)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        # Submit third job (normal priority) that will try to preempt the
+        # job which is running over its softlimits (which is J1 here).
+        j3 = Job(TEST_USER, attrs=attr)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        # Now that no job is over its soft limits, if we submit another
+        # normal priority job, it should stay queued
+        j4 = Job(TEST_USER, attrs=attr)
+        jid4 = self.server.submit(j4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+
+    def test_group_soft_limits(self):
+        """
+        Set resource soft limit on server for a group and see that the job
+        requesting this resource submitted by same group are susceptible
+        to preemption
+        """
+        # set max_run_res_soft on mem for TSTGRP0
+        a = {'max_run_res_soft.mem': '[g:' + str(TSTGRP0) + '=256mb]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 4,
+             'resources_available.mem': '2gb'}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # set preempt prio on the scheduler
+        t = "express_queue, normal_jobs, server_softlimits"
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_prio': t})
+
+        # submit a job as TSTGRP0 that requests mem and exceeds soft limit
+        attr = {'Resource_List.select': '1:ncpus=2:mem=1gb',
+                'group_list': TSTGRP0}
+        j1 = Job(TEST_USER, attrs=attr)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # Sleep for a second and submit another job requesting all ncpus left
+        # Sleep is required so that scheduler sorts the most recently started
+        # job to the top of the preemptible candidates when it tries
+        # preemption
+        time.sleep(1)
+        attr = {'Resource_List.select': '1:ncpus=2',
+                'group_list': TSTGRP1}
+        j2 = Job(TEST_USER1, attrs=attr)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        # Submit third job (normal priority) that will try to preempt the
+        # job which is running over its softlimits (which is J1 here).
+        j3 = Job(TEST_USER1, attrs=attr)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        # Now that no job is over its soft limits, if we submit another
+        # normal priority job, it should stay queued
+        j4 = Job(TEST_USER1, attrs=attr)
+        jid4 = self.server.submit(j4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+
+    def test_project_soft_limits(self):
+        """
+        Set resource soft limit on server for a project and see that the job
+        requesting this resource submitted under same project is susceptible
+        to preemption
+        """
+        # set max_run_res_soft on mem for project P1
+        a = {'max_run_res_soft.mem': '[p:P1=256mb]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 4,
+             'resources_available.mem': '2gb'}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        # set preempt prio on the scheduler
+        t = "express_queue, normal_jobs, server_softlimits"
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_prio': t})
+
+        # submit a job under P1 project that requests mem and exceeds
+        # soft limit
+        attr = {'Resource_List.select': '1:ncpus=2:mem=1gb',
+                ATTR_project: 'P1'}
+        j1 = Job(TEST_USER, attrs=attr)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        # Sleep for a second and submit another job requesting all ncpus left
+        # Sleep is required so that scheduler sorts the most recently started
+        # job to the top of the preemptible candidates when it tries
+        # preemption
+        time.sleep(1)
+        attr = {'Resource_List.select': '1:ncpus=2',
+                ATTR_project: 'P2'}
+        j2 = Job(TEST_USER, attrs=attr)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        # Submit third job (normal priority) that will try to preempt the
+        # job which is running over its softlimits (which is J1 here).
+        j3 = Job(TEST_USER, attrs=attr)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        # Now that no job is over its soft limits, if we submit another
+        # normal priority job, it should stay queued
+        j4 = Job(TEST_USER, attrs=attr)
+        jid4 = self.server.submit(j4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -97,9 +97,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#ifndef WIN32
 #include <libgen.h>
-#endif
 #include <dirent.h>
 #include <errno.h>
 
@@ -110,11 +108,6 @@
 
 #include "server_limits.h"
 #include "pbs_db.h"
-
-#ifdef WIN32
-#include <conio.h>
-#include <ctype.h>
-#endif
 
 #ifndef LOGIN_NAME_MAX
 #define LOGIN_NAME_MAX 256
@@ -168,36 +161,6 @@ cleanup()
 
 #define MAX_PASSWORD_LEN 256
 
-#ifdef WIN32
-/**
- * @brief
- *	Accepts a password string without echoing characters
- *	on the screen
- *
- * @param[out]	passwd - password read from user
- * @param[in]	len - The max number of characters to accept from the user
- *
- * @return - Void
- *
- */
-static void
-gets_noecho(char *passwd, int len)
-{
-	int i = 0;
-
-	while (i < len) {
-		*passwd = _getch();
-		if (*passwd == '\r' || *passwd == '\n') {
-			passwd++;
-			break;
-		}
-		passwd++;
-		i++;
-	}
-	*passwd=0;
-}
-#endif
-
 /**
  * @brief
  *	Accepts a password string without echoing characters
@@ -216,7 +179,6 @@ read_password(char *passwd)
 	int len;
 	char *p;
 
-#ifndef WIN32
 	if (system("stty -echo") != 0)
 		return -1;
 
@@ -224,9 +186,6 @@ read_password(char *passwd)
 
 	if (system("stty echo") != 0)
 		return -1;
-#else
-	gets_noecho(passwd, MAX_PASSWORD_LEN);
-#endif
 
 	len = strlen(passwd);
 	p = passwd + len - 1;
@@ -323,18 +282,15 @@ check_user(char *userid)
 	pwent = getpwnam(userid);
 	if (pwent == NULL)
 		return (-1);
-#ifndef WIN32
 	if (pwent->pw_uid == 0)
 		return (-1);
 
 	/* in unix make sure that the user home dir is accessible */
 	if (access(pwent->pw_dir, R_OK | W_OK | X_OK) != 0)
 		return (-1);
-#endif
 	return 0;
 }
 
-#ifndef WIN32
 /**
  * @brief
  *	This function changes the ownership of
@@ -389,7 +345,6 @@ change_ownership(char *path, char *userid)
 	(void)closedir(dir);
 	return 0;
 }
-#endif
 /**
  * @brief
  *	The main function in C - entry point
@@ -480,17 +435,10 @@ main(int argc, char *argv[])
 	}
 
 	/* check admin privileges */
-#ifdef WIN32
-	if (!isAdminPrivilege(getlogin())) {
-		fprintf(stderr, "pbs_ds_password: Must be run by Admin\n");
-		return (1);
-	}
-#else
 	if ((getuid() != 0) || (geteuid() != 0)) {
 		fprintf(stderr, "%s: Must be run by root\n", prog);
 		return (1);
 	}
-#endif	/* WIN32 */
 
 	change_user = 0;
 	/* if the -C option was specified read the user from pbs.conf */
@@ -503,11 +451,7 @@ main(int argc, char *argv[])
 	if (change_user == 1) {
 		/* check that the supplied user-id exists (and is non-root on unix) */
 		if (check_user(userid) != 0) {
-#ifdef WIN32
-			fprintf(stderr, "\n%s: User-id %s does not exist\n", prog, userid);
-#else
 			fprintf(stderr, "\n%s: User-id %s does not exist/is root user/home dir is not accessible\n", prog, userid);
-#endif
 			return (-1);
 		}
 	}
@@ -589,36 +533,17 @@ main(int argc, char *argv[])
 		return -1;
 	}
 
-#ifdef WIN32
-	sprintf(pwd_file_new, "%s\\server_priv\\db_password.new", pbs_conf.pbs_home_path);
-	sprintf(pwd_file, "%s\\server_priv\\db_password", pbs_conf.pbs_home_path);
-#else
 	sprintf(pwd_file_new, "%s/server_priv/db_password.new", pbs_conf.pbs_home_path);
 	sprintf(pwd_file, "%s/server_priv/db_password", pbs_conf.pbs_home_path);
-#endif
 
 	/* write encrypted password to the password file */
-#ifdef WIN32
-	pmode = _S_IWRITE | _S_IREAD;
-	fix_perms2(pwd_file_new, pwd_file);
-	if ((fd = open(pwd_file_new, O_WRONLY | O_TRUNC | O_CREAT | O_Sync | O_BINARY,
-		pmode)) == -1)
-#else
 	pmode = 0600;
 	if ((fd = open(pwd_file_new, O_WRONLY | O_TRUNC | O_CREAT | O_Sync,
-		pmode)) == -1)
-#endif
-	{
+		pmode)) == -1) {
 		perror("open/create failed");
 		fprintf(stderr, "%s: Unable to create file %s\n", prog, pwd_file_new);
 		return (-1);
 	}
-
-#ifdef WIN32
-	secure_file(pwd_file_new, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-	setmode(fd, O_BINARY);
-#endif
 
 	if (update_db == 1) {
 		/* change password only if this config option is not set */
@@ -680,25 +605,13 @@ main(int argc, char *argv[])
 	close(fd);
 	free(cred_buf);
 
-#ifdef WIN32
-	if (MoveFileEx(pwd_file_new, pwd_file,
-		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
-		errno = GetLastError();
-		fprintf(stderr, "MoveFileEx(%s, %s) failed!",
-			pwd_file_new, pwd_file);
-		if (update_db == 1) {
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		}
-		return (-1);
-	}
-#else
 	if (rename(pwd_file_new, pwd_file) != 0) {
 		if (update_db == 1) {
 			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		}
 		return (-1);
 	}
-#endif
+
 
 	if (update_db == 1) {
 		/* commit  to database */
@@ -714,11 +627,8 @@ main(int argc, char *argv[])
 
 	if (change_user == 1) {
 		char usr_file[MAXPATHLEN + 1];
-#ifdef WIN32
-		sprintf(usr_file, "%s\\server_priv\\db_user", pbs_conf.pbs_home_path);
-#else
 		sprintf(usr_file, "%s/server_priv/db_user", pbs_conf.pbs_home_path);
-#endif
+
 		/* update PBS_HOME/server_priv/db_user file with the new user name */
 		if (update_db_usr(usr_file, userid) != 0) {
 			fprintf(stderr, "Unable to update file %s\n", usr_file);
@@ -729,7 +639,7 @@ main(int argc, char *argv[])
 
 	if (update_db == 1 && change_user == 1) {
 		char datastore[MAXPATHLEN + 1];
-#ifndef WIN32
+
 		/* ownership is changed only for Unix users
 		 * On windows, these files are allways owned by the user who installed the database
 		 * and writable by administrators anyway
@@ -741,7 +651,6 @@ main(int argc, char *argv[])
 			return -1;
 		}
 		printf("---> Changed ownership of %s to user %s\n", datastore, userid);
-#endif
 
 		/* reload configuration file */
 		if (pbs_loadconf(1) == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -3433,7 +3433,6 @@ void reply_hook_bg(job *pjob)
 					del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
 					pjob->ji_preq = NULL;
 					(void) kill_job(pjob, SIGKILL);
-					job_purge(pjob);
 					dorestrict_user();
 #if !MOM_ALPS
 					/*
@@ -3441,8 +3440,7 @@ void reply_hook_bg(job *pjob)
 					* been or will be replied to and freed by the
 					* alps_cancel_reservation code in the sequence
 					* of functions started with the above call to
-					* del_job_resc(). Set preq to NULL here so we
-					* don't try, mistakenly, to use it again.
+					* del_job_resc().
 					*/ 
 					if (pjob->ji_numnodes == 1) 
 						reply_ack(preq);
@@ -3450,6 +3448,7 @@ void reply_hook_bg(job *pjob)
 						(PBS_BATCH_DeleteJob + PBSE_SISCOMM))
 							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
+					job_purge(pjob);
 				}
 				/*
 				* otherwise, job_purge() and dorestrict_user() are called in

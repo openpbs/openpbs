@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_account 8B "16 October 2017" Local "PBS Professional"
+.TH pbs_account 8B "18 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_account 
 For Windows.  Manage PBS service account
@@ -61,6 +61,13 @@ This command can be run by administrators only.
 
 .SH Platforms
 This command is available on Windows only.
+
+.SH Caveats
+Using 
+.B pbs_account --unreg
+and
+.B pbs_account --reg 
+stops and restarts MoM, which can kill jobs.
 
 .SH OPTIONS
 .IP "-a <account name>" 15
@@ -103,7 +110,7 @@ the user is prompted for a password.
 Registers the PBS service with the SCM, instructing it to run the services 
 under the PBS service account.  
 .I path to service
-must be in double quotes.
+must be in double quotes.  Restarts MoM. 
 
 .IP "-S" 15
 Adds necessary privileges to the PBS service account. Grants the
@@ -114,7 +121,7 @@ service account.
 .IP "--unreg <path to service>" 15
 Unregisters the PBS service with the SCM.  
 .I path to service
-must be in double quotes.
+must be in double quotes.  Stops MoM.
 
 .IP "(no options)" 15
 Prints name of PBS service account, if it exists.  Exit value is 0.
@@ -130,18 +137,10 @@ To change the PBS service account:
 .RS 4
 pbs_account [--reg <service path>] -a <PBS service account name>
 .RE
-To register the server, scheduler, MoM, comm, and rshd services:
+To register the MoM service:
 .RS 4
 .nf
-pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_server.exe" -p <password>
-.br
 pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_mom.exe" -p <password>
-.br
-pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_sched.exe" -p <password>
-.br
-pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_comm.exe" -p <password>
-.br
-pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_rshd.exe" -p <password>
 .fi
 .RE
 

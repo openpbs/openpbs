@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1107,7 +1107,7 @@ initialize(void)
 	 * the default lenfth of the AVL_IX_REC is accessed, it must be
 	 * through xxrp or the compiler will complain about accessing
 	 * memory beyond the size of the structure.
-	 * 
+	 *
 	 */
 	union {
 		AVL_IX_REC	xrp;
@@ -1167,13 +1167,9 @@ initialize(void)
 				__func__, msg_corelimit);
 			corelimit.rlim_cur = RLIM_INFINITY;
 		} else
-#ifdef	_SX
-			corelimit.rlim_cur =
-				atol(pbs_conf.pbs_core_limit);
-#else
 			corelimit.rlim_cur =
 				(rlim_t)atol(pbs_conf.pbs_core_limit);
-#endif	/* _SX */
+
 		/* get system core limit */
 		(void)getrlimit(RLIMIT_CORE, &orig_core_limit);
 
@@ -2459,7 +2455,7 @@ set_job_launch_delay(char *value)
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 		"job_launch_delay", value);
 	i = strtol(value, &endp, 10);
- 
+
 	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
 		return HANDLER_FAIL;	/* error */
 	job_launch_delay = i;
@@ -8224,7 +8220,6 @@ main(int argc, char *argv[])
 	char				*configscriptaction = NULL;
 	char				*inputfile = NULL;
 	char				*scriptname = NULL;
-	char 				pbs_python_home[MAXPATHLEN + 1];
 	resource			*prscput;
 	resource			*prswall;
 	char				*getopt_str;
@@ -8270,14 +8265,6 @@ main(int argc, char *argv[])
 #ifdef _POSIX_MEMLOCK
 	int					do_mlockall = 0;
 #endif
-
-#ifdef PYTHON
-	PyObject			*path;
-	PyObject 			*retval =  NULL;
-	char				*buf;
-	char				py_version[4];
-#endif
-
 
 #ifdef WIN32
 	_fcloseall();	/* Close any inherited extra files, leaving stdin-err open */
@@ -9246,11 +9233,8 @@ main(int argc, char *argv[])
 
 	gettimeofday(&tval, NULL);
 	time_now = tval.tv_sec;
-#ifdef	_SX
-	srand48(tval.tv_usec);
-#else
+
 	srandom(tval.tv_usec);
-#endif	/* _SX */
 #endif	/* !WIN32 */
 
 	ret_size = 4096;
@@ -9591,81 +9575,8 @@ main(int argc, char *argv[])
 	cleanup_hooks_in_path_spool(0);
 
 #ifdef PYTHON
-	Py_NoSiteFlag = 1;
-	Py_FrozenFlag = 1;
-
-        /* Setting PYTHONHOME */
-        Py_IgnoreEnvironmentFlag = 1;
-        memset((char *)pbs_python_home, '\0', MAXPATHLEN + 1);
-        snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
-                pbs_conf.pbs_exec_path);
-        if (file_exists(pbs_python_home)) {
-                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
-                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
-                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
-                Py_SetPythonHome(tmp_pbs_python_home);
-        }
-
+	set_py_progname();
 	Py_Initialize();
-
-	path = PySys_GetObject("path");
-#ifdef WIN32
-	pbs_asprintf(&buf, "%s/Lib", pbs_python_home);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-#else
-	/* Identify the version of the Python interpreter */
-	strncpy(py_version, Py_GetVersion(), 3);
-	py_version[3] = '\0';
-
-	/* list of possible paths to Python modules (mom imports json) */
-	pbs_asprintf(&buf, "%s/lib/python%s", pbs_python_home, py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "%s/lib/python%s/lib-dynload", pbs_python_home, py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib/python/python%s", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib/python/python%s/lib-dynload", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib64/python/python%s", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-
-	pbs_asprintf(&buf, "/usr/lib64/python/python%s/lib-dynload", py_version);
-	retval = PyUnicode_FromString(buf);
-	free(buf);
-	if (retval != NULL)
-		PyList_Append(path, retval);
-	Py_CLEAR(retval);
-#endif
-	PySys_SetObject("path", path);
 #endif
 
 #ifndef	WIN32
@@ -10078,7 +9989,7 @@ main(int argc, char *argv[])
 			nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 			/* check for job stuck waiting for Svr to ack obit */
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
+			if (!pjob->ji_hook_running_bg_on && pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
 				pjob->ji_sampletim < time_now - 45) {
 				send_obit(pjob, 0);	/* resend obit */
 			}

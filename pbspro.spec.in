@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -579,7 +579,7 @@ for i in "${required_pkg[@]}"; do
 	if [[ "$installed_pkg" =~ "$i" ]]; then
 		continue
 	else
-		pip3 install "$i"
+		pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org "$i"
 		if [ $? -eq 0 ]; then
 			echo "$i installed successfully"
 		else
@@ -665,4 +665,3 @@ done
 - Change to make sure that unsupported hook files are not compiled and packaged.
 * Thu May 12 2016 Hiren Vadalia <hiren.vadalia@altair.com> - 1.0
 - Initial commit of pbspro
-

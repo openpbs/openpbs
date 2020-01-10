@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1612,9 +1612,6 @@ end_loop:
 			 */
 			if (ptask->ti_qs.ti_sid <= 1) {
 				ptask->ti_qs.ti_sid = 0;
-#ifdef	_SX
-				ptask->ti_qs.ti_u.ti_ext.ti_jid = 0;
-#endif
 			}
 			else
 				ptask->ti_qs.ti_sid = -ptask->ti_qs.ti_sid;

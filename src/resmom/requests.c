@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -5029,6 +5029,18 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			preq->rq_ind.rq_hookfile.rq_filename);
 		strcat(p, HOOK_FILE_SUFFIX);
 		if ((phook = find_hook(hook_name)) != NULL) {
+#ifndef WIN32
+			if (phook->event & HOOK_EVENT_EXECJOB_END) {
+				/** 
+				 * This event runs hook in the background,
+				 * and it's deferred task created while
+				 * running the hook, is required for graceful
+				 * exit of the job. 
+				 */
+				reply_ack(preq);
+				return;
+			}
+#endif
 			delete_task_by_parm1(phook, DELETE_ONE);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, phook->hook_name,

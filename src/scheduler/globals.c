@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -38,6 +38,7 @@
 #include <pbs_config.h>
 
 #include <stdio.h>
+#include <pthread.h>
 #include "globals.h"
 #include "constant.h"
 #include "sort.h"
@@ -147,6 +148,20 @@ int got_sigpipe;
 
 int	second_connection;
 
+/* Stuff needed for multi-threading */
+pthread_mutex_t general_lock;
+pthread_mutex_t work_lock;
+pthread_mutex_t result_lock;
+pthread_cond_t work_cond;
+pthread_cond_t result_cond;
+ds_queue *work_queue = NULL;
+ds_queue *result_queue = NULL;
+pthread_t *threads = NULL;
+int threads_die = 0;
+int num_threads = 0;
+pthread_key_t th_id_key;
+pthread_once_t key_once = PTHREAD_ONCE_INIT;
+
 /* resource definitions from the server */
 
 /* all resources */
@@ -162,9 +177,6 @@ char *cmp_aoename = NULL;
 char *sc_name = NULL;
 int sched_port = -1;
 char *logfile = NULL;
-#ifdef WIN32
-char path_log[_MAX_PATH];
-#else
+
 char path_log[_POSIX_PATH_MAX];
-#endif
 int dflt_sched = 0;

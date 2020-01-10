@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_wish 8B "28 November 2017" Local "PBS Professional"
+.TH pbs_wish 8B "2 December 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_wish 
 - TK window shell with TCL-wrapped PBS API
@@ -43,6 +43,7 @@
 .B pbs_wish
 --version
 .SH DESCRIPTION
+.B Deprecated.  
 The
 .B pbs_wish
 command is a version of the TK window shell which includes wrapped versions of

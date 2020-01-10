@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -101,13 +101,6 @@ main(int argc, char *argv[])
 	/* the real deal or output version and exit? */
 	PRINT_VERSION_AND_EXIT(argc, argv);
 	set_msgdaemonname("pbsfs");
-
-#ifdef WIN32
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
-
 
 	if (pbs_loadconf(0) <= 0)
 		exit(1);

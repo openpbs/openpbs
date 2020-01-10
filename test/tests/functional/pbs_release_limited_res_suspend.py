@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -988,14 +988,8 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                 kill $1
                 exit 0
                 """
-        pbs_home = self.server.pbs_conf['PBS_HOME']
-        self.chk_file = self.du.create_temp_file(body=chk_script,
-                                                 dirname=pbs_home)
-        self.du.chmod(path=self.chk_file, mode=0o755)
-        self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
-        c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
-        self.mom.add_config(c)
-
+        pbs_home = self.mom.pbs_conf['PBS_HOME']
+        self.mom.add_checkpoint_abort_script(body=chk_script)
         self.helper_test_preempt_release_all("C")
 
     def test_server_restart_with_suspened_job(self):

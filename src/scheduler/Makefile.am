@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -41,8 +41,10 @@ lib_LIBRARIES = libpbs_sched.a
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
+	-pthread \
 	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
 libpbs_sched_a_SOURCES = \
+	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
 	buckets.c \
 	buckets.h \
 	check.c \
@@ -64,6 +66,8 @@ libpbs_sched_a_SOURCES = \
 	limits.c \
 	misc.c \
 	misc.h \
+	multi_threading.c \
+	multi_threading.h \
 	node_info.c \
 	node_info.h \
 	node_partition.c \
@@ -76,6 +80,8 @@ libpbs_sched_a_SOURCES = \
 	prev_job_info.h \
 	prime.c \
 	prime.h \
+	queue.c \
+	queue.h \
 	queue_info.c \
 	queue_info.h \
 	range.c \
@@ -121,7 +127,7 @@ common_libs = \
 	@KRB5_LIBS@
 
 pbs_sched_CPPFLAGS = ${common_cppflags}
-pbs_sched_LDADD = ${common_libs}
+pbs_sched_LDADD = ${common_libs} @libundolr_lib@
 pbs_sched_SOURCES = pbs_sched.c
 
 pbsfs_CPPFLAGS = ${common_cppflags}
@@ -134,7 +140,3 @@ dist_sysconf_DATA = \
 	pbs_holidays.2017 \
 	pbs_resource_group \
 	pbs_sched_config
-
-if UNDOLR_ENABLED
-common_libs += @libundolr_lib@
-endif

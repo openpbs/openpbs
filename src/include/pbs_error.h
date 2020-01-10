@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -296,6 +296,7 @@ extern "C" {
 #define PBSE_SCHED_OP_NOT_PERMITTED 15223 /* Operation not permitted on default scheduler */
 #define PBSE_SCHED_PARTITION_ALREADY_EXISTS 15224 /* Partition already exists */
 #define PBSE_INVALID_MAX_JOB_SEQUENCE_ID 15225 /* Invalid max_job_sequence_id < 9999999, or > 999999999999 */
+#define PBSE_SVR_SCHED_JSF_INCOMPAT 15226	/* Server's job_sort_formula is incompatible with sched's */
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

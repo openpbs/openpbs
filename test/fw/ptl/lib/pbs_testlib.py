@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -1497,7 +1497,7 @@ class BatchUtils(object):
         try:
             with open(filename, mode) as f:
                 self.display_dictlist(l, f)
-        except BaseException:
+        except:
             self.logger.error('error writing to file ' + filename)
             raise
 
@@ -1547,7 +1547,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except BaseException:
+        except:
             self.logger.error('error converting nodes to vnode def')
             return None
 
@@ -1564,7 +1564,7 @@ class BatchUtils(object):
         :type name: str
         :param fmt: Optional formatting string, uses %n for
                     object name, %a for attributes, for example
-                    a format of '%nE{\}nE{\}t%aE{\}n' will display
+                    a format of r'%nE{\}nE{\}t%aE{\}n' will display
                     objects with their name starting on the first
                     column, a new line, and attributes indented by
                     a tab followed by a new line at the end.
@@ -1747,10 +1747,11 @@ class BatchUtils(object):
                     lines[_e] = lines[_e].strip('\r\n\t') + \
                         l[i].strip('\r\n\t')
                 elif (not l[i].startswith(' ') and i > count and
-                      l[i-count].startswith('\t')):
+                      l[i - count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
-                    if ((i+1) < len(l) and not l[i+1].startswith(('\t', ' '))):
+                    if ((i + 1) < len(l)
+                            and not l[i + 1].startswith(('\t', ' '))):
                         count += 1
                     else:
                         count = 1
@@ -1862,7 +1863,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except BaseException:
+        except:
             self.logger.error('error converting file ' + fpath + ' to batch')
             return None
 
@@ -1882,7 +1883,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'w') as f:
                 self.display_batch_status(bs, writer=f)
-        except BaseException:
+        except:
             self.logger.error('error converting batch status to file')
 
     def batch_to_vnodedef(self, bs):
@@ -2089,6 +2090,7 @@ class BatchUtils(object):
         :type value: str or int
         :returns: int or float or string
         """
+
         if value is None or isinstance(value, collections.Callable):
             return value
 
@@ -4255,7 +4257,7 @@ class PBSService(PBSObject):
                 # Load hooks
                 elif k == "hooks":
                     fpath = self.du.create_temp_file()
-                    print_hooks = '\n'.join(v)
+                    print_hooks = '\n'.join(v['qmgr_print_hook'])
                     with open(fpath, 'w') as f:
                         f.write(print_hooks)
                     file_qmgr = open(fpath)
@@ -4306,7 +4308,7 @@ class PBSService(PBSObject):
                 continue
             k = str(node_atb)
             v = str(val)
-            execcmd = "set node %s %s=%s" % (node_name, k, v)
+            execcmd = "set node %s %s='%s'" % (node_name, k, v)
             cmd = [qmgr, "-c", execcmd]
             ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
                                   level=logging.DEBUG)
@@ -5134,7 +5136,7 @@ class Server(PBSService):
             try:
                 rescs = self.status(RSC)
                 rescs = [r['id'] for r in rescs]
-            except BaseException:
+            except:
                 rescs = []
             if len(rescs) > 0:
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
@@ -5190,7 +5192,7 @@ class Server(PBSService):
                     if 'queue' in node.keys():
                         self.manager(MGR_CMD_UNSET, NODE, 'queue',
                                      node['id'])
-            except BaseException:
+            except:
                 pass
             self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
@@ -5298,7 +5300,7 @@ class Server(PBSService):
         try:
             with open(outfile, mode) as f:
                 json.dump(conf, f)
-        except BaseException:
+        except:
             self.logger.error('Error processing file ' + outfile)
             return False
 
@@ -8471,6 +8473,7 @@ class Server(PBSService):
             select_xt = 'x'
         jobs = self.status(JOB, extend=select_xt)
         job_ids = sorted(list(set([x['id'] for x in jobs])))
+        running_jobs = sorted([j['id'] for j in jobs if j['job_state'] == 'R'])
         host_pid_map = {}
         for job in jobs:
             exec_host = job.get('exec_host', None)
@@ -8494,24 +8497,21 @@ class Server(PBSService):
                 a = {'scheduling': 'False'}
                 self.manager(MGR_CMD_SET, SCHED, a, id=sc['id'],
                              runas=ROOT_USER)
-                self.expect(SCHED, a, id=sc['id'])
         try:
             self.deljob(id=job_ids, extend=delete_xt,
                         runas=ROOT_USER, wait=False)
         except PbsDeljobError:
             pass
         st = int(time.time())
-        running_job = False
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
-                if chunks:
-                    running_job = True
                 for chunk in chunks:
                     self.du.run_cmd(host, ['kill', '-9'] + chunk,
                                     runas=ROOT_USER, logerr=False)
-            if running_job is True:
-                _msg = job_ids[-1] + ';'
+            if running_jobs:
+                last_running_job = running_jobs[-1]
+                _msg = last_running_job + ';'
                 _msg += 'Job Obit notice received has error 15001'
                 try:
                     self.log_match(_msg, starttime=st, interval=10,
@@ -8541,7 +8541,7 @@ class Server(PBSService):
             if len(resvs) > 0:
                 try:
                     self.delresv(resvs, runas=ROOT_USER)
-                except BaseException:
+                except:
                     pass
                 reservations = self.status(RESV, runas=ROOT_USER)
 
@@ -11547,7 +11547,7 @@ class Scheduler(PBSService):
         try:
             with open(outfile, mode) as f:
                 cPickle.dump(sconf, f)
-        except BaseException:
+        except:
             self.logger.error('error saving configuration ' + outfile)
             return False
 
@@ -13293,7 +13293,7 @@ class MoM(PBSService):
         try:
             with open(outfile, mode) as f:
                 cPickle.dump(mconf, f)
-        except BaseException:
+        except:
             self.logger.error('error saving configuration to ' + outfile)
             return False
 
@@ -13453,6 +13453,21 @@ class MoM(PBSService):
         vdef += ["\n"]
         del attribs
         return "\n".join(vdef)
+
+    def add_checkpoint_abort_script(self, dirname=None, body=None,
+                                    abort_time=30):
+        """
+        Add checkpoint script in the mom config.
+        returns: a temp file for checkpoint script
+        """
+        chk_file = self.du.create_temp_file(hostname=self.hostname, body=body,
+                                            dirname=dirname)
+        self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
+        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER)
+        c = {'$action': 'checkpoint_abort ' +
+             str(abort_time) + ' !' + chk_file + ' %sid'}
+        self.add_config(c)
+        return chk_file
 
     def parse_config(self):
         """
@@ -14216,28 +14231,37 @@ class Job(ResourceResv):
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
 
-    def create_eatcpu_job(self, duration=None, mom=None):
+    def create_eatcpu_job(self, duration=None, hostname=None):
         """
         Create a job that eats cpu indefinitely or for the given
         duration of time
+
+        :param duration: The duration, in seconds, to sleep
+        :type duration: int
+        :param hostname: hostname on which to execute the job
+        :type hostname: str or None
         """
         if self.du is None:
             self.du = DshUtils()
         script_dir = os.path.dirname(os.path.dirname(__file__))
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
-        if not self.du.is_localhost(mom):
+        if not self.du.is_localhost(hostname):
             d = pwd.getpwnam(self.username).pw_dir
-            ret = self.du.run_copy(hosts=mom, src=script_path, dest=d)
+            ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
                 raise AssertionError("Failed to copy file %s to %s"
-                                     % (script_path, mom))
+                                     % (script_path, hostname))
             script_path = os.path.join(d, "eatcpu.py")
-        pbs_conf = self.du.parse_pbs_config(mom)
+        pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')
         a = {ATTR_S: shell_path}
         self.set_attributes(a)
-        self.du.chmod(path=script_path, mode=0o755)
+        mode = 0o755
+        if not self.du.chmod(hostname=hostname, path=script_path, mode=mode,
+                             sudo=True):
+            raise AssertionError("Failed to set permissions for file %s"
+                                 " to %s" % (script_path, oct(mode)))
         self.set_execargs(script_path, duration)
 
 

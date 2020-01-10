@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -480,6 +480,18 @@ struct jbdscrd {
 #define TKMFLG_REVAL_IND_REMAINING 0x02 /* Flag to re-evaluate "array_indices_remaining" */
 #define TKMFLG_CHK_ARRAY           0x04 /* chk_array_doneness() already in call stack*/
 
+/* Structure for block job reply processing */
+struct block_job_reply {
+	char jobid[PBS_MAXSVRJOBID + 1];
+	char client[PBS_MAXHOSTNAME + 1];
+	int port;
+	int exitstat;
+	time_t reply_time;	/* The timestamp at which the block job tried it's first attempt to reply */
+	char *msg;	/* Abort message to be send to client */
+	int fd;
+};
+#define BLOCK_JOB_REPLY_TIMEOUT 60
+
 /*
  * THE JOB
  *
@@ -767,14 +779,6 @@ typedef struct	pbs_task {
 		int		ti_exitstat;	/* exit status */
 		union {
 			int	ti_hold[16];	/* reserved space */
-			struct {
-#ifdef _SX
-				pid_t	ti_parent;
-				id_t	ti_jid;
-#else
-				int	ti_jj;	/* has to have a member */
-#endif
-			} ti_ext;
 		} ti_u;
 	} ti_qs;
 } pbs_task;

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -88,13 +88,6 @@ exit 1
         jid3 = self.server.submit(j3)
 
         return jid1, jid2, jid3
-
-    def insert_checkpoint_script(self, chk_script):
-        chk_file = self.du.create_temp_file(body=chk_script)
-        self.du.chmod(path=chk_file, mode=0o755)
-        self.du.chown(path=chk_file, uid=0, gid=0, sudo=True)
-        c = {'$action': 'checkpoint_abort 30 !' + chk_file + ' %sid'}
-        self.mom.add_config(c)
 
     def submit_and_preempt_jobs(self, preempt_order='R', order=None,
                                 job_array=False, extra_attrs=None):
@@ -186,14 +179,14 @@ exit 1
         """
         Test that a job is preempted with checkpoint
         """
-        self.insert_checkpoint_script(self.chk_script)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='C')
 
     def test_preempt_checkpoint_requeue(self):
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
-        self.insert_checkpoint_script(self.chk_script_fail)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
     def test_preempt_requeue(self):
@@ -242,7 +235,7 @@ exit 1
         """
         Test that when checkpoint fails, a job is correctly deleted
         """
-        self.insert_checkpoint_script(self.chk_script_fail)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CD')
 
     def test_preempt_rerunable_false(self):
@@ -259,8 +252,7 @@ exit 1
         # in CLI mode Checkpoint requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
         self.server.set_op_mode(PTL_CLI)
-
-        self.insert_checkpoint_script(self.chk_script)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script)
         a = {'Checkpoint': 'n'}
         self.submit_and_preempt_jobs(preempt_order='CD', extra_attrs=a)
 
@@ -380,7 +372,7 @@ exit 1
         abort_script = """#!/bin/bash
 exit 3
 """
-        self.insert_checkpoint_script(abort_script)
+        self.mom.add_checkpoint_abort_script(body=abort_script)
         # submit two jobs to regular queue
         attrs = {'Resource_List.select': '1:ncpus=1', 'Rerunable': 'n'}
         j1 = Job(TEST_USER, attrs)
@@ -531,3 +523,156 @@ exit 3
                              'sbin', 'pbs_server') + ' -t create'
             self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
             self.fail('TC failed as workq2 recovery failed')
+
+    def test_insufficient_server_rassn_select_resc(self):
+        """
+        Set a rassn_select resource (like ncpus or mem) ons server and
+        check if scheduler is able to preempt a lower priority job when
+        resource in contention is this rassn_select resource.
+        """
+
+        a = {ATTR_rescavail + ".ncpus": "8"}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        # Make resource ncpu available on server
+        a = {ATTR_rescavail + ".ncpus": 4}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {ATTR_l + '.select': '1:ncpus=3'}
+        j = Job(TEST_USER, attrs=a)
+        jid_low = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_low)
+
+        a = {ATTR_l + '.select': '1:ncpus=3', ATTR_q: 'expressq'}
+        j = Job(TEST_USER, attrs=a)
+        jid_high = self.server.submit(j)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
+
+    def test_preemption_priority_escalation(self):
+        """
+        Test that scheduler does not try preempting a job that escalates its
+        preemption priority when preempted.
+        """
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER) + "=4]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER2) + "=2]"}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
+        a = {'preempt_prio': p}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
+
+        # Submit 4 jobs requesting 1 ncpu each in workq
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        jid_list = []
+        for _ in range(4):
+            j = Job(TEST_USER, a)
+            jid = self.server.submit(j)
+            jid_list.append(jid)
+
+        # Submit 5th job that will make all the job in workq to go over its
+        # softlimits
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state=R': 5})
+
+        # Submit a job in workq2 which requests for 3 ncpus, this job will
+        # make user2 go over its soft limits
+        a = {ATTR_l + '.select': '1:ncpus=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        # Submit a job in workq2 which requests for 1 ncpus, this job will
+        # not preempt because if it does then all TEST_USER jobs will move
+        # from being over queue softlimits to normal.
+        a = {ATTR_l + '.select': '1:ncpus=1', ATTR_q: 'workq2'}
+        j = Job(TEST_USER2, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        msg = ";Preempting job will escalate its priority"
+        for job_id in jid_list[0:-2]:
+                self.scheduler.log_match(job_id + msg)
+
+    def test_preemption_priority_escalation_2(self):
+        """
+        Test that scheduler does not try preempting a job that escalates its
+        preemption priority when preempted. But in this case ensure that the
+        job whose preemption priority gets escalated is one of the running
+        jobs that scheduler is yet to preempt in simulated universe.
+        """
+        # create an addition queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "workq2")
+
+        a = {'resources_available.ncpus': 10}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'type': 'long', 'flag': 'nh'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='foo')
+
+        a = {'resources_available.foo': 10}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        self.scheduler.add_resource('foo')
+
+        a = {'max_run_res_soft.ncpus': "[u:PBS_GENERIC=5]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+        # Set a soft limit on resource foo to 0 so that all jobs requesting
+        # this resource are over soft limits.
+        a = {'max_run_res_soft.foo': "[u:PBS_GENERIC=0]"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
+
+        p = "express_queue, normal_jobs, queue_softlimits"
+        a = {'preempt_prio': p}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+        self.server.manager(MGR_CMD_SET, SCHED, {'log_events':  2047})
+
+        # Submit 4 jobs requesting 1 ncpu each in workq
+        jid_list = []
+        for index in range(4):
+            a = {ATTR_l + '.select': '1:ncpus=1:foo=2'}
+            if (index == 2):
+                # Since this job is not requesting foo, preempting one job
+                # from this queue will escalate its preemption priority to
+                # normal and scheduler will not attempt to preempt it.
+                a = {ATTR_l + '.select': '1:ncpus=1'}
+            j = Job(TEST_USER, a)
+            jid = self.server.submit(j)
+            jid_list.append(jid)
+            time.sleep(1)
+
+        # Submit 5th job that will make all the job in workq to go over its
+        # softlimits because if resource ncpus
+        a = {ATTR_l + '.select': '1:ncpus=2:foo=2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state=R': 5})
+
+        # Submit a job in workq2 which requests for 8 ncpus and 3 foo resource
+        a = {ATTR_l + '.select': '1:ncpus=8:foo=3', ATTR_q: 'workq2'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        jid_list.append(jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[5])
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[2])
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_list[0])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[1])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[3])
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[4])

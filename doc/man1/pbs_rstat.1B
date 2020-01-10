@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rstat 1B "25 October 2017" Local "PBS Professional"
+.TH pbs_rstat 1B "15 October 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_rstat 
-\- show status of PBS advance or standing reservations
+\- show status of PBS advance, standing, or maintenance reservations
 .SH SYNOPSIS
 .B pbs_rstat 
 [-B] [-F] [-S] [<reservation ID>...]
@@ -97,15 +97,21 @@ command accepts one or more
 operands.  
 .br
 
-For an advance reservation, this has the form:
+Format for an advance reservation:
 .RS 4
 .I "R<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-For a standing reservation, this has the form:
+Format for a standing reservation:
 .RS 4
 .I "S<sequence number>[.<server name>][@<remote server>]"
 .RE
+
+Format for a maintenance reservation:
+.RS 4
+.I "M<sequence number>[.<server name>][@<remote server>]"
+.RE
+
 
 .I @<remote server> 
 specifies a reservation at a server other than the default server.

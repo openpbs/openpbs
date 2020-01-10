@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -42,7 +42,7 @@ void
 pbs_authors()
 {
 	printf("\n\tVersion %s of PBS Professional is brought to you by Altair Engineering, Inc.\n\n", PBS_VERSION);
-	printf("\t Copyright (C) 1994-2019 Altair Engineering, Inc.\n");
+	printf("\t Copyright (C) 1994-2020 Altair Engineering, Inc.\n");
 	printf("\t For more information, contact Altair at www.altair.com.\n\n");
 	printf("\t This file is part of the PBS Professional(\"PBS Pro\") software.\n\n");
 	printf("\t Open Source License Information:\n");

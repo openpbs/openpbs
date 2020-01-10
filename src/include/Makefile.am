@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -98,14 +98,6 @@ noinst_HEADERS = \
 	port_forwarding.h \
 	provision.h \
 	qmgr.h \
-	qmgr_node_public.h \
-	qmgr_node_readonly.h \
-	qmgr_que_public.h \
-	qmgr_que_readonly.h \
-	qmgr_sched_public.h \
-	qmgr_sched_readonly.h \
-	qmgr_svr_public.h \
-	qmgr_svr_readonly.h \
 	queue.h \
 	reservation.h \
 	resmon.h \

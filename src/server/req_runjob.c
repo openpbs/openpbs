@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -72,13 +72,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#ifdef WIN32
-#include <windows.h>
-#include "win.h"
-#else
 #include <strings.h>
 #include <sys/wait.h>
-#endif
 
 #include <signal.h>
 #include <stdlib.h>
@@ -1380,16 +1375,13 @@ post_sendmom(struct work_task *pwt)
 	if (!isrpp) {
 		if (WIFEXITED(wstat)) {
 			r = WEXITSTATUS(wstat);
-		}
-#ifndef WIN32
-		 else if (WIFSIGNALED(wstat)) { /* Check if send_job child process has been signaled or not */
+		} else if (WIFSIGNALED(wstat)) {
+			/* Check if send_job child process has been signaled or not */
 			r = SEND_JOB_SIGNAL;
 			snprintf(log_buffer, LOG_BUF_SIZE, msg_job_end_sig, WTERMSIG(wstat));
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO,
 				jobp->ji_qs.ji_jobid, log_buffer);
-		}
-#endif
-		else {
+		} else {
 			r = SEND_JOB_RETRY;
 			(void)sprintf(log_buffer, msg_badexit, wstat);
 			(void)strcat(log_buffer, __func__);
@@ -1418,9 +1410,6 @@ post_sendmom(struct work_task *pwt)
 
 					reject_msg = malloc(sbuf.st_size);
 					if (reject_msg != NULL) {
-#ifdef WIN32
-						setmode(fd, O_BINARY);
-#endif
 						if (read(fd, reject_msg, sbuf.st_size) != sbuf.st_size) {
 							sprintf(log_buffer, "read %s is incomplete", name_buf);
 							log_err(errno, __func__, log_buffer);
@@ -1540,7 +1529,6 @@ post_sendmom(struct work_task *pwt)
 				complete_running(jobp);
 			break;
 
-#ifndef WIN32
 		case SEND_JOB_SIGNAL:
 
 			/* send_job child process has been signaled
@@ -1567,7 +1555,7 @@ post_sendmom(struct work_task *pwt)
 			/* Force requeue the job since the job has been aborted by the server */
 			(void)force_reque(jobp);
 			break;
-#endif
+
 		case SEND_JOB_NODEDW:	/* node (mother superior) is down? */
 			mark_node_down(jobp->ji_qs.ji_destin, "could not send job to mom");
 

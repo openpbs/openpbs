@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -125,7 +125,7 @@ extern resource     *find_resc_entry(attribute *, resource_def *);
 extern int          is_builtin(resource_def *rscdef);
 extern int           update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
 extern int           add_resource_def(char *name, int type, int perms);
-extern void          restart_python_interpreter(const char *);
+extern int          restart_python_interpreter(const char *);
 extern long long     to_kbsize(char *val);
 extern int   alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
 extern int  parse_resc_type(char *val, int *resc_type_p);

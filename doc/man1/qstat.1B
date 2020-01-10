@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qstat 1B "23 April 2018" Local "PBS Professional"
+.TH qstat 1B "2 July 2019" Local "PBS Professional"
 .SH NAME
 .B qstat 
 - display status of PBS jobs, queues, or servers
@@ -46,7 +46,7 @@
 Default format:
 .br
 .B qstat 
-[-E] [-J] [-p] [-t] [-x] [[<job ID> | <destination>] ...]
+[-E] [-J] [-p] [-t] [-w] [-x] [[<job ID> | <destination>] ...]
 
 .sp
 Long format:
@@ -61,9 +61,9 @@ Long format:
 Alternate format:
 .br
 .B qstat 
-[-a [-w]| -H | -i | -r ] [-E] [-G | -M] [-J] [-n [-1][-w]]   
+[-a | -H | -i | -r ] [-E] [-G | -M] [-J] [-n [-1]]   
 .RS 6
-[-s [-1][-w]] [-t] [-T [-w]] [-u <user list>] 
+[-s [-1]] [-t] [-T] [-u <user list>] [-w]
 .br
 [[<job ID> | <destination>] ...]
 .RE
@@ -154,6 +154,18 @@ To list all jobs at ServerB, you can use:
 .br
 .B \ \ \ qstat @ServerB
 
+.B Displaying Truncated Data
+.br
+When the number of characters required would exceed the space
+available, qstat truncates the output and puts an asterisk ("*") in
+the last position.  For example, in default job display format, there
+are three characters allowed for the number of cores.  If the actual
+output were 
+.I 1234
+, the value displayed would be 
+.I 12*
+instead.
+
 .B Required Privilege
 .br
 Users without Manager or Operator privilege cannot view 
@@ -162,7 +174,7 @@ resources or attributes that are invisible to unprivileged users.
 .SH DISPLAYING JOB STATUS
 .B Job Status in Default Format
 .br
-Triggers: any of the 
+Triggers: no options, or any of the 
 .I -J, -p, -t, 
 or 
 .I -x
@@ -170,70 +182,76 @@ options.
 
 The 
 .B qstat 
-command displays job status in default format when you specify any 
-of the 
+command displays job status in default format when you specify no
+options, or any of the 
 .I -J, -p, -t,
 or 
 .I -x, 
 options.
 Jobs are displayed one to a line, with these column headers:
-.sp
-Job id   Name       User      Time Use S Queue   
-.br
+
+.nf
+Job ID   Name       User      Time Use S Queue   
 -------- ---------- --------- -------- - -----
-.sp
 
 Description of columns:
-.IP "Job id" 10
-The job ID assigned by PBS
-.IP "Name" 10
-Job name specified by submitter
-.IP "User" 10
-Username of job owner
-.IP "Time Use" 10
-The CPU time used by the job.  Before the application has actually
-started running, for example during stage-in, this field is "0". At
-the point where the application starts accumulating cput, this field
-changes to "00:00:00".  After that, every time the MoM polls for
-resource usage, the field is updated.
 
-The MoM on each execution host polls for the usage of all
-processes on her host belonging to the job.  Usage is summed.  The
-polling interval is short when a job first starts running and
-lengthens to a maximum of 2 minutes.
-.LP
-.IP "S" 10
-The job's state:
-.RS 
-.IP "B" 3
-Array job has at least one subjob running
-.IP "E" 3
-Job is exiting after having run
-.IP "F" 3
-Job is finished
-.IP "H" 3
-Job is held
-.IP "M" 3
-Job was moved to another server
-.IP "Q" 3
-Job is queued
-.IP "R" 3
-Job is running
-.IP "S" 3
-Job is suspended
-.IP "T" 3
-Job is being moved to new location
-.IP "U" 3
-Cycle-harvesting job is suspended due to 
-keyboard activity
-.IP "W" 3
-Job is waiting for its submitter-assigned start 
-time to be reached
-.IP "X" 3
-Subjob has completed execution or has been deleted
-.RE
-.IP "Queue" 10
-The queue in which the job resides
+Column    Width                Width    Description
+Name      without -w           with -w
+-------------------------------------------------------------------------------
+
+Job ID    17 (22 when          30       Job ID assigned by PBS
+          max_job_sequence_id
+          > 10 million)
+
+Name      16                   15       Job name specified by submitter       
+
+User      16                   15       Username of job owner                 
+
+Time Use  8                    8        The CPU time used by the job.  Before 
+or                                      the application has actually started  
+Percent                                 running, for example during stage-in, 
+Complete                                this field is "0". At the point where 
+                                        the application starts accumulating   
+                                        cput, this field changes to "00:00:00".  
+                                        After that, every time the MoM polls  
+                                        for resource usage, the field is      
+                                        updated.
+
+                                        The MoM on each execution host polls   
+                                        for the usage of all processes on her 
+                                        host belonging to the job.  Usage is  
+                                        summed.  The polling interval is short 
+                                        when a job first starts running and   
+                                        lengthens to a maximum of 2 minutes.  
+
+                                        If you specify -p, the Time Use column 
+                                        is replaced with the percentage 
+                                        completed for the job.  For a job array 
+                                        this is the percentage of subjobs 
+                                        completed.  For a normal job, it is the 
+                                        percentage of allocated CPU time used.
+
+S         1                    1        The job's state:
+                                          B  Array job has at least one subjob
+                                             running
+                                          E  Job is exiting after having run
+                                          F  Job is finished
+                                          H  Job is held
+                                          M  Job was moved to another server
+                                          Q  Job is queued
+                                          R  Job is running
+                                          S  Job is suspended
+                                          T  Job is being moved to new location
+                                          U  Cycle-harvesting job is suspended 
+                                             due to keyboard activity
+                                          W  Job is waiting for its submitter-
+                                             assigned start time to be reached
+                                          X  Subjob has completed execution or
+                                             has been deleted
+
+Queue     16                   15       The queue in which the job resides
+.fi
 .LP
 
 .B Job Status in Long Format
@@ -299,7 +317,7 @@ M1 is the amount of memory allocated to that job on vnode1.
 .B Job Status in Alternate Format
 .br
 Triggers: any of the 
-.I -a, -i, -G, -H, -M, -n, -r, -s, 
+.I -a, -i, -G, -H, -M, -n, -r, -s, -T,
 or
 .I -u <user list>
 options.
@@ -307,7 +325,7 @@ options.
 The 
 .B qstat
 command displays job status in the alternate format if you specify any of the
-.I -a, -i, -G, -H, -M, -n, -r, -s, 
+.I -a, -i, -G, -H, -M, -n, -r, -s, -T,
 or 
 .I -u <user list>
 options.
@@ -317,41 +335,54 @@ option is specified, or if jobs are finished or moved and the -H and
 .I exec_host
 string.
 
-.sp
+.nf
 Column headers:
 
-.sp
                                              Req'd  Req'd   Elap
-.br
 Job ID Username Queue Jobname SessID NDS TSK Memory Time  S Time
-.br
 ------ -------- ----- ------- ------ --- --- ------ ----- - ---- 
-.sp
 
 Description of columns:
-.sp
-.IP "Job ID" 15
-The job ID assigned by PBS
-.IP "Username" 15
-Username of job owner
-.IP "Queue" 15
-Queue in which the job resides
-.IP "Jobname"
-Job name specified by submitter
-.IP "SessID" 15
-Session ID.  Appears only if the job is running.
-.IP "NDS" 15
-Number of chunks or vnodes requested by the job
-.IP "TSK" 15
-Number of CPUs requested by the job
-.IP "Req'd Memory" 15
-Amount of memory requested by the job
-.IP "Req'd Time" 15
-If CPU time is requested, this shows CPU time.  Otherwise, shows walltime
-.IP "S" 15
-The job's state.  (See listing above)
-.IP "Elap Time" 15
-If CPU time is requested, this shows CPU time.  Otherwise, shows walltime
+   
+Column    Width                Width    Description
+Name      without -w           with -w  
+--------------------------------------------------------------------------------
+
+Job ID    15 (20 when          30       The job ID assigned by PBS
+          max_job_sequence_id
+          > 10 million)
+
+Username  8                    15       Username of job owner
+
+Queue     8                    15       Queue in which the job resides
+
+Jobname   10                   15       Job name specified by submitter
+
+SessID    6                    8        Session ID.  Appears only if the job 
+                                        is running.
+
+NDS       3                    4        Number of chunks or vnodes requested 
+                                        by the job
+
+TSK       3                    5        Number of CPUs requested by the job
+
+Req'd     6                    6        Amount of memory requested by the job
+Memory
+
+Req'd     5                    5        If CPU time is requested, this shows CPU 
+Time                                    time.  Otherwise, shows walltime
+
+S         1                    1        The job's state.  (See listing above  
+                                        for default format)
+
+Elap      5                    5        If CPU time is requested, this shows CPU 
+Time                                    time.  Otherwise, shows walltime.
+or       
+Est Start                               If you use the -P option, displays 
+Time                                    estimated start time for queued jobs, 
+                                        replacing the Elap Time field with the 
+                                        Est Start Time field.
+.fi
 
 .SH Grouping Jobs and Sorting by ID
 Trigger: the 
@@ -811,40 +842,20 @@ Hostnames may be wildcarded, but not domain names.
 When no hostname is specified, username is for any host.
 
 .IP "-w" 10
-Allows display of wider fields up to 120 characters.  The 
-.I JobID 
-column 
-can be up to 30 characters wide.  
-.I Username, Queue, 
+Can be used with job status in default and alternate formats.  Allows display
+of wider fields up to 120 characters.  See
+.B Job Status in Default Format
 and 
-.I Jobname 
-can be
-up to 15 characters wide.  
-.I SessID 
-can be up to 8 characters wide
-and 
-.I NDS 
-can be up to 4 characters wide.  
-.I TSK 
-can be up to 5 characters wide.
-.I Req'd Memory
-can be 6 characters, 
-.I Elap Time
-can be 5 characters, and
-.I S
-can be only 1 character wide.  
+.B Job Status in Alternate Format
+for column widths.
 
-Can be used only in conjunction with the 
-.I -a, -n, 
-or 
-.I -s
-options.  This 
-option is different from the 
+This option is different from the 
 .I -w
-option used with 
-.I -f.
+option used with the
+.I -f 
+long-format option.
 
-.IP "-1" 10
+.IP "-1 (hyphen one)" 10
 Reformats 
 .B qstat 
 output to a single line.  Can be used only in conjunction with the 
@@ -873,7 +884,7 @@ Operands must be names of servers.
 .LP
 .B Job, Queue, and Server Status Options
 .IP "-f [-w]" 10
-Full display. Job, queue or server attributes displayed one to a line.
+Full display for long format. Job, queue or server attributes displayed one to a line.
 .br
 JSON output: PBS reports 
 .I resources_used 
@@ -916,7 +927,7 @@ This
 .I -w 
 is independent of the 
 .I -w 
-job alternate output option.
+job output option used with default and alternate formats.
 .RE
 
 .IP "-F dsv [-D <delimiter>]" 10
@@ -967,7 +978,7 @@ Attribute output is preceded by timestamp, PBS version, and PBS server hostname.
 Example: 
 
 .RS 13
-.B qstat -F json
+.B qstat -f F json
 
 {
         "timestamp":1479277336,

@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,39 +33,35 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH win_postinstall.py 8B "17 June 2018" Local "PBS Professional"
+.TH win_postinstall.py 8B "20 November 2019" Local "PBS Professional"
 .SH NAME
 .B win_postinstall.py 
-\- For Windows.  Configures PBS services
+\- For Windows.  Configures PBS MoM or client
 
 
 .SH SYNOPSIS
 <PBS_EXEC>\\etc\\python win_postinstall.py 
 -u <PBS service account> 
 .br
-        -p <PBS service account password> [-t server]
+        -p <PBS service account password> -t <installation type>   
 .br
-<PBS_EXEC>\\etc\\python win_postinstall.py 
--u <PBS service account> 
-.br
-        -p <PBS service account password> 
-.br
-        -t <non-server installation type>   
-.br
-        -s <server name>
+        -s <server name> [-c <path to scp command>]
 
 .SH DESCRIPTION
 The
 .B win_postinstall.py
-command configures PBS services.  It performs post-installation steps
-such as validating the PBS service account username and password,
-installing the Visual C++ redistributable binary, creating PBS_HOME
-and the default queue, initializing the database, and registering and
-starting the PBS_SERVER, PBS_SCHED, PBS_MOM, PBS_COMM and PBS_RSHD PBS
-services.
+command configures the PBS MoM and commands.  It performs
+post-installation steps such as validating the PBS service account
+username and password, installing the Visual C++ redistributable
+binary, and creating the
+.I pbs.conf
+file in the PBS destination folder.
 
-When you use this command during installation of PBS, the command
-automatically un-registers any old PBS services.
+For an "execution" type of installation, it creates PBS_HOME, 
+and registers and starts the PBS_MOM service.
+
+When you use this command during an "execution" type installation of
+PBS, the command automatically un-registers any old PBS MoM.
 
 Available on Windows only.
 
@@ -74,14 +70,22 @@ Available on Windows only.
 You must have Administrator privilege to run this command.
 
 .SH Options to win_postinstall.py
-.IP "p, --passwd <PBS service account password>" 8
+.IP "-c, --scp-path <path to scp command>" 8
+Specifies path to 
+.B scp
+command.
+
+.IP "-p, --passwd <PBS service account password>" 8
 Specifies password for PBS service account.  
+
 .IP "-s, --server <server name>" 8
 Specifies the hostname on which the PBS server will run; required when
-the installation type is one of "execution", "client", or "comm".
+the installation type is one of "execution" or "client".
+
 .IP "-t, --type <installation type>" 8
-Specifies type of installation.  Type can be one of "server",
-"execution", "client", or "comm".  Default is server installation.
+Specifies type of installation.  Type can be one of 
+"execution" or "client".
+
 .IP "-u, --user <PBS service account>" 8
 Specifies PBS service account.  When you specify the PBS service
 account, whether or not you are on a domain machine, include only the

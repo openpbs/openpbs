@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1809,10 +1809,7 @@ record_finish_exec(int sd)
 
 	ptask->ti_qs.ti_sid = sjr.sj_session;
 	ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-#ifdef	_SX
-	ptask->ti_qs.ti_u.ti_ext.ti_parent = sjr.sj_parent;
-	ptask->ti_qs.ti_u.ti_ext.ti_jid = sjr.sj_jid;
-#endif
+
 	strcpy(ptask->ti_qs.ti_parentjobid, pjob->ji_qs.ji_jobid);
 	if (task_save(ptask) == -1) {
 		(void)sprintf(log_buffer, "Task save failed");
@@ -4836,10 +4833,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 		ptask->ti_qs.ti_sid = sjr.sj_session;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-#ifdef	_SX
-		ptask->ti_qs.ti_u.ti_ext.ti_parent = sjr.sj_parent;
-		ptask->ti_qs.ti_u.ti_ext.ti_jid = sjr.sj_jid;
-#endif
+
 		(void)task_save(ptask);
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
@@ -6115,13 +6109,7 @@ start_exec(job *pjob)
 		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags |= ATR_VFLAG_SET;
 
 		for (i = 0; i < 33; i += sizeof(long)) {
-			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long),
-#ifdef	_SX
-				(unsigned long)lrand48()
-#else
-				(unsigned long)random()
-#endif
-				);
+			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long), (unsigned long)random());
 		}
 		DBPRT(("===== COOKIE %s\n", tt))
 	}

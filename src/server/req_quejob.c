@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -318,9 +318,9 @@ req_quejob(struct batch_request *preq)
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
-	char		*namebuf;
 	int		hook_errcode = 0;
 	int		hook_rc = 0;
+	int		isrpp;
 	char		hook_buf[HOOK_MSG_SIZE];
 	hook		*last_phook = NULL;
 	unsigned int	hook_fail_action = 0;
@@ -556,13 +556,14 @@ req_quejob(struct batch_request *preq)
 
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
+			isrpp = preq->isrpp;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
 				BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
-				if (!preq->isrpp) {
+				if (!isrpp) {
 					pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
 				} else {
 					struct sockaddr_in* addr = rpp_getaddr(sock);
@@ -578,6 +579,7 @@ req_quejob(struct batch_request *preq)
 		/* unlink job from svr_alljobs since will be place on newjobs */
 		delete_link(&pj->ji_alljobs);
 	} else {
+		char *namebuf;
 		char basename[MAXPATHLEN + 1] = {0};
 
 		/* if not already here, allocate job struct */
@@ -616,8 +618,8 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
+		free(namebuf);
 	}
-	free(namebuf);
 #endif          /* PBS_MOM */
 
 	(void)strcpy(pj->ji_qs.ji_jobid, jid);

@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_sched 8B "17 December 2018" Local "PBS Professional"
+.TH pbs_sched 8B "20 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_sched 
 \- run a PBS scheduler
@@ -48,11 +48,10 @@
 --version
 
 .SH DESCRIPTION
-.B pbs_sched
-is a PBS scheduling daemon.  It schedules PBS jobs.
+Runs the default scheduler or a multisched.
 .LP
 .B pbs_sched 
-must be executed with root permission on Linux or Admin privilege on Windows.
+must be executed with root permission.
 
 .SH OPTIONS
 .IP "-a <alarm>" 13
@@ -114,7 +113,7 @@ A scheduler does not restart itself if it receives
 either one within five minutes of starting.
 
 .IP "-N" 13
-Instructs this scheduler not to detach itself from the current session.
+Runs the scheduler in standalone mode.
 .LP
 
 .IP "-p <output file>" 13
@@ -493,15 +492,10 @@ to
 .I round_robin. 
 
 .IP log_filter 13
-Defines which event types to keep out of this scheduler's
-logfile. The value should be set to the bitwise OR of the event
-classes which should be filtered. A value of 0 specifies maximum
-logging.
-.br
-Format: Integer
-.br
-Default: 
-.I 3328 
+.B Obsolete.
+See the 
+.I log_events
+scheduler attribute.
 
 .IP max_starve 13
 The amount of time before a job is considered starving. This
@@ -600,8 +594,9 @@ Format: String
 Default: Unset
 
 .IP preemptive_sched 13
-Enables job preemption.  See
-.I preempt_order.
+Enables job preemption.  See the
+.I preempt_order 
+scheduler attribute.
 .br
 Format: String
 .br
@@ -610,9 +605,9 @@ Default:
 
 .IP preempt_checkpoint 13
 .B Deprecated. 
-Add "C" to 
+Add "C" to the
 .I preempt_order 
-parameter.
+scheduler attribute.
 
 .IP preempt_fairshare 13
 .B Deprecated. 
@@ -621,141 +616,34 @@ Add "fairshare" to
 parameter.
 
 .IP preempt_order 13
-.RS
-Defines the order of preemption methods which the
-scheduler uses on jobs. This order can change depending on
-the percentage of time remaining on the job. The ordering can
-be any combination of 
-.I S, C, 
-and 
-.I R.
-.RS
-.IP S 
-Suspend
-.IP C
-Checkpoint
-.IP R
-Requeue
-.RE
-The usage is an ordering (SCR) optionally followed
-by a percentage of time remaining and another ordering. 
-Must be a quoted list("").
-
-For example, PBS should first attempt to use suspension to preempt a
-job, and if that is unsuccessful, then requeue the job:
-.RS
-.I preempt_order: "SR"
-.RE
-
-For example, if the job has between 100% and 81% requested time
-remaining, first try to suspend the job, then try checkpoint, then
-requeue. If the job has between 80% and 51% requested time remaining,
-attempt suspend, then checkpoint.  Between 50% and 0% time
-remaining, just attempt to suspend the job:
-.RS
-.I preempt_order: "SCR 80 SC 50 S"
-.RE
-
-.br
-Format: Quoted list
-.br
-Default: 
-.I SCR
-.RE
+.B Obsolete.  
+See the 
+.I preempt_order
+scheduler attribute.
 
 .IP preempt_prio 13
-.RS
-Specifies the ordering of priority for different preemption
-levels. Two or more job types may be combined at the
-same priority level with a + between them, using no whitespace.
-Comma-separated preemption levels are evaluated left to right,
-with higher priority to the left.
-The table below lists the six preemption levels.  
-Any level not specified in the 
-.I preempt_prio 
-list is
-ignored.
-.RS
-.IP express_queue 13
-Jobs in express queues preempt other jobs.  See also 
-.I preempt_queue_prio.  
-Does not require 
-.I by_queue
-to be
-.I True.
-.IP starving_jobs 13
-When a job becomes starving it can preempt other jobs.
-.IP fairshare 13
-When the entity owning a job exceeds its fairshare limit.
-.IP queue_softlimits 13
-Jobs which are over their queue soft limits
-.IP server_softlimits 13
-Jobs which are over their server soft limits
-.IP normal_jobs 13
-The preemption level into which a job falls if it does not
-fit into any other specified level.
-.RE
-
-For example, starving jobs have the highest priority, then normal
-jobs, and jobs whose entities are over their fairshare limit are third
-highest:
-.RS
-.I preempt_prio: "starving_jobs, normal_jobs, fairshare"
-.RE
-
-For example,starving jobs whose entities are also over
-their fairshare limit are lower priority than normal jobs:
-.RS
-.I preempt_prio: "normal_jobs, starving_jobs+fairshare"
-.RE
-
-Format: Quoted list
-.br
-Default: 
-.I """express_queue, normal_jobs"""
-.RE
+.B Obsolete.
+See the 
+.I preempt_prio
+scheduler attribute.
 
 .IP preempt_queue_prio 13
-Specifies the minimum queue priority required for a queue to be
-classified as an express queue.  Express queues do not require
-.I by_queue
-to be
-.I True.
-.br
-Format: Integer
-.br
-Default: 
-.I 150
+.B Obsolete.
+See the
+.I preempt_queue_prio
+scheduler attribute.
 
 .IP preempt_requeue 13
 .B Deprecated. 
-Add an "R" to 
+Add an "R" to the
 .I preempt_order 
-parameter.
+scheduler attribute.
 
 .IP preempt_sort 13
-Specifies whether those jobs most eligible for preemption are sorted
-according to their start times. 
-.br
-If set
-to 
-.I min_time_since_start, 
-first job preempted will be that with most recent start time. 
-.br
-If not
-set, meaning that this parameter is commented out, preempted 
-job will be that with longest running time.
-.br
-Must be commented out in order to be unset.
-.br
-Allowable values: 
-.I min_time_since_start, 
-or no setting. 
-.br
-Format: String
-.br
-Default: 
-.I min_time_since_start
+.B Obsolete.
+See the
+.I preempt_sort
+scheduler attribute.
 
 .IP preempt_starving 13
 .B Deprecated. 
@@ -769,9 +657,9 @@ parameter.
 .B Deprecated. 
 Add an 
 .I """S""" 
-to 
+to the
 .I preempt_order 
-parameter.
+scheduler attribute.
 
 .IP primetime_prefix 13
 Queue names starting with this prefix are treated as

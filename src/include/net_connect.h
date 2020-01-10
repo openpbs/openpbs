@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -188,6 +188,7 @@ void close_conn(int socket);
 pbs_net_t get_connectaddr(int sock);
 int  get_connecthost(int sock, char *namebuf, int size);
 pbs_net_t get_hostaddr(char *hostname);
+int  compare_short_hostname(char *shost, char *lhost);
 unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);
 int  init_network_add(int sock, int (*readyreadfunc)(int), void (*readfunc)(int));

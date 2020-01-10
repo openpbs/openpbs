@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -154,15 +154,6 @@ typedef struct taskfix_PRE19
 	int ti_exitstat;		/* exit status */
 	union {
 		int ti_hold[16]; 	/* reserved space */
-		struct
-		{
-#ifdef _SX
-			pid_t ti_parent;
-			id_t ti_jid;
-#else
-			int ti_jj;	/* has to have a member */
-#endif
-		} ti_ext;
 	} ti_u;
 } taskfix_PRE19;
 

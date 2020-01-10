@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -168,6 +168,18 @@ enum resval_cmpflag
 	CMP_CASE,
 	CMP_CASELESS
 };
+
+enum thread_task_type
+{
+	TS_IS_ND_ELIGIBLE,
+	TS_DUP_ND_INFO,
+	TS_QUERY_ND_INFO,
+	TS_FREE_ND_INFO,
+	TS_DUP_RESRESV,
+	TS_QUERY_JOB_INFO,
+	TS_FREE_RESRESV
+};
+
 /* return codes for is_ok_to_run_* functions
  * codes less then RET_BASE are standard PBSE pbs error codes
  * NOTE: RET_BASE MUST be greater than the highest PBSE error code
@@ -509,8 +521,9 @@ enum nodepart
 {
 	NP_LOW = 0,
 	NP_IGNORE_EXCL = 1,
-	NP_CREATE_REST = 2
-	/* next 4, 8, etc */
+	NP_CREATE_REST = 2,
+	NP_NO_ADD_NP_ARR = 4
+	/* next 8, 16, etc */
 };
 
 /* It is used to identify the provisioning policy set on scheduler */

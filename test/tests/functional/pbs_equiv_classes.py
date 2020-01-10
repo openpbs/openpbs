@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -516,6 +516,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnShasta
     def test_group_old(self):
         """
         Test to see that jobs from different groups fall into different
@@ -547,6 +548,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnShasta
     def test_group_server(self):
         """
         Test to see that jobs from different groups fall into different
@@ -578,6 +580,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnShasta
     def test_group_server_soft(self):
         """
         Test to see that jobs from different groups fall into different
@@ -609,6 +612,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnShasta
     def test_group_queue(self):
         """
         Test to see that jobs from different groups fall into different
@@ -643,6 +647,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnShasta
     def test_group_queue_soft(self):
         """
         Test to see that jobs from different groups fall into different

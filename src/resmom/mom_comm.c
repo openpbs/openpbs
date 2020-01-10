@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -5416,7 +5416,7 @@ join_err:
 			resc_idx = -1;
 			for (i=0; i < pjob->ji_numrescs; i++) {
 				if ((pjob->ji_resources[i].nodehost != NULL) &&
-				    (strcmp(pjob->ji_resources[i].nodehost, nodehost) == 0)) {
+				    (compare_short_hostname(pjob->ji_resources[i].nodehost, nodehost) == 0)) {
 					resc_idx = i;
 					break;
 				}
@@ -5446,6 +5446,8 @@ join_err:
 				 	 	"strdup failure setting nodehost");
 					goto err;
 				}
+				clear_attr(&pjob->ji_resources[resc_idx].nr_used,
+						&job_attr_def[JOB_ATR_resc_used]);
 				pjob->ji_numrescs++;
 
 			}

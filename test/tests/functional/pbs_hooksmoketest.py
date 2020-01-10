@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 2003-2019 Altair Engineering, Inc. All rights reserved.
+# Copyright (C) 2003-2020 Altair Engineering, Inc. All rights reserved.
 # Copyright notice does not imply publication.
 #
 # ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade Secret
@@ -432,19 +432,21 @@ print_attribs(j)"""
         ev = ret[0]['exec_vnode']
         # Verify server logs
         self.logger.info("Verifying logs in server")
-        msg_1 = "Server@%s;Hook;%s;started" % \
-                (self.server.shortname, self.hook_name)
-        msg_2 = "Hook;Server@%s;requestor = Scheduler" % \
-                self.server.shortname
-        msg_3 = "Hook;Server@%s;hook_name = %s" % \
-                (self.server.shortname, self.hook_name)
-        msg_4 = "Hook;Server@%s;exec_vnode = %s" % \
-                (self.server.shortname, ev)
-        msg_5 = "Server@%s;Hook;%s;finished" % \
-                (self.server.shortname, self.hook_name)
+        msg_1 = "Server@.*;Hook;%s;started" % \
+                (self.hook_name)
+        msg_2 = "Hook;Server@.*;requestor = Scheduler"
+        msg_3 = "Hook;Server@.*;hook_name = %s" % \
+                (self.hook_name)
+        msg_4 = "Hook;Server@.*;exec_vnode = %s" % \
+                (ev)
+        # Character escaping '()' as the log_match is regexp
+        msg_4 = msg_4.replace("(", "\(")
+        msg_4 = msg_4.replace(")", "\)")
+        msg_5 = "Server@.*;Hook;%s;finished" % \
+                (self.hook_name)
         msg = [msg_1, msg_2, msg_3, msg_4, msg_5]
         for i in msg:
-            self.server.log_match(i, starttime=now)
+            self.server.log_match(i, starttime=now, regexp=True)
             self.logger.info("Got expected logs in server as %s", i)
 
     def tearDown(self):

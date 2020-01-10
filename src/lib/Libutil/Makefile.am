@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -40,7 +40,8 @@ noinst_LIBRARIES = libutil.a
 
 libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@libical_inc@ @KRB5_CFLAGS@
+	@libical_inc@ @KRB5_CFLAGS@ \
+	@libundolr_inc@
 
 libutil_a_SOURCES = \
 	execvnode_seq_util.c \
@@ -57,9 +58,8 @@ libutil_a_SOURCES = \
 	munge_supp.c \
 	krb5_util.c \
 	pbs_gss.c
-  
+
 if UNDOLR_ENABLED
-libutil_a_CPPFLAGS += @libundolr_inc@
 libutil_a_SOURCES += undolr.c
 endif
 

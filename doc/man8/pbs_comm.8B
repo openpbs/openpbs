@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,29 +33,17 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_comm 8B "17 October 2017" Local "PBS Professional"
+.TH pbs_comm 8B "19 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_comm 
 - start the PBS communication daemon
 .SH SYNOPSIS
-Linux:
-.br
 .B pbs_comm 
 [-N] [-r <other routers>] [-t <number of threads>]
 .br
 .B pbs_comm
 --version
 .br
-.sp
-Windows:
-.br
-.B pbs_comm.exe
-[-R | -U | -N] [-r <other routers>] 
-.br
-\ \ \ \ \ \ \ \ \ \ \ \ \ [-t <number of threads>]
-.br
-.B pbs_comm
---version
 
 .SH DESCRIPTION
 The PBS communication daemon, 
@@ -65,6 +53,8 @@ server-server communication, which uses TCP.  The server, scheduler,
 and MoMs are connected by one or more pbs_comm daemons.
 
 See the Communication chapter in the PBS Installation & Upgrade Guide.
+
+Available on Linux only.
 
 .SH OPTIONS
 .IP "-N" 10
@@ -81,11 +71,6 @@ The command line overrides the variable.
 .br
 Format: <host>[:<port>][,<host>[:<port>]]
 
-.IP "-R" 10
-Registers the 
-.B pbs_comm 
-process.  Available under Windows only.
-
 .IP "-t" 10
 Number of threads the 
 .B pbs_comm 
@@ -96,11 +81,6 @@ The command
 line overrides the variable.  
 .br
 Format: Integer
-
-.IP "-U" 10
-Unregisters the 
-.B pbs_comm 
-process.  Available under Windows only.
 
 .IP "--version" 10
 Prints the PBS version and exits.  This option can only be used alone.

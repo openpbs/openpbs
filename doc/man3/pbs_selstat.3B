@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,218 +33,252 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_selstat 3B "1 February 2016" Local "PBS Professional"
+.TH pbs_selstat 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-pbs_selstat - obtain status of selected PBS batch jobs
+.B pbs_selstat 
+\- get status of selected PBS batch jobs
 .SH SYNOPSIS
 #include <pbs_error.h>
 .br
 #include <pbs_ifl.h>
 .sp
-.B struct batch_status *pbs_selstat(\^int\ connect, struct\ attropl\ *sel_list, 
-.B struct\ attrl\ *rattrib, char *extend\^)
-.sp
-.B void pbs_statfree(\^struct batch_status *psj\^)
-.SH DESCRIPTION
-Issue a batch request to examine the status of jobs which meet certain criteria.
-\f3pbs_selstat\f1() returns a list of batch_status structures for those jobs
-which met the selection criteria.
-.LP
-The 
-.B sel_list
-struct holds the selection criteria.  The 
-.B rattrib
-struct holds the list of attributes whose values are to be returned.
-.LP
-This function is a combination of \f3pbs_selectjob\f1() and
-\f3pbs_statjob\f1().
-It is an extension to the POSIX Batch standard.
-.LP
-Initially all batch jobs are selected for which the user is authorized to
-query status.
-This set may be reduced or filtered by specifying certain attributes
-of the jobs.
-.LP
-A
-.I "Select Status"
-batch request is generated and sent to the server over the connection
-specified by
-.I connect 
-which is the return value of \f3pbs_connect\f1().
-.LP
-The parameter,
-.I sel_list ,
-is a pointer to an
-.I attropl 
-structure which is defined in pbs_ifl.h as:
-.sp
-.Ty
 .nf
-    struct attropl {
+.B struct batch_status *
+.B pbs_selstat(int connect, struct attropl *criteria_list, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ struct attrl *output_attribs, char *extend)
+.fi
+
+.SH DESCRIPTION
+Issues a batch request to get the status of jobs which meet the specified criteria.  
+
+Generates a 
+.I Select Status 
+(51) batch request and sends it to the server over the connection specified by 
+.I connect.
+
+Returns a list of 
+.I batch_status 
+structures for jobs that meet the selection criteria.
+
+This function is a combination of 
+.B pbs_selectjob() 
+and 
+.B pbs_statjob().  
+
+By default this gives status for all jobs for which you are authorized
+to query status.  You can filter the results by specifying selection
+criteria.
+
+.SH ARGUMENTS
+.IP connect 8
+Return value of 
+.B pbs_connect().  
+Specifies connection handle over which to send batch request to server.
+
+.IP criteria_list 8
+Pointer to a list of selection criteria, which are attributes and
+resources with required values.  If this list is null, you are not
+filtering your results via selection criteria.  Each attribute or
+resource is described in an 
+.I attropl 
+structure, defined in pbs_ifl.h
+as:
+.nf
+struct attropl {
         struct attropl *next;
         char           *name;
         char           *resource;
         char           *value;
-        enum batch_op   op;
-    };
+        enum batch_op  op;
+};
 .fi
-.sp
-The
-.I sel_list
-list is terminated by the first entry where
-.I next
-is a null pointer.
-.LP
-The
-.I name
-member points to a string which is the name of the attribute.
-Not all of the job attributes may be used as a selection criteria.
-The
-.I resource
-member points to a string which is the name of a resource.  This
-member is only used when
-.I name
-is set to ATTR_l,
-otherwise it should be a pointer to a null string.
-The
-.I value
-member points to a string which is the value of the attribute or resource.
-The attribute names are listed in pbs_job_attributes.7B.
-.br
+If 
+.I criteria_list 
+itself is null, you are not using attributes or resources as selection criteria.
 
-.LP
-The 
-.I op
-member defines the operator in the logical expression:
-.br
-.B \ \ \ \ value\ operator\ current_value
-.br 
-The logical expression must evaluate as true for the job to be selected.
-The permissible values of
-.I op
-are defined in pbs_ifl.h as:
-.RS 4
-.I "enum batch_op { ..., EQ, NE, GE, GT, LE, LT, ... };" .
-.RE
-The attributes marked with (E) in the description above may only be selected
-with the equal, EQ, or not equal, NE, operators.
-.LP
-If
-.I sel_list
-itself is a null pointer, then no selection is done on
-the basis of attributes.
-.LP
-The parameter,
-.I rattrib ,
-is a pointer to an
+.IP output_attribs 8
+Pointer to a list of attributes to return.  If this list is null, all
+attributes are returned.  Each attribute is described in an 
 .I attrl
-structure which is defined below.
-The
-.I rattrib
-list is terminated by the first entry where
-.I next
-is a null pointer.  If
-.I attrib
-is given, then only the attributes in the list are returned by the server.
-Otherwise, all the attributes of a job are returned.
-When an
-.I attrib
-list is specified, the
-.I name
-member is a pointer to a attribute name as listed in pbs_alter(3) and
-pbs_submit(3).  The
-.I resource
-member is only used if the name member is ATTR_l, otherwise it should be a
-pointer to a null string.
-The
-.I value
-member should always be a pointer to a null string.
-.LP
-The return value is a pointer to a list of
-.I batch_status
-structures or the null pointer if no jobs can be queried for status.
-The batch_status structure is defined in pbs_ifl.h as
-.sp
-.Ty
+structure, defined in pbs_ifl.h as:
 .nf
-    struct batch_status {
+struct attrl {
+        char         *name;
+        char         *resource;
+        char         *value;
+        struct attrl *next;
+};
+
+.IP extend 8
+Character string where you can specify limits or extensions of your selection.
+.LP
+.B Members of attropl Structure
+.br
+.IP next 8
+Points to next attribute in list.  A null pointer terminates the list.
+
+.IP name 8
+Points to a string containing the name of the attribute.  
+
+.IP resource 8
+Points to a string containing the name of a resource.  Used only when
+the specified attribute contains resource information.  Otherwise,
+.I resource
+should be a null pointer.
+
+.IP value 8
+Points to a string containing the value of the attribute or resource.
+For parameterized limit attributes, this string contains all
+parameters for the attribute.
+
+.IP op 8
+Specifies the test to be applied to the attribute or resource.  The
+operators are 
+.I EQ, NE, GE, GT, LE, LT.
+.LP 
+
+.B Members of attrl Structure
+.br
+.IP name 8
+Points to a string containing the name of the attribute.  
+
+.IP resource 8
+Points to a string containing the name of a resource.  Used only when
+the specified attribute contains resource information.  Otherwise, 
+.I resource 
+should be a null pointer.
+
+.IP value 8
+Points to a string containing the value of the attribute or resource.  Should always be null.
+
+.IP next 8
+Points to next attribute in list.  A null pointer terminates the list.
+
+.SH QUERYING STATES
+You can select jobs in more than one state using a single request, by
+listing all states you want returned.  For example, to get jobs in
+.I Held 
+and 
+.I Waiting 
+states:
+.RS 3
+Fill in 
+.I criteria_list->name 
+with "job_state"
+.br
+Fill in 
+.I criteria_list->value 
+with "HW" for 
+.I Held 
+and 
+.I Waiting
+.RE
+.SH EXTENDING YOUR QUERY
+You can use the following characters in the 
+.I extend 
+parameter:
+.IP "T, t" 8
+Extends query to include subjobs.  Job arrays are not included.
+.IP x 8
+Extends query to include finished and moved jobs.
+.LP
+
+.B Querying Finished and Moved Jobs
+.br
+To get information on finished or moved jobs, as well as current jobs,
+add an 'x' character to the 
+.I extend 
+parameter (set one character to be the 'x' character).  For example:
+.nf
+   pbs_selstat ( ..., ..., <extend characters>) ...
+.fi
+To get information on finished jobs only:
+.RS 3
+Add the "x" character to the 
+.I extend 
+parameter
+.br
+Fill in 
+.I criteria_list->name 
+with "ATTR_state"
+.br
+Fill in 
+.I criteria_list->value 
+with "FM" for 
+.I Finished 
+and 
+.I Moved
+.RE
+For example:
+.nf
+   criteria_list->name = ATTR_state;
+   criteria_list->value = "FM";
+   criteria_list->op = EQ;
+   pbs_selstat ( ..., criteria_list, ..., extend) ...
+.fi
+Subjobs are not considered finished until the parent array job is finished.
+
+.B Querying Job Arrays and Subjobs
+.br
+To query only job arrays (not jobs or subjobs):
+.RS 3
+Fill in 
+.I criteria_list->name 
+with "array"
+.br
+Fill in 
+.I criteria_list->value 
+with "True"
+.RE
+
+To query only job arrays and subjobs (not jobs):
+.RS 3
+Fill in 
+.I criteria_list->name 
+with "array"
+.br
+Fill in 
+.I criteria_list->value 
+with "True"
+.br
+Add the "T" or "t" character to the 
+.I extend 
+parameter
+.RE
+To query only jobs and subjobs (not job arrays), add the "T" or "t" character to the 
+.I extend 
+parameter.
+
+.SH RETURN VALUE
+Returns a pointer to a list of 
+.I batch_status 
+structures for jobs that meet the selection criteria.  If no jobs meet
+the criteria or can be queried for status, returns the null pointer.
+
+If an error occurred, the routine returns a null pointer, and the
+error number is available in the global integer 
+.I pbs_errno.
+
+.B The batch_status Structure
+.br
+The 
+.I batch_status 
+structure is defined in pbs_ifl.h as
+.nf
+struct batch_status {
         struct batch_status *next;
         char                *name;
         struct attrl        *attribs;
         char                *text;
-    }
+}
 .fi
-.LP
-The entry,
-.I attribs ,
-is a pointer to a list of attrl structures defined in
-pbs_ifl.h as:
-.sp
-.Ty
-.nf
-    struct attrl {
-        struct attrl *next;
-        char         *name;
-        char         *resource;
-        char         *value;
-    };
-.fi
-.LP
-It is up the user to free the list of batch_status structures when no longer
-needed, by calling \f3pbs_statfree\f1().
-.LP
-The extend parameter is for optional features and or additions.  Normally, this should be null pointer.
-.LP
-.B Finished and Moved Jobs
-.br
-In order to get information on finished and moved jobs, you must add an 
-.I 'x'
-character to the 
-.I extend 
-parameter.  The 
-.I extend 
-parameter is a character string; set one character
-to be the 
-.I 'x' 
-character.
-For example:
-.RS 5
-.br
-.B pbs_selstat 
-( ..., ..., ..., extend) ...
-.RE
-.LP
-To get information on finished and moved jobs only, specify the Finished ('F')
-and moved ('M') job states.  You must also use the 
-.I extend
-character string containing the 
-.I 'x'
-character.  For example:
-.RS 5
-.br
-sel_list->next = sel_list;
-.br
-sel_list->name = ATTR_state;
-.br
-sel_list->value = "MF";
-.br
-sel_list->op = EQ;
-.br
-.B pbs_selstat 
-( ..., sel_list, ..., extend) ...
-.RE
-.LP
-Subjobs are not considered finished until the parent array job is finished.
-.LP
 
+.SH CLEANUP
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
+.B pbs_statfree().
 
-.SH "SEE ALSO"
-qselect(1B), pbs_alterjob(3B), pbs_connect(3B), pbs_statjob(3B), and 
-pbs_selectjob(3B).
-.SH DIAGNOSTICS
-When the batch request generated by pbs_selstat()
-function has been completed successfully by a batch server, the routine will
-return a pointer to the list of batch_status structures.
-If no jobs met the criteria or an error occurred, the return will be the
-null pointer.  If an error occurred, the global integer pbs_errno will
-be set to a non-zero value.
+.SH SEE ALSO
+qselect(1B), qstat(1B), pbs_connect(3B), pbs_selectjob(3B), pbs_statjob(3B)
+

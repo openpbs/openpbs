@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -71,7 +71,6 @@
  *	save_nodes_db_inner()	-	Static function to update all the nodes in the db
  *	init_prop()				-	allocate and initialize a prop struct
  *	create_subnode()		-	create a subnode entry and link to parent node
- *	setup_nodes_fs()		-	Read the file, "nodes", containing the list of properties for each node.
  *	setup_nodes()			-	Read the, "nodes" information from database
  *								containing the list of properties for each node.
  *	delete_a_subnode()		-	mark a (last) single subnode entry as deleted
@@ -1185,348 +1184,6 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
 
 /**
  * @brief
- *		Read the file, "nodes", containing the list of properties for each node.
- *		The list of nodes is formed with pbsndlist as the head.
- *		Return -1 on error, 0 otherwise.
- *
- *		Read the node state file, "node_state", for any "offline"
- *		conditions which should be set in the nodes.
- *
- *		If routine returns -1, then "log_buffer" contains a message to
- *		be logged.
- * @see
- * 		svr_migrate_data_from_fs
- *
- * @param[in]	preprocess	- arg set for first call to just scan for old style properties
- * 					and create matching boolean resources. On second call,
- * 					"preprocess" is zero, makes the node entries.
- * @return	void
- * @retval	-1	- error
- * @retval	0	- success
- *
- * @par MT-safe: No
- */
-
-#define MAXNLINE 2048
-#define FILE_VERSION "node_file_ver "
-int
-setup_nodes_fs(int preprocess)
-{
-	FILE	 *nin;
-	char	  line[MAXNLINE];
-	char	  comm[MAXNLINE];
-	char	 *nodename;
-	char	 *token;
-	int	  bad, i, num, linenum;
-	int	  err;
-	time_t	  mom_modtime;
-	struct pbsnode *np;
-	char	 *rsc;
-	char     *val;
-	char      xchar;
-	svrattrl *pal;
-	int	  perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
-	int	  file_version = 0;
-	pbs_list_head atrlist;
-	long	  sharing_val;
-	char	 *sharing_str;
-	static char *ravail = ATTR_rescavail;
-	static char file_ver_str[] =  FILE_VERSION;
-	static char file_ver_err[] = "Invalid \"nodes\" version";
-	static char cr_attr_err[]  = "cannot create node attribute";
-	static char br_resc_err[]  = "old style property %s already defined as non-boolean resource and/or not node level resource, cannot convert it";
-	static char timestamp[] = "$modtime=";
-	int	    resc_added = 0;
-
-
-	DBPRT(("%s: entered\n", __func__))
-	CLEAR_HEAD(atrlist);
-
-#ifdef WIN32
-	fix_perms(path_nodes);
-#endif
-	if ((nin = fopen(path_nodes, "r")) == NULL) {
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ALERT, "nodes",
-			"Server has empty nodes list");
-		return (0);
-	}
-
-
-	if (!preprocess) {
-		tfree2(&streams);
-		tfree2(&ipaddrs);
-
-		svr_totnodes = 0;
-	}
-
-	mominfo_time.mit_gen = 1;	/* set to be newer than Mom's default */
-	for (linenum=1; fgets(line, MAXNLINE, nin); linenum++) {
-
-		line[MAXNLINE-1]     = '\0';
-		line[strlen(line)-1] = '\0';
-		sharing_val = VNS_UNSET;
-
-		if (line[0] == '#')	/* comment */
-			continue;
-		if (line[0] == '$') {
-			if (strncmp(line, timestamp, strlen(timestamp)) == 0) {
-				sscanf(line+strlen(timestamp), "%lu.%d",
-					&mominfo_time.mit_time,
-					&mominfo_time.mit_gen);
-			}
-			continue;
-		}
-		mom_modtime = 0;
-		if (strncmp(line, file_ver_str, strlen(file_ver_str)) == 0) {
-			if (file_version != 0) {
-				strcpy(log_buffer, file_ver_err);
-				return -1;
-			}
-			sscanf(line+strlen(file_ver_str), "%d", &file_version);
-			if (file_version != 2) {
-				strcpy(log_buffer, file_ver_err);
-				return -1;
-			}
-		}
-
-		/* first token is the node name 	*/
-		/* version 1: may have ":ts" appended	*/
-
-		token = parse_node_token(line, 1, &err, &xchar);
-		if (token == NULL)
-			continue;	/* blank line */
-		if (err) {
-			sprintf(log_buffer,
-				"invalid character in token \"%s\" on line %d",
-				token, linenum);
-			goto errtoken2;
-		}
-		if (!isalnum((int)*token)) {
-			sprintf(log_buffer, "token \"%s\" doesn't start with alphanumeric on line %d", token, linenum);
-			goto errtoken2;
-		}
-		nodename = token;
-
-		/* now process remaining tokens (if any), they may be either */
-		/* attributes (keyword=value) or old style properties        */
-
-		while (1) {
-
-			rsc = NULL;
-			token = parse_node_token(NULL, 0, &err, &xchar);
-			if (err)
-				goto errtoken1;
-			if (token == NULL)
-				break;
-
-			/* check for special "keywords" such as [ts] */
-			if (strcasecmp(token, "[ts]") == 0) {
-				val = parse_node_token(NULL, 0, &err, &xchar);
-				if ((val==NULL) || err)
-					goto errtoken1;
-				mom_modtime = (time_t)atol(val);
-				continue;	/* will use it latter */
-			} else if (strcmp(token, "[sharing]") == 0) {
-				val = parse_node_token(NULL, 0, &err, &xchar);
-				if ((val==NULL) || err)
-					goto errtoken1;
-				/* old style(<=10.4) enum int value writen into the nodes file
-				 * We need to convert from old enum values to new enum also
-				 */
-				if (isdigit(val[0])) {
-					static char *share_words[] = {
-						ND_Default_Shared,
-						ND_Default_Excl,
-						ND_Ignore_Excl,
-						ND_Force_Excl
-					};
-					i = atol(val);
-					if (i >= 0 && i < sizeof(share_words)/sizeof(share_words[0]))
-						sharing_str = share_words[i];
-					else
-						sharing_str = "";
-				}
-				else
-					sharing_str = val;
-
-				sharing_val = str_to_vnode_sharing(sharing_str);
-				if (sharing_val == VNS_UNSET) {
-					sprintf(log_buffer, "Unknown sharing value: %s on line %d of file nodes", val, linenum);
-					goto errtoken2;
-				}
-				continue;
-			}
-
-			if (xchar == '.') {
-
-				/* have resource */
-
-				rsc = parse_node_token(NULL, 0, &err, &xchar);
-				if ((rsc==NULL) || err || (xchar!='='))
-					goto errtoken1;
-			}
-
-			if (xchar == '=') {
-
-				/* have normal attribute, keyword=value */
-
-				if (strcasecmp(token, ATTR_NODE_Host) == 0) {
-					token = ATTR_NODE_Mom;
-				}
-				val = parse_node_token(NULL, 2, &err, &xchar);
-				/* NOTE - here "val" if non null is on the heap */
-				if ((val==NULL) || err || (xchar=='=')) {
-					free(val);
-					val = NULL;
-					goto errtoken1;
-				}
-
-				if (!preprocess) {
-					if ((rsc == NULL) && ((strcmp(token, "np")==0) ||
-						(strcmp(token, "ncpus")==0))) {
-						/* translate np=# to resources_avail.ncpus=# */
-						rsc = "ncpus";
-						token = ravail;
-					}
-
-					pal = attrlist_create(token, rsc, strlen(val)+1);
-					if (pal == NULL) {
-						strcpy(log_buffer, cr_attr_err);
-						free(val);
-						val = NULL;
-						goto errtoken2;
-					}
-					(void)strcpy(pal->al_value, val);
-					pal->al_flags = SET;
-					append_link(&atrlist, &pal->al_link, pal);
-				}
-				free(val);
-				val = NULL;
-
-			} else {
-
-				/* old style properity */
-
-				if (preprocess) {
-
-					if ((err = add_resource_def(token, ATR_TYPE_BOOL, READ_WRITE | ATR_DFLAG_CVTSLT)) == -1) {
-						strcpy(log_buffer, cr_attr_err);
-						goto errtoken2;
-					} else if (err == -2) {
-						sprintf(log_buffer, br_resc_err, token);
-						goto errtoken2;
-					}
-					resc_added++;
-
-				} else {
-
-					pal = attrlist_create(ravail, token, strlen(ATR_TRUE)+1);
-					if (pal == NULL) {
-						strcpy(log_buffer, cr_attr_err);
-						goto errtoken2;
-					}
-					(void)strcpy(pal->al_value, ATR_TRUE);
-					pal->al_flags = SET;
-					append_link(&atrlist, &pal->al_link, pal);
-				}
-			}
-
-		}
-
-		if (resc_added > 0) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, "setup_nodes_fs",
-			"Restarting Python interpreter as resourcedef file has changed.");
-			pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-			pbs_python_ext_start_interpreter(&svr_interp_data);
-
-			send_rescdef(1);
-		}
-
-		if (!preprocess) {
-			/* now create node and subnodes */
-
-			pal = GET_NEXT(atrlist);
-			err = create_pbs_node2(nodename, pal, perm, &bad, &np, FALSE, TRUE); /* allow unknown resources */
-			if (err == PBSE_NODEEXIST) {
-				sprintf(log_buffer, "duplicate node \"%s\"on line %d",
-					nodename, linenum);
-				goto errtoken2;
-			} else if (err) {
-				sprintf(log_buffer,
-					"could not create node \"%s\", error = %d",
-					nodename, err);
-				goto errtoken2;
-			}
-			free_attrlist(&atrlist);
-			if (mom_modtime) {
-				/* a vnode pointer will be returned */
-				if (np)
-					np->nd_moms[0]->mi_modtime = mom_modtime;
-			}
-			if (sharing_val != VNS_UNSET) {
-				np->nd_attr[ND_ATR_Sharing].at_val.at_long =sharing_val;
-				np->nd_attr[ND_ATR_Sharing].at_flags = ATR_VFLAG_SET | ATR_VFLAG_DEFLT;
-			}
-
-		}
-	}
-
-	fclose(nin);
-
-	if (!preprocess) {
-		nin = fopen(path_nodestate, "r");
-		if (nin != NULL) {
-			while (fscanf(nin, "%s %d", line, &num) == 2) {
-				fgets(comm, MAXNLINE-1, nin);
-				for (i=0; i<svr_totnodes; i++) {
-					np = pbsndlist[i];
-					if (np->nd_state & INUSE_DELETED)
-						continue;
-
-					if (strcmp(np->nd_name, line) == 0) {
-						set_vnode_state(np, num & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM), Nd_State_Or);
-						if (comm[0] != '\n') {
-							comm[strlen(comm) - 1] = '\0';
-							node_attr_def[(int)ND_ATR_Comment].at_free(
-								&np->nd_attr[(int)ND_ATR_Comment]);
-							node_attr_def[(int)ND_ATR_Comment].at_decode(
-								&np->nd_attr[(int)ND_ATR_Comment],
-								ATTR_comment,
-								NULL,
-								comm);
-						}
-						break;
-					}
-				}
-			}
-			(void)fclose(nin);
-		}
-
-		/* clear MODIFY bit on attributes */
-		for (i=0; i<svr_totnodes; i++) {
-			np = pbsndlist[i];
-			for (num=0; num<ND_ATR_LAST; num++) {
-				np->nd_attr[num].at_flags &= ~ATR_VFLAG_MODIFY;
-			}
-		}
-	}
-	svr_chngNodesfile = 0;	/* clear in case set while creating node */
-
-	return (0);
-
-errtoken1:
-	sprintf(log_buffer, "token \"%s\" in error on line %d of file nodes",
-		token, linenum);
-errtoken2:
-	free_attrlist(&atrlist);
-	fclose(nin);
-	return -1;
-}
-
-/**
- * @brief
  *		Read the, "nodes" information from database
  *		containing the list of properties for each node.
  *		The list of nodes is formed with pbsndlist as the head.
@@ -2342,6 +1999,8 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	static char		**str_arr = NULL;
 	static long int		  str_arr_len = 0;
 	attribute		  new;
+	struct sockaddr_in check_ip;
+	int is_node_name_ip;
 
 	if ((val == NULL) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
@@ -2379,10 +2038,12 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
-		if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
+		is_node_name_ip = inet_pton(AF_INET, p, &(check_ip.sin_addr)) ;
+		if(is_node_name_ip || get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
+		
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;

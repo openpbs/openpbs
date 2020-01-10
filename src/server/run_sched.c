@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -273,14 +273,10 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 {
 	int sock;
 	conn_t *conn;
-#ifndef WIN32
 	struct sigaction act, oact;
-#endif
 
 	if ((cmd == SCH_SCHEDULE_AJOB) && (jobid == NULL))
 		return -1;	/* need a jobid */
-
-#ifndef WIN32
 
 	/* connect to the Scheduler */
 	/* put a timeout alarm around the connect */
@@ -291,18 +287,15 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 	if (sigaction(SIGALRM, &act, &oact) == -1)
 		return (PBS_NET_RC_RETRY);
 	alarm(SCHEDULER_ALARM_TIME);
-#endif
 
-	/* Under win32, this function does a timeout wait on the non-blocking socket */
+	/* This function does a timeout wait on the non-blocking socket */
 	sock = client_to_svr(pbs_scheduler_addr, pbs_scheduler_port, 1); /* scheduler connection still uses resv-ports */
 	if (pbs_errno == PBSE_NOLOOPBACKIF)
 		log_err(PBSE_NOLOOPBACKIF, "client_to_svr" , msg_noloopbackif);
 
-#ifndef WIN32
 	alarm(0);
 
 	(void)sigaction(SIGALRM, &oact, NULL);	/* reset handler for SIGALRM */
-#endif
 	if (sock < 0) {
 		log_err(errno, __func__, msg_sched_nocall);
 		return (-1);
@@ -319,9 +312,6 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 	net_add_close_func(sock, scheduler_close);
 
 	if (set_nodelay(sock) == -1) {
-#ifdef WIN32
-		errno = WSAGetLastError();
-#endif
 		snprintf(log_buffer, sizeof(log_buffer), "cannot set nodelay on connection %d (errno=%d)\n", sock, errno);
 		log_err(-1, __func__, log_buffer);
 		return (-1);

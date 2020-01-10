@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -469,8 +469,6 @@ extern int   check_duplicates(struct array_strings *strarr);
 
 extern char *arst_string(char *str, attribute *pattr);
 extern void  attrl_fixlink(pbs_list_head *svrattrl);
-extern void  recov_acl(attribute *, attribute_def *, char *, char *);
-extern int   save_acl(attribute *, attribute_def *,  char *, char *);
 extern int   save_attr_fs(attribute_def *, attribute *, int);
 
 extern int      encode_state(attribute *, pbs_list_head *, char *,

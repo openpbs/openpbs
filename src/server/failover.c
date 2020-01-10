@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -71,11 +71,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#ifdef WIN32
-#include "win.h"
-#else
 #include <sys/wait.h>
-#endif /* WIN32 */
 #include "server_limits.h"
 #include "credential.h"
 #include "attribute.h"
@@ -149,33 +145,6 @@ rel_handshake(struct work_task *pwt)
 	free_br((struct batch_request *)pwt->wt_parm1);
 }
 
-/**
- * @brief
- * 		Anything old enough to not have utimes() needs this.
- * 		This function sets the file access and modification times of the file - path.
- *
- * @param[in]	path - file location
- * @param[in]	times - pointer to the timeval structure
- * 						which stores access time and modification time
- * @return 	int
- * @retval	0	- Successful
- * @retval	-1	- Failure
- */
-#if	defined(_SX) || defined(WIN32)
-int
-utimes(const char *path, const struct timeval *times)
-{
-	struct utimbuf	utimar, *utp = NULL;
-
-	if (times != NULL) {
-		utimar.actime = times[0].tv_sec;
-		utimar.modtime = times[1].tv_sec;
-		utp = &utimar;
-	}
-
-	return (utime(path, utp));
-}
-#endif	/* _SX */
 
 /**
  * @brief
@@ -499,10 +468,7 @@ req_failover(struct batch_request *preq)
 			/* Primary is shutting down, Secondary should also go down */
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_CRIT,
 				msg_daemonname, "Failover: Secondary told to shut down");
-#ifdef	WIN32
-			log_err(0, "req_failover", "going down without auto_restart");
-			make_server_auto_restart(0);
-#endif
+
 			reply_send(preq);
 			exit(0);
 
@@ -780,14 +746,6 @@ alt_conn(pbs_net_t addr, unsigned int sec)
 {
 	int sock;
 	int mode;
-
-#ifdef WIN32
-	set_client_to_svr_timeout(sec);
-	sock = client_to_svr(addr, pbs_server_port_dis, 1);
-	set_client_to_svr_timeout(5);
-	if (sock < 0)
-		sock = -1;
-#else
 	struct sigaction act;
 
 	act.sa_handler = alm_handler;
@@ -804,7 +762,6 @@ alt_conn(pbs_net_t addr, unsigned int sec)
 		sock = -1;
 	act.sa_handler = SIG_DFL;
 	sigaction(SIGALRM, &act, 0);
-#endif
 
 	return (sock);
 }
@@ -838,10 +795,6 @@ check_and_invoke_stonith(char *node)
 
 	snprintf(stonith_fl, sizeof(stonith_fl), "%s/server_priv/stonith", pbs_conf.pbs_home_path);
 
-#ifdef WIN32
-	repl_slash(stonith_fl);
-#endif /* WIN32 */
-
 	if (stat(stonith_fl, &stbuf) != 0) {
 		if (errno == ENOENT) {
 			snprintf(log_buffer, LOG_BUF_SIZE, "Skipping STONITH");
@@ -854,10 +807,6 @@ check_and_invoke_stonith(char *node)
 	/* create unique filename by appending pid */
 	snprintf(out_err_fl, sizeof(out_err_fl), 
 		"%s/spool/stonith_out_err_fl_%s_%d", pbs_conf.pbs_home_path, node, getpid());
-	
-#ifdef WIN32
-	repl_slash(out_err_fl);
-#endif /* WIN32 */
 
 	/* execute stonith script and redirect output to file */
 	snprintf(stonith_cmd, sizeof(stonith_cmd), "%s %s > %s 2>&1", stonith_fl, node, out_err_fl);
@@ -866,11 +815,7 @@ check_and_invoke_stonith(char *node)
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 
-#ifdef WIN32
-	rc = wsystem(stonith_cmd, INVALID_HANDLE_VALUE);
-#else 
 	rc = system(stonith_cmd);
-#endif /* WIN32 */
 
 	if (rc != 0) {
 		snprintf(log_buffer, LOG_BUF_SIZE, 
@@ -998,9 +943,7 @@ takeover_from_secondary()
 	}
 	goidle_ack = 1;
 	(void)wait_request(600, NULL);
-#ifdef WIN32
-	connection_idlecheck();
-#endif
+
 	if (goidle_ack == 1) {
 		/* cannot seem to force active secondary to go idle */
 		fprintf(stderr, "Secondary not idling, aborting\n");
@@ -1308,8 +1251,5 @@ be_secondary(time_t delay)
 			close_conn(sec_sock);
 			sec_sock = -1;
 		}
-#ifdef WIN32
-		connection_idlecheck();
-#endif
 	}
 }

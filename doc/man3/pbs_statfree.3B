@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_statfree 3B "8 October 2012" Local "PBS Professional"
+.TH pbs_statfree 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_statfree 
 \- free a PBS status object
@@ -42,29 +42,36 @@
 .br
 #include <pbs_ifl.h>
 .sp
-.B void pbs_statfree(\^struct batch_status *psj\^)
+.B void pbs_statfree(struct batch_status *psj)
 
 .SH DESCRIPTION
-Frees the specified PBS status object returned by pbs_statque, pbs_statserver, 
-pbs_stathook, etc.
-.LP
+Frees the specified PBS status object returned by PBS API routines
+such as 
+.B pbs_statque, pbs_statserver, pbs_stathook, 
+etc.
 
-The argument is a pointer to a
-.I batch_status
-structure.
-The batch_status structure is defined in pbs_ifl.h as
-.sp
-.Ty
+.SH ARGUMENTS
+
+.IP psj 8
+Pointer to the 
+.I batch_status 
+structure to be freed.
+.LP
+.B The batch_status Structure
+.br
+The 
+.I batch_status 
+structure is defined in pbs_ifl.h as
 .nf
-    struct batch_status {
-        struct batch_status *next;
-        char                *name;
-        struct attrl        *attribs;
-        char                *text;
-    }
+struct batch_status {
+     struct batch_status *next;
+     char                *name;
+     struct attrl        *attribs;
+     char                *text;
+}
 .fi
-.LP
 
-No error information is returned.
+.SH RETURN VALUE
+No return value.
 
 

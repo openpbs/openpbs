@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -569,7 +569,7 @@ db_err:
  *	Save resv to database
  *
  * @see
- * 		job_or_resv_save_db, svr_migrate_data_from_fs
+ * 		job_or_resv_save_db
  *
  * @param[in]	presv - The resv to save
  * @param[in]   updatetype:

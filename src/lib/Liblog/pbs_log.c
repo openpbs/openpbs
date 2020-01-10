@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -855,7 +855,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 #endif
 	int    rc = 0;
 	FILE  *savlog;
-	static char slogbuf[LOG_BUF_SIZE];
+	char slogbuf[LOG_BUF_SIZE];
 	struct timeval tp;
 	char microsec_buf[8] = {0};
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -117,13 +117,6 @@ main(int argc, char *argv[])
 	PRINT_VERSION_AND_EXIT(argc, argv);
 	set_logfile(stderr);
 
-#ifdef WIN32
-	if (winsock_init()) {
-		return 1;
-	}
-	Tcl_FindExecutable(argv[0]);
-#endif
-
 	pbs_loadconf(0);
 
 	if (!getenv("TCL_LIBRARY")) {
@@ -137,13 +130,7 @@ main(int argc, char *argv[])
 
 	if (!getenv("TK_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf(tbuf_env, 
-#ifdef WIN32
-                                "%s/lib/tk%s",
-#else
-                                "%s/tcltk/lib/tk%s",
-#endif
-                                pbs_conf.pbs_exec_path, TK_VERSION);
+			sprintf(tbuf_env, "%s/tcltk/lib/tk%s", pbs_conf.pbs_exec_path, TK_VERSION);
 			setenv("TK_LIBRARY", tbuf_env, 1);
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -135,6 +135,15 @@ typedef struct bucket_bitpool bucket_bitpool;
 typedef struct chunk_map chunk_map;
 typedef struct node_bucket_count node_bucket_count;
 typedef struct preempt_job_st preempt_job_st;
+typedef struct th_task_info th_task_info;
+typedef struct th_data_nd_eligible th_data_nd_eligible;
+typedef struct th_data_dup_nd_info th_data_dup_nd_info;
+typedef struct th_data_query_ninfo th_data_query_ninfo;
+typedef struct th_data_free_ninfo th_data_free_ninfo;
+typedef struct th_data_dup_resresv th_data_dup_resresv;
+typedef struct th_data_query_jinfo th_data_query_jinfo;
+typedef struct th_data_free_resresv th_data_free_resresv;
+
 
 #ifdef NAS
 /* localmod 034 */
@@ -164,6 +173,82 @@ typedef sch_resource_t usage_t;
 
 typedef void event_ptr_t;
 typedef int (*event_func_t)(event_ptr_t*, void *);
+
+struct th_task_info
+{
+	int task_id;							/* task id, should be set by main thread */
+	enum thread_task_type task_type;		/* task type */
+	void *thread_data;					/* data for the worker thread to execute the task */
+};
+
+struct th_data_nd_eligible
+{
+	resource_resv *resresv;
+	place *pl;
+	schd_error *err;
+	node_info **ninfo_arr;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_dup_nd_info
+{
+	unsigned int error:1;
+	node_info **onodes;
+	node_info **nnodes;
+	server_info *nsinfo;
+	unsigned int flags;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_query_ninfo
+{
+	unsigned int error:1;
+	struct batch_status *nodes;
+	server_info *sinfo;
+	node_info **oarr;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_free_ninfo
+{
+	node_info **ninfo_arr;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_dup_resresv
+{
+	unsigned int error:1;
+	resource_resv **oresresv_arr;
+	resource_resv **nresresv_arr;
+	server_info *nsinfo;
+	queue_info *nqinfo;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_query_jinfo
+{
+	unsigned int error:1;
+	struct batch_status *jobs;
+	server_info *sinfo;
+	queue_info *qinfo;
+	resource_resv **oarr;
+	status *policy;
+	int pbs_sd;
+	int sidx;
+	int eidx;
+};
+
+struct th_data_free_resresv
+{
+	resource_resv **resresv_arr;
+	int sidx;
+	int eidx;
+};
 
 struct schd_error
 {
@@ -287,6 +372,7 @@ struct server_info
 	unsigned has_user_limit:1;	/* server has user hard or soft limit */
 	unsigned has_grp_limit:1;	/* server has group hard or soft limit */
 	unsigned has_proj_limit:1;	/* server has project hard or soft limit */
+	unsigned has_all_limit:1;	/* server has PBS_ALL limits set on it */
 	unsigned has_prime_queue:1;	/* server has a primetime queue */
 	unsigned has_ded_queue:1;	/* server has a dedtime queue */
 	unsigned has_nonprime_queue:1;	/* server has a non primetime queue */
@@ -374,10 +460,7 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
-	int soft_limit_preempt_bit;	/* Overall preempt bit to mark server is over max run softlimits */
 #ifdef NAS
-	/* localmod 049 */
-	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
 #endif
@@ -400,6 +483,7 @@ struct queue_info
 	unsigned has_user_limit:1;	/* queue has user hard or soft limit */
 	unsigned has_grp_limit:1;	/* queue has group hard or soft limit */
 	unsigned has_proj_limit:1;	/* queue has project hard or soft limit */
+	unsigned has_all_limit:1;	/* queue has PBS_ALL limits set on it */
 	struct server_info *server;	/* server where queue resides */
 	char *name;			/* queue name */
 	state_count sc;			/* number of jobs in different states */
@@ -442,7 +526,6 @@ struct queue_info
 	int num_topjobs;		/* current number of top jobs in this queue */
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
-	int soft_limit_preempt_bit;	/* Overall preempt bit to mark queue is over max run softlimits */
 };
 
 struct job_info
@@ -496,7 +579,6 @@ struct job_info
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
-	resource_resv *parent_job;	/* parent job if we are a subjob*/
 
 	/* job array information */
 	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
@@ -549,6 +631,7 @@ struct node_info
 	unsigned is_busy:1;		/* load on node is too high to schedule */
 	unsigned is_job_busy:1;	/* ntype = cluster all vp's allocated */
 	unsigned is_stale:1;		/* node is unknown by mom */
+	unsigned is_maintenance:1;	/* node is in maintenance */
 
 	/* node types */
 	unsigned is_pbsnode:1;	/* this is a PBS node */
@@ -623,8 +706,6 @@ struct node_info
 	/* localmod 034 */
 	int	sh_cls;			/* Share class supplied by node */
 	int	sh_type;		/* Share type of node */
-	/* localmod 049 */
-	int   NASrank;		/* NAS order in which nodes were queried */
 #endif
 
 	char *current_aoe;		/* AOE name instantiated on node */

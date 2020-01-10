@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -166,7 +166,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	}
 
 	if ((qinfo_arr = (queue_info **) malloc(sizeof(queue_info *) * (num_queues + 1))) == NULL) {
-		log_err(errno, "query_queues", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		pbs_statfree(queues);
 		free_schd_error(sch_err);
 		return NULL;
@@ -271,14 +271,13 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 					err = 1;
 
 				if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
+					counts *allcts;
+					allcts = find_alloc_counts(qinfo->alljobcounts,
+						PBS_ALL_ENTITY);
+					if (qinfo->alljobcounts == NULL)
+						qinfo->alljobcounts = allcts;
+
 					if (qinfo->running_jobs != NULL) {
-						counts *allcts;
-
-						allcts = find_alloc_counts(qinfo->alljobcounts,
-							"o:" PBS_ALL_ENTITY);
-						if (qinfo->alljobcounts == NULL)
-							qinfo->alljobcounts = allcts;
-
 						/* set the user and group counts */
 						for (j = 0; qinfo->running_jobs[j] != NULL; j++) {
 							cts = find_alloc_counts(qinfo->user_counts,
@@ -408,6 +407,8 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				qinfo->has_proj_limit = 1;
+			if(strstr(attrp->value, "o:") != NULL)
+				qinfo->has_all_limit = 1;
 		}
 		else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, qinfo->liminfo);
@@ -417,7 +418,8 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				qinfo->has_proj_limit = 1;
-
+			if(strstr(attrp->value, "o:") != NULL)
+				qinfo->has_all_limit = 1;
 		}
 		else if (is_oldlimattr(attrp)) {
 			char *limname = convert_oldlim_to_new(attrp);
@@ -532,7 +534,7 @@ new_queue_info(int limallocflag)
 	queue_info *qinfo;
 
 	if ((qinfo = malloc(sizeof(queue_info))) == NULL) {
-		log_err(errno, "new_queue_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -552,6 +554,7 @@ new_queue_info(int limallocflag)
 	qinfo->has_user_limit = 0;
 	qinfo->has_grp_limit = 0;
 	qinfo->has_proj_limit = 0;
+	qinfo->has_all_limit = 0;
 	init_state_count(&(qinfo->sc));
 	if ((limallocflag != 0))
 		qinfo->liminfo = lim_alloc_liminfo();
@@ -589,7 +592,6 @@ new_queue_info(int limallocflag)
 	qinfo->ignore_nodect_sort	 = 0;
 #endif
 	qinfo->partition = NULL;
-	qinfo->soft_limit_preempt_bit = 0;
 	return qinfo;
 }
 
@@ -706,7 +708,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 
 			update_counts_on_run(cts, resresv->resreq);
 
-			allcts = find_alloc_counts(qinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			allcts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (qinfo->alljobcounts == NULL)
 				qinfo->alljobcounts = allcts;
@@ -796,7 +798,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-			cts = find_alloc_counts(qinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			cts = find_alloc_counts(qinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
@@ -880,7 +882,7 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 
 	if ((new_queues = (queue_info **) malloc(
 		(nsinfo->num_queues + 1) * sizeof(queue_info*))) == NULL) {
-		log_err(errno, "dup_queues", "Error allocating memory");
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -933,6 +935,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->has_user_limit = oqinfo->has_user_limit;
 	nqinfo->has_grp_limit = oqinfo->has_grp_limit;
 	nqinfo->has_proj_limit = oqinfo->has_proj_limit;
+	nqinfo->has_all_limit = oqinfo->has_all_limit;
 	nqinfo->sc = oqinfo->sc;
 	nqinfo->liminfo = lim_dup_liminfo(oqinfo->liminfo);
 	nqinfo->priority = oqinfo->priority;
@@ -964,7 +967,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->node_group_key = dup_string_array(oqinfo->node_group_key);
 
 	if (oqinfo->resv != NULL) {
-		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->rank, oqinfo->resv->resresv_ind);
+		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->resresv_ind, oqinfo->resv->rank);
 		/* just incase we we didn't set the reservation cross pointer */
 		if (nqinfo->resv != NULL && nqinfo->resv->resv != NULL)
 			nqinfo->resv->resv->resv_queue = nqinfo;
@@ -991,7 +994,6 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 			return NULL;
 		}
 	}
-	nqinfo->soft_limit_preempt_bit = oqinfo->soft_limit_preempt_bit;
 
 	return nqinfo;
 }

@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,66 +33,149 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rsub 1B "4 March 2019" Local "PBS Professional"
+.TH pbs_rsub 1B "20 September 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_rsub 
-\- create a PBS advance or standing reservation 
+\- create a PBS advance, standing, or maintenance reservation 
 
 .SH SYNOPSIS
+.B For advance and standing reservations:
+.br
 .B pbs_rsub 
 [-D <duration>] [-E <end time>] [-g <group list>] 
 .RS 9
 [-G <auth group list>] [-H <auth host list>] [-I <block time>]
-[-m <mail events>] [-M <mail list>] [-N <reservation name>]
-[-q <destination>] [-r <recurrence rule>] [-R <start time>]  
-[-u <user list>] [-U <auth user list>] [-W <attribute value list>]
--l <resource request> [-l <placement>]
+] [-l <placement>] [-l <resource request>] [-m <mail events>] 
+[-M <mail list>] [-N <reservation name>] [-q <destination>] 
+[-r <recurrence rule>] [-R <start time>]  [-u <user list>] 
+[-U <auth user list>] [-W <attribute value list>]
 .RE
 
+.B For maintenance reservations:
+.br
+.B pbs_rsub 
+[-D <duration>] [-E <end time>] [--hosts <host list>]
+.RS 9
+[-N <reservation name>] [-q <destination>] [-R <start time>]  
+.RE
+
+.B For version information:
+.br
 .B pbs_rsub 
 --version
 
 .SH DESCRIPTION
 The 
 .B pbs_rsub
-command is used to create an advance or standing reservation.
-An advance reservation reserves specific 
-resources for the requested time period, and a standing reservation
-reserves specific resources for recurring time periods.  When 
-a reservation is created, it has an associated queue.
+command is used to create an advance, standing, or
+maintenance reservation.  Advance and standing reservations are
+"job reservations", to distinguish them from
+maintenance reservations.  An advance reservation reserves specific
+resources for the requested time period.  A standing reservation
+reserves specific resources for recurring time periods.  A maintenance
+reservation reserves the specified hosts for the specified time
+regardless of other circumstances. When a reservation is created, it
+has an associated queue.  
 
-After the reservation is requested, it is either confirmed or denied.
-Once the reservation has been confirmed, authorized users submit jobs to the 
-reservation's queue via
+To get information about a reservation, use
+the 
+.B pbs_rstat 
+command.  
+
+To delete a reservation, use the 
+.B pbs_rdel
+command.  Do not use the 
+.B qdel 
+command.  
+
+The behavior of the 
+.B pbs_rsub
+command may be affected by any site hooks.  Site hooks can modify the
+reservation's attributes.
+
+.B Job Reservations
+
+After a job reservation is requested, it is either confirmed or
+denied.  Once the reservation has been confirmed, authorized users
+submit jobs to the reservation's queue via 
 .B qsub 
 and 
 .B qmove.
 
-A confirmed reservation will accept jobs at any time.
-The jobs in its queue can run only during the reservation 
-period, whether during a single advance reservation or 
-during the occurrences of a standing reservation.
+A confirmed job reservation will accept jobs at any time.  The jobs in
+its queue can run only during the reservation period, whether during
+a single advance reservation or during the occurrences of a standing
+reservation.  
 
-When an advance reservation ends, all of its jobs are
-deleted, whether running or queued.  When an occurrence of a 
-standing reservation ends, only its running jobs are deleted; 
-those jobs still in the queue are not deleted.
+When an advance job reservation ends, all of its jobs are deleted,
+whether running or queued.  When an occurrence of a standing
+reservation ends, only its running jobs are deleted; those jobs still
+in the queue are not deleted.
 
-To get information about a reservation, use the 
-.B pbs_rstat 
-command.
+.B Maintenance Reservations 
 
-To delete a reservation, use the 
-.B pbs_rdel 
-command.  Do not use the
-.B qdel 
-command.
+You can create maintenance reservations using 
+.B pbs_rsub --hosts <host list>.  
+Maintenance reservations are designed to make the specified
+hosts available for the specified amount of time, regardless of what
+else is happening:
+.RS 3
+You can create a maintenance reservation that includes or is made up
+of vnodes that are down or offline.  
 
-The behavior of the 
-.B pbs_rsub 
-command may be affected by 
-any site hooks.  Site hooks can modify the reservation's attributes.
+Maintenance reservations ignore the value of a vnode's 
+.I resv_enable 
+attribute.  
 
+PBS immediately confirms any maintenance reservation.  
+
+Maintenance reservations take precedence over other reservations; if you create a
+maintenance reservation that overlaps an advance or standing job
+reservation, the overlapping vnodes become unavailable to the job
+reservation, and the job reservation becomes degraded.  PBS looks for
+replacement vnodes; see "Reservation Fault Tolerance" in chapter 9 of the 
+.I PBS Professional Administrator's Guide.  
+.RE
+
+PBS will not start any new jobs on vnodes overlapping or in a
+maintenance reservation.  However, jobs that were already running on
+overlapping vnodes continue to run; you can let them run or requeue
+them.  
+
+You cannot specify place or select for a maintenance
+reservation; these are created by PBS: 
+
+.RS 3
+PBS creates the
+reservation's placement specification so that hosts are
+assigned exclusively to the reservation.  The placement specification
+is always the following: 
+.RS 3
+.I -lplace=exclhost 
+.RE
+
+PBS sets the reservation's 
+.I resv_nodes
+attribute value so that all CPUs on the reserved hosts are assigned
+to the
+maintenance reservation.  The select specification is always the
+following: 
+.IP "" 3
+.I -lselect = host=<host1>:ncpus= <number of CPUs at host1> 
+.I +host=<host2>:ncpus= <number of CPUs at host2>+...
+.LP
+.RE
+
+Maintenance reservations are prefixed with M.  A maintenance
+reservation ID has the format: 
+.RS 3
+.I M<unique integer>.<server name>
+.RE
+
+Creating a maintenance reservation does not trigger a scheduling
+cycle.  
+
+You must have manager or operator privilege to create a maintenance reservation.
 
 .SH REQUIREMENTS
 
@@ -177,6 +260,17 @@ Format: [+|-]<group name>[,[+|-]<group name> ...]
 .br
 Default: All groups are authorized to submit jobs.
 .RE
+
+.IP "--hosts <host list>" 8
+Space-separated list of hosts to be included in maintenance
+reservation.  Cannot be used with the 
+.I -l <placement> 
+or 
+.I -l <resource request> 
+options.  PBS creates placement and resource requests.  Placement is always 
+.I exclhost, 
+and all CPUs of requested hosts are assigned to maintenance reservation.
+
 .IP "-H <auth host list>" 8
 Comma-separated list of hosts from which jobs can and cannot be 
 submitted to this reservation.  This list becomes the 
@@ -652,23 +746,26 @@ The
 .B pbs_rsub 
 command returns the reservation identifier.  
 .br
-For an advance reservation, this has the form 
+Format for an advance reservation:
 .IP
-.I R<NNNN>.<server name>
+.I R<sequence number>.<server name>
+.br
+The associated queue's name is the prefix, 
+.I R<sequence number>.
 .LP
-where 
-.I NNNN 
-is a unique integer.  The associated queue's name is the prefix, 
-.I R<NNNN>.
 
-For a standing reservation, this has the form 
+Format for a standing reservation:
 .IP
-.I S<NNNN>.<server name>
+.I S<sequence number>.<server name>
+.br
+The associated queue's name is the prefix, 
+.I S<sequence number>.
 .LP
-where 
-.I NNNN 
-is a unique integer.  The associated queue's name is the prefix, 
-.I S<NNNN>.
+
+Format for a maintenance reservation:
+.IP
+.I M<sequence number>.<server name>
+.LP
 
 .SH FORMATS
 .IP "Datetime format"

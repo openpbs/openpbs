@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -59,8 +59,8 @@
 #define FORMULA_ACCRUE_TYPE 	"accrue_type"
 
 /* Well known file to store job sorting formula */
-#define FORMULA_ATTR_PATH "server_priv/sched_formula"
-#define FORMULA_ATTR_PATH_SCHED "sched_priv/sched_formula"
+#define FORMULA_FILENAME "sched_formula"
+#define FORMULA_ATTR_PATH "server_priv/" FORMULA_FILENAME
 
 /* Constant to check preempt_targets for NONE */
 #define TARGET_NONE "NONE"

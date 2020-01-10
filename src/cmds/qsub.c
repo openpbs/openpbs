@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -5050,7 +5050,7 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 
 #if defined(PBS_PASS_CREDENTIALS)
 		if (passwd_buf[0] != '\0')
-			pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_len, &cred_buf);
+			pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_buf, &cred_len);
 #endif
 		/* set the current work directory by doing a chdir */
 		if (_chdir(qsub_cwd) != 0)

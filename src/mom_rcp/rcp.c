@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  */
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -111,38 +111,6 @@
 /**
  * @file	rcp.c
  */
-/*
- ** Anything old enough to not have utimes() needs this.
- */
-#ifdef	_SX
-#include <utime.h>
-
-/**
- * @brief
- *	changes given file's access and modification time.
- *
- * @param[in] path - file path
- * @param[in] times - pointer to timeval struct which holds access and modification time
- *
- * @return	int
- * @retval	0	success
- * @retval	-1	error
- */
-int
-utimes(const char *path, const struct timeval *times)
-{
-	struct utimbuf	utimar, *utp = NULL;
-
-	if (times != NULL) {
-		utimar.actime = times[0].tv_sec;
-		utimar.modtime = times[1].tv_sec;
-		utp = &utimar;
-	}
-
-	return (utime(path, utp));
-}
-#endif
-
 extern int setresuid(uid_t, uid_t, uid_t);
 
 #ifdef KERBEROS

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -121,6 +121,73 @@ class TestMultipleSchedulers(TestFunctional):
             if vnode not in nodes:
                 self.assertFalse(True, str(vnode) +
                                  " is not in exec_vnode list as expected")
+
+    def test_job_sort_formula_multisched(self):
+        """
+        Test that job_sort_formula can be set for each sched
+        """
+        self.common_setup()
+
+        # Set JSF on server and test that it is used by all scheds
+        self.server.manager(MGR_CMD_SET, SERVER, {
+                            'job_sort_formula': '1*walltime'})
+
+        # Submit 2 jobs to each sched with different walltimes and
+        # test that the one with higher walltime is scheduled first
+        queues = ['wq1', 'wq2', 'wq3']
+        for i in range(1, 4):
+            scid = "sc" + str(i)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'False'}, id=scid)
+            a = {'Resource_List.walltime': 100, ATTR_queue: queues[i - 1],
+                 'Resource_List.ncpus': 2}
+            j = Job(TEST_USER1, attrs=a)
+            jid1 = self.server.submit(j)
+            a['Resource_List.walltime'] = 1000
+            j = Job(TEST_USER1, attrs=a)
+            jid2 = self.server.submit(j)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'True'}, id=scid)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+            self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+
+        # Set a different JSF on sc1, this should fail
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'job_sort_formula': '2*walltime'}, id='sc1',
+                                logerr=False)
+            self.fail("Setting job_sort_formula on sched should have failed")
+        except PbsManagerError:
+            pass
+
+        # Unset server's JSF and set sc1's JSF again
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'job_sort_formula')
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'job_sort_formula': '2*walltime'}, id='sc1')
+
+        self.server.cleanup_jobs()
+
+        # Submit 2 jobs with different walltimes to each sched again
+        # This time, sc1 should be the only sched to care about walltime
+        for i in range(1, 4):
+            scid = "sc" + str(i)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'False'}, id=scid)
+            a = {'Resource_List.walltime': 100, ATTR_queue: queues[i - 1],
+                 'Resource_List.ncpus': 2}
+            j = Job(TEST_USER1, attrs=a)
+            jid1 = self.server.submit(j)
+            a['Resource_List.walltime'] = 1000
+            j = Job(TEST_USER1, attrs=a)
+            jid2 = self.server.submit(j)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'True'}, id=scid)
+            if scid == "sc1":
+                self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+                self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+            else:
+                self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+                self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
     def test_set_sched_priv(self):
         """
@@ -1910,7 +1977,7 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.setup_sc3()
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False',
-                            'log_events': 2047}, id="sc3")
+                                                 'log_events': 2047}, id="sc3")
 
         # create and set-up a new priv directory for sc3
         new_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],

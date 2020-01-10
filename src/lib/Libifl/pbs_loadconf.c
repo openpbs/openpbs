@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -122,7 +122,8 @@ struct pbs_config pbs_conf = {
 	4,					/* default number of threads */
 	NULL,					/* mom short name override */
 	NULL,					/* pbs_lr_save_path */
-	0					/* high resolution timestamp logging */
+	0,					/* high resolution timestamp logging */
+	0					/* number of scheduler threads */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
@@ -571,6 +572,10 @@ __pbs_loadconf(int reload)
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_SCHED_THREADS)) {
+				if (sscanf(conf_value, "%u", &uvalue) == 1)
+					pbs_conf.pbs_sched_threads = uvalue;
+			}
 #ifdef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_REMOTE_VIEWER)) {
 				free(pbs_conf.pbs_conf_remote_viewer);
@@ -803,6 +808,10 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_LOG_HIGHRES_TIMESTAMP)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
+	}
+	if ((gvalue = getenv(PBS_CONF_SCHED_THREADS)) != NULL) {
+		if (sscanf(gvalue, "%u", &uvalue) == 1)
+			pbs_conf.pbs_sched_threads = uvalue;
 	}
 
 #ifdef WIN32

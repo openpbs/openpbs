@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -68,12 +68,6 @@
 #include "server_limits.h"
 #include "log.h"
 
-#ifdef WIN32
-#include <windows.h>
-#include <process.h>
-#include "win.h"
-#endif
-
 #include "job.h"
 #include "reservation.h"
 #include "server.h"
@@ -95,474 +89,6 @@ extern char *msg_resv_start;
 extern char *msg_resv_end;
 extern char *msg_resv_confirm;
 extern char *msg_job_stageinfail;
-
-#ifdef WIN32
-
-struct mail_param {
-	int		type;
-	char	*mailfrom;
-	char	*mailto;
-	char	*jobid;
-	int		mailpoint;
-	char	*jobname;
-	char	*text;
-};
-
-/**
- * @brief
- *  	A thread safe way to connect to hostaddr at port
- *
- * @param[in]	host	-	destination host machine
- * @param[in]	port	-	port number
- *
- * @return	int
- * @retval	0	: success
- * @retval	-1	: error and errno will be set.
- */
-int
-create_socket_and_connect(char *host, unsigned int port)
-{
-	struct sockaddr_in remote;
-	int		 sock;
-
-	int		ret;
-	int		non_block = 1;
-	fd_set	writeset;
-	struct	timeval tv;
-	struct in_addr  haddr;
-	unsigned long hostaddr;
-	struct hostent *hp;
-
-	hp = gethostbyname(host);
-	if (hp == NULL) {
-		errno = WSAGetLastError();
-		return (-1);
-	}
-
-	memcpy((void *)&haddr, (void *)hp->h_addr_list[0], hp->h_length);
-	hostaddr = ntohl(haddr.s_addr);
-
-	/* get socket					*/
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		errno = WSAGetLastError();
-		return (-1);
-	}
-	/*	If local privilege port requested, bind to one	*/
-	/*	Must be root privileged to do this		*/
-
-	/*	connect to specified server host and port	*/
-
-	remote.sin_addr.s_addr = htonl(hostaddr);
-	remote.sin_port = htons((unsigned short)port);
-	remote.sin_family = AF_INET;
-
-	/* force socket to be non-blocking so we can timeout wait on it */
-
-	if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR) {
-		errno = WSAGetLastError();
-		return (-1);
-	}
-	FD_ZERO(&writeset);
-	FD_SET((unsigned int)sock, &writeset);
-	tv.tv_sec = 20;		/* connect timeout */
-	tv.tv_usec = 0;
-
-	if (connect(sock, (struct sockaddr *)&remote, sizeof(remote)) < 0) {
-		errno = WSAGetLastError();
-		switch (errno) {
-			case WSAEINTR:
-			case WSAEADDRINUSE:
-			case WSAETIMEDOUT:
-			case WSAECONNREFUSED:
-				closesocket(sock);
-				return (-1);
-			case WSAEWOULDBLOCK:
-				ret = select(1, NULL, &writeset, NULL, &tv);
-				if (ret <= 0) {
-					return (-1);
-				}
-				/* reset to blocking */
-				non_block = 0;
-				if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR) {
-					errno = WSAGetLastError();
-					return (-1);
-				}
-				return (sock);
-			default:
-				closesocket(sock);
-				return (-1);
-		}
-
-	} else {
-		return (sock);
-	}
-}
-
-/**
- * @brief
- * 		returns the reply code obtained from sock, in an SMTP protocol.
- *
- * @param[in]	sock	-	socket to receive the reply.
- *
- * @return	error code
- * @retval	554	: default - Transaction failed!
- *
- */
-static int
-read_smtp_reply(int sock)
-{
-	char	buf[512];
-	int		got;
-	int		ret = 554;	/* default is Transaction failed! */
-
-	got = recv(sock, buf, sizeof(buf)-1, 0);
-	if (got > 0) {
-		buf[got] = '\0';
-		sscanf(buf, "%d", &ret);
-	}
-	return (ret);
-}
-
-/**
- * @brief
- * 		write3_smtp_data - sends up to 3 messages down 'sock'. Specify NULL for msg* if none.
- *
- * @param[in]	sock	-	socket to send message
- * @param[in]	msg1	-	message 1
- * @param[in]	msg2	-	message 2
- * @param[in]	msg3	-	message 3
- *
- * @return	the number of bytes sent.
- * @retval	-1	: error
- */
-static int
-write3_smtp_data(int sock, char *msg1, char *msg2, char *msg3)
-{
-	int	sent;
-	int	ct = 0;
-
-	if (msg1) {
-		if ((sent=send(sock, msg1, strlen(msg1), 0)) == SOCKET_ERROR) {
-			return (SOCKET_ERROR);
-		}
-		ct += sent;
-	}
-
-	if (msg2) {
-		if ((sent=send(sock, msg2, strlen(msg2), 0)) == SOCKET_ERROR) {
-			return (SOCKET_ERROR);
-		}
-		ct += sent;
-	}
-
-	if (msg3) {
-		if ((sent=send(sock, msg3, strlen(msg3), 0)) == SOCKET_ERROR) {
-			return (SOCKET_ERROR);
-		}
-		ct += sent;
-	}
-	return (ct);
-}
-/**
- * @brief
- * 		A generic mail function to send mail.
- *
- * @param[in]	pv	-	mail parameters.
- *
- * @return - none
- */
-unsigned __stdcall
-send_mail(void *pv)
-{
-	struct	mail_param *m = (struct mail_param *)pv;
-	int		type = m->type;
-	char	*mailfrom = m->mailfrom;
-	char	*mailto	= m->mailto;
-	char	*jobid = m->jobid;
-	int		mailpoint = m->mailpoint;
-	char	*jobname = m->jobname;
-	char	*text = m->text;
-	char	mailhost[PBS_MAXHOSTNAME+1];
-	char	mailto_full[PBS_MAXUSER+PBS_MAXHOSTNAME+3] = {0};	/* +3 for '<' ,'>' and Null char */
-	char	mailfrom_full[PBS_MAXUSER+PBS_MAXHOSTNAME+3] = {0}; /* +3 for '<' ,'>' and Null char */
-	int	sock;
-	int	sent = 0;
-	char	*stdmessage = NULL;
-	char	*pc = NULL;
-	char	*pc2 = NULL;
-	int	reply;
-	int	err_reply;
-	int	err_write;
-	extern  char server_host[];
-
-	if (strchr(mailfrom, (int)'@')) { /* domain required */
-		sprintf(mailfrom_full, "<%s>", mailfrom);
-	} else {
-		sprintf(mailfrom_full, "<%s@pbspro.com>", mailfrom);
-	}
-
-	pc = strtok(mailto, " ");
-	while (pc) {
-
-		if ((pc2=strchr(pc, (int)'@'))) {
-			pc2++;
-			strncpy(mailhost, pc2, (sizeof(mailhost) - 1));
-		} else {
-			strcpy(mailhost, "localhost");
-		}
-
-		if(pbs_conf.pbs_smtp_server_name != NULL) {
-			sock = create_socket_and_connect(pbs_conf.pbs_smtp_server_name, 25);
-		} else {
-			sock = create_socket_and_connect(mailhost, 25);
-		}
-
-		if (sock < 0) {
-			log_err(errno,"send_mail","Socket creation and connection Failed.");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 220) {		/* service not ready */
-			log_err(err_reply,"send_mail","Service not ready for creation and connection of socket.");
-			goto error;
-		}
-
-		err_write = write3_smtp_data(sock, "HELO ", mailhost, "\r\n");
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Conversation with the mail server cannot be initiated.");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 250) {
-			log_err(err_reply,"send_mail","Service not ready for Initiation.");
-			goto error;
-		}
-
-		err_write = write3_smtp_data(sock, "MAIL FROM: ", mailfrom_full, "\r\n");
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending MAIL FROM: command to SMTP server");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 250) {
-			log_err(err_reply,"send_mail","Service not ready for setting the MAIL FROM attribute");
-			goto error;
-		}
-
-		sprintf(mailto_full, "<%s>", pc);
-		err_write = write3_smtp_data(sock, "RCPT TO: ", mailto_full, "\r\n");
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending RCPT TO: command to SMTP server");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 250) {
-			log_err(err_reply,"send_mail","Service not ready for setting the RCPT TO attribute");
-			goto error;
-		}
-
-		err_write = write3_smtp_data(sock, "DATA ", "\r\n", NULL);
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending DATA command to SMTP server");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 354) {
-			log_err(err_reply,"send_mail","Service Not Ready for Data Setting");
-			goto error;
-		}
-
-		err_write = write3_smtp_data(sock, "To: ", pc, "\r\n");
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending To: command to SMTP server");
-			goto error;
-		}
-
-		if (type == 1) {
-			err_write = write3_smtp_data(sock, "Subject: PBS RESERVATION ", jobid, "\n\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS RESERVATION to SMTP server");
-				goto error;
-			}
-			err_write = write3_smtp_data(sock, "Subject: PBS Reservation Id: ", jobid, "\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS RESERVATION Id to SMTP server");
-				goto error;
-			}
-			err_write = write3_smtp_data(sock, "Reservation Name: ", jobname, "\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS Reservation Name to SMTP server");
-				goto error;
-			}
-		} else if (type == 2) {
-			err_write = write3_smtp_data(sock, "Subject: PBS Server on ", server_host, "\n\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS Server name to SMTP server");
-				goto error;
-			}
-		} else {
-			err_write = write3_smtp_data(sock, "Subject: PBS JOB ", jobid, "\n\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS JOB to SMTP server");
-				goto error;
-			}
-			err_write = write3_smtp_data(sock, "Subject: PBS Job Id: ", jobid, "\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS JOB Id to SMTP server");
-				goto error;
-			}
-			err_write = write3_smtp_data(sock, "Job Name: ", jobname, "\r\n");
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending PBS JOB Name to SMTP server");
-				goto error;
-			}
-		}
-
-
-		/* Now pipe in "standard" message */
-
-		switch (mailpoint) {
-
-			case MAIL_ABORT:
-				stdmessage = msg_job_abort;
-				break;
-
-			case MAIL_BEGIN:
-				stdmessage = msg_job_start;
-				break;
-
-			case MAIL_END:
-				stdmessage = msg_job_end;
-				break;
-
-			case MAIL_STAGEIN:
-				stdmessage = msg_job_stageinfail;
-				break;
-
-		}
-
-		if (stdmessage) {
-			err_write = write3_smtp_data(sock, stdmessage, "\r\n", NULL);
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending Mail Point to SMTP server");
-				goto error;
-			}
-		}
-
-		if (text != NULL) {
-			err_write = write3_smtp_data(sock, text, "\r\n", NULL);
-			if (err_write == SOCKET_ERROR) {
-				log_err(err_write,"send_mail","Error sending Mail Data to SMTP server");
-				goto error;
-			}
-		}
-
-		err_write = write3_smtp_data(sock, ".\r\n", NULL, NULL);
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending Mail Data Termination to SMTP server");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 250) {
-			log_err(err_reply,"send_mail","Service not ready to terminate Mail Data");
-			goto error;
-		}
-
-		err_write = write3_smtp_data(sock, "QUIT\r\n", NULL, NULL);
-		if (err_write == SOCKET_ERROR) {
-			log_err(err_write,"send_mail","Error sending QUIT to SMTP server");
-			goto error;
-		}
-
-		err_reply = read_smtp_reply(sock);
-		if (err_reply != 221) {
-			log_err(err_reply,"send_mail","Service not ready to Quit");
-			goto error;
-		}
-		error:		if (sock >= 0) {
-			closesocket(sock);
-		}
-		pc = strtok(NULL, " ");
-	}
-
-	if (m->mailfrom)(void)free(m->mailfrom);
-	if (m->mailto)(void)free(m->mailto);
-	if (m->jobid)(void)free(m->jobid);
-	if (m->jobname)(void)free(m->jobname);
-	if (m->text)(void)free(m->text);
-	(void)free(m);
-	return (0);
-}
-/**
- * @brief
- * 		Send mail to owner of a job when an event happens that
- *		requires mail, such as the job starts, ends or is aborted.
- *		The event is matched against those requested by the user.
- *		For Unix/Linux, a child is forked to not hold up the Server.  This child
- *		will fork/exec sendmail and pipe the To, Subject and body to it.
- *
- * @param[in] type	-	0=JOB, 1=RESERVATION, 2=SERVER
- * @param[in] mailfrom	-	sender of the mail
- * @param[in] mailto	-	receiver of the mail
- * @param[in] jobid	-	job id
- * @param[in] mailpoint	-	which mail event is triggering the send
- * @param[in] jobname	-	Job Name
- * @param[in] text	-	the body text of the mail message
- *
- * @return - none
- */
-void
-send_mail_detach(int type, char *mailfrom, char *mailto, char *jobid, int mailpoint, char *jobname, char *text)
-{
-	DWORD	dwTID;
-	HANDLE	h;
-
-	struct mail_param *pmp = (struct mail_param *)malloc(sizeof(struct mail_param));
-
-	if (pmp == NULL)
-		return;
-	else
-		memset((void *)pmp, 0, sizeof(struct mail_param));
-	pmp->type = type;
-	if ((pmp->mailfrom = strdup((mailfrom?mailfrom:""))) == NULL)
-		goto err;
-	if ((pmp->mailto = strdup((mailto?mailto:""))) == NULL)
-		goto err;
-	if ((pmp->jobid = strdup((jobid?jobid:""))) == NULL)
-		goto err;
-	pmp->mailpoint = mailpoint;
-	if ((pmp->jobname = strdup((jobname?jobname:""))) == NULL)
-		goto err;
-	if ((pmp->text = strdup((text?text:""))) == NULL)
-		goto err;
-
-	h = (HANDLE) _beginthreadex(0, 0,  send_mail, pmp, 0, &dwTID);
-	CloseHandle(h);
-	return;
-err:
-	if (pmp->mailfrom)
-		free(pmp->mailfrom);
-	if (pmp->mailto)
-		free(pmp->mailto);
-	if (pmp->jobid)
-		free(pmp->jobid);
-	if (pmp->jobname)
-		free(pmp->jobname);
-	if (pmp->text)
-		free(pmp->text);
-	if (pmp)
-		free(pmp);
-	return;
-}
-#endif	/* WIN32 */
 
 #define MAIL_ADDR_BUF_LEN 1024
 /**
@@ -594,12 +120,11 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	char	*pat;
 	extern  char server_host[];
 
-#ifndef WIN32
 	FILE   *outmail;
 	char   *margs[5];
 	int     mfds[2];
 	pid_t   mcpid;
-#endif
+
 
 	/* if force is true, force the mail out regardless of mailpoint */
 
@@ -638,7 +163,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	 * hold up the server's other work.
 	 */
 
-#ifndef WIN32
 	mcpid = fork();
 	if (mcpid == -1) { /* Error on fork */
 		log_err(errno, __func__, "fork failed\n");
@@ -657,8 +181,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
-
-#endif	/* ! WIN32 */
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
@@ -733,16 +255,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		strcpy(mailto, mailfrom);
 	}
 
-#ifdef WIN32
-	/* if pjob is not null, then send a JOB type email (1st param=0); */
-	/* otherwise, send a SERVER type email (1st param=2)               */
-
-	send_mail_detach((pjob?0:2), mailfrom, mailto,
-		(pjob?pjob->ji_qs.ji_jobid:""), mailpoint,
-		(pjob?pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str:""),
-		text);
-
-#else
 	/* setup sendmail command line with -f from_whom */
 
 	margs[0] = SENDMAIL_CMD;
@@ -822,7 +334,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	fclose(outmail);
 
 	exit(0);
-#endif	/* WIN32 */
 }
 /**
  * @brief
@@ -869,12 +380,11 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	struct array_strings *pas;
 	char	*pat;
 	char	*stdmessage = NULL;
-#ifndef WIN32
+
 	FILE	*outmail;
 	char	*margs[5];
 	int	 mfds[2];
 	pid_t	 mcpid;
-#endif
 
 	if (force != MAIL_FORCE) {
 		/*Not forcing out mail regardless of mailpoint */
@@ -905,7 +415,6 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	 * hold up the server's other work.
 	 */
 
-#ifndef WIN32
 	mcpid = fork();
 	if (mcpid == -1) { /* Error on fork */
 		log_err(errno, __func__, "fork failed\n");
@@ -924,8 +433,6 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
-
-#endif	/* ! WIN32 */
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
@@ -990,11 +497,6 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 			}
 		}
 	}
-
-#ifdef WIN32
-	send_mail_detach(1, mailfrom, mailto, presv->ri_qs.ri_resvID, mailpoint,
-		presv->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str, text);
-#else
 
 	/* setup sendmail command line with -f from_whom */
 
@@ -1072,5 +574,4 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	fclose(outmail);
 
 	exit(0);
-#endif	/* ! WIN32 */
 }

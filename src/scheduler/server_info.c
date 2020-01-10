@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -114,6 +114,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+
 #include <pbs_ifl.h>
 #include <pbs_error.h>
 #include <log.h>
@@ -377,8 +378,7 @@ query_server(status *pol, int pbs_sd)
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
-
-		allcts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 		if (sinfo->alljobcounts == NULL)
 			sinfo->alljobcounts = allcts;
 
@@ -527,6 +527,8 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
+			if(strstr(attrp->value, "o:") != NULL)
+				sinfo->has_all_limit = 1;
 		} else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, sinfo->liminfo);
 			if(strstr(attrp->value, "u:") != NULL)
@@ -535,6 +537,8 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
+			if(strstr(attrp->value, "o:") != NULL)
+				sinfo->has_all_limit = 1;
 		} else if (is_oldlimattr(attrp)) {
 			char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
@@ -557,7 +561,7 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->node_group_enable = 0;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
 			sinfo->job_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -686,47 +690,26 @@ query_server_dyn_res(server_info *sinfo)
 	char buf[256];		/* buffer for reading from pipe */
 	schd_resource *res;		/* used for updating node resources */
 	FILE *fp;			/* for popen() for res_assn */
-#ifdef WIN32
-	struct  pio_handles	  pio;  /* for win_popen() for res_assn */
-	char			  cmd_line[512];
-#endif
 
 	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
 		if (res != NULL) {
 			int err;
 			char *filename = conf.dynamic_res[i].script_name;
+
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-#ifdef  WIN32
-			err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
 			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
 			if (err != 0) {
 				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", 
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
 					filename, res->name, err);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
-#ifdef	WIN32
-			/* In Windows, don't use popen() as this crashes if COMSPEC not set */
-			/* also, let's quote command line so that paths with spaces can be */
-			/* executed. */
-			snprintf(cmd_line, sizeof(cmd_line), "\"%s\"",
-				conf.dynamic_res[i].command_line);
 
-			if (((win_popen(cmd_line, "r", &pio, NULL) == 0) ||
-				((k = win_pread(&pio, buf, 255)) <= 0))) {
-				pipe_err = errno;
-				k = 0;
-			}
-			if (pio.hReadPipe_out != INVALID_HANDLE_VALUE) /* did win_popen() succeed? */
-				win_pclose(&pio);
-#else
 			if (((fp = popen(conf.dynamic_res[i].command_line, "r")) == NULL) ||
 				(fgets(buf, 256, fp) == NULL)) {
 				pipe_err = errno;
@@ -735,7 +718,7 @@ query_server_dyn_res(server_info *sinfo)
 				k = strlen(buf);
 			if (fp != NULL)
 				pclose(fp);
-#endif
+
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */
@@ -760,6 +743,7 @@ query_server_dyn_res(server_info *sinfo)
 						"Error piping to program %s.", conf.dynamic_res[i].command_line);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
+
 			if (res->type.is_non_consumable)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
 					"%s = %s", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
@@ -929,6 +913,15 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				conf.preempt_min_wt_used = 1;
 			else
 				conf.preempt_min_wt_used = 0;
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+			if (sinfo->job_formula != NULL)
+				free(sinfo->job_formula);
+			sinfo->job_formula = read_formula();
+			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
+					"Job sorting formula and job_sort_key are incompatible.  "
+					"The job sorting formula will be used.");
+
 		}
 		attrp = attrp->next;
 	}
@@ -1153,9 +1146,6 @@ free_server_info(server_info *sinfo)
 #ifdef NAS
 	/* localmod 034 */
 	site_free_shares(sinfo);
-	/* localmod 049 */
-	if (sinfo->nodes_by_NASrank != NULL)
-		free(sinfo->nodes_by_NASrank);
 #endif
 }
 
@@ -1234,7 +1224,7 @@ new_server_info(int limallocflag)
 	server_info *sinfo;			/* the new server */
 
 	if ((sinfo = (server_info *) malloc(sizeof(server_info))) == NULL) {
-		log_err(errno, "new_server_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -1243,6 +1233,7 @@ new_server_info(int limallocflag)
 	sinfo->has_user_limit = 0;
 	sinfo->has_grp_limit = 0;
 	sinfo->has_proj_limit = 0;
+	sinfo->has_all_limit = 0;
 	sinfo->has_mult_express = 0;
 	sinfo->has_multi_vnode = 0;
 	sinfo->has_prime_queue = 0;
@@ -1303,7 +1294,6 @@ new_server_info(int limallocflag)
 	sinfo->num_hostsets = 0;
 	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
-	sinfo->soft_limit_preempt_bit = 0;
 
 	if ((limallocflag != 0))
 		sinfo->liminfo = lim_alloc_liminfo();
@@ -1313,8 +1303,6 @@ new_server_info(int limallocflag)
 #ifdef NAS
 	/* localmod 034 */
 	sinfo->share_head = NULL;
-	/* localmod 049 */
-	sinfo->nodes_by_NASrank = NULL;
 #endif
 
 	return sinfo;
@@ -1335,7 +1323,7 @@ new_resource()
 	schd_resource *resp;		/* the new resource */
 
 	if ((resp = calloc(1,  sizeof(schd_resource))) == NULL) {
-		log_err(errno, "new_resource", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -1831,7 +1819,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 			update_counts_on_run(cts, resresv->resreq);
 
-			allcts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (sinfo->alljobcounts == NULL)
 				sinfo->alljobcounts = allcts;
@@ -1868,7 +1856,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 {
 	resource_req *req;		/* resource request from job */
 	schd_resource *res;		/* resource on server */
-	int i;
 
 	if (sinfo == NULL ||  resresv == NULL)
 		return;
@@ -1947,41 +1934,11 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-			cts = find_alloc_counts(sinfo->alljobcounts, "o:" PBS_ALL_ENTITY);
+			cts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 
 			if (cts != NULL)
 				update_counts_on_end(cts, resresv->resreq);
 
-		}
-	}
-
-	/* The only thing which will change preemption priorities in the middle of
-	 * a scheduling cycle is soft user/group/project limits.  If a user, group,
-	 * or project  goes under a limit because of this job ending, we need to mark
-	 * those jobs differently
-	 */
-	if (cstat.preempting && resresv->is_job) {
-		if (sinfo->has_soft_limit || resresv->job->queue->has_soft_limit) {
-			for (i = 0; sinfo->jobs[i] != NULL; i++) {
-				if (sinfo->jobs[i]->job != NULL) {
-					int usrlim = resresv->job->queue->has_user_limit || sinfo->has_user_limit;
-					int grplim = resresv->job->queue->has_grp_limit || sinfo->has_grp_limit;
-					int projlim = resresv->job->queue->has_proj_limit || sinfo->has_proj_limit;
-					if ((usrlim && (!strcmp(resresv->user, sinfo->jobs[i]->user))) ||
-					    (grplim && (!strcmp(resresv->group, sinfo->jobs[i]->group))) ||
-					    (projlim && (!strcmp(resresv->project, sinfo->jobs[i]->project))))
-
-						set_preempt_prio(sinfo->jobs[i],
-							sinfo->jobs[i]->job->queue, sinfo);
-				}
-			}
-
-			/* now that we've set all the preempt levels, we need to count them */
-			memset(sinfo->preempt_count, 0, NUM_PPRIO * sizeof(int));
-			for (i = 0; sinfo->running_jobs[i] != NULL; i++)
-				if (!sinfo->running_jobs[i]->job->can_not_preempt)
-					sinfo->
-					preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
 		}
 	}
 }
@@ -2288,6 +2245,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->has_soft_limit = osinfo->has_soft_limit;
 	nsinfo->has_hard_limit = osinfo->has_hard_limit;
 	nsinfo->has_user_limit = osinfo->has_user_limit;
+	nsinfo->has_all_limit = osinfo->has_all_limit;
 	nsinfo->has_grp_limit = osinfo->has_grp_limit;
 	nsinfo->has_proj_limit = osinfo->has_proj_limit;
 	nsinfo->has_multi_vnode = osinfo->has_multi_vnode;
@@ -2330,11 +2288,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->num_nodes = osinfo->num_nodes;
 
 	/* dup the nodes, if there are any nodes */
-#ifdef NAS /* localmod 049 */
-	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS, 1);
-#else
 	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS);
-#endif /* localmod 049 */
 	
 	if (nsinfo->has_nodes_assoc_queue) {
 		nsinfo->unassoc_nodes =
@@ -2465,7 +2419,6 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
-	nsinfo->soft_limit_preempt_bit = osinfo->soft_limit_preempt_bit;
 
 	return nsinfo;
 }
@@ -2689,7 +2642,7 @@ new_counts(void)
 	counts *cts;
 
 	if ((cts = malloc(sizeof(struct counts)))  == NULL) {
-		log_err(errno, "new_counts", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
@@ -3122,6 +3075,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
 #ifdef NAS /* localmod 057 */
 	site_update_on_end(sinfo, qinfo, resresv);
 #endif /* localmod 057 */
+	update_preemption_priority(sinfo, resresv);
 }
 
 /**
@@ -3331,8 +3285,8 @@ resolve_indirect_resources(node_info **nodes)
 
 /**
  * @brief
- * 		update_preemption_on_run - update preemption status when a
- *		job is run
+ * 		update_preemption_priority - update preemption status when a
+ *		job runs/ends
  *
  * @param[in]	sinfo 	- server where job was run
  * @param[in]	resresv - job which was run
@@ -3340,8 +3294,8 @@ resolve_indirect_resources(node_info **nodes)
  * @return	void
  *
  * @note
- * 		Must be called after update_server_on_run() and
- *		update_queue_on_run()
+ * 		Must be called after update_server_on_run/end() and
+ *		update_queue_on_run/end()
  *
  * @note
  * 		The only thing which will change preemption priorities
@@ -3352,7 +3306,7 @@ resolve_indirect_resources(node_info **nodes)
  * @par MT-Safe:	no
  */
 void
-update_preemption_on_run(server_info *sinfo, resource_resv *resresv)
+update_preemption_priority(server_info *sinfo, resource_resv *resresv)
 {
 	int i;
 
@@ -3399,12 +3353,9 @@ read_formula(void)
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
 	int len;
-	char pathbuf[MAXPATHLEN];
 	FILE *fp;
 
-
-	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH_SCHED);
-	if ((fp = fopen(pathbuf, "r")) == NULL) {
+	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__,
 			"Can not open file to read job_sort_formula.  Please reset formula with qmgr.");
 		return NULL;
@@ -3605,7 +3556,7 @@ create_total_counts(server_info *sinfo, queue_info * qinfo,
 				sinfo->total_alljobcounts = dup_counts_list(sinfo->alljobcounts);
 			else
 				sinfo->total_alljobcounts = find_alloc_counts(
-					sinfo->total_alljobcounts, "o:" PBS_ALL_ENTITY);
+					sinfo->total_alljobcounts, PBS_ALL_ENTITY);
 		}
 	}
 	if (mode == QUEUE || mode == ALL) {
@@ -3638,7 +3589,7 @@ create_total_counts(server_info *sinfo, queue_info * qinfo,
 				qinfo->total_alljobcounts = dup_counts_list(qinfo->alljobcounts);
 			else if (resresv != NULL)
 				qinfo->total_alljobcounts = find_alloc_counts(
-					qinfo->total_alljobcounts, "o:" PBS_ALL_ENTITY);
+					qinfo->total_alljobcounts, PBS_ALL_ENTITY);
 		}
 	}
 	return;

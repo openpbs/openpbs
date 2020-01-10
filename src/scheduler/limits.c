@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1218,22 +1218,24 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 	}
 #endif /* localmod 097 */
 	if (si->has_soft_limit) {
-		rc |= si->soft_limit_preempt_bit;
 		if (si->has_user_limit)
 			rc |= find_preempt_bits(si->user_counts, rr->user, rr);
 		if (si->has_grp_limit)
 			rc |= find_preempt_bits(si->group_counts, rr->group, rr);
 		if (si->has_proj_limit)
 			rc |= find_preempt_bits(si->project_counts, rr->project, rr);
+		if (si->has_all_limit)
+			rc |= find_preempt_bits(si->alljobcounts, PBS_ALL_ENTITY, rr);
 	}
 	if (qi->has_soft_limit) {
-		rc |= qi->soft_limit_preempt_bit;
 		if (qi->has_user_limit)
 			rc |= find_preempt_bits(qi->user_counts, rr->user, rr);
 		if (qi->has_grp_limit)
 			rc |= find_preempt_bits(qi->group_counts, rr->group, rr);
 		if (qi->has_proj_limit)
 			rc |= find_preempt_bits(qi->project_counts, rr->project, rr);
+		if (qi->has_all_limit)
+			rc |= find_preempt_bits(qi->alljobcounts, PBS_ALL_ENTITY, rr);
 	}
 
 	return (rc);
@@ -1785,7 +1787,7 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	cts = qc->all;
 
-	c = find_counts(cts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -1859,7 +1861,7 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	cts = sc->all;
 
-	c = find_counts(cts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(cts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -1934,7 +1936,7 @@ check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 
-	running = find_counts_elm(cts, "o:" PBS_ALL_ENTITY, NULL, NULL, NULL);
+	running = find_counts_elm(cts, PBS_ALL_ENTITY, NULL, NULL, NULL);
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > running))
@@ -1989,7 +1991,7 @@ check_queue_max_run(server_info *si, queue_info *qi, resource_resv *rr,
 	free(key);
 
 
-	running = find_counts_elm(cts, "o:" PBS_ALL_ENTITY, NULL, NULL, NULL);
+	running = find_counts_elm(cts, PBS_ALL_ENTITY, NULL, NULL, NULL);
 
 	if ((max_running == SCHD_INFINITY) ||
 		(max_running > running))
@@ -2022,22 +2024,31 @@ check_queue_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	int	max_running;
 	char	*key;
+	counts	*cnt = NULL;
+	int used = 0;
+
 
 	if (qi == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
+
+	if (!qi->has_all_limit)
+	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_running = (int) lim_get(key, LI2RUNCTXSOFT(qi->liminfo));
 	free(key);
 
-	if ((max_running == SCHD_INFINITY) ||
-		(max_running > qi->sc.running)) {
-		qi->soft_limit_preempt_bit = 0;
-		return (0);
-	} else {
-		qi->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
+	/* at this point, we know a limit is set for PBS_ALL*/
+	used = find_counts_elm(qi->alljobcounts, PBS_ALL_ENTITY, NULL, &cnt, NULL);
+	if (max_running != SCHD_INFINITY && used > max_running) {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_QUEUE_LIMIT));
+	} else {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = 0;
+		return (0);
 	}
 
 }
@@ -2268,22 +2279,30 @@ check_server_max_run_soft(server_info *si, queue_info *qi, resource_resv *rr)
 {
 	int	max_running;
 	char	*key;
+	counts	*cnt = NULL;
+	int used = 0;
 
 	if (si == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
+
+	if (!si->has_all_limit)
+	    return (0);
 
 	if ((key = entlim_mk_runkey(LIM_OVERALL, allparam)) == NULL)
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 	max_running = (int) lim_get(key, LI2RUNCTXSOFT(si->liminfo));
 	free(key);
 
-	if ((max_running == SCHD_INFINITY) ||
-		(max_running > si->sc.running)) {
-		si->soft_limit_preempt_bit = 0;
-		return (0);
-	} else {
-		si->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
+	/* at this point, we know a limit is set for PBS_ALL*/
+	used = find_counts_elm(si->alljobcounts, PBS_ALL_ENTITY , NULL, &cnt, NULL);
+	if (max_running != SCHD_INFINITY && used > max_running) {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT);
 		return (PREEMPT_TO_BIT(PREEMPT_OVER_SERVER_LIMIT));
+	} else {
+		if (cnt != NULL)
+			cnt->soft_limit_preempt_bit = 0;
+		return (0);
 	}
 }
 
@@ -2523,7 +2542,7 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	if ((si == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	c = find_counts(si->alljobcounts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(si->alljobcounts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -2592,7 +2611,7 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	if ((qi == NULL) || (rr == NULL))
 		return (PREEMPT_TO_BIT(PREEMPT_ERR));
 
-	c = find_counts(qi->alljobcounts, "o:" PBS_ALL_ENTITY);
+	c = find_counts(qi->alljobcounts, PBS_ALL_ENTITY);
 	if (c == NULL)
 		return (0);
 
@@ -2737,6 +2756,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 	sch_resource_t	max_gengroup_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -2775,7 +2795,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 			if (max_group_res_soft < used) {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -2784,11 +2804,15 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		} else if (max_gengroup_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic group soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 /**
@@ -2898,6 +2922,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 	sch_resource_t	max_genuser_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -2937,7 +2962,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 			if (max_user_res_soft < used) {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -2946,11 +2971,15 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		} else if (max_genuser_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic user soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 /**
@@ -3525,6 +3554,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 	sch_resource_t	max_genproject_res_soft;
 	sch_resource_t	used = 0;
 	resource_count  *rescts;
+	int		rc = 0;
 
 	if (rr == NULL)
 		return (-1);
@@ -3564,7 +3594,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 			if (max_project_res_soft < used){
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = preempt_bit;
-				return (preempt_bit);
+				rc = preempt_bit;
 			} else {
 				if (rescts != NULL)
 					rescts->soft_limit_preempt_bit = 0;
@@ -3573,11 +3603,15 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		} else if (max_genproject_res_soft < used) {
 			if (rescts != NULL)
 				rescts->soft_limit_preempt_bit = preempt_bit;
-			return (preempt_bit);
+			rc = preempt_bit;
+		} else {
+			/* usage is under generic project soft limit, reset the preempt bit */
+			if (rescts != NULL)
+				rescts->soft_limit_preempt_bit = 0;
 		}
 	}
 
-	return (0);
+	return (rc);
 }
 
 

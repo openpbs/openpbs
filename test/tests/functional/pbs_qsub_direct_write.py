@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -87,9 +87,9 @@ class TestQsub_direct_write(TestFunctional):
         """
         j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
-        sub_dir = self.du.mkdtemp(uid=TEST_USER4.uid)
-        mapping_dir = self.du.mkdtemp(
-            uid=TEST_USER5.uid, gid=TSTGRP4.gid, mode=0o770)
+        sub_dir = self.du.create_temp_dir(asuser=TEST_USER5)
+        mapping_dir = self.du.create_temp_dir(
+            asuser=TEST_USER4, asgroup=TSTGRP5, mode=0o770)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir +
              ' ' + mapping_dir})

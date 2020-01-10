@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -294,13 +294,8 @@ pbs_get_dataservice_password(char *user, char *errmsg, int len)
 	char buf[MAXPATHLEN+1];
 	char *str;
 
-#ifdef WIN32
-	sprintf(pwd_file, "%s\\server_priv\\db_password", pbs_conf.pbs_home_path);
-	if ((fd = open(pwd_file, O_RDONLY | O_BINARY)) == -1)
-#else
 	sprintf(pwd_file, "%s/server_priv/db_password", pbs_conf.pbs_home_path);
 	if ((fd = open(pwd_file, O_RDONLY)) == -1)
-#endif
 	{
 		return strdup(user);
 	} else {
@@ -488,19 +483,6 @@ pbs_get_connect_string(char *host, int timeout, int *err_code, char *errmsg, int
 	return svr_conn_info;
 }
 
-#ifdef WIN32
-void
-repl_slash(char *path)
-{
-	char *p = path;
-	while (*p) {
-		if (*p == '/')
-			*p = '\\';
-		p++;
-	}
-}
-#endif
-
 /**
  * @brief
  *	Function to start/stop the database service/daemons
@@ -524,33 +506,11 @@ pbs_dataservice_control(char *cmd, char **errmsg)
 	struct stat stbuf;
 	int fd;
 	char *p;
-#ifdef WIN32
-	char buf[MAXPATHLEN+1];
-#endif
 
 	if (*errmsg != NULL) {
 		free(*errmsg);
 		*errmsg = NULL;
 	}
-
-#ifdef WIN32
-	strcpy(buf, pbs_conf.pbs_home_path);
-	repl_slash(buf);
-	/* create unique filename by appending pid */
-	sprintf(errfile, "%s\\spool\\db_errfile_%s_%d",
-		buf, cmd, getpid());
-
-	/* execute service startup and redirect output to file */
-	strcpy(buf, pbs_conf.pbs_exec_path);
-	repl_slash(buf);
-	sprintf(dbcmd,
-		"%s\\sbin\\pbs_dataservice %s PBS %d > %s 2>&1",
-		buf,
-		cmd,
-		pbs_conf.pbs_data_service_port,
-		errfile);
-	rc = wsystem(dbcmd, INVALID_HANDLE_VALUE);
-#else
 	/* create unique filename by appending pid */
 	sprintf(errfile, "%s/spool/db_errfile_%s_%d",
 		pbs_conf.pbs_home_path,
@@ -570,7 +530,6 @@ pbs_dataservice_control(char *cmd, char **errmsg)
 	rc = system(dbcmd);
 	if (WIFEXITED(rc))
 		rc = WEXITSTATUS(rc);
-#endif
 
 	if (rc != 0) {
 		/* read the contents of errfile and load to errmsg */

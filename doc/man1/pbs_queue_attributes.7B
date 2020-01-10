@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_queue_attributes 7B "24 April 2018" Local "PBS Professional"
+.TH pbs_queue_attributes 7B "19 November 2019" Local "PBS Professional"
 .SH NAME
 pbs_queue_attributes
 \- Attributes of PBS queues
@@ -984,8 +984,6 @@ Default: No default
 Specifies the credential type required.  All jobs submitted to the named 
 queue without the specified credential will be rejected.  
 .br
-Not supported under Windows.
-.br
 Applies to routing and execution queues.
 .br
 Readable by all; settable by Manager.
@@ -1007,8 +1005,6 @@ Default: Unset
 Specifies whether the credential authentication method specified in the 
 .I require_cred 
 queue attribute is required for this queue. 
-.br
-Not supported under Windows.
 .br
 Applies to routing and execution queues.
 .br
@@ -1332,7 +1328,8 @@ Default:
 .I False
 
 .IP started 8
-Specifies whether jobs in this queue can be scheduled for execution.
+If this is an execution queue, specifies whether jobs in this queue can be scheduled for execution, 
+or if this is a routing queue, whether jobs can be routed.
 .br
 Applies to routing and execution queues.
 .br
@@ -1346,7 +1343,7 @@ Python type:
 .br
 Behavior: When
 .I True, 
-jobs in this queue can run.
+jobs in this queue can run or be routed.
 .br
 Default: 
 .I False

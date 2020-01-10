@@ -1,4 +1,4 @@
-.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
 .\" This file is part of the PBS Professional ("PBS Pro") software.
@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qmgr 8B "4 March 2019" Local "PBS Professional"
+.TH qmgr 8B "1 May 2019" Local "PBS Professional"
 .nf
 .SH NAME
 .B qmgr 
@@ -200,7 +200,7 @@ The following table lists the options to qmgr:
 -a                 Aborts qmgr on any syntax errors or any requests 
                    rejected by a server.
 -----------------------------------------------------------------------
--c '<directive>'   Executse a single command (directive) and exit qmgr. 
+-c '<directive>'   Executes a single command (directive) and exit qmgr. 
                    The directive must be enclosed in single or double 
                    quote marks, for example:
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ qmgr -c "print server" 
@@ -1560,10 +1560,9 @@ import pbs
 pbs.event().job.comment="Hello, world"
 .RE
 
-Example: To dump the script contents of a hook 'hook1' into a file in "\My
-Hooks\hook1.py":
+Example: To dump the script contents of a hook named hook1 into a file named hook1.py:
 .RS 3
-.B Qmgr: export hook hook1 application/x-python default "\My Hooks\hook1.py"
+.B Qmgr: export hook hook1 application/x-python default hook1.py
 .RE
 
 .B Printing Hook Information

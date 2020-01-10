@@ -1,4 +1,4 @@
-REM Copyright (C) 1994-2019 Altair Engineering, Inc.
+REM Copyright (C) 1994-2020 Altair Engineering, Inc.
 REM For more information, contact Altair at www.altair.com.
 REM
 REM This file is part of the PBS Professional ("PBS Pro") software.
@@ -73,9 +73,6 @@ for %%a in (
         exit /b 1
     )
 )
-
-REM Remove unneccesory files from bin directory
-del /F /Q "%PBS_EXECDIR%\bin\pbs_dataservice.bat"
 
 echo Copying necessory files for PBS_EXEC\sbin
 for %%a in (
