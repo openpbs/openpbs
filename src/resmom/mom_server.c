@@ -1122,7 +1122,7 @@ is_request(int stream, int version)
 					if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 						PBS_MOM_SERVICE_NAME, mom_host,
 						phook_input, phook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
-							pjob->ji_hook_running_bg_on = IS_DISCARD_JOB;
+							pjob->ji_hook_running_bg_on = BG_IS_DISCARD_JOB;
 							if (pjob->ji_qs.ji_svrflags &
 									JOB_SVFLG_HERE)	/* MS */
 								(void)send_sisters(pjob,

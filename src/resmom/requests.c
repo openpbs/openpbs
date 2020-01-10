@@ -652,7 +652,7 @@ req_deletejob(struct batch_request *preq)
 		PBS_MOM_SERVICE_NAME, mom_host, hook_input,
 		hook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
 		
-		pjob->ji_hook_running_bg_on = PBS_BATCH_DeleteJob;
+		pjob->ji_hook_running_bg_on = BG_PBS_BATCH_DeleteJob;
 
 		/*
 		* save number of nodes in sisterhood in case
@@ -668,7 +668,7 @@ req_deletejob(struct batch_request *preq)
 				* no messages sent, but there are sisters
 				* must be all down
 				*/
-				pjob->ji_hook_running_bg_on += PBSE_SISCOMM;
+				pjob->ji_hook_running_bg_on = BG_PBSE_SISCOMM;
 			}
 		}
 		/* 

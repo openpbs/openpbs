@@ -3744,7 +3744,7 @@ join_err:
 				PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
 				hook_output_ptr, NULL, 0, 1) ==
 						HOOK_RUNNING_IN_BACKGROUND) {
-					pjob->ji_hook_running_bg_on = command;
+					pjob->ji_hook_running_bg_on = (command == IM_DELETE_JOB)? BG_IM_DELETE_JOB: BG_IM_DELETE_JOB_REPLY;
 					break;
 				}
 

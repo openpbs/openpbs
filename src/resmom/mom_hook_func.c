@@ -3424,7 +3424,7 @@ void reply_hook_bg(job *pjob)
 	struct	batch_request *preq = pjob->ji_preq;
 #endif
 
-	if (pjob->ji_hook_running_bg_on == IS_DISCARD_JOB) {
+	if (pjob->ji_hook_running_bg_on == BG_IS_DISCARD_JOB) {
 		/**
 		 * IS_DISCARD_JOB can be received by sister node as well,
 		 * when node fail requeue is activated 
@@ -3433,7 +3433,7 @@ void reply_hook_bg(job *pjob)
 		strcpy(jobid, pjob->ji_qs.ji_jobid);
 
 		del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
-		pjob->ji_hook_running_bg_on = 0;
+		pjob->ji_hook_running_bg_on = BG_NONE;
 		job_purge(pjob);
 		dorestrict_user();
 
@@ -3451,10 +3451,9 @@ void reply_hook_bg(job *pjob)
 
 	} else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) { /*MS*/
 		switch (pjob->ji_hook_running_bg_on) {
-			case PBS_BATCH_DeleteJob:
-			case (PBS_BATCH_DeleteJob + PBSE_SISCOMM):
-				if ((pjob->ji_numnodes == 1) ||(pjob->ji_hook_running_bg_on == 
-					(PBS_BATCH_DeleteJob + PBSE_SISCOMM))) {
+			case BG_PBS_BATCH_DeleteJob:
+			case BG_PBSE_SISCOMM:
+				if ((pjob->ji_numnodes == 1) || (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)) {
 					del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
 					pjob->ji_preq = NULL;
 					(void) kill_job(pjob, SIGKILL);
@@ -3469,11 +3468,10 @@ void reply_hook_bg(job *pjob)
 					*/ 
 					if (pjob->ji_numnodes == 1) 
 						reply_ack(preq);
-					else if (pjob->ji_hook_running_bg_on == 
-						(PBS_BATCH_DeleteJob + PBSE_SISCOMM))
+					else if (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)
 							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
-					pjob->ji_hook_running_bg_on = 0;
+					pjob->ji_hook_running_bg_on = BG_NONE;
 					job_purge(pjob);
 				}
 				/*
@@ -3481,16 +3479,35 @@ void reply_hook_bg(job *pjob)
 				* mom_comm when all the sisters have replied.  The reply to
 				* the Server is also done there
 				*/
+
+			/**
+			 * Following cases to avoid the below compilation
+			 * error: enumeration value not handled in switch
+			 */
+			case BG_NONE:
+			case BG_IM_DELETE_JOB_REPLY:
+			case BG_IM_DELETE_JOB:
+			case BG_IS_DISCARD_JOB:
 				break;
 
 		}
 	} else { /*SISTER MOM*/
 		switch (pjob->ji_hook_running_bg_on) {
-			case IM_DELETE_JOB_REPLY:
+			case BG_IM_DELETE_JOB_REPLY:
 				post_reply(pjob, 0);
-			case IM_DELETE_JOB:
-				pjob->ji_hook_running_bg_on = 0;
+			case BG_IM_DELETE_JOB:
+				pjob->ji_hook_running_bg_on = BG_NONE;
 				mom_deljob(pjob);
+
+			/**
+			 * Following cases to avoid the below compilation
+			 * error: enumeration value not handled in switch
+			 */
+			case BG_NONE:
+			case BG_PBS_BATCH_DeleteJob:
+			case BG_PBSE_SISCOMM:
+			case BG_IS_DISCARD_JOB:
+				break;
 		}
 	}
 	return;

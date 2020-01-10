@@ -504,6 +504,15 @@ struct jbdscrd {
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
 
+enum bg_hook_request {
+	BG_NONE,
+	BG_IS_DISCARD_JOB,
+	BG_PBS_BATCH_DeleteJob,
+	BG_PBSE_SISCOMM,
+	BG_IM_DELETE_JOB_REPLY,
+	BG_IM_DELETE_JOB
+};
+
 struct job {
 
 	/* 
@@ -584,7 +593,7 @@ struct job {
 	int		ji_stdout;	/* socket for stdout */
 	int		ji_stderr;	/* socket for stderr */
 	int		ji_ports[2];	/* ports for stdout/err */
-	int		ji_hook_running_bg_on; /* set when hook starts in the background*/
+	enum	bg_hook_request	ji_hook_running_bg_on; /* set when hook starts in the background*/
 #else					/* END Mom ONLY -  start Server ONLY */
 	int		ji_discarding;	/* discarding job */
 	struct batch_request *ji_prunreq; /* outstanding runjob request */
@@ -855,7 +864,7 @@ typedef struct	infoent {
 #define IM_RESTART		16
 #define IM_DELETE_JOB		17
 #define IM_REQUEUE		18
-/* skip 19 to avoid confilict with IS_DISCARD_JOB */
+#define IM_DELETE_JOB_REPLY		19
 #define IM_SETUP_JOB		20
 #define IM_DELETE_JOB2		21	/* sent by sister mom to delete job early */
 #define IM_SEND_RESC		22
@@ -863,7 +872,6 @@ typedef struct	infoent {
 #define IM_EXEC_PROLOGUE	24
 #define IM_CRED 		25
 #define IM_PMIX			26
-#define	IM_DELETE_JOB_REPLY	27
 
 #define IM_ERROR		99
 #define IM_ERROR2		100
