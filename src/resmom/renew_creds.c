@@ -118,7 +118,7 @@ struct svrcred_data {
 };
 typedef struct svrcred_data svrcred_data;
 
-const char *str_cred_actions[] = { "singleshot", "renewal", "setenv", "destroy"};
+const char *str_cred_actions[] = { "singleshot", "renewal", "setenv", "close", "destroy"};
 
 extern char *path_jobs; /* job directory path */
 extern struct var_table vtable;
