@@ -504,7 +504,28 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 						return;
 				}
 				rscdef->rs_set(&pr->rs_value, &rescp->rs_value, op);
-				queru->at_flags |= ATR_VFLAG_MODCACHE;
+
+				/* if matching resources_available doesn't exist in queue then remove resources_assigned also if it's
+				 * value is equal or less than 0 (except PBS in-built resources i.e. ncpus, nodect etc).
+				 */
+				if (pr->rs_value.at_val.at_long <= 0) {
+					resource *avail_resc = NULL;
+					avail_resc = find_resc_entry(&pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAvail], rscdef);
+					if (!avail_resc) {
+						if (!is_builtin(rscdef)) {
+							/* remove resources_assigned attribute */
+							if (queru->at_flags & ATR_VFLAG_SET) {
+									pr->rs_defin->rs_free(&pr->rs_value);
+									delete_link(&pr->rs_link);
+									free(pr);
+									pr = (resource *)GET_NEXT(queru->at_val.at_list);
+									if (pr == NULL)
+										queru->at_flags &= ~ATR_VFLAG_SET;
+							}
+						}
+					}
+				}
+				queru->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
 			}
 		}
 		rescp = (resource *)GET_NEXT(rescp->rs_link);
