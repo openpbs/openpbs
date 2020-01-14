@@ -74,14 +74,17 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
              'Resource_List.walltime': 10}
         script = ['#PBS -v "var1=\'A,B,C,D\'"']
         script += ['env | grep var1']
-        jid = self.create_and_submit_job(content=script)
+        jid = self.create_and_submit_job(user=TEST_USER, content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
 
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=10)
         job_output = ""
-        with open(job_outfile, 'r') as f:
-            job_output = f.read().strip()
+        runcmd = ['cat', job_outfile]
+        ret = self.du.run_cmd(self.server.client, runcmd,
+                              level=logging.INFOCLI, runas=TEST_USER,
+                              logerr=False)
+        job_output =(' '.join(map(str, ret['out']))).strip()
         self.assertEqual(job_output, "var1=A,B,C,D")
 
     def test_passing_shell_function(self):
@@ -115,13 +118,16 @@ exit 0
         script += ['env | grep -A 3 foo\n']
         script += ['foo\n']
         # Submit a job without hooks in the system
-        jid = self.create_and_submit_job(content=script)
+        jid = self.create_and_submit_job(user=TEST_USER, content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
         job_output = ""
-        with open(job_outfile, 'r') as f:
-            job_output = f.read().strip()
+        runcmd = ['cat', job_outfile]
+        ret = self.du.run_cmd(self.server.client, runcmd,
+                              level=logging.INFOCLI, runas=TEST_USER,
+                              logerr=False)
+        job_output =(' '.join(map(str, ret['out']))).strip()
         match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
