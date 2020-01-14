@@ -93,7 +93,9 @@ class TestHookTimeout(TestFunctional):
         hook_body = "import pbs\n"
         a = {'event': 'execjob_epilogue', 'enabled': 'True'}
 
-        rv = self.server.create_import_hook("test", a, hook_body)
+        rv = self.server.create_hook("test", a)
+        self.assertTrue(rv)
+        rv = self.server.import_hook("test", hook_body)
         self.assertTrue(rv)
 
         # First batch of hook update is for the *.HK files
