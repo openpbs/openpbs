@@ -116,7 +116,6 @@ else:
     import operator
     import fnmatch
     import math
-    import pprint
     try:
         import json
     except Exception:
@@ -3139,10 +3138,10 @@ class CgroupUtils(object):
             else:
                 raise ValueError('Invalid systemd escaped string')
             i += 1
-            if (sys.version_info[0] < 3):
-                ret = str(ret)
-            else:
-                ret = ret.decode('utf-8')
+        if (sys.version_info[0] < 3):
+            ret = str(ret)
+        else:
+            ret = ret.decode('utf-8')
         return ret
 
     def enabled(self, subsystem):
