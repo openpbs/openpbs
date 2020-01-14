@@ -1,4 +1,5 @@
 # coding: utf-8
+# based on master, 14JAN20 0936 CET
 
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -4440,6 +4441,9 @@ class CgroupUtils(object):
         for resc in sorted(hostresc):
             self.set_limit(resc, hostresc[resc], jobid)
         # Set additional parameters
+        # Note some kernels will surprisingly not let you set things
+        # to the value that is already there in some corner cases
+        # hence some of the reads to see "if we need to write"
         if cpuset_enabled:
             path = self._cgroup_path('cpuset', 'mem_hardwall', jobid)
             lines = self.read_value(path)
