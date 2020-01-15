@@ -540,12 +540,10 @@ class TestServerDynRes(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
 
-
         self.logger.info('sleeping 30 seconds to wait for script to timeout')
         time.sleep(30)
         self.scheduler.log_match("%s timed out" % filenames[0])
         self.scheduler.log_match("Setting resource foo to 0")
-
 
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
@@ -567,26 +565,24 @@ class TestServerDynRes(TestFunctional):
 
         filenames = self.setup_dyn_res(resname, restype, resval)
 
-        self.server.manager(MGR_CMD_SET, SCHED, {ATTR_sched_server_dyn_res_alarm: 10})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {ATTR_sched_server_dyn_res_alarm: 10})
 
         # Submit job
         a = {'Resource_List.foo': '"true"'}
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
 
-
         self.logger.info('sleeping 10 seconds to wait for script to timeout')
         time.sleep(10)
         self.scheduler.log_match("%s timed out" % filenames[0])
         self.scheduler.log_match("Setting resource foo to 0")
-
 
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
         job_comment += " foo (True != False)"
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
-
 
     def test_svr_dyn_res_permissions(self):
         """
@@ -620,9 +616,9 @@ class TestServerDynRes(TestFunctional):
         # give write permission to user only
         self.du.chmod(path=fp, mode=0o744, sudo=True)
         if os.getuid() != 0:
-                self.check_access_log(fp, exist=True)
+            self.check_access_log(fp, exist=True)
         else:
-                self.check_access_log(fp, exist=False)
+            self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases
