@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <data>
-   <!--	
+   <!--
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -36,9 +36,9 @@
  * Use of Altair’s trademarks, including but not limited to "PBS™",
  * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
-	
+
 	NOTE (Server File)
-	
+
 	sched_attr_def the array of attribute definitions for sched object.
 	Each legal sched attribute is defined here
 	The entries for each attribute are (see attribute.h):
@@ -52,25 +52,25 @@
        access permission flags,
        value type,
        parent object type
- 
+
 	NOTE (ECL File)
-	
+
 	ecl_sched_attr_def is the array of attribute and resource
  	definitions for scheduler.
  	The structure is used by the ECL verification functionality
  	to determine which verification function to be called for each
  	attribute.
-	
+
 	The entries for each attribute are (see attribute.h):
 		name,
 		type,
         flag,
 		verify datatype function,
 		verify value function
-   -->	
+   -->
    <head>
      <SVR>
-     #include &lt;pbs_config.h&gt;   
+     #include &lt;pbs_config.h&gt;
      #include &lt;sys/types.h&gt;
      #include "pbs_ifl.h"
      #include "list_link.h"
@@ -83,7 +83,7 @@
      attribute_def sched_attr_def[] = {
      </SVR>
      <ECL>
-     #include &lt;pbs_config.h&gt;   
+     #include &lt;pbs_config.h&gt;
      #include &lt;sys/types.h&gt;
      #include "pbs_ifl.h"
      #include "pbs_ecl.h"
@@ -91,7 +91,7 @@
      ecl_attribute_def ecl_sched_attr_def[] = {
      </ECL>
    </head>
-   <attributes>	/* SchedHost */	
+   <attributes>	/* SchedHost */
 	<member_name><both>ATTR_SchedHost</both></member_name>		<!-- "Sched_Host" -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
@@ -121,7 +121,7 @@
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>		
+	</member_verify_function>
    </attributes>
    <attributes>   /* sched_cycle_len */
 	<member_name><both>ATTR_sched_cycle_len</both></member_name>	<!-- "sched_cycle_length" -->
@@ -139,7 +139,7 @@
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>  /* do_not_span_psets */ 
+   <attributes>  /* do_not_span_psets */
 	<member_name><both>ATTR_do_not_span_psets</both></member_name> 	<!-- do_not_span_psets -->
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
@@ -150,7 +150,7 @@
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
-	<member_verify_function>		
+	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
@@ -171,7 +171,7 @@
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-    <attributes>  /* sched_preempt_enforce_resumption */ 
+    <attributes>  /* sched_preempt_enforce_resumption */
 	<member_name><both>ATTR_sched_preempt_enforce_resumption</both></member_name> 	<!-- sched_preempt_enforce_resumption -->
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
@@ -182,12 +182,12 @@
 	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
-	<member_verify_function>		
+	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>  /* preempt_targets_enable */ 
+   <attributes>  /* preempt_targets_enable */
 	<member_name><both>ATTR_preempt_targets_enable</both></member_name> 	<!-- preempt_targets_enable -->
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
@@ -198,7 +198,7 @@
 	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
-	<member_verify_function>		
+	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
@@ -219,7 +219,7 @@
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>  /* throughput_mode */ 
+   <attributes>  /* throughput_mode */
 	<member_name><both>ATTR_throughput_mode</both></member_name> 	<!-- throughput_mode -->
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
@@ -230,7 +230,7 @@
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
-	<member_verify_function>		
+	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
@@ -252,7 +252,7 @@
         </member_verify_function>
    </attributes>
    <attributes> /* sched_port */
-        <member_name><both>ATTR_sched_port</both></member_name>         <!-- "Port" - port to which scheduler binds to --> 
+        <member_name><both>ATTR_sched_port</both></member_name>         <!-- "Port" - port to which scheduler binds to -->
         <member_at_decode>decode_l</member_at_decode>
         <member_at_encode>encode_l</member_at_encode>
         <member_at_set>set_l</member_at_set>
@@ -267,7 +267,7 @@
         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
         </member_verify_function>
    </attributes>
-   <attributes>	/* partition */	
+   <attributes>	/* partition */
 	<member_name><both>ATTR_partition</both></member_name>		<!-- "partition" -->
 	<member_at_decode>decode_arst</member_at_decode>
 	<member_at_encode>encode_arst</member_at_encode>
@@ -283,7 +283,7 @@
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>	/* sched_priv */	
+   <attributes>	/* sched_priv */
 	<member_name><both>ATTR_sched_priv</both></member_name>		<!-- "sched_priv" -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
@@ -299,7 +299,7 @@
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>	/* sched_log */	
+   <attributes>	/* sched_log */
 	<member_name><both>ATTR_sched_log</both></member_name>		<!-- "sched_log" -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
@@ -347,7 +347,7 @@
         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
         </member_verify_function>
    </attributes>
-   <attributes>	/* sched_user */	
+   <attributes>	/* sched_user */
 	<member_name><both>ATTR_sched_user</both></member_name>		<!-- "sched_user" -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
@@ -364,7 +364,7 @@
 	</member_verify_function>
    </attributes>
    <attributes> /* comment */
-        <member_name><both>ATTR_comment</both></member_name>                   <!-- "comment" --> 
+        <member_name><both>ATTR_comment</both></member_name>                   <!-- "comment" -->
         <member_at_decode>decode_str</member_at_decode>
         <member_at_encode>encode_str</member_at_encode>
         <member_at_set>set_str</member_at_set>
@@ -380,7 +380,7 @@
         </member_verify_function>
     </attributes>
     <attributes> /* state */
-	<member_name><both>ATTR_sched_state</both></member_name>	<!-- "state" --> 
+	<member_name><both>ATTR_sched_state</both></member_name>	<!-- "state" -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
@@ -476,7 +476,7 @@
         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
         </member_verify_function>
    </attributes>
-   <attributes>   /* job_sort_formula */    
+   <attributes>   /* job_sort_formula */
     <member_name><both>ATTR_job_sort_formula</both></member_name>     <!-- "job_sort_formula" -->
     <member_at_decode>decode_formula</member_at_decode>
     <member_at_encode>encode_str</member_at_encode>
@@ -491,6 +491,22 @@
     <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
     </member_verify_function>
+   </attributes>
+   <attributes> /* server_dyn_res_alarm */
+	<member_name><both>ATTR_sched_server_dyn_res_alarm</both></member_name>	<!-- "server_dyn_res_alarm" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>action_sched_server_dyn_res_alarm</member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
    </attributes>
 
     <tail>

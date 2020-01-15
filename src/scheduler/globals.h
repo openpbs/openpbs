@@ -97,6 +97,7 @@ extern char *logfile;
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;
+extern int server_dyn_res_alarm;
 
 /**
  * @brief

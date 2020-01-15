@@ -357,6 +357,7 @@ extern "C" {
 #define ATTR_sched_preempt_prio  "preempt_prio"
 #define ATTR_sched_preempt_order  "preempt_order"
 #define ATTR_sched_preempt_sort  "preempt_sort"
+#define ATTR_sched_server_dyn_res_alarm "server_dyn_res_alarm"
 
 /* additional node "attributes" names */
 

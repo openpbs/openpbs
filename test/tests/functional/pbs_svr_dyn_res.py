@@ -521,6 +521,73 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
+    def test_res_timeout(self):
+        """
+        Test server_dyn_res script timeouts after 30 seconds
+        """
+
+        # Create a resource of type boolean
+        resname = ["foo"]
+        restype = ["boolean"]
+
+        # Prep for server_dyn_resource script
+        resval = ["sleep 60\necho true"]
+
+        filenames = self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foo': '"true"'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+
+        self.logger.info('sleeping 30 seconds to wait for script to timeout')
+        time.sleep(30)
+        self.scheduler.log_match("%s timed out" % filenames[0])
+        self.scheduler.log_match("Setting resource foo to 0")
+
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foo (True != False)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_set_timeout(self):
+        """
+        Test setting server_dyn_res script to timeout after 10 seconds
+        """
+
+        # Create a resource of type boolean
+        resname = ["foo"]
+        restype = ["boolean"]
+
+        # Prep for server_dyn_resource script
+        resval = ["sleep 20\necho true"]
+
+        filenames = self.setup_dyn_res(resname, restype, resval)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {ATTR_sched_server_dyn_res_alarm: 10})
+
+        # Submit job
+        a = {'Resource_List.foo': '"true"'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+
+        self.logger.info('sleeping 10 seconds to wait for script to timeout')
+        time.sleep(10)
+        self.scheduler.log_match("%s timed out" % filenames[0])
+        self.scheduler.log_match("Setting resource foo to 0")
+
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foo (True != False)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+
     def test_svr_dyn_res_permissions(self):
         """
         Test whether scheduler rejects the server_dyn_res script when the
