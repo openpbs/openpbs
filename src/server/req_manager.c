@@ -79,8 +79,6 @@
 
 #include <arpa/inet.h>
 
-#include "pbs_error.h"
-
 #include "libpbs.h"
 #include <ctype.h>
 #include <memory.h>

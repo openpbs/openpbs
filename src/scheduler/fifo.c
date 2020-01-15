@@ -2476,11 +2476,11 @@ sched_settings_frm_svr(struct batch_status *status)
 				*log_event_mask = mask;
 			} else if (!strcmp(attr->name, ATTR_sched_server_dyn_res_alarm)) {
 				char *endp;
-				long alarm;
-				alarm = strtol(attr->value, &endp, 10);
+				long val;
+				val = strtol(attr->value, &endp, 10);
 				if (*endp != '\0')
 					goto cleanup;
-				server_dyn_res_alarm = alarm;
+				server_dyn_res_alarm = val;
 			}
 		}
 		attr = attr->next;

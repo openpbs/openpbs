@@ -738,12 +738,10 @@ query_server_dyn_res(server_info *sinfo)
 				}
 				setpgid(0, 0);
 				if (sigemptyset(&allsigs) == -1) {
-					perror("sigemptyset");
-					exit(1);
+					log_err(errno, __func__, "sigemptyset failed");
 				}
 				if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) {	/* unblock all signals */
-					perror("sigprocmask");
-					exit(1);
+					log_err(errno, __func__, "sigprocmask(UNBLOCK)");
 				}
 
 				char *argv[4];
@@ -758,8 +756,6 @@ query_server_dyn_res(server_info *sinfo)
 
 			FD_ZERO(&set);
 			FD_SET(pdes[0], &set);
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-				"timeout is %d", server_dyn_res_alarm);
 			if (server_dyn_res_alarm) {
 				struct timeval timeout;
 				timeout.tv_sec = server_dyn_res_alarm;
@@ -789,7 +785,7 @@ query_server_dyn_res(server_info *sinfo)
 			fp = fdopen(pdes[0], "r");
 			close(pdes[1]);
 
-			if (fgets(buf, 256, fp) == NULL) {
+			if (fgets(buf, sizeof(buf), fp) == NULL) {
 				pipe_err = errno;
 				k = 0;
 			} else
