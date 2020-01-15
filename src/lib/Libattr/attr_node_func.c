@@ -1025,13 +1025,13 @@ set_nodeflag(char *str, unsigned long *pflag)
 	if (!strcmp(str, ND_free))
 		*pflag = 0;
 	else if (!strcmp(str, ND_offline))
-		*pflag = *pflag | INUSE_OFFLINE ;
+		*pflag |= INUSE_OFFLINE ;
 	else if (!strcmp(str, ND_offline_by_mom))
-		*pflag = *pflag | INUSE_OFFLINE_BY_MOM ;
+		*pflag |= INUSE_OFFLINE_BY_MOM ;
 	else if (!strcmp(str, ND_down))
-		*pflag = *pflag | INUSE_DOWN ;
+		*pflag |= INUSE_DOWN ;
 	else if (!strcmp(str, ND_sleep))
-		*pflag = *pflag | INUSE_SLEEP ;
+		*pflag |= INUSE_SLEEP ;
 	else {
 		rc = PBSE_BADNDATVAL;
 	}
@@ -1077,11 +1077,12 @@ node_state(attribute *new, void *pnode, int actmode)
 	switch (actmode) {
 
 		case ATR_ACTION_NEW:  /*derive attribute*/
+		case ATR_ACTION_ALTER:
 			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
 			break;
 
-		case ATR_ACTION_ALTER:
-			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
+		case ATR_ACTION_RECOV:
+			return rc;
 			break;
 
 		default: rc = PBSE_INTERNAL;

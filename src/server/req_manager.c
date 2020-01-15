@@ -126,9 +126,6 @@
 struct work_task *global_ping_task = NULL;
 pntPBS_IP_LIST pbs_iplist = NULL;
 
-AVL_IX_DESC *node_tree = NULL;
-AVL_IX_DESC *hostaddr_tree = NULL;
-
 /* Global Data Items: */
 
 extern	void unset_license_location(void);
@@ -170,7 +167,6 @@ vnpool_mom_t    *vnode_pool_mom_list = NULL;
 
 static char *all_quename = "_All_";
 static char *all_nodes = "_All_";
-static int   need_todo = 0;
 enum res_op_flag {
 	INDIRECT_RES_UNLINK,
 	INDIRECT_RES_CHECK,
@@ -181,17 +177,6 @@ extern time_t time_now;
 extern pbs_db_conn_t	*svr_db_conn;
 struct work_task *rescdef_wt_g = NULL;
 #endif
-
-
-/*
- * This structure used as part of the avl tree
- * to do a faster lookup of hostnames.
- * It is stored against pname in make_host_addresses_list()
- */
-struct pul_store {
-	u_long *pul;	/* list of ipaddresses */
-	int len;		/* length */
-};
 
 /**
  * @brief
@@ -2326,12 +2311,12 @@ mgr_node_set(struct batch_request *preq)
 				if ((pnode->nd_nsnfree == 0) && (pnode->nd_state == 0))
 					set_vnode_state(pnode, INUSE_JOB, Nd_State_Or);
 
-				(void)chk_characteristic(pnode, &need_todo);
-
 				mgr_log_attr(msg_man_set, plist,
 					PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
 			}
 		}
+		node_save_db(pnode);
+		
 		if (numnodes == 1)
 			break;	/* just the one vnode */
 		else if (preq->rq_ind.rq_manager.rq_objtype == MGR_OBJ_HOST) {
@@ -2371,21 +2356,6 @@ mgr_node_set(struct batch_request *preq)
 	} /*bottom of the while()*/
 
 	warnmsg = warn_msg_build(WARN_ngrp, warn_nodes, warn_idx);
-
-	/* save_nodes_db calls write_node_state internally,
-	 * so call write_node_state only if save_nodes_db is not
-	 * being called
-	 */
-	if (need_todo & WRITE_NEW_NODESFILE) {
-		/*create/delete/prop/ntype change*/
-		if (!save_nodes_db(0, NULL)) {
-			need_todo &= ~(WRITE_NEW_NODESFILE); /*successful on update*/
-			need_todo &= ~(WRITENODE_STATE);
-		}
-	} else if (need_todo & WRITENODE_STATE) { /*nodes "offline"/comment changed*/
-		write_node_state();
-		need_todo &= ~(WRITENODE_STATE);
-	}
 
 	if (numnodes > 1) {          /*modification was for multiple vnodes  */
 
@@ -2673,12 +2643,12 @@ mgr_node_unset(struct batch_request *preq)
 					}
 				}
 
-				(void)chk_characteristic(pnode, &need_todo);
-
 				mgr_log_attr(msg_man_set, plist,
 					PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
 			}
 		}
+		node_save_db(pnode);
+
 		if (numnodes == 1)
 			break;
 		if (preq->rq_ind.rq_manager.rq_objtype == MGR_OBJ_HOST) {
@@ -2693,21 +2663,6 @@ mgr_node_unset(struct batch_request *preq)
 	} /* bottom of the while() */
 
 	warnmsg = warn_msg_build(WARN_ngrp, warn_nodes, warn_idx);
-
-	/* save_nodes_db calls write_node_state internally,
-	 * so call write_node_state only if save_nodes_db is not
-	 * being called
-	 */
-	if (need_todo & WRITE_NEW_NODESFILE) {
-		/*create/delete/prop/ntype change*/
-		if (!save_nodes_db(0, NULL)) {
-			need_todo &= ~(WRITE_NEW_NODESFILE);	/*successful on update*/
-			need_todo &= ~(WRITENODE_STATE);
-		}
-	} else if (need_todo & WRITENODE_STATE) {  /*nodes "offline"/comment changed */
-		write_node_state();
-		need_todo &= ~(WRITENODE_STATE);
-	}
 
 	if (numnodes > 1) {          /*modification was for all nodes  */
 
@@ -2759,160 +2714,6 @@ mgr_node_unset(struct batch_request *preq)
 
 /**
  * @brief
- * 		make_host_addresses_list - return a null terminated list of all of the
- *		IP addresses of the named host (phost)
- *
- * @param[in]	phost	- named host
- * @param[in]	pul	- ptr to null terminated address list is returned in *pul
- *
- * @return	error code
- * @retval	0	- no error
- * @retval	PBS error	- error
- */
-
-static int
-make_host_addresses_list(char *phost, u_long **pul)
-{
-	int		i;
-	int		err;
-	struct pul_store *tpul = NULL;
-	int		len;
-	struct addrinfo *aip, *pai;
-	struct addrinfo hints;
-	struct sockaddr_in *inp;
-
-	if ((phost == 0) || (*phost == '\0'))
-		return (PBSE_SYSTEM);
-
-	/* search for the address list in the address list tree
-	 * so that we do not hit NS for everything
-	 */
-	if (hostaddr_tree != NULL) {
-		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, phost)) != NULL) {
-			*pul = (u_long *)malloc(tpul->len);
-			if (!*pul) {
-				strcat(log_buffer, "out of  memory ");
-				return (PBSE_SYSTEM);
-			}
-			memmove(*pul, tpul->pul, tpul->len);
-			return 0;
-		}
-	}
-
-	memset(&hints, 0, sizeof(struct addrinfo));
-	/*
-	 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
-	 *      implementations of getaddrinfo() will take an IPv6
-	 *      address and map it to an IPv4 one if we ask for AF_INET
-	 *      only.  We don't want that - we want only the addresses
-	 *      that are genuinely, natively, IPv4 so we start with
-	 *      AF_UNSPEC and filter ai_family below.
-	 */
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	if ((err = getaddrinfo(phost, NULL, &hints, &pai)) != 0) {
-		sprintf(log_buffer,
-				"addr not found for %s h_errno=%d errno=%d",
-				phost, err, errno);
-		return (PBSE_UNKNODE);
-	}
-
-	i = 0;
-	for (aip = pai; aip != NULL; aip = aip->ai_next) {
-		/* skip non-IPv4 addresses */
-		if (aip->ai_family == AF_INET)
-			i++;
-	}
-
-	/* null end it */
-	len = sizeof(u_long) * (i + 1);
-	*pul = (u_long *)malloc(len);
-	if (*pul == NULL) {
-		strcat(log_buffer, "Out of memory ");
-		return (PBSE_SYSTEM);
-	}
-
-	i = 0;
-	for (aip = pai; aip != NULL; aip = aip->ai_next) {
-		if (aip->ai_family == AF_INET) {
-			u_long ipaddr;
-
-			inp = (struct sockaddr_in *) aip->ai_addr;
-			ipaddr = ntohl(inp->sin_addr.s_addr);
-			(*pul)[i] = ipaddr;
-			i++;
-		}
-	}
-	(*pul)[i] = 0; /* null term array ip adrs */
-
-	freeaddrinfo(pai);
-
-	tpul = malloc(sizeof(struct pul_store));
-	if (!tpul) {
-		strcat(log_buffer, "out of  memory");
-		return (PBSE_SYSTEM);
-	}
-	tpul->len = len;
-	tpul->pul = (u_long *) malloc(tpul->len);
-	if (!tpul->pul) {
-		free(tpul);
-		strcat(log_buffer, "out of  memory");
-		return (PBSE_SYSTEM);
-	}
-	memmove(tpul->pul, *pul, tpul->len);
-
-	if (hostaddr_tree == NULL ) {
-		hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-		if (hostaddr_tree == NULL ) {
-			free(tpul->pul);
-			free(tpul);
-			strcat(log_buffer, "out of  memory");
-			return (PBSE_SYSTEM);
-		}
-	}
-	if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
-		free(tpul->pul);
-		free(tpul);
-		return (PBSE_SYSTEM);
-	}
-	return 0;
-}
-
-/**
- * @brief
- * 		remove the cached ip addresses of a mom from the host tree and the ipaddrs tree
- *
- * @param[in]	pmom - valid ptr to the mom info
- *
- * @return	error code
- * @retval	0		- no error
- * @retval	PBS error	- error
- */
-int
-remove_mom_ipaddresses_list(mominfo_t *pmom)
-{
-	/* take ipaddrs from ipaddrs cache tree */
-	if (hostaddr_tree != NULL) {
-		struct pul_store *tpul;
-
-		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, pmom->mi_host)) != NULL) {
-			u_long *pul;
-			for (pul = tpul->pul; *pul; pul++)
-				tdelete2(*pul, pmom->mi_port, &ipaddrs);
-
-			if (tree_add_del(hostaddr_tree, pmom->mi_host, NULL, TREE_OP_DEL) != 0)
-				return (PBSE_SYSTEM);
-
-			free(tpul->pul);
-			free(tpul);
-		}
-	}
-	return 0;
-}
-
-/**
- * @brief
  *		create pbs node structure, i.e. add a node
  *
  * @param[in]	objname	- Name of node
@@ -2934,19 +2735,12 @@ int
 create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbsnode **rtnpnode, int nodup, int allow_unkresc)
 {
 	struct pbsnode	*pnode;
-	struct pbsnode **tmpndlist;
 	int		ntype;		/* node type, always PBS */
 	char		*pc;
-	char		*phost;		/* trial host name */
 	char		*pname;		/* node name w/o any :ts       */
-	u_long		*pul = NULL;	/* 0 terminated host adrs array*/
 	int		 rc;
-	int		 j;
-	int		 iht;
 	attribute	*pattr;
 	svrattrl	*plx;
-	mominfo_t	*pmom;
-	mom_svrinfo_t	*smp;
 	resource_def	*prdef;
 	resource	*presc;
 	char 		 realfirsthost[PBS_MAXHOSTNAME+1];
@@ -2984,50 +2778,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			return (PBSE_SYSTEM);
 		}
 
-		/* expand pbsndlist array exactly svr_totnodes long*/
-		tmpndlist = (struct pbsnode **)realloc(pbsndlist,
-			sizeof(struct pbsnode*) * (svr_totnodes + 1));
-
-		if (tmpndlist != NULL) {
-			/*add in the new entry etc*/
-			pbsndlist = tmpndlist;
-			pnode->nd_index = svr_totnodes;
-			pnode->nd_arr_index = svr_totnodes; /* this is only in mem, not from db */
-			pbsndlist[svr_totnodes++] = pnode;
-		} else {
-			free_pnode(pnode);
-			free(pname);
-			return (PBSE_SYSTEM);
-		}
 		if (initialize_pbsnode(pnode, pname, ntype) != PBSE_NONE) {
-			svr_totnodes--;
-			free_pnode(pnode);
-			free(pname);
-			return (PBSE_SYSTEM);
-		}
-
-		/* create and initialize the first subnode to go with */
-		/* the parent node */
-		if (create_subnode(pnode, NULL) == NULL) {
-			svr_totnodes--;
-			free_pnode(pnode);
-			free(pname);
-			return (PBSE_SYSTEM);
-		}
-
-		/* create node tree if not already done */
-		if (node_tree == NULL ) {
-			node_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-			if (node_tree == NULL ) {
-				svr_totnodes--;
-				free_pnode(pnode);
-				free(pname);
-				return (PBSE_SYSTEM);
-			}
-		}
-
-		/* add to node tree */
-		if (tree_add_del(node_tree, pname, pnode, TREE_OP_ADD) != 0) {
 			svr_totnodes--;
 			free_pnode(pnode);
 			free(pname);
@@ -3169,93 +2920,13 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		return (rc);
 	}
 
-	/*
-	 * Now we need to create the Mom structure for each Mom who is a
-	 * parent of this (v)node.
-	 * The Mom structure may already exist
-	 */
-
-	pattr = &pnode->nd_attr[(int)ND_ATR_Mom];
-	for (iht = 0; iht < pattr->at_val.at_arst->as_usedptr; ++iht) {
-		unsigned int nport;
-
-		phost = pattr->at_val.at_arst->as_string[iht];
-
-		if ((rc = make_host_addresses_list(phost, &pul))) {
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-				pnode->nd_name, log_buffer);
-
-			/* special case for unresolved nodes in case of server startup */
-			if ((rc == PBSE_UNKNODE) && (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT)) {
-				/*
-				 * mark node as INUSE_UNRESOLVABLE, pbsnodes will show unresolvable state
-				 * flag INUSE_UNRESOLVABLE will ensure ping_a_mom will never ping for this node
-				 */
-				set_vnode_state(pnode, INUSE_UNRESOLVABLE | INUSE_DOWN, Nd_State_Set);
-
-				/*
-				 * make_host_addresses_list failed, so pul was not allocated
-				 * Since we are going ahead nevertheless, we need to allocate
-				 * an "empty" pul list
-				 */
-				pul = malloc(sizeof(u_long) * (1));
-				pul[0] = 0;
-				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
-			} else {
-				effective_node_delete(pnode);
-				free(pul);
-				return (rc); /* return the error code from make_host_addresses_list */
-			}
-		}
-
-		/*
-		 * Note, once create_svrmom_entry() is called, it has the
-		 * responsibility for "pul" including freeing it if need be.
-		 */
-
-		nport = pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long;
-
-		if ((pmom = create_svrmom_entry(phost, nport, pul)) == NULL) {
-			effective_node_delete(pnode);
-			return (PBSE_SYSTEM);
-		}
-
-		if (!pbs_iplist) {
-			pbs_iplist = create_pbs_iplist();
-			if (!pbs_iplist) {
-				return (PBSE_SYSTEM); /* No Memory */
-			}
-		}
-		smp = (mom_svrinfo_t *)(pmom->mi_data);
-		for (j = 0; smp->msr_addrs[j]; j++) {
-			u_long ipaddr = smp->msr_addrs[j];
-			if (insert_iplist_element(pbs_iplist, ipaddr)) {
-				delete_pbs_iplist(pbs_iplist);
-				return (PBSE_SYSTEM); /* No Memory */
-			}
-
-		}
-
-		/* cross link the vnode (pnode) and its Mom (pmom) */
-
-		if ((rc = cross_link_mom_vnode(pnode, pmom)) != 0)
-			return (rc);
-
-		/* If this is the "natural vnode" (i.e. 0th entry) */
-		if (pnode->nd_nummoms == 1) {
-			if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
-			    (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
-				smp->msr_vnode_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
-			}
-		}
-	}
+	if ((rc = update_node_cache(pnode, TREE_OP_ADD)) != 0)
+		return rc;
 
 	/*
 	 * Since we are "creating" new node, it would require saving to the database.
-	 * Therefore, we need to set the flag "NODE_UPDATE_OTHERS" so that a later
-	 * call to save_nodes_db will save this node as well.
 	 */
-	pnode->nd_modified = NODE_UPDATE_OTHERS;
+	node_save_db(pnode);
 
 	if (rtnpnode != NULL)
 		*rtnpnode = pnode;
@@ -3505,8 +3176,6 @@ struct batch_request *preq;
 			pnode = NULL; /* pnode has been freed, set it to NULL */
 			i--; /* the array has been coalesced, so reset i to the earlier position */
 
-			(void)chk_characteristic(pnode, &need_todo);
-
 			if (nodename) {
 				mgr_log_attr(msg_man_set, plist,
 					PBS_EVENTCLASS_NODE, nodename, NULL);
@@ -3517,20 +3186,6 @@ struct batch_request *preq;
 		if (numnodes == 1)
 			break;
 	} /*bottom of the for()*/
-
-	/* save_nodes_db calls write_node_state internally,
-	 * so call write_node_state only if save_nodes_db is not
-	 * being called
-	 */
-	if (need_todo & WRITE_NEW_NODESFILE) {	/*create/delete/attr change*/
-		if (!save_nodes_db(1, NULL)) {
-			need_todo &= ~(WRITE_NEW_NODESFILE); /*successful on update*/
-			need_todo &= ~(WRITENODE_STATE);
-		}
-	} else if (need_todo & WRITENODE_STATE) {  /*nodes "offline"/comment changed */
-		write_node_state();
-		need_todo &= ~(WRITENODE_STATE);
-	}
 
 	if (numnodes > 1) {          /*modification was for all nodes  */
 
@@ -3769,11 +3424,7 @@ struct batch_request *preq;
 	setup_notification();	    /*set mechanism for notifying */
 	/*other nodes of new member   */
 
-	if (save_nodes_db(1, NULL)) { /*if update fails now (odd)   */
-		svr_chngNodesfile = 1;  /*try it when server shutsdown*/
-	}
-	else
-		svr_chngNodesfile = 0;
+	(void) save_nodes_db(1, NULL);
 
 	reply_ack(preq);	    /*create completely successful*/
 
@@ -5040,32 +4691,6 @@ manager_oper_chk(attribute *pattr, void *pobject, int actmode)
 		}
 	}
 	return (err);
-}
-
-
-/**
- * @brief
- * 		node_comment - action routine for the comment attribute of a node
- *		if set to non-default, set flag to cause node_status file to
- *		be written.   The comment will be the last item on the status line.
- *
- * @param[in]	pattr	-     pointer to new attribute value
- * @param[in]	pobj    -     pointer to node
- * @param[in]	act     -     action mode
- *
- * @return	error code
- * @retval	0	- success
- */
-int
-node_comment(attribute *pattr, void *pobj, int act)
-{
-	if (pattr->at_flags & ATR_VFLAG_MODIFY) {
-		if (((pattr->at_flags & ATR_VFLAG_SET)  == 0) ||
-			((pattr->at_flags & ATR_VFLAG_DEFLT) == 0)) {
-			need_todo |= WRITENODE_STATE;
-		}
-	}
-	return 0;
 }
 
 

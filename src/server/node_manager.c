@@ -79,8 +79,6 @@
  * 	check_and_set_multivnode()
  * 	mom_running_jobs()
  * 	is_request()
- * 	write_single_node_state()
- * 	write_node_state()
  * 	free_prop()
  * 	number()
  * 	property()
@@ -180,12 +178,12 @@ extern int h_errno;
 
 int		 mom_send_vnode_map = 0; /* server must send vnode map to Mom */
 int		 svr_quehasnodes;
-int	 	 svr_totnodes = 0;	/* total number nodes defined       */
-int		 svr_chngNodesfile = 0;	/* 1 signals want nodes file update */
 /* on server shutdown, (qmgr mods)  */
 int		 is_called_by_job_purge = 0;
+int	 	 svr_totnodes = 0;	/* total number nodes defined       */
 
 struct pbsnode **pbsndlist = NULL;
+int pbsndlist_sz = 0;
 
 static int	 cvt_overflow(size_t, size_t);
 static int	 cvt_realloc(char **, size_t *, char **, size_t *);
@@ -224,7 +222,6 @@ extern int parse_prov_vnode(char *,exec_vnode_listtype *);
 extern vnpool_mom_t *vnode_pool_mom_list;
 
 static void check_and_set_multivnode(struct pbsnode *);
-int write_single_node_mom_attr(struct pbsnode *np);
 void stream_eof(int stream, int ret, char *msg);
 
 static char *hook_privilege = "Not allowed to update vnodes or to request scheduler restart cycle, if run as a non-manager/operator user %s@%s";
@@ -3512,8 +3509,7 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 		node_attr_def[(int) ND_ATR_Mom].at_set(
 			&pnode->nd_attr[(int) ND_ATR_Mom],
 			&tmpmom, INCR);
-		if (pnode->nd_modified != NODE_UPDATE_OTHERS)
-			pnode->nd_modified = NODE_UPDATE_MOM; /* since we modified nd_nummoms, save it */
+		node_save_db(pnode);
 		node_attr_def[(int) ND_ATR_Mom].at_free(&tmpmom);
 	}
 
@@ -3743,11 +3739,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 
 	if (!from_hook) {
 		for (i = 0; i < ND_ATR_LAST; ++i) {
-			/* if this vnode has been updated earlier in this update2 */
-			/* then don't free anything but topology */
-			if ((i != ND_ATR_TopologyInfo) && (pnode->nd_modified & NODE_UPDATE_VNL))
-				continue;  /* seeing vnl update for node just updated, don't clear */
-
 			if (i != ND_ATR_ResourceAvail) {
 				if ((pnode->nd_attr[i].at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) {
 					node_attr_def[i].at_free(&pnode->nd_attr[i]);
@@ -3764,13 +3755,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				}
 			}
 		}
-		/* Again, if the vnode has been updated in this cycle, */
-		/* don't reset sharing as it likely was set then       */
-		if ((pnode->nd_modified & NODE_UPDATE_VNL) == 0) {
-			pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
-			pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
-				(ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
-		}
+		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
+		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
+			(ATR_VFLAG_SET |ATR_VFLAG_MODIFY);
 		(void)release_node_lic(pnode);
 	}
 
@@ -3896,8 +3883,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 						}
 						if (strcasecmp("ncpus", resc) == 0) {
 							/* if ncpus, adjust virtual/subnodes */
-							j = prs->rs_value.at_val.at_long;
-							mod_node_ncpus(pnode, j, ATR_ACTION_ALTER);
+							mod_node_ncpus(pnode, prs->rs_value.at_val.at_long, ATR_ACTION_ALTER);
+							if (strcasecmp(buf, ATTR_rescavail) == 0)
+								pRA->at_flags |= ATR_VFLAG_MODIFY;
 						} else if (strcasecmp("arch", resc) == 0) {
 							if (strcmp(BLUEGENE, prs->rs_value.at_val.at_str) == 0) {
 								/* BLUE GENE only */
@@ -4147,6 +4135,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		set_vnode_state(pnode,
 			~states_to_clear,
 			Nd_State_And);
+		node_save_db(pnode);
 		return 0;
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -4591,15 +4580,6 @@ found:
 			DBPRT(("%s: IS_NULL\n", __func__))
 			break;
 
-		case IS_HELLO:
-			/* Old, pre 8.0, reply from Mom */
-			set_all_state(pmom, 0,
-				INUSE_DOWN|INUSE_UNKNOWN|INUSE_NEEDS_HELLO_PING,
-				NULL, Set_All_State_Regardless);
-			psvrmom->msr_timedown = 0;
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-				LOG_NOTICE, pmom->mi_host, node_up);
-			/* fall into HELLO2, HELLO3 case */
 		case IS_HELLO2:
 		case IS_HELLO3:
 		case IS_HELLO4:
@@ -4671,18 +4651,6 @@ found:
 			ret = send_ip_addrs_to_mom(stream);
 			if (ret != DIS_SUCCESS)
 				goto err;
-
-			if (command == IS_HELLO) {
-				/* pre-8.0 Mom - should delete this in a release or 2 */
-				set_all_state(pmom, 0, INUSE_DOWN|INUSE_UNKNOWN|
-					INUSE_NEEDS_HELLO_PING|INUSE_INIT|
-					INUSE_NEED_ADDRS,
-					NULL, Set_All_State_Regardless);
-				psvrmom->msr_timedown = 0;
-				psvrmom->msr_timeinit = 0;
-				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-					LOG_NOTICE, pmom->mi_host, node_up);
-			}
 
 			break;
 
@@ -4797,7 +4765,7 @@ found:
 						/* unset or ATR_VFLAG_DEFLT is set */
 						np->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = (long)VNS_DFLT_SHARED;
 						np->nd_attr[(int)ND_ATR_Sharing].at_flags =
-							ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
+							ATR_VFLAG_SET|ATR_VFLAG_MODIFY;
 					}
 
 
@@ -4843,7 +4811,7 @@ found:
 							ATR_VFLAG_MODCACHE |
 							ATR_VFLAG_DEFLT);
 					}
-
+					node_save_db(np);
 				}
 
 			}
@@ -4908,10 +4876,6 @@ found:
 							}
 						}
 					}
-					/* clear the NODE_UPDATE_VNL on all vnodes for this Mom */
-					/* It was set in update2_to_vnode() */
-					for (i = 0; i < psvrmom->msr_numvnds; ++i)
-						(psvrmom->msr_children[i])->nd_modified &= ~NODE_UPDATE_VNL;
 
 					/* if multiple vnodes indicated (above) and
 					 * if the vnodes (except the first) have
@@ -5083,6 +5047,7 @@ found:
 						ap->at_flags |= ATR_VFLAG_SET;
 					}
 				}
+				node_save_db(np);
 			}
 
 			if (made_new_vnodes || cr_node) {
@@ -5565,262 +5530,6 @@ err:
 
 	stream_eof(stream, ret, "write_err");
 
-	return;
-}
-
-/**
- * @brief
- * 		Save a single node's state/comments to the database.
- *
- * @par
- *		This function updates a single node's
- *  	state/comment to the respective attributes in the DB.
- *
- * @param[in]	np	- Pointer to the node whose state/comment is to be saved
- *
- * @return	int
- * @retval  0 if okay
- * @retval -1 on error
- *
- * @par MT-safe: No
- */
-int
-write_single_node_state(struct pbsnode *np)
-{
-	static char *offline_str = NULL;
-	static int  offline_str_sz = 0;
-	char	*tmp_str = NULL;
-	int     isoff;
-	int     hascomment;
-	int     hascurrentaoe;
-	pbs_db_attr_info_t attr;
-	pbs_db_attr_list_t attr_list;
-	extern char	*get_vnode_state_str(char *);
-
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
-	pbs_db_obj_info_t obj;
-	obj.pbs_db_un.pbs_db_node = NULL;
-	obj.pbs_db_obj_type = PBS_DB_NODE;
-
-	attr_list.attr_count = 1;
-	attr_list.attributes = &attr;
-	memset(&attr, 0, sizeof(pbs_db_attr_info_t));
-
-
-	DBPRT(("write_single_node_state: entered\n"))
-
-	isoff = np->nd_state & (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
-
-	if (isoff) {
-		int sz;
-		char *p;
-		char offline_bits[8];
-
-		snprintf(offline_bits, sizeof(offline_bits), "%d", isoff);
-		p = get_vnode_state_str(offline_bits);
-		if (!p) {
-			log_err(errno, "write_single_node_state", "Could not decode offline bit");
-			return -1;
-		}
-		sz = strlen(p)+1;
-		if (sz > offline_str_sz) {
-			tmp_str = realloc(offline_str, sz);
-			if (!tmp_str) {
-				log_err(errno,
-					"write_single_node_state",
-						"Out of memory");
-				return -1;
-			}
-			offline_str = tmp_str;
-			offline_str_sz = sz;
-		}
-		strcpy(offline_str, p);
-	}
-
-	if (np->nd_state & INUSE_DELETED)
-		return 0;
-
-	hascomment = (np->nd_attr[(int) ND_ATR_Comment].at_flags &
-		(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
-
-	hascurrentaoe = (np->nd_attr[(int) ND_ATR_current_aoe].at_flags &
-		(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
-
-	attr.attr_flags = 0;
-	strcpy(attr.attr_resc, "");
-	/* work on node state */
-	if (np->nd_modified & NODE_UPDATE_STATE) {
-		/* Write node state / comment to database */
-		strcpy(attr.attr_name, ATTR_NODE_state);
-		if (isoff) {
-			attr.attr_value = offline_str;
-			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to update node state");
-				return -1;
-			}
-
-		} else {
-			/* remove offline */
-			if (pbs_db_delete_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to delete node state");
-				return -1;
-			}
-		}
-	}
-
-	/* work on node comment */
-	if (np->nd_modified & NODE_UPDATE_COMMENT) {
-		strcpy(attr.attr_name, ATTR_comment);
-		if (hascomment) {
-			attr.attr_value = np->nd_attr[(int) ND_ATR_Comment].at_val.at_str;
-			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to update node comment");
-				return -1;
-			}
-		} else {
-			/* remove comment attribute */
-			if (pbs_db_delete_attr_obj(conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to delete node comment");
-				return -1;
-			}
-		}
-	}
-
-	/* work on node current_aoe */
-	if (np->nd_modified & NODE_UPDATE_CURRENT_AOE) {
-		strcpy(attr.attr_name, ATTR_NODE_current_aoe);
-		if (hascurrentaoe) {
-			attr.attr_value = np->nd_attr[(int) ND_ATR_current_aoe].at_val.at_str;
-			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to update node current_aoe");
-				return -1;
-			}
-		} else {
-			/* remove current_aoe attribute */
-			if (pbs_db_delete_attr_obj(conn, &obj, np->nd_name, &attr_list) != 0) {
-				log_err(errno, "write_single_node_state", "Failed to delete node current_aoe");
-				return -1;
-			}
-		}
-	}
-
-	return 0;
-}
-
-/**
- * @brief Save a single node's mom attribute to the database.
- *
- * @par
- *
- *  This function updates a single node's
- *  mom attribute in the DB.
- *
- * @param[in] np - Pointer to the node whose mom attribute is to be saved
- *
- * @retval  0 if okay
- * @retval -1 on error
- *
- */
-int
-write_single_node_mom_attr(struct pbsnode *np)
-{
-	pbs_list_head     wrtattr;
-	svrattrl     *psvrl;
-
-	pbs_db_obj_info_t obj;
-	pbs_db_attr_info_t attr;
-	pbs_db_attr_list_t attr_list;
-	obj.pbs_db_un.pbs_db_node = NULL;
-	obj.pbs_db_obj_type = PBS_DB_NODE;
-
-	attr_list.attr_count = 1;
-	attr_list.attributes = &attr;
-	memset(&attr, 0, sizeof(pbs_db_attr_info_t));
-
-	if (np->nd_state & INUSE_DELETED)
-		return 0;
-
-	attr.attr_flags = 0;
-	strcpy(attr.attr_resc, "");
-
-	/* work on node state */
-	if (np->nd_modified & NODE_UPDATE_MOM) {
-		/* Write node state / comment to database */
-		strcpy(attr.attr_name, ATTR_NODE_Mom);
-
-		CLEAR_HEAD(wrtattr);
-
-		(void) node_attr_def[(int) ND_ATR_Mom].at_encode(&np->nd_attr[(int) ND_ATR_Mom],
-					&wrtattr, node_attr_def[(int) ND_ATR_Mom].at_name,
-					NULL, ATR_ENCODE_SVR, NULL);
-
-		if ((psvrl = (svrattrl *) GET_NEXT(wrtattr)) != NULL) {
-			attr.attr_value = psvrl->al_value;
-
-			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
-					log_err(errno, "write_single_node_mom_attr",
-							"Failed to update 'Mom' attribute");
-					return -1;
-			}
-			delete_link(&psvrl->al_link);
-			(void)free(psvrl);
-		}
-		node_save_db(np); /* save node qs so that nd_index is updated as well */
-		np->nd_modified &= ~NODE_UPDATE_MOM;
-	}
-	return 0;
-}
-
-/**
- * @brief
- * 		Save node states/comments to the database.
- *
- * @par
- *		This function loops through the node list
- *  	and updates the state/comment to the
- *  	respective attributes in the DB.
- *
- * @return	void
- */
-void
-write_node_state()
-{
-	struct pbsnode *np;
-	int i;
-
-	DBPRT(("write_node_state: entered\n"))
-
-	if (pbs_db_begin_trx(svr_db_conn, 0, 0) !=0)
-		goto db_err;
-
-	/*
-	 **	The only state that carries forward is if the
-	 **	node has been marked offline.
-	 */
-	for (i = 0; i < svr_totnodes; i++) {
-		np = pbsndlist[i];
-
-		if (np->nd_state & INUSE_DELETED)
-			continue;
-
-		if (write_single_node_state(np) != 0)
-			goto db_err;
-
-		/*
-		 * state is not so critical, so we update flag right away,
-		 * instead of a loop later, after transaction completion
-		 * In worst case scenario, the transaction could fail, but still
-		 * the flags are reset
-		 */
-		np->nd_modified &= ~(NODE_UPDATE_STATE | NODE_UPDATE_COMMENT);
-	}
-	if (pbs_db_end_trx(svr_db_conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
-
-	return;
-
-db_err:
-	pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
 	return;
 }
 
@@ -8131,8 +7840,7 @@ mark_node_offline_by_mom(char *nodename, char *why)
 	if ((pnode = find_nodebyname(nodename)) != NULL) {
 		/* XXXX fix see momptr_down() XXXX */
 		momptr_offline_by_mom(pnode->nd_moms[0], why);
-		pnode->nd_modified |= (NODE_UPDATE_STATE|NODE_UPDATE_COMMENT);
-		write_node_state();
+		node_save_db(pnode);
 	}
 }
 
@@ -8177,10 +7885,9 @@ clear_node_offline_by_mom(char *nodename, char *why)
 	/* note - find_nodebyname strips off /VP */
 
 	if ((pnode = find_nodebyname(nodename)) != NULL) {
-		/* XXXX fix see momptr_down() XXXX */
+		/* fix see momptr_down() */
 		momptr_clear_offline_by_mom(pnode->nd_moms[0], why);
-		pnode->nd_modified |= (NODE_UPDATE_STATE|NODE_UPDATE_COMMENT);
-		write_node_state();
+		node_save_db(pnode);
 	}
 }
 
@@ -8539,10 +8246,8 @@ set_last_used_time_node(void *pobj, int type)
 				snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 				set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_last_used_time]),
 						&node_attr_def[(int) ND_ATR_last_used_time], str_val);
-				pnode->nd_modified = NODE_UPDATE_OTHERS;
-				if(svr_chngNodesfile == 0)
-					svr_chngNodesfile = 1; /*make sure nodes are saved to the database during shutdown*/
 			}
+			node_save_db(pnode);
 		}
 		last_pn = pn;
 		pn = parse_plus_spec(NULL, &rc);

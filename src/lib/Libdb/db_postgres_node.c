@@ -90,7 +90,7 @@ pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
 		"nd_ntype = $6, "
 		"nd_pque = $7, "
 		"nd_savetm = localtimestamp, "
-		"attributes = hstore($8::text[]) "
+		"attributes = attributes || hstore($8::text[]) "
 		" where nd_name = $1");
 	if (pg_prepare_stmt(conn, STMT_UPDATE_NODE, conn->conn_sql, 8) != 0)
 		return -1;

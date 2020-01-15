@@ -1849,11 +1849,6 @@ try_db_again:
 				SAVEJOB_FULL, RESC_RESV_OBJECT);
 	}
 
-	if (svr_chngNodesfile) {/*nodes created/deleted, or props changed and*/
-		/*update in req_manager failed; try again    */
-		(void)save_nodes_db(0, NULL);
-	}
-
 	/* if brought up the Secondary Scheduler, take it down */
 
 	if (brought_up_alt_sched == 1)

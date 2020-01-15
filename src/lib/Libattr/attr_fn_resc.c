@@ -451,6 +451,33 @@ free_resc(attribute *pattr)
 
 /**
  * @brief
+ * 	reset_resc - reset attribute value
+ *
+ *	For each entry in the resource list, reset the value
+ *
+ * @param[in] pattr - pointer to attribute structure
+ * @param[in] at_name - attribute name.
+ *
+ * @return	Void
+ *
+ */
+
+void
+reset_resc(attribute *pattr, char *at_name)
+{
+	resource *pr;
+
+	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
+	while (pr != NULL) {
+		pr->rs_defin->rs_decode(&pr->rs_value, at_name, pr->rs_defin->rs_name, NULL);
+		pr->rs_value.at_flags |= ATR_VFLAG_SET | ATR_VFLAG_DEFLT;
+		pr->rs_value.at_flags &= ~(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		pr = (resource *)GET_NEXT(pr->rs_link);
+	}
+}
+
+/**
+ * @brief
  * 	find_resc_def - find the resource_def structure for a resource with
  *	a given name
  *

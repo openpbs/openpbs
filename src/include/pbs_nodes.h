@@ -284,6 +284,7 @@ struct	pbsnode {
 	int			 nd_modified;	/* flag indicating whether state update is required */
 	attribute		 nd_attr[ND_ATR_LAST];
 };
+typedef struct pbsnode pbs_node;
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
 enum	nix_flags { NIX_none, NIX_qnodes, NIX_nonconsume };
@@ -378,19 +379,6 @@ enum vnode_degraded_op {
 
 #define PBSNODE_NTYPE_MASK	0xf		 /* relevant ntype bits */
 
-#define WRITENODE_STATE		0x1		 /*associated w/ offline*/
-#define WRITE_NEW_NODESFILE	0x2 /*changed: deleted,ntype,or properties*/
-
-/*
- * To indicate the type of attribute that needs to be updated in the datastore
- */
-#define NODE_UPDATE_STATE           0x1  /* state attribute to be updated */
-#define NODE_UPDATE_COMMENT         0x2  /* update comment attribute */
-#define NODE_UPDATE_OTHERS          0x4  /* other attributes need to be updated */
-#define NODE_UPDATE_VNL             0x8  /* this vnode updated in vnl by Mom  */
-#define NODE_UPDATE_CURRENT_AOE     0x10  /* current_aoe attribute to be updated */
-#define NODE_UPDATE_MOM             0x20 /* update only the mom attribute */
-
 
 #define NODE_SAVE_FULL  0
 #define NODE_SAVE_QUICK 1
@@ -409,6 +397,7 @@ struct tree {
 extern struct attribute_def node_attr_def[]; /* node attributes defs */
 extern struct pbsnode **pbsndlist;           /* array of ptr to nodes  */
 extern int svr_totnodes;                     /* number of nodes (hosts) */
+extern int pbsndlist_sz;
 extern struct tree *ipaddrs;
 extern struct tree *streams;
 extern mominfo_t **mominfo_array;
@@ -416,7 +405,6 @@ extern pntPBS_IP_LIST pbs_iplist;
 extern int mominfo_array_size;
 extern int mom_send_vnode_map;
 extern int svr_num_moms;
-extern int svr_chngNodesfile;
 
 /* Handlers for vnode state changing.for degraded reservations */
 extern	void vnode_unavailable(struct pbsnode *, int);
@@ -437,7 +425,10 @@ extern	void	effective_node_delete(struct pbsnode*);
 extern	void	setup_notification(void);
 extern  struct	pbssubn  *find_subnodebyname(char *);
 extern	struct	pbsnode  *find_nodebyname(char *);
+extern	struct	pbsnode  *refresh_node(pbs_db_node_info_t *);
 extern	struct	pbsnode  *find_nodebyaddr(pbs_net_t);
+extern	struct	pbsnode  *find_nodefromtree(char *);
+extern	int update_node_cache(pbs_node *, int);
 extern	void	free_prop_list(struct prop*);
 extern	void	recompute_ntype_cnts(void);
 extern	int	process_host_name_part(char*, svrattrl*, char**, int*);
@@ -462,6 +453,7 @@ extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
 extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
 extern  void       delete_svrmom_entry(mominfo_t *);
+extern  int	create_svrmom_struct(struct pbsnode *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
 extern  int	cross_link_mom_vnode(struct pbsnode *, mominfo_t *);
@@ -470,6 +462,7 @@ extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
 extern void	propagate_socket_licensing(mominfo_t *, int);
+extern int	get_all_db_nodes(void);
 
 extern char *msg_daemonname;
 
@@ -493,6 +486,7 @@ extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
 extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
 extern int  send_ip_addrs_to_mom(int);
+extern struct pbsnode *node_recov_db(char *);
 #endif
 
 extern  int	   recover_vmap(void);

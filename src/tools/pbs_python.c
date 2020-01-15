@@ -207,24 +207,10 @@ struct pbsnode *find_nodebyname(char *nname)
 }
 
 void
-write_node_state(void)
-{
-	return;
-}
-
-
-void
 save_characteristic(struct pbsnode *pnode)
 {
 	return;
 }
-
-int
-chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
-{
-	return (0);
-}
-
 
 void
 mgr_log_attr(char *msg, struct svrattrl *plist, int logclass,
@@ -242,6 +228,12 @@ mgr_set_attr(attribute *pattr, attribute_def *pdef, int limit,
 
 int
 svr_chk_history_conf(void)
+{
+	return (0);
+}
+
+int
+node_save_db(struct pbsnode *pnode)
 {
 	return (0);
 }
@@ -624,12 +616,6 @@ void      *pobject;
 int	   actmode;
 {
 	return (0);
-}
-
-int
-node_comment(attribute *pattr, void *pobj, int act)
-{
-	return 0;
 }
 
 int

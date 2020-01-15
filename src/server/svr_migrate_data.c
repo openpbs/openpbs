@@ -220,13 +220,9 @@ svr_migrate_data()
 
 		/* loop through all the nodes and mark for update */
 		for (i = 0; i < svr_totnodes; i++) {
-			pbsndlist[i]->nd_modified = NODE_UPDATE_OTHERS;
+			node_save_db(pbsndlist[i]);
 		}
-
-		if (save_nodes_db(0, NULL) != 0) {
-			log_err(errno, "svr_migrate_data", "save_nodes_db failed!");
-			return -1;
-		}
+		
 		return 0;
 	}
 	if (db_maj_ver == 3 && db_min_ver == 0) {

@@ -266,6 +266,48 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		return (PBSE_NONE);
 	}
 }
+/**
+ * @brief
+ * 		Get all the nodes from database which are newly added/modified
+ * 		by other servers after the given time interval.
+ * 
+ * @param[in]	hostname: hostname which can be used to filter nodes.
+ *
+ * @return	0 - success
+ * 		1 - fail/error
+ */
+int
+get_all_db_nodes() {
+	pbs_db_node_info_t	dbnode;
+	pbs_db_obj_info_t	dbobj;
+	pbs_db_query_options_t opts;
+	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_node *pnode = NULL;
+	void *cur_state = NULL;
+
+	dbobj.pbs_db_obj_type = PBS_DB_NODE;
+	dbobj.pbs_db_un.pbs_db_node = &dbnode;
+	dbnode.attr_list.attributes = NULL;
+
+	cur_state = pbs_db_cursor_init(conn, &dbobj, &opts);
+	if (cur_state == NULL) {
+		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
+		log_err(-1, __func__, log_buffer);
+		pbs_db_cursor_close(conn, cur_state);
+		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+		return (1);
+	}
+
+	while (pbs_db_cursor_next(conn, cur_state, &dbobj) == 0) {
+		if ((pnode = refresh_node(&dbnode)) == NULL) {
+			sprintf(log_buffer, "Failed to refresh node %s", dbnode.nd_name);
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
+		}
+		pbs_db_reset_obj(&dbobj);
+	}
+
+	return 0;
+}
 
 /**
  * @brief

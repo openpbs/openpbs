@@ -64,6 +64,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <netdb.h>
 #include "libpbs.h"
 #include "list_link.h"
 #include "attribute.h"
@@ -129,6 +130,18 @@ extern int remove_mom_ipaddresses_list(mominfo_t *pmom);
  * @par MT-safe: no, would need lock on realloc of global mominfo_array[]
  *
  */
+
+/*
+ * This structure used as part of the avl tree
+ * to do a faster lookup of hostnames.
+ * It is stored against pname in make_host_addresses_list()
+ */
+struct pul_store {
+	u_long *pul;	/* list of ipaddresses */
+	int len;		/* length */
+};
+
+AVL_IX_DESC *hostaddr_tree = NULL;
 
 mominfo_t *
 create_mom_entry(char *hostname, unsigned int port)
@@ -396,6 +409,37 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 	return pmom;
 }
 
+/**
+ * @brief
+ * 		remove the cached ip addresses of a mom from the host tree and the ipaddrs tree
+ *
+ * @param[in]	pmom - valid ptr to the mom info
+ *
+ * @return	error code
+ * @retval	0		- no error
+ * @retval	PBS error	- error
+ */
+int
+remove_mom_ipaddresses_list(mominfo_t *pmom)
+{
+	/* take ipaddrs from ipaddrs cache tree */
+	if (hostaddr_tree != NULL) {
+		struct pul_store *tpul;
+
+		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, pmom->mi_host)) != NULL) {
+			u_long *pul;
+			for (pul = tpul->pul; *pul; pul++)
+				tdelete2(*pul, pmom->mi_port, &ipaddrs);
+
+			if (tree_add_del(hostaddr_tree, pmom->mi_host, NULL, TREE_OP_DEL) != 0)
+				return (PBSE_SYSTEM);
+
+			free(tpul->pul);
+			free(tpul);
+		}
+	}
+	return 0;
+}
 
 /**
  * @brief
@@ -470,6 +514,230 @@ delete_svrmom_entry(mominfo_t *pmom)
 	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
 	psvrmom->msr_stream = -1; /* always set to -1 when deleted */
 	delete_mom_entry(pmom);
+}
+
+/**
+ * @brief
+ * 		make_host_addresses_list - return a null terminated list of all of the
+ *		IP addresses of the named host (phost)
+ *
+ * @param[in]	phost	- named host
+ * @param[in]	pul	- ptr to null terminated address list is returned in *pul
+ *
+ * @return	error code
+ * @retval	0	- no error
+ * @retval	PBS error	- error
+ */
+
+static int
+make_host_addresses_list(char *phost, u_long **pul)
+{
+	int		i;
+	int		err;
+	struct pul_store *tpul = NULL;
+	int		len;
+	struct addrinfo *aip, *pai;
+	struct addrinfo hints;
+	struct sockaddr_in *inp;
+
+	if ((phost == 0) || (*phost == '\0'))
+		return (PBSE_SYSTEM);
+
+	/* search for the address list in the address list tree
+	 * so that we do not hit NS for everything
+	 */
+	if (hostaddr_tree != NULL) {
+		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, phost)) != NULL) {
+			*pul = (u_long *)malloc(tpul->len);
+			if (!*pul) {
+				strcat(log_buffer, "out of  memory ");
+				return (PBSE_SYSTEM);
+			}
+			memmove(*pul, tpul->pul, tpul->len);
+			return 0;
+		}
+	}
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	/*
+	 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
+	 *      implementations of getaddrinfo() will take an IPv6
+	 *      address and map it to an IPv4 one if we ask for AF_INET
+	 *      only.  We don't want that - we want only the addresses
+	 *      that are genuinely, natively, IPv4 so we start with
+	 *      AF_UNSPEC and filter ai_family below.
+	 */
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	if ((err = getaddrinfo(phost, NULL, &hints, &pai)) != 0) {
+		sprintf(log_buffer,
+				"addr not found for %s h_errno=%d errno=%d",
+				phost, err, errno);
+		return (PBSE_UNKNODE);
+	}
+
+	i = 0;
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		/* skip non-IPv4 addresses */
+		if (aip->ai_family == AF_INET)
+			i++;
+	}
+
+	/* null end it */
+	len = sizeof(u_long) * (i + 1);
+	*pul = (u_long *)malloc(len);
+	if (*pul == NULL) {
+		strcat(log_buffer, "Out of memory ");
+		return (PBSE_SYSTEM);
+	}
+
+	i = 0;
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		if (aip->ai_family == AF_INET) {
+			u_long ipaddr;
+
+			inp = (struct sockaddr_in *) aip->ai_addr;
+			ipaddr = ntohl(inp->sin_addr.s_addr);
+			(*pul)[i] = ipaddr;
+			i++;
+		}
+	}
+	(*pul)[i] = 0; /* null term array ip adrs */
+
+	freeaddrinfo(pai);
+
+	tpul = malloc(sizeof(struct pul_store));
+	if (!tpul) {
+		strcat(log_buffer, "out of  memory");
+		return (PBSE_SYSTEM);
+	}
+	tpul->len = len;
+	tpul->pul = (u_long *) malloc(tpul->len);
+	if (!tpul->pul) {
+		free(tpul);
+		strcat(log_buffer, "out of  memory");
+		return (PBSE_SYSTEM);
+	}
+	memmove(tpul->pul, *pul, tpul->len);
+
+	if (hostaddr_tree == NULL ) {
+		hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
+		if (hostaddr_tree == NULL ) {
+			free(tpul->pul);
+			free(tpul);
+			strcat(log_buffer, "out of  memory");
+			return (PBSE_SYSTEM);
+		}
+	}
+	if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
+		free(tpul->pul);
+		free(tpul);
+		return (PBSE_SYSTEM);
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ * 		Now we need to create the Mom structure for each Mom who is a
+ * 		parent of this (v)node.
+ *		The Mom structure may already exist
+ *
+ * @see
+ * 		create_pbs_node2, create_svrmom_entry
+ *
+ * @param[in]	pnode	- pointer to pbsnode structure
+ *
+ * @return	int
+ * @retval	0: success
+ * @retval	!0: failure
+ */
+int
+create_svrmom_struct(pbs_node *pnode)
+{
+	attribute	*pattr;
+	int		 iht;
+	char		*phost;
+	u_long		*pul;		/* 0 terminated host adrs array*/
+	mominfo_t	*pmom;
+	int		 rc;
+	mom_svrinfo_t	*smp;
+	int		j;
+	int		ret = 0;
+
+	pattr = &pnode->nd_attr[(int)ND_ATR_Mom];
+	for (iht = 0; iht < pattr->at_val.at_arst->as_usedptr; ++iht) {
+		unsigned int nport;
+
+		phost = pattr->at_val.at_arst->as_string[iht];
+
+		if ((rc = make_host_addresses_list(phost, &pul))) {
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+				pnode->nd_name, log_buffer);
+
+			/* special case for unresolved nodes in case of server startup */
+			if ((rc == PBSE_UNKNODE) && (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT)) {
+				/*
+				 * mark node as INUSE_UNRESOLVABLE, pbsnodes will show unresolvable state
+				 */
+				set_vnode_state(pnode, INUSE_UNRESOLVABLE | INUSE_DOWN, Nd_State_Set);
+
+				/*
+				 * make_host_addresses_list failed, so pul was not allocated
+				 * Since we are going ahead nevertheless, we need to allocate
+				 * an "empty" pul list
+				 */
+				pul = malloc(sizeof(u_long) * (1));
+				pul[0]=0;
+				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
+			} else {
+				effective_node_delete(pnode);
+				return (rc); /* return the error code from make_host_addresses_list */
+			}
+		}
+
+		/*
+		 * Note, once create_svrmom_entry() is called, it has the
+		 * responsibility for "pul" including freeing it if need be.
+		 */
+
+		nport = pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long;
+
+		if ((pmom = create_svrmom_entry(phost , nport, pul)) == NULL) {
+			effective_node_delete(pnode);
+			return (PBSE_SYSTEM);
+		}
+
+		if (!pbs_iplist) {
+			pbs_iplist = create_pbs_iplist();
+			if (!pbs_iplist) {
+				return (PBSE_SYSTEM); /* No Memory */
+			}
+		}
+		smp = (mom_svrinfo_t *)(pmom->mi_data);
+		for (j = 0; smp->msr_addrs[j]; j++) {
+			u_long ipaddr = smp->msr_addrs[j];
+			if (insert_iplist_element(pbs_iplist, ipaddr)) {
+				delete_pbs_iplist(pbs_iplist);
+				return (PBSE_SYSTEM); /* No Memory */
+			}
+		}
+
+		/* cross link the vnode (pnode) and its Mom (pmom) */
+
+		if ((rc = cross_link_mom_vnode(pnode, pmom)) != 0)
+			return (rc);
+
+		/* If this is the "natural vnode" (i.e. 0th entry) */
+		if (pnode->nd_nummoms == 1) {
+			if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
+			    (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
+				smp->msr_vnode_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
+			}
+		}
+	}
+	return ret;
 }
 
 #else   /* PBS_MOM */

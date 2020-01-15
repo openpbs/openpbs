@@ -262,9 +262,6 @@ extern int sync_mom_hookfiles_proc_running;
  * Miscellaneous server functions
  */
 extern void db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr);
-#ifdef NAS /* localmod 005 */
-extern int write_single_node_state(struct pbsnode *np);
-#endif /* localmod 005 */
 
 char primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 
@@ -5353,13 +5350,6 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 	set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
 	set_vnode_state(pnode, ~INUSE_PROV, Nd_State_And);
 
-
-
-	/* write the node state and current_aoe */
-	pnode->nd_modified |= (NODE_UPDATE_CURRENT_AOE | NODE_UPDATE_STATE);
-	write_single_node_state(pnode);
-	pnode->nd_modified &= ~(NODE_UPDATE_CURRENT_AOE | NODE_UPDATE_STATE);
-
 	if (comment != NULL) {
 		/* log msg about marking node as offline */
 		snprintf(log_buffer, sizeof(log_buffer), "Vnode %s: %s",
@@ -5419,6 +5409,7 @@ fail_vnode(struct prov_vnode_info *prov_vnode_info, int hold_or_que)
 
 	strcpy(comment, "Vnode offlined since it failed provisioning");
 	mark_prov_vnode_offline(pnode, comment);
+	node_save_db(pnode);
 
 	fail_vnode_job(prov_vnode_info, hold_or_que);
 }
@@ -5465,6 +5456,7 @@ offline_all_provisioning_vnodes()
 
 			if (pnode) {
 				mark_prov_vnode_offline(pnode, comment);
+				node_save_db(pnode);
 				/*
 				 * reservations will take care of
 				 * themselves in pbsd_init
@@ -5660,9 +5652,7 @@ is_vnode_prov_done(char * vnode)
 	}
 
 	/* save the state of this node to the nodes file */
-	pnode->nd_modified |= NODE_UPDATE_STATE;
-	write_single_node_state(pnode);
-	pnode->nd_modified &= ~NODE_UPDATE_STATE;
+	node_save_db(pnode);
 
 	/* log msg about prov of node success */
 	sprintf(log_buffer, "Provisioning of Vnode %s successful",
@@ -5860,12 +5850,6 @@ prov_request_deferred(struct work_task *wtask)
 		DBPRT(("%s: node:%s current_aoe set: %s\n",
 			__func__, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
 
-
-		/* write the node current_aoe */
-		pnode->nd_modified |= NODE_UPDATE_CURRENT_AOE;
-		write_single_node_state(pnode);
-		pnode->nd_modified &= ~NODE_UPDATE_CURRENT_AOE;
-
 		/* if exit_status says app_prov returned success, reset down
 		 * that we set. after setting the state, is_vnode_prov_done()
 		 * is called which would delete the timed work task.
@@ -5875,6 +5859,7 @@ prov_request_deferred(struct work_task *wtask)
 			set_vnode_state(pnode, ~INUSE_DOWN, Nd_State_And);
 
 		is_vnode_prov_done(pnode->nd_name);
+		node_save_db(pnode);
 
 		return;
 	}
@@ -6378,12 +6363,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	(void)node_attr_def[(int)ND_ATR_current_aoe].at_free(
 		&(pnode->nd_attr[(int)ND_ATR_current_aoe]));
 
-
-	/* write the node current_aoe */
-	pnode->nd_modified |= NODE_UPDATE_CURRENT_AOE;
-	write_single_node_state(pnode);
-	pnode->nd_modified &= ~NODE_UPDATE_CURRENT_AOE;
-
 	/*
 	 * Parent process creates two work tasks
 	 * i.e deferred child work task and timed work task.Deferred child
@@ -6445,6 +6424,8 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 
 	/* set prov and down states */
 	set_vnode_state(pnode, INUSE_PROV | INUSE_DOWN, Nd_State_Or);
+
+	node_save_db(pnode);
 
 	return (PBSE_NONE);
 }
@@ -6566,6 +6547,7 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		pnode = find_nodebyname(prov_vnode_list[i]);
 
 		set_vnode_state(pnode, INUSE_WAIT_PROV, Nd_State_Or);
+		node_save_db(pnode);
 	}
 
 	/*
@@ -6673,6 +6655,7 @@ do_provisioning(struct work_task * wtask)
 				DBPRT(("%s: \n", __func__))
 				set_vnode_state(pnode, ~(INUSE_PROV|INUSE_WAIT_PROV),
 					Nd_State_And);
+				node_save_db(pnode);
 			}
 			free_pvnfo(prov_vnode_info);
 		}
@@ -6723,6 +6706,7 @@ del_prov_vnode_entry(job *pjob)
 				set_vnode_state(pnode,
 					~(INUSE_PROV|INUSE_WAIT_PROV),
 					Nd_State_And);
+			node_save_db(pnode);
 			free_pvnfo(tmp_record);
 		}
 		tmp_record = nxt_record;

@@ -74,6 +74,8 @@
 /*
  ** Set up a debug print macro.
  */
+#define	sys_printf(...)	syslog(LOG_NOTICE, __VA_ARGS__);
+
 #ifdef	DEBUG
 #define	DBPRT(x)	printf x;
 #else
