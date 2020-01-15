@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -850,12 +850,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	if (rinfo->resv_queue != NULL)
 		nrinfo->resv_queue = find_queue_info(sinfo->queues, rinfo->queuename);
 
-	if (rinfo->resv_nodes != NULL)
-#ifdef NAS /* localmod 049 */
-		nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS, 0);
-#else
-		nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS);
-#endif /* localmod 049 */
+	nrinfo->resv_nodes = dup_nodes(rinfo->resv_nodes, sinfo, NO_FLAGS);
 
 	return nrinfo;
 }
@@ -944,7 +939,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			 * standing reservation, the first to be found will be the "parent"
 			 * reservation
 			 */
-			nresv = find_resource_resv_by_indrank(nsinfo->resvs, sinfo->resvs[i]->rank, sinfo->resvs[i]->resresv_ind);
+			nresv = find_resource_resv_by_indrank(nsinfo->resvs, sinfo->resvs[i]->resresv_ind, sinfo->resvs[i]->rank);
 			if (nresv == NULL) {
 				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 					sinfo->resvs[i]->name,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -132,11 +132,7 @@ void dup_node_info_chunk(th_data_dup_nd_info *data);
 /*
  *      dup_nodes - duplicate an array of nodes
  */
-#ifdef NAS /* localmod 049 */
-node_info **dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags, int allocNASrank);
-#else
 node_info **dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags);
-#endif /* localmod 049 */
 
 /*
  *      set_node_type - set the node type bits
@@ -207,13 +203,7 @@ int should_talk_with_mom(node_info *ninfo);
  *                            This means we have to use the names from the
  *                            first array and find them in the second array
  */
-#ifdef NAS /* localmod 049 */
-node_info **copy_node_ptr_array(node_info  **oarr, node_info  **narr, server_info *sinfo);
-#else
 node_info **copy_node_ptr_array(node_info  **oarr, node_info  **narr);
-#endif /* localmod 049 */
-
-
 
 /*
  *      create_execvnode - create an execvnode to run a multi-node job
@@ -242,20 +232,12 @@ void free_nspec(nspec *ns);
 /*
  *      dup_nspec - duplicate an nspec
  */
-#ifdef NAS /* localmod 049 */
-nspec *dup_nspec(nspec *ons, node_info **ninfo_arr, server_info *sinfo);
-#else
 nspec *dup_nspec(nspec *ons, node_info **ninfo_arr);
-#endif /* localmod 049 */
 
 /*
  *      dup_nspecs - duplicate an array of nspecs
  */
-#ifdef NAS /* localmod 049 */
-nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr, server_info *sinfo);
-#else
 nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr);
-#endif /* localmod 049 */
 
 /*
  *	empty_nspec_array - free the contents of an nspec array but not

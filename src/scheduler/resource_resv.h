@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -101,7 +101,7 @@ resource_resv *find_resource_resv(resource_resv **resresv_arr, char *name);
  * find a resource_resv by unique numeric rank
 
  */
-resource_resv *find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index);
+resource_resv *find_resource_resv_by_indrank(resource_resv **resresv_arr, int index, int rank);
 
 /**
  *  find_resource_resv_by_time - find a resource_resv by name and start time

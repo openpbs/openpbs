@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -383,7 +383,7 @@ job_alloc(void)
 	pj->ji_parent2child_job_update_status_pipe = -1;
 	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
-	pj->ji_hook_running_bg_on = 0;
+	pj->ji_hook_running_bg_on = BG_NONE;
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
 	pj->ji_extended.ji_ext.ji_pag = 0;
@@ -398,6 +398,7 @@ job_alloc(void)
 	pj->ji_stderr = 0;
 	pj->ji_setup = NULL;
 #else	/* SERVER */
+	pj->ji_discarding = 0;
 	pj->ji_prunreq = NULL;
 	pj->ji_pmt_preq = NULL;
 	CLEAR_HEAD(pj->ji_svrtask);

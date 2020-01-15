@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -38,40 +38,30 @@
 from tests.functional import *
 
 
-class TestSchedSubjobBadstate(TestFunctional):
-
-    @timeout(600)
-    def test_sched_badstate_subjob(self):
+class TestQsubWblock(TestFunctional):
+    """
+    This test suite contains the block job feature tests
+    """
+    def test_block_job(self):
         """
-        This test case tests if scheduler goes into infinite loop
-        when following conditions are met.
-        - Kill a mom
-        - mark the mom's state as free
-        - submit an array job
-        - check the sched log for "Leaving sched cycle" from the time
-          array job was submitted.
-        If we are unable to find a log match then scheduler is in
-          endless loop and test case has failed.
+        Test to submit a block job and verify the Server response
         """
+        j = Job(TEST_USER, attrs={ATTR_block: 'true'})
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+        msg = 'Server@%s;Job;%s;check_block_wt: Write successful' \
+              ' to client %s for job %s' % \
+              (self.server.shortname, jid, self.server.client, jid)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
-        self.mom.signal('-KILL')
-
-        attr = {'state': 'free', 'resources_available.ncpus': '2'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname)
-
-        attr = {'scheduling': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, attr)
-
-        j1 = Job(TEST_USER)
-        j1.set_attributes({'Resource_List.ncpus': '2', ATTR_J: '1-3'})
-        j1id = self.server.submit(j1)
-
-        now = time.time()
-
-        attr = {'scheduling': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, attr)
-
-        self.scheduler.log_match("Leaving Scheduling Cycle",
-                                 starttime=now,
-                                 interval=1)
-        self.server.delete(j1id)
+    def test_block_job_array(self):
+        """
+        Test to submit a block array job and verify the Server response
+        """
+        j = Job(TEST_USER, attrs={ATTR_block: 'true', ATTR_J: '1-3'})
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+        msg = 'Server@%s;Job;%s;check_block_wt: Write successful ' \
+              'to client %s for job %s' % \
+              (self.server.shortname, jid, self.server.client, jid)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)

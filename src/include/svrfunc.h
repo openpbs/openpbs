@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -123,7 +123,6 @@ extern int node_recov_db_raw(void *, pbs_list_head *);
 extern int save_attr_db(pbs_db_conn_t *, pbs_db_attr_info_t *,	struct attribute_def *, struct attribute *, int , int);
 extern int recov_attr_db(pbs_db_conn_t *, void *, pbs_db_attr_info_t *, struct attribute_def *, struct attribute *, int , int);
 extern int pbsd_init(int);
-extern int setup_nodes_fs(int);
 extern int resv_save_db(resc_resv *, int);
 extern int svr_chk_histjob(job *);
 extern int chk_and_update_db_svrhost(void);
@@ -188,6 +187,7 @@ extern job  *create_subjob(job *parent, char *newjid, int *rc);
 extern char *cvt_range(struct ajtrkhd *t, int state);
 extern job  *find_arrayparent(char *subjobid);
 extern int   get_subjob_state(job *parent, int offset);
+extern int   get_subjob_discarding(job *parent, int offset);
 extern char *mk_subjob_id(job *parent, int offset);
 extern void  set_subjob_tblstate(job *, int, int);
 extern void  update_subjob_state(job *, int newstate);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -256,11 +256,7 @@ dup_node_partition(node_partition *onp, server_info *nsinfo)
 	nnp->tot_nodes = onp->tot_nodes;
 	nnp->free_nodes = onp->free_nodes;
 	nnp->res = dup_resource_list(onp->res);
-#ifdef NAS /* localmod 049 */
-	nnp->ninfo_arr = copy_node_ptr_array(onp->ninfo_arr, nsinfo->nodes, nsinfo);
-#else
 	nnp->ninfo_arr = copy_node_ptr_array(onp->ninfo_arr, nsinfo->nodes);
-#endif
 
 	nnp->bkts = dup_node_bucket_array(onp->bkts, nsinfo);
 	nnp->rank = onp->rank;

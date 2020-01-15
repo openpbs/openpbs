@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -537,6 +537,24 @@ update_subjob_state(job *pjob, int newstate)
 }
 /**
  * @brief
+ * 		get_subjob_discarding - return the discarding flag of a subjob given by the parent job
+ * 		and integer index into the table for the subjob
+ *
+ * @param[in]	parent - pointer to the parent job
+ * @param[in]	iindx - first number of range
+ *
+ * @return	status
+ * @retval	-1	-  error
+ */
+int
+get_subjob_discarding(job *parent, int iindx)
+{
+	if (iindx == -1)
+		return -1;
+	return (parent->ji_ajtrk->tkm_tbl[iindx].trk_discarding);
+}
+/**
+ * @brief
  * 		get_subjob_state - return the state of a subjob given by the parent job
  * 		and integer index into the table for the subjob
  *
@@ -682,6 +700,7 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 		t->tkm_tbl[j].trk_index = i;
 		t->tkm_tbl[j].trk_status = initalstate;
 		t->tkm_tbl[j].trk_error  = 0;
+		t->tkm_tbl[j].trk_discarding = 0;
 		t->tkm_tbl[j].trk_substate  = JOB_SUBSTATE_FINISHED;
 		t->tkm_tbl[j].trk_stgout  = -1;
 		t->tkm_tbl[j].trk_exitstat  = 0;

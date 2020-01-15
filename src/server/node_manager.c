@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -717,9 +717,10 @@ node_down_requeue(struct work_task *pwt)
 						if (pj->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long != 0) {
 							pj->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 							if (pj->ji_acctrec != NULL) {
-								tmp_acctrec = realloc(pj->ji_acctrec, strlen(pj->ji_acctrec) + strlen(log_buffer) + 2);
-								if (tmp_acctrec != NULL) {
-									sprintf(tmp_acctrec, "%s %s", pj->ji_acctrec, log_buffer);
+								if (pbs_asprintf(&tmp_acctrec, "%s %s", pj->ji_acctrec, log_buffer) == -1) {
+									free(tmp_acctrec); /* free 1 byte malloc'd in pbs_asprintf() */
+								} else {
+									free(pj->ji_acctrec);
 									pj->ji_acctrec = tmp_acctrec;
 								}
 							} else {
@@ -782,9 +783,15 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 	char	        *downmom = NULL;
 	struct jbdscrd  *pdsc;
 
-	if (pjob->ji_discard == NULL)
+	if (pjob->ji_discard == NULL) {
+		if (pjob->ji_discarding) {
+			pjob->ji_discarding = 0;
+			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+				((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
+			}
+		}
 		return;
-
+	}
 	if (pmom != NULL) {
 		for (pdsc = pjob->ji_discard; pdsc->jdcd_mom; ++pdsc) {
 			if (pdsc->jdcd_mom == pmom) {
@@ -840,8 +847,14 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		return;
 	}
 
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) {
-		static char ndreque[] = "Job requeued, execution node %s down";
+	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3 || pjob->ji_discarding) {
+		
+		static char *ndreque;
+
+		if (pjob->ji_discarding)
+			ndreque = "Job requeued, discard response received";
+		else
+			ndreque = "Job requeued, execution node %s down";
 
 		/*
 		 * Job to be rerun,   no need to check if job is rerunnable
@@ -864,6 +877,10 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 			((pjob->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0))
 			job_attr_def[(int)JOB_ATR_resc_used].at_free(&pjob->ji_wattr[(int)JOB_ATR_resc_used]);
 
+		pjob->ji_discarding = 0;
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+			((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
+		}
 		return;
 	}
 
@@ -4443,6 +4460,10 @@ mom_running_jobs(int stream)
 				/* for any other disagreement of state except */
 				/* in Exiting or RUNNING, discard job         */
 				send_discard_job(stream, jobid, runver, "state mismatch");
+				pjob->ji_discarding = 1;
+				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+					((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
+				}
 			}
 
 			/*

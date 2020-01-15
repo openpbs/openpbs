@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -41,7 +41,8 @@ import re
 import threading
 import logging
 import socket
-
+import os
+import json
 from ptl.utils.pbs_dshutils import DshUtils
 
 
@@ -79,8 +80,7 @@ class ProcUtils(object):
 
         # set some platform-specific arguments to ps
         ps_arg = '-C'
-        ps_cmd = ['ps', '-o', 'pid,rss,vsz,pcpu,command']
-
+        ps_cmd = ['ps', '-o', 'pid,rss,vsz,pcpu,pmem,size,cputime,command']
         self.__h2ps[hostname] = (ps_cmd, ps_arg)
 
         return (ps_cmd, ps_arg)
@@ -116,8 +116,11 @@ class ProcUtils(object):
                     rss = _s[1]
                     vsz = _s[2]
                     pcpu = _s[3]
-                    command = " ".join(_s[4:])
-                except:
+                    pmem = _s[4]
+                    size = _s[5]
+                    cputime = _s[6]
+                    command = " ".join(_s[7:])
+                except BaseException:
                     continue
 
                 if ((pid is not None and p == str(pid)) or
@@ -129,6 +132,9 @@ class ProcUtils(object):
                     _pi.rss = rss
                     _pi.vsz = vsz
                     _pi.pcpu = pcpu
+                    _pi.pmem = pmem
+                    _pi.size = size
+                    _pi.cputime = cputime
                     _pi.command = command
 
                 if _pi is not None:
@@ -177,7 +183,7 @@ class ProcUtils(object):
                 cmd = ['ps', '-o', 'stat', '-p', str(pid), '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
                 return rv['out'][0][0]
-        except:
+        except BaseException:
             self.logger.error('Error getting process state for pid ' + pid)
             return ''
 
@@ -216,7 +222,7 @@ class ProcUtils(object):
                     childlist.extend(self.get_proc_children(hostname, child))
 
             return childlist
-        except:
+        except BaseException:
             self.logger.error('Error getting children processes of parent ' +
                               ppid)
             return []
@@ -235,13 +241,18 @@ class ProcInfo(object):
         self.rss = None
         self.vsz = None
         self.pcpu = None
+        self.pmem = None
+        self.size = None
+        self.cputime = None
         self.time = time.time()
         self.command = None
 
     def __str__(self):
-        return "%s pid: %s rss: %s vsz: %s pcpu: %s command: %s" % \
+        return "%s pid: %s rss: %s vsz: %s pcpu: %s pmem: %s \
+               size: %s cputime: %s command: %s" % \
                (self.name, str(self.pid), str(self.rss), str(self.vsz),
-                str(self.pcpu), self.command)
+                str(self.pcpu), str(self.pmem), str(self.size),
+                str(self.cputime), self.command)
 
 
 class ProcMonitor(threading.Thread):
@@ -249,6 +260,7 @@ class ProcMonitor(threading.Thread):
     """
     A background process monitoring tool
     """
+    du = DshUtils()
 
     def __init__(self, name=None, regexp=False, frequency=60):
         threading.Thread.__init__(self)
@@ -269,6 +281,28 @@ class ProcMonitor(threading.Thread):
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
 
+    def get_system_stats(self, nw_protocols=None):
+        """
+        Run system monitoring
+        """
+        timenow = int(time.time())
+        sysstat = {}
+        # if no protocols set, use default
+        if not nw_protocols:
+            nw_protocols = ['TCP']
+        cmd = 'sar -rSub -n %s 1 1' % ','.join(nw_protocols)
+        rv = self.du.run_cmd(cmd=cmd, as_script=True)
+        if rv['err']:
+            return None
+        op = rv['out'][2:]
+        op = [i.split()[2:] for i in op if
+              (i and not i.startswith('Average'))]
+        sysstat['name'] = "System"
+        sysstat['time'] = time.ctime(timenow)
+        for i in range(0, len(op), 2):
+            sysstat.update(dict(zip(op[i], op[i + 1])))
+        return sysstat
+
     def run(self):
         """
         Run the process monitoring
@@ -277,13 +311,26 @@ class ProcMonitor(threading.Thread):
             self._pu.get_proc_info(name=self.name, regexp=self.regexp)
             for _p in self._pu.processes.values():
                 for _per_proc in _p:
-                    _to_db = {}
-                    _to_db['time'] = time.ctime(int(_per_proc.time))
-                    _to_db['rss'] = _per_proc.rss
-                    _to_db['vsz'] = _per_proc.vsz
-                    _to_db['pcpu'] = _per_proc.pcpu
-                    _to_db['name'] = _per_proc.name
-                    self.db_proc_info.append(_to_db)
+                    if bool(re.search("^((?!benchpress).)*$", _per_proc.name)):
+                        _to_db = {}
+                        _to_db['time'] = time.ctime(int(_per_proc.time))
+                        _to_db['rss'] = _per_proc.rss
+                        _to_db['vsz'] = _per_proc.vsz
+                        _to_db['pcpu'] = _per_proc.pcpu
+                        _to_db['pmem'] = _per_proc.pmem
+                        _to_db['size'] = _per_proc.size
+                        _to_db['cputime'] = _per_proc.cputime
+                        _to_db['name'] = _per_proc.name
+                        self.db_proc_info.append(_to_db)
+            _sys_info = self.get_system_stats(nw_protocols=['TCP'])
+            if _sys_info is not None:
+                self.db_proc_info.append(_sys_info)
+            with open('proc_monitor.json', 'a+', encoding='utf-8') as proc:
+                json.dump(
+                    self.db_proc_info,
+                    proc,
+                    ensure_ascii=False,
+                    indent=4)
             time.sleep(self.frequency)
 
     def stop(self):

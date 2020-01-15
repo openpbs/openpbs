@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -359,6 +359,10 @@ req_runjob(struct batch_request *preq)
 		pjob = chk_job_torun(preq, parent);
 		if (pjob == NULL)
 			return;
+		if (pjob->ji_discarding) {
+			req_reject(PBSE_BADSTATE, 0, preq);
+			return;
+		}
 
 	} else if (jt == IS_ARRAY_Single) {
 
@@ -375,6 +379,9 @@ req_runjob(struct batch_request *preq)
 			return;
 		} else if (i != JOB_STATE_QUEUED) {
 			/* job already running */
+			req_reject(PBSE_BADSTATE, 0, preq);
+			return;
+		} else if (get_subjob_discarding(parent, offset) == 1) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -405,8 +412,10 @@ req_runjob(struct batch_request *preq)
 				break;	/* no more in the range */
 			for (; x <= y; x += z) {
 				if ((i = numindex_to_offset(parent, x)) >= 0) {
-					if (get_subjob_state(parent, i) == JOB_STATE_QUEUED)
-						anygood = 1;
+					if ((get_subjob_state(parent, i) == JOB_STATE_QUEUED) &&
+						get_subjob_discarding(parent, i) != 1) {
+							anygood = 1;
+					}
 				}
 			}
 			range = pc;
@@ -641,6 +650,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	char		 *dest;
 	int		 rq_type = 0;
 
+		
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
 	prov_rc = check_and_provision_job(preq, pjob, &need_prov);

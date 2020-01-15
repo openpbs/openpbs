@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1122,18 +1122,19 @@ is_request(int stream, int version)
 					if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 						PBS_MOM_SERVICE_NAME, mom_host,
 						phook_input, phook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
-							pjob->ji_hook_running_bg_on = IS_DISCARD_JOB;
+							pjob->ji_hook_running_bg_on = BG_IS_DISCARD_JOB;
 							if (pjob->ji_qs.ji_svrflags &
 									JOB_SVFLG_HERE)	/* MS */
 								(void)send_sisters(pjob,
 								IM_DELETE_JOB, NULL);
+							free(jobid);
+							jobid = NULL;
+							break;
 						}
-					else {
-					    mom_deljob(pjob);
-					    free(phook_output->reject_errcode);
-					    free(phook_output);
-					    free(phook_input);
-					}
+					mom_deljob(pjob);
+					free(phook_output->reject_errcode);
+					free(phook_output);
+					free(phook_input);
 				}
 			}
 			if ((ret=is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS) {

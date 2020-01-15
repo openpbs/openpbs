@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -461,8 +461,6 @@ struct server_info
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
 #ifdef NAS
-	/* localmod 049 */
-	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
 #endif
@@ -633,6 +631,7 @@ struct node_info
 	unsigned is_busy:1;		/* load on node is too high to schedule */
 	unsigned is_job_busy:1;	/* ntype = cluster all vp's allocated */
 	unsigned is_stale:1;		/* node is unknown by mom */
+	unsigned is_maintenance:1;	/* node is in maintenance */
 
 	/* node types */
 	unsigned is_pbsnode:1;	/* this is a PBS node */
@@ -707,8 +706,6 @@ struct node_info
 	/* localmod 034 */
 	int	sh_cls;			/* Share class supplied by node */
 	int	sh_type;		/* Share type of node */
-	/* localmod 049 */
-	int   NASrank;		/* NAS order in which nodes were queried */
 #endif
 
 	char *current_aoe;		/* AOE name instantiated on node */

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -37,6 +37,7 @@
 
 import sys
 import logging
+import unittest
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
@@ -128,6 +129,9 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
+        if not issubclass(cls, unittest.TestCase) or cls is PBSTestSuite \
+                or cls is unittest.TestCase:
+            return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:
             self.wantClass(cls.__bases__[0])
@@ -135,9 +139,13 @@ class PTLTestInfo(Plugin):
     def _get_hierarchy(self, cls, level=0):
         delim = '    ' * level
         msg = [delim + cls.__name__]
-        subclses = cls.__subclasses__()
-        for subcls in subclses:
-            msg.extend(self._get_hierarchy(subcls, level + 1))
+        try:
+            subclses = cls.__subclasses__()
+        except TypeError:
+            pass
+        else:
+            for subcls in subclses:
+                msg.extend(self._get_hierarchy(subcls, level + 1))
         return msg
 
     def _print_suite_info(self, suite):
@@ -244,7 +252,7 @@ class PTLTestInfo(Plugin):
             self.__ts_tree[n]['tclist'] = tcs
 
     def finalize(self, result):
-        if self.list_test or self.gen_ts_tree:
+        if (self.list_test and not self.suites) or self.gen_ts_tree:
             suites = list(self._tree.keys())
         else:
             suites = self.suites

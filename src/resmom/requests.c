@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -652,7 +652,7 @@ req_deletejob(struct batch_request *preq)
 		PBS_MOM_SERVICE_NAME, mom_host, hook_input,
 		hook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
 		
-		pjob->ji_hook_running_bg_on = PBS_BATCH_DeleteJob;
+		pjob->ji_hook_running_bg_on = BG_PBS_BATCH_DeleteJob;
 
 		/*
 		* save number of nodes in sisterhood in case
@@ -668,7 +668,7 @@ req_deletejob(struct batch_request *preq)
 				* no messages sent, but there are sisters
 				* must be all down
 				*/
-				pjob->ji_hook_running_bg_on += PBSE_SISCOMM;
+				pjob->ji_hook_running_bg_on = BG_PBSE_SISCOMM;
 			}
 		}
 		/* 
@@ -5018,6 +5018,8 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 	char    *p;
 	char	hook_name[MAXPATHLEN+1];
 	hook	*phook;
+	job	*pjob = NULL;
+	int	hook_running = 0;
 
 	p = strstr(preq->rq_ind.rq_hookfile.rq_filename, HOOK_FILE_SUFFIX);
 	if ((p == NULL) || (strcmp(p, HOOK_FILE_SUFFIX) != 0)) {
@@ -5030,7 +5032,16 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 		strcat(p, HOOK_FILE_SUFFIX);
 		if ((phook = find_hook(hook_name)) != NULL) {
 #ifndef WIN32
-			if (phook->event & HOOK_EVENT_EXECJOB_END) {
+			pjob = (job *)GET_NEXT(svr_alljobs);
+			while (pjob) {
+				/* See if any asynchronous hook is running */
+				if (pjob->ji_hook_running_bg_on) {
+					hook_running = 1;
+					break;
+				}
+				pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+			}
+			if (hook_running && phook->event & HOOK_EVENT_EXECJOB_END) {
 				/** 
 				 * This event runs hook in the background,
 				 * and it's deferred task created while

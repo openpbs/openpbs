@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -465,8 +465,12 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-		discard_job(pjob, "Force rerun", 1);
-		force_reque(pjob);
+		discard_job(pjob, "Force rerun", 0);
+		pjob->ji_discarding = 1;
+		/**
+		 * force_reque will be called in post_discard_job,
+		 * after receiving IS_DISCARD_DONE from the MOM.
+		 */
 		reply_ack(preq);
 		return;
 

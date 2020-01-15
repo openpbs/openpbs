@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -3424,12 +3424,36 @@ void reply_hook_bg(job *pjob)
 	struct	batch_request *preq = pjob->ji_preq;
 #endif
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) { /*MS*/
+	if (pjob->ji_hook_running_bg_on == BG_IS_DISCARD_JOB) {
+		/**
+		 * IS_DISCARD_JOB can be received by sister node as well,
+		 * when node fail requeue is activated 
+		 */
+		n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+		strcpy(jobid, pjob->ji_qs.ji_jobid);
+
+		del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+		pjob->ji_hook_running_bg_on = BG_NONE;
+		job_purge(pjob);
+		dorestrict_user();
+
+		if ((ret = is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS)
+			goto err;
+
+		if ((ret = diswst(server_stream, jobid)) != DIS_SUCCESS)
+			goto err;
+
+		if ((ret = diswsi(server_stream, n)) != DIS_SUCCESS)
+			goto err;
+
+		rpp_flush(server_stream);
+		rpp_eom(server_stream); 
+
+	} else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) { /*MS*/
 		switch (pjob->ji_hook_running_bg_on) {
-			case PBS_BATCH_DeleteJob:
-			case (PBS_BATCH_DeleteJob + PBSE_SISCOMM):
-				if ((pjob->ji_numnodes == 1) ||(pjob->ji_hook_running_bg_on == 
-					(PBS_BATCH_DeleteJob + PBSE_SISCOMM))) {
+			case BG_PBS_BATCH_DeleteJob:
+			case BG_PBSE_SISCOMM:
+				if ((pjob->ji_numnodes == 1) || (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)) {
 					del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
 					pjob->ji_preq = NULL;
 					(void) kill_job(pjob, SIGKILL);
@@ -3444,10 +3468,10 @@ void reply_hook_bg(job *pjob)
 					*/ 
 					if (pjob->ji_numnodes == 1) 
 						reply_ack(preq);
-					else if (pjob->ji_hook_running_bg_on == 
-						(PBS_BATCH_DeleteJob + PBSE_SISCOMM))
+					else if (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)
 							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
+					pjob->ji_hook_running_bg_on = BG_NONE;
 					job_purge(pjob);
 				}
 				/*
@@ -3455,35 +3479,35 @@ void reply_hook_bg(job *pjob)
 				* mom_comm when all the sisters have replied.  The reply to
 				* the Server is also done there
 				*/
+
+			/**
+			 * Following cases to avoid the below compilation
+			 * error: enumeration value not handled in switch
+			 */
+			case BG_NONE:
+			case BG_IM_DELETE_JOB_REPLY:
+			case BG_IM_DELETE_JOB:
+			case BG_IS_DISCARD_JOB:
 				break;
 
-			case IS_DISCARD_JOB:
-				n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				strcpy(jobid, pjob->ji_qs.ji_jobid);
-
-				del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
-				job_purge(pjob);
-				dorestrict_user();
-
-				if ((ret = is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS)
-					goto err;
-
-				if ((ret = diswst(server_stream, jobid)) != DIS_SUCCESS)
-					goto err;
-
-				if ((ret = diswsi(server_stream, n)) != DIS_SUCCESS)
-					goto err;
-
-				rpp_flush(server_stream);
-				rpp_eom(server_stream); 
-				break;
 		}
 	} else { /*SISTER MOM*/
 		switch (pjob->ji_hook_running_bg_on) {
-			case IM_DELETE_JOB_REPLY:
+			case BG_IM_DELETE_JOB_REPLY:
 				post_reply(pjob, 0);
-			case IM_DELETE_JOB:
+			case BG_IM_DELETE_JOB:
+				pjob->ji_hook_running_bg_on = BG_NONE;
 				mom_deljob(pjob);
+
+			/**
+			 * Following cases to avoid the below compilation
+			 * error: enumeration value not handled in switch
+			 */
+			case BG_NONE:
+			case BG_PBS_BATCH_DeleteJob:
+			case BG_PBSE_SISCOMM:
+			case BG_IS_DISCARD_JOB:
+				break;
 		}
 	}
 	return;

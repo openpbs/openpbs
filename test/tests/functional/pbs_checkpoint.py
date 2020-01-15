@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -55,11 +55,8 @@ class TestCheckpoint(TestFunctional):
 kill $1
 exit 0
 """
-        self.abort_file = self.du.create_temp_file(body=abort_script)
-        self.du.chmod(path=self.abort_file, mode=0o755)
-        self.du.chown(path=self.abort_file, uid=0, gid=0, runas=ROOT_USER)
-        c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
-        self.mom.add_config(c)
+        self.abort_file = self.mom.add_checkpoint_abort_script(
+            body=abort_script)
         self.platform = self.du.get_platform()
         if self.platform != 'cray' and self.platform != 'craysim':
             self.attrs = {ATTR_l + '.select': '1:ncpus=1',
@@ -74,9 +71,10 @@ exit 0
         """
         Verify that checkpoint and abort happened.
         """
-        self.ck_dir = os.path.join(self.server.pbs_conf['PBS_HOME'],
+        self.ck_dir = os.path.join(self.mom.pbs_conf['PBS_HOME'],
                                    'checkpoint', jid + '.CK')
-        self.assertTrue(self.du.isdir(path=self.ck_dir, runas=ROOT_USER),
+        self.assertTrue(self.du.isdir(hostname=self.mom.hostname,
+                                      path=self.ck_dir, runas=ROOT_USER),
                         msg="Checkpoint directory %s not found" % self.ck_dir)
         _msg1 = "%s;req_holdjob: Checkpoint initiated." % jid
         self.mom.log_match(_msg1, starttime=stime)
@@ -144,7 +142,6 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
         j1 = Job(TEST_USER, self.attrs)
-        j1.set_sleep_time(20)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -190,7 +187,5 @@ exit 0
 
     def tearDown(self):
         TestFunctional.tearDown(self)
-        try:
-            os.remove(self.abort_file)
-        except OSError:
-            pass
+        self.du.rm(hostname=self.mom.hostname, path=self.abort_file,
+                   sudo=True, force=True)

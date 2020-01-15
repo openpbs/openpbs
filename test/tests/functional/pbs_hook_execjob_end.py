@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -36,6 +36,20 @@
 # trademark licensing policies.
 from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
+
+hook_body = """
+import pbs
+import time
+e = pbs.event()
+
+if e.type == pbs.EXECJOB_EPILOGUE:
+    hook_type = "EXECJOB_EPILOGUE"
+elif e.type == pbs.EXECJOB_END:
+    hook_type = "EXECJOB_END"
+pbs.logjobmsg(e.job.id, "starting hook event %s" % (hook_type))
+time.sleep(5)
+pbs.logjobmsg(e.job.id, "ending hook event %s" % (hook_type))
+"""
 
 
 class TestPbsExecjobEnd(TestFunctional):
@@ -336,3 +350,110 @@ class TestPbsExecjobEnd(TestFunctional):
         self.momB.start()
         # Verify sister mom is not down
         self.assertTrue(self.momB.isUp())
+
+    def test_rerun_on_epilogue_hook(self):
+        """
+        Test force qrerun when epilogue hook is running
+        """
+
+        hook_name = "epiend_hook"
+        global hook_body
+
+        attr = {'event': 'execjob_epilogue,execjob_end', 'enabled': 'True'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+        j = Job(TEST_USER)
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+        self.mom.log_match("starting hook event EXECJOB_EPILOGUE")
+        # Force rerun job
+        self.server.rerunjob(jid, extend='force')
+        self.mom.log_match("starting hook event EXECJOB_END")
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+        self.mom.log_match("ending hook event EXECJOB_END")
+
+    def common_steps(self, jid, host):
+        """
+        Function to run common steps for test job on mom breakdown
+        and restarts
+        """
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+        host.signal('-KILL')
+        self.logger.info(
+            "Successfully killed mom process on %s" %
+            host.shortname)
+
+        # set scheduling false
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        # check for the job's state after the node_fail_requeue time hits
+        self.logger.info("Waiting for 30s so that node_fail_requeue time hits")
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid, offset=30)
+
+        host.start()
+        self.logger.info(
+            "Successfully started mom process on %s" %
+            host.shortname)
+        self.server.expect(NODE, {'state': 'free'}, id=host.shortname)
+
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+        # run job
+        try:
+            # qrun will fail as it is discarding the job
+            self.server.runjob(jid)
+        except PbsRunError as e:
+            self.logger.info("Runjob throws error: " + e.msg[0])
+            self.assertTrue(
+                'qrun: Request invalid for state of job'
+                in e.msg[0])
+            now = int(time.time())
+            self.mom.log_match("ending hook event EXECJOB_END",
+                               starttime=now, interval=2)
+            time.sleep(5)
+            self.server.runjob(jid)
+            self.server.expect(JOB, {'job_state': 'R'}, jid)
+            now = int(time.time())
+            self.mom.log_match(
+                "starting hook event EXECJOB_END",
+                starttime=now, interval=2)
+            time.sleep(5)
+            self.mom.log_match("ending hook event EXECJOB_END",
+                               starttime=now, interval=2)
+
+    def test_qrun_on_mom_breakdown(self):
+        """
+        Test qrun when mom breaksdown and restarts
+        """
+
+        hook_name = "end_hook"
+        global hook_body
+        attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '50'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+        attrib = {ATTR_nodefailrq: 30}
+        self.server.manager(MGR_CMD_SET, SERVER, attrib=attrib)
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.common_steps(jid, self.mom)
+
+    def test_qrun_arrayjob_on_mom_breakdown(self):
+        """
+        Test qrun array job when mom breaksdown and restarts
+        """
+
+        hook_name = "end_hook"
+        global hook_body
+        attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '50'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+        attrib = {ATTR_nodefailrq: 30}
+        self.server.manager(MGR_CMD_SET, SERVER, attrib=attrib)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', ATTR_k: 'oe',
+            'Resource_List.select': 'ncpus=1'
+        })
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        # check job array has begun
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        subjid_1 = j.create_subjob_id(jid, 1)
+        self.common_steps(subjid_1, self.mom)

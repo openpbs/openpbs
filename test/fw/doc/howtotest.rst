@@ -96,9 +96,17 @@ PBSTestSuite offers the following:
   - If no nodes are defined in the system, a single 8 cpu node is defined.
   - start process monitoring thread if process monitoring enabled
 
+.. topic:: setUpClass:
+
+  - If setUpClass is overridden, use super() instead of the class you are overriding to call setUpClass of the parent.
+
 .. topic:: tearDown:
 
   - If process monitoring is enabled the stop process monitoring thread and collect process metrics
+
+.. topic:: tearDownClass:
+
+  - If tearDownClass is overridden, use super() instead of the class you are overriding to call tearDownClass of the parent.
 
 .. topic:: analyze_logs:
 
