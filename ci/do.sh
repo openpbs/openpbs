@@ -114,7 +114,11 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
     else
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
-    ../configure CFLAGS="${_cflags}" ${configure_opt}
+    if [ -z ${_cflags} ]; then
+      ../configure ${configure_opt}
+    else
+      ../configure CFLAGS="${_cflags}" ${configure_opt}
+    fi
     if [ "x${ONLY_CONFIGURE}" == "x1" ];then
       exit 0
     fi
