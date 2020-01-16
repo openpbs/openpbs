@@ -721,78 +721,79 @@ query_server_dyn_res(server_info *sinfo)
 
 			if (pipe(pdes) < 0) {
 				pipe_err = errno;
-				goto end_of_exec;
 			}
-			switch(pid = fork()) {
-			case -1:	/* error */
-				close(pdes[0]);
-				close(pdes[1]);
-				pipe_err = errno;
-				goto end_of_exec;
-				break;
-			case 0:		/* child */
-				close(pdes[0]);
-				if (pdes[1] != STDOUT_FILENO) {
-					dup2(pdes[1], STDOUT_FILENO);
+			if (!pipe_err) {
+				switch(pid = fork()) {
+				case -1:	/* error */
+					close(pdes[0]);
 					close(pdes[1]);
-				}
-				setpgid(0, 0);
-				if (sigemptyset(&allsigs) == -1) {
-					log_err(errno, __func__, "sigemptyset failed");
-				}
-				if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) {	/* unblock all signals */
-					log_err(errno, __func__, "sigprocmask(UNBLOCK)");
-				}
+					pipe_err = errno;
+					break;
+				case 0:		/* child */
+					close(pdes[0]);
+					if (pdes[1] != STDOUT_FILENO) {
+						dup2(pdes[1], STDOUT_FILENO);
+						close(pdes[1]);
+					}
+					setpgid(0, 0);
+					if (sigemptyset(&allsigs) == -1) {
+						log_err(errno, __func__, "sigemptyset failed");
+					}
+					if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) {	/* unblock all signals */
+						log_err(errno, __func__, "sigprocmask(UNBLOCK)");
+					}
 
-				char *argv[4];
-				argv[0] = "/bin/sh";
-				argv[1] = "-c";
-				argv[2] = conf.dynamic_res[i].command_line;
-				argv[3] = NULL;
+					char *argv[4];
+					argv[0] = "/bin/sh";
+					argv[1] = "-c";
+					argv[2] = conf.dynamic_res[i].command_line;
+					argv[3] = NULL;
 
-				execve("/bin/sh", argv, environ);
-				_exit(127);
+					execve("/bin/sh", argv, environ);
+					_exit(127);
+				}
 			}
 
-			FD_ZERO(&set);
-			FD_SET(pdes[0], &set);
-			if (server_dyn_res_alarm) {
-				struct timeval timeout;
-				timeout.tv_sec = server_dyn_res_alarm;
-				timeout.tv_usec = 0;
-				ret = select(FD_SETSIZE, &set, NULL, NULL, &timeout);
-			} else {
-				ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
-			}
-			if (ret == -1) {
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-				"Select() failed for script %s", conf.dynamic_res[i].command_line);
-			} else if (ret == 0) {
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
-				"Program %s timed out", conf.dynamic_res[i].command_line);
-				set_resource(res, res_zero, RF_AVAIL);
-				kill(-pid, SIGTERM);
-				if (waitpid(pid, NULL, WNOHANG) == 0) {
-					usleep(250000);
+			if (!pipe_err) {
+				FD_ZERO(&set);
+				FD_SET(pdes[0], &set);
+				if (server_dyn_res_alarm) {
+					struct timeval timeout;
+					timeout.tv_sec = server_dyn_res_alarm;
+					timeout.tv_usec = 0;
+					ret = select(FD_SETSIZE, &set, NULL, NULL, &timeout);
+				} else {
+					ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
+				}
+				if (ret == -1) {
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
+					"Select() failed for script %s", conf.dynamic_res[i].command_line);
+				} else if (ret == 0) {
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
+					"Program %s timed out", conf.dynamic_res[i].command_line);
+					set_resource(res, res_zero, RF_AVAIL);
+					kill(-pid, SIGTERM);
 					if (waitpid(pid, NULL, WNOHANG) == 0) {
-						kill(-pid, SIGKILL);
-						waitpid(pid, NULL, 0);
+						usleep(250000);
+						if (waitpid(pid, NULL, WNOHANG) == 0) {
+							kill(-pid, SIGKILL);
+							waitpid(pid, NULL, 0);
+						}
 					}
 				}
+
+				/* Parent; assume fdopen can't fail. */
+				fp = fdopen(pdes[0], "r");
+				close(pdes[1]);
+
+				if (fgets(buf, sizeof(buf), fp) == NULL) {
+					pipe_err = errno;
+					k = 0;
+				} else
+					k = strlen(buf);
+				if (fp != NULL)
+					fclose(fp);
 			}
-
-			/* Parent; assume fdopen can't fail. */
-			fp = fdopen(pdes[0], "r");
-			close(pdes[1]);
-
-			if (fgets(buf, sizeof(buf), fp) == NULL) {
-				pipe_err = errno;
-				k = 0;
-			} else
-				k = strlen(buf);
-			if (fp != NULL)
-				fclose(fp);
-end_of_exec:
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */
