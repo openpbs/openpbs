@@ -42,6 +42,7 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
     """
     Test to check passing environment variables via qsub
     """
+
     def create_and_submit_job(self, user=None, attribs=None, content=None,
                               content_interactive=None, preserve_env=False):
         """
@@ -80,11 +81,9 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
 
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=10)
         job_output = ""
-        runcmd = ['cat', job_outfile]
-        ret = self.du.run_cmd(self.server.client, runcmd,
-                              level=logging.INFOCLI, runas=TEST_USER,
-                              logerr=False)
-        job_output =(' '.join(map(str, ret['out']))).strip()
+        ret = self.du.cat(self.server.client, filename=job_outfile,
+                          runas=TEST_USER, logerr=False)
+        job_output = (' '.join(map(str, ret['out']))).strip()
         self.assertEqual(job_output, "var1=A,B,C,D")
 
     def test_passing_shell_function(self):
@@ -123,11 +122,9 @@ exit 0
         job_outfile = qstat[0][ATTR_o].split(':')[1]
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
         job_output = ""
-        runcmd = ['cat', job_outfile]
-        ret = self.du.run_cmd(self.server.client, runcmd,
-                              level=logging.INFOCLI, runas=TEST_USER,
-                              logerr=False)
-        job_output =(' '.join(map(str, ret['out']))).strip()
+        ret = self.du.cat(self.server.client, filename=job_outfile,
+                          runas=TEST_USER, logerr=False)
+        job_output = (' '.join(map(str, ret['out']))).strip()
         match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
@@ -145,7 +142,7 @@ exit 0
         j = Job(self.du.get_current_user())
         jid = self.server.submit(j)
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
-                           'SET_IN_SUBMISSION=true')},
+                                                   'SET_IN_SUBMISSION=true')},
                            id=jid)
 
     def test_option_V_cmdline(self):
@@ -160,7 +157,7 @@ exit 0
         j = Job(self.du.get_current_user(), attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
-                           'SET_IN_SUBMISSION=true')},
+                                                   'SET_IN_SUBMISSION=true')},
                            id=jid)
 
     def test_option_V_dfltqsubargs_qsub_daemon(self):
@@ -178,8 +175,8 @@ exit 0
         j1 = Job(self.du.get_current_user())
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
-                           'SET_IN_SUBMISSION=true')},
+                                                   'SET_IN_SUBMISSION=true')},
                            id=jid)
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
-                           'SET_IN_SUBMISSION=false')},
+                                                   'SET_IN_SUBMISSION=false')},
                            id=jid1)
