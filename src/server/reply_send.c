@@ -165,14 +165,26 @@ set_err_msg(int code, char *msgbuf, size_t msglen)
 	msgbuf[msglen] = '\0';
 }
 #ifndef WIN32
+/**
+ * @brief
+ * 		SIGALRM signal handler for dis_reply_write
+ * 
+ * Set the volatile global variable reply_timedout
+ * Record about the timeout in TCP reply.
+ * 
+ * @param[in]	sig -  signal number
+ *
+ * @return	return void
+ */
 void
 reply_alarm(int sig)
 {
     reply_timedout = 1;
-    log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+    log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
               "dis_reply_write", "timeout attempting to send TCP reply");
 }
 #endif
+
 /**
  * @brief
  * 		reply is to be sent to a remote client
@@ -189,10 +201,8 @@ dis_reply_write(int sfds, struct batch_request *preq)
 	struct batch_reply *preply = &preq->rq_reply;
 #ifndef WIN32
 	struct sigaction act, oact;
+	time_t  old_tcp_timeout = pbs_tcp_timeout ;
 #endif
-	time_t  old_tcp_timeout;
-	old_tcp_timeout = pbs_tcp_timeout;
-	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
 
 	if (preq->isrpp) {
 		rc = encode_DIS_replyRPP(sfds, preq->rppcmd_msgid, preply);
@@ -206,6 +216,7 @@ dis_reply_write(int sfds, struct batch_request *preq)
 			return (PBS_NET_RC_RETRY);
 		reply_timedout = 0;
 		alarm(PBS_DIS_TCP_TIMEOUT_REPLY);
+		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
 #endif
 		/*
 		 * clear pbs_tcp_errno - set on error in DIS_tcp_wflush when called
@@ -227,8 +238,8 @@ dis_reply_write(int sfds, struct batch_request *preq)
         alarm(0);
         (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
     }
-#endif
 	pbs_tcp_timeout = old_tcp_timeout;
+#endif
 	if (rc) {
 		char hn[PBS_MAXHOSTNAME+1];
 
