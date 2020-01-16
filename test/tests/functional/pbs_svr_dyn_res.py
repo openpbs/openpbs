@@ -573,7 +573,7 @@ class TestServerDynRes(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
 
-        self.logger.info('Sleeping 10 seconds to wait for script to timeout' )
+        self.logger.info('Sleeping 10 seconds to wait for script to timeout')
         time.sleep(10)
         self.scheduler.log_match("%s timed out" % filenames[0])
         self.scheduler.log_match("Setting resource foo to 0")

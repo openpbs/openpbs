@@ -1190,7 +1190,6 @@ struct config
 	struct sort_info *non_prime_node_sort;	/* node sorting non primetime */
 	struct dyn_res dynamic_res[MAX_SERVER_DYN_RES]; /* for server_dyn_res */
 	struct peer_queue peer_queues[NUM_PEERS];/* peer local -> remote queue map */
-	long server_dyn_res_alarm;		/* alarm for server_dyn_res scripts */
 #ifdef NAS
 	/* localmod 034 */
 	time_t max_borrow;			/* job share borrowing limit */
