@@ -771,7 +771,6 @@ query_server_dyn_res(server_info *sinfo)
 				} else if (ret == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
-					set_resource(res, res_zero, RF_AVAIL);
 					kill(-pid, SIGTERM);
 					if (waitpid(pid, NULL, WNOHANG) == 0) {
 						usleep(250000);
