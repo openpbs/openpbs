@@ -169,7 +169,7 @@ class TestSchedPerf(TestPerformance):
         """
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1'}
-        jids = self.submit_jobs(a, num_jobs, wt_start=10000)
+        jids = self.submit_jobs(a, num_jobs, wt_start=num_jobs)
         t = self.run_cycle()
         self.server.expect(JOB, {'job_state=R': num_jobs},
                            trigger_sched_cycle=False, interval=5,
@@ -187,7 +187,7 @@ class TestSchedPerf(TestPerformance):
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
-        self.submit_jobs(a, num_jobs, wt_start=10000)
+        self.submit_jobs(a, num_jobs, wt_start=num_jobs)
         t = self.run_cycle()
 
         self.server.expect(JOB, {'job_state=R': num_jobs},
