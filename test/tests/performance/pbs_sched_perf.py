@@ -163,31 +163,36 @@ class TestSchedPerf(TestPerformance):
         self.compare_normal_path_to_buckets('free', num_jobs)
 
     @timeout(3600)
-    def test_run_many_jobs(self):
+    def test_run_many_normal_jobs(self):
         """
-        Submit many jobs and time the cycle that runs all of them.
+        Submit many normal path jobs and time the cycle that runs all of them.
         """
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1'}
-        jids = self.submit_jobs(a, num_jobs, wt_start=1000)
+        jids = self.submit_jobs(a, num_jobs, wt_start=num_jobs)
         t = self.run_cycle()
-        self.server.expect(JOB, {'job_state=R': num_jobs})
+        self.server.expect(JOB, {'job_state=R': num_jobs},
+                           trigger_sched_cycle=False, interval=5,
+                           max_attempts=240)
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d normal jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
         self.logger.info('#' * 80)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-
-        for j in jids:
-            self.server.rerunjob(j)
-            self.server.alterjob(j, {'Resource_List.place': 'excl'})
-
-        self.server.expect(JOB, {'state=Q': num_jobs})
-
+    @timeout(3600)
+    def test_run_many_bucket_jobs(self):
+        """
+        Submit many bucket path jobs and time the cycle that runs all of them.
+        """
+        num_jobs = 10000
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl'}
+        self.submit_jobs(a, num_jobs, wt_start=num_jobs)
         t = self.run_cycle()
 
-        self.server.expect(JOB, {'job_state=R': num_jobs})
+        self.server.expect(JOB, {'job_state=R': num_jobs},
+                           trigger_sched_cycle=False, interval=5,
+                           max_attempts=240)
         self.logger.info('#' * 80)
         m = 'Time taken in cycle to run %d bucket jobs: %.2f' % (num_jobs, t)
         self.logger.info(m)
@@ -214,9 +219,10 @@ class TestSchedPerf(TestPerformance):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')})
 
-        self.server.expect(JOB, {'job_state=R': 1430})
+        self.server.expect(JOB, {'job_state=R': 1430},
+                           trigger_sched_cycle=False, interval=5,
+                           max_attempts=240)
 
         a = {'Resource_List.select': '10000:ncpus=1'}
         tj = Job(TEST_USER, attrs=a)
@@ -224,8 +230,6 @@ class TestSchedPerf(TestPerformance):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')},
-                           interval=5, max_attempts=240)
 
         cycle1 = self.scheduler.cycles(lastN=1)[0]
         cycle1_time = cycle1.end - cycle1.start
@@ -235,8 +239,6 @@ class TestSchedPerf(TestPerformance):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')},
-                           interval=5, max_attempts=240)
 
         cycle2 = self.scheduler.cycles(lastN=1)[0]
         cycle2_time = cycle2.end - cycle2.start
