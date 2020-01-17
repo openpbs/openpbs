@@ -931,7 +931,6 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			 * will be garbage collected after simulation completes.
 			 */
 			nsinfo = dup_server_info(sinfo);
-
 			if (nsinfo == NULL)
 				return -1;
 
@@ -948,6 +947,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				free_server(nsinfo);
 				return -1;
 			}
+
+			adjust_alter_resv_nodes(nresv, nsinfo->nodes);
 
 			/* Attempt to confirm the reservation. For a standing reservation,
 			 * each occurrence is unrolled and attempted to be confirmed within the
@@ -1760,34 +1761,27 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
  * @param[in] all_resvs - array of all the reservations.
  * @param[in] all_nodes - array of all the nodes.
  *
- * @par - This routine will adjust the assigned resources on nodes that
- *	  are being used by a reservation which is being altered. The
- *	  need to do this is because a reservation if it is running and
- *	  needs to be altered, will have resources assigned on its nodes.
- *	  This may render check_avail_resources to reject the alter request
- *	  Also, for the nodes that are reservation exclusive should also
- *	  be seen as free nodes for this reservation in order to get altered
- *	  successfully.
+ * @par - The altering process of a running reservation requires us to keep
+ * 	the same nodes for the reservation.  When we call check_nodes(), we 
+ * 	will attempt to reassign the same nodes to the reservation.  For this
+ * 	to be successful, they need to be free.
  */
 
 void
-adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
+adjust_alter_resv_nodes(resource_resv *resv, node_info **all_nodes)
 {
 	int i = 0;
-	int j = 0;
 	node_info **resv_nodes = NULL;
 	node_info *ninfo = NULL;
 
-	if (all_resvs == NULL || all_nodes == NULL )
+	if (resv == NULL || all_nodes == NULL )
 		return;
-	for (j = 0; all_resvs[j] != NULL; j++) {
-		if (all_resvs[j]->resv->resv_state == RESV_BEING_ALTERED) {
-			if (all_resvs[j]->resv->resv_substate == RESV_RUNNING) {
-				resv_nodes = all_resvs[j]->ninfo_arr;
-				for (i = 0; resv_nodes[i] != NULL; i++) {
-					ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
-					update_node_on_end(ninfo, all_resvs[j], NULL);
-				}
+	if (resv->resv->resv_state == RESV_BEING_ALTERED) {
+		if (resv->resv->resv_substate == RESV_RUNNING) {
+			resv_nodes = resv->ninfo_arr;
+			for (i = 0; resv_nodes[i] != NULL; i++) {
+				ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
+				update_node_on_end(ninfo, resv, NULL);
 			}
 		}
 	}
