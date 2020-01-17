@@ -6,7 +6,7 @@ epilogue, if it exists, while still being able to use execjob_prologue or
 execjob_epilogue hooks. Also adds the capability of running parallel prologue
 or epilogue shell scripts and Torque compatibility.
 
-Copyright (C) 1994-2019 Altair Engineering, Inc.
+Copyright (C) 1994-2020 Altair Engineering, Inc.
 For more information, contact Altair at www.altair.com.
 
 This file is part of the PBS Professional ("PBS Pro") software.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -1396,7 +1396,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					in_data[0] = '\0';
 					continue;
 				}
-				if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) { 
+				if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) {
 					rc = add_to_svrattrl_list_sorted(event_vnode_fail_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
 				} else {
 					rc = add_to_svrattrl_list_sorted(event_vnode_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
@@ -2274,16 +2274,14 @@ argv_list_to_str(pbs_list_head *argv_list)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	char python_prefix[MAXPATHLEN+1];
-	char *python_path;
+	char python_path[MAXPATHLEN + 1] = {'\0'};
+	char *p_python_path = python_path;
+
 #ifndef WIN32
-	char dirname[MAXPATHLEN+1];
+	char dirname[MAXPATHLEN + 1];
 	int  env_len = 0;
-	int  found_pyhome;
-#endif
-	char python_envbuf[MAXBUF+1];
-#ifdef WIN32
-	char python_cmdline[MAXBUF+1];
+#else
+	char python_cmdline[MAXBUF + 1];
 #endif
 	char **lenvp = NULL;
 	int  	i, rc;
@@ -2293,7 +2291,7 @@ main(int argc, char *argv[], char *envp[])
 		struct python_interpreter_data *interp_data);
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
-	
+
 	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
@@ -2339,31 +2337,15 @@ main(int argc, char *argv[], char *envp[])
 		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
 	/* last entry is left with null pointer */
 
+	if (get_py_progname(&p_python_path, MAXPATHLEN)) {
+		log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
+		return -1;
+	}
+
 	if ((argv[1] == NULL) || (strcmp(argv[1], HOOK_MODE) != 0)) {
 #ifdef WIN32
-		/* If this is 64-bit Windows, use 64-bit Python */
-		if (TRUE == is_64bit_Windows()) {
-			snprintf(python_prefix, MAXPATHLEN, "%s/python_x64",
-				pbs_conf.pbs_exec_path);
-			/* 64-bit Windows Python install doesn't have bin folder */
-			pbs_asprintf(&python_path, "%s/python.exe",
-				python_prefix);
-		}
-		else {
-			snprintf(python_prefix, MAXPATHLEN, "%s/python",
-				pbs_conf.pbs_exec_path);
-			pbs_asprintf(&python_path,"%s/bin/python.exe",
-				python_prefix);
-		}
-		forward2back_slash(python_path);
-
-		/* Windows: Set environments PYTHONHOME modify PATH to be seen by */
-		/* CreateProcess() of python script.                              */
-		forward2back_slash(python_prefix);
-		SetEnvironmentVariable(PYHOME, python_prefix);
-		snprintf(python_envbuf, MAXBUF, "%s;%s\\bin", getenv("PATH"),
-			python_prefix);
-		SetEnvironmentVariable("PATH", python_envbuf);
+		/* unset PYTHONHOME if any */
+		SetEnvironmentVariable(PYHOME, NULL);
 
 		/* Just pass on the command line arguments onto Python */
 
@@ -2374,43 +2356,11 @@ main(int argc, char *argv[], char *envp[])
 			strncat(python_cmdline, "\"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 		}
 		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE);
-		free(python_path);
 #else
 		char in_data[MAXBUF+1];
 		char *largv[3];
 		int ll;
 		char *pc, *pc2;
-
-#ifdef SYSTEM_PYTHON_PATH
-		pbs_asprintf(&python_path, "%s", SYSTEM_PYTHON_PATH);
-		pc = strdup(SYSTEM_PYTHON_PATH);
-		if (pc == NULL) {
-			fprintf(stderr, "Out of memory\n");
-			free(python_path);
-			return 1;
-		}
-		pc2 = strstr(pc,"bin/python");
-		if (pc2 == NULL) {
-			fprintf(stderr, "Python executable not found!\n");
-			free(python_path);
-			return 1;
-		}
-		*pc2 = '\0';
-		if (strlen(pc) > 0) {
-			snprintf(python_prefix, MAXPATHLEN, "%s", pc);
-			free(pc);
-		} else {
-			fprintf(stderr, "Python home not found!\n");
-			free(python_path);
-			return 1;
-		}
-		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
-#else
-		snprintf(python_prefix, sizeof(python_prefix), "%s/python",
-			pbs_conf.pbs_exec_path);
-		pbs_asprintf(&python_path, "%s/bin/python", python_prefix);
-		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
-#endif
 
 		/* Linux/Unix: Create a local environment block (i.e. lenvp)    */
 		/* containing PYTHONHOME setting, and give to execve() when it	*/
@@ -2423,27 +2373,15 @@ main(int argc, char *argv[], char *envp[])
 		lenvp = (char **) malloc((env_len + 1) * sizeof(char *));
 		if (lenvp == NULL) {
 			errno = ENOMEM;
-			free(python_path);
 			return 1;
 		}
 
 		/* Copy envp to lenvp */
-		found_pyhome = 0;
 		for (i = 0; envp[i] != NULL; i++) {
-			if (strncmp(envp[i], PYHOME_EQUAL,
-				sizeof(PYHOME_EQUAL)-1) == 0) {
-				printf("[%d] found py_home %s resetting to %s\n",
-					i, envp[i], python_envbuf);
-				lenvp[i] =  python_envbuf;
-				found_pyhome = 1;
-			} else {
+			/* Ignore PYTHONHOME as it will be set by python itself */
+			if (strncmp(envp[i], PYHOME_EQUAL, sizeof(PYHOME_EQUAL) - 1) != 0) {
 				lenvp[i] = envp[i];
 			}
-		}
-
-		if (!found_pyhome) {
-			lenvp[i] = python_envbuf;
-			i++;
 		}
 		lenvp[i] = NULL;
 
@@ -2484,7 +2422,6 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr,
 							"Failed to chdir to %s (errno %d)\n",
 							dirname, errno);
-						free(python_path);
 						return 1;
 					}
 				}
@@ -2497,7 +2434,6 @@ main(int argc, char *argv[], char *envp[])
 
 			if (largv[1][0] == '\0') {
 				fprintf(stderr, "Failed to obtain python script\n");
-				free(python_path);
 				return 1;
 			}
 
@@ -2508,7 +2444,6 @@ main(int argc, char *argv[], char *envp[])
 		} else {
 			rc = execve(python_path, argv, lenvp);
 		}
-		free(python_path);
 #endif
 	} else { /* hook mode */
 

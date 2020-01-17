@@ -1,7 +1,7 @@
 @echo off
 
 rem
-rem Copyright (C) 1994-2019 Altair Engineering, Inc.
+rem Copyright (C) 1994-2020 Altair Engineering, Inc.
 rem For more information, contact Altair at www.altair.com.
 rem
 rem This file is part of the PBS Professional ("PBS Pro") software.

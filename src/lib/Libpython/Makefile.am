@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -43,6 +43,7 @@ libpbspython_a_CPPFLAGS = \
 	@PYTHON_INCLUDES@
 
 libpbspython_a_SOURCES = \
+	shared_python_utils.c \
 	common_python_utils.c \
 	pbs_ifl_wrap.c \
 	pbs_python_external.c
@@ -52,6 +53,7 @@ libpbspython_svr_a_CPPFLAGS = \
 	@PYTHON_INCLUDES@
 
 libpbspython_svr_a_SOURCES = \
+	shared_python_utils.c \
 	pbs_python_svr_external.c \
 	module_pbs_v1.c \
 	pbs_python_svr_internal.c \

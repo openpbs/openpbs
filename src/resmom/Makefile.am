@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2019 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -72,6 +72,7 @@ pbs_mom_LDADD = \
 pbs_mom_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
+	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
 	$(top_srcdir)/src/server/mom_info.c \
 	$(top_srcdir)/src/server/attr_recov.c \
 	$(top_srcdir)/src/server/dis_read.c \
@@ -127,4 +128,3 @@ EXTRA_DIST = \
 	darwin/mom_mach.h \
 	darwin/mom_start.c \
 	darwin/pe_input.c
-

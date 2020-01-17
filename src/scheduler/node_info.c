@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2019 Altair Engineering, Inc.
+ * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -345,15 +345,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		cur_node = cur_node->next;
 	}
 
-#ifdef NAS /* localmod 049 */
-	if ((sinfo->nodes_by_NASrank = (node_info **) malloc(num_nodes * sizeof(node_info *))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		pbs_statfree(nodes);
-		free_nodes(ninfo_arr);
-		return NULL;
-	}
-#endif /* localmod 049 */
-
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {
 		/* don't use multi-threading if I am a worker thread or num_threads is 1 */
@@ -366,13 +357,9 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		ninfo_arr = tdata->oarr;
 		free(tdata);
 
-		for (nidx = 0; ninfo_arr[nidx] != NULL; nidx++) {
+		for (nidx = 0; ninfo_arr[nidx] != NULL; nidx++)
 			ninfo_arr[nidx]->rank = get_sched_rank();
-#ifdef NAS /* localmod 049 */
-			ninfo_arr[nidx]->NASrank = nidx;
-			sinfo->nodes_by_NASrank[nidx] = ninfo_arr[nidx];
-#endif /* localmod 049 */
-		}
+		
 		ninfo_arr[nidx] = NULL;
 	} else {
 		if ((ninfo_arr = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
@@ -437,10 +424,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 				for (j = 0; (ninfo = ninfo_arrs_tasks[i][j]) != NULL; j++) {
 					ninfo->rank = get_sched_rank();
-	#ifdef NAS /* localmod 049 */
-			ninfo->NASrank = nidx;
-			sinfo->nodes_by_NASrank[nidx] = ninfo;
-	#endif /* localmod 049 */
 					ninfo_arr[nidx++] = ninfo;
 				}
 				free(ninfo_arrs_tasks[i]);
@@ -711,6 +694,7 @@ new_node_info()
 	new->is_busy = 0;
 	new->is_job_busy = 0;
 	new->is_stale = 0;
+	new->is_maintenance = 0;
 	new->is_provisioning = 0;
 	new->is_multivnoded = 0;
 	new->has_ghost_job = 0;
@@ -777,8 +761,6 @@ new_node_info()
 	/* localmod 034 */
 	new->sh_type = 0;
 	new->sh_cls = 0;
-	/* localmod 049 */
-	new->NASrank = -1;
 #endif
 	new->partition = NULL;
 	new->np_arr = NULL;
@@ -1027,7 +1009,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_sharing = ninfo->is_busy = ninfo->is_job_busy = 0;
 		ninfo->is_stale = ninfo->is_provisioning = ninfo->is_exclusive = 0;
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
-		ninfo->is_sleeping = 0;
+		ninfo->is_sleeping = ninfo->is_maintenance = 0;
 
 		strcpy(statebuf, state);
 		tok = strtok_r(statebuf, ",", &saveptr);
@@ -1100,6 +1082,8 @@ remove_node_state(node_info *ninfo, char *state)
 		ninfo->is_provisioning = 0;
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 0;
+	else if (!strcmp(state, ND_maintenance))
+		ninfo->is_maintenance = 0;
 	else {
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
 			   ninfo->name, "Unknown Node State: %s on remove operation", state);
@@ -1111,7 +1095,7 @@ remove_node_state(node_info *ninfo, char *state)
 		&& !ninfo->is_job_exclusive && !ninfo->is_resv_exclusive
 		&& !ninfo->is_offline && !ninfo->is_job_busy && !ninfo->is_stale
 		&& !ninfo->is_provisioning && !ninfo->is_sharing
-		&& !ninfo->is_unknown  && !ninfo->is_down)
+		&& !ninfo->is_unknown  && !ninfo->is_down && !ninfo->is_maintenance)
 		ninfo->is_free = 1;
 
 	return 0;
@@ -1169,6 +1153,8 @@ add_node_state(node_info *ninfo, char *state)
 		ninfo->is_provisioning = 1;
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 1;
+	else if (!strcmp(state, ND_maintenance))
+		ninfo->is_maintenance = 1;
 	else if (!strcmp(state, ND_sleep)) {
 		if(ninfo->server->power_provisioning)
 			ninfo->is_sleeping = 1;
@@ -1454,13 +1440,6 @@ dup_node_info_chunk(th_data_dup_nd_info *data)
 			data->error = 1;
 			return;
 		}
-
-#ifdef NAS /* localmod 049 */
-		if (allocNASrank) {
-			nnodes[i]->NASrank = onodes[i]->NASrank;
-			nsinfo->nodes_by_NASrank[onodes[i]->NASrank] = nnodes[i];
-		}
-#endif /* localmod 049 */
 	}
 
 }
@@ -1513,15 +1492,8 @@ alloc_tdata_dup_nodes(unsigned int flags, server_info *nsinfo, node_info **onode
  * @retval	NULL	: on error
  *
  */
-#ifdef NAS /* localmod 049 */
 node_info **
-dup_nodes(node_info **onodes, server_info *nsinfo,
-	unsigned int flags, int allocNASrank)
-#else
-node_info **
-dup_nodes(node_info **onodes, server_info *nsinfo,
-	unsigned int flags)
-#endif /* localmod 049 */
+dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 {
 	node_info **nnodes;
 	int num_nodes;
@@ -1548,15 +1520,6 @@ dup_nodes(node_info **onodes, server_info *nsinfo,
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-
-#ifdef NAS /* localmod 049 */
-	if (allocNASrank &&
-		(nsinfo->nodes_by_NASrank = (node_info **) malloc(num_nodes * sizeof(node_info *))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		free_nodes(nnodes);
-		return NULL;
-	}
-#endif /* localmod 049 */
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {
@@ -1715,6 +1678,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->is_pbsnode = onode->is_pbsnode;
 	nnode->is_job_busy = onode->is_job_busy;
 	nnode->is_stale = onode->is_stale;
+	nnode->is_maintenance = onode->is_maintenance;
 	nnode->is_provisioning = onode->is_provisioning;
 	nnode->is_multivnoded = onode->is_multivnoded;
 
@@ -1786,10 +1750,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	
 	nnode->nscr = onode->nscr;
 
-#ifdef NAS /* localmod 049 */
-	nnode->NASrank = onode->NASrank;
-#endif /* localmod 049 */
-
 	if (onode->partition != NULL) {
 		nnode->partition = string_dup(onode->partition);
 		if (nnode->partition == NULL) {
@@ -1816,14 +1776,8 @@ dup_node_info(node_info *onode, server_info *nsinfo,
  * @retval	NULL	: on error
  *
  */
-#ifdef NAS /* localmod 049 */
-node_info **
-copy_node_ptr_array(node_info  **oarr, node_info  **narr,
-	server_info *sinfo)
-#else
 node_info **
 copy_node_ptr_array(node_info  **oarr, node_info  **narr)
-#endif /* localmod 049 */
 {
 	int i;
 	node_info **ninfo_arr;
@@ -1839,13 +1793,6 @@ copy_node_ptr_array(node_info  **oarr, node_info  **narr)
 		return NULL;
 
 	for (i = 0; oarr[i] != NULL; i++) {
-#ifdef NAS /* localmod 049 */
-		if (sinfo != NULL &&
-			narr == sinfo->nodes &&
-			oarr[i]->rank == sinfo->nodes_by_NASrank[oarr[i]->NASrank]->rank)
-			ninfo = sinfo->nodes_by_NASrank[oarr[i]->NASrank];
-		else
-#endif /* localmod 049 */
 		ninfo = find_node_by_indrank(narr, oarr[i]->node_ind, oarr[i]->rank);
 
 		if (ninfo == NULL) {
@@ -1942,7 +1889,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					 * want to have the job in our array once.
 					 */
 					if (find_resource_resv_by_indrank(ninfo_arr[i]->job_arr,
-						job->rank, -1) == NULL) {
+						-1, job->rank) == NULL) {
 						if (ninfo_arr[i]->has_hard_limit) {
 						cts = find_alloc_counts(ninfo_arr[i]->group_counts,
 							job->group);
@@ -2053,7 +2000,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 	if (resresv->is_job) {
 		ninfo->num_jobs++;
-		if (find_resource_resv_by_indrank(ninfo->job_arr, resresv->rank, resresv->resresv_ind) == NULL) {
+		if (find_resource_resv_by_indrank(ninfo->job_arr, resresv->resresv_ind, resresv->rank) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->job_arr, resresv, NO_FLAGS);
 			if (tmp_arr == NULL)
 				return;
@@ -2064,7 +2011,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	}
 	else if (resresv->is_resv) {
 		ninfo->num_run_resv++;
-		if (find_resource_resv_by_indrank(ninfo->run_resvs_arr, resresv->rank, resresv->resresv_ind) == NULL) {
+		if (find_resource_resv_by_indrank(ninfo->run_resvs_arr, resresv->resresv_ind, resresv->rank) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->run_resvs_arr, resresv, NO_FLAGS);
 			if (tmp_arr == NULL)
 				return;
@@ -2425,13 +2372,8 @@ free_nspec(nspec *ns)
  * @return	newly duplicated nspec
  *
  */
-#ifdef NAS /* localmod 049 */
-nspec *
-dup_nspec(nspec *ons, node_info **ninfo_arr, server_info *sinfo)
-#else
 nspec *
 dup_nspec(nspec *ons, node_info **ninfo_arr)
-#endif /* localmod 049 */
 {
 	nspec *nns;
 
@@ -2447,13 +2389,6 @@ dup_nspec(nspec *ons, node_info **ninfo_arr)
 	nns->seq_num = ons->seq_num;
 	nns->sub_seq_num = ons->sub_seq_num;
 	nns->go_provision = ons->go_provision;
-#ifdef NAS /* localmod 049 */
-	if (sinfo != NULL &&
-		ninfo_arr == sinfo->nodes &&
-		ons->ninfo->rank == sinfo->nodes_by_NASrank[ons->ninfo->NASrank]->rank)
-		nns->ninfo = sinfo->nodes_by_NASrank[ons->ninfo->NASrank];
-	else
-#endif /* localmod 049 */
 	nns->ninfo = find_node_by_indrank(ninfo_arr, ons->ninfo->node_ind, ons->ninfo->rank);
 	nns->resreq = dup_resource_req_list(ons->resreq);
 
@@ -2470,13 +2405,8 @@ dup_nspec(nspec *ons, node_info **ninfo_arr)
  * @return	duplicated nspec array
  *
  */
-#ifdef NAS /* localmod 049 */
-nspec **
-dup_nspecs(nspec **onspecs, node_info **ninfo_arr, server_info *sinfo)
-#else
 nspec **
 dup_nspecs(nspec **onspecs, node_info **ninfo_arr)
-#endif /* localmod 049 */
 {
 	nspec **nnspecs;
 	int num_ns;
@@ -2493,11 +2423,7 @@ dup_nspecs(nspec **onspecs, node_info **ninfo_arr)
 		return NULL;
 
 	for (i = 0; onspecs[i] != NULL; i++)
-#ifdef NAS /* localmod 049 */
-		nnspecs[i] = dup_nspec(onspecs[i], ninfo_arr, sinfo);
-#else
 		nnspecs[i] = dup_nspec(onspecs[i], ninfo_arr);
-#endif /* localmod 049 */
 
 	nnspecs[i] = NULL;
 
@@ -3114,13 +3040,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			 */
 			else if (pl->free) {
 				node_info **dup_ninfo_arr;
-#ifdef NAS /* localmod 049 */
-				dup_ninfo_arr = dup_nodes(hostsets[i]->ninfo_arr,
-					resresv->server, NO_FLAGS, 0);
-#else
 				dup_ninfo_arr = dup_nodes(hostsets[i]->ninfo_arr,
 					resresv->server, NO_FLAGS);
-#endif /* localmod 049 */
 				if (dup_ninfo_arr == NULL) {
 					free_selspec(dselspec);
 					return 0;
@@ -3162,15 +3083,9 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 											}
 											req = req->next;
 										}
-										if (nspec_arr != NULL) {
+										if (nspec_arr != NULL)
 											/* replace duplicated node with real node */
-#ifdef NAS /* localmod 049 */
-											if ((*nsa)->ninfo->rank == resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank]->rank)
-												(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
-											else
-#endif /* localmod 049 */
 											(*nsa)->ninfo = find_node_by_indrank(nptr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
-										}
 									}
 									while (*nsa != NULL)
 										nsa++;
@@ -3316,11 +3231,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 			nodes[k]->nscr.scattered = 0;
 	}
 	else {
-#ifdef NAS /* localmod 049 */
-		if ((nodes = dup_nodes(ninfo_arr, resresv->server, NO_FLAGS, 0)) == NULL) {
-#else
 		if ((nodes = dup_nodes(ninfo_arr, resresv->server, NO_FLAGS)) == NULL) {
-#endif /* localmod 049 */
 			/* only free array if we allocated it locally */
 			return 0;
 		}
@@ -3362,11 +3273,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 						req = req->next;
 					}
 					/* replace the dup'd node with the real one */
-#ifdef NAS /* localmod 049 */
-					if ((*nsa)->ninfo->rank == resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank]->rank)
-						(*nsa)->ninfo = resresv->server->nodes_by_NASrank[(*nsa)->ninfo->NASrank];
-					else
-#endif /* localmod 049 */
 					(*nsa)->ninfo = find_node_by_indrank(ninfo_arr, (*nsa)->ninfo->node_ind, (*nsa)->ninfo->rank);
 				}
 				nsa++;
@@ -3486,11 +3392,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	 * vnodes.  Otherwise the entire chunk is going onto 1 vnode.
 	 */
 	if (flags & EVAL_OKBREAK) {
-#ifdef NAS /* localmod 049 */
-		ninfo_arr = dup_nodes(pninfo_arr, resresv->server, NO_FLAGS, 0);
-#else
 		ninfo_arr = dup_nodes(pninfo_arr, resresv->server, NO_FLAGS);
-#endif /* localmod 049 */
 		if (ninfo_arr == NULL) {
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			return 0;
@@ -3625,11 +3527,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 						/* Replace the dup'd node with the real one, but only if we dup'd the nodes */
 						if (ns != NULL && pninfo_arr != ninfo_arr) {
-#ifdef NAS /* localmod 049 */
-							if (ns->ninfo->rank == resresv->server->nodes_by_NASrank[ns->ninfo->NASrank]->rank)
-								ns->ninfo = resresv->server->nodes_by_NASrank[ns->ninfo->NASrank];
-							else
-#endif /* localmod 049 */					/* Need to call find_node_by_rank() over indrank since eval_placement might dup the nodes */
+								/* Need to call find_node_by_rank() over indrank since eval_placement might dup the nodes */
 								ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
 						}
 						if (!ninfo_arr[i]->lic_lock) {
@@ -4976,6 +4874,9 @@ node_state_to_str(node_info *ninfo)
 
 	if (ninfo->is_sleeping)
 		return ND_sleep;
+	
+	if (ninfo->is_maintenance)
+		return ND_maintenance;
 
 	/* default */
 	return ND_state_unknown;
