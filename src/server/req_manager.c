@@ -1112,7 +1112,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 			if (presc) {
 				if ((ptype != PARENT_TYPE_SERVER) ||
 					(index != (int)SRV_ATR_resource_cost)) {
-					
+
 					unset_signature(pnode, prsdef->rs_name);
 					if ((ptype == PARENT_TYPE_NODE) && (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT)) {
 							unset_indirect(presc, pdef,

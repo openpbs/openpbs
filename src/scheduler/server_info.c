@@ -114,6 +114,8 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include <pbs_ifl.h>
 #include <pbs_error.h>
@@ -457,9 +459,9 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
-	
+
 	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
-	
+
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
 	if (sinfo->buckets != NULL) {
@@ -691,11 +693,17 @@ query_server_dyn_res(server_info *sinfo)
 	schd_resource *res;		/* used for updating node resources */
 	FILE *fp;			/* for popen() for res_assn */
 
+
 	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
 		if (res != NULL) {
-			int err;
+			int err, ret;
+			fd_set set;
 			char *filename = conf.dynamic_res[i].script_name;
+			sigset_t allsigs;
+			pid_t pid;			/* pid of child */
+			int pdes[2];
+			k = 0;
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
@@ -704,21 +712,87 @@ query_server_dyn_res(server_info *sinfo)
 			/* Make sure file does not have open permissions */
 			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
 			if (err != 0) {
-				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", 
+				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
 					filename, res->name, err);
-				(void) set_resource(res, res_zero, RF_AVAIL);
+				set_resource(res, res_zero, RF_AVAIL);
+				continue;
 			}
 
-			if (((fp = popen(conf.dynamic_res[i].command_line, "r")) == NULL) ||
-				(fgets(buf, 256, fp) == NULL)) {
+			if (pipe(pdes) < 0) {
 				pipe_err = errno;
-				k = 0;
-			} else
-				k = strlen(buf);
-			if (fp != NULL)
-				pclose(fp);
+			}
+			if (!pipe_err) {
+				switch(pid = fork()) {
+				case -1:	/* error */
+					close(pdes[0]);
+					close(pdes[1]);
+					pipe_err = errno;
+					break;
+				case 0:		/* child */
+					close(pdes[0]);
+					if (pdes[1] != STDOUT_FILENO) {
+						dup2(pdes[1], STDOUT_FILENO);
+						close(pdes[1]);
+					}
+					setpgid(0, 0);
+					if (sigemptyset(&allsigs) == -1) {
+						log_err(errno, __func__, "sigemptyset failed");
+					}
+					if (sigprocmask(SIG_SETMASK, &allsigs, NULL) == -1) {	/* unblock all signals */
+						log_err(errno, __func__, "sigprocmask(UNBLOCK)");
+					}
 
+					char *argv[4];
+					argv[0] = "/bin/sh";
+					argv[1] = "-c";
+					argv[2] = conf.dynamic_res[i].command_line;
+					argv[3] = NULL;
+
+					execve("/bin/sh", argv, environ);
+					_exit(127);
+				}
+			}
+
+			if (!pipe_err) {
+				FD_ZERO(&set);
+				FD_SET(pdes[0], &set);
+				if (server_dyn_res_alarm) {
+					struct timeval timeout;
+					timeout.tv_sec = server_dyn_res_alarm;
+					timeout.tv_usec = 0;
+					ret = select(FD_SETSIZE, &set, NULL, NULL, &timeout);
+				} else {
+					ret = select(FD_SETSIZE, &set, NULL, NULL, NULL);
+				}
+				if (ret == -1) {
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
+					"Select() failed for script %s", conf.dynamic_res[i].command_line);
+				} else if (ret == 0) {
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
+					"Program %s timed out", conf.dynamic_res[i].command_line);
+					kill(-pid, SIGTERM);
+					if (waitpid(pid, NULL, WNOHANG) == 0) {
+						usleep(250000);
+						if (waitpid(pid, NULL, WNOHANG) == 0) {
+							kill(-pid, SIGKILL);
+							waitpid(pid, NULL, 0);
+						}
+					}
+				}
+
+				/* Parent; assume fdopen can't fail. */
+				fp = fdopen(pdes[0], "r");
+				close(pdes[1]);
+
+				if (fgets(buf, sizeof(buf), fp) == NULL) {
+					pipe_err = errno;
+					k = 0;
+				} else
+					k = strlen(buf);
+				if (fp != NULL)
+					fclose(fp);
+			}
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */
@@ -729,32 +803,30 @@ query_server_dyn_res(server_info *sinfo)
 				}
 
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 						"Script %s returned bad output", conf.dynamic_res[i].command_line);
 					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
 			} else {
 				if (pipe_err != 0)
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 						"Can't pipe to program %s: %s", conf.dynamic_res[i].command_line, strerror(pipe_err));
-
-				else
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
-						"Error piping to program %s.", conf.dynamic_res[i].command_line);
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
+					"Setting resource %s to 0", res->name);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
-
 			if (res->type.is_non_consumable)
-				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"%s = %s", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
 			else
-				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res", 
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
+
 		}
 	}
 
 	if (i == MAX_SERVER_DYN_RES) /* reached max and stopped */
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, "server_dyn_res", 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, "server_dyn_res",
 			"Reached max number of server_dyn_res of %d", MAX_SERVER_DYN_RES);
 
 	return 0;
@@ -1138,7 +1210,7 @@ free_server_info(server_info *sinfo)
 		free_string_array(sinfo->partitions);
 	if(sinfo->buckets != NULL)
 		free_node_bucket_array(sinfo->buckets);
-	
+
 	if(sinfo->unordered_nodes != NULL)
 		free(sinfo->unordered_nodes);
 
@@ -1385,7 +1457,7 @@ create_resource(char *name, char *value, enum resource_fields field)
 			}
 		}
 	} else {
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, 
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
 			"Resource definition does not exist, resource may be invalid");
 		return NULL;
 	}
@@ -1394,14 +1466,14 @@ create_resource(char *name, char *value, enum resource_fields field)
 }
 
 /**
- * @brief modify the resources_assigned values for a resource_list 
+ * @brief modify the resources_assigned values for a resource_list
  * 		(e.g. either A += B or A -= B) where
  * 		A is a resource list and B is a resource_req list.
- * 
+ *
  * @param[in] res_list - The schd_resource list which is modified
  * @param[in] req_list - What is modifing the schd_resource list
  * @param[in] type - SCHD_INCR for += or SCHD_DECR for -=
- * 
+ *
  * @return int
  * @retval 1 - success
  * @retval 0 - failure
@@ -1415,7 +1487,7 @@ modify_resource_list(schd_resource *res_list, resource_req *req_list, int type)
 
 	if (res_list == NULL || req_list == NULL)
 		return 0;
-	
+
 	for(cur_req = req_list; cur_req != NULL; cur_req = cur_req->next) {
 		if (cur_req->type.is_consumable) {
 			cur_res = find_resource(res_list, cur_req->def);
@@ -1671,7 +1743,7 @@ free_server(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return;
-	/* We need to free the sinfo first to free the calendar. 
+	/* We need to free the sinfo first to free the calendar.
 	 * When the calendar is freed, the job events modify the jobs.  We can't
 	 * free the jobs before then.
 	 */
@@ -1728,7 +1800,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 
 	/*
-	 * Update the server level resources 
+	 * Update the server level resources
 	 *   -- if a job is in a reservation, the resources have already been
 	 *      accounted for and assigned to the reservation.  We don't want to
 	 *      double count them
@@ -1896,7 +1968,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 				res->assigned -= req->amount;
 
 				if (res->assigned < 0) {
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, 
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 						"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 					res->assigned = 0;
 				}
@@ -2289,13 +2361,13 @@ dup_server_info(server_info *osinfo)
 
 	/* dup the nodes, if there are any nodes */
 	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS);
-	
+
 	if (nsinfo->has_nodes_assoc_queue) {
 		nsinfo->unassoc_nodes =
 			node_filter(nsinfo->nodes, nsinfo->num_nodes, is_unassoc_node, NULL, 0);
 	} else
 		nsinfo->unassoc_nodes = nsinfo->nodes;
-	
+
 	nsinfo->unordered_nodes = dup_unordered_nodes(osinfo->unordered_nodes, nsinfo->nodes);
 
 	/* dup the reservations */
@@ -2413,7 +2485,7 @@ dup_server_info(server_info *osinfo)
 	for (i = 0; osinfo->nodes[i] != NULL; i++) {
 		nsinfo->nodes[i]->run_resvs_arr =
 			copy_resresv_array(osinfo->nodes[i]->run_resvs_arr, nsinfo->resvs);
-		nsinfo->nodes[i]->np_arr = 
+		nsinfo->nodes[i]->np_arr =
 			copy_node_partition_ptr_array(osinfo->nodes[i]->np_arr, nsinfo->nodepart);
 		if (nsinfo->calendar != NULL)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
@@ -3216,7 +3288,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 			cur_res = find_resource(ninfo->res, cur_res->def);
 			if (cur_res == NULL) {
 				error = 1;
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, 
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 						"Resource %s is indirect, and does not exist on indirect node %s",
 						res->name, ninfo->name);
 			}
@@ -3971,7 +4043,7 @@ compare_resource_avail(schd_resource *r1, schd_resource *r2) {
 		return 1;
 	if (r1 == NULL || r2 == NULL)
 		return 0;
-	
+
 	if (r1->def->type.is_string) {
 		if(match_string_array(r1->str_avail, r2->str_avail) == SA_FULL_MATCH)
 			return 1;
@@ -3980,7 +4052,7 @@ compare_resource_avail(schd_resource *r1, schd_resource *r2) {
 	}
 	if (r1->avail == r2->avail)
 		return 1;
-	
+
 	return 0;
 }
 
@@ -3993,12 +4065,12 @@ compare_resource_avail(schd_resource *r1, schd_resource *r2) {
 int
 compare_resource_avail_list(schd_resource *r1, schd_resource *r2) {
 	schd_resource *cur;
-	
+
 	if (r1 == NULL && r2 == NULL)
 		return 1;
 	if (r1 == NULL || r2 == NULL)
 		return 0;
-	
+
 	for (cur = r1; cur != NULL; cur = cur->next) {
 		schd_resource *res;
 
@@ -4012,7 +4084,7 @@ compare_resource_avail_list(schd_resource *r1, schd_resource *r2) {
 		} else
 			return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -4059,7 +4131,7 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
  * @brief add pointer to NULL terminated pointer array
  * @param[in] ptr_arr - pointer array to add to
  * @param[in] ptr - pointer to add
- * 
+ *
  * @return void *
  * @retval pointer array with new element added
  * @retval NULL on error

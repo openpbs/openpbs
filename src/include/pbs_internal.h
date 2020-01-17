@@ -177,6 +177,9 @@ extern "C" {
 /* Default value of preempt_queue_prio */
 #define PBS_PREEMPT_QUEUE_PRIO_DEFAULT	150
 
+/* Default value of server_dyn_res_alarm */
+#define PBS_SERVER_DYN_RES_ALARM_DEFAULT	30
+
 /* Default value of preempt_prio */
 #define PBS_PREEMPT_PRIO_DEFAULT	"express_queue, normal_jobs"
 
