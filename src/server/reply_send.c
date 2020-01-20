@@ -208,13 +208,13 @@ dis_reply_write(int sfds, struct batch_request *preq)
 		rc = encode_DIS_replyRPP(sfds, preq->rppcmd_msgid, preply);
 	} else {
 #ifndef WIN32
+		reply_timedout = 0;
 		/* set alarm to interrupt poll() etc. while flushing out data */
 		sigemptyset(&act.sa_mask);
 		act.sa_flags = 0;
 		act.sa_handler = reply_alarm;
 		if (sigaction(SIGALRM, &act, &oact) == -1)
 			return (PBS_NET_RC_RETRY);
-		reply_timedout = 0;
 		alarm(PBS_DIS_TCP_TIMEOUT_REPLY);
 		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
 #endif
@@ -234,7 +234,7 @@ dis_reply_write(int sfds, struct batch_request *preq)
 
 #ifndef WIN32
 	reply_timedout = 0; /* Resetting the value for next tcp connection */
-    if (!(preq->isrpp)) {
+	if (!(preq->isrpp)) {
         alarm(0);
         (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
     }
