@@ -2768,6 +2768,16 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 	int cmp_res = -1;
 	int rc;
 
+	if (kv_keyw == NULL) {
+		log_err(-1, __func__, "kv_keyw is NULL");
+		return PBSE_INVALJOBRESC;
+	}
+
+	if (kv_val == NULL) {
+		log_err(-1, __func__, "kv_val is NULL");
+		return PBSE_INVALJOBRESC;
+	}
+
 	resc_def = find_resc_def(svr_resc_def, kv_keyw, svr_resc_size);
 
 	if (resc_def == NULL) {
@@ -3309,6 +3319,11 @@ check_other_res(resc_limit_t *need, resc_limit_t *have)
 static void
 coagulate_append_sched_sel(char *new_schedselect, char *chunkstr, char *tmp_chunk_spec, int *tmp_chunk_ct)
 {
+	if (chunkstr == NULL) {
+		log_err(-1, __func__, "chunkstr is NULL");
+		return;
+	}
+
 	if (*tmp_chunk_spec) {
 		if (!strcasecmp(tmp_chunk_spec, chunkstr)) {
 			(*tmp_chunk_ct)++;
