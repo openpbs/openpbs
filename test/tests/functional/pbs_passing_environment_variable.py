@@ -83,7 +83,7 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         job_output = ""
         ret = self.du.cat(self.server.client, filename=job_outfile,
                           runas=TEST_USER, logerr=False)
-        job_output = (' '.join(map(str, ret['out']))).strip()
+        job_output = (' '.join(ret['out'])).strip()
         self.assertEqual(job_output, "var1=A,B,C,D")
 
     def test_passing_shell_function(self):
@@ -124,7 +124,7 @@ exit 0
         job_output = ""
         ret = self.du.cat(self.server.client, filename=job_outfile,
                           runas=TEST_USER, logerr=False)
-        job_output = (' '.join(map(str, ret['out']))).strip()
+        job_output = (' '.join(ret['out'])).strip()
         match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
