@@ -51,6 +51,16 @@ opt="$1"
 
 #---------------------------------------------------------------------------------------------------
 # Helper functions.
+has_runuser() {
+	PATH=$PATH:/sbin:/usr/sbin	# be sure it will be found if present
+	if type runuser > /dev/null 2>&1
+	then
+		return 0
+	else
+		return 1
+	fi
+}
+
 cleanup() {
 	cd ${CWD}
 	rm -rf ${data_dir}
@@ -228,7 +238,7 @@ upgrade_db() {
 	CWD=`pwd`
 	cd "${data_dir}"
 	#Perform pg_upgrade -c to check if we can upgrade the cluster or not
-	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir} -c'" 2>&1`
+	err=`${sucmd} ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir} -c'" 2>&1`
 	if [ $? -ne 0 ]; then
 		echo "Refer pg_upgrade log files at $PBS_HOME/datastore/pg_upgrade_internal.log,"
 		echo "$PBS_HOME/datastore/pg_upgrade_server.log and"
@@ -249,7 +259,7 @@ upgrade_db() {
 	fi
 
 	#Perform pg_upgrade for database upgrade
-	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir}'" 2>&1`
+	err=`${sucmd} ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir}'" 2>&1`
 	if [ $? -ne 0 ]; then
 		echo "Refer pg_upgrade log files at $PBS_HOME/datastore/pg_upgrade_internal.log,"
 		echo "$PBS_HOME/datastore/pg_upgrade_server.log and"
@@ -278,7 +288,7 @@ upgrade_db() {
 
 	# Optimizer statistics are not transferred by pg_upgrade, so do it manually.
 	ENVSTR="PGPORT=${PBS_DATA_SERVICE_PORT}; export PGPORT; PGHOST=${PBS_SERVER}; export PGHOST; PGUSER=${user}; export PGUSER; "
-	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${ENVSTR} ${data_dir}/analyze_new_cluster.sh'"`
+	err=`${sucmd} ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${ENVSTR} ${data_dir}/analyze_new_cluster.sh'"`
 
 	# Update locale of pbs database to C
 	if [ ${change_locale} -eq 1 ]; then
@@ -430,7 +440,7 @@ pbs_install_db () {
 	# change directory to data_dir to ensure that we don't get cd errors from postgres later
 	cd ${data_dir}
 
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/initdb -D ${data_dir} -U \"${user}\" -E SQL_ASCII ${locale}'" 2>&1`
+	err=`${sucmd} ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/initdb -D ${data_dir} -U \"${user}\" -E SQL_ASCII ${locale}'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo "$err"
@@ -526,7 +536,7 @@ pbs_install_db () {
 		exit 1
 	fi
 
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/createdb -p ${port} pbs_datastore'" 2>&1`
+	err=`${sucmd} ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/createdb -p ${port} pbs_datastore'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo "$err"
@@ -537,7 +547,7 @@ pbs_install_db () {
 	fi
 
 	# now install the pbs datastore schema onto the datastore
-	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/psql -p ${port} -d pbs_datastore -U \"${user}\" -f ${schema}'" 2>&1`
+	err=`${sucmd} ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/psql -p ${port} -d pbs_datastore -U \"${user}\" -f ${schema}'" 2>&1`
 
 	if [ $? -ne 0 ]; then
 		echo $err
@@ -584,6 +594,13 @@ pbs_install_db () {
 	cleanup_on_finish
 	exit 0
 }
+
+if has_runuser
+then
+	sucmd="runuser"
+else
+	sucmd="su"
+fi
 
 if [ "${opt}" = "upgrade_db" ]; then
 	opt_err=0

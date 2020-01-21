@@ -40,14 +40,14 @@
 from tests.selftest import *
 
 
-class TestPbsInitServices(TestSelf):
+class TestPBSServices(TestSelf):
     """
-    Contains tests related to PBSInitServices class
+    Contains tests related to PBSServices class
     """
     def test_init_services_pid(self):
         """
         Test if the pid of PBS daemons are updated correctly
-        after a restart via PBSInitServices's functions
+        after a restart via PBSServices's functions
         """
         self.server.pi.stop()
         self.server.pi.start_server()

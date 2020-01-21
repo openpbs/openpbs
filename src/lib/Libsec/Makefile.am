@@ -36,14 +36,15 @@
 # Use of Altair's trademarks, including but not limited to "PBS™",
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
-
 #
 
-noinst_LIBRARIES = libsec.a
+lib_LTLIBRARIES = libsec.la
 
-libsec_a_CPPFLAGS = \
-	-I$(top_srcdir)/src/include \
-	@KRB5_CFLAGS@
+libsec_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include
 
-libsec_a_SOURCES = \
+libsec_la_LDFLAGS = -version-info 0:0:0
+
+libsec_la_SOURCES = \
+	pbs_seccon.c \
 	cs_standard.c

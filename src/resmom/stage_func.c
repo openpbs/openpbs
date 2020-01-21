@@ -52,6 +52,7 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include "tpp.h"
+#include "pbs_seccon.h"
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"
@@ -76,6 +77,7 @@ extern size_t cred_len;				/* length of cred buffer */
 #ifndef WIN32
 extern int cred_pipe;
 extern char *pwd_buf;
+extern void *sec_user_session;
 #endif
 extern char mom_host[PBS_MAXHOSTNAME+1];	/* MoM host name */
 
@@ -176,7 +178,7 @@ add_bad_list(char **pbl, char *newtext, int nl)
 int
 is_child_path(char *dir, char *path)
 {
-	char fullpath[2*MAXPATHLEN+2] = {'\0'};
+	char fullpath[2 * MAXPATHLEN + 2] = {'\0'};
 	char *dir_real = NULL;
 	char *fullpath_real = NULL;
 	char *pos = NULL;
@@ -770,8 +772,8 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 	int ret = 0;
 	int len = 0;
 	struct stat buf = {0};
-	char dest[MAXPATHLEN+1] = {'\0'};
-	char src_file[MAXPATHLEN+1] = {'\0'};
+	char dest[MAXPATHLEN + 1] = {'\0'};
+	char src_file[MAXPATHLEN + 1] = {'\0'};
 
 	/*
 	 ** The destination is calcluated for a stagein so it can
@@ -799,8 +801,8 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 
 	if (ret == 0) {
 		/*
-		 ** Copy worked.  If old behavior is used, a stageout file
-		 ** is deleted now.  New behavior of waiting to delete
+		 ** Copy worked. If old behavior is used, a stageout file
+		 ** is deleted now. New behavior of waiting to delete
 		 ** everything could be achived by adding the file to
 		 ** a list to delete later.
 		 */
@@ -867,8 +869,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 				return -1;
 			}
 		}
-	}
-	else {		/* failure */
+	} else {		/* failure */
 
 		FILE *fp = NULL;
 		DBPRT(("%s: sys_copy failed, error = %d\n", __func__, ret))
@@ -973,12 +974,12 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	int i = 0;
 	int rc = 0;
 	int len = 0;
-	char dname[MAXPATHLEN+1] = {'\0'};
-	char source[MAXPATHLEN+1] = {'\0'};
-	char matched[MAXPATHLEN+1] = {'\0'};
+	char dname[MAXPATHLEN + 1] = {'\0'};
+	char source[MAXPATHLEN + 1] = {'\0'};
+	char matched[MAXPATHLEN + 1] = {'\0'};
 	DIR *dirp = NULL;
 	struct dirent *pdirent = NULL;
-	struct  stat    statbuf;
+	struct stat statbuf;
 
 	DBPRT(("%s: entered local %s remote %s\n", __func__, pair->fp_local, prmt))
 
@@ -1064,8 +1065,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	/* if there are no wildcards we don't need to search */
 	if ((strchr(ps, '*') == NULL) && (strchr(ps, '?') == NULL)) {
 		DBPRT(("%s: simple copy, no wildcards\n", __func__))
-		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt, jobid);
+		rc = copy_file(dir, rmtflag, owner, source, pair, conn, stage_inout, prmt, jobid);
 		if (rc != 0) {
 			snprintf(log_buffer, sizeof(log_buffer), "Job %s: no wildcards:%s stage%s failed for %s from %s to %s",
 				jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
@@ -1079,8 +1079,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	dirp = opendir(dname);
 	if (dirp == NULL) {	/* dir cannot be opened, just call copy_file */
 		DBPRT(("%s: cannot open dir %s\n", __func__, dname))
-		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt, jobid);
+		rc = copy_file(dir, rmtflag, owner, source, pair, conn, stage_inout, prmt, jobid);
 		if (rc != 0) {
 			snprintf(log_buffer, sizeof(log_buffer), "Job %s: Cannot open directory:%s stage%s failed for %s from %s to %s",
 				jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
@@ -1192,21 +1191,21 @@ error:
  *
  */
 void
-rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
+rmjobdir(char *jobid, char *jobdir, char *usercred, uid_t uid, gid_t gid, int check_shared)
 {
-	static	char	rmdir_buf[MAXPATHLEN+1] = {'\0'};
-	struct	stat	sb = {0};
-	char	*newdir = NULL;
-	char	*nameptr = NULL;
+	static char rmdir_buf[MAXPATHLEN + 1] = {'\0'};
+	struct stat sb = {0};
+	char *newdir = NULL;
+	char *nameptr = NULL;
 #ifdef WIN32
 	struct pio_handles pio = {0};
-	char cmdbuf[MAXPATHLEN+1] = {'\0'};
-	char	sep = '\\';
+	char cmdbuf[MAXPATHLEN + 1] = {'\0'};
+	char sep = '\\';
 #else
-	pid_t	pid = -1;
-	char	*rm = "/bin/rm";
-	char	*rf = "-rf";
-	char	sep = '/';
+	pid_t pid = -1;
+	char *rm = "/bin/rm";
+	char *rf = "-rf";
+	char sep = '/';
 #endif
 
 	if (jobdir == NULL)
@@ -1225,12 +1224,13 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	if (pbs_jobdir_root[0] == '\0') {
 		/* In user's home, need to be user */
 		/* The rest must be done as the User */
-		if (impersonate_user(uid, gid) == -1)
+		if (impersonate_user(uid, gid, usercred) == -1)
 			return;
 	}
 #endif
 
 	/* Hello, is any body there? */
+	//if (((jobdirfd != -1) && (fstat(jobdirfd, &sb) == -1)) || (stat(jobdir, &sb) == -1)) {
 	if (stat(jobdir, &sb) == -1) {
 #ifndef WIN32
 		if (pbs_jobdir_root[0] == '\0') {
@@ -1259,9 +1259,9 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	 * and advance the pointer one space (past the
 	 * separator) to get the basename.
 	 */
-	if ((nameptr = strrchr(jobdir, sep)) != NULL) {
+	if ((nameptr = strrchr(jobdir, sep)) != NULL)
 		nameptr++;
-	} else {
+	else {
 		/* we already have the basename */
 		nameptr = jobdir;
 	}
@@ -1276,7 +1276,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 		return;
 	}
 
-	snprintf(rmdir_buf, sizeof(rmdir_buf)-1, "%s_remove", jobdir);
+	snprintf(rmdir_buf, sizeof(rmdir_buf) - 1, "%s_remove", jobdir);
 	newdir = rmdir_buf;
 
 #ifdef WIN32
@@ -1318,6 +1318,9 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	tpp_terminate();
 	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
+	if (sec_user_session) {
+		sec_close_session(sec_user_session);
+	}
 	exit(21);
 #endif
 }
@@ -1454,16 +1457,16 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 {
 	char *ag0 = NULL;
 	char *ag1 = NULL;
-	char ag2[MAXPATHLEN+1] = {'\0'};
-	char ag3[MAXPATHLEN+1] = {'\0'};
-	char local_file[MAXPATHLEN+1] = {'\0'};
-	char rmt_file[MAXPATHLEN+1] = {'\0'};
+	char ag2[MAXPATHLEN + 1] = {'\0'};
+	char ag3[MAXPATHLEN + 1] = {'\0'};
+	char local_file[MAXPATHLEN + 1] = {'\0'};
+	char rmt_file[MAXPATHLEN + 1] = {'\0'};
 	int loop = 0;
 	int rc = 0;
 	time_t original = 0;
 	struct stat sb = {0};
 #ifdef WIN32
-	char str_buf[MAXPATHLEN+1] = {'\0'};
+	char str_buf[MAXPATHLEN + 1] = {'\0'};
 	char *sp = NULL;
 	char *dp = NULL;
 	int fd = -1;
@@ -1472,9 +1475,9 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 	int flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_CONSOLE|
 		CREATE_NEW_PROCESS_GROUP;
 	char cmd_line[PBS_CMDLINE_LENGTH] = {'\0'};
-	char ag2_path[MAXPATHLEN+1] = {'\0'};
-	char ag3_path[MAXPATHLEN+1] = {'\0'};
-	char wdir[MAXPATHLEN+1] = {'\0'};
+	char ag2_path[MAXPATHLEN + 1] = {'\0'};
+	char ag3_path[MAXPATHLEN + 1] = {'\0'};
+	char wdir[MAXPATHLEN + 1] = {'\0'};
 	HANDLE readp =  INVALID_HANDLE_VALUE;
 	HANDLE writep = INVALID_HANDLE_VALUE;
 	SECURITY_ATTRIBUTES sa = {0};
@@ -1483,7 +1486,6 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 	int		i;
 	ssize_t		len;
 #endif
-
 	DBPRT(("%s: %s %s copy %s of %s\n", __func__, owner,
 		rmtflg ? "remote" : "local",
 		(dir == STAGE_DIR_OUT) ? "out" : "in", src))
@@ -1496,9 +1498,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 	strcpy(wdir, "C:\\");
 
-	if (getcwd(wdir, MAXPATHLEN + 1) == NULL) {
+	if (getcwd(wdir, MAXPATHLEN + 1) == NULL)
 		log_errf(-1, __func__, "Failed to get the current working directory %s", wdir);
-	}
 
 	si.cb = sizeof(si);
 	si.lpDesktop = PBS_DESKTOP_NAME;
@@ -1675,7 +1676,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			/* wait for copy to complete */
 			while (((i = wait(&rc)) < 0) && (errno == EINTR)) ;
 			if (i == -1) {
-				rc = (20000+errno);	/* 200xx is error on wait */
+				rc = (20000 + errno);	/* 200xx is error on wait */
 			} else if (WIFEXITED(rc)) {
 				if ((rc = WEXITSTATUS(rc)) == 0) {
 					if ((rmtflg != 0) && (dir == STAGE_DIR_IN)) {
@@ -1686,9 +1687,9 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					return (rc);		/* good,  stop now */
 				}
 			} else if (WIFSTOPPED(rc)) {
-				rc = (30000+WSTOPSIG(rc));	/* 300xx is stopped */
+				rc = (30000 + WSTOPSIG(rc));	/* 300xx is stopped */
 			} else if (WIFSIGNALED(rc)) {
-				rc = (40000+WTERMSIG(rc));	/* 400xx is signaled */
+				rc = (40000 + WTERMSIG(rc));	/* 400xx is signaled */
 			}
 
 		} else if (rc < 0) {
@@ -1697,7 +1698,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 		} else {
 
-			int	 fd;
+			int fd;
 
 			/* child - exec the copy command */
 

@@ -326,7 +326,7 @@ class TestResourceUsageLog(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         # Restart PBS services
-        PBSInitServices().restart()
+        PBSServices().restart()
 
         self.assertTrue(self.server.isUp())
 

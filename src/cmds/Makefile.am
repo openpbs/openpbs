@@ -94,8 +94,8 @@ common_cflags = \
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	-lpthread \
 	@socket_lib@ \
 	@KRB5_LIBS@
@@ -103,20 +103,27 @@ common_libs = \
 common_sources = \
 	$(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
+common_ldflags = \
+	"-Wl,-rpath,$(DESTDIR)$(libdir)"
+
 pbsdsh_CPPFLAGS = ${common_cflags}
 pbsdsh_LDADD = ${common_libs}
+pbsdsh_LDFLAGS = ${common_ldflags}
 pbsdsh_SOURCES = pbsdsh.c ${common_sources}
 
 pbsnodes_CPPFLAGS = ${common_cflags}
 pbsnodes_LDADD = ${common_libs}
+pbsnodes_LDFLAGS = ${common_ldflags}
 pbsnodes_SOURCES = pbsnodes.c ${common_sources}
 
 pbs_attach_CPPFLAGS = ${common_cflags}
 pbs_attach_LDADD = ${common_libs}
+pbs_attach_LDFLAGS = ${common_ldflags}
 pbs_attach_SOURCES = pbs_attach.c pbs_attach_sup.c ${common_sources}
 
 pbs_demux_CPPFLAGS = ${common_cflags}
 pbs_demux_LDADD = ${common_libs}
+pbs_demux_LDFLAGS = ${common_ldflags}
 pbs_demux_SOURCES = pbs_demux.c
 
 pbs_dataservice_bin_CPPFLAGS = \
@@ -135,50 +142,62 @@ pbs_ds_password_bin_LDADD = \
 	${common_libs} \
 	-lssl \
 	-lcrypto
+pbs_ds_password_bin_LDFLAGS = ${common_ldflags}
 pbs_ds_password_bin_SOURCES = pbs_ds_password.c ${common_sources}
 
 pbs_tmrsh_CPPFLAGS = ${common_cflags}
 pbs_tmrsh_LDADD = ${common_libs}
+pbs_tmrsh_LDFLAGS = ${common_ldflags}
 pbs_tmrsh_SOURCES = pbs_tmrsh.c ${common_sources}
 
 pbs_ralter_CPPFLAGS = ${common_cflags}
 pbs_ralter_LDADD = ${common_libs}
+pbs_ralter_LDFLAGS = ${common_ldflags}
 pbs_ralter_SOURCES = pbs_ralter.c ${common_sources}
 
 pbs_rdel_CPPFLAGS = ${common_cflags}
 pbs_rdel_LDADD = ${common_libs}
+pbs_rdel_LDFLAGS = ${common_ldflags}
 pbs_rdel_SOURCES = pbs_rdel.c ${common_sources}
 
 pbs_rstat_CPPFLAGS = ${common_cflags}
 pbs_rstat_LDADD = ${common_libs}
+pbs_rstat_LDFLAGS = ${common_ldflags}
 pbs_rstat_SOURCES = pbs_rstat.c ${common_sources}
 
 pbs_rsub_CPPFLAGS = ${common_cflags}
 pbs_rsub_LDADD = ${common_libs}
+pbs_rsub_LDFLAGS = ${common_ldflags}
 pbs_rsub_SOURCES = pbs_rsub.c ${common_sources}
 
 pbs_release_nodes_CPPFLAGS = ${common_cflags}
 pbs_release_nodes_LDADD = ${common_libs}
+pbs_release_nodes_LDFLAGS = ${common_ldflags}
 pbs_release_nodes_SOURCES = pbs_release_nodes.c ${common_sources}
 
 qalter_CPPFLAGS = ${common_cflags}
 qalter_LDADD = ${common_libs}
+qalter_LDFLAGS = ${common_ldflags}
 qalter_SOURCES = qalter.c ${common_sources}
 
 qdel_CPPFLAGS = ${common_cflags}
 qdel_LDADD = ${common_libs}
+qdel_LDFLAGS = ${common_ldflags}
 qdel_SOURCES = qdel.c ${common_sources}
 
 qdisable_CPPFLAGS = ${common_cflags}
 qdisable_LDADD = ${common_libs}
+qdisable_LDFLAGS = ${common_ldflags}
 qdisable_SOURCES = qdisable.c ${common_sources}
 
 qenable_CPPFLAGS = ${common_cflags}
 qenable_LDADD = ${common_libs}
+qenable_LDFLAGS = ${common_ldflags}
 qenable_SOURCES = qenable.c ${common_sources}
 
 qhold_CPPFLAGS = ${common_cflags}
 qhold_LDADD = ${common_libs}
+qhold_LDFLAGS = ${common_ldflags}
 qhold_SOURCES = qhold.c ${common_sources}
 
 qmgr_CPPFLAGS = \
@@ -187,56 +206,70 @@ qmgr_CPPFLAGS = \
 qmgr_LDADD = \
 	${common_libs} \
 	@editline_lib@
+qmgr_LDFLAGS = ${common_ldflags}
 qmgr_SOURCES = qmgr.c qmgr_sup.c ${common_sources}
 
 qmove_CPPFLAGS = ${common_cflags}
 qmove_LDADD = ${common_libs}
+qmove_LDFLAGS = ${common_ldflags}
 qmove_SOURCES = qmove.c ${common_sources}
 
 qorder_CPPFLAGS = ${common_cflags}
 qorder_LDADD = ${common_libs}
+qorder_LDFLAGS = ${common_ldflags}
 qorder_SOURCES = qorder.c ${common_sources}
 
 qmsg_CPPFLAGS = ${common_cflags}
 qmsg_LDADD = ${common_libs}
+qmsg_LDFLAGS = ${common_ldflags}
 qmsg_SOURCES = qmsg.c ${common_sources}
 
 qrerun_CPPFLAGS = ${common_cflags}
 qrerun_LDADD = ${common_libs}
+qrerun_LDFLAGS = ${common_ldflags}
 qrerun_SOURCES = qrerun.c ${common_sources}
 
 qrls_CPPFLAGS = ${common_cflags}
 qrls_LDADD = ${common_libs}
+qrls_LDFLAGS = ${common_ldflags}
 qrls_SOURCES = qrls.c ${common_sources}
 
 qrun_CPPFLAGS = ${common_cflags}
 qrun_LDADD = ${common_libs}
+qrun_LDFLAGS = ${common_ldflags}
 qrun_SOURCES = qrun.c ${common_sources}
 
 qselect_CPPFLAGS = ${common_cflags}
 qselect_LDADD = ${common_libs}
+qselect_LDFLAGS = ${common_ldflags}
 qselect_SOURCES = qselect.c ${common_sources}
 
 qsig_CPPFLAGS = ${common_cflags}
 qsig_LDADD = ${common_libs}
+qsig_LDFLAGS = ${common_ldflags}
 qsig_SOURCES = qsig.c ${common_sources}
 
 qstat_CPPFLAGS = ${common_cflags}
 qstat_LDADD = ${common_libs}
+qstat_LDFLAGS = ${common_ldflags}
 qstat_SOURCES = qstat.c ${common_sources}
 
 qstart_CPPFLAGS = ${common_cflags}
 qstart_LDADD = ${common_libs}
+qstart_LDFLAGS = ${common_ldflags}
 qstart_SOURCES = qstart.c ${common_sources}
 
 qstop_CPPFLAGS = ${common_cflags}
 qstop_LDADD = ${common_libs}
+qstop_LDFLAGS = ${common_ldflags}
 qstop_SOURCES = qstop.c ${common_sources}
 
 qsub_CPPFLAGS = ${common_cflags}
 qsub_LDADD = ${common_libs}
+qsub_LDFLAGS = ${common_ldflags}
 qsub_SOURCES = qsub.c qsub_sup.c ${common_sources}
 
 qterm_CPPFLAGS = ${common_cflags}
 qterm_LDADD = ${common_libs}
+qterm_LDFLAGS = ${common_ldflags}
 qterm_SOURCES = qterm.c ${common_sources}

@@ -702,9 +702,9 @@ accept_conn(int sd)
  *	add_conn - add a connection to the svr_conn array.
  *
  * @par Functionality:
- *	Find an empty slot in the connection table.  This is done by hashing
- *	on the socket (file descriptor).  On Windows, this is not a small
- *	interger.  The socket is then added to the poll/select set.
+ *	Find an empty slot in the connection table. This is done by hashing
+ *	on the socket (file descriptor). On Windows, this is not a small
+ *	integer. The socket is then added to the poll/select set.
  *
  * @param[in]	sd: socket descriptor
  * @param[in]	type: (enumb conn_type)
@@ -726,9 +726,8 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*r
 		return NULL;
 
 	conn = (conn_t *) calloc(1, sizeof(conn_t));
-	if (!conn) {
+	if (!conn)
 		return NULL;
-	}
 
 	conn->cn_sock = sd;
 	conn->cn_active = type;
@@ -884,9 +883,8 @@ close_conn(int sd)
 	if (idx == -1)
 		return;
 
-	if (svr_conn[idx]->cn_active != ChildPipe) {
+	if (svr_conn[idx]->cn_active != ChildPipe)
 		dis_destroy_chan(sd);
-	}
 
 	if (svr_conn[idx]->cn_active != ChildPipe) {
 		if (CS_close_socket(sd) != CS_SUCCESS) {
@@ -940,14 +938,17 @@ cleanup_conn(int idx)
 			"could not remove socket %d from poll list", svr_conn[idx]->cn_sock);
 		log_err(err, __func__, logbuf);
 	}
-	if (svr_conn[idx]->cn_prio_flag)
-	{
+	if (svr_conn[idx]->cn_prio_flag) {
 		if (tpp_em_del_fd(priority_context, svr_conn[idx]->cn_sock) < 0) {
 			int err = errno;
 			snprintf(logbuf, sizeof(logbuf),
 				"could not remove socket %d from priority poll list", svr_conn[idx]->cn_sock);
 			log_err(err, __func__, logbuf);
         	}
+	}
+	if (svr_conn[idx]->cn_security_context != NULL) {
+		free(svr_conn[idx]->cn_security_context);
+		svr_conn[idx]->cn_security_context = NULL;
 	}
 
 	/* Remove connection from the linked list */

@@ -85,7 +85,8 @@ _pbs_v1_la_LDFLAGS = \
 	-export-dynamic \
 	-avoid-version
 _pbs_v1_la_LIBADD = \
-	$(top_builddir)/src/lib/Libpbs/libpbs.la
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
+	$(top_builddir)/src/lib/Libsec/libsec.la
 
 nodist__pbs_ifl_la_SOURCES = $(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
 _pbs_ifl_la_CPPFLAGS = \
@@ -98,7 +99,8 @@ _pbs_ifl_la_LDFLAGS = \
 	-avoid-version \
 	-no-undefined
 _pbs_ifl_la_LIBADD = \
-	$(top_builddir)/src/lib/Libpbs/libpbs.la
+	$(top_builddir)/src/lib/Libpbs/libpbs.la \
+	$(top_builddir)/src/lib/Libsec/libsec.la
 
 pbsmoduledir = $(libdir)/python/altair/pbs
 

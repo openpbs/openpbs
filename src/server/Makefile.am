@@ -44,11 +44,14 @@ sbin_PROGRAMS = pbs_server.bin pbs_comm
 pbs_server_bin_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	-I$(top_srcdir)/src/lib/Liblicensing \
+	-I$(top_srcdir)/src/lib/Libsec \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
+
+pbs_server_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -56,12 +59,12 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Liblicensing/.libs/liblicensing.so \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
@@ -146,10 +149,13 @@ pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	-lpthread \
 	@libz_lib@ \
 	@socket_lib@ \
 	@KRB5_LIBS@ \
 	@libundolr_lib@
+
+pbs_comm_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 pbs_comm_SOURCES = pbs_comm.c

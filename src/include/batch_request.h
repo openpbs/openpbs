@@ -233,7 +233,7 @@ struct rq_cpyfile {
 struct rq_cpyfile_cred {
 	struct rq_cpyfile rq_copyfile; /* copy/delete info */
 	int rq_credtype;	       /* cred type */
-	size_t rq_credlen;	     /* credential length bytes */
+	size_t rq_credlen;	       /* credential length bytes */
 	char *rq_pcred;		       /* encrpyted credential */
 };
 

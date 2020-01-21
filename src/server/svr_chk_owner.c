@@ -114,12 +114,46 @@ static	int svr_authorize_resvReq(struct batch_request*, resc_resv*);
 int
 svr_chk_owner(struct batch_request *preq, job *pjob)
 {
-	char  owner[PBS_MAXUSER+1];
+	char owner[PBS_MAXUSER + 1];
 	char *pu;
 	char *ph;
-	char  rmtuser[PBS_MAXUSER+PBS_MAXHOSTNAME+2];
-	extern int ruserok(const char *rhost, int suser, const char *ruser,
-		const char *luser);
+	char rmtuser[PBS_MAXUSER + PBS_MAXHOSTNAME + 2];
+	extern int ruserok(const char *rhost, int suser, const char *ruser, const char *luser);
+#ifdef	WIN32
+	extern int user_read_password(char *user, char **cred, size_t *len);
+	extern int read_cred(job *pjob, char **cred, size_t *len);
+	extern int decrypt_pwd(char *crypted, size_t len, char **passwd);
+#endif
+	conn_t *conn = get_conn(preq->rq_conn);
+
+	/*
+	 * Note that for mac we interpret ``match exactly'' to mean that
+	 * the security context of the requester must equal that of the job.
+	 */
+
+	if ((conn != NULL) && (conn->cn_security_context != NULL) &&
+		(pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str == NULL)) {
+		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, pjob->ji_qs.ji_jobid,
+			"client connection security context information present, "
+			"but no job security context information present");
+		return (-1);
+	}
+
+	if ((conn != NULL) && (conn->cn_security_context == NULL) &&
+		(pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str != NULL)) {
+		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, pjob->ji_qs.ji_jobid,
+			"client connection security context information not present, "
+			"but job security context information present");
+		return (-1);
+	}
+
+	if ((conn != NULL) && (conn->cn_security_context != NULL) && strcmp(conn->cn_security_context,
+			pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str) != 0) {
+		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, pjob->ji_qs.ji_jobid,
+			"client connection security context information "
+			"job security context information do not match");
+		return (-1);
+	}
 
 	/* Are the owner and requestor the same? */
 	snprintf(rmtuser, sizeof(rmtuser), "%s", get_jattr_str(pjob, JOB_ATR_job_owner));

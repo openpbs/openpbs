@@ -41,6 +41,7 @@
 
 #include <unistd.h>
 #include <sys/param.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <time.h>
 #include <sys/types.h>
@@ -93,6 +94,12 @@
 #include "net_connect.h"
 #include "pbs_reliable.h"
 
+#ifdef PBS_MOM
+#ifndef WIN32
+#include "pbs_seccon.h"
+#endif
+#endif
+
 #if defined(PBS_MOM) && defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
 #endif
@@ -128,11 +135,12 @@ extern pbs_list_head svr_alljobs;
 extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
-extern void rmtmpdir(char *);
+#include "mom_func.h"
+
 void nodes_free(job *);
 extern char *std_file_name(job *pjob, enum job_file which, int *keeping);
 extern char *path_checkpoint;
-
+void *sec_user_session;
 /**
  * @brief
  * 		free up the tasks from the list of tasks associated with particular job, delete links and close connection.
@@ -498,7 +506,7 @@ job_free(job *pj)
 #ifndef PBS_MOM
 	{
 		/* Server only */
-		badplace		*bp;
+		badplace *bp;
 
 		free_job_work_tasks(pj);
 
@@ -795,12 +803,14 @@ del_job_dirs(job *pjob, char *taskdir)
 			if (pjob->ji_grpcache != NULL)
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
+					pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str,
 					pjob->ji_grpcache->gc_uid,
 					pjob->ji_grpcache->gc_gid,
 					check_shared);
 			else
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, NULL),
+					pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str,
 					0,
 					0,
 					check_shared);
@@ -1121,28 +1131,35 @@ job_purge(job *pjob)
 
 #ifdef PBS_MOM
 
-	/* on the mom end, perform file-system related cleanup in a forked process
-	 * only if job is executed successfully with exit status 0(JOB_EXEC_OK)
-	 */
-	if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK) {
-		/* rename the taskdir path to avoid race condition when job
-		 * reruns. It will be removed later in the child process.
-		 */
-		taskdir_path = rename_taskdir(pjob);
-		pid = fork();
-		if (pid > 0) {
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-			delete_cred(pjob->ji_qs.ji_jobid);
-#endif
-			/* parent mom */
-			job_free(pjob);
-			free(taskdir_path);
-			return;
+#ifndef WIN32
+	taskdir_path = rename_taskdir(pjob);
+	child_process = 1;
+	pid = fork();
+	if (pid > 0) {
+		if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat != JOB_EXEC_OK) {
+			int status;
+			waitpid(pid, &status, 0);
 		}
-		if (!pid)
-			child_process = 1;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		delete_cred(pjob->ji_qs.ji_jobid);
+#endif
+		/* parent mom */
+		job_free(pjob);
+		free(taskdir_path);
+		return;
 	}
-	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
+	/*}
+	 Parent Mom process will continue the job cleanup itself, if call to fork is failed */
+#endif
+#ifndef WIN32
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+		"============ before sec_open_session ===============");
+	if ((sec_user_session = sec_open_session(pjob->ji_wattr[JOB_ATR_euser].at_val.at_str)) == NULL) {
+		/* TODO: log that sec_open_session failed */
+	}
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+		"============ after sec_open_session ===============");
+#endif
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
@@ -1424,25 +1441,46 @@ done:
 int
 read_cred(job *pjob, char **cred, size_t *len)
 {
-	extern char     *path_jobs;
-	char		name_buf[MAXPATHLEN+1];
-	char		*hold = NULL;
-	struct	stat	sbuf;
-	int		fd;
-	int		ret = -1;
+	extern char *path_jobs;
+	char name_buf[MAXPATHLEN + 1];
+	char *hold = NULL;
+	struct stat sbuf;
+	int fd;
+	int ret = -1;
 
 	(void)strcpy(name_buf, path_jobs);
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(name_buf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(name_buf, pjob->ji_qs.ji_jobid);
+	(void)strcat(name_buf, pjob->ji_qs.ji_jobid);
 	(void)strcat(name_buf, JOB_CRED_SUFFIX);
 
 	if ((fd = open(name_buf, O_RDONLY)) == -1) {
-		if (errno == ENOENT)
-			return 1;
-		log_err(errno, __func__, "open");
-		return ret;
+#ifndef	PBS_MOM
+		if (errno == ENOENT) {
+			/*
+			 *	This may have occurred because pjob is a subjob
+			 *	and only the parent job's credential file is
+			 *	present.  Try again with the parent's job ID.
+			 */
+			if (is_job_array(pjob->ji_qs.ji_jobid) != IS_ARRAY_NO) {
+				(void)strcpy(name_buf, path_jobs);
+				(void)strcat(name_buf,
+					     pjob->ji_parentaj->ji_qs.ji_jobid);
+				(void)strcat(name_buf, JOB_CRED_SUFFIX);
+				if ((fd = open(name_buf, O_RDONLY)) == -1) {
+					if (errno == ENOENT)
+						return 1;
+					log_err(errno, __func__, "open");
+					return ret;
+				} else
+					ret = 0;
+			}
+		}
+#else
+		return 1;
+#endif	/* ! PBS_MOM */
+		if (ret) {
+			log_err(errno, __func__, "open");
+			return ret;
+		}
 	}
 
 	if (fstat(fd, &sbuf) == -1) {

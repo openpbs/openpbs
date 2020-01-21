@@ -327,12 +327,10 @@ extern char  *tmpdirname(char *);
 extern char  *NAS_tmpdirname(job *);
 #endif /* localmod 010 */
 extern char  *jobdirname(char *, char *);
-extern void  rmtmpdir(char *);
 extern int local_or_remote(char **);
 extern void add_bad_list(char **, char *, int);
 extern int is_child_path(char *, char *);
 extern int pbs_glob(char *, char *);
-extern void  rmjobdir(char *, char *, uid_t, gid_t, int);
 extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
 extern int   mktmpdir(char *, char *);
@@ -344,13 +342,16 @@ extern int recv_pcphosts(void);
 extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
 extern void check_err(const char *func_name, char *buf, int len);
+void rmjobdir(char *, char *, uid_t, gid_t);
 #else
-extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);
-extern int   mkjobdir(char *, char *, uid_t, gid_t);
-extern int   impersonate_user(uid_t, gid_t);
-extern void  revert_from_user(void);
-extern int   open_file_as_user(char *path, int oflag, mode_t mode,
-	uid_t exuid, gid_t exgid);
+extern void  bld_env_variables(struct var_table *, char *, char *);
+void rmtmpdir(char *jobid);
+int mktmpdir(char *jobid, uid_t uid, gid_t gid, void *usercred);
+int mkjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, void *usercred);
+void rmjobdir(char *jobid, char *jobdir, char *usercred, uid_t uid, gid_t gid, int check_shared);
+extern int impersonate_user(uid_t, gid_t, void *);
+extern void revert_from_user(void);
+extern int open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid, void *usercred, char *username);
 #endif
 extern int  find_env_slot(struct var_table *, char *);
 extern void  bld_env_variables(struct var_table *, char *, char *);
@@ -385,8 +386,8 @@ extern int   send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
 extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);
-extern int becomeuser(job *);
-extern int becomeuser_args(char *, uid_t, gid_t, gid_t);
+extern int becomeuser(job *, void *usercred);
+extern int becomeuser_args(char *, uid_t, gid_t, gid_t, void *);
 extern void close_update_pipes(job *);
 extern void mom_set_use_all(void);
 void job_purge_mom(job *pjob);

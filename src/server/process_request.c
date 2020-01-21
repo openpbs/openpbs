@@ -158,23 +158,31 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
 	int ret;
 
-#ifndef PBS_MOM
-	/*
-	 * ensure job's euser exists as this can be called
-	 * from pbs_send_job who is moving a job from a routing
-	 * queue which doesn't have euser set
-	 */
-	if (is_jattr_set(jobp, JOB_ATR_euser) && get_jattr_str(jobp, JOB_ATR_euser)) {
-		ret = user_read_password(get_jattr_str(jobp, JOB_ATR_euser), data, dsize);
+	switch (jobp->ji_extended.ji_ext.ji_credtype) {
 
-		/* we have credential but type is NONE, force DES */
-		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
-			jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
-	} else
-		ret = read_cred(jobp, data, dsize);
+		case PBS_CREDTYPE_SECCON:
+			ret = read_cred(jobp, data, dsize);
+			break;
+		default:
+
+#ifndef PBS_MOM
+			/*
+	 		* ensure job's euser exists as this can be called
+	 		* from pbs_send_job who is moving a job from a routing
+	 		* queue which doesn't have euser set
+	 		*/
+			if (is_jattr_set(jobp, JOB_ATR_euser) && get_jattr_str(jobp, JOB_ATR_euser)) {
+				ret = user_read_password(get_jattr_str(jobp, JOB_ATR_euser), data, dsize);
+
+				/* we have credential but type is NONE, force DES */
+				if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
+					jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
+			} else
+				ret = read_cred(jobp, data, dsize);
 #else
-	ret = read_cred(jobp, data, dsize);
+			ret = read_cred(jobp, data, dsize);
 #endif
+	}
 	return ret;
 }
 
@@ -240,6 +248,28 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 		return;
 	}
 
+	if (request->rq_extend != NULL) {
+		if (strstr(request->rq_extend, ATTR_security_context) == request->rq_extend) {
+			/*
+			 * Skip the ATTR_security_context + "=" prefix.
+			 * Note that using sizeof() rather than strlen()
+			 * skips the '=' as well.
+			 */
+			cp->cn_security_context = strdup(request->rq_extend + sizeof(ATTR_security_context));
+			if (cp->cn_security_context == NULL) {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR,
+					request->rq_ind.rq_cpyfile.rq_jobid,
+					"could not save security context");
+				req_reject(PBSE_SYSTEM, errno, request);
+				return;
+			} else {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO,
+					"saved security context",
+					request->rq_extend);
+			}
+		}
+	}
+
 	(void) strcpy(cp->cn_username, request->rq_user);
 	(void) strcpy(cp->cn_hostname, request->rq_host);
 	cp->cn_timestamp = time_now;
@@ -259,6 +289,7 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 	if (strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) == 0) {
 		transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
 	}
+
 	reply_ack(request);
 }
 

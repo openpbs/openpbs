@@ -45,6 +45,16 @@ export PBS_TMPDIR
 
 version_mismatch=3
 
+has_runuser() {
+	PATH=$PATH:/sbin:/usr/sbin	# be sure it will be found if present
+	if type runuser > /dev/null 2>&1
+	then
+		return 0
+	else
+		return 1
+	fi
+}
+
 get_db_user() {
 	dbusr_file="${PBS_HOME}/server_priv/db_user"
 	if [ ! -f "${dbusr_file}" ]; then
@@ -77,6 +87,13 @@ get_port() {
 		PBS_DATA_SERVICE_PORT="15007"
 	fi
 }
+
+if has_runuser
+then
+	sucmd="runuser"
+else
+	sucmd="su"
+fi
 
 #Set PBS_DATA_SERVICE_PORT
 export PBS_DATA_SERVICE_PORT
@@ -127,7 +144,7 @@ if [ "${myid}" != "0" ]; then
 fi
 
 # Check if DBUSER is enabled, try to cd to user home
-su - ${DBUSER} -s /bin/sh -c "cd" >/dev/null 2>&1
+${sucmd} - ${DBUSER} -s /bin/sh -c "cd" >/dev/null 2>&1
 if [ $? -ne 0 ]; then
 	echo "Unable to login as user ${DBUSER}. Is the user enabled/home directory accessible?"
 	exit 1

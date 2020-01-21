@@ -45,6 +45,7 @@ pbs_mom_CPPFLAGS = \
 	-DPBS_MOM \
 	-I$(top_srcdir)/src/include \
 	-I$(top_srcdir)/src/resmom/linux \
+	-I$(top_srcdir)/src/lib/Libsec \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
 	@pmix_inc@ \
@@ -52,15 +53,17 @@ pbs_mom_CPPFLAGS = \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
 
+pbs_mom_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
+
 pbs_mom_LDADD = \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	@hwloc_lib@ \
 	@pmix_lib@ \
 	@PYTHON_LDFLAGS@ \

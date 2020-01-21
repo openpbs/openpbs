@@ -1833,7 +1833,7 @@ read_job_script(char *script)
 	int errflg; /* error code from get_script() */
 	struct stat statbuf;
 	char *bnp;
-	char basename[PBS_MAXJOBNAME + 1]; /* base name of script for job name*/
+	char basename[MAXPATHLEN + 1]; /* base name of script for job name*/
 	FILE *f; /* FILE pointer to the script */
 
 	/* if script is empty, get standard input */

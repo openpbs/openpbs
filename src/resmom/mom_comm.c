@@ -3208,7 +3208,7 @@ im_request(int stream, int version)
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			switch ((hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
+			switch ((hook_rc = mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
 					PBS_MOM_SERVICE_NAME, mom_host,
 					&hook_input, &hook_output,
 					hook_msg, sizeof(hook_msg), 1))) {
@@ -3362,25 +3362,25 @@ im_request(int stream, int version)
 				}
 
 #else	/* Unix/Linux */
-
+/*
 				mode_t myumask = 0;
-				char   maskbuf[22];
+				char maskbuf[22];
 				mode_t j;
-				int    e;
+				int e;
 
 				if (is_jattr_set(pjob, JOB_ATR_umask)) {
 					sprintf(maskbuf, "%ld", get_jattr_long(pjob, JOB_ATR_umask));
 					sscanf(maskbuf, "%o", &j);
 					myumask = umask(j);
-				} else {
+				} else
 					myumask = umask(077);
-				}
 
 				e = mkjobdir(pjob->ji_qs.ji_jobid,
-					jobdirname(pjob->ji_qs.ji_jobid,
-					pjob->ji_grpcache->gc_homedir),
+					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
 					pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-					pjob->ji_qs.ji_un.ji_momt.ji_exgid);
+					pjob->ji_qs.ji_un.ji_momt.ji_exgid,
+					pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str);
+
 				if (myumask != 0)
 					(void)umask(myumask);
 
@@ -3392,6 +3392,7 @@ im_request(int stream, int version)
 					SEND_ERR(PBSE_SYSTEM)
 					goto done;
 				}
+*/
 #endif
 			}
 
@@ -3830,7 +3831,7 @@ join_err:
 				break;
 			}
 
-			if( version == IM_OLD_PROTOCOL_VER) {
+			if (version == IM_OLD_PROTOCOL_VER) {
 				/*
 				 * The arg list is ended by an empty (zero length)
 				 * string.

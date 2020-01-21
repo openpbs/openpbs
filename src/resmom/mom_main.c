@@ -136,6 +136,7 @@
 #define		PRIO_MIN	-20
 #endif
 #include	"pbs_undolr.h"
+#include	"pbs_seccon.h"
 
 /* Reducing tpp_request process for a minimum of 3 times to interleave other connections */
 #define MAX_TPP_LOOPS 3
@@ -180,6 +181,8 @@ HANDLE                  g_hthreadMain = 0;
 SERVICE_STATUS_HANDLE   g_ssHandle = 0;
 DWORD                   g_dwCurrentState = SERVICE_START_PENDING;
 HANDLE	hStop = NULL;
+#else
+void *mom_security_context;
 #endif	/* WIN32 */
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
 
@@ -284,7 +287,7 @@ int		reject_root_scripts = FALSE;
 int		report_hook_checksums = TRUE;
 int		restart_transmogrify = FALSE;
 int		attach_allow = TRUE;
-extern double		wallfactor;
+extern double	wallfactor;
 int		suspend_signal;
 int		resume_signal;
 int		cycle_harvester = 0;   /* MOM configured for cycle harvesting */
@@ -2796,11 +2799,12 @@ set_jobdir_root(char *value)
 	directive = strtok_r(NULL, " ", &savep);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, __func__, value);
+
 	cleaned_value = remove_quotes(value); /* remove quotes if any present */
 	if (cleaned_value == NULL)
 		return HANDLER_FAIL;
 
-	if (strlen(cleaned_value) > sizeof(pbs_jobdir_root)-1) {
+	if (strlen(cleaned_value) > sizeof(pbs_jobdir_root) - 1) {
 		free(cleaned_value);
 		return HANDLER_FAIL;
 	}
@@ -7241,6 +7245,9 @@ main(int argc, char *argv[])
 
 
 #ifndef	WIN32 /* ---- UNIX ------------------------------------------*/
+	if (sec_get_con(&mom_security_context))
+		exit(1);
+
 	mygid = getgid();
 	(void)setgroups(1, &mygid);	/* secure suppl. groups */
 
@@ -8835,7 +8842,6 @@ main(int argc, char *argv[])
 	}
 
 	cleanup();
-
 #ifdef PMIX
 	PMIx_server_finalize();
 #endif

@@ -53,8 +53,9 @@ common_libs = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
@@ -127,10 +128,12 @@ sbin_PROGRAMS = pbs_sched pbsfs
 
 pbs_sched_CPPFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
+pbs_sched_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_sched_SOURCES = pbs_sched.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
+pbsfs_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbsfs_SOURCES = pbsfs.cpp
 
 dist_sysconf_DATA = \

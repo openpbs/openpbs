@@ -833,7 +833,7 @@ class PBSTestSuite(unittest.TestCase):
             else:
                 cls.schedulers[sched.server.name] = sched.server.schedulers
         # creating a short hand for current host server.schedulers
-        cls.scheds = cls.server.schedulers
+        cls.scheds = sched.server.schedulers
         cls.scheduler = cls.scheds['default']
 
     @classmethod
@@ -1100,7 +1100,7 @@ class PBSTestSuite(unittest.TestCase):
             if restart_comm:
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
                 comm.pbs_conf = new_pbsconf
-                comm.pi.initd(comm.hostname, "restart", daemon="comm")
+                comm.pi.service(comm.hostname, "restart", daemon="comm")
                 if not comm.isUp():
                     self.fail("comm is not up")
 
@@ -1183,7 +1183,7 @@ class PBSTestSuite(unittest.TestCase):
                 self.du.set_pbs_config(mom.hostname, confs=new_pbsconf,
                                        append=False)
                 mom.pbs_conf = new_pbsconf
-                mom.pi.initd(mom.hostname, "restart", daemon="mom")
+                mom.pi.service(mom.hostname, "restart", daemon="mom")
                 if not mom.isUp():
                     self.fail("Mom is not up")
 
@@ -1321,8 +1321,8 @@ class PBSTestSuite(unittest.TestCase):
                 else:
                     for initcmd in cmds_to_exec:
                         # start/stop the particular daemon
-                        server.pi.initd(server.hostname, initcmd[1],
-                                        daemon=initcmd[0])
+                        server.pi.service(server.hostname, initcmd[1],
+                                          daemon=initcmd[0])
                         if initcmd[1] == "start":
                             if initcmd[0] == "server":
                                 self._check_daemons_on_server(server, "server")

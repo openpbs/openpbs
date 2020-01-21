@@ -83,6 +83,7 @@
 #include "placementsets.h"
 #include "pbs_internal.h"
 #include "portability.h"
+#include "pbs_seccon.h"
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
@@ -154,6 +155,7 @@ char *pwd_buf = NULL;
 
 #ifndef WIN32
 static void post_cpyfile(job *pjob, int ev);
+extern void *sec_user_session;
 #else
 extern	char	*save_actual_homedir(struct passwd *, job *);
 extern	char	*set_homedir_to_local_default(job *, char *);
@@ -323,6 +325,8 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	int fds[2];
 	struct rq_cpyfile *rqcpf;
 	static char buf[MAXPATHLEN + 1];
+	void *usercred = NULL;
+	char *homedir;
 
 	pid = fork_me(preq->rq_conn);
 	if (pid > 0) {
@@ -346,10 +350,13 @@ fork_to_user(struct batch_request *preq, job *pjob)
 		/* used the good stuff cached in the job structure */
 		useruid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
 		usergid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
-		(void) chdir(pjob->ji_grpcache->gc_homedir);
+		homedir = pjob->ji_grpcache->gc_homedir;
+
+		usercred = pjob->ji_wattr[(int)JOB_ATR_security_context].at_val.at_str;
 		user_rgid = pjob->ji_grpcache->gc_rgid;
 		/* Account ID used to be set her for Cray via acctid(). */
 	} else {
+		usercred = preq->rq_ind.rq_cpyfile_cred.rq_pcred;
 		/* Need to look up the uid, gid, and home directory */
 		if ((pwdp = getpwnam(rqcpf->rq_user)) == NULL)
 			frk_err(PBSE_BADUSER, preq); /* no return */
@@ -363,7 +370,7 @@ fork_to_user(struct batch_request *preq, job *pjob)
 				frk_err(PBSE_BADUSER, preq); /* no return */
 			usergid = grpp->gr_gid;
 		}
-		(void) chdir(pwdp->pw_dir); /* change to user`s home directory */
+		homedir = pwdp->pw_dir; /* change to user`s home directory */
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -384,15 +391,16 @@ fork_to_user(struct batch_request *preq, job *pjob)
 		cred_len = preq->rq_ind.rq_cpyfile_cred.rq_credlen;
 
 		switch (preq->rq_ind.rq_cpyfile_cred.rq_credtype) {
+			case PBS_CREDTYPE_SECCON:
 			case PBS_CREDTYPE_NONE:
-				if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid) == -1) {
+				if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid, usercred) == -1) {
 					log_err(errno, __func__, "set privilege as user");
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
 				break;
 
 			case PBS_CREDTYPE_AES:
-				if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid) == -1) {
+				if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid, usercred) == -1) {
 					log_err(errno, __func__, "set privilege as user");
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
@@ -417,13 +425,14 @@ fork_to_user(struct batch_request *preq, job *pjob)
 				break;
 		}
 	} else { /* no cred */
-		if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid) == -1) {
+		if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid, usercred) == -1) {
 			log_err(errno, __func__, "set privilege as user");
 			frk_err(PBSE_SYSTEM, preq); /* no return */
 		}
 	}
 
-	return pid;
+	chdir(homedir);
+	return (pid);
 }
 #endif	/* WIN32 */
 
@@ -2617,25 +2626,24 @@ get_copyinfo_from_list(char *jobid)
 void
 req_cpyfile(struct batch_request *preq)
 {
-	int					dir = -1;
-	job					*pjob = NULL;
-	int					rc = -1;
-	struct rq_cpyfile	*rqcpf = NULL;
-	struct passwd		*pw = NULL;
-	char				actual_homedir[MAXPATHLEN+1] = {'\0'};
-	cpy_files			stage_inout = {0};
-	char				cmdline[PBS_CMDLINE_LENGTH+1] = {'\0'};
-	char				buf[CPY_PIPE_BUFSIZE+1] = {'\0'};
-	struct work_task	*ptask = NULL;
-	copy_info			*cpyinfo = NULL;
-	struct proc_ctrl	proc_info;
-	extern char			*path_log;
-	extern char			*log_file;
+	int dir = -1;
+	job *pjob = NULL;
+	int rc = -1;
+	struct rq_cpyfile *rqcpf = NULL;
+	struct passwd *pw = NULL;
+	char actual_homedir[MAXPATHLEN + 1] = {'\0'};
+	cpy_files stage_inout = {0};
+	char cmdline[PBS_CMDLINE_LENGTH + 1] = {'\0'};
+	char buf[CPY_PIPE_BUFSIZE + 1] = {'\0'};
+	struct work_task *ptask = NULL;
+	copy_info *cpyinfo = NULL;
+	struct proc_ctrl proc_info;
+	extern char *path_log;
+	extern char *log_file;
 	extern pbs_list_head task_list_event;
-	int					is_network_drive = 0;
-	char				current_dir[MAX_PATH + 1] = {'\0'};
-	int 				direct_write = 0;
-
+	int is_network_drive = 0;
+	char current_dir[MAX_PATH + 1] = {'\0'};
+	int direct_write = 0;
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred)
 		rqcpf = &preq->rq_ind.rq_cpyfile_cred.rq_copyfile;
@@ -2665,9 +2673,8 @@ req_cpyfile(struct batch_request *preq)
 
 	dir  = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
 	stage_inout.sandbox_private = (rqcpf->rq_dir & STAGE_JOBDIR)? TRUE : FALSE;
-	if (pjob != NULL && (dir == STAGE_DIR_OUT)) {
+	if (pjob != NULL && (dir == STAGE_DIR_OUT))
 		direct_write = direct_write_requested(pjob);
-	}
 
 	/*
 	 * In Windows, we need to be the user in order to call
@@ -2684,7 +2691,7 @@ req_cpyfile(struct batch_request *preq)
 		 * no homedir can be cached in job's gc_homedir/altid
 		 * attribute, so we call map_unc_path to get it now
 		 */
-		if ((pw=getpwnam(preq->rq_ind.rq_cpyfile.rq_user)) != NULL) {
+		if ((pw = getpwnam(preq->rq_ind.rq_cpyfile.rq_user)) != NULL) {
 			pbs_strncpy(actual_homedir,
 				map_unc_path(pw->pw_dir, pw), sizeof(actual_homedir));
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, actual_homedir);
@@ -3048,9 +3055,10 @@ req_cpyfile(struct batch_request *preq)
 	bool			copy_failed = FALSE;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	struct krb_holder	*ticket = NULL;
-	char 			*krbccname = NULL;
+	struct krb_holder *ticket = NULL;
+	char *krbccname = NULL;
 #endif
+	void *usercred = NULL;
 
 	if (mock_run) {
 		/*
@@ -3064,9 +3072,10 @@ req_cpyfile(struct batch_request *preq)
 
 	DBPRT(("%s: entered\n", __func__))
 
-	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred)
+	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
 		rqcpf = &preq->rq_ind.rq_cpyfile_cred.rq_copyfile;
-	else
+		usercred = preq->rq_ind.rq_cpyfile_cred.rq_pcred;
+	} else
 		rqcpf = &preq->rq_ind.rq_cpyfile;
 
 	stage_inout.stageout_failed = FALSE;
@@ -3092,48 +3101,21 @@ req_cpyfile(struct batch_request *preq)
 		/* do not record to disk, so Obit is resent on recovery */
 		if (check_job_substate(pjob, JOB_SUBSTATE_OBIT))
 			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
+		usercred = pjob->ji_wattr[JOB_ATR_security_context].at_val.at_str;
 	}
 
-	dir  = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
+	dir = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
 	stage_inout.sandbox_private = (rqcpf->rq_dir & STAGE_JOBDIR)? TRUE : FALSE;
 
 	/* Call getpwnam for user info */
 	pwdp = getpwnam(rqcpf->rq_user);
-	if (pwdp != NULL) {
+	if (pwdp != NULL)
 		pbs_jobdir = jobdirname(rqcpf->rq_jobid, pwdp->pw_dir);
-	} else {
+	else {
 		sprintf(log_buffer, "unable to find a password entry");
 		log_joberr(errno, __func__, log_buffer, rqcpf->rq_jobid);
 		req_reject(PBSE_BADUSER, 0, preq);
 		return;
-	}
-
-	if ((dir == STAGE_DIR_IN) && stage_inout.sandbox_private) {
-		/* Need to look up the uid, gid */
-		if (pwdp == NULL) {
-			req_reject(PBSE_BADUSER, 0, preq);
-			return;
-		}
-		useruid = pwdp->pw_uid;
-
-		if (rqcpf->rq_group[0] == '\0') {
-			usergid = pwdp->pw_gid;	/* default to login group */
-		} else {
-			if ((grpp = getgrnam(rqcpf->rq_group)) == NULL) {
-				req_reject(PBSE_BADUSER, 0, preq);
-				return;
-			}
-			usergid = grpp->gr_gid;
-		}
-		/* Create PBS_JOBDIR  and no change of environment */
-		rc = mkjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
-
-		if (rc != 0) {
-			sprintf(log_buffer, "unable to create the job directory %s", pbs_jobdir);
-			log_err(errno, __func__, log_buffer);
-			req_reject(PBSE_MOMREJECT, 0, preq);
-			return;
-		}
 	}
 
 	if ((pjob != NULL) && (dir == STAGE_DIR_OUT) && direct_write_requested(pjob))
@@ -3187,11 +3169,6 @@ req_cpyfile(struct batch_request *preq)
 		return;
 	}
 
-	/* chdir to job pbs_jobdir directory if "sandbox=PRIVATE" mode is requested */
-	if (stage_inout.sandbox_private) {
-		chdir(pbs_jobdir);
-	}
-
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	krbccname = get_ticket_ccname(ticket);
 	if (krbccname != NULL)
@@ -3204,8 +3181,46 @@ req_cpyfile(struct batch_request *preq)
 	 * Build up cp/rcp command(s), one per file pair
 	 */
 
+	if ((dir == STAGE_DIR_IN) && stage_inout.sandbox_private) {
+		/* Need to look up the uid, gid */
+		if (pwdp == NULL) {
+			req_reject(PBSE_BADUSER, 0, preq);
+			if (sec_user_session)
+				sec_close_session(sec_user_session);
+			return;
+		}
+		useruid = pwdp->pw_uid;
+
+		if (rqcpf->rq_group[0] == '\0')
+			usergid = pwdp->pw_gid;	/* default to login group */
+		else {
+			if ((grpp = getgrnam(rqcpf->rq_group)) == NULL) {
+				req_reject(PBSE_BADUSER, 0, preq);
+				if (sec_user_session)
+					sec_close_session(sec_user_session);
+				return;
+			}
+			usergid = grpp->gr_gid;
+		}
+		/* Create PBS_JOBDIR and no change of environment */
+		rc = mkjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, usercred);
+
+		if (rc != 0) {
+			sprintf(log_buffer, "unable to create the job directory %s", pbs_jobdir);
+			log_err(errno, __func__, log_buffer);
+			req_reject(PBSE_MOMREJECT, 0, preq);
+			if (sec_user_session)
+				sec_close_session(sec_user_session);
+			return;
+		}
+	}
+
+	/* chdir to job pbs_jobdir directory if "sandbox=PRIVATE" mode is requested */
+	if (stage_inout.sandbox_private)
+		chdir(pbs_jobdir);
+
 	copy_start = time(0);
-	for (pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
+	for (pair = (struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
 		pair != 0;
 		pair = (struct rqfpair *)GET_NEXT(pair->fp_link), tot_copies++) {
 		if (copy_failed)
@@ -3245,16 +3260,15 @@ req_cpyfile(struct batch_request *preq)
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
 		chdir(pwdp->pw_dir);
-		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
+		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, usercred, useruid, usergid, 0);
 	}
 
 	pbs_strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid));
 	if (preq->prot == PROT_TCP) {
-		if (stage_inout.bad_files) {
+		if (stage_inout.bad_files)
 			reply_text(preq, PBSE_NOCOPYFILE, stage_inout.bad_list);
-		} else {
+		else
 			reply_ack(preq);
-		}
 	} else {
 		if (stage_inout.bad_files) {
 			char *token = NULL;
@@ -3300,14 +3314,13 @@ req_cpyfile(struct batch_request *preq)
         free_ticket(ticket, CRED_DESTROY);
 #endif
 
-	if (preq->prot == PROT_TPP && stage_inout.bad_files)
-		exit(STAGEOUT_FAILURE);
+	if ((preq->prot == PROT_TPP && stage_inout.bad_files) || (stage_inout.sandbox_private && stage_inout.stageout_failed))
+		rc = STAGEOUT_FAILURE;
 
-	if (stage_inout.sandbox_private && stage_inout.stageout_failed) {
-		exit(STAGEOUT_FAILURE);
-	}
+	if (sec_user_session)
+		sec_close_session(sec_user_session);
 
-	exit(0);	/* remember, we are the child, exit not return */
+	exit(rc);	/* remember, we are the child, exit not return */
 }
 
 /**

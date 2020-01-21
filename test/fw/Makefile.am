@@ -71,6 +71,14 @@ sysprofiledir = /etc/profile.d
 dist_sysprofile_DATA = \
 	ptl.csh \
 	ptl.sh
+
+unitfiledir = /usr/lib/systemd/system
+
+dist_unitfile_DATA = \
+	pbs_server.service \
+	pbs_mom.service \
+	pbs_comm.service \
+	pbs_sched.service
 endif
 
 ptlmoduledir = $(exec_prefix)/unsupported/fw/ptl

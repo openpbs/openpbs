@@ -155,6 +155,15 @@ struct grpcache {
 };
 
 /*
+ *
+struct job_dir_fds {
+	int ji_tmpdirfd;*/	/* descriptor for job temp directory */
+	/*int ji_jobdirfd;*/	/* descriptor for job directory */
+	/*int ji_homedirfd;*/	/* descriptor for home directory */
+	/*char *socketname;
+};
+ */
+/*
  * Job attributes/resources are maintained in one of two ways.
  * Most of the attributes are maintained in a decoded or parsed form.
  * This allows quick access to the attribute and resource values

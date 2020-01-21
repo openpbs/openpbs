@@ -63,7 +63,7 @@ from nose.suite import ContextSuite
 from nose.util import isclass
 
 import ptl
-from ptl.lib.pbs_testlib import PBSInitServices
+from ptl.lib.pbs_testlib import PBSServices
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_dshutils import TimeOut
@@ -1051,14 +1051,14 @@ class PTLTestRunner(Plugin):
             # abort with an error mentioning that there are no data/.gcda
             # files.
             self.lcov_utils.initialize_coverage(name='PTLTestCov')
-            PBSInitServices().restart()
+            PBSServices().restart()
         self._cleanup()
 
     def finalize(self, result):
         if self.lcov_data is not None:
             # See note above that briefly explains the 'dance' needed to get
             # reliable coverage data
-            PBSInitServices().restart()
+            PBSServices().restart()
             self.lcov_utils.capture_coverage(name='PTLTestCov')
             exclude = ['"*work/gSOAP/*"', '"*/pbs/doc/*"', 'lex.yy.c',
                        'pbs_ifl_wrap.c', 'usr/include/*', 'unsupported/*']

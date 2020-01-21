@@ -232,10 +232,8 @@ int   pe_io_type;
 		return (pelog_err(pjob, pelog, -1, "Permission Error"));
 
 	fd_input = pe_input(pjob->ji_qs.ji_jobid);
-	if (fd_input < 0) {
-		return (pelog_err(pjob, pelog, -2,
-			"no pro/epilogue input file"));
-	}
+	if (fd_input < 0)
+		return (pelog_err(pjob, pelog, -2, "no pro/epilogue input file"));
 
 	run_exit = 0;
 	child = fork();
@@ -295,8 +293,8 @@ int   pe_io_type;
 		 ** As these fd variabes (fds1(2)) are used in the child
 		 ** process, define here only.
 		 */
-		int	fds1 = -1;
-		int	fds2 = -1;
+		int fds1 = -1;
+		int fds2 = -1;
 
 		if (fd_input != 0) {
 			(void)close(STDIN_FILENO);

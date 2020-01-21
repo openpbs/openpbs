@@ -37,35 +37,28 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_TICKET_H
-#define	_TICKET_H
+#ifndef	_PBS_MAC_H
+#define	_PBS_MAC_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
+int sec_get_con(void *con);
+int sec_set_fdcon(int fd);
+int sec_set_exec_con(void *context);
+int sec_set_filecon(char *path, void *context);
+int sec_reset_fscon();
+int sec_get_net_conn(void *con);
+int sec_set_net_conn(void *con);
+int sec_should_impersonate();
 
-/*
- * ticket.h - header file for dealing with security systems such as kerberos.
- */
-
-#include <sys/types.h>
-
-#define	PBS_CREDVER		1
-#define	PBS_CREDTYPE_NONE	0
-#define	PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
-#define PBS_CREDTYPE_AES	3
-#define PBS_CREDTYPE_SECCON	4
-
-#define	PBS_GC_BATREQ		100
-#define	PBS_GC_CPYFILE		101
-#define	PBS_GC_EXEC		102
-
-#define PBS_CREDNAME_AES	"aes"
-
-extern int encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data);
-extern int decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_decoded_len);
+void sec_set_context(void **, char *);
+void sec_free_con(void *con);
+void *sec_open_session(char *);
+void sec_close_session(void *);
+void sec_revert_con(void *ctx);
 
 #ifdef	__cplusplus
 }
 #endif
-#endif	/* _TICKET_H */
+#endif	/* _PBS_MAC_H */

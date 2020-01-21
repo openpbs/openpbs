@@ -956,7 +956,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         Test capturing a snapshot of a system that's only running pbs_mom
         """
         # Kill all daemons and start only pbs_mom
-        self.server.pi.initd(op="stop", daemon="all")
+        self.server.pi.service(op="stop", daemon="all")
         self.mom.pi.start_mom()
         self.assertTrue(self.mom.isUp())
         self.assertFalse(self.server.isUp())
@@ -965,7 +965,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         self.take_snapshot(obfuscate=True, with_sudo=True, acct_logs=10)
 
         # Bring the rest of daemons up otherwise tearDown will error out
-        self.server.pi.initd(op="start", daemon="all")
+        self.server.pi.service(op="start", daemon="all")
 
     def tearDown(self):
         # Delete the snapshot directories and tarballs created

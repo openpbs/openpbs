@@ -43,6 +43,7 @@ lib_LTLIBRARIES = libpbs.la
 
 libpbs_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
+	-I$(top_srcdir)/src/lib/Libsec \
 	@KRB5_CFLAGS@
 
 #
@@ -288,6 +289,7 @@ libpbs_la_SOURCES = \
 	../Libtpp/tpp_platform.c \
 	../Libtpp/tpp_transport.c \
 	../Libtpp/tpp_util.c \
+	../Libsec/pbs_seccon.h \
 	ecl_job_attr_def.c \
 	ecl_svr_attr_def.c \
 	ecl_sched_attr_def.c \

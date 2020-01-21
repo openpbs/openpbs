@@ -189,9 +189,9 @@ class TestVnodePerNumaNode(TestFunctional):
 
     def restartPBS(self):
         try:
-            svcs = PBSInitServices()
+            svcs = PBSServices()
             svcs.restart()
-        except PbsInitServicesError as e:
+        except PBSServicesError as e:
             self.logger.error("PBS restart failed: \n" + e.msg)
             self.assertTrue(e.rv)
 

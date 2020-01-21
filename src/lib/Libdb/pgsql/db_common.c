@@ -415,6 +415,7 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 	char *pg_bin = NULL;
 	char *pg_libstr = NULL;
 	char *errmsg = NULL;
+	char su_cmd[10] = {0};
 
 	if (pg_ctl[0] == '\0') {
 		pg_libstr = getenv("PGSQL_LIBSTR");
@@ -515,9 +516,15 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 	sprintf(errfile, "%s/spool/db_errfile_%s_%d", pbs_conf.pbs_home_path, cmd, getpid());
 	sprintf(log_file, "%s/spool/db_start.log", pbs_conf.pbs_home_path);
 
+	if (system("type runuser > /dev/null 2>&1"))
+		strcpy(su_cmd, "su");
+	else
+		strcpy(su_cmd, "runuser");
+
 	if (!(strcmp(cmd, PBS_DB_CONTROL_START))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -W start -l %s > %s 2>&1'\"",
+			"%s - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -W start -l %s > %s 2>&1'\"",
+			su_cmd,
 			pg_user,
 			pg_ctl,
 			pbs_ds_port,
@@ -525,14 +532,16 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 			errfile);
 	} else if (!(strcmp(cmd, PBS_DB_CONTROL_STATUS))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -w status > %s 2>&1'\"",
+			"%s - %s -s /bin/sh -c \"/bin/sh -c '%s -o \\\"-p %d \\\" -w status > %s 2>&1'\"",
+			su_cmd,
 			pg_user,
 			pg_ctl,
 			pbs_ds_port,
 			errfile);
 	} else if (!(strcmp(cmd, PBS_DB_CONTROL_STOP))) {
 		sprintf(dbcmd,
-			"su - %s -s /bin/sh -c \"/bin/sh -c '%s -w stop -m fast > %s 2>&1'\"",
+			"%s - %s -s /bin/sh -c \"/bin/sh -c '%s -w stop -m fast > %s 2>&1'\"",
+			su_cmd,
 			pg_user,
 			pg_ctl,
 			errfile);

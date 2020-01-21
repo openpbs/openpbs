@@ -916,6 +916,7 @@ class DshUtils(object):
 
         rshcmd = []
         sudocmd = []
+        runcon = []
         platform = self.get_platform()
         _runas_user = None
 

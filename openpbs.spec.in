@@ -592,6 +592,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %{_sysconfdir}/profile.d/ptl.csh
 %{_sysconfdir}/profile.d/ptl.sh
 %config(noreplace) %{_sysconfdir}/profile.d/ptl.*
+%_prefix/lib/systemd/system/pbs_*.service
 
 %post %{pbs_ptl}
 installed_pkg="$(pip3 list)"

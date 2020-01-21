@@ -195,6 +195,7 @@ extern "C" {
 #define ATTR_topjob_ineligible "topjob_ineligible"
 #define ATTR_submit_host	"Submit_Host"
 #define ATTR_cred_id		"credential_id"
+#define	ATTR_security_context	"security_context"
 #define ATTR_cred_validity	"credential_validity"
 #define ATTR_history_timestamp	"history_timestamp"
 #define ATTR_create_resv_from_job	"create_resv_from_job"

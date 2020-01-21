@@ -49,10 +49,12 @@ pbs_iff_LDADD = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
+	$(top_builddir)/src/lib/Libsec/.libs/libsec.la \
 	-lpthread \
 	@socket_lib@ \
 	@libz_lib@ \
 	@KRB5_LIBS@
+
+pbs_iff_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 pbs_iff_SOURCES = iff2.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c

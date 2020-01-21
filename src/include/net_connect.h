@@ -40,7 +40,6 @@
 #ifndef	_NET_CONNECT_H
 #define	_NET_CONNECT_H
 
-
 /*
  * Other Include Files Required
  *	<sys/types.h>
@@ -229,5 +228,6 @@ struct connection {
 	char            cn_physhost[PBS_MAXHOSTNAME + 1];
 	pbs_auth_config_t   *cn_auth_config;
 	conn_origin_t	cn_origin; /* used to know the origin of the connection i.e. Scheduler, MOM etc. */
+	void *cn_security_context;
 };
 #endif	/* _NET_CONNECT_H */
