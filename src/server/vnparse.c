@@ -2499,11 +2499,15 @@ typedef struct resc_limit_entry {
  * @retval -1	- left < right
  * @retval 0	- left = right
  * @retval 1	- left > right
+ * @retval -2	- error
  */
 static int
 resc_limit_list_cmp_name(resc_limit_t *left, resc_limit_t *right)
 {
 	resource *pres_l, *pres_r;
+
+	if ((left == NULL) || (right == NULL))
+		return -2;
 
 	if (left->rl_ncpus && !right->rl_ncpus)
 		return 1;
@@ -2560,11 +2564,15 @@ resc_limit_list_cmp_name(resc_limit_t *left, resc_limit_t *right)
  * @retval -1	- left < right
  * @retval 0	- left = right
  * @retval 1	- left > right
+ * @retval -2	- error
  */
 static int
 resc_limit_list_cmp_val(resc_limit_t *left, resc_limit_t *right)
 {
 	resource *pres_l, *pres_r;
+
+	if ((left == NULL) || (right == NULL))
+		return -2;
 
 	if (left->rl_ncpus > right->rl_ncpus)
 		return 1;
@@ -2767,6 +2775,11 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 	resource_def *resc_def = NULL;
 	int cmp_res = -1;
 	int rc;
+
+	if (have == NULL) {
+		log_err(-1, __func__, "have is NULL");
+		return PBSE_INTERNAL;
+	}
 
 	if (kv_keyw == NULL) {
 		log_err(-1, __func__, "kv_keyw is NULL");
@@ -3265,11 +3278,16 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
  * @return int
  *	1 - if not satisfied
  *	0 - otherwise
+ * -1 - error
  */
 static int
 check_other_res(resc_limit_t *need, resc_limit_t *have)
 {
 	resource *pneed, *phave;
+
+	if ((need == NULL) || (have == NULL))
+		return -1;
+
 	if (!GET_NEXT(need->rl_oth_res))
 		return 0;
 
@@ -3319,8 +3337,8 @@ check_other_res(resc_limit_t *need, resc_limit_t *have)
 static void
 coagulate_append_sched_sel(char *new_schedselect, char *chunkstr, char *tmp_chunk_spec, int *tmp_chunk_ct)
 {
-	if (chunkstr == NULL) {
-		log_err(-1, __func__, "chunkstr is NULL");
+	if ((new_schedselect == NULL) || (chunkstr == NULL) || (tmp_chunk_spec == NULL) || (tmp_chunk_ct == NULL)) {
+		log_err(-1, __func__, "a parameter is NULL");
 		return;
 	}
 
