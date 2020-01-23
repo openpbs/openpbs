@@ -453,8 +453,6 @@ query_server(status *pol, int pbs_sd)
 	}
 	sinfo->unordered_nodes[i] = NULL;
 
-	adjust_alter_resv_nodes(sinfo->resvs, sinfo->nodes);
-
 	/* Create placement sets  after collecting jobs on nodes because
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
