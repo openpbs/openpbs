@@ -345,9 +345,11 @@ req_relnodesjob(struct batch_request *preq)
 
 	if (preq->rq_extend && *preq->rq_extend) {
 		keep_select = strchr(preq->rq_extend, '=');
-		if (!keep_select || !*(keep_select+1))
+		if (keep_select && *(keep_select+1))
+			keep_select++;
+		else
 			rc = PBSE_INVALSELECTRESC;
-		if (rc || (rc = validate_perm_res_in_select(++keep_select, 1))) {
+		if (rc || (rc = validate_perm_res_in_select(keep_select, 1))) {
 			req_reject(rc, 0, preq);
 			return;
 		}

@@ -85,7 +85,7 @@ class test_config:
 @requirements(num_moms=5)
 class TestPbsNodeRampDownKeepSelect(TestFunctional):
     """
-    This tests the Node Rampdown Feature's extension called keep_select ,
+    This tests the Node Rampdown Feature's extension called keep_select,
     where while a job is running, nodes/resources assigned on non-mother
     superior can be released by specifying a subselect.
 

@@ -5980,8 +5980,10 @@ populate_mom_list(pbs_list_head *to_head, char *exechostx)
 	char *hostn = NULL, *last = NULL, *peh;
 	int  hasprn = 0;
 
-	if ((to_head == NULL) || (exechostx == NULL) || !*exechostx)
+	if (!to_head || !exechostx || !*exechostx) {
+		log_err(-1, __func__, "bad param passed");
 		return;
+	}
 
 	peh = strdup(exechostx);
 	if (peh == NULL) {
@@ -6022,27 +6024,27 @@ get_ms_select_chunk(char *select_str)
 	char *slast, *selbuf, *psubspec, *retval = NULL;
 	int   hpn;
 
-    if (select_str == NULL) {
-    	log_err(-1, __func__, "bad param passed");
-    	return (NULL);
-    }
+	if (select_str == NULL) {
+		log_err(-1, __func__, "bad param passed");
+		return (NULL);
+	}
 
-    selbuf = strdup(select_str);
-    if (selbuf == NULL) {
-    	log_err(errno, __func__, "strdup fail");
-    	return (NULL);
-    }
-    psubspec = parse_plus_spec_r(selbuf, &slast, &hpn);
+	selbuf = strdup(select_str);
+	if (selbuf == NULL) {
+		log_err(errno, __func__, "strdup fail");
+		return (NULL);
+	}
+	psubspec = parse_plus_spec_r(selbuf, &slast, &hpn);
 
-    if (psubspec) {
-    	while(*psubspec && !isalpha(*(psubspec++))) ; /* one line loop */
+	if (psubspec) {
+		while(*psubspec && !isalpha(*(psubspec++))) ; /* one line loop */
 
-    	if (!(retval = strdup(--psubspec)))
-    		log_err(errno, __func__, "strdup fail");
-    }
+		if (!(retval = strdup(--psubspec)))
+			log_err(errno, __func__, "strdup fail");
+	}
 
-    free(selbuf);
-    return retval;
+	free(selbuf);
+	return retval;
 }
 /**
  * @brief
@@ -6219,7 +6221,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		goto recreate_exec_vnode_exit;
 	}
 
-	if ((keep_select == NULL) && new_deallocated_execvnode && (new_deallocated_execvnode[0] != '\0')) {
+	if (!keep_select && new_deallocated_execvnode && *new_deallocated_execvnode) {
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
 			NULL,
@@ -6228,7 +6230,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		pjob->ji_modified = 1;
 	}
 
-	if (new_exec_host && (new_exec_host[0] != '\0')) {
+	if (new_exec_host && *new_exec_host) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
@@ -6256,7 +6258,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_exec_host2 && (new_exec_host2[0] != '\0')) {
+	if (new_exec_host2 && *new_exec_host2) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
@@ -6269,7 +6271,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_select && (new_select[0] != '\0')) {
+	if (new_select && *new_select) {
 		prdefsl = find_resc_def(svr_resc_def, "select",
 							svr_resc_size);
 		/* re-generate "select" resource */

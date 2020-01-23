@@ -184,6 +184,23 @@ pbs_py_spawn(int c, char *jobid, char **argv, char **envp)
 	return rc;
 }
 
+/**
+ * @brief
+ * 	-pbs_relnodesjob - release a set of sister nodes or vnodes,
+ * 	or all sister nodes or vnodes assigned to the specified PBS
+ * 	batch job.
+ *
+ * @param[in] c 	communication handle
+ * @param[in] jobid  job identifier
+ * @param[in] node_list 	list of hosts or vnodes to be released
+ * @param[in] extend 	additional params, currently passes -k arguments
+ *
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	error
+ *
+ */
+
 int
 pbs_relnodesjob(c, jobid, node_list, extend)
 int c;
@@ -205,7 +222,8 @@ char *extend;
 	/* first verify the resource list in keep_select option */
 	if (extend) {
 		struct attrl *attrib = NULL;
-		char ebuff[200], *erp, *emsg = NULL;
+		char emsg_illegal_k_value[] = "illegal -k value";
+		char ebuff[PBS_PARSE_ERR_MSG_LEN_MAX + sizeof(emsg_illegal_k_value) + 4], *erp, *emsg = NULL;
 		int i;
 		struct pbs_client_thread_connect_context *con;
 		char nd_ct_selstr[20];
@@ -218,7 +236,7 @@ char *extend;
 			extend = nd_ct_selstr;
 		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
 			if (i > 1) {
-				snprintf(ebuff, sizeof(ebuff), "illegal -k value: %s\n", pbs_parse_err_msg(i));
+				snprintf(ebuff, sizeof(ebuff), "%s: %s\n", emsg_illegal_k_value, pbs_parse_err_msg(i));
 				emsg = strdup(ebuff);
 			} else
 				emsg = strdup("illegal -k value\n");
@@ -232,12 +250,13 @@ char *extend;
 		}
 		if (pbs_errno) {
 			if ((con = pbs_client_thread_find_connect_context(c))) {
-				if (con->th_ch_errtxt)
-					free(con->th_ch_errtxt);
+				free(con->th_ch_errtxt);
 				con->th_ch_errtxt = emsg;
 				con->th_ch_errno = pbs_errno;
-			} else
+			} else {
 				connection[c].ch_errtxt = emsg;
+				connection[c].ch_errno = pbs_errno;
+			}
 			return pbs_errno;
 		}
 		rc = pbs_verify_attributes(c, PBS_BATCH_RelnodesJob,

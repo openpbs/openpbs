@@ -2482,7 +2482,7 @@ typedef struct resc_limit_entry {
 } rl_entry;
 
 /* Reusing ATR_VFLAG_HOOK to mean that the resource key value pair was found
- * in in execvnode
+ * in execvnode
  */
 #define IN_EXECVNODE_FLAG	ATR_VFLAG_HOOK
 
@@ -2539,8 +2539,8 @@ resc_limit_list_cmp_name(resc_limit_t *left, resc_limit_t *right)
 	if (!left->rl_accel_mem && right->rl_accel_mem)
 		return -1;
 
-	for (pres_l = (resource *)GET_NEXT(left->rl_oth_res),
-		pres_r = (resource *)GET_NEXT(right->rl_oth_res);
+	for (pres_l = (resource *)GET_NEXT(left->rl_other_res),
+		pres_r = (resource *)GET_NEXT(right->rl_other_res);
 		pres_l && pres_r;
 		pres_l = (resource *)GET_NEXT(pres_l->rs_link),
 		pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
@@ -2604,8 +2604,8 @@ resc_limit_list_cmp_val(resc_limit_t *left, resc_limit_t *right)
 	if (left->rl_accel_mem < right->rl_accel_mem)
 		return -1;
 
-	for (pres_l = (resource *)GET_NEXT(left->rl_oth_res),
-		pres_r = (resource *)GET_NEXT(right->rl_oth_res);
+	for (pres_l = (resource *)GET_NEXT(left->rl_other_res),
+		pres_r = (resource *)GET_NEXT(right->rl_other_res);
 		pres_l && pres_r;
 		pres_l = (resource *)GET_NEXT(pres_l->rs_link),
 		pres_r = (resource *)GET_NEXT(pres_r->rs_link)) {
@@ -2658,9 +2658,9 @@ add_to_resc_limit_list_sorted(pbs_list_head *phead, resc_limit_t *resc)
 			/* order according to increasing # of cpus
 			 * if same # of cpus, use increasing amt of mem
 			 */
-			if ((p_res_cur->rl_ncpus > resc->rl_ncpus) ||
-			      ((p_res_cur->rl_ncpus == resc->rl_ncpus) &&
-				  (p_res_cur->rl_mem > resc->rl_mem))) {
+			if ((p_res_cur->rl_ncpus > resc->rl_ncpus)
+				|| ((p_res_cur->rl_ncpus == resc->rl_ncpus)
+					&& (p_res_cur->rl_mem > resc->rl_mem))) {
 				break;
 			}
 #else
@@ -2668,7 +2668,8 @@ add_to_resc_limit_list_sorted(pbs_list_head *phead, resc_limit_t *resc)
 				continue;
 			else if (p_res_cur->rl_res_count > resc->rl_res_count)
 				break;
-			else {
+
+			{
 				int cmp_res_name = resc_limit_list_cmp_name(p_res_cur, resc);
 
 				if (cmp_res_name < 0)
@@ -2798,7 +2799,7 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 		return PBSE_UNKRESC;
 	}
 
-	for (pres = (resource *)GET_NEXT(have->rl_oth_res);
+	for (pres = (resource *)GET_NEXT(have->rl_other_res);
 		pres != NULL;
 		pres = (resource *)GET_NEXT(pres->rs_link)) {
 		if ((cmp_res = strcasecmp(pres->rs_defin->rs_name, kv_keyw)) >= 0)
@@ -2836,7 +2837,7 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 		if (execv_f)
 			pnewres->rs_value.at_flags |= IN_EXECVNODE_FLAG;
 		if (cmp_res < 0)  /* pres will be NULL */
-			append_link(&have->rl_oth_res, &pnewres->rs_link, pnewres);
+			append_link(&have->rl_other_res, &pnewres->rs_link, pnewres);
 		else  /* cmp_res > 0, pres wont be NULL */
 			insert_link(&pres->rs_link, &pnewres->rs_link, pnewres, LINK_INSET_BEFORE);
 	}
@@ -2866,7 +2867,7 @@ resc_limit_init(resc_limit_t *have)
 	have->rl_vmem = 0LL;
 	have->rl_naccels = 0;
 	have->rl_accel_mem = 0LL;
-	CLEAR_HEAD(have->rl_oth_res);
+	CLEAR_HEAD(have->rl_other_res);
 	have->rl_res_count = 0U;
 	have->chunkstr = NULL;
 	have->chunkstr_sz = 0;
@@ -2919,7 +2920,7 @@ resc_limit_free(resc_limit_t *have)
 	if (have == NULL)
 		return;
 
-	resc_limit_free_res_list(&have->rl_oth_res);
+	resc_limit_free_res_list(&have->rl_other_res);
 	have->rl_res_count = 0U;
 	free(have->chunkstr);
 	have->chunkstr = NULL;
@@ -2999,7 +3000,7 @@ resc_limit_list_print(char *header_str, pbs_list_head *res_list, int logtype)
 				have->host_chunk[1].str?have->host_chunk[1].str:"");
 		log_event(logtype, PBS_EVENTCLASS_RESC,
 			LOG_INFO, __func__, log_buffer);
-		for (phave = (resource *)GET_NEXT(have->rl_oth_res);
+		for (phave = (resource *)GET_NEXT(have->rl_other_res);
 			phave;
 			phave = (resource *)GET_NEXT(phave->rs_link)) {
 			snprintf(log_buffer, sizeof(log_buffer), "%s[%d]: other res %s=%s",
@@ -3159,7 +3160,7 @@ map_need_to_have_resources(char *buf, size_t buf_sz, char *have_resc,
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 	} else {
 		resource *pneed;
-		for (pneed = (resource *)GET_NEXT(need->rl_oth_res);
+		for (pneed = (resource *)GET_NEXT(need->rl_other_res);
 			pneed;
 			pneed = (resource *)GET_NEXT(pneed->rs_link)) {
 			if (strcasecmp(have_resc, pneed->rs_defin->rs_name) == 0) {
@@ -3276,9 +3277,9 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
  * @param[in]	have - the have value of resc_limit_t type.
  *
  * @return int
- *	1 - if not satisfied
- *	0 - otherwise
- * -1 - error
+ *	 1 - if not satisfied
+ *	 0 - otherwise
+ *	-1 - error
  */
 static int
 check_other_res(resc_limit_t *need, resc_limit_t *have)
@@ -3288,14 +3289,14 @@ check_other_res(resc_limit_t *need, resc_limit_t *have)
 	if ((need == NULL) || (have == NULL))
 		return -1;
 
-	if (!GET_NEXT(need->rl_oth_res))
+	if (!GET_NEXT(need->rl_other_res))
 		return 0;
 
-	for (pneed = (resource *)GET_NEXT(need->rl_oth_res);
+	for (pneed = (resource *)GET_NEXT(need->rl_other_res);
 		pneed;
 		pneed = (resource *)GET_NEXT(pneed->rs_link)) {
 		int matched = 0;
-		for (phave = (resource *)GET_NEXT(have->rl_oth_res);
+		for (phave = (resource *)GET_NEXT(have->rl_other_res);
 			phave;
 			phave = (resource *)GET_NEXT(phave->rs_link)) {
 			if (pneed->rs_defin == phave->rs_defin) {
@@ -3335,7 +3336,7 @@ check_other_res(resc_limit_t *need, resc_limit_t *have)
  * @return none
  */
 static void
-coagulate_append_sched_sel(char *new_schedselect, char *chunkstr, char *tmp_chunk_spec, int *tmp_chunk_ct)
+append_and_group_sched_sel(char *new_schedselect, char *chunkstr, char *tmp_chunk_spec, int *tmp_chunk_ct)
 {
 	if ((new_schedselect == NULL) || (chunkstr == NULL) || (tmp_chunk_spec == NULL) || (tmp_chunk_ct == NULL)) {
 		log_err(-1, __func__, "a parameter is NULL");
@@ -3433,7 +3434,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 	map_need.rl_naccels = have->rl_naccels;
 	map_need.rl_accel_mem = have->rl_accel_mem;
 
-	for (pres = (resource *)GET_NEXT(have->rl_oth_res);
+	for (pres = (resource *)GET_NEXT(have->rl_other_res);
 		pres;
 		pres = (resource *)GET_NEXT(pres->rs_link)) {
 		presnew = (resource *)calloc(1, sizeof(resource));
@@ -3443,7 +3444,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 		}
 		CLEAR_LINK(presnew->rs_link);
 		presnew->rs_defin = pres->rs_defin;
-		append_link(&map_need.rl_oth_res, &presnew->rs_link, presnew);
+		append_link(&map_need.rl_other_res, &presnew->rs_link, presnew);
 		presnew->rs_defin->rs_set(&presnew->rs_value, &pres->rs_value, SET);
 		presnew->rs_defin->rs_encode(&presnew->rs_value, NULL, presnew->rs_defin->rs_name,
 				NULL, ATR_ENCODE_CLIENT, &presnew->rs_value.at_priv_encoded);
@@ -3464,8 +3465,8 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 	if (need->rl_accel_mem)
 		map_need.rl_accel_mem = need->rl_accel_mem;
 
-	pres = (resource *)GET_NEXT(map_need.rl_oth_res);
-	pneed = (resource *)GET_NEXT(need->rl_oth_res);
+	pres = (resource *)GET_NEXT(map_need.rl_other_res);
+	pneed = (resource *)GET_NEXT(need->rl_other_res);
 	while (pres && pneed) {
 		unsigned int res_type = pneed->rs_defin->rs_type;;
 		while (pres && (pneed->rs_defin != pres->rs_defin))
@@ -4119,7 +4120,8 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 						have->rl_accel_mem += to_kbsize(pkvp[j].kv_val);
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 					} else {
-						if ((rc = resc_limit_insert_other_res(have, pkvp[j].kv_keyw, pkvp[j].kv_val, TRUE))) {
+						rc = resc_limit_insert_other_res(have, pkvp[j].kv_keyw, pkvp[j].kv_val, TRUE);
+						if (rc != 0) {
 							snprintf(log_buffer, sizeof(log_buffer), "failed to insert resource %s", pkvp[j].kv_keyw);
 							log_err(-1, __func__, log_buffer);
 							goto release_nodes_exit;
@@ -4348,7 +4350,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				new_chunkstr = satisfy_chunk_need(&need, have2, &vnl_good);
 				if (new_chunkstr != NULL) {
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
-					coagulate_append_sched_sel(new_schedselect, have2->chunkspec, tmp_chunk_spec, &tmp_chunk_ct);
+					append_and_group_sched_sel(new_schedselect, have2->chunkspec, tmp_chunk_spec, &tmp_chunk_ct);
 #endif
 					if (l > 0) {
 						strcat(new_exec_vnode, "+");
@@ -4399,7 +4401,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 						need.rl_accel_mem);
         			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, r_input->jobid, log_buffer);
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
-				for (pres = (resource *)GET_NEXT(need.rl_oth_res);
+				for (pres = (resource *)GET_NEXT(need.rl_other_res);
 					pres != NULL;
 					pres = (resource *)GET_NEXT(pres->rs_link)) {
     				snprintf(log_buffer, sizeof(log_buffer),
@@ -4430,7 +4432,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 						need.rl_accel_mem);
         			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, r_input->jobid, log_buffer);
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
-				for (pres = (resource *)GET_NEXT(need.rl_oth_res);
+				for (pres = (resource *)GET_NEXT(need.rl_other_res);
 					pres != NULL;
 					pres = (resource *)GET_NEXT(pres->rs_link)) {
 					snprintf(log_buffer, sizeof(log_buffer),
@@ -4465,7 +4467,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	}
 
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
-	coagulate_append_sched_sel(new_schedselect, "", tmp_chunk_spec, &tmp_chunk_ct);
+	append_and_group_sched_sel(new_schedselect, "", tmp_chunk_spec, &tmp_chunk_ct);
 	rc = do_schedselect(new_schedselect, NULL, NULL, NULL, &tmpstr);
 	free(new_schedselect);
 #else

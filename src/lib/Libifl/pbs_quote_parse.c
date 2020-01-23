@@ -173,11 +173,25 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
 
 /**
  * @brief
+ *	-pbs_parse_err_msges - global list of pbs parse error messages
+ *
+ * @note
+ *	make sure the string length of any message does not
+ *	exceed PBS_PARSE_ERR_MSG_LEN_MAX
+ */
+const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1] = {
+	"illegal character",
+	"improper quoting syntax",
+	"no closing quote"
+};
+
+/**
+ * @brief
  *	-pbs_parse_err_msg() - for a positive, non-zero error returned by
  *	pbs_quote_parse(), return a pointer to an error message string
  *	Accepted error number are 2 and greater,  if not in this range,
  *	the string "error" is returned for the message
- * 
+ *
  * @param[in] err -error number
  *
  * @return	string
@@ -185,21 +199,15 @@ pbs_quote_parse(char *in, char **out, char **endptr, int allow_white)
  * @retval	"error"			error
  *
  */
-char *
+const char *
 pbs_parse_err_msg(int err)
 {
-	int          i;
-	static char *parerrmsg[] = {
-		"illegal character",
-		"improper quoting syntax",
-		"no closing quote"
-	};
-
-	i = sizeof(parerrmsg)/sizeof(char *);
+	int i;
+	i = sizeof(pbs_parse_err_msges) / sizeof(pbs_parse_err_msges[0]);
 	if ((err <= 1) || ((err-1) > i))
 		return ("error");
 	else
-		return (parerrmsg[err-2]);
+		return (pbs_parse_err_msges[err-2]);
 }
 
 /**
@@ -223,7 +231,7 @@ void
 pbs_prt_parse_err(char *txt, char *str, int offset, int err)
 {
 	int      i;
-	char	*emsg;
+	const char	*emsg;
 
 	emsg = pbs_parse_err_msg(err);
 	fprintf(stderr, "%s %s:\n%s\n", txt, emsg, str);
