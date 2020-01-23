@@ -4157,6 +4157,7 @@ start_exec(job *pjob)
 		exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 		return;
 	}
+
 	pjob->ji_nodeid = 0;		/* I'm MS */
 	nodenum = pjob->ji_numnodes;
 	if (do_tolerate_node_failures(pjob))

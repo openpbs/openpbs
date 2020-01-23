@@ -89,6 +89,8 @@ pbs_mom_SOURCES = \
 	${PBS_MACH}/mom_start.c \
 	${PBS_MACH}/pe_input.c \
 	catch_child.c \
+	mock_run.c \
+	mock_run.h \
 	mom_comm.c \
 	mom_hook_func.c \
 	mom_inter.c \
