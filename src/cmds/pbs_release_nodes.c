@@ -124,7 +124,7 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 	if (errflg ||
 		((optind == argc) && !(all_opt || keep_opt)) ||
 		((optind != argc) && all_opt) ) {
-		fprintf(stderr, USAGE);
+		fprintf(stderr, "%s", USAGE);
 		exit(2);
 	}
 
