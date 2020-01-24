@@ -234,7 +234,7 @@ char *extend;
 		errno = 0;
 		rc_long = strtol(extend, &endptr, 10);
 
-		if ((errno == 0) && (rc_long > 0)) {
+		if ((errno == 0) && (rc_long > 0) && (*endptr == '\0')) {
 			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", extend);
 			extend = nd_ct_selstr;
 		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
@@ -301,4 +301,3 @@ char *extend;
 
 	return rc;
 }
-
