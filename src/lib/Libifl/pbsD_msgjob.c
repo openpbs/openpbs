@@ -45,6 +45,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include "libpbs.h"
 #include "dis.h"
 #include "pbs_ecl.h"
@@ -227,33 +228,28 @@ char *extend;
 		int i;
 		struct pbs_client_thread_connect_context *con;
 		char nd_ct_selstr[20];
-		char *endptr = NULL, *extend_dup = strdup(extend), *num_only;
+		char *endptr = NULL;
+		long int rc_long;
 
-		if (extend_dup) {
-			num_only = strtok(extend_dup, " \'\"\n\t\v");
-			strtol(num_only, &endptr, 10);
+		errno = 0;
+		rc_long = strtol(extend, &endptr, 10);
 
-			if (num_only && !*endptr) {
-				snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", num_only);
-				extend = nd_ct_selstr;
-			} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
-				if (i > 1) {
-					snprintf(ebuff, sizeof(ebuff), "%s: %s\n", emsg_illegal_k_value, pbs_parse_err_msg(i));
-					emsg = strdup(ebuff);
-				} else
-					emsg = strdup("illegal -k value\n");
-				pbs_errno = PBSE_INVALSELECTRESC;
-			} else {
-				if (!attrib || strcmp(attrib->resource, "select")) {
-					emsg = strdup("only a \"select=\" string is valid in -k option\n");
-					pbs_errno = PBSE_IVALREQ;
-				} else
-					pbs_errno = PBSE_NONE;
-			}
-			free(extend_dup);
+		if ((errno == 0) && (rc_long > 0)) {
+			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", extend);
+			extend = nd_ct_selstr;
+		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
+			if (i > 1) {
+				snprintf(ebuff, sizeof(ebuff), "%s: %s\n", emsg_illegal_k_value, pbs_parse_err_msg(i));
+				emsg = strdup(ebuff);
+			} else
+				emsg = strdup("illegal -k value\n");
+			pbs_errno = PBSE_INVALSELECTRESC;
 		} else {
-			emsg = "strdup failed";
-			pbs_errno = PBSE_SYSTEM;
+			if (!attrib || strcmp(attrib->resource, "select")) {
+				emsg = strdup("only a \"select=\" string is valid in -k option\n");
+				pbs_errno = PBSE_IVALREQ;
+			} else
+				pbs_errno = PBSE_NONE;
 		}
 		if (pbs_errno) {
 			if ((con = pbs_client_thread_find_connect_context(c))) {
