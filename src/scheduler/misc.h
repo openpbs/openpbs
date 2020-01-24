@@ -52,20 +52,6 @@ extern "C" {
 char *string_dup(char *str);
 
 /*
- *	concat_str - contactenate up to three strings together in newly
- *		     allocated memory
- *	  str1 - first string to concat
- *	  str2 - second string to concat
- *	  str3 - third string to concat -- could be NULL
- *	  append - boolean to determine if str1 should be freed
- *
- *
- *	returns newly allocated string with strings concatenated
- */
-char *concat_str(char *str1, char *str2, char *str3, int append);
-
-
-/*
  *      res_to_num - convert a resource string to an integer in the lowest
  *                      form of resource on the machine (btye/word)
  *                      example: 1kb -> 1024 or 1kw -> 1024

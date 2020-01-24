@@ -1734,8 +1734,7 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 		/* We need to correct our calendar */
 		if (resresv->end_event != NULL)
 			set_timed_event_disabled(resresv->end_event, 1);
-	}
-	else if (resresv->is_resv && resresv->resv != NULL) {
+	} else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_DELETED;
 
 		resv_queue = find_queue_info(resresv->server->queues,
@@ -2442,7 +2441,8 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 /**
  * @brief
  * 		create a select from an nspec array to place chunks back on the
- *        same nodes as before
+ *		same nodes as before.  If an nspec does not have a ninfo, it means
+ *		we need to get back the resources, but not on the same node.
  *
  * @param[in]	nspec_array	-	npsec array to convert
  *
@@ -2463,15 +2463,24 @@ create_select_from_nspec(nspec **nspec_array)
 	/* convert form (node:foo=X:bar=Y) into 1:vnode=node:foo=X:bay=Y*/
 	for (i = 0; nspec_array[i] != NULL; i++) {
 		/* Don't add exclhost chunks into our select. They will be added back when
-		 * we call  eval_selspec() with the original place=exclhost.  If we added
+		 * we call eval_selspec() with the original place=exclhost.  If we added
 		 * them, we'd have issues placing chunks w/o resources
 		 */
 		if (nspec_array[i]->resreq != NULL) {
-			snprintf(buf, sizeof(buf), "1:vnode=%s", nspec_array[i]->ninfo->name);
-			if (pbs_strcat(&select_spec, &selsize, buf) == NULL) {
-				if (selsize > 0)
-					free(select_spec);
-				return NULL;
+			if (nspec_array[i]->ninfo != NULL) {
+				snprintf(buf, sizeof(buf), "1:vnode=%s", nspec_array[i]->ninfo->name);
+				if (pbs_strcat(&select_spec, &selsize, buf) == NULL) {
+					if (selsize > 0)
+						free(select_spec);
+					return NULL;
+				}
+			} else {
+				/* We need the resources back, but not necessarily on the same node */
+				if (pbs_strcat(&select_spec, &selsize, "1") == NULL) {
+					if (selsize > 0)
+						free(select_spec);
+					return NULL;
+				}
 			}
 			for (req = nspec_array[i]->resreq; req != NULL; req = req->next) {
 				char resstr[MAX_LOG_SIZE];

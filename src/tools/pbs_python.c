@@ -365,7 +365,7 @@ action_sched_preempt_common(attribute *pattr, void *pobj, int actmode)
 }
 
 int
-set_reserve_retry_init(pattr, pobj, actmode)
+action_reserve_retry_time(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;
 int	   actmode;
@@ -374,12 +374,12 @@ int	   actmode;
 }
 
 int
-set_reserve_retry_cutoff(pattr, pobj, actmode)
+action_reserve_retry_init(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;
-int	   actmode;
+int        actmode;
 {
-	return PBSE_NONE;
+        return PBSE_NONE;
 }
 
 int

@@ -3405,6 +3405,11 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Reservation Nodes are freed and a -possibly- new set assigned */
 	free_resvNodes(presv);
+	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might 
+	 * not exist in the following occurrence.  The new occurrence's ri_vnodes_down
+	 * will be set properly in set_nodes()
+	 */
+	presv->ri_vnodes_down = 0;
 
 	/* Set the new start time, end time, and occurrence index */
 	newstart = next;
@@ -3463,7 +3468,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	}
 
 	/* compute new values for state and substate */
-	eval_resvState(presv, RESVSTATE_gen_task_Time4resv, 0, &state, &sub);
+	eval_resvState(presv, RESVSTATE_gen_task_Time4resv, 1, &state, &sub);
 
 	/*
 	 * Walk the nodes list associated to this reservation to determine if any
@@ -3485,12 +3490,6 @@ Time4occurrenceFinish(resc_resv *presv)
 	 */
 	if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > time_now) {
 		sub = RESV_DEGRADED;
-	}
-	/* otherwise, if it has a valid degraded time past the cutoff time then
-	 * set the retry time to be the half time to the degraded time
-	 */
-	else if (presv->ri_degraded_time > (time_now + reserve_retry_cutoff)) {
-		set_resv_retry(presv, time_now + ((presv->ri_degraded_time - time_now)/2));
 	}
 	/* otherwise, if degraded, default to setting a retry time in a
 	 * "reasonable" time in the future
@@ -3736,15 +3735,20 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 	*psub = presv->ri_qs.ri_substate;
 
 	if (s == RESVSTATE_gen_task_Time4resv) {
+		/* from a successful confirmation */
 		if (relVal == 0) {
-			if (*psub == RESV_DEGRADED && *pstate != RESV_DEGRADED) {
-				*pstate = RESV_DEGRADED;
+			if (*psub == RESV_DEGRADED) {
+				if (*pstate == RESV_RUNNING && presv->ri_qs.ri_stime < time_now)
+					*psub = RESV_RUNNING;
+				else {
+					*pstate = RESV_CONFIRMED;
+					*psub = RESV_CONFIRMED;
+				}
 			} else {
 				if (*pstate == RESV_BEING_ALTERED) {
-					/*
-					* Altering a reservation's start time after the current time
-					* moves the reservation into the confirmed state.
-					*/
+					/* Altering a reservation's start time after the current time
+					 * moves the reservation into the confirmed state.
+					 */
 					if (presv->ri_qs.ri_stime > time_now) {
 						*pstate = RESV_CONFIRMED;
 						*psub = RESV_CONFIRMED;
@@ -3758,6 +3762,14 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 					*psub = RESV_CONFIRMED;
 				}
 			}
+		} else {
+			/* End of standing occurrence */
+			if (*psub == RESV_DEGRADED)
+				*pstate = RESV_DEGRADED;
+			else {
+				*pstate = RESV_CONFIRMED;
+				*psub = RESV_CONFIRMED;
+			}
 		}
 	} else if (s == RESVSTATE_Time4resv) {
 		if (relVal == 0) {
@@ -3770,8 +3782,9 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 				*pstate = RESV_RUNNING;
 				if (presv->ri_qs.ri_tactive <
 					presv->ri_wattr[RESV_ATR_start].at_val.at_long)
-					/*Assigning time_now to indicate when reservation become active
- 					 *to help in fend off accounting on server restart*/
+					/* Assigning time_now to indicate when reservation become active
+ 					 *to help in fend off accounting on server restart
+					 */
 					presv->ri_qs.ri_tactive = time_now;
 			}
 		}

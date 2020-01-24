@@ -134,8 +134,8 @@ enum srv_atr {
 	SRV_ATR_version,
 	SRV_ATR_job_sort_formula,
 	SRV_ATR_EligibleTimeEnable,
+	SRV_ATR_resv_retry_time,
 	SRV_ATR_resv_retry_init,
-	SRV_ATR_resv_retry_cutoff,
 	SRV_ATR_JobHistoryEnable,
 	SRV_ATR_JobHistoryDuration,
 	SRV_ATR_ProvisionEnable,
@@ -216,8 +216,7 @@ extern  int		svr_ping_rate;	/* time between rounds of ping */
 extern  int 		ping_nodes_rate; /* time between ping nodes as determined from server_init_type */
 
 /* degraded reservations globals */
-extern	long	reserve_retry_init;
-extern	long	reserve_retry_cutoff;
+extern	long	resv_retry_time;
 
 
 /*

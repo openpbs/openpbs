@@ -449,13 +449,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				dtstart = resresv->resv->req_start;
 				tz = resresv->resv->timezone;
 
-				/* Do not attempt to re-confirm a degraded reservations with a
-				 * retry time in the past that is currently in state running */
-				if (resresv->resv->resv_state == RESV_RUNNING &&
-					(resresv->resv->resv_substate == RESV_DEGRADED || resresv->resv->resv_substate == RESV_IN_CONFLICT) &&
-					resresv->resv->retry_time <= sinfo->server_time)
-					resresv->resv->retry_time = (sinfo->server_time) + 1;
-
 				/* Add each occurrence to the universe's view by duplicating the
 				 * parent reservation and resetting start and end times and the
 				 * execvnode on which the occurrence is confirmed to run.
@@ -476,9 +469,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					else {
 						resresv_ocr = dup_resource_resv(resresv, sinfo, NULL, err);
 						if (resresv_ocr == NULL) {
-							log_err(errno,
-								"query_reservations",
-								"Error duplicating resource reservation");
+							log_err(errno, __func__, "Error duplicating resource reservation");
 							free_resource_resv_array(resresv_arr);
 							free_execvnode_seq(tofree);
 							free(execvnodes_seq);
@@ -931,7 +922,6 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			 * will be garbage collected after simulation completes.
 			 */
 			nsinfo = dup_server_info(sinfo);
-
 			if (nsinfo == NULL)
 				return -1;
 
@@ -948,6 +938,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				free_server(nsinfo);
 				return -1;
 			}
+
+			adjust_alter_resv_nodes(nresv, nsinfo->nodes);
 
 			/* Attempt to confirm the reservation. For a standing reservation,
 			 * each occurrence is unrolled and attempted to be confirmed within the
@@ -1301,7 +1293,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * See call to same function in query_reservations for a more in-depth
 		 * description.
 		 */
-		next = get_occurrence(rrule, dtstart, tz, j+1);
+		next = get_occurrence(rrule, dtstart, tz, j + 1);
 		/* keep track of each occurrence's start time */
 		occr_start_arr[j] = next;
 
@@ -1359,15 +1351,16 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nsinfo->num_resvs++;
 			}
 			/* Concatenate the execvnode to a Token separator */
-			tmp = (char *) concat_str(execvnodes, TOKEN_SEPARATOR, NULL, 1);
-			if (tmp == NULL) {
+			if (pbs_asprintf(&tmp, "%s%s", execvnodes, TOKEN_SEPARATOR) == -1) {
 				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 					"Error determining if reservation can be confirmed: "
 					"String concatenation failed.");
 				free_resource_resv(nresv);
+				free(tmp);
 				rconf = RESV_CONFIRM_FAIL;
 				break;
 			}
+			free(execvnodes);
 			execvnodes = tmp;
 		}
 
@@ -1381,16 +1374,24 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			 * unavailable. If none, then this reservation or occurrence does not
 			 * require reconfirmation.
 			 */
-			vnodes_down = check_vnodes_down(nresv->ninfo_arr, &tot_vnodes,
-				names_of_down_vnodes);
+			vnodes_down = check_vnodes_down(nresv, &tot_vnodes, names_of_down_vnodes);
 
-			if (vnodes_down == -1 && nresv->resv->resv_substate != RESV_IN_CONFLICT) {
+			if (vnodes_down < 0 && nresv->resv->resv_substate != RESV_IN_CONFLICT) {
+				if (vnodes_down == -1)
+					snprintf(logmsg, sizeof(logmsg), "Reservation has running jobs in it");
 				rconf = RESV_CONFIRM_FAIL;
 				break;
-			}
-			else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT)
+			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
+				if (nresv->resv->resv_state == RESV_RUNNING) {
+					char *sel;
+					free_selspec(nresv->execselect);
+					sel = create_select_from_nspec(nresv->nspec_arr);
+					nresv->execselect = parse_selspec(sel);
+					free(sel);
+					adjust_alter_resv_nodes(nresv, nsinfo->nodes);
+				}
 				release_nodes(nresv);
-			else if (vnodes_down == 0) {
+			} else if (vnodes_down == 0) {
 				/* this occurrence doesn't require reconfirmation so skip it by
 				 * incrementing the number of occurrences confirmed and appending
 				 * this occurrence's execvnodes to the sequence of execvnodes
@@ -1398,49 +1399,50 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				confirmd_occr++;
 				tmp = create_execvnode(nresv->nspec_arr);
 				if (j == 0)
-					execvnodes = (char *) string_dup(tmp);
+					execvnodes = string_dup(tmp);
 				else  { /* subsequent occurrences */
-					vnode_seq_tmp = (char *) concat_str(execvnodes, tmp, NULL, 1);
-					if (vnode_seq_tmp == NULL) {
+					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, tmp) == -1) {
 						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
+						free(vnode_seq_tmp);
 						rconf = RESV_CONFIRM_FAIL;
 						break;
 					}
+					free(execvnodes);
 					execvnodes = vnode_seq_tmp;
 
-					vnode_seq_tmp = (char *) concat_str(execvnodes, TOKEN_SEPARATOR,
-						NULL, 1);
-					if (vnode_seq_tmp == NULL) {
+					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, TOKEN_SEPARATOR) == -1) {
 						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
+						free(vnode_seq_tmp);
 						rconf = RESV_CONFIRM_FAIL;
 						break;
 					}
+					free(execvnodes);
 					execvnodes = vnode_seq_tmp;
-
 				}
 				continue;
 			}
-			if (disable_reservation_occurrence(nsinfo->calendar->events, nresv) != 1) {
-				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
-					"Error determining if reservation can be confirmed: "
-					"Could not mark occurrence disabled.");
-				rconf = RESV_CONFIRM_FAIL;
-				break;
+			if (nresv->resv->resv_state != RESV_RUNNING) {
+				if (disable_reservation_occurrence(nsinfo->calendar->events, nresv) != 1) {
+					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
+						  "Error determining if reservation can be confirmed: "
+						  "Could not mark occurrence disabled.");
+					rconf = RESV_CONFIRM_FAIL;
+					break;
+				}
 			}
 
 			/* unconfirm the reservation to let the process of confirmation go on */
 			nresv->resv->resv_state = RESV_UNCONFIRMED;
 		}
-		if (nresv->resv->req_start ==PBS_RESV_FUTURE_SCH) { /* ASAP Resv */
+		if (nresv->resv->req_start == PBS_RESV_FUTURE_SCH) { /* ASAP Resv */
 			resv_start_time = calc_run_time(nresv->name, nsinfo, NO_FLAGS);
 			/* Update occr_start_arr used to update the real sinfo structure */
 			occr_start_arr[j] = resv_start_time;
-		}
-		else {
+		} else {
 			nresv->resv->req_start = next;
 			nresv->start = nresv->resv->req_start;
 			nresv->end = nresv->start + nresv->resv->req_duration;
@@ -1473,14 +1475,15 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 						resv_start_time = next;
 				}
 				else  { /* subsequent occurrences */
-					vnode_seq_tmp = (char *) concat_str(execvnodes, tmp, NULL, 1);
-					if (!vnode_seq_tmp) {
+					if (pbs_asprintf(&vnode_seq_tmp, "%s%s", execvnodes, tmp) == -1) {
 						log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 							"Error determining if reservation can be confirmed: "
 							"String concatenation failed.");
+						free(vnode_seq_tmp);
 						rconf = RESV_CONFIRM_FAIL;
 						break;
 					}
+					free(execvnodes);
 					execvnodes = vnode_seq_tmp;
 				}
 				confirmd_occr++;
@@ -1564,9 +1567,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		}
 
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
-			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
-				"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
-				vnodes_down, tot_vnodes, names_of_down_vnodes);
+			if (vnodes_down >= 0)
+				log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+					"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
+					vnodes_down, tot_vnodes, names_of_down_vnodes);
 
 			/* we failed to confirm the degraded reservation but we still need to
 			 * set the remaining occurrences start time to avoid looking at them
@@ -1612,44 +1616,52 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 /**
  * @brief
  * 		Checks the state of all vnodes associated to a reservation and counts the
- * 		number that are unavailable.
+ * 		number that are unavailable.  Any down node has their nspec->ninfo pointer cleared.
  *
- * @param[in]	ninfo_arr	-	the nodes to check
+ * @param[in]	resv	-	resv to check
  * @param[out]	tot_vnodes	-	the total number of vnodes associated to the reservation
- * @param[in,out]	names_of_down_vnodes	-	the string of vnodes that are down that are then
+ * @param[out]	names_of_down_vnodes	-	the string of vnodes that are down that are then
  * 												printed into the log. This has to be of maximum length MAXVNODELIST
  *
  * @return	the number of vnodes down. The total number of vnodes is passed back
  * 			by reference.
- * @retval	-1	: on error.
+ * @retval	-1	: there is a running job on one of the unavailable nodes.
+ * @retval	-2	: error
  */
 int
-check_vnodes_down(node_info **ninfo_arr, int *tot_vnodes, char *names_of_down_vnodes)
+check_vnodes_down(resource_resv *resv, int *tot_vnodes, char *names_of_down_vnodes)
 {
 	int nn_length; /* number of characters allowable in log buffer */
 	int vnodes_down; /* number of unavailable vnodes */
 	int j;
 
-	if (tot_vnodes == NULL)
-		return -1;
-
-	if (ninfo_arr == NULL)
-		return -1;
+	if (resv == NULL || tot_vnodes == NULL)
+		return -2;
 
 	*tot_vnodes = 0; /* initialize the total number of vnodes */
 	vnodes_down = 0;
 
-	for (j = 0; ninfo_arr[j] != NULL; j++) {
-		/* Increment total number of vnodes associated to this reservation */
+	for (j = 0; resv->nspec_arr[j] != NULL; j++) {
+		node_info *ninfo = resv->nspec_arr[j]->ninfo;
 		(*tot_vnodes)++;
-		if (ninfo_arr[j]->is_down || ninfo_arr[j]->is_offline
-			|| ninfo_arr[j]->is_stale || ninfo_arr[j]->is_unknown) {
+		if (ninfo->is_down || ninfo->is_offline || ninfo->is_stale || ninfo->is_unknown) {
+			int k, m;
+			/* We can't reconfirm a reservation if there is a running job on one of our unavailable nodes */
+			if (resv->resv->resv_queue->running_jobs != NULL)
+				for (k = 0; resv->resv->resv_queue->running_jobs[k] != NULL; k++) {
+					resource_resv *job = resv->resv->resv_queue->running_jobs[k];
+					for (m = 0; job->ninfo_arr[m] != NULL; m++)
+						if (job->ninfo_arr[m]->rank == ninfo->rank)
+							return -1;
+				}
+
 			vnodes_down++;
+			resv->nspec_arr[j]->ninfo = NULL;
 			if (names_of_down_vnodes != NULL) {
 				/* -4 accounts for the trailing "...\0" for truncation */
 				nn_length = MAXVNODELIST - strlen(names_of_down_vnodes) - 4;
 				if (nn_length > 0) {
-					strncat(names_of_down_vnodes, ninfo_arr[j]->name, nn_length);
+					strncat(names_of_down_vnodes, ninfo->name, nn_length);
 					nn_length = MAXVNODELIST - strlen(names_of_down_vnodes) - 4;
 					if (nn_length > 0)
 						strncat(names_of_down_vnodes, ",", nn_length);
@@ -1754,40 +1766,56 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 }
 
 /**
+ * @brief end a running reservation on its nodes.  This is used so we can assign
+ * 		them back to a running reservation when reconfirming it.
+ * 
+ * @param[in] resv - the reservation
+ * @param[in] all_nodes - The server's nodes list
+ * 
+ * @return void
+ */
+void
+end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
+{
+	node_info **resv_nodes = NULL;
+	node_info *ninfo = NULL;
+	int i;
+
+	resv_nodes = resv->ninfo_arr;
+	for (i = 0; resv_nodes[i] != NULL; i++) {
+		ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
+		update_node_on_end(ninfo, resv, NULL);
+	}
+}
+
+/**
  * @brief - adjust resources on nodes belonging to a reservation that is
  *	    being altered.
  *
- * @param[in] all_resvs - array of all the reservations.
- * @param[in] all_nodes - array of all the nodes.
+ * @param[in] resv - reservation to alter nodes for
+ * @param[in] all_nodes - array of server's nodes
  *
- * @par - This routine will adjust the assigned resources on nodes that
- *	  are being used by a reservation which is being altered. The
- *	  need to do this is because a reservation if it is running and
- *	  needs to be altered, will have resources assigned on its nodes.
- *	  This may render check_avail_resources to reject the alter request
- *	  Also, for the nodes that are reservation exclusive should also
- *	  be seen as free nodes for this reservation in order to get altered
- *	  successfully.
+ * @par - The altering process of a running reservation requires us to keep
+ * 	the same nodes for the reservation.  When we call check_nodes(), we 
+ * 	will attempt to reassign the same nodes to the reservation.  For this
+ * 	to be successful, they need to be free.
  */
 
 void
-adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
+adjust_alter_resv_nodes(resource_resv *resv, node_info **all_nodes)
 {
 	int i = 0;
-	int j = 0;
 	node_info **resv_nodes = NULL;
 	node_info *ninfo = NULL;
 
-	if (all_resvs == NULL || all_nodes == NULL )
+	if (resv == NULL || all_nodes == NULL )
 		return;
-	for (j = 0; all_resvs[j] != NULL; j++) {
-		if (all_resvs[j]->resv->resv_state == RESV_BEING_ALTERED) {
-			if (all_resvs[j]->resv->resv_substate == RESV_RUNNING) {
-				resv_nodes = all_resvs[j]->ninfo_arr;
-				for (i = 0; resv_nodes[i] != NULL; i++) {
-					ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
-					update_node_on_end(ninfo, all_resvs[j], NULL);
-				}
+	if (resv->resv->resv_state == RESV_BEING_ALTERED) {
+		if (resv->resv->resv_substate == RESV_RUNNING) {
+			resv_nodes = resv->ninfo_arr;
+			for (i = 0; resv_nodes[i] != NULL; i++) {
+				ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
+				update_node_on_end(ninfo, resv, NULL);
 			}
 		}
 	}
@@ -1807,10 +1835,9 @@ int will_confirm(resource_resv *resv, time_t server_time) {
 	 */
 	if (resv->resv->resv_state == RESV_UNCONFIRMED ||
 		resv->resv->resv_state == RESV_BEING_ALTERED ||
-		((resv->resv->resv_state != RESV_RUNNING &&
-		(resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_substate == RESV_IN_CONFLICT) &&
+		((resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_substate == RESV_IN_CONFLICT) &&
 		resv->resv->retry_time != UNSPECIFIED &&
-		resv->resv->retry_time <= server_time)))
+		resv->resv->retry_time <= server_time))
 		return 1;
 
 	return 0;

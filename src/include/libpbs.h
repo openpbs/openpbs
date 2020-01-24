@@ -305,9 +305,10 @@ struct batch_reply {
 #define PBS_credentialtype_none 0
 #define PBS_IFF_CLIENT_ADDR	"PBS_IFF_CLIENT_ADDR"
 
-/* time out values for tcp_dis read */
+/* time out values for tcp_dis read/write */
 
 #define PBS_DIS_TCP_TIMEOUT_CONNECT  10
+#define PBS_DIS_TCP_TIMEOUT_REPLY    10
 #define PBS_DIS_TCP_TIMEOUT_SHORT    30
 #define PBS_DIS_TCP_TIMEOUT_RERUN    45	/* timeout used in pbs_rerunjob() */
 #define PBS_DIS_TCP_TIMEOUT_LONG    600

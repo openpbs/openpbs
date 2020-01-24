@@ -360,6 +360,8 @@ extern	void resv_free(resc_resv*);
 extern	void set_old_subUniverse(resc_resv *);
 extern	int  assign_resv_resc(resc_resv *, char *, int);
 extern	void  resv_exclusive_handler(resc_resv *);
+extern  long determine_resv_retry(resc_resv *presv);
+
 #ifdef	__cplusplus
 }
 #endif

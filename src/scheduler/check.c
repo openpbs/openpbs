@@ -1999,7 +1999,8 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*spec = resresv->select;
 		}
 	} else if (resresv->is_resv && resresv->resv != NULL) {
-		if (resresv->resv->resv_state == RESV_BEING_ALTERED && !resresv->resv->check_alternate_nodes)
+		if ((resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING) && 
+				!resresv->resv->check_alternate_nodes)
 			*spec = resresv->execselect;
 		else
 			*spec = resresv->select;
