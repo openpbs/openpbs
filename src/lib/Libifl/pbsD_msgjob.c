@@ -229,27 +229,32 @@ char *extend;
 		char nd_ct_selstr[20];
 		char *endptr = NULL, *extend_dup = strdup(extend), *num_only;
 
-		num_only = strtok(extend_dup, " \'\"\n\t\v");
-		strtol(num_only, &endptr, 10);
+		if (extend_dup) {
+			num_only = strtok(extend_dup, " \'\"\n\t\v");
+			strtol(num_only, &endptr, 10);
 
-		if (num_only && !*endptr) {
-			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", num_only);
-			extend = nd_ct_selstr;
-		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
-			if (i > 1) {
-				snprintf(ebuff, sizeof(ebuff), "%s: %s\n", emsg_illegal_k_value, pbs_parse_err_msg(i));
-				emsg = strdup(ebuff);
-			} else
-				emsg = strdup("illegal -k value\n");
-			pbs_errno = PBSE_INVALSELECTRESC;
+			if (num_only && !*endptr) {
+				snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", num_only);
+				extend = nd_ct_selstr;
+			} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
+				if (i > 1) {
+					snprintf(ebuff, sizeof(ebuff), "%s: %s\n", emsg_illegal_k_value, pbs_parse_err_msg(i));
+					emsg = strdup(ebuff);
+				} else
+					emsg = strdup("illegal -k value\n");
+				pbs_errno = PBSE_INVALSELECTRESC;
+			} else {
+				if (!attrib || strcmp(attrib->resource, "select")) {
+					emsg = strdup("only a \"select=\" string is valid in -k option\n");
+					pbs_errno = PBSE_IVALREQ;
+				} else
+					pbs_errno = PBSE_NONE;
+			}
+			free(extend_dup);
 		} else {
-			if (!attrib || strcmp(attrib->resource, "select")) {
-				emsg = strdup("only a \"select=\" string is valid in -k option\n");
-				pbs_errno = PBSE_IVALREQ;
-			} else
-				pbs_errno = PBSE_NONE;
+			emsg = "strdup failed";
+			pbs_errno = PBSE_SYSTEM;
 		}
-		free(extend_dup);
 		if (pbs_errno) {
 			if ((con = pbs_client_thread_find_connect_context(c))) {
 				free(con->th_ch_errtxt);
