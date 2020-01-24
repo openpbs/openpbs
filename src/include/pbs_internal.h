@@ -353,8 +353,7 @@ enum accrue_types {
  * time.
  */
 
-#define RESV_RETRY_INIT 7200
-#define RESV_RETRY_CUTOFF 7200
+#define RESV_RETRY_TIME_DEFAULT 600
 
 #define PBS_RESV_CONFIRM_FAIL "PBS_RESV_CONFIRM_FAIL"   /* Used to inform server that a reservation could not be confirmed */
 #define PBS_RESV_CONFIRM_SUCCESS "PBS_RESV_CONFIRM_SUCCESS"   /* Used to inform server that a reservation could be confirmed */

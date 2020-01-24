@@ -241,7 +241,7 @@ api_to_cli = {
     ATTR_job_sort_formula: 'job_sort_formula',
     ATTR_EligibleTimeEnable: 'eligible_time_enable',
     ATTR_resv_retry_init: 'reserve_retry_init',
-    ATTR_resv_retry_cutoff: 'reserve_retry_cutoff',
+    ATTR_resv_retry_time: 'reserve_retry_time',
     ATTR_JobHistoryEnable: 'job_history_enable',
     ATTR_JobHistoryDuration: 'job_history_duration',
     ATTR_max_concurrent_prov: 'max_concurrent_provision',

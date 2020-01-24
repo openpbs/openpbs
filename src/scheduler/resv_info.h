@@ -95,7 +95,7 @@ int confirm_reservation(status *policy, int pbs_sd, resource_resv *nresv, server
  *      counts the number of vnodes associated to a reservation that are not
  *                               available
  */
-int check_vnodes_down(node_info **ninfo_arr, int * total_vnodes, char *vnodes_down_name);
+int check_vnodes_down(resource_resv *resv, int * total_vnodes, char *vnodes_down_name);
 
 /**
  * Release reousrces allocated to a reservation

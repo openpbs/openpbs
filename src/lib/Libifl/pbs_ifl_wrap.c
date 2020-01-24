@@ -8485,7 +8485,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_job_sort_formula",SWIG_FromCharPtr("job_sort_formula"));
   SWIG_Python_SetConstant(d, "ATTR_EligibleTimeEnable",SWIG_FromCharPtr("eligible_time_enable"));
   SWIG_Python_SetConstant(d, "ATTR_resv_retry_init",SWIG_FromCharPtr("reserve_retry_init"));
-  SWIG_Python_SetConstant(d, "ATTR_resv_retry_cutoff",SWIG_FromCharPtr("reserve_retry_cutoff"));
+  SWIG_Python_SetConstant(d, "ATTR_resv_retry_time",SWIG_FromCharPtr("reserve_retry_time"));
   SWIG_Python_SetConstant(d, "ATTR_JobHistoryEnable",SWIG_FromCharPtr("job_history_enable"));
   SWIG_Python_SetConstant(d, "ATTR_JobHistoryDuration",SWIG_FromCharPtr("job_history_duration"));
   SWIG_Python_SetConstant(d, "ATTR_max_concurrent_prov",SWIG_FromCharPtr("max_concurrent_provision"));

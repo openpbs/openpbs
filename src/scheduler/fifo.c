@@ -2120,8 +2120,8 @@ find_ready_resv_job(resource_resv **resvs)
 
 	for (i = 0; resvs[i] != NULL && rjob == NULL; i++) {
 		if (resvs[i]->resv != NULL) {
-			if (resvs[i]->resv->resv_state ==RESV_RUNNING) {
-				if (resvs[i]->resv->resv_queue !=NULL) {
+			if (resvs[i]->resv->resv_state == RESV_RUNNING) {
+				if (resvs[i]->resv->resv_queue != NULL) {
 					ind = find_runnable_resresv_ind(resvs[i]->resv->resv_queue->jobs, 0);
 					if (ind != -1)
 						rjob = resvs[i]->resv->resv_queue->jobs[ind];
