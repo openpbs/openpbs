@@ -69,9 +69,9 @@ class TestJobTask(TestFunctional):
         ret = self.du.cat(hostname=self.mom.shortname,
                           filename=job_output_file,
                           runas=TEST_USER)
-        _msg = "cat command failed with error:%s" % ret['err']
+        _msg = "cat command failed with error: %s" % ret['err']
         self.assertEqual(ret['rc'], 0, _msg)
-        _msg = 'Job\'s error file has error:"%s"' % ret['out']
+        _msg = 'Job\'s error file has error: "%s"' % ret['out']
         self.assertEqual(ret['out'][0], "OK", _msg)
         self.logger.info("Job has executed without any error")
 
@@ -95,8 +95,8 @@ class TestJobTask(TestFunctional):
         ret = self.du.cat(hostname=self.mom.shortname,
                           filename=job_output_file,
                           runas=TEST_USER)
-        _msg = "cat command failed with error:%s" % ret['err']
+        _msg = "cat command failed with error: %s" % ret['err']
         self.assertEqual(ret['rc'], 0, _msg)
-        _msg = 'Job\'s error file has error:"%s"' % ret['out']
+        _msg = 'Job\'s error file has error: "%s"' % ret['out']
         self.assertEqual(ret['out'][0], "OK", _msg)
         self.logger.info("Job has executed without any error")
