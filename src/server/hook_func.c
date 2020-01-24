@@ -1468,6 +1468,9 @@ mgr_hook_import(struct batch_request *preq)
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 		}
 	}
+
+	add_to_svrattrl_list(&preq->rq_ind.rq_manager.rq_attr, OUTPUT_FILE_PARAM,
+		NULL, output_path, 0, NULL);
 	return;
 
 mgr_hook_import_error:
