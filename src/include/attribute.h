@@ -249,6 +249,7 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 #define ATR_VFLAG_INDIRECT	0x10	/* indirect pointer to resource */
 #define ATR_VFLAG_TARGET	0x20	/* target of indirect resource  */
 #define ATR_VFLAG_HOOK		0x40	/* value set by a hook script   */
+#define ATR_VFLAG_IN_EXECVNODE_FLAG	0x80	/* resource key value pair was found in execvnode */
 
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/

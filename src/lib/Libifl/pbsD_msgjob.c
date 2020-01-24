@@ -227,12 +227,13 @@ char *extend;
 		int i;
 		struct pbs_client_thread_connect_context *con;
 		char nd_ct_selstr[20];
-		char *endptr = NULL;
+		char *endptr = NULL, *extend_dup = strdup(extend), *num_only;
 
-		strtol(extend, &endptr, 10);
+		num_only = strtok(extend_dup, " \'\"\n\t\v");
+		strtol(num_only, &endptr, 10);
 
-		if (!*endptr) {
-			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", extend);
+		if (num_only && !*endptr) {
+			snprintf(nd_ct_selstr, sizeof(nd_ct_selstr), "select=%s", num_only);
 			extend = nd_ct_selstr;
 		} else if ((i = set_resources(&attrib, extend, 1, &erp))) {
 			if (i > 1) {
@@ -248,6 +249,7 @@ char *extend;
 			} else
 				pbs_errno = PBSE_NONE;
 		}
+		free(extend_dup);
 		if (pbs_errno) {
 			if ((con = pbs_client_thread_find_connect_context(c))) {
 				free(con->th_ch_errtxt);

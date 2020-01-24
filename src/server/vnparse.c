@@ -2481,11 +2481,6 @@ typedef struct resc_limit_entry {
 	resc_limit_t	*resc;
 } rl_entry;
 
-/* Reusing ATR_VFLAG_HOOK to mean that the resource key value pair was found
- * in execvnode
- */
-#define IN_EXECVNODE_FLAG	ATR_VFLAG_HOOK
-
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
 /**
  * @brief
@@ -2664,25 +2659,25 @@ add_to_resc_limit_list_sorted(pbs_list_head *phead, resc_limit_t *resc)
 				break;
 			}
 #else
+			int cmp_res_name;
+
 			if (p_res_cur->rl_res_count < resc->rl_res_count)
 				continue;
 			else if (p_res_cur->rl_res_count > resc->rl_res_count)
 				break;
 
-			{
-				int cmp_res_name = resc_limit_list_cmp_name(p_res_cur, resc);
+			cmp_res_name = resc_limit_list_cmp_name(p_res_cur, resc);
 
-				if (cmp_res_name < 0)
+			if (cmp_res_name < 0)
+				continue;
+			else if (cmp_res_name > 0)
+				break;
+			else {
+				int cmp_res_val = resc_limit_list_cmp_val(p_res_cur, resc);
+				if (cmp_res_val < 0)
 					continue;
-				else if (cmp_res_name > 0)
+				else
 					break;
-				else {
-					int cmp_res_val = resc_limit_list_cmp_val(p_res_cur, resc);
-					if (cmp_res_val < 0)
-						continue;
-					else
-						break;
-				}
 			}
 #endif
 		}
@@ -2835,7 +2830,7 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 		resc_def->rs_encode(&pnewres->rs_value, NULL, resc_def->rs_name,
 				NULL, ATR_ENCODE_CLIENT, &pnewres->rs_value.at_priv_encoded);
 		if (execv_f)
-			pnewres->rs_value.at_flags |= IN_EXECVNODE_FLAG;
+			pnewres->rs_value.at_flags |= ATR_VFLAG_IN_EXECVNODE_FLAG;
 		if (cmp_res < 0)  /* pres will be NULL */
 			append_link(&have->rl_other_res, &pnewres->rs_link, pnewres);
 		else  /* cmp_res > 0, pres wont be NULL */
@@ -3166,7 +3161,7 @@ map_need_to_have_resources(char *buf, size_t buf_sz, char *have_resc,
 			if (strcasecmp(have_resc, pneed->rs_defin->rs_name) == 0) {
 				attribute hattr = {0};
 				int cmp_res;
-				if (!(pneed->rs_value.at_flags & IN_EXECVNODE_FLAG))
+				if (!(pneed->rs_value.at_flags & ATR_VFLAG_IN_EXECVNODE_FLAG))
 					return;
 				pneed->rs_defin->rs_decode(&hattr, NULL, NULL, have_val);
 				cmp_res = pneed->rs_defin->rs_comp(&hattr, &pneed->rs_value);
@@ -3448,8 +3443,8 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 		presnew->rs_defin->rs_set(&presnew->rs_value, &pres->rs_value, SET);
 		presnew->rs_defin->rs_encode(&presnew->rs_value, NULL, presnew->rs_defin->rs_name,
 				NULL, ATR_ENCODE_CLIENT, &presnew->rs_value.at_priv_encoded);
-		if (pres->rs_value.at_flags & IN_EXECVNODE_FLAG)
-			presnew->rs_value.at_flags |= IN_EXECVNODE_FLAG;
+		if (pres->rs_value.at_flags & ATR_VFLAG_IN_EXECVNODE_FLAG)
+			presnew->rs_value.at_flags |= ATR_VFLAG_IN_EXECVNODE_FLAG;
 	}
 
 	if (need->rl_ncpus)
@@ -3478,7 +3473,7 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 			|| (res_type == ATR_TYPE_SIZE)
 			|| (res_type == ATR_TYPE_FLOAT))
 			&& (pres->rs_defin->rs_comp(&pres->rs_value, &pneed->rs_value))) {
-			pres->rs_defin->rs_free(&pres->rs_value); /* IN_EXECVNODE_FLAG gets preserved */
+			pres->rs_defin->rs_free(&pres->rs_value); /* ATR_VFLAG_IN_EXECVNODE_FLAG gets preserved */
 			pres->rs_defin->rs_set(&pres->rs_value, &pneed->rs_value, SET);
 			pres->rs_defin->rs_encode(&pres->rs_value, NULL, pres->rs_defin->rs_name,
 					NULL, ATR_ENCODE_CLIENT, &pres->rs_value.at_priv_encoded);
