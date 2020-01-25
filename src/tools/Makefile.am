@@ -107,6 +107,7 @@ pbs_probe_LDADD = \
 pbs_probe_SOURCES = pbs_probe.c
 
 pbs_python_CPPFLAGS =  \
+	-DPBS_PYTHON=1.1 \
 	-I$(top_srcdir)/src/include \
 	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
 

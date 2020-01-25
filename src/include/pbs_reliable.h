@@ -86,6 +86,7 @@ extern void reliable_job_node_print(char *, pbs_list_head *, int);
  * @param[in]	execvnode - job's exec_vnode value
  * @param[in]	exechost - job's exec_host value
  * @param[in]	exechost2 - job's exec_host2 value
+ * @param[in]	schedselect - job's schedselect value
  * @param[out]	p_new_exec_vhode - holds the new exec_vnode value after release
  * @param[out]	p_new_exec_host - holds the new exec_host value after release
  * @param[out]	p_new_exec_host2 - holds the new exec_host2 value after release
@@ -98,6 +99,7 @@ typedef struct	relnodes_input {
 	char		*execvnode;
 	char		*exechost;
 	char		*exechost2;
+	char		*schedselect;
 	char		**p_new_exec_vnode;
 	char		**p_new_exec_host[2];
 	char		**p_new_schedselect;
@@ -111,13 +113,11 @@ typedef struct	relnodes_input {
  *	when called to release a set of vnodes.
  * 	
  * @param[in]	vnodelist - list of vnodes to release
- * @param[in]	schedselect - job's schedselect value
  * @param[in]	deallocated_nodes_orig - job's current deallocated_exevnode value
  * @param[out]	p_new_deallocated_execvnode - holds the new deallocated_exec_vnode after release
  */
 typedef struct	relnodes_input_vnodelist {
 	char		*vnodelist;
-	char		*schedselect;
 	char		*deallocated_nodes_orig;
 	char		**p_new_deallocated_execvnode;
 } relnodes_input_vnodelist_t;

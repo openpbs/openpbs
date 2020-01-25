@@ -8687,6 +8687,9 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
  * @param[in]	vnodelist - non-NULL means it's the list of vnode names
  *			to free. If NULL, free all the vnodes assigned
  *			to 'pjob' whose parent mom is a sister mom.
+ * @param[in]	keep_select - non-NULL means it's a select string that
+ *			describes vnodes to be kept while freeing all other vnodes
+ *			assigned to 'pjob' whose parent mom is a sister mom.
  * @param[out]  err_msg - if function returns != 0 (failure), return
  *			  any error message in this buffer.
  * @param[int]	err_msg_sz - size of 'err_msg' buf.
@@ -8696,7 +8699,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
  * @retval != 0  - failure error code.
  */
 int
-free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
+free_sister_vnodes(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
 			int err_msg_sz, struct batch_request *reply_req)
 {
 	int		rc = 0;
@@ -8719,7 +8722,7 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
 	set_resc_assigned((void *)pjob, 0,  DECR);
 
 	/* re-create the job's exec_vnode based on free vnodes specs */
-	if ((rc = recreate_exec_vnode(pjob, vnodelist, err_msg,
+	if ((rc = recreate_exec_vnode(pjob, vnodelist, keep_select, err_msg,
 						err_msg_sz)) != 0) {
 		set_resc_assigned((void *)pjob, 0,  INCR);
 		return (rc);

@@ -368,6 +368,9 @@ enum accrue_types {
 /* this is the PBS default max_concurrent_provision value */
 #define PBS_MAX_CONCURRENT_PROV 5
 
+/* this is the PBS max lenth of quote parse error messages */
+#define PBS_PARSE_ERR_MSG_LEN_MAX 50
+
 /* this is the PBS defult jobscript_max_size default value is 100MB*/
 #define DFLT_JOBSCRIPT_MAX_SIZE "100mb"
 
@@ -437,7 +440,7 @@ DECLDIR int pbs_defschreply(int, int, char *, int, char *, char *);
 
 DECLDIR int pbs_quote_parse(char *, char **, char **, int);
 
-DECLDIR char *pbs_parse_err_msg(int);
+DECLDIR const char *pbs_parse_err_msg(int);
 
 DECLDIR void pbs_prt_parse_err(char *, char *, int, int);
 
@@ -502,7 +505,7 @@ extern char *pbs_strsep(char **, const char *);
 
 extern int pbs_quote_parse(char *, char **, char **, int);
 
-extern char *pbs_parse_err_msg(int);
+extern const char *pbs_parse_err_msg(int);
 
 extern void pbs_prt_parse_err(char *, char *, int, int);
 
@@ -555,6 +558,8 @@ extern struct batch_status *bs_find(struct batch_status *, const char *);
 
 
 #endif /* _USRDLL */
+
+extern const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1];
 
 #ifdef	__cplusplus
 }
