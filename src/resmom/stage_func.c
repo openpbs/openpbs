@@ -482,10 +482,20 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 
 	if (local_or_remote(&p) == 1) {
 		*direct_write_possible = 0;
-		sprintf(log_buffer,
+		if (pjob->ji_hosts != NULL) {
+			sprintf(log_buffer,
 				"Direct write is requested for job: %s, but the destination: %s is not usecp-able from %s",
 				pjob->ji_qs.ji_jobid, p,
 				pjob->ji_hosts[pjob->ji_nodeid].hn_host);
+		} else {
+			/* When a job is requeued and later run, the ji_hosts
+			 * information is not available when this function is
+			 * called as part of req_mvjobfile
+			 */
+			sprintf(log_buffer, "Direct write is requested for "
+				"job: %s, but the destination %s is not usecp-able",
+				pjob->ji_qs.ji_jobid, p);
+		}
 		log_event(PBSEVENT_DEBUG3,
 		PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		return (0);
