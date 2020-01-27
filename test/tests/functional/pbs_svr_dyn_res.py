@@ -556,6 +556,9 @@ class TestServerDynRes(TestFunctional):
         Test setting server_dyn_res script to timeout after 10 seconds
         """
 
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {ATTR_sched_server_dyn_res_alarm: 10})
+
         # Create a resource of type boolean
         resname = ["foo"]
         restype = ["boolean"]
@@ -564,9 +567,6 @@ class TestServerDynRes(TestFunctional):
         resval = ["sleep 20\necho true"]
 
         filenames = self.setup_dyn_res(resname, restype, resval)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {ATTR_sched_server_dyn_res_alarm: 10})
 
         # Submit job
         a = {'Resource_List.foo': 'true'}
