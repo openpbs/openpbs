@@ -97,7 +97,7 @@ class TestSchedAllPart(TestFunctional):
         j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        
+
         a = {'job_state': 'Q', 'comment':
              'Can Never Run: Not enough total nodes available'}
         self.server.expect(JOB, a, id=jid)
