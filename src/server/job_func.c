@@ -815,7 +815,7 @@ job_purge(job *pjob)
 	extern char *msg_err_purgejob_db;
 	pbs_db_obj_info_t obj;
 	pbs_db_job_info_t dbjob;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 #endif	/* PBS_MOM */
 
 	if (pjob->ji_rerun_preq != NULL) {

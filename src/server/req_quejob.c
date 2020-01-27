@@ -156,7 +156,7 @@ extern time_t time_now;
 
 #ifndef PBS_MOM
 extern char *pbs_server_name;
-extern pbs_db_conn_t	*svr_db_conn;
+extern void	*svr_db_conn;
 extern char *msg_max_no_minwt;
 extern char *msg_min_gt_maxwt;
 extern char *msg_nostf_resv;
@@ -1702,7 +1702,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	pbs_db_obj_info_t obj;
 	long time_msec;
 	struct timeval tval;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 #endif
 
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
@@ -1799,12 +1799,8 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	}
 	account_jobstr(pj, PBS_ACCT_QUEUE);
 
-	/* save job and job script within single transaction */
-	pbs_db_begin_trx(conn, 0, 0);
-
 	/* Make things faster by writing job only once here  - at commit time */
 	if (job_save_db(pj)) {
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		job_purge(pj);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
 		return;
@@ -1819,7 +1815,6 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
 			job_purge(pj);
 			req_reject(PBSE_SYSTEM, 0, preq);
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 			return;
 		}
 		free(pj->ji_script);
@@ -1828,12 +1823,6 @@ req_commit_now(struct batch_request *preq,  job *pj)
 
 	/* Now, no need to save server here because server
 	   has already saved in the get_next_svr_sequence_id() */
-
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0) {
-		job_purge(pj);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
-	}
 
 	/*
 	 * if the job went into a Route (push) queue that has been started,
@@ -2041,7 +2030,6 @@ req_resvSub(struct batch_request *preq)
 	char hook_msg[HOOK_MSG_SIZE] = {0};
 	int resc_access_perm_save = 0;
 	int qmove_requested = 0;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	char *fmt = "%a %b %d %H:%M:%S %Y";
 	char tbuf1[256] = {0};
 	char tbuf2[256] = {0};
@@ -2604,15 +2592,6 @@ req_resvSub(struct batch_request *preq)
 	if (resv_save_db(presv)) {
 		(void)resv_purge(presv);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
-		return;
-	}
-
-	/* Now, no need to save server here because server
-	   has already saved in the get_next_svr_sequence_id() */
-
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0) {
-		resv_purge(presv);
-		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 

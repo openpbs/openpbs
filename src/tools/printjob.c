@@ -74,11 +74,7 @@
 #include "job.h"
 #ifdef PRINTJOBSVR
 #include "pbs_db.h"
-#include "db_postgres.h"
-pbs_db_conn_t *conn = NULL;
-#ifdef NAS /* localmod 005 */
-extern int pg_db_prepare_job_sqls(pbs_db_conn_t *conn);
-#endif /* localmod 005 */
+void *conn = NULL;
 #endif
 
 #define BUF_SIZE 512
@@ -316,53 +312,27 @@ print_db_job(char *id, int no_attributes)
 	pbs_db_job_info_t dbjob;
 	pbs_db_jobscr_info_t jobscr;
 	job xjob;
-	int db_conn_error;
 	char *db_errmsg = NULL;
-	char errmsg[PBS_MAX_DB_CONN_INIT_ERR + 1];
-
+	int failcode;
 
 	if (conn == NULL) {
 
 		/* connect to database */
 #ifdef NAS /* localmod 111 */
 		if (pbs_conf.pbs_data_service_host) {
-			conn = pbs_db_init_connection(pbs_conf.pbs_data_service_host, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
+			failcode = pbs_db_connect(&conn, pbs_conf.pbs_data_service_host, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
 		}
 		else
 #endif /* localmod 111 */
-		conn = pbs_db_init_connection(pbs_conf.pbs_server_name, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
-		if (!conn) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr, "%s\n", db_errmsg);
-			if (strlen(errmsg) > 0)
-				fprintf(stderr, "%s\n", errmsg);
-			return -1;
-		}
-		db_conn_error = pbs_db_connect(conn);
-		if (db_conn_error != PBS_DB_SUCCESS && pbs_conf.pbs_secondary != NULL) {
-			conn = pbs_db_init_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
+		failcode = pbs_db_connect(&conn, pbs_conf.pbs_server_name, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
+		if (!conn && pbs_conf.pbs_secondary != NULL) {
+			failcode = pbs_db_connect(&conn, pbs_conf.pbs_secondary, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
 			if (!conn) {
-				get_db_errmsg(db_conn_error, &db_errmsg);
+				pbs_db_get_errmsg(failcode, &db_errmsg);
 				fprintf(stderr, "%s\n", db_errmsg);
-				if (strlen(errmsg) > 0)
-					fprintf(stderr, "%s\n", errmsg);
+				free(db_errmsg);
 				return -1;
 			}
-			db_conn_error = pbs_db_connect(conn);
-		}
-		if (db_conn_error != PBS_DB_SUCCESS) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr,
-				"Could not connect to PBS dataservice:[%s]\n",
-				(db_errmsg)?db_errmsg:"None");
-			exit(1);
-		}
-		if (pg_db_prepare_job_sqls(conn) != 0) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr,
-				"Could not initialize PBS dataservice:[%s]\n",
-				(conn->conn_db_err)?(char *)conn->conn_db_err:"None");
-			exit(1);
 		}
 	}
 

@@ -42,7 +42,7 @@
 
 if [ -n "$PBS_START_SERVER" -a "$PBS_START_SERVER" != "0" ]; then
 	# Source the file that sets PGSQL_LIBSTR
-	. "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
+	. "$PBS_EXEC"/libexec/pbs_db_env
 	exec "$PBS_EXEC"/bin/printjob_svr.bin ${1+"$@"}
 else
 	exec "$PBS_EXEC"/bin/printjob.bin ${1+"$@"}

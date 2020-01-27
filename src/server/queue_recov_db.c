@@ -71,7 +71,12 @@
 #include "pbs_db.h"
 
 
-extern pbs_db_conn_t	*svr_db_conn;
+#ifndef PBS_MOM
+extern void	*svr_db_conn;
+extern char	*msg_init_recovque;
+#endif
+
+pbs_queue *recov_queue_cb(pbs_db_obj_info_t *dbobj, int *refreshed);
 
 /**
  * @brief
@@ -147,7 +152,8 @@ que_save_db(pbs_queue *pque)
 {
 	pbs_db_que_info_t	dbque = {{0}};
 	pbs_db_obj_info_t	obj;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
+	char *conn_db_err = NULL;
 	int savetype;
 	int rc = -1;
 
@@ -164,8 +170,10 @@ done:
 	free_db_attr_list(&dbque.db_attr_list);
 	
 	if (rc != 0) {
-		log_errf(PBSE_INTERNAL, __func__, "Failed to save queue %s %s", pque->qu_qs.qu_name, (conn->conn_db_err)? conn->conn_db_err : "");
-		panic_stop_db(log_buffer);
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save queue %s %s", pque->qu_qs.qu_name, conn_db_err? conn_db_err : "");
+		free(conn_db_err);
+		panic_stop_db();
 	}
 	return rc;
 }
@@ -183,13 +191,14 @@ done:
  *
  */
 pbs_queue *
-que_recov_db(char *qname, pbs_queue	*pq)
+que_recov_db(char *qname, pbs_queue *pq)
 {
 	pbs_queue *pque = NULL;
-	pbs_db_que_info_t	dbque = {{0}};
-	pbs_db_obj_info_t	obj;
-	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_que_info_t dbque = {{0}};
+	pbs_db_obj_info_t obj;
+	void *conn = (void *) svr_db_conn;
 	int rc = -1;
+	char *conn_db_err = NULL;
 
 	if (!pq) {
 		if ((pque = que_alloc(qname)) == NULL) {
@@ -209,8 +218,11 @@ que_recov_db(char *qname, pbs_queue	*pq)
 
 	if (rc == 0)
 		rc = db_to_que(pq, &dbque);
-	else
-		log_errf(PBSE_INTERNAL, __func__, "Failed to load queue %s %s", qname, (conn->conn_db_err)? conn->conn_db_err : "");
+	else {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load queue %s, %s", qname, conn_db_err? conn_db_err : "");
+		free(conn_db_err);
+	}
 		
 	free_db_attr_list(&dbque.db_attr_list);
 
@@ -219,7 +231,37 @@ que_recov_db(char *qname, pbs_queue	*pq)
 
 		if (pque)
 			que_free(pque); /* free if we allocated here */
-		
 	}
 	return pq;
+}
+
+/**
+ * @brief
+ *	Refresh/retrieve queue from database and add it into AVL tree if not present
+ *
+ *	@param[in]	dbobj - The pointer to the wrapper queue object of type pbs_db_que_info_t
+ *	@param[out]	refreshed - To check if queues refreshed
+ *
+ * @return	The recovered queue
+ * @retval	NULL - Failure
+ * @retval	!NULL - Success, pointer to queue structure recovered
+ *
+ */
+pbs_queue *
+recov_queue_cb(pbs_db_obj_info_t *dbobj, int *refreshed) 
+{
+	pbs_queue *pque = NULL;
+	pbs_db_que_info_t *dbque = dbobj->pbs_db_un.pbs_db_que;
+
+	*refreshed = 0;
+	if ((pque = que_recov_db(dbque->qu_name, NULL)) != NULL) {
+		/* que_recov increments sv_numque */
+		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, msg_init_recovque, pque->qu_qs.qu_name);
+		*refreshed = 1;
+	}
+
+	free_db_attr_list(&dbque->db_attr_list);
+	if (pque == NULL)
+		log_errf(PBSE_INTERNAL, __func__, "Failed to refresh queue %s", dbque->qu_name);
+	return pque;
 }

@@ -111,7 +111,6 @@ void
 check_and_stop_db(int dbpid)
 {
 	char closefile[MAXPATHLEN + 1];
-	char *db_err = NULL;
 
 	snprintf(closefile, MAXPATHLEN, "%s/datastore/pbs_dbclose", pbs_conf.pbs_home_path);
 
@@ -120,7 +119,7 @@ check_and_stop_db(int dbpid)
 		/* first clear the file */
 		unlink(closefile);
 		/* now stop the database */
-		pbs_shutdown_db_async(&db_err);
+		pbs_stop_db(thishost, pbs_conf.pbs_data_service_port);
 	}
 }
 

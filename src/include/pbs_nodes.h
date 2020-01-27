@@ -56,7 +56,7 @@ extern "C" {
 #include "libutil.h"
 #ifndef PBS_MOM
 #include "pbs_db.h"
-extern pbs_db_conn_t	*svr_db_conn;
+extern void *svr_db_conn;
 #endif
 
 

@@ -50,6 +50,8 @@ pbs_server_bin_CPPFLAGS = \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
 
+pbs_server_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
+
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
@@ -59,10 +61,9 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
-	$(top_builddir)/src/lib/Libdb/libdb.a \
+	$(top_builddir)/src/lib/Libdb/libdb.so \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	@database_ldflags@ \
-	@database_lib@ \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
@@ -92,6 +93,7 @@ pbs_server_bin_SOURCES = \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \
+	pbs_db_func.c \
 	pbsd_init.c \
 	pbsd_main.c \
 	process_request.c \
@@ -130,7 +132,6 @@ pbs_server_bin_SOURCES = \
 	svr_func.c \
 	svr_jobfunc.c \
 	svr_mail.c \
-	svr_migrate_data.c \
 	svr_movejob.c \
 	svr_recov_db.c \
 	svr_resccost.c \

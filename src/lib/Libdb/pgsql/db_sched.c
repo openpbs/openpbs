@@ -40,7 +40,6 @@
 
 
 /**
- * @file    db_postgres_sched.c
  *
  * @brief
  *      Implementation of the scheduler data access functions for postgres
@@ -62,9 +61,10 @@
  *
  */
 int
-pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
+db_prepare_sched_sqls(void *conn)
 {
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into "
+	char conn_sql[MAX_SQL_LENGTH];
+	snprintf(conn_sql, MAX_SQL_LENGTH, "insert into "
 		"pbs.scheduler( "
 		"sched_name, "
 		"sched_savetm, "
@@ -72,43 +72,43 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 		"attributes "
 		") "
 		"values ($1, localtimestamp, localtimestamp, hstore($2::text[]))");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SCHED, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_INSERT_SCHED, conn_sql, 2) != 0)
 		return -1;
 
 	/* rewrite all attributes for a FULL update */
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
 		"sched_savetm = localtimestamp, "
 		"attributes = attributes || hstore($2::text[]) "
 		"where sched_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SCHED, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_SCHED, conn_sql, 2) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
 		"sched_savetm = localtimestamp,"
 		"attributes = attributes - $2::text[] "
 		"where sched_name = $1");
-	if (pg_prepare_stmt(conn, STMT_REMOVE_SCHEDATTRS, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_REMOVE_SCHEDATTRS, conn_sql, 2) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
 		"sched_name, "
 		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.scheduler "
 		"where sched_name = $1");
-	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED, conn->conn_sql, 1) != 0)
+	if (db_prepare_stmt(conn, STMT_SELECT_SCHED, conn_sql, 1) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
 		"sched_name, "
 		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.scheduler ");
-	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED_ALL, conn->conn_sql, 0) != 0)
+	if (db_prepare_stmt(conn, STMT_SELECT_SCHED_ALL, conn_sql, 0) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "delete from pbs.scheduler where sched_name = $1");
-	if (pg_prepare_stmt(conn, STMT_DELETE_SCHED, conn->conn_sql, 1) != 0)
+	snprintf(conn_sql, MAX_SQL_LENGTH, "delete from pbs.scheduler where sched_name = $1");
+	if (db_prepare_stmt(conn, STMT_DELETE_SCHED, conn_sql, 1) != 0)
 		return -1;
 
 	return 0;
@@ -127,7 +127,7 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
  *
  */
 int
-pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
+pbs_db_save_sched(void *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_sched_info_t *psch = obj->pbs_db_un.pbs_db_sched;
 	char *stmt = NULL;
@@ -135,7 +135,7 @@ pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	int rc = 0;
 	char *raw_array = NULL;
 
-	SET_PARAM_STR(conn, psch->sched_name, 0);
+	SET_PARAM_STR(conn_data, psch->sched_name, 0);
 
 	/* sched does not have a QS area, so ignoring that */
 
@@ -145,7 +145,7 @@ pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 		if ((len = attrlist_to_dbarray(&raw_array, &psch->db_attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 1);
+		SET_PARAM_BIN(conn_data, raw_array, len, 1);
 		stmt = STMT_UPDATE_SCHED;
 		params = 2;
 	}
@@ -154,7 +154,7 @@ pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 		stmt = STMT_INSERT_SCHED;
 
 	if (stmt)
-		rc = pg_db_cmd(conn, stmt, params);
+		rc = db_cmd(conn, stmt, params);
 
 	return rc;
 }
@@ -207,15 +207,15 @@ load_sched(PGresult *res, pbs_db_sched_info_t *psch, int row)
  *
  */
 int
-pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pbs_db_load_sched(void *conn, pbs_db_obj_info_t *obj)
 {
 	PGresult *res;
 	int rc;
 	pbs_db_sched_info_t *psch = obj->pbs_db_un.pbs_db_sched;
 
-	SET_PARAM_STR(conn, psch->sched_name, 0);
+	SET_PARAM_STR(conn_data, psch->sched_name, 0);
 
-	if ((rc = pg_db_query(conn, STMT_SELECT_SCHED, 1, &res)) != 0)
+	if ((rc = db_query(conn, STMT_SELECT_SCHED, 1, &res)) != 0)
 		return rc;
 
 	rc = load_sched(res, psch, 0);
@@ -241,22 +241,19 @@ pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
  *
  */
 int
-pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
+pbs_db_find_sched(void *conn, void *st, pbs_db_obj_info_t *obj,
 	pbs_db_query_options_t *opts)
 {
 	PGresult *res;
-	pg_query_state_t *state = (pg_query_state_t *) st;
+	db_query_state_t *state = (db_query_state_t *) st;
 	int rc;
 	int params;
 
 	if (!state)
 		return -1;
 
-	strncpy(conn->conn_sql, STMT_SELECT_SCHED_ALL, (MAX_SQL_LENGTH-1));
-	conn->conn_sql[MAX_SQL_LENGTH-1] = '\0';
 	params = 0;
-
-	if ((rc = pg_db_query(conn, conn->conn_sql, params, &res)) != 0)
+	if ((rc = db_query(conn, STMT_SELECT_SCHED_ALL, params, &res)) != 0)
 		return rc;
 
 	state->row = 0;
@@ -271,7 +268,6 @@ pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
  *	Deletes attributes of a Scheduler
  *
  * @param[in]	conn - Connection handle
- * @param[in]	obj  - Scheduler information
  * @param[in]	obj_id  - Scheduler id
  * @param[in]	attr_list - List of attributes
  *
@@ -281,7 +277,7 @@ pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
  *
  */
 int
-pg_db_del_attr_sched(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
+pbs_db_del_attr_sched(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
@@ -290,10 +286,10 @@ pg_db_del_attr_sched(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr
 	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
 
-	SET_PARAM_STR(conn, obj_id, 0);
-	SET_PARAM_BIN(conn, raw_array, len, 1);
+	SET_PARAM_STR(conn_data, obj_id, 0);
+	SET_PARAM_BIN(conn_data, raw_array, len, 1);
 
-	rc = pg_db_cmd(conn, STMT_REMOVE_SCHEDATTRS, 2);
+	rc = db_cmd(conn, STMT_REMOVE_SCHEDATTRS, 2);
 
 	return rc;
 }
@@ -312,9 +308,10 @@ pg_db_del_attr_sched(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr
  *
  */
 int
-pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj)
+pbs_db_next_sched(void *conn, void *st, pbs_db_obj_info_t *obj)
 {
-	pg_query_state_t *state = (pg_query_state_t *) st;
+	db_query_state_t *state = (db_query_state_t *) st;
+
 	return (load_sched(state->res, obj->pbs_db_un.pbs_db_sched, state->row));
 
 }
@@ -332,10 +329,9 @@ pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj)
  *
  */
 int
-pg_db_delete_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pbs_db_delete_sched(void *conn, pbs_db_obj_info_t *obj)
 {
 	pbs_db_sched_info_t *sc = obj->pbs_db_un.pbs_db_sched;
-	SET_PARAM_STR(conn, sc->sched_name, 0);
-	return (pg_db_cmd(conn, STMT_DELETE_SCHED, 1));
+	SET_PARAM_STR(conn_data, sc->sched_name, 0);
+	return (db_cmd(conn, STMT_DELETE_SCHED, 1));
 }
-

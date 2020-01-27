@@ -146,7 +146,7 @@ enum res_op_flag {
 };
 
 extern time_t time_now;
-extern pbs_db_conn_t	*svr_db_conn;
+extern void	*svr_db_conn;
 struct work_task *rescdef_wt_g = NULL;
 
 
@@ -949,7 +949,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 	resource_def *prsdef;
 	resource *presc;
 	struct pbsnode *pnode = pobj;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_obj_info_t obj;
 	obj.pbs_db_un.pbs_db_job = NULL;
 

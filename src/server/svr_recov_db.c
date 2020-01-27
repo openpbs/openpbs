@@ -86,7 +86,7 @@ extern char	*msg_svdbnosv;
 extern char	*path_svrlive;
 
 extern char *pbs_server_name;
-extern pbs_db_conn_t	*svr_db_conn;
+extern void *svr_db_conn;
 extern void sched_free(pbs_sched *psched);
 
 extern pbs_sched *sched_alloc(char *sched_name);
@@ -222,14 +222,13 @@ db_to_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 int
 svr_recov_db(void)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_svr_info_t dbsvr = {0};
 	pbs_db_obj_info_t obj;
 	int rc = -1;
 
 	obj.pbs_db_obj_type = PBS_DB_SVR;
 	obj.pbs_db_un.pbs_db_svr = &dbsvr;
-	
 
 	rc = pbs_db_load_obj(conn, &obj);
 	if (rc == -2)
@@ -260,11 +259,12 @@ svr_recov_db(void)
 int
 svr_save_db(struct server *ps)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_svr_info_t dbsvr = {0};
 	pbs_db_obj_info_t obj;
 	int savetype;
 	int rc = -1;
+	char *conn_db_err = NULL;
 
 	/* as part of the server save, update svrlive file now,
 	 * used in failover
@@ -285,8 +285,10 @@ done:
 	free_db_attr_list(&dbsvr.db_attr_list);
 
 	if (rc != 0) {
-		log_errf(PBSE_INTERNAL, __func__, "Failed to save server %s", (conn->conn_db_err)? conn->conn_db_err : "");
-		panic_stop_db(log_buffer);
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save server %s", conn_db_err? conn_db_err : "");
+		panic_stop_db();
+		free(conn_db_err);
 	}
 
 	return (rc);
@@ -306,18 +308,17 @@ done:
 pbs_sched *
 sched_recov_db(char *sname, pbs_sched *ps)
 {
-	pbs_sched *psched  = NULL;
-	pbs_db_sched_info_t	dbsched = {{0}};
-	pbs_db_obj_info_t	obj;
-	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_sched_info_t dbsched = {{0}};
+	pbs_db_obj_info_t obj;
+	void *conn = (void *) svr_db_conn;
 	int rc = -1;
+	char *conn_db_err = NULL;
 
 	if (!ps) {
-		if ((psched = sched_alloc(sname)) == NULL) {
+		if ((ps = sched_alloc(sname)) == NULL) {
 			log_err(-1, __func__, "sched_alloc failed");
 			return NULL;
 		}
-		ps = psched;
 	}
 
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
@@ -332,17 +333,18 @@ sched_recov_db(char *sname, pbs_sched *ps)
 
 	if (rc == 0)
 		rc = db_to_sched(ps, &dbsched);	
-	else
-		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, (conn->conn_db_err)? conn->conn_db_err : "");
+	else {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, conn_db_err? conn_db_err : "");
+		free(conn_db_err);
+	}
 
 	free_db_attr_list(&dbsched.db_attr_list);
 
 	if (rc != 0) {
+		if (ps)
+			sched_free(ps); /* free if we allocated here */
 		ps = NULL; /* so we return NULL */
-
-		if (psched)
-			sched_free(psched); /* free if we allocated here */
-		
 	}
 	return ps;
 }
@@ -364,11 +366,12 @@ sched_recov_db(char *sname, pbs_sched *ps)
 int
 sched_save_db(pbs_sched *ps)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_sched_info_t dbsched = {{0}};
 	pbs_db_obj_info_t obj;
 	int savetype;
 	int rc = -1;
+	char *conn_db_err = NULL;
 
 	if ((savetype = sched_to_db(ps, &dbsched)) == -1)
 		goto done;
@@ -383,9 +386,43 @@ done:
 	free_db_attr_list(&dbsched.db_attr_list);
 
 	if (rc != 0) {
-		log_errf(PBSE_INTERNAL, __func__, "Failed to save sched %s %s", ps->sc_name, (conn->conn_db_err)? conn->conn_db_err : "");
-		panic_stop_db(log_buffer);
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save sched %s %s", ps->sc_name, conn_db_err? conn_db_err : "");
+		panic_stop_db();
+		free(conn_db_err);
 	}
 
 	return rc;
+}
+
+/**
+ * @brief
+* 	recov_sched_cb - callback function to process and load
+* 			sched database result to pbs structure.
+ *
+ * @param[in]	dbobj	- database sched structure to C.
+ * @param[out]	refreshed - if rows processed.
+ *
+ * @return	resv structure - on success
+ * @return 	NULL - on failure
+ */
+pbs_sched *
+recov_sched_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
+{
+	pbs_sched *psched = NULL;
+	pbs_db_sched_info_t *dbsched = dbobj->pbs_db_un.pbs_db_sched;
+
+	*refreshed = 0;
+	/* recover sched */
+	if ((psched = sched_recov_db(dbsched->sched_name, NULL)) != NULL) {
+		if(!strncmp(dbsched->sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME)))
+			dflt_scheduler = psched;
+		psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
+		psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+		set_scheduler_flag(SCH_CONFIGURE, psched);
+		*refreshed = 1;
+	}
+
+	free_db_attr_list(&dbsched->db_attr_list);
+	return psched;
 }

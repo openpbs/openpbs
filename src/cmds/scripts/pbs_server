@@ -49,8 +49,8 @@ declare -x > "${env_save}"
 
 rm -f "${env_save}"
 
-# Source the file that sets PGSQL_LIBSTR
-. "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
+# Source the file that sets DB ENV variables
+. ${PBS_EXEC}/libexec/pbs_db_env
 
 
 # Loading dynamic library at PBS_EXEC/lib

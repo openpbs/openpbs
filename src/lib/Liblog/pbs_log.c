@@ -1088,32 +1088,6 @@ log_close(int msg)
 #endif	/* SYSLOG */
 }
 
-
-/**
- * @brief
- *	Function to set the database error into log buffer.
- *	If db_err is set, then set both the pbs specific error
- *	message "err_msg" + "db_err" to log_buffer.
- *	Else only the pbs error message
- *	is copied to log_buffer.
- *
- * @param[in]	err_msg - The pbs specific error message
- * @param[in]	db_err - Any Database specific error message
- *				that is returned by any database calls
- *
- */
-void
-log_set_dberr(char *err_msg, char *db_err)
-{
-	if (db_err && db_err[0] != 0) {
-		snprintf(log_buffer,  LOG_BUF_SIZE, "%s:[%s]",
-			err_msg,  db_err);
-	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE,
-			"%s", err_msg);
-	}
-}
-
 /**
  * @brief
  *	Function to set the comm related log levels to event types

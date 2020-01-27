@@ -80,7 +80,7 @@ extern char *pbs_python_object_str(PyObject *);
 #endif /* PYTHON */
 
 
-extern pbs_db_conn_t *svr_db_conn;
+extern void *svr_db_conn;
 
 /**
  * @brief	Helper function to write job sort formula to a sched's sched_priv
@@ -523,7 +523,7 @@ sched_delete(pbs_sched *psched)
 {
 	pbs_db_obj_info_t obj;
 	pbs_db_sched_info_t dbsched;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 
 	if (psched == NULL)
 		return (0);

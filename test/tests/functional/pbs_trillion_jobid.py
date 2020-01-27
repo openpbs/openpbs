@@ -48,7 +48,7 @@ class TestTrillionJobid(TestFunctional):
 
     update_svr_db_script = """#!/bin/bash
 . %s
-. ${PBS_EXEC}/libexec/pbs_pgsql_env.sh
+. ${PBS_EXEC}/libexec/pbs_db_env
 
 DATA_PORT=${PBS_DATA_SERVICE_PORT}
 if [ -z ${DATA_PORT} ]; then

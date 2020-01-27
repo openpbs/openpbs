@@ -113,9 +113,8 @@ extern void shutdown_ack();
 extern int takeover_from_secondary(void);
 extern int  be_secondary(time_t sec);
 extern void set_srv_prov_attributes();
-extern int svr_migrate_data();
-extern void log_set_dberr(char *err_msg, char *db_err);
-extern int chk_save_file(char *filename);
+extern int connect_to_db(int);
+extern void stop_db();
 #ifdef NAS /* localmod 005 */
 extern int chk_and_update_db_svrhost();
 #endif /* localmod 005 */
@@ -133,47 +132,34 @@ static int    get_port(char *, unsigned int *, pbs_net_t *);
 static time_t next_task();
 static int    start_hot_jobs();
 static void   lock_out(int, int);
-static pbs_db_conn_t *get_db_connect_information();
-static void try_connect_database(pbs_db_conn_t *conn);
-static pbs_db_conn_t *setup_db_connection(char *host, int timeout, int have_db_control);
-static int db_oper_failed_times = 0;
-static int last_rc = -1; /* we need to reset db_oper_failed_times for each state change of the db */
-static int db_delay = 0;
-static int touch_db_stop_file(void);
-#define MAX_DB_RETRIES			5
-#define MAX_DB_LOOP_DELAY		10
 #define HOT_START_PING_RATE		15
 
 /* Global Data Items */
 
-pbs_db_conn_t *svr_db_conn = NULL; /* server's global database connection pointer */
-pbs_db_conn_t *conn = NULL;  /* pointer to work out a valid connection - later assigned to svr_db_conn */
-
 int		stalone = 0;	/* is program running not as a service ? */
-char	       *acct_file = NULL;
-char	        daemonname[PBS_MAXHOSTNAME+8];
+char		*acct_file = NULL;
+char		daemonname[PBS_MAXHOSTNAME+8];
 int		used_unix_licenses  = 0;
 int		used_linix_licenses = 0;
-char	       *log_file  = NULL;
-char	       *path_svrdb;
-char	       *path_acct;
-char           *path_usedlicenses;
-char	        path_log[MAXPATHLEN+1];
-char	       *path_priv;
-char           *path_jobs;
-char	       *path_hooks;
-char	       *path_hooks_workdir;
-char	       *path_hooks_tracking;
-char	       *path_users;
-char	       *path_rescdef;
-char	       *path_hooks_rescdef;
-char	       *path_spool;
-char 	       *path_track;
-char	       *path_svrlive;
-extern char    *path_prov_track;
-char	       *path_secondaryact;
-attribute      *pbs_float_lic;
-char	       *pbs_o_host = "PBS_O_HOST";
+char		*log_file  = NULL;
+char		*path_acct;
+char		*path_usedlicenses;
+char		path_log[MAXPATHLEN+1];
+char		*path_priv;
+char		*path_jobs;
+char		*path_hooks;
+char		*path_hooks_workdir;
+char		*path_hooks_tracking;
+char		*path_users;
+char		*path_rescdef;
+char		*path_hooks_rescdef;
+char		*path_spool;
+char		*path_track;
+char		*path_svrlive;
+extern char	*path_prov_track;
+char		*path_secondaryact;
+attribute	*pbs_float_lic;
+char		*pbs_o_host = "PBS_O_HOST";
 pbs_net_t	pbs_mom_addr;
 unsigned int	pbs_mom_port;
 unsigned int	pbs_rm_port;
@@ -224,7 +210,7 @@ time_t		secondary_delay = 30;
 struct server	server = {{0}};		/* the server structure */
 pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
 int		shutdown_who;		/* see req_shutdown() */
-char	       *mom_host = server_host;
+char		*mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
@@ -285,7 +271,6 @@ int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
 static char    *suffix_slash = "/";
 static int	brought_up_alt_sched = 0;
 void stop_db();
-char *db_err_msg;
 extern void mark_nodes_unknown(int);
 
 /*
@@ -335,7 +320,8 @@ net_down_handler(void *data)
 }
 
 static int lockfds = -1;
-static int  already_forked = 0; /* we check this variable even in non-debug mode, so dont condition compile it */
+static int already_forked = 0; /* we check this variable even in non-debug mode, so dont condition compile it */
+static int background = 0; 
 
 #ifndef DEBUG
 /**
@@ -349,7 +335,7 @@ static int  already_forked = 0; /* we check this variable even in non-debug mode
  * @retval       >0	- sid of the child process.
  * @retval       -1	- Fork or setsid failed.
  */
-static pid_t
+pid_t
 go_to_background()
 {
 	pid_t	sid = -1;
@@ -754,9 +740,6 @@ main(int argc, char **argv)
 		{ "",		RECOV_Invalid }
 	};
 	static int		first_run = 1;
-	int				try_db = 0;
-	int 			db_stop_counts = 0;
-	int 			db_stop_email_sent = 0;
 
 	pbs_net_t		pbs_scheduler_addr;
 	unsigned int		pbs_scheduler_port;
@@ -842,7 +825,7 @@ main(int argc, char **argv)
 	if ((pc = strchr(daemonname, (int)'.')) != NULL)
 		*pc = '\0';
 
-	if(set_msgdaemonname(daemonname)) {
+	if (set_msgdaemonname(daemonname)) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -1059,7 +1042,6 @@ main(int argc, char **argv)
 		suffix_slash);
 	path_spool      = build_path(pbs_conf.pbs_home_path, PBS_SPOOLDIR,
 		suffix_slash);
-	path_svrdb      = build_path(path_priv, PBS_SERVERDB, NULL);
 	path_jobs       = build_path(path_priv, PBS_JOBDIR, suffix_slash);
 	path_users      = build_path(path_priv, PBS_USERDIR, suffix_slash);
 	path_rescdef	= build_path(path_priv, PBS_RESCDEF, NULL);
@@ -1097,19 +1079,6 @@ main(int argc, char **argv)
 		LOG_NOTICE,
 		PBS_EVENTCLASS_SERVER, msg_daemonname, log_buffer);
 
-
-	/* check here if svrdb exists asking to run in updatedb mode */
-	if (server_init_type != RECOV_UPDATEDB &&
-		server_init_type != RECOV_CREATE &&
-		chk_save_file(path_svrdb) == 0) {
-		sprintf(log_buffer, "A serverdb from a prior version has not yet been updated."
-			"  Rerun with \"-t updatedb\"");
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
-			LOG_NOTICE,
-			PBS_EVENTCLASS_SERVER, msg_daemonname, log_buffer);
-		fprintf(stderr, "%s\n", log_buffer);
-		exit(1);
-	}
 
 	/*Initialize security library's internal data structures*/
 	if (load_auths(AUTH_SERVER)) {
@@ -1229,137 +1198,12 @@ main(int argc, char **argv)
 	prctl(PR_SET_FPEMU, PR_FPEMU_NOPRINT, 0, 0, 0);
 #endif
 
-try_db_again:
-	/* database connection code start */
-	/* continue forever till a successful database connection is made */
-	fprintf(stderr, "Connecting to PBS dataservice.");
+	/* Setup db connection here */
+	if (server_init_type != RECOV_CREATE && !stalone && !already_forked)
+		background = 1;
+	if ((rc = connect_to_db(background)) != 0)
+		return rc;
 
-	if ((conn = get_db_connect_information()) == NULL) {
-		log_err(-1, msg_daemonname, "Failed to initialize PBS dataservice");
-		return (-1);
-	}
-
-	db_oper_failed_times = 0;
-
-	while (1) {
-#ifndef DEBUG
-		fprintf(stderr, ".");
-#endif
-		try_connect_database(conn);
-		if (conn && (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED))
-			break;
-
-		if (conn && (conn->conn_db_state == PBS_DB_DOWN)) {
-			/* db start failed, reset everything, so we try all over again */
-			pbs_db_disconnect(conn);
-			pbs_db_destroy_connection(conn);
-			conn = NULL;
-
-			/* get fresh connection information */
-			if ((conn = get_db_connect_information()) == NULL) {
-				log_err(-1, msg_daemonname, "Failed to initialize PBS dataservice");
-				return (-1);
-			}
-		}
-		db_delay = (int)(1 + db_oper_failed_times * 1.5);
-		if (db_delay > MAX_DB_LOOP_DELAY)
-			db_delay = MAX_DB_LOOP_DELAY; /* limit to MAX_DB_LOOP_DELAY secs */
-		sleep(db_delay);     /* dont burn the CPU looping too fast */
-		update_svrlive();    /* indicate we are alive */
-#ifndef DEBUG
-		if (server_init_type != RECOV_UPDATEDB &&
-			server_init_type != RECOV_CREATE &&
-			stalone == 0 &&	already_forked == 0 && try_db >= 4) {
-
-			fprintf(stderr, "continuing in background.\n");
-			if ((sid = go_to_background()) == -1)
-				return (2);
-		}
-#endif	/* DEBUG is defined */
-		try_db ++;
-	}
-
-	if (!pbs_conf.pbs_data_service_host) {
-		/*
-		 * Check the connected host and see if it is connected to right host.
-		 * In case of a failover, PBS server should be connected to database
-		 * on the same host as it is executing on. Thus, if PBS server ends
-		 * up connected to a database on another host (say primary server
-		 * connected to database on secondary or vice versa), then it is
-		 * deemed unacceptable. In such a case throw error on log notifying
-		 * that PBS is attempting to stop the database on the other side
-		 * and restart the loop all over.
-		 */
-		if (pbs_conf.pbs_primary) {
-			if (!pbs_failover_active) {
-				/* primary instance */
-				if (strcmp(conn->conn_host, pbs_conf.pbs_primary) != 0) {
-					/* primary instance connected to secondary database, not acceptable */
-					snprintf(log_buffer, sizeof(log_buffer),
-						"PBS data service is up on the secondary instance, attempting to stop it");
-					log_err(-1, msg_daemonname, log_buffer);
-					pbs_db_disconnect(conn);
-					pbs_db_destroy_connection(conn);
-					conn = NULL;
-
-					touch_db_stop_file();
-
-					if (db_stop_email_sent == 0) {
-						if (++db_stop_counts > MAX_DB_RETRIES) {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"Not able to stop PBS data service at the secondary site, please stop manually");
-							log_err(-1, msg_daemonname, log_buffer);
-							svr_mailowner(0, 0, 1, log_buffer);
-							db_stop_email_sent = 1;
-						}
-					}
-					sleep(10);
-					goto try_db_again;
-				}
-			} else {
-				/* secondary instance */
-				if (strcmp(conn->conn_host, pbs_conf.pbs_primary) == 0) {
-					/* secondary instance connected to primary database, not acceptable */
-					snprintf(log_buffer, sizeof(log_buffer),
-						"PBS data service is up on the primary instance, attempting to stop it");
-					log_err(-1, msg_daemonname, log_buffer);
-					pbs_db_disconnect(conn);
-					pbs_db_destroy_connection(conn);
-					conn = NULL;
-
-					touch_db_stop_file();
-
-					if (db_stop_email_sent == 0) {
-						if (++db_stop_counts > MAX_DB_RETRIES) {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"Not able to stop PBS data service at the primary site, please stop manually");
-							log_err(-1, msg_daemonname, log_buffer);
-							svr_mailowner(0, 0, 1, log_buffer);
-							db_stop_email_sent = 1;
-						}
-					}
-					sleep(10);
-					goto try_db_again;
-				}
-			}
-		}
-	}
-
-	/*
-	 * For security purposes remove the connection info from memory
-	 */
-	pbs_db_free_conn_info(conn);
-
-	svr_db_conn = conn; /* use this connection */
-	conn = NULL; /* ensure conn does not point to svr_db_conn any more */
-
-	if (pbs_db_prepare_sqls(svr_db_conn) != 0) {
-		/* this means there is programmatic/unrecoverable error, so we quit */
-		log_set_dberr("Failed to initialize PBS dataservice", svr_db_conn->conn_db_err);
-		log_err(-1, msg_daemonname, log_buffer);
-		stop_db();
-		return -1;
-	}
 	/* database connection code end */
 
 	/* Curses! pbsd_init() calls validate_job_formula() (in svr_recov()) */
@@ -1369,17 +1213,6 @@ try_db_again:
 	/* attributes  and resources (including custom resources) into       */
 	/* Python world, which are made  complete after call to pbsd_init()! */
 	pbs_python_ext_quick_start_interpreter();
-
-	if (server_init_type == RECOV_UPDATEDB) {
-		if (svr_migrate_data() != 0) {
-			stop_db();
-			log_err(-1, msg_daemonname, "Failed to update PBS datastore");
-			fprintf(stderr, "Failed to update PBS datastore\n");
-			return (3);
-		}
-		stop_db();
-		exit(0);
-	}
 
 	if (pbsd_init(server_init_type) != 0) {
 		log_err(-1, msg_daemonname, "pbsd_init failed");
@@ -2050,402 +1883,4 @@ lock_out(int fds, int op)
 		log_buffer);
 	fprintf(stderr, "pbs_server: %s\n", log_buffer);
 	exit(1);
-}
-
-
-/**
- * @brief
- *		This function creates connection information which is used by
- * 		try_connect_database.
- *
- * @return - pbs_db_conn_t pointer
- * @retval  NULL - Function failed. Error will be logged
- * @retval  !NULL - Newly allocated pbs_db_conn_t (connection) object
- *
- */
-static pbs_db_conn_t *
-get_db_connect_information()
-{
-	pbs_db_conn_t *lconn = NULL;
-
-	/*
-	 * Decide where to connect to, the timeout, and whether we can have control over the
-	 * database instance or not. Based on these create a new connection structure by calling
-	 * setup_db_connection. The behavior is as follows:
-	 *
-	 * a) If external database is configured (pbs_data_service_host), then always connect to that
-	 *	and do not try to start/stop the database (both in standalone / failover cases). In case of a
-	 *	connection failure (in between pbs processing) in standalone setup, try reconnecting to the
-	 *	external database for ever.
-	 *	In case of connection failure (not at startup) in a failover setup, try connecting to the external
-	 *	database only once more and then quit, letting failover kick in.
-	 *
-	 *
-	 * b) With embedded database:
-	 *	Status the database:
-	 *	- If no database running, start database locally.
-	 *
-	 *	- If database already running locally, its all good.
-	 *
-	 *	- If database is running on another host, then,
-	 *		a) If standalone, continue to attempt to start database locally.
-	 *		b) If primary, attempt to connect to secondary db, if it
-	 *		   connects, then throw error and start over (since primary
-	 *		   should never use the secondary's database. If connect fails
-	 *		   database is then try to start database locally.
-	 *		c) If secondary, attempt connection to primary db; if it
-	 *		   connects, continue to use it happily. If it fails, attempt to start
-	 *		   database locally.
-	 *
-	 */
-	if (pbs_conf.pbs_data_service_host) {
-		/*
-		 * External database configured,  infinite timeout, database instance not in our control
-		 */
-		lconn = setup_db_connection(pbs_conf.pbs_data_service_host, PBS_DB_CNT_TIMEOUT_INFINITE, 0);
-	} else {
-		/*
-		 * Database is in our control, we need to figure out the status of the database first
-		 * Is it already running? Is it running on another machine?
-		 *  Check whether database is up or down.
-		 *  It calls pbs_status_db to figure out the database status.
-		 *  pbs_db_status returns:
-		 *	-1 - failed to execute
-		 *	0  - Data service running on local host
-		 *	1  - Data service NOT running
-		 *	2  - Data service running on another host
-		 *
-		 * If pbs_db_status is not sure whether db is running or not, then it attempts
-		 * to connect to the host database to confirm that.
-		 *
-		 */
-		char *failstr = NULL;
-
-		int rc = pbs_status_db(&failstr);
-		if (rc == -1) {
-			snprintf(log_buffer, sizeof(log_buffer), "status db failed: %s", failstr);
-			log_err(-1, msg_daemonname, log_buffer);
-			free(failstr);
-			return NULL;
-		}
-		free(failstr);
-
-		snprintf(log_buffer, sizeof(log_buffer), "pbs_status_db exit code %d", rc);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
-
-		if (last_rc != rc) {
-			/*
-			 * we might have failed trying to start database several times locally
-			 * if however, the database state has changed (like its stopped by admin),
-			 * then we reset db_oper_failed_times.
-			 *
-			 * Basically we check against the error code from the last try, if its
-			 * not the same error code, then it means that something in the database
-			 * startup has changed (or failing to start for a different reason).
-			 * Since the db_oper_failed_times is used to count the number of failures
-			 * of one particular kind, so we reset it when the error code differs
-			 * from that in the last try.
-			 */
-			db_oper_failed_times = 0;
-		}
-		last_rc = rc;
-
-
-		if (pbs_conf.pbs_primary) {
-			if (!pbs_failover_active) {
-				/* Failover is configured, and this is the primary */
-				if (rc == 0 || rc == 1) /* db running locally or db not running */
-					lconn = setup_db_connection(pbs_conf.pbs_primary, PBS_DB_CNT_TIMEOUT_INFINITE, 1);
-
-				if (rc == 2) /* db could be running on secondary, don't start, try connecting to secondary's */
-					lconn = setup_db_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_NORMAL, 0);
-
-			} else {
-				/* Failover is configured and this is active secondary */
-				if (rc == 0 || rc == 1) /* db running locally or db not running */
-					lconn = setup_db_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_INFINITE, 1);
-
-				if (rc == 2) /* db could be running on primary, don't start, try connecting to primary's */
-					lconn = setup_db_connection(pbs_conf.pbs_primary, PBS_DB_CNT_TIMEOUT_NORMAL, 0);
-			}
-		} else {
-			/*
-			 * No failover configured. Try connecting forever to our own instance, have control.
-			 */
-			lconn = setup_db_connection(pbs_default(), PBS_DB_CNT_TIMEOUT_INFINITE, 1); /* connect to pbs.server */
-		}
-	}
-	return lconn;
-}
-
-/**
- * @brief
- *		Checks whether database is down, and if so
- *		starts up the database in asynchronous mode.
- *
- * @return - Failure code
- * @retval  -1 - Error in pbs_startup_db_async
- * @retval   PBS_DB_STARTING - Database is starting
- * @retval   PBS_DB_STARTED - Database is up
- *
- */
-static int
-start_db()
-{
-	char *failstr = NULL;
-	int rc;
-
-	strcpy(log_buffer, "Starting PBS dataservice");
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-		PBS_EVENTCLASS_SERVER, LOG_CRIT,
-		msg_daemonname, log_buffer);
-
-	rc = pbs_startup_db_async(&failstr);
-	if (rc != 0) {
-		log_set_dberr("Failed to start PBS dataservice", failstr);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN,
-			PBS_EVENTCLASS_SERVER, LOG_ERR,
-			msg_daemonname, log_buffer);
-		fprintf(stderr, "%s\n", log_buffer);
-		if (failstr)
-			free(failstr);
-
-		return PBS_DB_DOWN;
-	} else {
-		sleep(1); /* give time for database to atleast establish the ports */
-		return PBS_DB_STARTING;
-	}
-
-	return PBS_DB_STARTED;
-}
-
-/**
- * @brief
- *		Try to start and connect to the database asynchronously. Database is
- *		started if "have_db_control" is 1.
- *
- *		When the database is up, it repeatedly calls pbs_db_connect_async to
- *		connect to the database.
- *
- *		Caller calls try_connect_database in a loop till a connection
- *		is achieved.
- *
- * @param[in,out]	conn - Previously initialized connection structure
- *
- */
-static void
-try_connect_database(pbs_db_conn_t *conn)
-{
-	int failcode = 0;
-
-	if (conn == NULL)
-		return;
-
-	if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED)
-		return; /* already connected */
-
-	if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTING &&
-		(time(0) - conn->conn_connect_time > conn->conn_timeout) &&
-		conn->conn_timeout != 0) { /* 0 is infinite */
-		snprintf(log_buffer, sizeof(log_buffer),
-			"Dataservice connection failed due to timeout");
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname,
-			log_buffer);
-		conn->conn_state = PBS_DB_CONNECT_STATE_FAILED; /* failed connection due to time out */
-	}
-
-	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED) {
-		pbs_db_disconnect(conn);
-		db_oper_failed_times++;
-	}
-
-	if (conn->conn_have_db_control == 0) {
-		failcode = pbs_db_connect_async(conn); /* just try to connect */
-	} else {
-		if (conn->conn_db_state == PBS_DB_DOWN) {
-			conn->conn_db_state = start_db();
-			if (conn->conn_db_state == PBS_DB_STARTING) {
-				/* started new database, reset connection structure */
-				pbs_db_disconnect(conn); /* disconnect from any old connection, cleanup memory */
-			} else if (conn->conn_db_state == PBS_DB_DOWN) {
-				db_oper_failed_times++;
-			}
-		}
-		if (conn->conn_db_state == PBS_DB_STARTED || conn->conn_db_state == PBS_DB_STARTING) {
-			int i;
-
-			i = MAX_DB_RETRIES;
-			/*
-			 * call pbs_db_connect_async a few times in a tight loop
-			 * since an outer loop calling try_connect_database might have too
-			 * much of delays between its calls
-			 */
-			while (i > 0 && conn->conn_state != PBS_DB_CONNECT_STATE_CONNECTED &&
-				conn->conn_state != PBS_DB_CONNECT_STATE_FAILED) {
-				failcode = pbs_db_connect_async(conn);
-				i--;
-			}
-		}
-	}
-	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED && failcode != PBS_DB_STILL_STARTING) {
-		db_oper_failed_times++;
-		get_db_errmsg(failcode, &db_err_msg);
-		log_set_dberr(db_err_msg, conn->conn_db_err);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
-		conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
-	} else if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED) {
-		sprintf(log_buffer, "connected to PBS dataservice@%s", conn->conn_host);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-			PBS_EVENTCLASS_SERVER, LOG_CRIT,
-			msg_daemonname, log_buffer);
-		fprintf(stderr, "%s\n", log_buffer);
-	}
-}
-
-/**
- * @brief
- *		Stop the database if up, and log a message if the database
- *		failed to stop.
- *		Try to stop till not successful, with incremental delay.
- */
-void
-stop_db()
-{
-	char *db_err = NULL;
-
-	pbs_db_disconnect(svr_db_conn);
-	pbs_db_destroy_connection(svr_db_conn);
-	svr_db_conn = NULL;
-
-	/* check status of db, shutdown if up */
-	db_oper_failed_times = 0;
-	while (1) {
-		int rc;
-
-		rc = pbs_status_db(&db_err);
-		if (rc != 0) {
-			free(db_err);
-			return; /* dataservice not running, got killed? */
-		}
-
-		strcpy(log_buffer, "Stopping PBS dataservice");
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-			PBS_EVENTCLASS_SERVER, LOG_CRIT,
-			msg_daemonname, log_buffer);
-
-		if (pbs_shutdown_db(&db_err) != 0) {
-			log_set_dberr("Failed to stop PBS dataservice", db_err);
-			log_event(
-				PBSEVENT_SYSTEM | PBSEVENT_ADMIN,
-				PBS_EVENTCLASS_SERVER,
-				LOG_ERR, msg_daemonname,
-				log_buffer);
-			fprintf(stderr, "%s\n", log_buffer);
-		}
-		if (db_err) {
-			free(db_err);
-			db_err = NULL;
-		}
-
-		db_oper_failed_times++;
-
-		/* try stopping after some time again */
-		db_delay = (int)(1 + db_oper_failed_times * 1.5);
-		if (db_oper_failed_times > MAX_DB_LOOP_DELAY)
-			db_delay = MAX_DB_LOOP_DELAY; /* limit to MAX_DB_LOOP_DELAY secs */
-		sleep(db_delay); /* don't burn the CPU looping too fast */
-	}
-}
-/**
- * @brief
- * 		panic shutdown of server due to database error. closing database and log system.
- *
- * @param[in]	txt	- log message
- */
-void
-panic_stop_db(char *txt)
-{
-	char panic_stop_txt[] = "Panic shutdown of Server on database error.  Please check PBS_HOME file system for no space condition.";
-	char mailbuf[LOG_BUF_SIZE+1];
-
-	log_err(-1, "panic_stop_db", panic_stop_txt);
-	snprintf(mailbuf, LOG_BUF_SIZE, "%s.\n%s", txt, panic_stop_txt);
-	svr_mailowner(0, 0, 0, mailbuf);
-	stop_db();
-	log_close(1);
-	exit(1);
-}
-
-/**
- * @brief
- *		Setup a new database connection structure.
- *
- * @par Functionality:
- *		Disconnect and destroy any active connection associated
- *		with global variable conn.
- *		It then calls pbs_db_init_connection to initialize a new connection
- *		structure (pointed to by conn) with the values of host, timeout and
- *		have_db_control. Logs error on failure.
- *
- * @param[in]	host	- The host to connect to
- * @param[in]	timeout	- The connection timeout
- * @param[in]	have_db_control	- Whether we can start/stop a new db instance
- *
- * @return	Initialized connection structure
- * @retval  0 - Connection did not time out
- * @retval  1 - Connection timed out
- *
- */
-static pbs_db_conn_t *
-setup_db_connection(char *host, int timeout, int have_db_control)
-{
-	int failcode = 0;
-	char errmsg[PBS_MAX_DB_CONN_INIT_ERR + 1] = {0};
-	pbs_db_conn_t *lconn;
-
-	lconn = pbs_db_init_connection(host, timeout, have_db_control, &failcode, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
-	if (!lconn) {
-		get_db_errmsg(failcode, &db_err_msg);
-		if(conn)
-			log_set_dberr(db_err_msg, conn->conn_db_err);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
-
-		if (db_err_msg && strlen(db_err_msg) > 0) {
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, db_err_msg);
-			fprintf(stderr, "%s\n", db_err_msg);
-		}
-
-		if (strlen(errmsg) > 0) {
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-					LOG_CRIT, msg_daemonname, errmsg);
-			fprintf(stderr, "%s\n", errmsg);
-		}
-		return NULL;
-	}
-	return lconn;
-}
-
-/**
- * @brief
- * 		touch_db_stop_file	- create a touch file when db is stopped.
- *
- * @return	int
- * @retval	0	- created touch file
- * @retval	-1	- unable to create touch file
- */
-static int
-touch_db_stop_file(void)
-{
-	int fd;
-	char closefile[MAXPATHLEN + 1];
-	snprintf(closefile, MAXPATHLEN, "%s/datastore/pbs_dbclose", pbs_conf.pbs_home_path);
-
-#ifndef O_RSYNC
-#define O_RSYNC 0
-#endif
-	if ((fd = open(closefile, O_WRONLY| O_CREAT | O_RSYNC, 0600)) != -1) {
-		return -1;
-	}
-	close(fd);
-	return 0;
 }

@@ -83,6 +83,8 @@
 #include "libutil.h"
 #include "pbs_db.h"
 
+struct pbsnode *recov_node_cb(pbs_db_obj_info_t *dbobj, int *refreshed);
+struct pbsnode *pbsd_init_node(pbs_db_node_info_t *dbnode, int type);
 
 /**
  * @brief
@@ -148,10 +150,11 @@ struct pbsnode *
 node_recov_db(char *nd_name, struct pbsnode *pnode)
 {
 	pbs_db_obj_info_t obj;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_node_info_t dbnode = {{0}};
 	int rc = 0;
 	struct pbsnode *pnd = NULL;
+	char *conn_db_err = NULL;
 
 	if (!pnode) {
 		if ((pnd = malloc(sizeof(struct pbsnode)))) {
@@ -173,8 +176,11 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
 
 	if (rc == 0)
 		rc = db_to_node(pnode, &dbnode);
-	else
-		log_errf(PBSE_INTERNAL, __func__, "Failed to load node %s %s", nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
+	else {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load node %s %s", nd_name, conn_db_err ? conn_db_err : "");
+		free(conn_db_err);
+	}
 	
 	free_db_attr_list(&dbnode.db_attr_list);
 
@@ -322,7 +328,8 @@ node_save_db(struct pbsnode *pnode)
 {
 	pbs_db_node_info_t dbnode = {{0}};
 	pbs_db_obj_info_t obj;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
+	char *conn_db_err = NULL;
 	int savetype;
 	int rc = -1;
 
@@ -344,8 +351,10 @@ done:
 	free_db_attr_list(&dbnode.db_attr_list);
 	
 	if (rc != 0) {
-		log_errf(PBSE_INTERNAL, __func__, "Failed to save node %s %s", pnode->nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
-		panic_stop_db(log_buffer);
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save node %s %s", pnode->nd_name, conn_db_err? conn_db_err : "");
+		free(conn_db_err);
+		panic_stop_db();
 	}
 	return rc;
 }
@@ -368,15 +377,45 @@ node_delete_db(struct pbsnode *pnode)
 {
 	pbs_db_node_info_t dbnode;
 	pbs_db_obj_info_t obj;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
+	char *conn_db_err = NULL;
 
 	strcpy(dbnode.nd_name, pnode->nd_name);
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 
 	if (pbs_db_delete_obj(conn, &obj) == -1) {
-		log_errf(PBSE_INTERNAL, __func__, "Failed to delete node %s %s", pnode->nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
+		log_errf(PBSE_INTERNAL, __func__, "Failed to delete node %s %s", pnode->nd_name, conn_db_err? conn_db_err : "");
 		return (-1);
 	} else
 		return (0);	/* "success" or "success but rows deleted" */
+}
+
+/**
+ * @brief
+ *	Refresh/retrieve node from database and add it into node list if not present
+ *
+ *	@param[in]	dbobj - The pointer to the wrapper node object of type pbs_db_node_info_t
+ *	@param[in]	refreshed - To check if node refreshed
+ *
+ * @return	The recovered node
+ * @retval	NULL - Failure
+ * @retval	!NULL - Success, pointer to node structure recovered
+ *
+ */
+struct pbsnode *
+recov_node_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
+{
+	struct pbsnode *pnode = NULL;
+	pbs_db_node_info_t *dbnode = dbobj->pbs_db_un.pbs_db_node;
+	int load_type = 0;
+
+	*refreshed = 0;
+	if ((pnode = pbsd_init_node(dbnode, load_type)) != NULL)
+		*refreshed = 1;
+ 
+	free_db_attr_list(&dbnode->db_attr_list);
+	if (pnode == NULL)
+		log_errf(-1, __func__, "Failed to load node %s", dbnode->nd_name);
+	return pnode;
 }
