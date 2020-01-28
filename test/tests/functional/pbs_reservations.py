@@ -1951,10 +1951,10 @@ class TestReservations(TestFunctional):
         # submitting 25 seconds from now to allow some of the older testbed
         # systems time to process (discovered empirically)
         rid = self.submit_reservation(user=TEST_USER,
-                                               select='1:ncpus=1',
-                                               rrule='FREQ=MINUTELY;COUNT=2',
-                                               start=now + 25,
-                                               end=now + 35)
+                                      select='1:ncpus=1',
+                                      rrule='FREQ=MINUTELY;COUNT=2',
+                                      start=now + 25,
+                                      end=now + 35)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
@@ -1976,4 +1976,3 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
         self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
-
