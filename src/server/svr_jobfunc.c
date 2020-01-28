@@ -2671,10 +2671,10 @@ correct_ct(pbs_queue *pqj)
 /**
  * @brief
  * 		Update_Resvstate_if_resv - function checks if the job is
- *      a reservation-job and, if so, the reservation "state"
+ * 		a reservation-job and, if so, the reservation "state"
  *		is computed based on:
- *	    current "job state", "job substate", "reservation state"
- *	    and, the "reserve_start"/"reserve_end" times vs current time.
+ *		current "job state", "job substate", "reservation state"
+ *		and, the "reserve_start"/"reserve_end" times vs current time.
  * @par
  *		The assumption that's made is that "reserve_start",
  *		and "reserve_end" have been computed prior to the calling
@@ -3089,6 +3089,11 @@ Time4resv(struct work_task *ptask)
 			append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		}
 	}
+
+	if (presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET) {
+		/* Catch the idle case where the reservation never has any jobs in it */
+		set_idle_delete_task(presv);
+	}
 }
 
 
@@ -3169,7 +3174,7 @@ Time4resvFinish(struct work_task *ptask)
 	 * 2) Delete all Running Jobs and Keep Queued Jobs
 	 * 3) Once all Obits are received (see running_jobs_count):
 	 *    3.a) Determine if occurrences were missed
-	 *    3.b) Add the next occurrence start and end event on the work task 	 *
+	 *    3.b) Add the next occurrence start and end event on the work task
 	 */
 	presv->resv_end_task = NULL;
 	if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1) {
@@ -3179,7 +3184,8 @@ Time4resvFinish(struct work_task *ptask)
 		DBPRT(("reached end of occurrence %d/%d\n", ridx, rcount))
 
 		/* When recovering past the last occurrence the standing reservation is purged
-		 * in a manner similar to an advance reservation  */
+		 * in a manner similar to an advance reservation 
+		 */
 		if (ridx < rcount) {
 			/*
 			 * Invoke the reservation end hook for every occurrence
@@ -3200,7 +3206,7 @@ Time4resvFinish(struct work_task *ptask)
 			 * state of the reservation queue
 			 */
 			change_enableORstart(presv, Q_CHNG_START, "FALSE");
-			(void)resv_setResvState(presv, RESV_DELETING_JOBS, RESV_DELETING_JOBS);
+			resv_setResvState(presv, RESV_DELETING_JOBS, presv->ri_qs.ri_substate);
 
 			/* 2) Issue delete messages to jobs in running state and keep jobs in
 			 * Queued state. Server periodically monitors the reservation queue
@@ -3315,11 +3321,13 @@ Time4occurrenceFinish(resc_resv *presv)
 	next = dtstart;
 	now = time(NULL);
 
-	/* Add next occurrence and account for missed occurrences..
-	 * A missed occurrence is one that had its reservation end time in the past.
-	 * next can be -1 if it exceeds the end date of Unix time in 2038.
+	/* Add next occurrence and account for missed occurrences.
+	 * There are three ways we can get into this function:
+	 * 1) When the server is initializating.  We need to account for all occurrences we have missed.
+	 * 2) The end of an occurrence.  We need to move onto the next.
+	 * 3) If an occurrence ends early.  We need to move onto the next.
 	 */
-	while (dtend <= now && next != -1) {
+	while ((presv->ri_qs.ri_substate == RESV_RUNNING && next < now) || dtend <= now) {
 		/* get occurrence that is "j" numbers away from dtstart. */
 		next = get_occurrence(rrule, dtstart, tz, j);
 		if (presv->ri_alter_standing_reservation_duration) {
@@ -3328,7 +3336,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		}
 		dtend = next + presv->ri_qs.ri_duration;
 
-		/* Index of next occurrence from dtstart*/
+		/* Index of next occurrence from dtstart */
 		j++;
 
 		/* Log information notifying of missed occurrences. An occurrence is
@@ -3376,7 +3384,6 @@ Time4occurrenceFinish(resc_resv *presv)
 
 		DBPRT(("stdg_resv: next occurrence start = %s", ctime(&next)))
 		DBPRT(("stdg_resv: next occurrence end   = %s", ctime(&dtend)))
-
 	}
 	DBPRT(("stdg_resv: execvnodes sequence   = %s\n", presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str))
 	execvnodes = strdup(presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str);
@@ -3389,7 +3396,8 @@ Time4occurrenceFinish(resc_resv *presv)
 	rcount_adjusted = rcount - get_execvnodes_count(execvnodes);
 
 	/* The reservation index starts at 1 but the short_xc array at 0. Occurrence 1
-	 * is therefore given by array element 0. */
+	 * is therefore given by array element 0. 
+	 */
 	newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
 
 	/* clean up helper variables */
@@ -3458,7 +3466,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		return;
 	}
 
-	/*place "Time4resv" task on "task_list_timed"*/
+	/* place "Time4resv" task on "task_list_timed" */
 	if ((rc = gen_task_Time4resv(presv)) != 0) {
 		sprintf(log_buffer, "problem generating task Time for occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
@@ -3467,7 +3475,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* add task to handle the end of the next occurrence */
 	if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 		(void)resv_purge(presv);
-		sprintf(log_buffer, " problem generating reservation end task for occurrence (%d)", rc);
+		sprintf(log_buffer, "problem generating reservation end task for occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 		return;
 	}
@@ -3490,19 +3498,19 @@ Time4occurrenceFinish(resc_resv *presv)
 		}
 	}
 
+	/* All nodes of this occurrence are up, mark reservation confirmed */
+	if (pl == NULL)
+		state = RESV_CONFIRMED;
+
 	/* If the reservation already has a retry time set then its substate is
-	 * marked degraded
+	 * marked degraded.  If all degraded occurrences are in the past, the 
+	 * scheduler will fix this on the next retry attempt.
 	 */
-	if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > time_now) {
+	if (presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) {
 		sub = RESV_DEGRADED;
-	}
-	/* otherwise, if degraded, default to setting a retry time in a
-	 * "reasonable" time in the future
-	 */
-	else if ((presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) &&
-		presv->ri_wattr[RESV_ATR_retry].at_val.at_long > 0 &&
-		presv->ri_wattr[RESV_ATR_retry].at_val.at_long <= time_now) {
-		set_resv_retry(presv, time_now + 120);
+		if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > 0 &&
+		    presv->ri_wattr[RESV_ATR_retry].at_val.at_long <= time_now)
+			set_resv_retry(presv, time_now + 120);
 	}
 
 	if (sub == RESV_DEGRADED) {
@@ -3847,16 +3855,12 @@ resv_setResvState(resc_resv *presv, int state, int sub)
 	presv->ri_qs.ri_state = state;
 	presv->ri_qs.ri_substate = sub;
 
-	presv->ri_wattr[(int)RESV_ATR_state]
-	.at_val.at_long = state;
-	presv->ri_wattr[(int)RESV_ATR_state]
-	.at_flags |= ATR_VFLAG_SET |
+	presv->ri_wattr[(int)RESV_ATR_state].at_val.at_long = state;
+	presv->ri_wattr[(int)RESV_ATR_state].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-	presv->ri_wattr[(int)RESV_ATR_substate]
-	.at_val.at_long = sub;
-	presv->ri_wattr[(int)RESV_ATR_substate]
-	.at_flags |= ATR_VFLAG_SET |
+	presv->ri_wattr[(int)RESV_ATR_substate].at_val.at_long = sub;
+	presv->ri_wattr[(int)RESV_ATR_substate].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	presv->ri_modified = 1;
 	return;
@@ -4358,10 +4362,10 @@ remove_deleted_resvs(void)
 
 /**
  * @brief
- * 		add_resv_beginEnd_tasks - for each reservation not in state
- *      RESV_FINISHED add to "task_list_timed" the "begin" and
- *      "end" reservation tasks as appropriate.  Function used
- *		in "pbsd_init" code
+ * 	add_resv_beginEnd_tasks - for each reservation not in state
+ *	RESV_FINISHED add to "task_list_timed" the "begin" and
+ *	"end" reservation tasks as appropriate.  Function used
+ *	in "pbsd_init" code
  *
  * @return	none
  */
@@ -4375,12 +4379,11 @@ add_resv_beginEnd_tasks(void)
 
 	presv = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (presv) {
-
 		rc = 0;
 		if (presv->ri_qs.ri_state == RESV_CONFIRMED ||
 			presv->ri_qs.ri_state == RESV_RUNNING) {
 
-			/*add "begin" and "end" tasks onto "task_list_timed"*/
+			/* add "begin" and "end" tasks onto "task_list_timed" */
 
 			if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 				sprintf(txt, "%s : EndResvWindow task creation failed",
@@ -4394,7 +4397,7 @@ add_resv_beginEnd_tasks(void)
 			}
 		} else if (presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
 
-			/*add "end" task onto "task_list_timed"*/
+			/* add "end" task onto "task_list_timed" */
 
 			if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 				sprintf(txt, "%s : EndResvWindow task creation failed",
@@ -4472,7 +4475,7 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
 /**
  * @brief
  *		start_end_dur_wall - This function handles both "resc_resv"
- *		objects or "job" objects.   If it is passed a reservation
+ *		objects or "job" objects.  If it is passed a reservation
  *		of some type, it considers the information specified for
  *		start_time, end_time, duration and walltime.  Using what was
  *		specified, it computes those unspecified values that are
@@ -5096,6 +5099,9 @@ void
 svr_saveorpurge_finjobhist(job *pjob)
 {
 	int flag = 0;
+	resc_resv *presv;
+
+	presv = pjob->ji_myResv;
 
 	flag = svr_chk_history_conf();
 	if (flag && !pjob->ji_deletehistory) {
@@ -5103,13 +5109,13 @@ svr_saveorpurge_finjobhist(job *pjob)
 		if (pjob->ji_ajtrk)
 			pjob->ji_ajtrk->tkm_flags &= ~TKMFLG_CHK_ARRAY;
 		if (pjob->ji_terminated && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-				pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
+		    pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
 			pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
 	} else {
 		if (pjob->ji_deletehistory && flag) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				msg_also_deleted_job_history);
+				  LOG_INFO, pjob->ji_qs.ji_jobid,
+				  msg_also_deleted_job_history);
 		}
 		/* For an array subjob if exit status is non-zero mark sub state
 		 * as JOB_SUBSTATE_FAILED. Otherwise set to JOB_SUBSTATE_FINISHED
@@ -5118,9 +5124,9 @@ svr_saveorpurge_finjobhist(job *pjob)
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 			if (pjob->ji_terminated)
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_TERMINATED;
-			else if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
-				ATR_VFLAG_SET) {
-				if (pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long)
+			else if ((pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags) &
+				 ATR_VFLAG_SET) {
+				if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long)
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FAILED;
 				else if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_EXITED)
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FINISHED;
@@ -5128,6 +5134,7 @@ svr_saveorpurge_finjobhist(job *pjob)
 		}
 		job_purge(pjob);
 	}
+	set_idle_delete_task(presv);
 }
 /**
  * @brief
@@ -5587,7 +5594,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 /**
  * @brief
  * 		svr_chk_histjob - check whether job is a history job: called from
- * 		       req_stat_job() if type = 1;
+ * 			req_stat_job() if type = 1;
  *
  * @param[in]	pjob	-	job structure to be checked
  *

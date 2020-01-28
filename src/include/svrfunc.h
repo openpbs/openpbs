@@ -106,7 +106,7 @@ extern int   get_queued_subjobs_ct(job *pjob);
 extern char *get_index_from_jid(char *newjid);
 extern int      parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct);
 extern int expand_resc_array(char *rname, int rtype, int rflag);
-extern void cnvrt_timer_init(void);
+extern void  resv_timer_init(void);
 extern int validate_nodespec(char *str);
 extern long longto_kbsize(char *val);
 extern int is_vnode_up(char *vname);

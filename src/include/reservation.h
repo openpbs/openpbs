@@ -117,6 +117,7 @@ enum resv_atr {
 	RESV_ATR_resv_execvnodes,
 	RESV_ATR_resv_timezone,
 	RESV_ATR_retry,
+	RESV_ATR_del_idle_time,
 	RESV_ATR_node_set,
 	RESV_ATR_UNKN,
 	RESV_ATR_LAST
@@ -304,6 +305,7 @@ struct resc_resv {
 #define RESV_UNION_TYPE_NEW	0
 
 #define RESV_RETRY_DELAY	10  /* for degraded standing reservation retries */
+#define RESV_ASAP_IDLE_TIME	600 /* default delete_idle_time for ASAP reservations */
 
 /* reservation hold (internal) types */
 
@@ -345,9 +347,10 @@ extern	void tickle_for_reply(void);
 extern	void remove_deleted_resvs();
 extern	void add_resv_beginEnd_tasks();
 extern	void resv_retry_handler(struct work_task *);
-#endif	/* _WORK_TASK_H */
+extern void set_idle_delete_task(resc_resv *presv);
+#endif /* _WORK_TASK_H */
 
-extern  int  change_enableORstart(resc_resv *, int, char *);
+extern int change_enableORstart(resc_resv *, int, char *);
 extern	void unset_resv_retry(resc_resv *);
 extern	void set_resv_retry(resc_resv *, long);
 extern	void eval_resvState(resc_resv *, enum resvState_discrim, int, int *,
