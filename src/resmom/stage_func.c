@@ -64,7 +64,6 @@
 #include "batch_request.h"
 #include "pbs_nodes.h"
 #include "mom_func.h"
-#include "log.h"
 /**
  * @file	stage_func.c
  */
