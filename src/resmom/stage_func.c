@@ -64,6 +64,7 @@
 #include "batch_request.h"
 #include "pbs_nodes.h"
 #include "mom_func.h"
+#include "log.h"
 /**
  * @file	stage_func.c
  */
@@ -498,8 +499,6 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 				"Direct write is requested for job: %s, but the destination: %s is not usecp-able",
 				pjob->ji_qs.ji_jobid, p);
 		}
-		log_event(PBSEVENT_DEBUG3,
-		PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		return (0);
 	}
 
