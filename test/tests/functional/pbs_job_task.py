@@ -50,6 +50,20 @@ class TestJobTask(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'true'})
 
+
+    def check_jobs_file(self, out_file):
+        """
+        This function validates job's output file
+        """
+        ret = self.du.cat(hostname=self.mom.shortname,
+                          filename=out_file,
+                          runas=TEST_USER)
+        _msg = "cat command failed with error:%s" % ret['err']
+        self.assertEqual(ret['rc'], 0, _msg)
+        _msg = 'Job\'s error file has error:"%s"' % ret['out']
+        self.assertEqual(ret['out'][0], "OK", _msg)
+        self.logger.info("Job has executed without any error")
+
     def test_singlenode_pbsdsh(self):
         """
         This test case validates that task started by pbsdsh runs
@@ -57,7 +71,9 @@ class TestJobTask(TestFunctional):
         """
         a = {ATTR_S: '/bin/bash'}
         job = Job(TEST_USER, attrs=a)
-        script = ['pbsdsh echo "OK"']
+        pbsdsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                      'bin', 'pbsdsh')
+        script = ['%s echo "OK"' % pbsdsh_cmd]
         job.create_script(body=script)
         jid = self.server.submit(job)
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
@@ -65,15 +81,7 @@ class TestJobTask(TestFunctional):
         job_status = self.server.status(JOB, id=jid, extend='x')
         if job_status:
             job_output_file = job_status[0]['Output_Path'].split(':')[1]
-
-        ret = self.du.cat(hostname=self.mom.shortname,
-                          filename=job_output_file,
-                          runas=TEST_USER)
-        _msg = "cat command failed with error: %s" % ret['err']
-        self.assertEqual(ret['rc'], 0, _msg)
-        _msg = 'Job\'s error file has error: "%s"' % ret['out']
-        self.assertEqual(ret['out'][0], "OK", _msg)
-        self.logger.info("Job has executed without any error")
+        self.check_jobs_file(job_output_file)
 
     def test_singlenode_pbs_tmrsh(self):
         """
@@ -82,7 +90,9 @@ class TestJobTask(TestFunctional):
         """
         a = {ATTR_S: '/bin/bash'}
         job = Job(TEST_USER, attrs=a)
-        script = ['pbs_tmrsh $(hostname -f) echo "OK"']
+        pbstmrsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                      'bin', 'pbs_tmrsh')
+        script = ['%s $(hostname -f) echo "OK"' % pbstmrsh_cmd]
         job.create_script(body=script)
         jid = self.server.submit(job)
 
@@ -91,12 +101,4 @@ class TestJobTask(TestFunctional):
         job_status = self.server.status(JOB, id=jid, extend='x')
         if job_status:
             job_output_file = job_status[0]['Output_Path'].split(':')[1]
-
-        ret = self.du.cat(hostname=self.mom.shortname,
-                          filename=job_output_file,
-                          runas=TEST_USER)
-        _msg = "cat command failed with error: %s" % ret['err']
-        self.assertEqual(ret['rc'], 0, _msg)
-        _msg = 'Job\'s error file has error: "%s"' % ret['out']
-        self.assertEqual(ret['out'][0], "OK", _msg)
-        self.logger.info("Job has executed without any error")
+        self.check_jobs_file(job_output_file)
