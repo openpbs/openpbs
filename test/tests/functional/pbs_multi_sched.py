@@ -189,6 +189,7 @@ class TestMultipleSchedulers(TestFunctional):
                 self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
                 self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_set_sched_priv(self):
         """
         Test sched_priv can be only set to valid paths
@@ -468,6 +469,7 @@ class TestMultipleSchedulers(TestFunctional):
             jid1 + ';Job preempted by suspension',
             max_attempts=10, starttime=t)
 
+    @skipOnCpuSet
     def test_preemption_two_sched(self):
         """
         Test two schedulers preempting jobs at the same time
@@ -768,6 +770,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.assertEqual(n.nshares, sc3_shares)
         self.assertEqual(n.usage, sc3_usage)
 
+    @skipOnCpuSet
     def test_fairshare_usage(self):
         """
         Test the schedulers fairshare usage file and
@@ -996,6 +999,7 @@ class TestMultipleSchedulers(TestFunctional):
         n = self.scheds['sc1'].query_fairshare().get_node(name=str(TEST_USER))
         self.assertTrue(n.usage, 25)
 
+    @skipOnCpuSet
     def test_pbsfs_revert_to_defaults(self):
         """
         Test if revert_to_defaults() works properly with multi scheds.
@@ -1572,6 +1576,7 @@ class TestMultipleSchedulers(TestFunctional):
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
 
+    @skipOnCpuSet
     def test_job_sort_formula_threshold(self):
         """
         Test the scheduler attribute job_sort_formula_threshold for multisched
@@ -2084,6 +2089,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
+    @skipOnCpuSet
     def test_multi_sched_node_sort_key(self):
         """
         Test to make sure nodes are sorted in the order

@@ -43,6 +43,7 @@ class TestQstat(TestFunctional):
     This test suite validates output of qstat with various options
     """
 
+    @skipOnCpuSet
     def test_qstat_pt(self):
         """
         Test that checks correct output for qstat -pt

@@ -40,6 +40,7 @@ from tests.functional import *
 
 class TestHostResources(TestFunctional):
 
+    @skipOnCpuSet
     def test_set_direct_on_indirect_resc(self):
         """
         Set a direct resource on indirect resource and make sure
@@ -60,6 +61,7 @@ class TestHostResources(TestFunctional):
         self.server.expect(NODE, {'resources_assigned.fooi': ''},
                            id='vnode[1]', op=UNSET, max_attempts=1)
 
+    @skipOnCpuSet
     def test_set_direct_on_indirect_resc_busy(self):
         """
         Set a direct resource on indirect resource
@@ -93,6 +95,7 @@ class TestHostResources(TestFunctional):
             self.server.expect(NODE, {'resources_available.fooi': 100},
                                id='vnode[1]', op=UNSET, max_attempts=1)
 
+    @skipOnCpuSet
     def test_set_direct_on_target_node(self):
         """
         Set a direct resource on target node which should
@@ -123,6 +126,7 @@ class TestHostResources(TestFunctional):
             _msg = "Setting indirect resources on a target object should fail"
             self.assertTrue(False, _msg)
 
+    @skipOnCpuSet
     def test_create_node_without_resc_set(self):
         """
         Create a consumable resource then create a new node.

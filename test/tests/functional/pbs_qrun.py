@@ -50,6 +50,7 @@ class TestQrun(TestFunctional):
         self.pbs_exec = self.server.pbs_conf['PBS_EXEC']
         self.qrun = os.path.join(self.pbs_exec, 'bin', 'qrun')
 
+    @skipOnCpuSet
     def test_invalid_host_val(self):
         """
         Tests that pbs_server should not crash when the node list in
