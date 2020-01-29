@@ -1512,7 +1512,7 @@ check_block_wt(struct work_task *ptask)
 		/* Set socket to Non-blocking */
 		sock_flags = fcntl(blockj->fd, F_GETFL, 0);
 		if (fcntl(blockj->fd, F_SETFL, sock_flags | O_NONBLOCK) == -1) {
-			sprintf(log_buffer, "Failed to set non-blocking flag on socket for job %s", 
+			sprintf(log_buffer, "Failed to set non-blocking flag on socket for job %s",
 			blockj->jobid);
 			goto err;
 		}
@@ -1584,7 +1584,7 @@ retry:
 		set_task(WORK_Timed, time_now + 10, check_block_wt, blockj);
 		return;
 	} else {
-		sprintf(log_buffer, "Unable to reply to client %s for job %s", 
+		sprintf(log_buffer, "Unable to reply to client %s for job %s",
 		blockj->client, blockj->jobid);
 	}
 err:
@@ -1594,7 +1594,7 @@ err:
 	}
 	log_err(-1, __func__, log_buffer);
 end:
-	if (blockj->fd != -1) 
+	if (blockj->fd != -1)
 		close(blockj->fd);
 	free(blockj->msg);
 	free(blockj);
@@ -1613,7 +1613,7 @@ check_block(job *pjob, char *message)
 	int			port;
 	char			*phost;
 	char			*jobid = pjob->ji_qs.ji_jobid;
-	struct 			block_job_reply *blockj; 
+	struct 			block_job_reply *blockj;
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
 		return;
@@ -1658,7 +1658,7 @@ check_block(job *pjob, char *message)
 	blockj->fd = -1;
 	blockj->reply_time = time(NULL);
 	blockj->exitstat = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);	
+	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);
 
 	set_task(WORK_Immed, 0, check_block_wt, blockj);
 	return;
@@ -3396,6 +3396,11 @@ Time4occurrenceFinish(resc_resv *presv)
 	free(short_xc);
 	free(execvnodes);
 	free_execvnode_seq(tofree);
+
+	/* Set reservation state to finished. Will re-evaluate
+	 * the state for the next occurrence later in the function.
+	 */
+	resv_setResvState(presv, RESV_FINISHED, RESV_FINISHED);
 
 	/* Decrement resources assigned */
 	if (presv->ri_giveback == 1) {

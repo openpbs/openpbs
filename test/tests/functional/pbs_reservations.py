@@ -1938,3 +1938,41 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         self.server.expect(JOB, {'job_state=F': 6}, count=True,
                            extend='xt', id=jid)
+
+    def test_standing_resv_resc_used(self):
+        """
+        Test that resources are released from the server when a
+        standing reservation's occurrence finishes
+        """
+
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+        now = int(time.time())
+
+        # submitting 25 seconds from now to allow some of the older testbed
+        # systems time to process (discovered empirically)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      rrule='FREQ=MINUTELY;COUNT=2',
+                                      start=now + 25,
+                                      end=now + 35)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+        offset = now + 25 - int(time.time())
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 1})
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid, offset=10, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+        offset = now + 85 - int(time.time())
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 1})
+
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
