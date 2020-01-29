@@ -1371,12 +1371,9 @@ class NodeUtils(object):
             # Physical memory
             host_mem = self.get_memory_on_node(ignore_reserved=True)
             host_mem_net = self.get_memory_on_node(ignore_reserved=False)
-
-            pbs.logmsg(pbs.EVENT_DEBUG4, 
-                       '%s: gross mem = %s, net mem = %s' 
-                        % (caller_name(), host_mem, host_mem_net))
-
-
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       '%s: gross mem = %s, net mem = %s'
+                       % (caller_name(), host_mem, host_mem_net))
             host_resv_mem = host_mem - host_mem_net
             if host_resv_mem < 0:
                 host_resv_mem = 0
