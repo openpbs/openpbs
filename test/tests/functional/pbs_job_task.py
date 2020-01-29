@@ -50,7 +50,6 @@ class TestJobTask(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'true'})
 
-
     def check_jobs_file(self, out_file):
         """
         This function validates job's output file
@@ -72,7 +71,7 @@ class TestJobTask(TestFunctional):
         a = {ATTR_S: '/bin/bash'}
         job = Job(TEST_USER, attrs=a)
         pbsdsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                      'bin', 'pbsdsh')
+                                  'bin', 'pbsdsh')
         script = ['%s echo "OK"' % pbsdsh_cmd]
         job.create_script(body=script)
         jid = self.server.submit(job)
@@ -91,7 +90,7 @@ class TestJobTask(TestFunctional):
         a = {ATTR_S: '/bin/bash'}
         job = Job(TEST_USER, attrs=a)
         pbstmrsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                      'bin', 'pbs_tmrsh')
+                                    'bin', 'pbs_tmrsh')
         script = ['%s $(hostname -f) echo "OK"' % pbstmrsh_cmd]
         job.create_script(body=script)
         jid = self.server.submit(job)
