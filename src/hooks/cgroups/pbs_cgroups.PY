@@ -2084,8 +2084,8 @@ class NodeUtils(object):
                                           'hpmem': 'hugetlb'})
                         mem_val -= adjust_bytes_per_node
                         mem_val -= (1024 * 1024
-                                * self.cfg['cgroup'][key_to_subsys[key]]
-                                                    ['vnode_hidden_mb'])
+                                    * self.cfg['cgroup'][key_to_subsys[key]]
+                                                        ['vnode_hidden_mb'])
                         if mem_val < 0:
                             mem_val = 0
                         mem_val -= mem_val % (1024 * 1024)
