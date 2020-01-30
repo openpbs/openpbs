@@ -73,7 +73,7 @@ else
                         if [ -d "${PTL_PREFIX}/bin" ];then
                             ptllibpath=${PTL_PREFIX}/lib/${python_dir}
                         fi
-                        if [ -d "${PTL_PREFIX}/lib/${python_dir}" ];then
+                        if [ -x "${PTL_PREFIX}/bin" ];then
                             ptlbinpath=${PTL_PREFIX}/bin
                         fi
                 fi
@@ -103,8 +103,6 @@ if [ -z $ptlbinpath ];then
         ${PBS_EXEC}/python/bin/python ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
     else
         python3 ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
-    #echo "Error: PTL bin path not found"
-    #exit 1
     fi
 elif [ -x "${PBS_EXEC}/python/bin/python" ]; then
         ${PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot "${@}"
