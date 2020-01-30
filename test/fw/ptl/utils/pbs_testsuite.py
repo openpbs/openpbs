@@ -449,10 +449,15 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_param()
         cls.check_users_exist()
         cls.init_servers()
+        cls.init_schedulers()
         if cls.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_custom_setup",
                                        suffix=".json")
-            ret = cls.server.save_configuration(path, 'w')
+            ret = cls.server.save_configuration()
+            if not ret:
+                cls.logger.error("Failed to save custom setup")
+                raise Exception("Failed to save custom setup")
+            ret = cls.scheduler.save_configuration(path, 'w')
             if ret:
                 cls.saved_file = path
             else:
@@ -460,7 +465,6 @@ class PBSTestSuite(unittest.TestCase):
                 raise Exception("Failed to save custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
-        cls.init_schedulers()
         cls.init_moms()
         cls.log_end_setup(True)
 
@@ -472,13 +476,17 @@ class PBSTestSuite(unittest.TestCase):
         if not PBSTestSuite.config_saved and self.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_test_setup",
                                        suffix=".json")
-            ret = self.server.save_configuration(path, 'w')
+            ret = self.server.save_configuration()
+            if not ret:
+                self.logger.error("Failed to save test setup")
+                raise Exception("Failed to save test setup")
+            ret = self.scheduler.save_configuration(path, 'w')
             if ret:
                 self.saved_file = path
-                PBSTestSuite.config_saved = True
             else:
                 self.logger.error("Failed to save test setup")
                 raise Exception("Failed to save test setup")
+            PBSTestSuite.config_saved = True
         # Adding only server and pbs.conf methods in use current
         # setup block, rest of them to be added to this block
         # once save & load configurations are implemented for
@@ -1597,6 +1605,9 @@ class PBSTestSuite(unittest.TestCase):
             ret = self.server.load_configuration(self.saved_file)
             if not ret:
                 raise Exception("Failed to load test setup")
+            ret = self.scheduler.load_configuration(self.saved_file)
+            if not ret:
+                raise Exception("Failed to load test setup")
         self.log_end_teardown()
 
     @classmethod
@@ -1606,6 +1617,9 @@ class PBSTestSuite(unittest.TestCase):
             PBSTestSuite.delete_current_state(cls.server, cls.moms)
             PBSTestSuite.config_saved = False
             ret = cls.server.load_configuration(cls.saved_file)
+            if not ret:
+                raise Exception("Failed to load custom setup")
+            ret = cls.scheduler.load_configuration(cls.saved_file)
             if not ret:
                 raise Exception("Failed to load custom setup")
         if cls.use_cur_setup:
