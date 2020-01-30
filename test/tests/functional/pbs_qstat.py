@@ -103,7 +103,6 @@ class TestQstat(TestFunctional):
         if ret['rc'] != 0:
             self.assertFalse(ret['err'][0], ret_msg)
 
-    @skipOnCpuSet
     def test_qstat_n_ip(self):
         """
         Test qstat -n output reports the correct node name
@@ -113,7 +112,7 @@ class TestQstat(TestFunctional):
         ipaddr = socket.gethostbyname(self.mom.hostname)
         attr_A = {'Mom': self.mom.hostname}
         self.server.manager(MGR_CMD_CREATE, NODE, id=ipaddr, attrib=attr_A)
-        self.server.expect(NODE, {'state=free': 1})
+        self.server.expect(NODE, {'state': 'free'}, id=ipaddr)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -128,7 +127,6 @@ class TestQstat(TestFunctional):
                       "Incorrect node name in qstat -n when "
                       "node created using IP address")
 
-    @skipOnCpuSet
     def test_qstat_n_fqdn(self):
         """
         Test qstat -n output reports task slot and processor info
@@ -136,7 +134,7 @@ class TestQstat(TestFunctional):
         """
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.hostname)
-        self.server.expect(NODE, {'state=free': 1})
+        self.server.expect(NODE, {'state': 'free'}, id=self.mom.hostname)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
