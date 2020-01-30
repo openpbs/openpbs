@@ -67,7 +67,9 @@ else
                 if [ "X${__PBS_EXEC}" != "X" ]; then
                         # Define PATH and PYTHONPATH for the users
                         PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
-                        python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
+                        if [ -x "${PTL_PREFIX}/lib)/site-packages" ]; then
+                            python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
+                        fi
                         if [ -d "${PTL_PREFIX}/bin" ];then
                             ptllibpath=${PTL_PREFIX}/lib/${python_dir}
                         fi
@@ -84,13 +86,28 @@ fi
 
 export PYTHONPATH=${ptllibpath}:${PYTHONPATH}
 
-if [ -z $ptlbinpath ];then
-    echo "Error: PTL bin path not found"
-    exit 1
+if [ -z $PBS_EXEC ]; then
+    pbs_conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+    if [ -r "${pbs_conf}" ]; then
+        . ${pbs_conf}
+    else
+        echo "***" >&2
+        echo "*** No PBS_CONF_FILE found, exiting" >&2
+        echo "***" >&2
+        exit 1
+    fi
 fi
 
-if [ -x "${PBS_EXEC}/python/bin/python" ]; then
-	${PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot "${@}"
+if [ -z $ptlbinpath ];then
+    if [ -x "${PBS_EXEC}/python/bin/python" ]; then
+        ${PBS_EXEC}/python/bin/python ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+    else
+        python3 ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+    #echo "Error: PTL bin path not found"
+    #exit 1
+    fi
+elif [ -x "${PBS_EXEC}/python/bin/python" ]; then
+        ${PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot "${@}"
 else
-	python3 ${ptlbinpath}/pbs_snapshot "${@}"
+        python3 ${ptlbinpath}/pbs_snapshot "${@}"
 fi
