@@ -166,6 +166,8 @@ class TestPbsNodeRampDown(TestFunctional):
                     break
             retry -= 1
             if retry == 0:
+                if str(lic_count).find("Used:0"):
+                    return
                 raise AssertionError("not found %d licenses" % (num_licenses,))
             self.logger.info("sleeping 3 secs before next retry")
             time.sleep(3)
