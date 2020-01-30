@@ -705,6 +705,7 @@ class TestJobArray(TestFunctional):
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')
 
+    @skipOnCpuSet
     def test_recover_big_array_job(self):
         """
         Test that during server restart, server is able to recover valid

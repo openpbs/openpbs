@@ -42,7 +42,6 @@ class TestQstat(TestFunctional):
     """
     This test suite validates output of qstat with various options
     """
-
     @skipOnCpuSet
     def test_qstat_pt(self):
         """
@@ -50,7 +49,7 @@ class TestQstat(TestFunctional):
         """
 
         attr = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.hostname)
 
         job_count = 10
         j = Job(TEST_USER)
@@ -104,6 +103,7 @@ class TestQstat(TestFunctional):
         if ret['rc'] != 0:
             self.assertFalse(ret['err'][0], ret_msg)
 
+    @skipOnCpuSet
     def test_qstat_n_ip(self):
         """
         Test qstat -n output reports the correct node name
@@ -128,6 +128,7 @@ class TestQstat(TestFunctional):
                       "Incorrect node name in qstat -n when "
                       "node created using IP address")
 
+    @skipOnCpuSet
     def test_qstat_n_fqdn(self):
         """
         Test qstat -n output reports task slot and processor info

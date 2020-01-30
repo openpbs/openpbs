@@ -95,6 +95,7 @@ class TestQrun(TestFunctional):
         self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
 
+    @skipOnCpuSet
     def test_qrun_hangs(self):
         """
         This test submit 500 jobs with differnt equivalence class,
