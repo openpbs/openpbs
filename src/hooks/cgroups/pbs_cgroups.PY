@@ -1,5 +1,4 @@
 # coding: utf-8
-# based on master, 14JAN20 0936 CET
 
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -156,6 +155,13 @@ class UserError(Exception):
     pass
 
 
+class JobValueError(Exception):
+    """
+    Errors in PBS job resource values.
+    """
+    pass
+
+
 class CgroupBusyError(ProcessingError):
     """
     Errors when the cgroup is busy.
@@ -180,13 +186,6 @@ class CgroupLimitError(AdminError):
 class CgroupProcessingError(ProcessingError):
     """
     Errors processing cgroup.
-    """
-    pass
-
-
-class JobValueError(Exception):
-    """
-    Errors in PBS job resource values.
     """
     pass
 
@@ -555,7 +554,7 @@ def printjob_info(jobid, include_attributes=False):
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Exception: %s' % exc)
         return info
     pattern = re.compile(r'^(\w.*):\s*(\S+)')
-    if ((not isinstance(out, str))
+    if (not isinstance(out, str)
             and isinstance(out, (bytes, bytearray))):
         if sys.version_info[0] >= 3:
             out = out.decode('utf-8')
@@ -1394,13 +1393,11 @@ class NodeUtils(object):
                 val -= node_resv_hpmem
                 numa_nodes[num]['hpmem'] = val
                 val = size_as_int(numa_nodes[num]['MemTotal'])
-                # do not round down -- do that only when reporting to svr
-                # val -= val % (1024 * 1024)
+                # round down only svr-reported values, not internal values
                 val -= node_resv_mem
                 numa_nodes[num]['mem'] = val
                 val += node_swapmem
-                # do not round down -- do that only when reporting to svr
-                # val -= val % (1024 * 1024)
+                # round down only svr-reported values, not internal values
                 numa_nodes[num]['vmem'] = val
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s' % (caller_name(), numa_nodes))
         return numa_nodes
@@ -1650,8 +1647,8 @@ class NodeUtils(object):
         # Now try to construct a dictionary with hyperthread information
         # if this is an Intel based processor
         try:
-            if (('Intel' in cpuinfo['cpu'][0]['vendor_id'])
-                    or ('AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id'])):
+            if ('Intel' in cpuinfo['cpu'][0]['vendor_id']
+                    or 'AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id']):
                 if 'ht' in cpuinfo['cpu'][0]['flags']:
                     cpuinfo['hyperthreads_per_core'] = \
                         (cpuinfo['cpu'][0]['siblings']
@@ -1737,8 +1734,7 @@ class NodeUtils(object):
                     # NUMA node unreliable, make sure other method is used
                     total = 0
                     break
-            # Do not round down to nearest MB
-            # total -= total % (1024 * 1024)
+            # only round down svr-reported values, not internal values
             if total > 0:
                 return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1768,8 +1764,7 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, 'reserved mem: %d' % reserved)
         # Calculate remaining memory
         remaining = total - reserved
-        # Do not round down to nearest MB
-        # remaining -= remaining % (1024 * 1024)
+        # only round down svr-reported values, not internal values
         if remaining <= 0:
             raise ValueError('Too much reserved memory')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining mem: %d' % remaining)
@@ -1795,8 +1790,7 @@ class NodeUtils(object):
                 else:
                     total = 0
                     break
-            # Do not round down to nearest MB
-            # total -= total % (1024 * 1024)
+            # only round down svr-reported values, not internal values
             if total > 0:
                 return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1837,8 +1831,7 @@ class NodeUtils(object):
                 reserved = swap
         # Calculate remaining vmem
         remaining = total + swap - reserved
-        # Do not round down to nearest MB
-        # remaining -= remaining % (1024 * 1024)
+        # only round down svr-reported values, not internal values
         if remaining <= 0:
             raise ValueError('Too much reserved vmem')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining vmem: %d' % remaining)
@@ -1861,8 +1854,7 @@ class NodeUtils(object):
                 else:
                     total = 0
                     break
-            # Do not round down to nearest MB
-            # total -= total % (1024 * 1024)
+            # only round down svr-reported values, not internal values
             if total > 0:
                 return total
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1943,7 +1935,7 @@ class NodeUtils(object):
 
         # Set resources_available.vntype of natural node according
         # to what's in local file if it needs to be propagated to server
-        if (vntype and ("propagate_vntype_to_server" in self.cfg)
+        if (vntype and "propagate_vntype_to_server" in self.cfg
                 and self.cfg['propagate_vntype_to_server']):
             host_resc_avail['vntype'] = vntype
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode type set to %s'
@@ -1983,7 +1975,7 @@ class NodeUtils(object):
                 vnode_key = vnode_name + '[%d]' % nnid
                 vnode_list[vnode_key] = pbs.vnode(vnode_name)
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
-                if (vntype and ("propagate_vntype_to_server" in self.cfg)
+                if (vntype and "propagate_vntype_to_server" in self.cfg
                         and self.cfg['propagate_vntype_to_server']):
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
@@ -2133,7 +2125,7 @@ class NodeUtils(object):
         # Assume vnode names resemble self.hostname[#]
         match_found = False
         for vnode_name in pbs.event().vnode_list:
-            if ((vnode_name == self.hostname) or
+            if (vnode_name == self.hostname or
                     re.match(self.hostname + r'\[.*\]', vnode_name)):
                 pbs.event().vnode_list[vnode_name].state = pbs.ND_OFFLINE
                 pbs.event().vnode_list[vnode_name].comment = self.offline_msg
@@ -2437,10 +2429,8 @@ class CgroupUtils(object):
                     paths['systemd'] = \
                         self._assemble_path('systemd', entries[1], flags)
 
-#        if some hosts do not have cgroup controllers mounted
-#        don't panic, let main code handle it by doing nothing
-#        if not paths:
-#            raise CgroupConfigError('Cgroup paths not detected')
+        # if a host does not have any cgroup controllers mounted
+        # don't panic here, let main code handle it by just accepting event
 
         return paths
 
@@ -2501,8 +2491,8 @@ class CgroupUtils(object):
             elif isinstance(value_found, basestring):
                 # string value -- could be morphable description
                 value_split = value_found.strip().split(':', 1)
-                if ((value_split[0].lower().strip() == 'vntype in')
-                        and (len(value_split) > 1)):
+                if (len(value_split) > 1
+                        and value_split[0].lower().strip() == 'vntype in'):
                     vntypes_t_unstripped = value_split[1].split(',')
                     vntypes_t = [item.strip() for item in vntypes_t_unstripped]
                     if any([fnmatch.fnmatch(vntype, p) for p in vntypes_t]):
@@ -2514,8 +2504,8 @@ class CgroupUtils(object):
                                " set %s to %s based on vntype inclusion"
                                % (caller_name(), key_found,
                                   str(config_dict[key_found])))
-                elif ((value_split[0].lower().strip() == 'vntype not in')
-                      and (len(value_split) > 1)):
+                elif (len(value_split) > 1
+                        and value_split[0].lower().strip() == 'vntype not in'):
                     vntypes_f_unstripped = value_split[1].split(',')
                     vntypes_f = [item.strip() for item in vntypes_f_unstripped]
                     if any([fnmatch.fnmatch(vntype, p) for p in vntypes_f]):
@@ -2527,8 +2517,8 @@ class CgroupUtils(object):
                                " set %s to %s based on vntype exclusion"
                                % (caller_name(), key_found,
                                   str(config_dict[key_found])))
-                elif ((value_split[0].lower().strip() == 'host in')
-                      and (len(value_split) > 1)):
+                elif (len(value_split) > 1
+                        and value_split[0].lower().strip() == 'host in'):
                     hosts_t_unstripped = value_split[1].split(',')
                     hosts_t = [item.strip() for item in hosts_t_unstripped]
                     if any([fnmatch.fnmatch(self.hostname, p)
@@ -2541,8 +2531,8 @@ class CgroupUtils(object):
                                " set %s to %s based on host inclusion"
                                % (caller_name(), key_found,
                                   str(config_dict[key_found])))
-                elif ((value_split[0].lower().strip() == 'host not in')
-                      and (len(value_split) > 1)):
+                elif (len(value_split) > 1
+                        and value_split[0].lower().strip() == 'host not in'):
                     hosts_f_unstripped = value_split[1].split(',')
                     hosts_f = [item.strip() for item in hosts_f_unstripped]
                     if any([fnmatch.fnmatch(self.hostname, p)
@@ -2558,18 +2548,18 @@ class CgroupUtils(object):
 
         # Old "exclude_vntypes" now modulates current "enabled"
         # (if present) or creates it if non-empty
-        if (("exclude_vntypes" in config_dict)
+        if ("exclude_vntypes" in config_dict
                 and config_dict['exclude_vntypes']):
-            if (("enabled" not in config_dict)
-                    or (not isinstance(config_dict['enabled'], bool))):
+            if ("enabled" not in config_dict
+                    or not isinstance(config_dict['enabled'], bool)):
                 config_dict['enabled'] = \
                     (not any([fnmatch.fnmatch(vntype, p)
                              for p in config_dict['exclude_vntypes']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
-                     and (not any([fnmatch.fnmatch(vntype, p)
-                                   for p in config_dict['exclude_vntypes']])))
+                     and not any([fnmatch.fnmatch(vntype, p)
+                                 for p in config_dict['exclude_vntypes']]))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on exclude_vntypes"
@@ -2578,18 +2568,18 @@ class CgroupUtils(object):
 
         # Old "exclude_hosts" now modulates current "enabled" (if present)
         # or creates enabled if it is non-empty
-        if (("exclude_hosts" in config_dict)
+        if ("exclude_hosts" in config_dict
                 and config_dict['exclude_hosts']):
-            if (("enabled" not in config_dict)
-                    or (not isinstance(config_dict['enabled'], bool))):
+            if ("enabled" not in config_dict
+                    or not isinstance(config_dict['enabled'], bool)):
                 config_dict['enabled'] = \
                     (not any([fnmatch.fnmatch(self.hostname, p)
                              for p in config_dict['exclude_hosts']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
-                     and (not any([fnmatch.fnmatch(self.hostname, p)
-                                  for p in config_dict['exclude_hosts']])))
+                     and not any([fnmatch.fnmatch(self.hostname, p)
+                                  for p in config_dict['exclude_hosts']]))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on exclude_hosts"
@@ -2599,10 +2589,10 @@ class CgroupUtils(object):
         # mirror image include_hosts of old "exclude_hosts"
         # now modulates current "enabled" (if present)
         # or creates enabled if it is non-empty
-        if (("include_hosts" in config_dict)
+        if ("include_hosts" in config_dict
                 and config_dict['include_hosts']):
-            if (("enabled" not in config_dict)
-                    or (not isinstance(config_dict['enabled'], bool))):
+            if ("enabled" not in config_dict
+                    or not isinstance(config_dict['enabled'], bool)):
                 config_dict['enabled'] = \
                     (any([fnmatch.fnmatch(self.hostname, p)
                          for p in config_dict['include_hosts']]))
@@ -2626,7 +2616,7 @@ class CgroupUtils(object):
                        % caller_name())
 
         # Old "run_only_on_hosts" limits enabled hosts if present
-        if (("run_only_on_hosts" in config_dict)
+        if ("run_only_on_hosts" in config_dict
                 and config_dict['run_only_on_hosts']):
             config_dict['enabled'] = \
                 (config_dict['enabled']
@@ -3153,11 +3143,11 @@ class CgroupUtils(object):
         # Check whether the subsystem is enabled in the configuration file
         if subsystem not in self.cfg['cgroup']:
             return False
-        if (('enabled' in self.cfg)
+        if ('enabled' in self.cfg
                 and isinstance(self.cfg['enabled'], bool)
                 and not self.cfg['enabled']):
             return False
-        if (('enabled' not in self.cfg['cgroup'][subsystem])
+        if ('enabled' not in self.cfg['cgroup'][subsystem]
                 or not self.cfg['cgroup'][subsystem]['enabled']):
             return False
         # Check whether the cgroup is mounted for this subsystem
@@ -4084,7 +4074,7 @@ class CgroupUtils(object):
                         pbs.logjobmsg(jobid,
                                       'Cgroup memory limit exceeded: %s' %
                                       (err_msg))
-                        if ((pbs.event().type == pbs.EXECJOB_EPILOGUE)
+                        if (pbs.event().type == pbs.EXECJOB_EPILOGUE
                                 and pbs.event().job.in_ms_mom()):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup mem limit "
@@ -4110,7 +4100,7 @@ class CgroupUtils(object):
                         pbs.logjobmsg(jobid,
                                       'Cgroup memsw limit exceeded: %s' %
                                       (err_msg))
-                        if ((pbs.event().type == pbs.EXECJOB_EPILOGUE)
+                        if (pbs.event().type == pbs.EXECJOB_EPILOGUE
                                 and pbs.event().job.in_ms_mom()):
                             self.write_to_stderr(pbs.event().job,
                                                  "Cgroup memsw limit "
@@ -4130,7 +4120,7 @@ class CgroupUtils(object):
                     err_msg = self._get_error_msg(jobid)
                     pbs.logjobmsg(jobid, 'Cgroup hugetlb limit exceeded: %s' %
                                   (err_msg))
-                    if ((pbs.event().type == pbs.EXECJOB_EPILOGUE)
+                    if (pbs.event().type == pbs.EXECJOB_EPILOGUE
                             and pbs.event().job.in_ms_mom()):
                         self.write_to_stderr(pbs.event().job,
                                              "Cgroup hugetlb limit "
