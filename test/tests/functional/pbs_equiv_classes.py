@@ -67,6 +67,7 @@ class TestEquivClass(TestFunctional):
 
         return ret_jids
 
+    @skipOnCpuSet
     def test_basic(self):
         """
         Test the basic behavior of job equivalence classes: submit two
@@ -91,6 +92,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_select(self):
         """
         Test to see if jobs with select resources not in the resources line
@@ -119,6 +121,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_place(self):
         """
         Test to see if jobs with different place statements
@@ -145,6 +148,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_reslist1(self):
         """
         Test to see if jobs with resources in Resource_List that are not in
@@ -181,6 +185,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_reslist2(self):
         """
         Test to see if jobs with resources in Resource_List that are in the
@@ -219,6 +224,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 5",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_nolimits(self):
         """
         Test to see that jobs from different users, groups, and projects
@@ -256,6 +262,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user(self):
         """
         Test to see that jobs from different users fall into the same
@@ -281,6 +288,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_old(self):
         """
         Test to see that jobs from different users fall into different
@@ -308,6 +316,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_server(self):
         """
         Test to see that jobs from different users fall into different
@@ -335,6 +344,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_server_soft(self):
         """
         Test to see that jobs from different users fall into different
@@ -362,6 +372,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_queue(self):
         """
         Test to see that jobs from different users fall into different
@@ -390,6 +401,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_queue_without_limits(self):
         """
         Test that jobs from different users submitted to a queue without
@@ -426,6 +438,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_queue_soft(self):
         """
         Test to see that jobs from different users fall into different
@@ -454,6 +467,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_user_queue_without_soft_limits(self):
         """
         Test that jobs from different users submitted to a queue without
@@ -487,6 +501,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_group(self):
         """
         Test to see that jobs from different groups fall into the same
@@ -516,6 +531,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     @skipOnShasta
     def test_group_old(self):
         """
@@ -549,6 +565,7 @@ class TestEquivClass(TestFunctional):
                                  starttime=self.t)
 
     @skipOnShasta
+    @skipOnCpuSet
     def test_group_server(self):
         """
         Test to see that jobs from different groups fall into different
@@ -581,6 +598,7 @@ class TestEquivClass(TestFunctional):
                                  starttime=self.t)
 
     @skipOnShasta
+    @skipOnCpuSet
     def test_group_server_soft(self):
         """
         Test to see that jobs from different groups fall into different
@@ -613,6 +631,7 @@ class TestEquivClass(TestFunctional):
                                  starttime=self.t)
 
     @skipOnShasta
+    @skipOnCpuSet
     def test_group_queue(self):
         """
         Test to see that jobs from different groups fall into different
@@ -648,6 +667,7 @@ class TestEquivClass(TestFunctional):
                                  starttime=self.t)
 
     @skipOnShasta
+    @skipOnCpuSet
     def test_group_queue_soft(self):
         """
         Test to see that jobs from different groups fall into different
@@ -682,6 +702,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_proj(self):
         """
         Test to see that jobs from different projects fall into the same
@@ -711,6 +732,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_proj_server(self):
         """
         Test to see that jobs from different projects fall into different
@@ -742,6 +764,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_proj_server_soft(self):
         """
         Test to see that jobs from different projects fall into different
@@ -773,6 +796,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_proj_queue(self):
         """
         Test to see that jobs from different groups fall into different
@@ -804,6 +828,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_proj_queue_soft(self):
         """
         Test to see that jobs from different groups fall into different
@@ -835,6 +860,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_queue(self):
         """
         Test to see that jobs from different generic queues fall into
@@ -871,6 +897,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_queue_limits(self):
         """
         Test to see if jobs in a queue with limits use their queue as part
@@ -927,6 +954,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 4",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_queue_nodes(self):
         """
         Test to see if jobs that are submitted into a queue with nodes
@@ -981,6 +1009,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_prime_queue(self):
         """
         Test to see if a job in a primetime queue has its queue be part of
@@ -1043,6 +1072,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 4",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_non_prime_queue(self):
         """
         Test to see if a job in a non-primetime queue has its queue be part of
@@ -1106,6 +1136,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 4",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_ded_time_queue(self):
         """
         Test to see if a job in a dedicated time queue has its queue be part
@@ -1154,6 +1185,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_job_array(self):
         """
         Test that various job types will fall into single equivalence
@@ -1180,6 +1212,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 1",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_reservation(self):
         """
         Test that similar jobs inside reservations falls under same
@@ -1211,6 +1244,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_time_limit(self):
         """
         Test that various time limits will have their own
@@ -1249,6 +1283,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_fairshare(self):
         """
         Test that scheduler do not create any equiv classes
@@ -1282,6 +1317,7 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 1",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_server_hook(self):
         """
         Test that job equivalence classes are updated
@@ -1351,6 +1387,7 @@ e.job.Resource_List["cput"] = 20
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_mom_hook(self):
         """
         Test for job equivalence classes with mom hooks.
@@ -1408,6 +1445,7 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_incr_decr(self):
         """
         Test for varying job equivalence class values
@@ -1486,6 +1524,7 @@ else:
             "Number of job equivalence classes message " +
             "not present when there are no jobs as expected")
 
+    @skipOnCpuSet
     def test_server_queue_limit(self):
         """
         Test with mix of hard and soft limits
@@ -1585,6 +1624,7 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 8",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_preemption(self):
         """
         Suspended jobs are placed into their own equivalence class.  If
@@ -1637,6 +1677,7 @@ else:
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
+    @skipOnCpuSet
     def test_preemption2(self):
         """
         Suspended jobs are placed into their own equivalence class.  If
@@ -1695,6 +1736,7 @@ else:
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
 
+    @skipOnCpuSet
     def test_multiple_job_preemption_order(self):
         """
         Test that when multiple jobs from same eqivalence class are
@@ -1818,6 +1860,7 @@ else:
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid6)
 
+    @skipOnCpuSet
     def test_multiple_equivalence_class_preemption(self):
         """
         This test is to test that -
@@ -1913,6 +1956,7 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_held_jobs_equiv_class(self):
         """
         1) Test that held jobs do not go into another equivalence class.
@@ -1936,6 +1980,7 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 1",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_queue_resav(self):
         """
         Test that jobs in queues with resources_available limits use queue as
@@ -1974,6 +2019,7 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
 
+    @skipOnCpuSet
     def test_overlap_resv(self):
         """
         Test that 2 overlapping reservation creates 2 different
@@ -2028,6 +2074,7 @@ else:
         self.server.expect(JOB, {"job_state": 'R'}, id=jid1)
         self.server.expect(JOB, {"job_state": 'R'}, id=jid3)
 
+    @skipOnCpuSet
     def test_limit_res(self):
         """
         Test when resources are being limited on, but those resources are not
@@ -2075,6 +2122,7 @@ else:
             attribs['resource_available.mem'] = '4gb'
         return attribs
 
+    @skipOnCpuSet
     def test_equiv_class_not_marked_on_suspend(self):
         """
         Test that if a job is suspended then scheduler does not mark its

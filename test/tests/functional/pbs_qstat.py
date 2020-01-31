@@ -42,14 +42,14 @@ class TestQstat(TestFunctional):
     """
     This test suite validates output of qstat with various options
     """
-
+    @skipOnCpuSet
     def test_qstat_pt(self):
         """
         Test that checks correct output for qstat -pt
         """
 
         attr = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.hostname)
 
         job_count = 10
         j = Job(TEST_USER)
@@ -112,7 +112,7 @@ class TestQstat(TestFunctional):
         ipaddr = socket.gethostbyname(self.mom.hostname)
         attr_A = {'Mom': self.mom.hostname}
         self.server.manager(MGR_CMD_CREATE, NODE, id=ipaddr, attrib=attr_A)
-        self.server.expect(NODE, {'state=free': 1})
+        self.server.expect(NODE, {'state': 'free'}, id=ipaddr)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -134,7 +134,7 @@ class TestQstat(TestFunctional):
         """
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom.hostname)
-        self.server.expect(NODE, {'state=free': 1})
+        self.server.expect(NODE, {'state': 'free'}, id=self.mom.hostname)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
