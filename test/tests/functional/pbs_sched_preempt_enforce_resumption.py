@@ -359,3 +359,65 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid3)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid4)
+
+    @skipOnCpuSet
+    def test_filler_stf(self):
+        """
+        Test that confirms filler shrink to fit jobs will shrink correctly
+        """
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {ATTR_l + '.select': '1:ncpus=3',
+             ATTR_l + '.walltime': 50}
+        jid1 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.walltime': 115,
+             ATTR_q: 'expressq'}
+        jid2 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': 70,
+             ATTR_l + '.max_walltime': 90}
+        jid3 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid3))
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': '01:00',
+             ATTR_l + '.max_walltime': '10:00'}
+        jid4 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid4)
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid4))
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': '02:30',
+             ATTR_l + '.max_walltime': '05:00'}
+        jid5 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid5)
+
+        stat = self.server.status(JOB, id=jid1)[0]
+        j1start = datetime.datetime.strptime(stat['estimated.start_time'],
+                                             '%c')
+
+        stat = self.server.status(JOB, id=jid3)[0]
+        t = datetime.datetime.strptime(stat[ATTR_l + '.walltime'], '%H:%M:%S')
+        j3dur = datetime.timedelta(hours=t.hour,
+                                   minutes=t.minute,
+                                   seconds=t.second)
+        j3start = datetime.datetime.strptime(stat[ATTR_stime], '%c')
+        self.assertGreaterEqual(j1start, j3start + j3dur)
+        self.assertGreaterEqual(j3dur.total_seconds(), 70)
+        self.assertLessEqual(j3dur.total_seconds(), 90)
+
+        stat = self.server.status(JOB, id=jid4)[0]
+        t = datetime.datetime.strptime(stat[ATTR_l + '.walltime'], '%H:%M:%S')
+        j4dur = datetime.timedelta(hours=t.hour,
+                                   minutes=t.minute,
+                                   seconds=t.second)
+        j4start = datetime.datetime.strptime(stat[ATTR_stime], '%c')
+        self.assertEquals(j4start + j4dur, j1start)
