@@ -42,7 +42,13 @@ conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
 if [ -r "${conf}" ]; then
     # we only need PBS_EXEC from pbs.conf
     __PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
+else
+	echo "***" >&2
+	echo "Unable to read PBS config file" >&2
+	echo "***" >&2
+	exit 1
 fi
+
 unset conf
 if [ "X${__PBS_EXEC}" != "X" ]; then
 	ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
