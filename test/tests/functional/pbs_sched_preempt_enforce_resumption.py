@@ -385,14 +385,16 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
              ATTR_l + '.max_walltime': 90}
         jid3 = self.server.submit(Job(attrs=a))
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
-        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid3))
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' %
+                                 (jid3))
 
         a = {ATTR_l + '.select': '1:ncpus=1',
              ATTR_l + '.min_walltime': '01:00',
              ATTR_l + '.max_walltime': '10:00'}
         jid4 = self.server.submit(Job(attrs=a))
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid4)
-        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid4))
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' %
+                                 (jid4))
 
         a = {ATTR_l + '.select': '1:ncpus=1',
              ATTR_l + '.min_walltime': '02:30',
