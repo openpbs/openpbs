@@ -1917,7 +1917,6 @@ class NodeUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: numa nodes: %s' %
                    (caller_name(), self.numa_nodes))
         vnode_name = self.hostname
-
         # In some cases the hostname and vnode name do not match
         if vnode_name not in vnode_list:
             pbs.logmsg(pbs.EVENT_DEBUG,
@@ -1932,11 +1931,9 @@ class NodeUtils(object):
         host_resc_avail = vnode_list[vnode_name].resources_available
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
                    (caller_name(), host_resc_avail))
-
         # Set resources_available.vntype of natural node according
         # to what's in local file if it needs to be propagated to server
-        if (vntype and "propagate_vntype_to_server" in self.cfg
-                and self.cfg['propagate_vntype_to_server']):
+        if (vntype and self.cfg['propagate_vntype_to_server']):
             host_resc_avail['vntype'] = vntype
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode type set to %s'
                        % (caller_name(), vntype))
@@ -1961,7 +1958,7 @@ class NodeUtils(object):
                           str(total_hostmem), str(total_nodemem)))
             if total_hostmem < total_nodemem:
                 adjust_bytes_per_node = \
-                    int(math.ceil((total_nodemem-total_hostmem)
+                    int(math.ceil((total_nodemem - total_hostmem)
                                   / float(num_numa_nodes)))
                 pbs.logmsg(pbs.EVENT_DEBUG,
                            '%s: host memtotal %s < node memtotal %s, '
@@ -1975,8 +1972,7 @@ class NodeUtils(object):
                 vnode_key = vnode_name + '[%d]' % nnid
                 vnode_list[vnode_key] = pbs.vnode(vnode_name)
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
-                if (vntype and "propagate_vntype_to_server" in self.cfg
-                        and self.cfg['propagate_vntype_to_server']):
+                if (vntype and self.cfg['propagate_vntype_to_server']):
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
                 if key is None:
