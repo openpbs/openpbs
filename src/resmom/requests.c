@@ -3910,7 +3910,7 @@ post_chkpt(job *pjob, int  ev)
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT,
+			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 						PBS_MOM_SERVICE_NAME, mom_host,
 						&hook_input, &hook_output, hook_msg,
 						sizeof(hook_msg), 1);
