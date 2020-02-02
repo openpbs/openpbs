@@ -49,7 +49,8 @@ class TestQstat(TestFunctional):
         """
 
         attr = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.hostname)
+        self.server.manager(MGR_CMD_SET, NODE, attr,
+                            id=self.mom.shortname)
 
         job_count = 10
         j = Job(TEST_USER)
