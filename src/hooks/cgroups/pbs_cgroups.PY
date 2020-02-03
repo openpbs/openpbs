@@ -2474,7 +2474,10 @@ class CgroupUtils(object):
         # avoid crashes in fnmatch if no vntype was specified on the host
         if not vntype:
             vntype = "__UNKNOWN__"
-        for key_found, value_found in config_dict.iteritems():
+        # note that dict.items() is slightly inefficient in Python 2.x
+        # but efficient in Python 3.x
+        # iteritems, on the other hand, no longer exists for dict in Py3
+        for key_found, value_found in config_dict.items():
             if isinstance(value_found, dict):
                 # subsection found
                 pbs.logmsg(pbs.EVENT_DEBUG4,
