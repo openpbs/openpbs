@@ -50,6 +50,7 @@ class TestQrun(TestFunctional):
         self.pbs_exec = self.server.pbs_conf['PBS_EXEC']
         self.qrun = os.path.join(self.pbs_exec, 'bin', 'qrun')
 
+    @skipOnCpuSet
     def test_invalid_host_val(self):
         """
         Tests that pbs_server should not crash when the node list in
@@ -94,6 +95,7 @@ class TestQrun(TestFunctional):
         self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
 
+    @skipOnCpuSet
     def test_qrun_hangs(self):
         """
         This test submit 500 jobs with differnt equivalence class,

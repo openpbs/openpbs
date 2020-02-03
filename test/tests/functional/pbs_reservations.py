@@ -46,26 +46,27 @@ class TestReservations(TestFunctional):
     reservations
     """
 
-    def submit_standing_reservation(self, user, select, rrule, start, end,
-                                    place='free'):
+    def submit_reservation(self, select, start, end, user, rrule=None,
+                           place='free'):
         """
-        helper method to submit a standing reservation
+        helper method to submit a reservation
         """
-        if 'PBS_TZID' in self.conf:
-            tzone = self.conf['PBS_TZID']
-        elif 'PBS_TZID' in os.environ:
-            tzone = os.environ['PBS_TZID']
-        else:
-            self.logger.info('Missing timezone, using America/Los_Angeles')
-            tzone = 'America/Los_Angeles'
-
         a = {'Resource_List.select': select,
              'Resource_List.place': place,
-             ATTR_resv_rrule: rrule,
-             ATTR_resv_timezone: tzone,
              'reserve_start': start,
              'reserve_end': end,
              }
+        if rrule is not None:
+            if 'PBS_TZID' in self.conf:
+                tzone = self.conf['PBS_TZID']
+            elif 'PBS_TZID' in os.environ:
+                tzone = os.environ['PBS_TZID']
+            else:
+                self.logger.info('Missing timezone, using America/Los_Angeles')
+                tzone = 'America/Los_Angeles'
+
+            a.update({ATTR_resv_rrule: rrule, ATTR_resv_timezone: tzone})
+
         r = Reservation(user, a)
 
         return self.server.submit(r)
@@ -85,27 +86,20 @@ class TestReservations(TestFunctional):
 
         return self.server.submit(r)
 
-    def test_degraded_standing_reservations(self):
+    def degraded_resv_reconfirm(self, start, end, rrule=None, run=False):
         """
-        Verify that degraded standing reservations are reconfirmed on
-        other avaialable vnodes
+        Test that a degraded reservation gets reconfirmed
         """
-
-        a = {'reserve_retry_init': 5, 'reserve_retry_cutoff': 1}
+        a = {'reserve_retry_time': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        a = {'resources_available.ncpus': 4}
+        a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
         now = int(time.time())
 
-        # submitting 25 seconds from now to allow some of the older testbed
-        # systems time to process (discovered empirically)
-        rid = self.submit_standing_reservation(user=TEST_USER,
-                                               select='1:ncpus=4',
-                                               rrule='FREQ=HOURLY;COUNT=3',
-                                               start=now + 25,
-                                               end=now + 45)
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      rrule=rrule, start=start, end=end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
@@ -113,16 +107,21 @@ class TestReservations(TestFunctional):
         self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
 
-        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-        offset = 25 - (int(time.time()) - now)
-        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+        if run:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            self.logger.info('Sleeping until reservation starts')
+            offset = start - int(time.time())
+            self.server.expect(RESV, resv_state, id=rid,
+                               offset=offset, interval=1)
+        else:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
 
         a = {'state': 'offline'}
         self.server.manager(MGR_CMD_SET, NODE, a, id=resv_node)
 
-        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
-             'reserve_substate': 10}
-        self.server.expect(RESV, a, attrop=PTL_AND, id=rid)
+        a = {'reserve_substate': 10}
+        a.update(resv_state)
+        self.server.expect(RESV, a, id=rid)
 
         a = {'resources_available.ncpus': (GT, 0)}
         free_nodes = self.server.filter(NODE, a)
@@ -130,11 +129,269 @@ class TestReservations(TestFunctional):
 
         other_node = [nodes[0], nodes[1]][resv_node == nodes[0]]
 
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
-             'resv_nodes': (MATCH_RE, re.escape(other_node))}
-        offset = 45 - (int(time.time()) - now)
-        self.server.expect(RESV, a, id=rid, interval=1, offset=offset,
-                           attrop=PTL_AND)
+        if run:
+            a = {'reserve_substate': 5}
+        else:
+            a = {'reserve_substate': 2}
+        a.update({'resv_nodes': (MATCH_RE, re.escape(other_node))})
+
+        self.server.expect(RESV, a, id=rid, interval=1)
+
+    def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
+                                       run=False, resume=False):
+        """
+        Test that reservations do not get reconfirmed if there is no place
+        to put them.
+        """
+        a = {'reserve_retry_time': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+
+        now = int(time.time())
+
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      rrule=rrule, start=start, end=end)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': '1:00:00'}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.status(JOB, 'exec_vnode', id=jid)
+        job_node = j.get_vnodes()[0]
+
+        msg = 'Job and Resv share node'
+        self.assertNotEqual(resv_node, job_node, msg)
+
+        if run:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            self.logger.info('Sleeping until reservation starts')
+            offset = start - int(time.time())
+            self.server.expect(RESV, resv_state, id=rid,
+                               offset=offset, interval=1)
+        else:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+
+        a = {'state': 'offline'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=resv_node)
+
+        a = {'reserve_substate': 10}
+        a.update(resv_state)
+        self.server.expect(RESV, a, id=rid)
+
+        self.scheduler.log_match(rid + ';Reservation is in degraded mode',
+                                 starttime=now, interval=1)
+
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.expect(RESV, {'resv_nodes':
+                                  (MATCH_RE, re.escape(resv_node))}, id=rid)
+
+        if rrule and run:
+            a = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10'),
+                 'reserve_substate': 10}
+            t = end - int(time.time())
+            self.logger.info('Sleeping until reservation ends')
+            self.server.expect(RESV, a, id=rid, offset=t)
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR, 'offline')},
+                            id=resv_node)
+        # If run and rrule are true, we waited until the occurrence
+        # finished and the reservation is no longer running otherwise
+        # the reservation is still running.
+        if run:
+            if rrule:
+                resv_state = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+                              'reserve_substate': 2}
+            else:
+                resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+                              'reserve_substate': 5}
+        else:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+                          'reserve_substate': 2}
+
+        self.server.expect(RESV, resv_state, id=rid)
+
+    def test_degraded_standing_reservations(self):
+        """
+        Verify that degraded standing reservations are reconfirmed
+        on other nodes
+        """
+        t = int(time.time())
+        self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
+                                     rrule='freq=HOURLY;count=5')
+
+    def test_degraded_advance_reservations(self):
+        """
+        Verify that degraded advance reservations are reconfirmed
+        on other nodes
+        """
+        t = int(time.time())
+        self.degraded_resv_reconfirm(start=t + 25, end=t + 625)
+
+    def test_degraded_standing_running_reservations(self):
+        """
+        Verify that degraded standing reservations are reconfirmed
+        on other nodes
+        """
+        t = int(time.time())
+        self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
+                                     rrule='freq=HOURLY;count=5', run=True)
+
+    def test_degraded_advance_running_reservations(self):
+        """
+        Verify that degraded advance reservations are not reconfirmed
+        on other nodes if no space is available
+        """
+        t = int(time.time())
+        self.degraded_resv_failed_reconfirm(
+            start=t + 25, end=t + 625, run=True)
+
+    def test_degraded_standing_reservations_fail(self):
+        """
+        Verify that degraded standing reservations are not
+        reconfirmed on other nodes if there is no space available
+        """
+        t = int(time.time())
+        self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720,
+                                            rrule='freq=HOURLY;count=5')
+
+    def test_degraded_advance_reservations_fail(self):
+        """
+        Verify that advance reservations are not reconfirmed if there
+        is no space available
+        """
+        t = int(time.time())
+        self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720)
+
+    def test_degraded_standing_running_reservations_fail(self):
+        """
+        Verify that degraded running standing reservations are not
+        reconfirmed on other nodes if there is no space available
+        """
+        t = int(time.time())
+        self.degraded_resv_failed_reconfirm(start=t + 25, end=t + 55,
+                                            rrule='freq=HOURLY;count=5',
+                                            run=True)
+
+    def test_degraded_advance_running_reservations_fail(self):
+        """
+        Verify that advance running reservations are not reconfirmed if there
+        is no space available
+        """
+        t = int(time.time())
+        self.degraded_resv_failed_reconfirm(
+            start=t + 25, end=t + 625, run=True)
+
+    def test_standing_reservation_occurrence_two_not_degraded(self):
+        """
+        Test that when a standing reservation's occurrence 1 is on an offline
+        vnode and occurrence 2 is not, that when the first occurrence finishes
+        the reservation is back in the confirmed state
+        """
+
+        a = {'reserve_retry_time': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+
+        now = int(time.time())
+        rid1 = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                       start=now + 3600, end=now + 7200)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid1)
+
+        start = now + 25
+        end = now + 55
+        rid2 = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                       start=start, end=end,
+                                       rrule='freq=HOURLY;count=5')
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid2)
+
+        self.server.status(RESV, 'resv_nodes')
+        resv_node = self.server.reservations[rid1].get_vnodes()[0]
+        resv_node2 = self.server.reservations[rid2].get_vnodes()[0]
+
+        msg = 'Reservations not on the same vnode'
+        self.assertEqual(resv_node, resv_node2, msg)
+
+        J = Job(attrs={'Resource_List.walltime': 1800})
+        jid = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'}, resv_node)
+
+        # Can't reconfirm rid1 because rid2's second occurrence should be
+        # on node 2 at that time.
+        self.scheduler.log_match(rid1 + ';Reservation is in degraded mode',
+                                 starttime=now, interval=1)
+        # Can't reconfirm rid2 because the job is running on node 2.
+        self.scheduler.log_match(rid2 + ';Reservation is in degraded mode',
+                                 starttime=now, interval=1)
+
+        self.logger.info('Sleeping until standing reservation runs')
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid2, offset=start - int(time.time()))
+
+        self.logger.info('Sleeping until occurrence finishes')
+        # occurrence 2 is not on the offlined node.  It should be confirmed
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid2, offset=end - int(time.time()))
+
+    def test_degraded_reservation_reconfirm_running_job(self):
+        """
+        Test that a reservation isn't reconfirmed if there is a running job
+        on an node that is offline until the job finishes.
+        """
+        a = {'reserve_retry_time': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+
+        now = int(time.time())
+        start = now + 25
+        rid = self.submit_reservation(select='1:ncpus=1', user=TEST_USER,
+                                      start=start, end=now + 625)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        resv_queue = rid.split('.')[0]
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: resv_queue}
+        J = Job(attrs=a)
+        jid = self.server.submit(J)
+
+        self.logger.info('Sleeping until reservation runs')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           offset=start - int(time.time()), id=rid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'},
+                            id=resv_node)
+        self.server.expect(RESV, {'reserve_substate': 10}, id=rid)
+        self.scheduler.log_match(rid + ';PBS Failed to confirm resv: '
+                                 'Reservation has running jobs in it',
+                                 interval=1)
+
+        self.server.delete(jid)
+
+        self.server.expect(RESV, {'reserve_substate': 5}, id=rid)
 
     def test_not_honoring_resvs(self):
         """
@@ -216,7 +473,8 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'Q'},
                            id=jid)
         msg = "Job would conflict with reservation or top job"
-        self.server.expect(JOB, {ATTR_comment: "Not Running: " + msg}, id=jid)
+        self.server.expect(
+            JOB, {ATTR_comment: "Not Running: " + msg}, id=jid)
         self.scheduler.log_match(
             jid + ";" + msg,
             max_attempts=30)
@@ -560,7 +818,7 @@ class TestReservations(TestFunctional):
         start = now + 30
         a = {'reserve_start': start, 'reserve_end': start + 300,
              'Resource_List.select': '1:ncpus=1:vnode=' +
-                                     self.mom.shortname,
+             self.mom.shortname,
              'Resource_List.place': 'excl'}
 
         r = Reservation(TEST_USER, a)
@@ -678,12 +936,12 @@ class TestReservations(TestFunctional):
         # placement when rid1 is running
         # This reservation should also be confirmed
         now = int(time.time())
-        rid3 = self.submit_standing_reservation(user=TEST_USER,
-                                                select='1:ncpus=1',
-                                                place='excl',
-                                                rrule='FREQ=HOURLY;COUNT=3',
-                                                start=now + 7200,
-                                                end=now + 7205)
+        rid3 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       rrule='FREQ=HOURLY;COUNT=3',
+                                       start=now + 7200,
+                                       end=now + 7205)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid3)
 
@@ -711,12 +969,12 @@ class TestReservations(TestFunctional):
 
         # Submit a long term standing reservation with exclusive node
         now = int(time.time())
-        rid2 = self.submit_standing_reservation(user=TEST_USER,
-                                                select='1:ncpus=1',
-                                                place='excl',
-                                                rrule='FREQ=HOURLY;COUNT=3',
-                                                start=now + 3600,
-                                                end=now + 3605)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       rrule='FREQ=HOURLY;COUNT=3',
+                                       start=now + 3600,
+                                       end=now + 3605)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
 
@@ -773,12 +1031,12 @@ class TestReservations(TestFunctional):
         # Submit a long term standing reservation with
         # exclusive nodes.
         now = int(time.time())
-        rid1 = self.submit_standing_reservation(user=TEST_USER,
-                                                select='1:ncpus=9',
-                                                place='excl',
-                                                rrule='FREQ=HOURLY;COUNT=3',
-                                                start=now + 7200,
-                                                end=now + 7205)
+        rid1 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=9',
+                                       place='excl',
+                                       rrule='FREQ=HOURLY;COUNT=3',
+                                       start=now + 7200,
+                                       end=now + 7205)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid1)
 
@@ -1097,7 +1355,7 @@ class TestReservations(TestFunctional):
         enabled
         """
         self.common_steps()
-        # Submit a advance reservation and an array job to the reservation
+        # Submit an advance reservation and an array job to the reservation
         # once reservation confirmed
         now = int(time.time())
         a = {'reserve_start': now + 10,
@@ -1316,7 +1574,7 @@ class TestReservations(TestFunctional):
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
         start = int(time.time()) + 10
-        end = start + 20
+        end = start + 25
         a = {'Resource_List.select': '1:ncpus=4',
              ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
              ATTR_resv_timezone: tzone,
@@ -1337,21 +1595,26 @@ class TestReservations(TestFunctional):
         for i in range(1, 4):
             subjid.append(j.create_subjob_id(jid, i))
         # Wait for standing reservation first instance to start
+        self.logger.info('Waiting until reservation runs')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, exp_attr, id=rid)
+        self.server.expect(RESV, exp_attr, id=rid,
+                           offset=start - int(time.time()))
         self.server.expect(RESV, {'reserve_index': 1}, id=rid)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid, extend='t')
         # Wait for standing reservation first instance to finished
+        self.logger.info('Waiting for first occurrence to finish')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-        self.server.expect(RESV, exp_attr, id=rid)
+        self.server.expect(RESV, exp_attr, id=rid,
+                           offset=end - int(time.time()))
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         # Wait for standing reservation second instance to start
+        offset = end - int(time.time()) + 120 - (end - start)
         self.logger.info(
-            'Waiting 55 sec for second  instance of reservation to start')
+            'Waiting for second occurrence of reservation to start')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, exp_attr, id=rid, offset=55, interval=1)
+        self.server.expect(RESV, exp_attr, id=rid, offset=offset, interval=1)
         self.server.expect(RESV, {'reserve_index': 2}, id=rid)
         # Wait for reservations to be finished
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
@@ -1365,7 +1628,7 @@ class TestReservations(TestFunctional):
             self.server.expect(JOB, {'job_state': 'F', 'substate': '92'},
                                extend='x', id=i)
         # Check for finished jobs by issuing the command qstat
-        self.server.expect(JOB, {'job_state=F': 5, 'substate': '92'},
+        self.server.expect(JOB, {'job_state': 'F', 'substate': '92'},
                            extend='xt', id=jid)
 
         start = int(time.time()) + 10
@@ -1382,7 +1645,7 @@ class TestReservations(TestFunctional):
         rid_q = rid.split(".")[0]
         # Submit a job-array within resrvation
         j = Job(TEST_USER, attrs={
-                'Resource_List.walltime': 20, ATTR_q: rid_q, ATTR_J: '1-5'})
+            'Resource_List.walltime': 20, ATTR_q: rid_q, ATTR_J: '1-5'})
         j.set_sleep_time(20)
         jid = self.server.submit(j)
         subjid = []
@@ -1675,3 +1938,41 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         self.server.expect(JOB, {'job_state=F': 6}, count=True,
                            extend='xt', id=jid)
+
+    def test_standing_resv_resc_used(self):
+        """
+        Test that resources are released from the server when a
+        standing reservation's occurrence finishes
+        """
+
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+        now = int(time.time())
+
+        # submitting 25 seconds from now to allow some of the older testbed
+        # systems time to process (discovered empirically)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      rrule='FREQ=MINUTELY;COUNT=2',
+                                      start=now + 25,
+                                      end=now + 35)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+        offset = now + 25 - int(time.time())
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 1})
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid, offset=10, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+        offset = now + 85 - int(time.time())
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 1})
+
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 0})

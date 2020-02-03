@@ -1541,30 +1541,6 @@ is any built-in or custom resource
 .IP
 Default: No default
 
-.IP reserve_retry_cutoff 8
-The time period before the reservation start time during which 
-PBS does not attempt to reconfirm a degraded reservation.
-When this value is changed, all degraded reservations use the 
-new value.
-.br
-Readable and settable by Manager only.
-.br
-Format: 
-.I Integer 
-.br
-Units:
-.I Seconds
-.br
-Python type: 
-.I int
-.br
-Valid values: Must be greater than 
-.I zero
-.br
-Default: 
-.I 7200 
-(2 hours)
-
 .IP reserve_retry_init 8
 The amount of time after a reservation becomes degraded that
 PBS waits before attempting to reconfirm the reservation.

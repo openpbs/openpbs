@@ -82,7 +82,6 @@ extern int	 svr_do_sched_high;
 extern char     *msg_sched_called;
 extern char     *msg_sched_nocall;
 extern pbs_list_head svr_deferred_req;
-extern void  est_start_timed_task(struct work_task *);
 extern char	*msg_noloopbackif;
 extern char	*msg_daemonname;
 

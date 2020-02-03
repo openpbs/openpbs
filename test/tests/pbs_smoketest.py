@@ -151,7 +151,7 @@ class SmokeTest(PBSTestSuite):
         """
 
         now = int(time.time())
-        a = {'reserve_retry_init': 5, 'reserve_retry_cutoff': 1}
+        a = {'reserve_retry_init': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 4}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)

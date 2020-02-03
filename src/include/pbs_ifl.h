@@ -305,8 +305,8 @@ extern "C" {
 #define ATTR_license_count	"license_count"
 #define ATTR_job_sort_formula	"job_sort_formula"
 #define ATTR_EligibleTimeEnable "eligible_time_enable"
-#define ATTR_resv_retry_init       "reserve_retry_init"
-#define ATTR_resv_retry_cutoff       "reserve_retry_cutoff"
+#define ATTR_resv_retry_time	"reserve_retry_time"
+#define ATTR_resv_retry_init	"reserve_retry_init"
 #define ATTR_JobHistoryEnable	"job_history_enable"
 #define ATTR_JobHistoryDuration	"job_history_duration"
 #define ATTR_max_concurrent_prov	"max_concurrent_provision"
@@ -357,6 +357,7 @@ extern "C" {
 #define ATTR_sched_preempt_prio  "preempt_prio"
 #define ATTR_sched_preempt_order  "preempt_order"
 #define ATTR_sched_preempt_sort  "preempt_sort"
+#define ATTR_sched_server_dyn_res_alarm "server_dyn_res_alarm"
 
 /* additional node "attributes" names */
 

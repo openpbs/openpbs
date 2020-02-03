@@ -1512,7 +1512,7 @@ check_block_wt(struct work_task *ptask)
 		/* Set socket to Non-blocking */
 		sock_flags = fcntl(blockj->fd, F_GETFL, 0);
 		if (fcntl(blockj->fd, F_SETFL, sock_flags | O_NONBLOCK) == -1) {
-			sprintf(log_buffer, "Failed to set non-blocking flag on socket for job %s", 
+			sprintf(log_buffer, "Failed to set non-blocking flag on socket for job %s",
 			blockj->jobid);
 			goto err;
 		}
@@ -1584,7 +1584,7 @@ retry:
 		set_task(WORK_Timed, time_now + 10, check_block_wt, blockj);
 		return;
 	} else {
-		sprintf(log_buffer, "Unable to reply to client %s for job %s", 
+		sprintf(log_buffer, "Unable to reply to client %s for job %s",
 		blockj->client, blockj->jobid);
 	}
 err:
@@ -1594,7 +1594,7 @@ err:
 	}
 	log_err(-1, __func__, log_buffer);
 end:
-	if (blockj->fd != -1) 
+	if (blockj->fd != -1)
 		close(blockj->fd);
 	free(blockj->msg);
 	free(blockj);
@@ -1613,7 +1613,7 @@ check_block(job *pjob, char *message)
 	int			port;
 	char			*phost;
 	char			*jobid = pjob->ji_qs.ji_jobid;
-	struct 			block_job_reply *blockj; 
+	struct 			block_job_reply *blockj;
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
 		return;
@@ -1658,7 +1658,7 @@ check_block(job *pjob, char *message)
 	blockj->fd = -1;
 	blockj->reply_time = time(NULL);
 	blockj->exitstat = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);	
+	strcpy(blockj->jobid, pjob->ji_qs.ji_jobid);
 
 	set_task(WORK_Immed, 0, check_block_wt, blockj);
 	return;
@@ -3397,6 +3397,11 @@ Time4occurrenceFinish(resc_resv *presv)
 	free(execvnodes);
 	free_execvnode_seq(tofree);
 
+	/* Set reservation state to finished. Will re-evaluate
+	 * the state for the next occurrence later in the function.
+	 */
+	resv_setResvState(presv, RESV_FINISHED, RESV_FINISHED);
+
 	/* Decrement resources assigned */
 	if (presv->ri_giveback == 1) {
 		set_resc_assigned((void *)presv, 1, DECR);
@@ -3405,6 +3410,11 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Reservation Nodes are freed and a -possibly- new set assigned */
 	free_resvNodes(presv);
+	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might 
+	 * not exist in the following occurrence.  The new occurrence's ri_vnodes_down
+	 * will be set properly in set_nodes()
+	 */
+	presv->ri_vnodes_down = 0;
 
 	/* Set the new start time, end time, and occurrence index */
 	newstart = next;
@@ -3463,7 +3473,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	}
 
 	/* compute new values for state and substate */
-	eval_resvState(presv, RESVSTATE_gen_task_Time4resv, 0, &state, &sub);
+	eval_resvState(presv, RESVSTATE_gen_task_Time4resv, 1, &state, &sub);
 
 	/*
 	 * Walk the nodes list associated to this reservation to determine if any
@@ -3485,12 +3495,6 @@ Time4occurrenceFinish(resc_resv *presv)
 	 */
 	if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > time_now) {
 		sub = RESV_DEGRADED;
-	}
-	/* otherwise, if it has a valid degraded time past the cutoff time then
-	 * set the retry time to be the half time to the degraded time
-	 */
-	else if (presv->ri_degraded_time > (time_now + reserve_retry_cutoff)) {
-		set_resv_retry(presv, time_now + ((presv->ri_degraded_time - time_now)/2));
 	}
 	/* otherwise, if degraded, default to setting a retry time in a
 	 * "reasonable" time in the future
@@ -3736,15 +3740,20 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 	*psub = presv->ri_qs.ri_substate;
 
 	if (s == RESVSTATE_gen_task_Time4resv) {
+		/* from a successful confirmation */
 		if (relVal == 0) {
-			if (*psub == RESV_DEGRADED && *pstate != RESV_DEGRADED) {
-				*pstate = RESV_DEGRADED;
+			if (*psub == RESV_DEGRADED) {
+				if (*pstate == RESV_RUNNING && presv->ri_qs.ri_stime < time_now)
+					*psub = RESV_RUNNING;
+				else {
+					*pstate = RESV_CONFIRMED;
+					*psub = RESV_CONFIRMED;
+				}
 			} else {
 				if (*pstate == RESV_BEING_ALTERED) {
-					/*
-					* Altering a reservation's start time after the current time
-					* moves the reservation into the confirmed state.
-					*/
+					/* Altering a reservation's start time after the current time
+					 * moves the reservation into the confirmed state.
+					 */
 					if (presv->ri_qs.ri_stime > time_now) {
 						*pstate = RESV_CONFIRMED;
 						*psub = RESV_CONFIRMED;
@@ -3758,6 +3767,14 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 					*psub = RESV_CONFIRMED;
 				}
 			}
+		} else {
+			/* End of standing occurrence */
+			if (*psub == RESV_DEGRADED)
+				*pstate = RESV_DEGRADED;
+			else {
+				*pstate = RESV_CONFIRMED;
+				*psub = RESV_CONFIRMED;
+			}
 		}
 	} else if (s == RESVSTATE_Time4resv) {
 		if (relVal == 0) {
@@ -3770,8 +3787,9 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 				*pstate = RESV_RUNNING;
 				if (presv->ri_qs.ri_tactive <
 					presv->ri_wattr[RESV_ATR_start].at_val.at_long)
-					/*Assigning time_now to indicate when reservation become active
- 					 *to help in fend off accounting on server restart*/
+					/* Assigning time_now to indicate when reservation become active
+ 					 *to help in fend off accounting on server restart
+					 */
 					presv->ri_qs.ri_tactive = time_now;
 			}
 		}
@@ -5965,6 +5983,88 @@ send_job_exec_update_exit:
 }
 
 /**
+ *
+ * @brief
+ *	Extracts mom hostnames from exechostx and adds it to list
+ *
+ * @param[in/out]	to_head - destination reliable_job_node list
+ * @param[in]	exechostx - string in exechost format
+ *
+ * @return 	void
+ */
+static void
+populate_mom_list(pbs_list_head *to_head, char *exechostx)
+{
+	char *hostn = NULL, *last = NULL, *peh;
+	int  hasprn = 0;
+
+	if (!to_head || !exechostx || !*exechostx) {
+		log_err(-1, __func__, "bad param passed");
+		return;
+	}
+
+	peh = strdup(exechostx);
+	if (peh == NULL) {
+		log_err(errno, __func__, "strdup error");
+		return;
+	}
+
+	CLEAR_HEAD((*to_head));
+
+	for (hostn = parse_plus_spec_r(peh, &last, &hasprn);
+		hostn;
+		hostn = parse_plus_spec_r(last, &last, &hasprn) ) {
+		if (reliable_job_node_add(to_head, strtok(hostn, ":/")) == -1) {
+			free(peh);
+			return;
+		}
+	}
+	free(peh);
+	return;
+}
+
+/**
+ * @brief
+ *	returns a copy of partial select string representing the MS (first) chunk
+ *	Note - caller to free the returned string pointer
+ *
+ * @param[in]		select_str - pointer to complete schedselect string
+ *
+ * @return char *
+ * @retval ptr	pointer to malloc'd string containing ms (first) chunk's select str
+ *
+ * @note
+ * caller to free the returned string pointer
+*/
+static char *
+get_ms_select_chunk(char *select_str)
+{
+	char *slast, *selbuf, *psubspec, *retval = NULL;
+	int   hpn;
+
+	if (select_str == NULL) {
+		log_err(-1, __func__, "bad param passed");
+		return (NULL);
+	}
+
+	selbuf = strdup(select_str);
+	if (selbuf == NULL) {
+		log_err(errno, __func__, "strdup fail");
+		return (NULL);
+	}
+	psubspec = parse_plus_spec_r(selbuf, &slast, &hpn);
+
+	if (psubspec) {
+		while(*psubspec && !isalpha(*(psubspec++))) ; /* one line loop */
+
+		if (!(retval = strdup(--psubspec)))
+			log_err(errno, __func__, "strdup fail");
+	}
+
+	free(selbuf);
+	return retval;
+}
+/**
  * @brief
  *	Recreates the pjob's exec_vnode, updating at the same time
  *	its corresponding exec_host and exec_host2 attributes
@@ -5975,6 +6075,9 @@ send_job_exec_update_exit:
  *				freed whose parent mom is a sister mom.
  *				if NULL, releases all the sister
  *				vnodes assigned to 'pjob'
+ * @param[in]		keep_select - non-NULL means it's a select string that
+ *				describes vnodes to be kept while freeing all other vnodes
+ *				assigned to 'pjob' whose parent mom is a sister mom.
  * @param[out]  err_msg - if function returns != 0 (failure), return
  *			  any error message in this buffer.
  * @param[int]	err_msg_sz - size of 'err_msg' buf.
@@ -5983,7 +6086,7 @@ send_job_exec_update_exit:
  * @reval 1	for error
 */
 int
-recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
+recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
 						int err_msg_sz)
 {
 	char	*exec_vnode = NULL;
@@ -6002,6 +6105,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	int		rc = 1;
 	relnodes_input_t		r_input;
 	relnodes_input_vnodelist_t	r_input_vnlist;
+	relnodes_input_select_t r_input_keep_select;
+	pbs_list_head	succeeded_mom_list;
 
 	if (pjob == NULL) {
 		log_err(-1, __func__, "bad job parameter");
@@ -6053,24 +6158,39 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	r_input.execvnode = exec_vnode;
 	r_input.exechost = exec_host;
 	r_input.exechost2 = exec_host2;
+	r_input.schedselect = schedselect;
 	r_input.p_new_exec_vnode = &new_exec_vnode;
 	r_input.p_new_exec_host[0] = &new_exec_host;
 	r_input.p_new_exec_host[1] = &new_exec_host2;
 	r_input.p_new_schedselect = &new_select;
 
-	relnodes_input_vnodelist_init(&r_input_vnlist);
-	r_input_vnlist.vnodelist = vnodelist;
-	r_input_vnlist.schedselect = schedselect;
-	r_input_vnlist.deallocated_nodes_orig = deallocated_execvnode;
-	r_input_vnlist.p_new_deallocated_execvnode = &new_deallocated_execvnode;
+	if (keep_select == NULL) {
+		relnodes_input_vnodelist_init(&r_input_vnlist);
+		r_input_vnlist.vnodelist = vnodelist;
+		r_input_vnlist.deallocated_nodes_orig = deallocated_execvnode;
+		r_input_vnlist.p_new_deallocated_execvnode = &new_deallocated_execvnode;
 
-	rc = pbs_release_nodes_given_nodelist(&r_input, &r_input_vnlist, err_msg, err_msg_sz);
+		rc = pbs_release_nodes_given_nodelist(&r_input, &r_input_vnlist, err_msg, err_msg_sz);
+	} else {
+		int select_str_sz = 0;
+		relnodes_input_select_init(&r_input_keep_select);
+		r_input_keep_select.select_str = get_ms_select_chunk(schedselect);  /* has to be freed later */
+		select_str_sz = strlen(r_input_keep_select.select_str) + 1;
+		pbs_strcat(&r_input_keep_select.select_str, &select_str_sz, "+");
+		pbs_strcat(&r_input_keep_select.select_str, &select_str_sz, keep_select);
+		populate_mom_list(&succeeded_mom_list, exec_host2);
+		r_input_keep_select.succeeded_mom_list = &succeeded_mom_list;
+
+		rc = pbs_release_nodes_given_select(&r_input, &r_input_keep_select, err_msg, err_msg_sz);
+		free(r_input_keep_select.select_str);
+		reliable_job_node_free(&succeeded_mom_list);
+	}
 
 	if (rc != 0) {
 		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_exec_vnode[0] != '\0') {
+	if (new_exec_vnode && (new_exec_vnode[0] != '\0')) {
 
 		if (strcmp(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str,
 						 new_exec_vnode) == 0) {
@@ -6114,9 +6234,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		(void)update_resources_list(pjob, ATTR_l,
 			JOB_ATR_resource, new_exec_vnode, INCR, 0,
 				JOB_ATR_resource_orig);
+	} else {
+		log_err(-1, __func__, "new_exec_vnode is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_deallocated_execvnode[0] != '\0') {
+	if (!keep_select && new_deallocated_execvnode && *new_deallocated_execvnode) {
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
 			NULL,
@@ -6125,7 +6248,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		pjob->ji_modified = 1;
 	}
 
-	if (new_exec_host[0] != '\0') {
+	if (new_exec_host && *new_exec_host) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
@@ -6148,9 +6271,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 			NULL,
 			new_exec_host);
 		pjob->ji_modified = 1;
+	} else {
+		log_err(-1, __func__, "new_exec_host is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_exec_host2[0] != '\0') {
+	if (new_exec_host2 && *new_exec_host2) {
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
@@ -6158,9 +6284,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 			NULL,
 			new_exec_host2);
 		pjob->ji_modified = 1;
+	} else {
+		log_err(-1, __func__, "new_exec_host2 is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 
-	if (new_select[0] != '\0') {
+	if (new_select && *new_select) {
 		prdefsl = find_resc_def(svr_resc_def, "select",
 							svr_resc_size);
 		/* re-generate "select" resource */
@@ -6198,6 +6327,9 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
 					&pjob->ji_wattr[(int)JOB_ATR_resource]);
 
+	} else {
+		log_err(-1, __func__, "new_select is null or empty string");
+		goto recreate_exec_vnode_exit;
 	}
 recreate_exec_vnode_exit:
 	free(new_exec_vnode);

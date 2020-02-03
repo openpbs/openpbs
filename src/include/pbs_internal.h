@@ -177,6 +177,9 @@ extern "C" {
 /* Default value of preempt_queue_prio */
 #define PBS_PREEMPT_QUEUE_PRIO_DEFAULT	150
 
+/* Default value of server_dyn_res_alarm */
+#define PBS_SERVER_DYN_RES_ALARM_DEFAULT	30
+
 /* Default value of preempt_prio */
 #define PBS_PREEMPT_PRIO_DEFAULT	"express_queue, normal_jobs"
 
@@ -350,8 +353,7 @@ enum accrue_types {
  * time.
  */
 
-#define RESV_RETRY_INIT 7200
-#define RESV_RETRY_CUTOFF 7200
+#define RESV_RETRY_TIME_DEFAULT 600
 
 #define PBS_RESV_CONFIRM_FAIL "PBS_RESV_CONFIRM_FAIL"   /* Used to inform server that a reservation could not be confirmed */
 #define PBS_RESV_CONFIRM_SUCCESS "PBS_RESV_CONFIRM_SUCCESS"   /* Used to inform server that a reservation could be confirmed */
@@ -365,6 +367,9 @@ enum accrue_types {
 
 /* this is the PBS default max_concurrent_provision value */
 #define PBS_MAX_CONCURRENT_PROV 5
+
+/* this is the PBS max lenth of quote parse error messages */
+#define PBS_PARSE_ERR_MSG_LEN_MAX 50
 
 /* this is the PBS defult jobscript_max_size default value is 100MB*/
 #define DFLT_JOBSCRIPT_MAX_SIZE "100mb"
@@ -435,7 +440,7 @@ DECLDIR int pbs_defschreply(int, int, char *, int, char *, char *);
 
 DECLDIR int pbs_quote_parse(char *, char **, char **, int);
 
-DECLDIR char *pbs_parse_err_msg(int);
+DECLDIR const char *pbs_parse_err_msg(int);
 
 DECLDIR void pbs_prt_parse_err(char *, char *, int, int);
 
@@ -500,7 +505,7 @@ extern char *pbs_strsep(char **, const char *);
 
 extern int pbs_quote_parse(char *, char **, char **, int);
 
-extern char *pbs_parse_err_msg(int);
+extern const char *pbs_parse_err_msg(int);
 
 extern void pbs_prt_parse_err(char *, char *, int, int);
 
@@ -553,6 +558,8 @@ extern struct batch_status *bs_find(struct batch_status *, const char *);
 
 
 #endif /* _USRDLL */
+
+extern const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1];
 
 #ifdef	__cplusplus
 }

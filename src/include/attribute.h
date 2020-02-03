@@ -249,6 +249,7 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 #define ATR_VFLAG_INDIRECT	0x10	/* indirect pointer to resource */
 #define ATR_VFLAG_TARGET	0x20	/* target of indirect resource  */
 #define ATR_VFLAG_HOOK		0x40	/* value set by a hook script   */
+#define ATR_VFLAG_IN_EXECVNODE_FLAG	0x80	/* resource key value pair was found in execvnode */
 
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/
@@ -529,8 +530,8 @@ extern int alter_eligibletime(attribute *, void *, int);
 extern int manager_oper_chk(attribute *pattr, void *pobject, int actmode);
 extern int poke_scheduler(attribute *pattr, void *pobject, int actmode);
 extern int cred_name_okay(attribute *pattr, void *pobject, int actmode);
-extern int set_reserve_retry_init(attribute *pattr, void *pobject, int actmode);
-extern int set_reserve_retry_cutoff(attribute *pattr, void *pobject, int actmode);
+extern int action_reserve_retry_time(attribute *pattr, void *pobject, int actmode);
+extern int action_reserve_retry_init(attribute *pattr, void *pobject, int actmode);
 extern int set_rpp_retry(attribute *pattr, void *pobject, int actmode);
 extern int set_node_fail_requeue(attribute *pattr, void *pobject, int actmode);
 extern int set_rpp_highwater(attribute *pattr, void *pobject, int actmode);
@@ -581,6 +582,8 @@ extern int action_sched_host(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_partition(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_preempt_order(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_preempt_common(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_server_dyn_res_alarm(attribute *pattr, void *pobj, int actmode);
+
 /* Extern functions from queue_attr_def */
 extern int decode_null(attribute *patr, char *name, char *rn, char *val);
 extern int set_null(attribute *patr, attribute *new, enum batch_op op);

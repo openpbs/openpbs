@@ -85,7 +85,7 @@
  *	each string is null terminated.
  */
 
-static int
+int
 parse_resc_equal_string(char  *start, char **name, char **value, char **last)
 {
 	char	 *pc;

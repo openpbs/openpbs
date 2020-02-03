@@ -77,8 +77,7 @@
       #include "pbs_error.h"
       #include "pbs_python.h"
 
-      long reserve_retry_init = RESV_RETRY_INIT;
-      long reserve_retry_cutoff = RESV_RETRY_CUTOFF;
+      long resv_retry_time = RESV_RETRY_TIME_DEFAULT;
 
       attribute_def svr_attr_def[] = {
       </SVR>
@@ -1316,14 +1315,14 @@
 	</member_verify_function>
    </attributes>
    <attributes>	
-   /* SRV_ATR_resv_retry_init */
-	<member_name><both>ATTR_resv_retry_init</both></member_name>		<!-- "reserve_retry_init" -->
+   /* SRV_ATR_resv_retry_time */
+	<member_name><both>ATTR_resv_retry_time</both></member_name>		<!-- "reserve_retry_time" -->
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>set_reserve_retry_init</member_at_action>
+	<member_at_action>action_reserve_retry_time</member_at_action>
 	<member_at_flags><both>ATR_DFLAG_MGWR | ATR_DFLAG_MGRD</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SERVER</member_at_parent>
@@ -1333,20 +1332,20 @@
 	</member_verify_function>
    </attributes>
    <attributes>	
-   /* SRV_ATR_resv_retry_cutoff */
-	<member_name><both>ATTR_resv_retry_cutoff</both></member_name>		<!-- "reserve_retry_cutoff" -->
+   /* SRV_ATR_resv_retry_init */
+	<member_name><both>ATTR_resv_retry_init</both></member_name>		<!-- "reserve_retry_init" -->
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>set_reserve_retry_cutoff</member_at_action>
+	<member_at_action>action_reserve_retry_init</member_at_action>
 	<member_at_flags><both>ATR_DFLAG_MGWR | ATR_DFLAG_MGRD</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SERVER</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
    <attributes>	

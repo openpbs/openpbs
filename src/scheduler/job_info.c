@@ -1140,7 +1140,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 {
 	resource_resv *resresv;		/* converted job */
 	struct attrl *attrp;		/* list of attributes returned from server */
-	int count;			/* int used in string->int conversion */
+	long count;			/* long used in string->long conversion */
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
 
@@ -1783,7 +1783,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 				   "Failed to update attr \'%s\' = %s, Job already finished",
 				   pattr->name, pattr->value);
 		else
-			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name, 
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
 				"Failed to update job attributes, Job already finished");
 		return 0;
 	}
@@ -1796,7 +1796,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 			   "Failed to update attr \'%s\' = %s: %s (%d)",
 			   pattr->name, pattr->value, errbuf, pbs_errno);
 	else
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
 			"Failed to update job attributes: %s (%d)",
 			errbuf, pbs_errno);
 	return 0;
@@ -2714,7 +2714,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 		rsets = tmp_rset_arr;
 	rset_len = count_array((void **)rsets);
 	if (rset_len > 0) {
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 			"Number of job equivalence classes: %d", rset_len);
 	}
 
@@ -3043,7 +3043,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		for (i = 0; i < no_of_jobs; i++) {
 			job = find_resource_resv(sinfo->running_jobs, preempt_jobs_reply[i].job_id);
 			if (job == NULL) {
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, preempt_jobs_reply[i].job_id, 
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, preempt_jobs_reply[i].job_id,
 					"Server replied to preemption request with job which does not exist.");
 				continue;
 			}
@@ -3288,7 +3288,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			cant_preempt = 1;
 		if (cant_preempt) {
 			translate_fail_code(cur_err, NULL, log_buf);
-			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name, 
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
 				"Preempt: Can not preempt to run job: %s", log_buf);
 			free_schd_error_list(full_err);
 			return NULL;
@@ -3344,11 +3344,11 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		rjobs = prjobs;
 		rjobs_count = count_array((void **)prjobs);
 		if (rjobs_count > 0) {
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name, 
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 				"Limited running jobs used for preemption from %d to %d", nsinfo->sc.running, rjobs_count);
 		}
 		else {
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name, 
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 				"Limited running jobs used for preemption from %d to 0: No jobs to preempt", nsinfo->sc.running);
 			pjobs_list = NULL;
 			goto cleanup;
@@ -3519,7 +3519,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		}
 
 		translate_fail_code(err, NULL, log_buf);
-		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name, 
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 			"Simulation: not enough work preempted: %s", log_buf);
 	}
 
@@ -4299,7 +4299,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 		FORMULA_FSPERC, resresv->job->ginfo->tree_percentage,
 		FORMULA_FSPERC_DEP, resresv->job->ginfo->tree_percentage,
 		FORMULA_TREE_USAGE, resresv->job->ginfo->usage_factor,
-		FORMULA_FSFACTOR, resresv->job->ginfo->tree_percentage == 0 ? 0 : 
+		FORMULA_FSFACTOR, resresv->job->ginfo->tree_percentage == 0 ? 0 :
 			pow(2, -(resresv->job->ginfo->usage_factor/resresv->job->ginfo->tree_percentage)),
 		FORMULA_ACCRUE_TYPE, resresv -> job -> accrue_type);
 	if (pbs_strcat(&globals, &globals_size, buf) == NULL) {
@@ -4337,7 +4337,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 		str = PyUnicode_AsUTF8(obj);
 		if (str != NULL) {
 			if (strlen(str) > 0) { /* exception happened */
-				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 					"Formula evaluation for job had an error.  Zero value will be used: %s", str);
 				ans = 0;
 			}
@@ -4977,7 +4977,7 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 }
 
 /**
- * @brief Create the resources_released and resource_released_list for a job 
+ * @brief Create the resources_released and resource_released_list for a job
  *	    and also set execselect on the job based on resources_released
  *
  * @param[in] policy - policy object
@@ -5004,7 +5004,7 @@ void create_res_released(status *policy, resource_resv *pjob)
 
 /**
  * @brief This function populates resreleased job structure for a particular job.
- *	  It does so by duplicating the job's exec_vnode and only keeping the 
+ *	  It does so by duplicating the job's exec_vnode and only keeping the
  *	  consumable resources in policy->rel_on_susp
  *
  * @param[in] policy - policy object
@@ -5041,9 +5041,9 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 /**
  * @brief create a resource_rel array for a job by accumulating all of the RASSN
  *	    resources in a resources_released nspec array.
- * 
+ *
  * @note only uses RASSN resources on the sched_config resources line
- * 
+ *
  * @param policy - policy info
  * @param pjob -  resource reservation structure
  * @return resource_req *
@@ -5246,7 +5246,7 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			break;
 		case INSUFFICIENT_RESOURCE:
 			/* special check for vnode and host resource because those resources
-			 * do not get into chunk level resources. So in such a case we 
+			 * do not get into chunk level resources. So in such a case we
 			 * compare the resource name with the chunk name
 			 */
 			if (inp->err->rdef == getallres(RES_VNODE)) {
@@ -5312,7 +5312,7 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 
 	if ((arr == NULL) || (job == NULL) || (err == NULL))
 		return NULL;
-	
+
 	arr_length = count_array((void **)arr);
 
 	switch (err->error_code) {

@@ -97,7 +97,6 @@
 #include "svrfunc.h"
 #include "pbs_sched.h"
 
-#define PBS_PYTHON 1.1
 #define MAXBUF	4096
 #define PYHOME "PYTHONHOME"
 #define PYHOME_EQUAL "PYTHONHOME="
@@ -367,7 +366,7 @@ action_sched_preempt_common(attribute *pattr, void *pobj, int actmode)
 }
 
 int
-set_reserve_retry_init(pattr, pobj, actmode)
+action_reserve_retry_time(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;
 int	   actmode;
@@ -376,12 +375,12 @@ int	   actmode;
 }
 
 int
-set_reserve_retry_cutoff(pattr, pobj, actmode)
+action_reserve_retry_init(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;
-int	   actmode;
+int        actmode;
 {
-	return PBSE_NONE;
+        return PBSE_NONE;
 }
 
 int

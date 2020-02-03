@@ -60,6 +60,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <signal.h>
 #include "libpbs.h"
 #include "dis.h"
 #include "log.h"
@@ -93,7 +94,9 @@ extern int pbs_tcp_errno;
 extern int rpp_flush(int index);
 
 void reply_free(struct batch_reply *prep);
-
+#ifndef WIN32
+extern volatile int reply_timedout; /* global to notify DIS routines reply took too long */
+#endif
 #define ERR_MSG_SIZE 256
 
 
@@ -161,6 +164,27 @@ set_err_msg(int code, char *msgbuf, size_t msglen)
 	}
 	msgbuf[msglen] = '\0';
 }
+#ifndef WIN32
+/**
+ * @brief
+ * 		SIGALRM signal handler for dis_reply_write
+ * 
+ * Set the volatile global variable reply_timedout
+ * Record about the timeout in TCP reply.
+ * 
+ * @param[in]	sig -  signal number
+ *
+ * @return	return void
+ */
+void
+reply_alarm(int sig)
+{
+    reply_timedout = 1;
+    log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+              "dis_reply_write", "timeout attempting to send TCP reply");
+}
+#endif
+
 /**
  * @brief
  * 		reply is to be sent to a remote client
@@ -175,10 +199,25 @@ dis_reply_write(int sfds, struct batch_request *preq)
 {
 	int rc;
 	struct batch_reply *preply = &preq->rq_reply;
+#ifndef WIN32
+	struct sigaction act, oact;
+	time_t  old_tcp_timeout = pbs_tcp_timeout ;
+#endif
 
 	if (preq->isrpp) {
 		rc = encode_DIS_replyRPP(sfds, preq->rppcmd_msgid, preply);
 	} else {
+#ifndef WIN32
+		reply_timedout = 0;
+		/* set alarm to interrupt poll() etc. while flushing out data */
+		sigemptyset(&act.sa_mask);
+		act.sa_flags = 0;
+		act.sa_handler = reply_alarm;
+		if (sigaction(SIGALRM, &act, &oact) == -1)
+			return (PBS_NET_RC_RETRY);
+		alarm(PBS_DIS_TCP_TIMEOUT_REPLY);
+		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
+#endif
 		/*
 		 * clear pbs_tcp_errno - set on error in DIS_tcp_wflush when called
 		 * either in encode_DIS_reply() or directly below.
@@ -193,6 +232,14 @@ dis_reply_write(int sfds, struct batch_request *preq)
 		DIS_wflush(sfds, preq->isrpp);
 	}
 
+#ifndef WIN32
+	reply_timedout = 0; /* Resetting the value for next tcp connection */
+	if (!(preq->isrpp)) {
+        alarm(0);
+        (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
+    }
+	pbs_tcp_timeout = old_tcp_timeout;
+#endif
 	if (rc) {
 		char hn[PBS_MAXHOSTNAME+1];
 

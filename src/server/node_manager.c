@@ -1555,7 +1555,8 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		(nd_prev_state & INUSE_PROV)) &&
 		(pnode->nd_state & VNODE_UNAVAILABLE))
 		/* degrade all associated reservations. The '1' instructs the function to
-		 *  account for the unavailable vnodes in the reservation's counter */
+		 * account for the unavailable vnodes in the reservation's counter 
+		 */
 		(void) vnode_unavailable(pnode, 1);
 
 	else if (((nd_prev_state & VNODE_UNAVAILABLE)) &&
@@ -1643,7 +1644,7 @@ vnode_available(struct pbsnode *np)
 			/* If a standing reservation we print the execvnodes sequence
 			 * string for debugging purposes */
 			if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
-				snprintf(log_buffer, sizeof(log_buffer), " execvnodes sequence %s",
+				snprintf(log_buffer, sizeof(log_buffer), "execvnodes sequence %s",
 					rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 					presv->ri_qs.ri_resvID, log_buffer);
@@ -1689,11 +1690,8 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 	struct resvinfo *rinfp_hd = NULL;
 	int *presv_state;
 	int *presv_substate;
-	int log_reconf;
 	int in_soonest_occr;
 	long degraded_time;
-	long estimated_retry_time;
-	long resv_end_time;
 	long resv_start_time;
 	long retry_time;
 
@@ -1722,53 +1720,19 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 			log_err(PBSE_SYSTEM, __func__, "could not access reservation");
 			continue;
 		}
-		/* reset log reconfirmation flag */
-		log_reconf = 0;
 
 		presv_state = &presv->ri_qs.ri_state;
 		presv_substate = &presv->ri_qs.ri_substate;
 		retry_time = presv->ri_wattr[RESV_ATR_retry].at_val.at_long;
 		resv_nodes = presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str;
-		resv_end_time = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 		resv_start_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 		/* the start time of the soonest degraded occurrence */
 		degraded_time = presv->ri_degraded_time;
 		in_soonest_occr = find_vnode_in_execvnode(resv_nodes, np->nd_name);
 
-		/*
-		 * If the reservation already has a retry time set, we check if this
-		 * node's unavailability should bring the retry time to an earlier
-		 * time.
-		 *
-		 * estimated_retry_time corresponds to the half time between now and
-		 * the start time of the earliest degraded occurrence
-		 */
-		if ((degraded_time > 0) && (retry_time > 0)) {
-			estimated_retry_time = time_now + ((degraded_time - time_now)/2);
-			if (estimated_retry_time < retry_time && estimated_retry_time
-				> time_now + reserve_retry_cutoff) {
-				set_resv_retry(presv, estimated_retry_time);
-				log_reconf = 1;
-			}
-		}
-
-		/* If resv_retry attribute isn't set and the reservation is to start
-		 * later than reserve_retry_init and reserve_retry_cutoff from now.
-		 * Also handle the case where a standing reservation is currently
-		 * running by setting the retry to be RESV_RETRY_DELAY from the end
-		 * of the occurrence
-		 */
-		else if ((retry_time == 0) &&
-			(degraded_time > (time_now + reserve_retry_cutoff)) &&
-			(degraded_time > (time_now + reserve_retry_init))) {
-			if ((*presv_state == RESV_RUNNING) && (in_soonest_occr == 1))
-				set_resv_retry(presv, resv_end_time + RESV_RETRY_DELAY);
-			else
-				set_resv_retry(presv, (time_now + reserve_retry_init));
-			log_reconf = 1;
-		}
-
-		if (log_reconf) {
+		if (retry_time == 0) {
+			set_resv_retry(presv, determine_resv_retry(presv));
+		
 			str_time = ctime(&presv->ri_resv_retry);
 			if (str_time != NULL) {
 				str_time[strlen(str_time) - 1] = '\0';
@@ -1819,7 +1783,7 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 
 				}
 				snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; "
-					" unavailable vnodes in reservation: %d",
+					"unavailable vnodes in reservation: %d",
 					presv->ri_vnodect, presv->ri_vnodes_down);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 					presv->ri_qs.ri_resvID, log_buffer);
@@ -2036,27 +2000,8 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 				 * degraded time
 				 */
 				occr_time = get_occurrence(rrule, dtstart, tz, j);
-
-				/* Set the degraded start time to the earliest occurrence
-				 * with unavailable nodes. We do not check for
-				 * reserve_retry_init because we may be entering here
-				 * on a multi-node failure and want to set the retry time
-				 * to the earliest occurrence possible otherwise the scheduler
-				 * will try to reconfirm and fail because of the first node
-				 * failure.
-				 */
-				if ((time_now + reserve_retry_cutoff) < occr_time) {
-					if (presv->ri_degraded_time == 0 ||
-						presv->ri_degraded_time > occr_time) {
-						presv->ri_degraded_time = occr_time;
-						break;
-					}
-				}
-				/* If within the cutoff window and degraded time wasn't set,
-				 * keep track of this occurrence time to set it as degraded
-				 * time for this reservation.
-				 */
-				else if (presv->ri_degraded_time == 0 &&
+				
+				if (presv->ri_degraded_time == 0 &&
 					curr_degraded_time == 0) {
 					curr_degraded_time = occr_time;
 				}
@@ -8742,6 +8687,9 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
  * @param[in]	vnodelist - non-NULL means it's the list of vnode names
  *			to free. If NULL, free all the vnodes assigned
  *			to 'pjob' whose parent mom is a sister mom.
+ * @param[in]	keep_select - non-NULL means it's a select string that
+ *			describes vnodes to be kept while freeing all other vnodes
+ *			assigned to 'pjob' whose parent mom is a sister mom.
  * @param[out]  err_msg - if function returns != 0 (failure), return
  *			  any error message in this buffer.
  * @param[int]	err_msg_sz - size of 'err_msg' buf.
@@ -8751,7 +8699,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
  * @retval != 0  - failure error code.
  */
 int
-free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
+free_sister_vnodes(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
 			int err_msg_sz, struct batch_request *reply_req)
 {
 	int		rc = 0;
@@ -8774,7 +8722,7 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
 	set_resc_assigned((void *)pjob, 0,  DECR);
 
 	/* re-create the job's exec_vnode based on free vnodes specs */
-	if ((rc = recreate_exec_vnode(pjob, vnodelist, err_msg,
+	if ((rc = recreate_exec_vnode(pjob, vnodelist, keep_select, err_msg,
 						err_msg_sz)) != 0) {
 		set_resc_assigned((void *)pjob, 0,  INCR);
 		return (rc);
@@ -8832,9 +8780,8 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 
 	degraded_time = presv->ri_degraded_time;
 
-	if ((degraded_time > (time_now + reserve_retry_cutoff)) &&
-		(degraded_time > (time_now + reserve_retry_init)))
-			set_resv_retry(presv, (time_now + reserve_retry_init));
+	if (degraded_time > (time_now + resv_retry_time))
+			set_resv_retry(presv, (time_now + resv_retry_time));
 
 	if (presv->ri_resv_retry) {
 		str_time = ctime(&presv->ri_resv_retry);
@@ -8872,4 +8819,26 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 			presv->ri_qs.ri_resvID, log_buffer);
 	}
 	presv->ri_vnodes_down++;
+}
+
+
+/**
+ * 	@brief determine the new retry time for a resv
+ * 
+ * 	@param[in] presv - the reservation
+ * 
+ * 	@return long
+ * 	@retval next resv retry time for the resv
+ */
+long determine_resv_retry(resc_resv *presv)
+{
+	long retry;
+	long resv_start = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+
+	if (time_now < resv_start && time_now + resv_retry_time > resv_start)
+		retry = resv_start;
+	else
+		retry = time_now + resv_retry_time;
+
+	return retry;
 }

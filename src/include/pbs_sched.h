@@ -96,6 +96,7 @@ enum sched_atr {
 	SCHED_ATR_preempt_sort,
 	SCHED_ATR_log_events,
 	SCHED_ATR_job_sort_formula,
+	SCHED_ATR_server_dyn_res_alarm,
 #include "site_sched_attr_enum.h"
 	/* This must be last */
 	SCHED_ATR_LAST

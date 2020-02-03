@@ -2120,8 +2120,8 @@ find_ready_resv_job(resource_resv **resvs)
 
 	for (i = 0; resvs[i] != NULL && rjob == NULL; i++) {
 		if (resvs[i]->resv != NULL) {
-			if (resvs[i]->resv->resv_state ==RESV_RUNNING) {
-				if (resvs[i]->resv->resv_queue !=NULL) {
+			if (resvs[i]->resv->resv_state == RESV_RUNNING) {
+				if (resvs[i]->resv->resv_queue != NULL) {
 					ind = find_runnable_resresv_ind(resvs[i]->resv->resv_queue->jobs, 0);
 					if (ind != -1)
 						rjob = resvs[i]->resv->resv_queue->jobs[ind];
@@ -2474,6 +2474,13 @@ sched_settings_frm_svr(struct batch_status *status)
 				if (*endp != '\0')
 					goto cleanup;
 				*log_event_mask = mask;
+			} else if (!strcmp(attr->name, ATTR_sched_server_dyn_res_alarm)) {
+				char *endp;
+				long val;
+				val = strtol(attr->value, &endp, 10);
+				if (*endp != '\0')
+					goto cleanup;
+				server_dyn_res_alarm = val;
 			}
 		}
 		attr = attr->next;

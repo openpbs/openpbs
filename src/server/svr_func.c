@@ -51,7 +51,6 @@
  * 	cred_name_okay()
  * 	poke_scheduler()
  * 	set_reserve_retry_init()
- * 	set_reserve_retry_cutoff()
  * 	set_rpp_retry()
  * 	set_rpp_highwater()
  * 	set_sched_sock()
@@ -263,7 +262,6 @@ extern int sync_mom_hookfiles_proc_running;
 /*
  * Miscellaneous server functions
  */
-extern void  est_start_timed_task(struct work_task *);
 extern void db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr);
 #ifdef NAS /* localmod 005 */
 extern int write_single_node_state(struct pbsnode *np);
@@ -664,7 +662,36 @@ cred_name_okay(attribute *pattr, void *pobj, int actmode)
 
 /**
  * @brief
- * 		set_reserve_retry_init - action routine for the server's
+ * 		action_resv_retry_time - action routine for the server's
+ * 		"reserve_retry_time" attribute.
+ *
+ * @param[in]	pattr	-	pointer to attribute structure
+ * @param[in]	pobj	-	not used
+ * @param[in]	actmode	-	action mode
+ *
+ * @return	int
+ * @retval	zero	: success
+ * @retval	nonzero	: failure
+ */
+int
+action_reserve_retry_time(attribute *pattr, void *pobj, int actmode)
+{
+	if (actmode == ATR_ACTION_ALTER ||
+		actmode == ATR_ACTION_RECOV) {
+
+		if (pattr->at_val.at_long <= 0)
+			return PBSE_BADATVAL;
+		server.sv_attr[(int) SRV_ATR_resv_retry_init].at_flags &= ~ATR_VFLAG_SET;
+		server.sv_attr[(int) SRV_ATR_resv_retry_init].at_flags |= ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY;
+
+		resv_retry_time = pattr->at_val.at_long;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ * 		action_resv_retry_init - action routine for the server's
  * 		"reserve_retry_init" attribute.
  *
  * @param[in]	pattr	-	pointer to attribute structure
@@ -676,56 +703,17 @@ cred_name_okay(attribute *pattr, void *pobj, int actmode)
  * @retval	nonzero	: failure
  */
 int
-set_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
+action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 {
 	if (actmode == ATR_ACTION_ALTER ||
-		actmode == ATR_ACTION_RECOV) {
+	    actmode == ATR_ACTION_RECOV) {
 
 		if (pattr->at_val.at_long <= 0)
 			return PBSE_BADATVAL;
+		server.sv_attr[(int) SRV_ATR_resv_retry_time].at_val.at_long = pattr->at_val.at_long;
+		server.sv_attr[(int) SRV_ATR_resv_retry_time].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 
-		reserve_retry_init = (int)pattr->at_val.at_long;
-		if (reserve_retry_init < RESV_RETRY_INIT) {
-			sprintf(log_buffer,
-				"warning: low value for reserve_retry_init: %ld",
-				reserve_retry_init);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_DEBUG, msg_daemonname, log_buffer);
-		}
-	}
-	return PBSE_NONE;
-}
-
-/**
- * @brief
- * 		set_reserve_retry_cutoff - action routine for the server's
- * 		"reserve_retry_cutoff" attribute.
- *
- * @param[in]	pattr	-	pointer to attribute structure
- * @param[in]	pobj	-	not used
- * @param[in]	actmode	-	action mode
- *
- * @return	int
- * @retval	zero	: success
- * @retval	nonzero	: failure
- */
-int
-set_reserve_retry_cutoff(attribute *pattr, void *pobj, int actmode)
-{
-	if (actmode == ATR_ACTION_ALTER ||
-		actmode == ATR_ACTION_RECOV) {
-
-		if (pattr->at_val.at_long <= 0)
-			return PBSE_BADATVAL;
-
-		reserve_retry_cutoff = (int)pattr->at_val.at_long;
-		if (reserve_retry_cutoff < RESV_RETRY_CUTOFF) {
-			sprintf(log_buffer,
-				"warning: low value for reserve_retry_cutoff: %ld",
-				reserve_retry_cutoff);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_DEBUG, msg_daemonname, log_buffer);
-		}
+		resv_retry_time = pattr->at_val.at_long;
 	}
 	return PBSE_NONE;
 }

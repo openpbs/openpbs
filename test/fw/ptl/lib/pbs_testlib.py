@@ -13463,7 +13463,8 @@ class MoM(PBSService):
         chk_file = self.du.create_temp_file(hostname=self.hostname, body=body,
                                             dirname=dirname)
         self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
-        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER)
+        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER,
+                      uid=0, gid=0)
         c = {'$action': 'checkpoint_abort ' +
              str(abort_time) + ' !' + chk_file + ' %sid'}
         self.add_config(c)
