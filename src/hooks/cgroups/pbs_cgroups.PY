@@ -3075,9 +3075,9 @@ class CgroupUtils(object):
         for i, char in enumerate(buf):
             if i < 1 and char == '.':
                 if (sys.version_info[0] < 3):
-                    ret += '\\x' + char.encode('hex')
+                    ret += '\\x' + '.'.encode('hex')
                 else:
-                    ret += '\\x' + char.encode('utf-8').hex()
+                    ret += '\\x' + b'.'.hex()
             elif char.isalnum() or char in '_.':
                 ret += char
             elif char == '/':
@@ -3116,9 +3116,13 @@ class CgroupUtils(object):
                 i += 4
                 continue
             if buf[i] == '-':
-                ret += '/'
+                ret += b'/'
             elif buf[i].isalnum() or buf[i] in '_.':
-                ret += buf[i]
+                if (sys.version_info[0] < 3):
+                    ret += buf[i]
+                else:
+                    # normal char -- should never require UTF-8
+                    ret += buf[i].encode('ascii', 'strict')
             else:
                 raise ValueError('Invalid systemd escaped string')
             i += 1
