@@ -2474,10 +2474,12 @@ class CgroupUtils(object):
         # avoid crashes in fnmatch if no vntype was specified on the host
         if not vntype:
             vntype = "__UNKNOWN__"
-        # note that dict.items() is slightly inefficient in Python 2.x
-        # but efficient in Python 3.x
-        # iteritems, on the other hand, no longer exists for dict in Py3
-        for key_found, value_found in config_dict.items():
+        # We want a view/iterator object, not sth that creates copied lists
+        # Unfortunately iteritems/viewitems() no longer exists in Py3
+        # since items() itself is now implemented as a view object.
+        dict_iter_object = (config_dict.items() if sys.version_info[0] >= 3
+                            else config_dict.iteritems())
+        for key_found, value_found in dict_iter_object:
             if isinstance(value_found, dict):
                 # subsection found
                 pbs.logmsg(pbs.EVENT_DEBUG4,
