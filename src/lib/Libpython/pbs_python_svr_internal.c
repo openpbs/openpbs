@@ -5772,7 +5772,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		//pass rq_attr as a list of tuple(Option(str,None), Option(str,None), Option(str,None))
 		py_attr = svrattrl_list_to_pyobject(&rqj->rq_manager.rq_attr);
 		if (!py_attr){
 			log_err(PBSE_INTERNAL, __func__, "could not build the list of server attributes");
@@ -12560,7 +12559,7 @@ release_nodes_exit:
  *
  * @brief
  *	Returns a String containing a space separated list of attribute name,
- *  resource name and attribute/resource value.
+ *  resource name and attribute/resource value.  For debugging only.
  * @param[in]	head_str- some string to print out the beginning.
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
@@ -12597,8 +12596,7 @@ const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
 /**
  *
  * @brief
- *	Returns a Python List of Tuple(str, str, str) containing the attribute
- *  name, resource name and attribute/resource value.
+ *	Returns a Python List of _server_attribute objects.
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
  * @return PyObject*
@@ -12632,7 +12630,8 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 				}
 				Py_CLEAR(py_slist);
 			} else {
-				log_err(PBSE_INTERNAL, __func__, "failed to acquire sisters in server_attribute object");
+				log_err(PBSE_INTERNAL, __func__,
+					"failed to acquire sisters in server_attribute object");
 			}
 		}
 		PyList_Append(py_list, py_server_attribute);
@@ -12644,9 +12643,8 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 /**
  *
  * @brief
- *	Returns a Python List of Tuple(str, str, str) containing the attribute 
- *  name, resource name and attribute/resource value.
- * @param[in]	phead	- pointer to the head of the list containing data.
+ *	Returns a Python List of _server_attribute objects.
+ * @param[in]	attribute	- pointer to the head of the list containing data.
  *
  * @return PyObject*
  */
