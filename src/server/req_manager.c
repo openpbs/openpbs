@@ -4959,8 +4959,8 @@ req_manager_exit:
 		 * code goes here for all hooks for qmgr
 		 */
 		char		  hook_msg[HOOK_MSG_SIZE];
-		int rc;
-		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		/* int rc; */
+		/* rc = */ process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 		/* FIXME: log an error if non-zero */
 	}
 	if (--preq->rq_refct == 0) {

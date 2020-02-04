@@ -3836,7 +3836,6 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	int			num_run = 0;
 	int			rc = 1;
 	int			event_initialized = 0;
-	struct rq_management rq_management;
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
