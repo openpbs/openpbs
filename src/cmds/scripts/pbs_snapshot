@@ -74,7 +74,7 @@ else
         # Define PATH and PYTHONPATH for the users
         PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
         if [ ! -x "${PTL_PREFIX}/lib/site-packages" ]; then
-            ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
+			ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
 			ptllibpath=${__PBS_EXEC}/unsupported/fw
         else
             python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
