@@ -1386,11 +1386,17 @@ class _server_attribute:
         self.sisters = []
     #: m(__init__)
 
-
     def __str__(self):
         #   return f"{self.name}:{self.resource}:{self.value}:{self.op}:{self.flags}"
         return "%s:%s:%s:%s:%s" % self.tup()
     #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the server_attribute object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
 
     def extract_flags_str(self) -> List[str]:
         """returns the string values from the attribute flags."""
@@ -1414,14 +1420,13 @@ class _server_attribute:
         return self.name, self.resource, self.value, self.op, self.flags, self.sisters
     #: m(tup)
 
-
-# _server_attribute._connect_server = PbsAttributeDescriptor(
-#     _server_attribute, '_connect_server', "", (str,))
-#: C(_server_attribute)
-
-# This exposes pbs.management() to be callable in a hook script
+# FIXME: do we need the following lines?  what purpose do they serve?
+# do we need to add others?
 _server_attribute._connect_server = PbsAttributeDescriptor(
     _server_attribute, '_connect_server', "", (str,))
+#: C(_server_attribute)
+
+# This exposes pbs.server_attribute() to be callable in a hook script
 server_attribute = _server_attribute
 
 #:------------------------------------------------------------------------
@@ -1465,10 +1470,12 @@ class _management:
     def __setattr__(self, name, value):
         if _pbs_v1.in_python_mode():
             raise BadAttributeValueError(
-                "management attribute '%s' is readonly" % (name,))
+                "'%s' attribute in the management object is readonly" % (name,))
         super().__setattr__(name, value)
     #: m(__setattr__)
 
+# FIXME: do we need the following lines?  what purpose do they serve?
+# do we need to add others?
 _management.cmd = PbsAttributeDescriptor(_management, 'cmd', None, (int,))
 _management.objtype = PbsAttributeDescriptor(_management, 'objtype', None, (int,))
 _management.objname = PbsAttributeDescriptor(_management, 'objname', "", (str,))

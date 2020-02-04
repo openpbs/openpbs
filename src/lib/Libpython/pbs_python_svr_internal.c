@@ -5104,7 +5104,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_pid = NULL;
 	PyObject *py_node_list = (PyObject *) NULL;
 	PyObject *py_failed_node_list = (PyObject *) NULL;
-	PyObject *py_attr = (PyObject *) NULL;
 	char	 perf_action[MAXBUFLEN];
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
@@ -5762,6 +5761,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			}
 		}
 	} else if (hook_event == HOOK_EVENT_MANAGEMENT) {
+		PyObject *py_attr = (PyObject *) NULL;
 		struct rq_management *rqj = req_params->rq_manage;
 		py_management_class = pbs_python_types_table[PP_MANAGEMENT_IDX].t_class;
 		if (!py_management_class) {
@@ -5795,7 +5795,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			log_err(PBSE_INTERNAL, __func__, "could not build args list for management");
 			goto event_set_exit;
 		}
-		// py_management = PyObject_Call(py_management_class, py_margs, NULL);/*NEW*/
 		py_management = PyObject_CallObject(py_management_class, py_margs);
 
 		if (!py_management) {

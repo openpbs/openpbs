@@ -3887,8 +3887,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		hook_event = HOOK_EVENT_MANAGEMENT;
 		preq->rq_ind.rq_management.rq_reply = &preq->rq_reply;
 		preq->rq_ind.rq_management.rq_time = preq->rq_time;
-
-		// FIXME: this should be copied as preq gets freed by free_br
+		// Copying the pointer to rq_management below is safe since
+		// req_manager() bumps the reference count on preq
 		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_management;
 		head_ptr = &svr_management_hooks;
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
