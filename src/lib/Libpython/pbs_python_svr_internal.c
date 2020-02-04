@@ -187,7 +187,7 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_VNODE, 			NULL},		 /* 24 */
 	{PY_TYPE_ENTITY, 			NULL},		 /* 25 */
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
-	{PY_TYPE_MANAGEMENT, 		NULL},		 /* 27 */
+	{PY_TYPE_MANAGEMENT,		NULL},		 /* 27 */
 	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
 
 
@@ -5763,7 +5763,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 	} else if (hook_event == HOOK_EVENT_MANAGEMENT) {
 		struct rq_management *rqj = req_params->rq_manage;
-		// const char * str_attr;
 		py_management_class = pbs_python_types_table[PP_MANAGEMENT_IDX].t_class;
 		if (!py_management_class) {
 			log_err(PBSE_INTERNAL, __func__, "failed to acquire management class");
@@ -5786,7 +5785,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			rqj->rq_reply->brp_code,
 			rqj->rq_reply->brp_auxcode,
 			rqj->rq_reply->brp_choice,
-			(rqj->rq_reply->brp_choice == BATCH_REPLY_CHOICE_Text) ? rqj->rq_reply->brp_un.brp_txt.brp_str : NULL,
+			(rqj->rq_reply->brp_choice == BATCH_REPLY_CHOICE_Text) ?
+				rqj->rq_reply->brp_un.brp_txt.brp_str : NULL,
 			py_attr
 			); /* NEW ref */
 		Py_CLEAR(py_attr);
