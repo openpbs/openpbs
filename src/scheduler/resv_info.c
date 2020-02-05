@@ -1635,7 +1635,7 @@ check_vnodes_down(resource_resv *resv, int *tot_vnodes, char *names_of_down_vnod
 	int vnodes_down; /* number of unavailable vnodes */
 	int j;
 
-	if (resv == NULL || tot_vnodes == NULL)
+	if (resv == NULL || resv->nspec_arr == NULL || tot_vnodes == NULL)
 		return -2;
 
 	*tot_vnodes = 0; /* initialize the total number of vnodes */
