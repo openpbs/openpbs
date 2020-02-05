@@ -1909,8 +1909,8 @@ class TestReservations(TestFunctional):
         self.server.expect(RESV, exp_attr, id=rid, offset=offset)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        strfstr = '%a %b %d %T %Y'
-        start_str = time.strftime(strfstr, time.localtime(start + 3600))
+        strf_str = '%a %b %d %T %Y'
+        start_str = time.strftime(strf_str, time.localtime(start + 3600))
 
         self.logger.info('Sleeping until resv idle timer fires')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
