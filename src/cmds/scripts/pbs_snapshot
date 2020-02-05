@@ -63,6 +63,8 @@ else
 fi
 unset conf
 
+__pbs_snapshot=pbs_snapshot
+
 if [ "x${ptl_prefix_lib}" != "x" ]; then
     python_dir=$(/bin/ls -1 ${ptl_prefix_lib})
     prefix=$(dirname ${ptl_prefix_lib})
@@ -76,6 +78,7 @@ else
         if [ ! -x "${PTL_PREFIX}/lib/site-packages" ]; then
             ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
             ptllibpath=${__PBS_EXEC}/unsupported/fw
+            __pbs_snapshot=${__pbs_snapshot}.py
         else
             python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
             ptllibpath=${PTL_PREFIX}/lib/${python_dir}
@@ -90,9 +93,9 @@ export PYTHONPATH=${ptllibpath}:${PYTHONPATH}
 
 if [ -x $ptlbinpath ] && [ -x $ptllibpath ];then
     if [ -x "${__PBS_EXEC}/python/bin/python" ]; then
-        ${__PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot.py "${@}"
+        ${__PBS_EXEC}/python/bin/python ${ptlbinpath}/${__pbs_snapshot} "${@}"
     else
-        python3 ${ptlbinpath}/pbs_snapshot.py "${@}"
+        python3 ${ptlbinpath}/${__pbs_snapshot} "${@}"
     fi
 else
     echo "***" >&2
@@ -102,4 +105,4 @@ else
 fi
 
 unset __PBS_EXEC
-
+unset __pbs_snapshot
