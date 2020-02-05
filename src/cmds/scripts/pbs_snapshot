@@ -40,9 +40,9 @@ ptlbinpath=
 
 # Try rpm install paths
 if [ -f "/etc/debian_version" ]; then
-        ptl_prefix_lib=$(dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null)
+    ptl_prefix_lib=$(dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null)
 else
-        ptl_prefix_lib=$(rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null)
+    ptl_prefix_lib=$(rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null)
 fi
 
 # Try system paths
@@ -53,44 +53,56 @@ if [ ! -d  ${ptl_prefix_lib} ]; then
     fi
 fi
 
-if [ "x${ptl_prefix_lib}" != "x" ]; then
-        python_dir=$(/bin/ls -1 ${ptl_prefix_lib})
-        prefix=$(dirname ${ptl_prefix_lib})
-
-        ptllibpath=${prefix}/lib/${python_dir}/site-packages
-        ptlbinpath=${prefix}/bin
+conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
+if [ -r "${conf}" ]; then
+    # we only need PBS_EXEC from pbs.conf
+    __PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
 else
-        conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
-        if [ -r "${conf}" ]; then
-                # we only need PBS_EXEC from pbs.conf
-                __PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
-                if [ "X${__PBS_EXEC}" != "X" ]; then
-                        # Define PATH and PYTHONPATH for the users
-                        PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
-                        python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
-                        if [ -d "${PTL_PREFIX}/bin" ];then
-                            ptllibpath=${PTL_PREFIX}/lib/${python_dir}
-                        fi
-                        if [ -d "${PTL_PREFIX}/lib/${python_dir}" ];then
-                            ptlbinpath=${PTL_PREFIX}/bin
-                        fi
-                fi
-                unset __PBS_EXEC
-                unset PTL_PREFIX
-                unset conf
-                unset python_dir
+    echo "Error: Unable to read PBS conf file" >&2
+    exit 1
+fi
+unset conf
+
+__pbs_snapshot=pbs_snapshot
+
+if [ "x${ptl_prefix_lib}" != "x" ]; then
+    python_dir=$(/bin/ls -1 ${ptl_prefix_lib})
+    prefix=$(dirname ${ptl_prefix_lib})
+
+    ptllibpath=${prefix}/lib/${python_dir}/site-packages
+    ptlbinpath=${prefix}/bin
+else
+    if [ "X${__PBS_EXEC}" != "X" ]; then
+        # Define PATH and PYTHONPATH for the users
+        PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
+        if [ ! -x "${PTL_PREFIX}/lib/site-packages" ]; then
+            ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
+            ptllibpath=${__PBS_EXEC}/unsupported/fw
+            __pbs_snapshot=${__pbs_snapshot}.py
+        else
+            python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
+            ptllibpath=${PTL_PREFIX}/lib/${python_dir}
+            ptlbinpath=${PTL_PREFIX}/bin
         fi
+       unset PTL_PREFIX
+       unset python_dir
+    fi
 fi
 
 export PYTHONPATH=${ptllibpath}:${PYTHONPATH}
 
-if [ -z $ptlbinpath ];then
-    echo "Error: PTL bin path not found"
+if [ -x $ptlbinpath ] && [ -x $ptllibpath ];then
+    if [ -x "${__PBS_EXEC}/python/bin/python" ]; then
+        ${__PBS_EXEC}/python/bin/python ${ptlbinpath}/${__pbs_snapshot} "${@}"
+    else
+        python3 ${ptlbinpath}/${__pbs_snapshot} "${@}"
+    fi
+else
+    echo "***" >&2
+    echo "*** Ptllib/Ptlbin Path Not found" >&2
+    echo "***" >&2
     exit 1
 fi
 
-if [ -x "${PBS_EXEC}/python/bin/python" ]; then
-	${PBS_EXEC}/python/bin/python ${ptlbinpath}/pbs_snapshot "${@}"
-else
-	python3 ${ptlbinpath}/pbs_snapshot "${@}"
-fi
+unset __PBS_EXEC
+unset __pbs_snapshot
