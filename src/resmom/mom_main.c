@@ -6502,15 +6502,11 @@ kill_job(job *pjob, int sig)
 		ct += tsk_ct;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
 		if (sig == SIGKILL) { /* only stop afslog when the task is finally dying */
-			if (signal_afslog(ptask, SIGTERM)) {
-				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-					ptask->ti_job->ji_qs.ji_jobid, "sending SIGTERM to afslog process failed");
-			}
+			AFSLOG_TERM(ptask);
 		}
 #endif
-#endif
+
 		/*
 		 ** If this is an orphan task, force it to be EXITED
 		 ** since it will not be seen by scan_for_terminated.
@@ -6533,12 +6529,7 @@ kill_job(job *pjob, int sig)
 			if (ptask->ti_qs.ti_parenttask == TM_NULL_TASK)
 				exiting_tasks = 1;
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-			if (signal_afslog(ptask, SIGTERM)) {
-				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-					ptask->ti_job->ji_qs.ji_jobid, "sending SIGTERM to afslog process failed");
-			}
-#endif
+			AFSLOG_TERM(ptask);
 #endif
 		}
 	}

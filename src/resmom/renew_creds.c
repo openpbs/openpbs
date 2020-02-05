@@ -219,7 +219,7 @@ init_ticket_from_ccache(job *pjob, const task *ptask, struct krb_holder *ticket)
 	char buf[LOG_BUF_SIZE];
 
 	if ((ret = get_job_info_from_job(pjob, ptask, ticket->job_info)) != 0)  {
-		snprintf(buf, sizeof(buf), "Could not fetch GSSAPI information from job (get_job_info_from_job returned %d).",ret);
+		snprintf(buf, sizeof(buf), "Could not fetch GSSAPI information from job (get_job_info_from_job returned %d).", ret);
 		log_err(errno, __func__, buf);
 		return ret;
 	}
@@ -596,6 +596,7 @@ alloc_ticket()
  * @param[in] ticket - Ticket with context and job info information
  * @param[in] cred_action - requested action
  *
+ * @return void
  */
 void
 free_ticket(struct krb_holder *ticket, int cred_action)
@@ -881,6 +882,7 @@ cred_by_job(job *pjob, int cred_action)
  *
  * @param[in] pjob - job structure
  *
+ * @return void
  */
 void
 renew_job_cred(job *pjob)
@@ -922,6 +924,7 @@ renew_job_cred(job *pjob)
  * @param[in] data - the credentials itself
  * @param[in] data_base64 - the credentials in base64
  *
+ * @return void
  */
 void
 store_or_update_cred(char *jobid, char *credid, int cred_type, krb5_data *data, char *data_base64, long validity)
@@ -969,6 +972,7 @@ store_or_update_cred(char *jobid, char *credid, int cred_type, krb5_data *data, 
  *
  * @param[in] jobid - Job ID
  *
+ * @return void
  */
 void
 delete_cred(char *jobid)
@@ -1160,6 +1164,7 @@ err:
  *
  * @param[in] pjob - job structure
  *
+ * @return void
  */
 void
 send_cred_sisters(job *pjob)
@@ -1205,7 +1210,7 @@ do_afslog(krb5_context context, eexec_job_info job_info)
 {
 	krb5_error_code ret = 0;
 
-	if(k_hasafs() && (ret = krb5_afslog(context, job_info->ccache, NULL, NULL)) != 0) {
+	if (k_hasafs() && (ret = krb5_afslog(context, job_info->ccache, NULL, NULL)) != 0) {
 		snprintf(log_buffer, sizeof(log_buffer), "krb5_afslog failed, error: %d", ret);
 		log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,	job_info->jobid, log_buffer);
 
@@ -1222,10 +1227,11 @@ do_afslog(krb5_context context, eexec_job_info job_info)
  *
  * @param[in] ticket - kerberos ticket
  *
+ * @return void
  */
 void
 singleshot_afslog(struct krb_holder *ticket) {
-	if(k_hasafs()) {
+	if (k_hasafs()) {
 		k_setpag();
 		do_afslog(ticket->context, ticket->job_info);
 	}
@@ -1237,15 +1243,13 @@ singleshot_afslog(struct krb_holder *ticket) {
  *
  * @param[in] signal - received signal
  *
+ * @return void
  */
 static void
 do_afslog_on_signal(int signal) {
-	krb5_error_code ret;
-
 	if (signal == SIGHUP) {
-		if ((ret = do_afslog(afslog_ticket->context, afslog_ticket->job_info))) {
+		if (do_afslog(afslog_ticket->context, afslog_ticket->job_info))
 			return;
-		}
 	} else {
 		rec_signal = signal;
 	}
@@ -1258,6 +1262,7 @@ do_afslog_on_signal(int signal) {
  *
  * @param[in] signal - received signal
  *
+ * @return void
  */
 static void
 wait_afslog() {
@@ -1296,21 +1301,24 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 	int ret = PBS_KRB5_OK;
 	char pid_file[MAXPATHLEN];
 	int local_ticket = 0;
+	job *pjob;
+	int fd;
+	int pid;
 
-	if(!k_hasafs())
+	if (!k_hasafs())
 		return PBS_KRB5_OK;
 
 	if (ptask == NULL)
 		return PBS_KRB5_ERR_INTERNAL;
 
-	job *pjob = ptask->ti_job;
+	pjob = ptask->ti_job;
 
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_fileprefix, (unsigned int)ptask->ti_qs.ti_task);
 	else
 		snprintf(pid_file, sizeof(pid_file), "%s%s_afslog_%8.8X.pid", path_jobs, pjob->ji_qs.ji_jobid, (unsigned int)ptask->ti_qs.ti_task);
 
-	int fd = open(pid_file, O_CREAT|O_EXCL|O_WRONLY, 0600);
+	fd = open(pid_file, O_CREAT|O_EXCL|O_WRONLY, 0600);
 	if (fd == -1) {
 		/* another afslog process is running ? */
 		snprintf(buf, sizeof(buf), "opening PID file for afslog process (%s) uid = %d", pid_file, getuid());
@@ -1319,7 +1327,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 	}
 
 	/* Go user */
-	if(seteuid(pjob->ji_qs.ji_un.ji_momt.ji_exuid) < 0) {
+	if (seteuid(pjob->ji_qs.ji_un.ji_momt.ji_exuid) < 0) {
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		snprintf(buf, sizeof(buf), "Could not set uid using \"setuid()\": %s.", errbuf);
 		log_err(errno, __func__, buf);
@@ -1353,7 +1361,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 
 	do_afslog(afslog_ticket->context, afslog_ticket->job_info);
 
-	int pid = fork();
+	pid = fork();
 	if (pid < 0) {
 		/* Go root on error */
 		if(seteuid(0) < 0) {
@@ -1441,11 +1449,12 @@ signal_afslog(const task *ptask, int signal) {
 	char pid_file[MAXPATHLEN];
 	FILE *fd;
 	struct stat cache_info;
+	job *pjob;
 
 	if (ptask == NULL)
 		return PBS_KRB5_ERR_INTERNAL;
 
-	job *pjob = ptask->ti_job;
+	pjob = ptask->ti_job;
 	if (pjob == NULL)
 		return PBS_KRB5_ERR_INTERNAL;
 

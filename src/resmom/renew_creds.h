@@ -102,6 +102,10 @@ int start_afslog(const task *ptask, struct krb_holder *ticket, int, int);
 int signal_afslog(const task *ptask, int signal);
 
 int32_t getpag();
+
+#define AFSLOG_TERM(x) {if (signal_afslog(x, SIGTERM)) log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, x->ti_job->ji_qs.ji_jobid, "sending SIGTERM to afslog process failed");}
+#else
+#define AFSLOG_TERM(x) {x = x;}
 #endif /* OpenAFS */
 
 #endif
