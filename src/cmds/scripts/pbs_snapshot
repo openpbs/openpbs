@@ -58,8 +58,8 @@ if [ -r "${conf}" ]; then
     # we only need PBS_EXEC from pbs.conf
     __PBS_EXEC=$( grep '^[[:space:]]*PBS_EXEC=' "$conf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/' )
 else
-	echo "Error: Unable to read PBS conf file" >&2
-	exit 1
+    echo "Error: Unable to read PBS conf file" >&2
+    exit 1
 fi
 unset conf
 
@@ -74,8 +74,8 @@ else
         # Define PATH and PYTHONPATH for the users
         PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
         if [ ! -x "${PTL_PREFIX}/lib/site-packages" ]; then
-			ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
-			ptllibpath=${__PBS_EXEC}/unsupported/fw
+            ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
+            ptllibpath=${__PBS_EXEC}/unsupported/fw
         else
             python_dir=$(/bin/ls -1 ${PTL_PREFIX}/lib)/site-packages
             ptllibpath=${PTL_PREFIX}/lib/${python_dir}
@@ -95,10 +95,11 @@ if [ -x $ptlbinpath ] && [ -x $ptllibpath ];then
         python3 ${ptlbinpath}/pbs_snapshot.py "${@}"
     fi
 else
-	echo "***" >&2
-	echo "*** Ptllib/Ptlbin Path Not found" >&2
-	echo "***" >&2
-	exit 1
+    echo "***" >&2
+    echo "*** Ptllib/Ptlbin Path Not found" >&2
+    echo "***" >&2
+    exit 1
 fi
 
 unset __PBS_EXEC
+
