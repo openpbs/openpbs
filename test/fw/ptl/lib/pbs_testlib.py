@@ -2383,6 +2383,7 @@ class BatchUtils(object):
             attrs = attrs.items()
 
         for a, v in attrs:
+            v = v.translate ({ord(c): "\\"+c for c in "~`!@#$%^&*()[]{};:,./<>?\|-=_+"})
             if exclude_attrs is not None and a in exclude_attrs:
                 continue
 

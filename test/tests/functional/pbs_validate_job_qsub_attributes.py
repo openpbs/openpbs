@@ -93,7 +93,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "submitted job with long select" )
         This test case validates, illlegal characters in job name,
         cause qsub to error out
         """
-        J = Job(TEST_USER, attrs={ATTR_N: r'j\&whoami\&gt\;/tmp/b\&'})
+        J = Job(TEST_USER, attrs={ATTR_N: "j&whoami&gt;/tmp/b&"})
         try:
             jid = self.server.submit(J)
         except PbsSubmitError as e:
@@ -136,7 +136,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "submitted job with long select" )
         J = Job(
             TEST_USER,
             attrs={
-                ATTR_N: r'j\&whoami\&gt\;/tmp/b\&',
+                ATTR_N: "j&whoami&gt;/tmp/b&",
                 ATTR_J: "1-2"})
         try:
             jid = self.server.submit(J)
