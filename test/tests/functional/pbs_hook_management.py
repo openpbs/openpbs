@@ -83,7 +83,7 @@ class TestHookManagement(TestFunctional):
                       "create hook %s event=management" % hook_name]
         qmgr_cmd = [qmgr_path, "-c",
                     "import hook %s application/x-python default %s" %
-                        (hook_name, tempfd_name)]
+                    (hook_name, tempfd_name)]
         qmgr_cleanup = [qmgr_path, "-c",
                         "delete hook %s event=management" % hook_name]
         self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
@@ -99,7 +99,7 @@ class TestHookManagement(TestFunctional):
             ret = self.du.run_cmd(current_host, qmgr_cleanup, stdout=tempfd2,
                                   runas='root')
             self.logger.info("tempfd2.name:%s, ts:%s dt:%s" % (tempfd2.name,
-                                                        start_time, start_dt))
+                             start_time, start_dt))
         with open(fn01, "r") as tempfd2:
             self.logger.info(tempfd2.read())
 
@@ -136,7 +136,7 @@ class TestHookManagement(TestFunctional):
                           "create hook %s event=management" % hook_name]
             qmgr_cmd = [qmgr_path, "-c",
                         "import hook %s application/x-python default %s" %
-                            (hook_name, tempfd_name)]
+                        (hook_name, tempfd_name)]
             qmgr_cleanup = [qmgr_path, "-c",
                             "delete hook %s event=management" % hook_name]
             self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
@@ -152,7 +152,7 @@ class TestHookManagement(TestFunctional):
                 ret = self.du.run_cmd(current_host, qmgr_cleanup,
                                       stdout=tempfd2, runas='root')
                 self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
-                                    (tempfd2.name, start_time, start_dt))
+                                 (tempfd2.name, start_time, start_dt))
             with open(fn01, "r") as tempfd2:
                 self.logger.info(tempfd2.read())
             self.server.log_match(hook_msg, starttime=start_time)
@@ -196,7 +196,7 @@ class TestHookManagement(TestFunctional):
                          "create hook %s event=management" % hook_name_01]
         qmgr_cmd_01 = [qmgr_path, "-c",
                        "import hook %s application/x-python default %s" %
-                        (hook_name_01, tempfd_name)]
+                       (hook_name_01, tempfd_name)]
         qmgr_cleanup_01 = [qmgr_path, "-c", "delete hook %s event=management" %
                            hook_name_01]
         hook_name_02 = 'c1234'
@@ -233,7 +233,7 @@ class TestHookManagement(TestFunctional):
             ret = self.du.run_cmd(current_host, qmgr_cleanup_02,
                                   stdout=tempfd2, runas='root')
             self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
-                                (tempfd2.name, start_time, start_dt))
+                             (tempfd2.name, start_time, start_dt))
         with open(fn01, "r") as tempfd2:
             self.logger.info(tempfd2.read())
         self.server.log_match(hook_msg, starttime=start_time)
