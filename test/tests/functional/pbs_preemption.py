@@ -678,9 +678,10 @@ exit 3
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[4])
 
     @skipOnCpuSet
-    def test_preempt_requeue_static_resc(self):
+    def test_preempt_requeue_resc(self):
         """
-        Test that scheduler will preempt jobs for static resources
+        Test that scheduler will preempt jobs for resources with rrtros
+        set for other resources
         """
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
