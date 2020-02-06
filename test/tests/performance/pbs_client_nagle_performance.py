@@ -143,7 +143,7 @@ class TestClientNagles(TestPerformance):
         self.perf_test_result(float(qdel_perf2),
                               "qdel_perf_with_manager", "sec")
 
-    @timeout(600)
+    @timeout(900)
     def test_qsub_perf(self):
         """
         Test that qsub performance have improved when run
