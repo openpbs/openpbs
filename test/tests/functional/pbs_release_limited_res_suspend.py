@@ -55,6 +55,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
              ATTR_start: 'True', ATTR_p: '200'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, b, "expressq")
 
+    @skipOnCpuSet
     def test_do_not_release_mem_sched_susp(self):
         """
         During preemption by suspension test that only ncpus are released from
@@ -92,6 +93,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_ncpus], "2",
                          msg="pbs did not release ncpus")
 
+    @skipOnCpuSet
     def test_do_not_release_mem_qsig_susp(self):
         """
         If a running job is suspended using qsig, test that only ncpus are
@@ -123,6 +125,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_ncpus], "0",
                          msg="pbs did not release ncpus")
 
+    @skipOnCpuSet
     def test_change_in_res_to_release_on_suspend(self):
         """
         set restrict_res_to_release_on_suspend to only ncpus and then suspend
@@ -173,6 +176,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_ncpus], "4",
                          msg="pbs did not account for ncpus correctly")
 
+    @skipOnCpuSet
     def test_res_released_sched_susp(self):
         """
         Test if job's resources_released attribute is correctly set when
@@ -204,6 +208,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(job[0][ATTR_released], rr,
                          msg="resources_released incorrect")
 
+    @skipOnCpuSet
     def test_res_released_sched_susp_multi_vnode(self):
         """
         Test if job's resources_released attribute is correctly set when
@@ -247,6 +252,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(job[0][ATTR_released], rr,
                          msg="resources_released incorrect")
 
+    @skipOnCpuSet
     def test_res_released_sched_susp_arrayjob(self):
         """
         Test if array subjob's resources_released attribute is correctly
@@ -282,6 +288,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(job[0][ATTR_released], rr,
                          msg="resources_released incorrect")
 
+    @skipOnCpuSet
     def test_res_released_list_sched_susp_arrayjob(self):
         """
         Test if array subjob's resources_released_list attribute is correctly
@@ -318,6 +325,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         rr_l_mem = job[0][ATTR_rel_list + ".mem"]
         self.assertEqual(rr_l_mem, "524288kb", msg="memory not released")
 
+    @skipOnCpuSet
     def test_res_released_list_sched_susp(self):
         """
         Test if job's resources_released_list attribute is correctly set when
@@ -350,6 +358,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         rr_l_mem = job[0][ATTR_rel_list + ".mem"]
         self.assertEqual(rr_l_mem, "524288kb", msg="memory not released")
 
+    @skipOnCpuSet
     def test_res_released_list_sched_susp_multi_vnode(self):
         """
         Test if job's resources_released_list attribute is correctly set when
@@ -393,6 +402,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         rr_l_mem = job[0][ATTR_rel_list + ".mem"]
         self.assertNotEqual(rr_l_mem, "2097152kb", msg="memory not released")
 
+    @skipOnCpuSet
     def test_node_res_after_deleting_suspended_job(self):
         """
         Test that once a suspended job is deleted node's resources assigned
@@ -444,6 +454,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
             rv[0][ras_ncpus], "0",
             msg="pbs did not reassign ncpus correctly on the node")
 
+    @skipOnCpuSet
     def test_default_restrict_res_released_on_suspend(self):
         """
         Test the default value of restrict_res_to_release_on_suspend.
@@ -476,6 +487,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_ncpus], "2",
                          msg="pbs did not release ncpus")
 
+    @skipOnCpuSet
     def test_setting_unknown_resc(self):
         """
         Set a non existing resource in restrict_res_to_release_on_suspend
@@ -489,6 +501,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         except PbsManagerError as e:
             self.assertTrue("Unknown resource" in e.msg[0])
 
+    @skipOnCpuSet
     def test_delete_res_busy_on_res_to_release_list(self):
         """
         Create a resource, set it in restrict_res_to_release_on_suspend
@@ -515,6 +528,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         except PbsManagerError as e:
             self.assertTrue("Resource busy on server" in e.msg[0])
 
+    @skipOnCpuSet
     def test_queue_res_release_upon_suspension(self):
         """
         Create 2 consumable resources and set it on queue,
@@ -561,6 +575,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_bar], "40",
                          msg="pbs should not release resource bar")
 
+    @skipOnCpuSet
     def test_server_res_release_upon_suspension_using_qsig(self):
         """
         Create 2 consumable resources and set it on server,
@@ -607,6 +622,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_bar], "40",
                          msg="pbs should not release resource bar")
 
+    @skipOnCpuSet
     def test_server_res_release_upon_suspension_using_preemption(self):
         """
         Create 2 consumable resources and set it on server,
@@ -673,6 +689,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_bar], "60",
                          msg="pbs should not release resource bar")
 
+    @skipOnCpuSet
     def test_node_custom_res_release_upon_suspension(self):
         """
         Create 2 consumable resources and set it on node,
@@ -720,6 +737,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_bar], "40",
                          msg="pbs should not release resource bar")
 
+    @skipOnCpuSet
     def test_resuming_with_no_res_released(self):
         """
         Set restrict_res_to_release_on_suspend to a resource that a job
@@ -748,6 +766,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_resuming_with_no_res_released_multi_vnode(self):
         """
         Set restrict_res_to_release_on_suspend to a resource that multi-vnode
@@ -787,6 +806,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_resuming_excljob_with_no_res_released(self):
         """
         Set restrict_res_to_release_on_suspend to a resource that an node excl
@@ -822,6 +842,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.deljob(jid2, wait=True)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_normal_user_unable_to_see_res_released(self):
         """
         Check if normal user (non-operator, non-manager) has privileges to see
@@ -849,6 +870,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                          "Normal user can see resources_released_list "
                          "which is not expected")
 
+    @skipOnCpuSet
     def test_if_node_gets_oversubscribed(self):
         """
         Check if the node gets oversubscribed if a filler job runs
@@ -895,6 +917,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # suspended job did not release any ncpus
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
 
+    @skipOnCpuSet
     def test_suspended_job_gets_calendered(self):
         """
         Check if a job which releases limited amount of resources gets
@@ -930,6 +953,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
             jid1 + ";Can't find start time estimate", existence=False,
             max_attempts=2)
 
+    @skipOnCpuSet
     def helper_test_preempt_release_all(self, preempt_method):
         """
         Helper function to test that when preempting jobs, all resources
@@ -971,6 +995,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.scheduler.log_match(jid1 + ";" + schedlog_msg)
 
+    @skipOnCpuSet
     def test_preempt_requeue_release_all(self):
         """
         Test that when preempting jobs via Requeue, all resources
@@ -978,6 +1003,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         """
         self.helper_test_preempt_release_all("R")
 
+    @skipOnCpuSet
     def test_preempt_checkpoint_release_all(self):
         """
         Test that when preempting jobs via Checkpointing, all resources
@@ -992,6 +1018,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.mom.add_checkpoint_abort_script(body=chk_script)
         self.helper_test_preempt_release_all("C")
 
+    @skipOnCpuSet
     def test_server_restart_with_suspened_job(self):
         """
         Test that when a job releases limited resources on a node and then
