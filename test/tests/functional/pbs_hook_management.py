@@ -76,17 +76,17 @@ class TestHookManagement(TestFunctional):
         with open(fn00, "w+") as tempfd:
             tempfd_name = tempfd.name
             tempfd.write(hook_body)
-            self.logger.info(f"tempfd_name:{tempfd_name}")
+            self.logger.info("tempfd_name:%s" % tempfd_name)
 
-        self.logger.info(f"hook_name:{hook_name}")
+        self.logger.info("hook_name:%s" % hook_name)
         qmgr_setup = [qmgr_path, "-c",
-                      f"create hook {hook_name} event=management"]
+                      "create hook %s event=management" % hook_name]
         qmgr_cmd = [qmgr_path, "-c",
-                    f"import hook {hook_name} application/"
-                    f"x-python default {tempfd_name}"]
+                    "import hook %s application/x-python default %s" %
+                        (hook_name, tempfd_name)]
         qmgr_cleanup = [qmgr_path, "-c",
-                        f"delete hook {hook_name} event=management"]
-        self.logger.info(f"qmgr_cmd:{qmgr_cmd}")
+                        "delete hook %s event=management" % hook_name]
+        self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
         current_host = socket.gethostname().split('.')[0]
 
         start_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -98,8 +98,8 @@ class TestHookManagement(TestFunctional):
                                   runas='root')
             ret = self.du.run_cmd(current_host, qmgr_cleanup, stdout=tempfd2,
                                   runas='root')
-            self.logger.info(f"tempfd2.name:{tempfd2.name}, ts:{start_time} "
-                             f"dt:{start_dt}")
+            self.logger.info("tempfd2.name:%s, ts:%s dt:%s" % (tempfd2.name,
+                                                        start_time, start_dt))
         with open(fn01, "r") as tempfd2:
             self.logger.info(tempfd2.read())
 
@@ -129,17 +129,17 @@ class TestHookManagement(TestFunctional):
         with open(fn00, "w+") as tempfd:
             tempfd_name = tempfd.name
             tempfd.write(hook_body)
-            self.logger.info(f"tempfd_name:{tempfd_name}")
+            self.logger.info("tempfd_name:%s" % tempfd_name)
         for hook_name in ['a1234', 'b1234', 'c1234']:
-            self.logger.info(f"hook_name:{hook_name}")
+            self.logger.info("hook_name:%s" % hook_name)
             qmgr_setup = [qmgr_path, "-c",
-                          f"create hook {hook_name} event=management"]
+                          "create hook %s event=management" % hook_name]
             qmgr_cmd = [qmgr_path, "-c",
-                        f"import hook {hook_name} application/"
-                        f"x-python default {tempfd_name}"]
+                        "import hook %s application/x-python default %s" %
+                            (hook_name, tempfd_name)]
             qmgr_cleanup = [qmgr_path, "-c",
-                            f"delete hook {hook_name} event=management"]
-            self.logger.info(f"qmgr_cmd:{qmgr_cmd}")
+                            "delete hook %s event=management" % hook_name]
+            self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
             current_host = socket.gethostname().split('.')[0]
 
             start_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -151,8 +151,8 @@ class TestHookManagement(TestFunctional):
                                       stdout=tempfd2, runas='root')
                 ret = self.du.run_cmd(current_host, qmgr_cleanup,
                                       stdout=tempfd2, runas='root')
-                self.logger.info(f"tempfd2.name:{tempfd2.name}, "
-                                 f"ts:{start_time} dt:{start_dt}")
+                self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
+                                    (tempfd2.name, start_time, start_dt))
             with open(fn01, "r") as tempfd2:
                 self.logger.info(tempfd2.read())
             self.server.log_match(hook_msg, starttime=start_time)
@@ -181,32 +181,32 @@ class TestHookManagement(TestFunctional):
         with open(fn00, "w+") as tempfd:
             tempfd_name = tempfd.name
             tempfd.write(hook_body)
-            self.logger.info(f"tempfd_name:{tempfd_name}")
+            self.logger.info("tempfd_name:%s" % tempfd_name)
 
         hook_name_00 = 'a1234'
         qmgr_setup_00 = [qmgr_path, "-c",
-                         f"create hook {hook_name_00} event=management"]
+                         "create hook %s event=management" % hook_name_00]
         qmgr_cmd_00 = [qmgr_path, "-c",
-                       f"import hook {hook_name_00} application/"
-                       f"x-python default {tempfd_name}"]
+                       "import hook %s application/x-python default %s" %
+                       (hook_name_00, tempfd_name)]
         qmgr_cleanup_00 = [qmgr_path, "-c",
-                           f"delete hook {hook_name_00} event=management"]
+                           "delete hook %s event=management" % hook_name_00]
         hook_name_01 = 'b1234'
         qmgr_setup_01 = [qmgr_path, "-c",
-                         f"create hook {hook_name_01} event=management"]
+                         "create hook %s event=management" % hook_name_01]
         qmgr_cmd_01 = [qmgr_path, "-c",
-                       f"import hook {hook_name_01} application/"
-                       f"x-python default {tempfd_name}"]
-        qmgr_cleanup_01 = [qmgr_path, "-c",
-                           f"delete hook {hook_name_01} event=management"]
+                       "import hook %s application/x-python default %s" %
+                        (hook_name_01, tempfd_name)]
+        qmgr_cleanup_01 = [qmgr_path, "-c", "delete hook %s event=management" %
+                           hook_name_01]
         hook_name_02 = 'c1234'
         qmgr_setup_02 = [qmgr_path, "-c",
-                         f"create hook {hook_name_02} event=management"]
+                         "create hook %s event=management" % hook_name_02]
         qmgr_cmd_02 = [qmgr_path, "-c",
-                       f"import hook {hook_name_02} application/"
-                       f"x-python default {tempfd_name}"]
+                       "import hook %s application/x-python default %s" %
+                       (hook_name_02, tempfd_name)]
         qmgr_cleanup_02 = [qmgr_path, "-c",
-                           f"delete hook {hook_name_02} event=management"]
+                           "delete hook %s event=management" % hook_name_02]
 
         current_host = socket.gethostname().split('.')[0]
 
@@ -232,8 +232,8 @@ class TestHookManagement(TestFunctional):
                                   stdout=tempfd2, runas='root')
             ret = self.du.run_cmd(current_host, qmgr_cleanup_02,
                                   stdout=tempfd2, runas='root')
-            self.logger.info(f"tempfd2.name:{tempfd2.name}, "
-                             f"ts:{start_time} dt:{start_dt}")
+            self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
+                                (tempfd2.name, start_time, start_dt))
         with open(fn01, "r") as tempfd2:
             self.logger.info(tempfd2.read())
         self.server.log_match(hook_msg, starttime=start_time)
