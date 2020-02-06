@@ -699,7 +699,6 @@ exit 3
         jid1 = self.server.submit(Job(attrs=a))
         jid2 = self.server.submit(Job(attrs=a))
 
-
         self.server.expect(JOB, {'job_state=R': 2})
         a = {'Resource_List.foo': 1,
              'queue': 'expressq'}
