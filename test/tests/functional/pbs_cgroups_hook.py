@@ -290,46 +290,8 @@ fi
 """
 
         self.check_dirs_script = """
-check_file_diff() {
-    for filename in $1/*.*; do
-        filename=$(basename $filename)
-        [ $filename = memory.kmem.slabinfo ] && continue
-        [ ! -r $1/$filename ] && continue
-        [ ! -r $2/$filename ] && continue
-        # cannot cat or diff some cgroup files
-        if ! cat $1/$filename > /dev/null ; then
-            if ! cat $2/$filename > /dev/null ; then
-                continue
-            fi
-        fi
-        if ! diff $1/$filename $2/$filename >/dev/null ; then
-            echo "Disabled cgroup subsystems are populated with the job id"
-        fi
-    done
-}
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
-cpuset_base='%s'
-if [ -d "$cpuset_base/propbs" ]; then
-    cpuset_job="$cpuset_base/propbs/$PBS_JOBID"
-else
-    cpuset_job="$cpuset_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-echo "cpuset_job: $cpuset_job"
-cpuacct_base='%s'
-if [ -d "$cpuacct_base/propbs" ]; then
-    cpuacct_job="$cpuacct_base/propbs/$PBS_JOBID"
-else
-    cpuacct_job="$cpuacct_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-echo "cpuacct_job: $cpuacct_job"
-memory_base='%s'
-if [ -d "$memory_base/propbs" ]; then
-    memory_job="$memory_base/propbs/$PBS_JOBID"
-else
-    memory_job="$memory_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-echo "memory_job: $memory_job"
 devices_base='%s'
 if [ -d "$devices_base/propbs" ]; then
     if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
@@ -345,26 +307,6 @@ sleep 10
 if [ -d $devices_job ]; then
     device_list=`cat $devices_job/devices.list`
     echo "${device_list}"
-    if type systemctl ; then
-        sysd=`systemctl --version | grep systemd | awk '{print $2}'`
-        if [ "$sysd" -ge 205 ]; then
-            if [ -d $cpuacct_job ]; then
-                check_file_diff $cpuacct_base/propbs.slice/ $cpuacct_job
-            fi
-            if [ -d $cpuset_job ]; then
-                check_file_diff $cpuset_base/propbs.slice/ $cpuset_job
-            fi
-            if [ -d $memory_job ] ; then
-                check_file_diff $memory_base/propbs.slice/ $memory_job
-            fi
-        else
-            if [ -d $cpuacct_job -o -d $cpuset_job -o -d $memory_job ]; then
-                echo "Disabled cgroup subsystems are populated with the job id"
-            fi
-        fi
-    else
-        echo "systemctl command not found"
-    fi
 else
     echo "Devices directory should be populated"
 fi
@@ -1467,9 +1409,8 @@ if %s e.job.in_ms_mom():
 
     def test_cgroup_prefix_and_devices(self):
         """
-        Test to verify that the cgroup prefix is set to pbs and that
-        only the devices subsystem is enabled with the correct devices
-        allowed
+        Test to verify that the cgroup prefix is set to propbs and that
+        the devices subsystem exists with the correct devices allowed
         """
         if not self.paths['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
@@ -1482,12 +1423,9 @@ if %s e.job.in_ms_mom():
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        cstd = self.paths['cpuset']
-        cpad = self.paths['cpuacct']
-        memd = self.paths['memory']
         devd = self.paths['devices']
         scr = self.du.run_cmd(
-            cmd=[self.check_dirs_script % (jid, cstd, cpad, memd, devd)],
+            cmd=[self.check_dirs_script % (jid, devd)],
             as_script=True)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
@@ -1500,10 +1438,6 @@ if %s e.job.in_ms_mom():
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
         self.logger.info('device_list check passed')
-        self.assertFalse('Disabled cgroup subsystems are populated '
-                         'with the job id' in scr_out,
-                         'Found disabled cgroup subsystems populated')
-        self.logger.info('Disabled subsystems check passed')
 
     def test_cgroup_cpuset(self):
         """
