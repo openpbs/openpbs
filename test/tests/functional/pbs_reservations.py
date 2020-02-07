@@ -67,7 +67,7 @@ class TestReservations(TestFunctional):
 
             a.update({ATTR_resv_rrule: rrule, ATTR_resv_timezone: tzone})
 
-        if extra_attrs is not None:
+        if extra_attrs:
             a.update(extra_attrs)
         r = Reservation(user, a)
 
@@ -78,7 +78,7 @@ class TestReservations(TestFunctional):
         Helper method to submit an ASAP reservation
         """
         a = {ATTR_convert: jid}
-        if extra_attrs is not None:
+        if extra_attrs:
             a.update(extra_attrs)
         r = Reservation(user, a)
 

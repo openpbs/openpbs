@@ -817,22 +817,22 @@ req_confirmresv(struct batch_request *preq)
 	 * Notify all interested parties that the reservation
 	 * is moving from state UNCONFIRMED to CONFIRMED
 	 */
-		if (presv->ri_brp) {
-			presv = find_resv(presv->ri_qs.ri_resvID);
-			if (presv->ri_wattr[(int) RESV_ATR_convert].at_val.at_str != NULL) {
-				rc = cnvrt_qmove(presv);
-				if (rc != 0) {
-					snprintf(buf, sizeof(buf), "%.240s FAILED", presv->ri_qs.ri_resvID);
-				} else {
-					snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
-				}
+	if (presv->ri_brp) {
+		presv = find_resv(presv->ri_qs.ri_resvID);
+		if (presv->ri_wattr[(int) RESV_ATR_convert].at_val.at_str != NULL) {
+			rc = cnvrt_qmove(presv);
+			if (rc != 0) {
+				snprintf(buf, sizeof(buf), "%.240s FAILED", presv->ri_qs.ri_resvID);
 			} else {
 				snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 			}
-
-			rc = reply_text(presv->ri_brp, PBSE_NONE, buf);
-			presv->ri_brp = NULL;
+		} else {
+			snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 		}
+
+		rc = reply_text(presv->ri_brp, PBSE_NONE, buf);
+		presv->ri_brp = NULL;
+	}
 
 	svr_mailownerResv(presv, MAIL_CONFIRM, MAIL_NORMAL, log_buffer);
 	presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
