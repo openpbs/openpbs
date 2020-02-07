@@ -125,6 +125,9 @@ extern struct var_table vtable;
 extern time_t time_now;
 extern int decode_block_base64(unsigned char *ascii_data, ssize_t ascii_len, unsigned char *bin_data, ssize_t *p_bin_len, char *msg, size_t msg_len);
 
+extern char *log_file;
+extern char *path_log;
+
 static int get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_info);
 static int get_job_info_from_principal(const char *principal, const char* jobid, eexec_job_info job_info);
 static krb5_error_code get_ticket_from_storage(struct krb_holder *ticket, char *errbuf, size_t errbufsz);
@@ -1414,6 +1417,10 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 	}
 
 	close(fd);
+
+	log_close(0);
+	pbs_conf.locallog = 0;
+	log_open(log_file, path_log);
 
 	if (fd1 >= 0)
 		close(fd1);
