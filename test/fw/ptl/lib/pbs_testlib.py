@@ -1191,6 +1191,7 @@ class BatchUtils(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.du = DshUtils()
+        self.platform = self.du.get_platform()
 
     def list_to_attrl(self, l):
         """
@@ -2383,6 +2384,14 @@ class BatchUtils(object):
             attrs = attrs.items()
 
         for a, v in attrs:
+            # In job name string, use prefix "\" with special charater
+            # to read as an ordinary character on
+            # cray, craysim, and shasta platform
+            if (a == "Job_Name") and (self.platform == 'cray' or
+                                      self.platform == 'craysim' or
+                                      self.platform == 'shasta'):
+                v = v.translate({ord(c): "\\" +
+                                 c for c in r"~`!@#$%^&*()[]{};:,./<>?\|-=_+"})
             if exclude_attrs is not None and a in exclude_attrs:
                 continue
 
