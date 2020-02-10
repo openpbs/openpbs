@@ -56,6 +56,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
+    @skipOnCpuSet
     def test_filler_job_higher_walltime(self):
         """
         This test confirms that the filler job does not run if it conflicts
@@ -86,6 +87,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         self.scheduler.log_match(jid3 + logmsg)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid3)
 
+    @skipOnCpuSet
     def test_suspended_job_ded_time_calendared(self):
         """
         This test confirms that a suspended job becomes top job when unable to
@@ -127,6 +129,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
 
         self.assertGreaterEqual(est_start_time, end)
 
+    @skipOnCpuSet
     def test_filler_job_lesser_walltime(self):
         """
         This test confirms that the filler job does run when the walltime does
@@ -174,6 +177,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         logmsg = ";Job would conflict with reservation or top job"
         self.scheduler.log_match(jid4 + logmsg)
 
+    @skipOnCpuSet
     def test_filler_job_suspend(self):
         """
         This test confirms that the filler gets suspended by a high
@@ -234,6 +238,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
+    @skipOnCpuSet
     def test_preempted_job_server_soft_limits(self):
         """
         This test confirms that a preempted job remains suspended if it has
@@ -280,6 +285,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_preempted_job_queue_soft_limits(self):
         """
         This test confirms that a preempted job remains suspended if it has
@@ -326,6 +332,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_filler_jobs_with_no_walltime(self):
         """
         This test confirms that filler jobs with no walltime remain queued
