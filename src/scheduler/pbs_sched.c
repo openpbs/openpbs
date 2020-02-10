@@ -118,7 +118,6 @@ struct		connect_handle connection[NCONNECTS];
 int		connector;
 int		server_sock;
 int		second_connection = -1;
-static int	update_svr = 1;
 
 #define		START_CLIENTS	2	/* minimum number of clients */
 #define		MAX_PORT_NUM 65535
@@ -938,6 +937,7 @@ main(int argc, char *argv[])
 	int num_cores;
 	char *endp = NULL;
 	pthread_mutexattr_t attr;
+	static int update_svr = 1;
 
 	/*the real deal or show version and exit?*/
 

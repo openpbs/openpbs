@@ -2686,16 +2686,11 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 {
 	char tempstr[128];
 	char port_str[MAX_INT_LEN];
-	static int svr_knows_me = 0;
-	int err;
 	struct attropl*attribs, *patt;
 	char sched_host[PBS_MAXHOSTNAME + 1];
 
-	/* This command is only sent on restart of the server */
-	if (cmd == SCH_SCHEDULE_FIRST)
-		svr_knows_me = 0;
 
-	if ((cmd != SCH_SCHEDULE_NULL && cmd != SCH_ATTRS_CONFIGURE && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
+	if (cmd == SCH_ERROR || connector < 0)
 		return 1;
 
 	if (!validate_sched_attrs(connector))
@@ -2736,11 +2731,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	}
 	patt->next = NULL;
 
-	err = pbs_manager(connector,
-			  MGR_CMD_SET, MGR_OBJ_SCHED,
-			  sc_name, attribs, NULL);
-	if (err == 0)
-		svr_knows_me = 1;
+	pbs_manager(connector, MGR_CMD_SET, MGR_OBJ_SCHED, sc_name, attribs, NULL);
 
 	free(attribs);
 	return 1;
@@ -2773,7 +2764,6 @@ validate_sched_attrs(int connector)
 	ss = bs_find(all_ss, sc_name);
 
 	if (ss == NULL) {
-		log_err(-1, __func__,  "Unable to retrieve the scheduler attributes from server");
 		pbs_statfree(all_ss);
 		return 0;
 	}
