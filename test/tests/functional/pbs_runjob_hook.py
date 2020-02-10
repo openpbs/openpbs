@@ -74,6 +74,7 @@ if not j.run_version is None:
 else:
     j.Resource_List['foo_str'] = "foo_value"
 """
+
     @skipOnCpuSet
     def test_array_sub_job_index(self):
         """

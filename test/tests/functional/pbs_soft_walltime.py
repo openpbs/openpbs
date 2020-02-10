@@ -451,6 +451,7 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'estimated.soft_walltime': 65}, op=GE,
                            id=jid)
+
     @skipOnCpuSet
     def test_resv_conf_soft(self):
         """
