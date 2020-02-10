@@ -2386,7 +2386,7 @@ class BatchUtils(object):
         for a, v in attrs:
             # In job name string, use prefix "\" with special charater
             # to read as an ordinary character on
-            # cray, carysim and shasta platform
+            # cray, craysim, and shasta platform
             if (a == "Job_Name") and (self.platform == 'cray' or
                                       self.platform == 'craysim' or
                                       self.platform == 'shasta'):
