@@ -112,6 +112,7 @@ class TestPBSSnapshot(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id=sched_id)
 
+    @skipOnCpuSet
     def setup_queues_nodes(self, num_partitions):
         """
         Given a no. of partitions, create equal no. of associated queues
