@@ -72,10 +72,7 @@ class TestHookTimeout(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostC)
 
-        self.server.expect(VNODE, {'state=free': 3}, op=EQ, count=True,
-                           max_attempts=10, interval=2)
 
-    @timeout(600)
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for
