@@ -188,8 +188,8 @@ delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wt
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
-		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
+		if (((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) ||
+		    ((ptask->wt_func != NULL) && (ptask->wt_func == func))) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;
@@ -200,8 +200,8 @@ delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wt
 	ptask = (struct work_task *)GET_NEXT(task_list_timed);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
-		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
+		if (((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) ||
+		    ((ptask->wt_func != NULL) && (ptask->wt_func == func))) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;
@@ -212,8 +212,8 @@ delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wt
 	ptask = (struct work_task *)GET_NEXT(task_list_immed);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
-		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
+		if (((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) ||
+		    ((ptask->wt_func != NULL) && (ptask->wt_func == func))) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;
