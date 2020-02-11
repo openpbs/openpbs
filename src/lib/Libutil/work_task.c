@@ -190,9 +190,9 @@ delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wt
 		for (ptask = (struct work_task *) GET_NEXT(task_lists[i]); ptask; ptask = ptask_next) {
 			ptask_next = (struct work_task *) GET_NEXT(ptask->wt_linkall);
 
-			if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 != parm1))
+			if ((parm1 != NULL) && (ptask->wt_parm1 != parm1))
 				continue;
-			if ((ptask->wt_func != NULL) && (ptask->wt_func != func))
+			if ((func != NULL) && (ptask->wt_func != func))
 				continue;
 
 			delete_task(ptask);
