@@ -1000,7 +1000,7 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	if (rc != 0)
 		return rc;
 
-	if (pjob->ji_wattr[JOB_ATR_create_resv_from].at_val.at_long) {
+	if (pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_val.at_long) {
 		if (pjob->allow_job_conversion)
 			convert_job_to_resv(pjob);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -1976,6 +1976,7 @@ req_defschedreply(struct batch_request *preq)
 void
 convert_job_to_resv(job *pjob)
 {
+	char *buf;
 	svrattrl *psatl;
 	unsigned int len;
 	pbs_list_head *plhed;
@@ -1989,7 +1990,9 @@ convert_job_to_resv(job *pjob)
 			pjob->ji_qs.ji_jobid, log_buffer);
 	}
 	newreq->rq_type = PBS_BATCH_SubmitResv;
-	strncpy(newreq->rq_user, pjob->ji_wattr[JOB_ATR_job_owner].at_val.at_str, PBS_MAXUSER);
+	buf = strtok(pjob->ji_wattr[JOB_ATR_job_owner].at_val.at_str, "@");
+	strncpy(newreq->rq_user, buf, PBS_MAXUSER);
+	strncpy(newreq->rq_host, pjob->ji_wattr[JOB_ATR_submit_host].at_val.at_str, PBS_MAXHOSTNAME);
 	newreq->rq_perm = READ_WRITE | ATR_DFLAG_ALTRUN;
 
 	strncpy(newreq->rq_ind.rq_queuejob.rq_jid, "", PBS_MAXSVRJOBID);

@@ -684,7 +684,7 @@ req_quejob(struct batch_request *preq)
 
 		/* decode attribute */
 #ifndef PBS_MOM
-		if (index == JOB_ATR_create_resv_from && presv) {
+		if (index == JOB_ATR_create_resv_from_job && presv) {
 			job_purge(pj);
 			req_reject(PBSE_RESVFROMRESVJOB, 0, preq);
 			return;
@@ -2130,6 +2130,7 @@ req_resvSub(struct batch_request *preq)
 	 * buf and buf1 are used to hold user@hostname strings together
 	 * with a small amount (less than 64 characters) of text.
 	 */
+	char *temp;
 	char buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 64];
 	char buf1[PBS_MAXUSER + PBS_MAXHOSTNAME + 64] = {0};
 	int created_here = 0;
@@ -2378,7 +2379,13 @@ req_resvSub(struct batch_request *preq)
 		}
 
 		if (!(strcasecmp(psatl->al_name, ATTR_resv_job))) {
-			if ((pjob = find_job(psatl->al_value)) && pjob->ji_myResv) {
+			if ((pjob = find_job(psatl->al_value)) == NULL) {
+				req_reject(PBSE_UNKJOBID, 0, preq);
+				resv_free(presv);
+				return;
+			}
+
+			if (pjob->ji_myResv) {
 				req_reject(PBSE_RESVFROMRESVJOB, 0, preq);
 				resv_free(presv);
 				return;
@@ -2390,11 +2397,8 @@ req_resvSub(struct batch_request *preq)
 				return;
 			}
 
-			(void)strcpy(buf, preq->rq_user);
-			(void)strcat(buf, "@");
-			(void)strcat(buf, preq->rq_host);
-
-			if (strcmp(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str)) {
+			temp = strtok(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, "@");
+			if (strcmp(preq->rq_user, temp)) {
 				req_reject(PBSE_PERM, 0, preq);
 				resv_free(presv);
 				return;
@@ -3417,7 +3421,8 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 		(pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str == NULL))
 		return PBSE_BADSTATE;
 
-	(void)strcpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+	(void)snprintf(buf, 255, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+			pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str);
 
 	resv_attr_def[(int)RESV_ATR_resv_owner].at_decode(
 		&presv->ri_wattr[(int)RESV_ATR_resv_owner],

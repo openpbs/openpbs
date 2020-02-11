@@ -2752,9 +2752,9 @@
       </member_verify_function>
    </attributes>
    <attributes>
-      /* "JOB_ATR_create_resv_from"  */
+      /* "JOB_ATR_create_resv_from_job"  */
       <member_name>
-         <both>ATTR_create_resv_from</both>
+         <both>ATTR_create_resv_from_job</both>
       </member_name>
       <member_at_decode>decode_l</member_at_decode>
       <member_at_encode>encode_l</member_at_encode>

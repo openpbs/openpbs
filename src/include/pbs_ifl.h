@@ -195,7 +195,7 @@ extern "C" {
 #define ATTR_cred_id		"credential_id"
 #define ATTR_cred_validity	"credential_validity"
 #define ATTR_history_timestamp	"history_timestamp"
-#define ATTR_create_resv_from	"create_resv_from_job"
+#define ATTR_create_resv_from_job	"create_resv_from_job"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
 #define ATTR_exit_status        "Exit_status"

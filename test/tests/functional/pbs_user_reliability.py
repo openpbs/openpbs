@@ -58,7 +58,7 @@ class Test_user_reliability(TestFunctional):
 import pbs
 e = pbs.event()
 j = e.job
-j.create_resv_from=1
+j.create_resv_from_job=1
 """
         hook_event = "runjob"
         hook_name = "rsub"
@@ -117,7 +117,7 @@ j.create_resv_from=1
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
-        a = {ATTR_W: 'create_resv_from=1'}
+        a = {ATTR_W: 'create_resv_from_job=1'}
         job = Job(TEST_USER, a)
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
@@ -177,3 +177,47 @@ j.create_resv_from=1
 
         self.assertEqual(s_ncpus_before, s_ncpus_after)
         self.assertEqual(s_nodect_before, s_nodect_after)
+
+    def test_create_resv_from_array_job(self):
+        """
+        This test confirms that a reservation cannot be created out of an
+        array job.
+        """
+        j = Job(TEST_USER)
+        j.set_attributes({ATTR_J: '1-3'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'B'}, jid)
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
+
+        subjobs = self.server.status(JOB, id=jid, extend='t')
+        jids1 = subjobs[1]['id']
+
+        resv = Reservation(job=jids1)
+        msg = "Reservation may not be created from an array job"
+        try:
+            self.server.submit(resv)
+        except PbsSubmitError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        resv = Reservation(job=jid)
+        try:
+            self.server.submit(resv)
+        except PbsSubmitError as e:
+            self.assertTrue(msg in e.msg[0])
+
+    def test_create_resv_by_other_user(self):
+        """
+        This test confirms that a reservation cannot be created out of an
+        job owned by someone else.
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+
+        resv = Reservation(username=TEST_USER2, job=jid)
+        msg = "Unauthorized Request"
+        try:
+            self.server.submit(resv)
+        except PbsSubmitError as e:
+            self.assertTrue(msg in e.msg[0])

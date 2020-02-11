@@ -282,7 +282,7 @@ enum job_atr {
 	JOB_ATR_submit_host,
 	JOB_ATR_cred_id,
 	JOB_ATR_cred_validity,
-	JOB_ATR_create_resv_from,
+	JOB_ATR_create_resv_from_job,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
