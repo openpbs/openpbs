@@ -2667,11 +2667,11 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_wattr[(int)RESV_ATR_mtime].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-	if (presv->ri_wattr[(int) RESV_ATR_convert].at_flags & ATR_VFLAG_SET && 
-		!(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET)) {
+	if (presv->ri_wattr[(int) RESV_ATR_convert].at_flags & ATR_VFLAG_SET &&
+	    !(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET)) {
 		presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long = RESV_ASAP_IDLE_TIME;
 		presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-		}
+	}
 
 	presv->ri_alter_stime = 0;
 	presv->ri_alter_etime = 0;
