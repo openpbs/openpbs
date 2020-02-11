@@ -3895,28 +3895,20 @@ post_chkpt(job *pjob, int  ev)
 		 **	obit is sent.
 		 */
 		if (abort) {
-			mom_hook_input_t	hook_input;
-			mom_hook_output_t	hook_output;
-			int			hook_errcode = 0;
-			hook			*last_phook = NULL;
-			unsigned int		hook_fail_action = 0;
-			char			hook_msg[HOOK_MSG_SIZE+1];
+			mom_hook_input_t  *hook_input = NULL;
 
-			mom_hook_input_init(&hook_input);
-			hook_input.pjob = pjob;
-
-			mom_hook_output_init(&hook_output);
-			hook_output.reject_errcode = &hook_errcode;
-			hook_output.last_phook = &last_phook;
-			hook_output.fail_action = &hook_fail_action;
-
-			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
-						PBS_MOM_SERVICE_NAME, mom_host,
-						&hook_input, &hook_output, hook_msg,
-						sizeof(hook_msg), 1);
-
-			exiting_tasks = 1;
-			term_job(pjob);
+			hook_input = (mom_hook_input_t *)malloc(sizeof(mom_hook_input_t));
+			if (hook_input) {
+				mom_hook_input_init(hook_input);
+				hook_input->pjob = pjob;
+			}
+			if ((hook_input != NULL) && (mom_process_hooks(HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input, NULL, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND)) {
+				pjob->ji_hook_running_bg_on = BG_CHECKPOINT_ABORT;
+			} else {
+				free(hook_input);
+				exiting_tasks = 1;
+				term_job(pjob);
+			}
 		} else if (pjob->ji_preq) {
 			/*
 			 **	If abort is not set and there is a request

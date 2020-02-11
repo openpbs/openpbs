@@ -95,6 +95,7 @@
 /* Global Data items */
 static int	run_exit = 0;	/* run exit of child */
 
+extern int              exiting_tasks;
 extern int       resc_access_perm;
 extern	char		*path_hooks;
 extern	char		*path_hooks_workdir;
@@ -3451,6 +3452,11 @@ void reply_hook_bg(job *pjob)
 
 	} else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) { /*MS*/
 		switch (pjob->ji_hook_running_bg_on) {
+			case BG_CHECKPOINT_ABORT:
+				pjob->ji_hook_running_bg_on = BG_NONE;
+				exiting_tasks = 1;
+				term_job(pjob);
+				break;
 			case BG_PBS_BATCH_DeleteJob:
 			case BG_PBSE_SISCOMM:
 				if ((pjob->ji_numnodes == 1) || (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)) {
@@ -3493,6 +3499,11 @@ void reply_hook_bg(job *pjob)
 		}
 	} else { /*SISTER MOM*/
 		switch (pjob->ji_hook_running_bg_on) {
+			case BG_CHECKPOINT_ABORT:
+				pjob->ji_hook_running_bg_on = BG_NONE;
+				exiting_tasks = 1;
+				term_job(pjob);
+				break;
 			case BG_IM_DELETE_JOB_REPLY:
 				post_reply(pjob, 0);
 			case BG_IM_DELETE_JOB:
@@ -3584,8 +3595,10 @@ void reply_hook_bg(job *pjob)
 	return;
 
 	fini:
-		free(php->hook_output->reject_errcode);
-		free(php->hook_output);
+		if (php->hook_output) {
+			free(php->hook_output->reject_errcode);
+			free(php->hook_output);
+		}
 		free(php->hook_input);
 		free(php);
 
