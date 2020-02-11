@@ -318,5 +318,4 @@ class TestSchedulerInterface(TestInterfaces):
              'scheduling': 'False',
              'scheduler_iteration': 600,
              'sched_cycle_length': '00:20:00'}
-        self.server.expect(SCHED, a, id='TestCommonSched',
-                           attrop=PTL_AND, max_attempts=10)
+        self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)

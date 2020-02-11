@@ -937,7 +937,7 @@ main(int argc, char *argv[])
 	int num_cores;
 	char *endp = NULL;
 	pthread_mutexattr_t attr;
-	static int update_svr = 1;
+	int update_svr = 1;
 
 	/*the real deal or show version and exit?*/
 
