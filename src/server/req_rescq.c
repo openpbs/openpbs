@@ -150,6 +150,7 @@ set_idle_delete_task(resc_resv *presv)
 	}
 
 	if (num_jobs == 0 && presv->ri_qs.ri_state == RESV_RUNNING) {
+		delete_task_by_parm1_func(presv, resv_idle_delete, DELETE_ONE); /* Delete the previous task if it exists */
 		retry_time = time_now + presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long;
 		if (retry_time < presv->ri_qs.ri_etime) {
 			wt = set_task(WORK_Timed, retry_time, resv_idle_delete, presv);

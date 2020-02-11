@@ -1020,7 +1020,7 @@ mgr_hook_delete(struct batch_request *preq)
 		disable_svr_prov();
 
 	if (phook->event & HOOK_EVENT_PERIODIC)
-		(void)delete_task_by_parm1(phook, DELETE_ALL);
+		delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 
 	if (phook->event & MOM_EVENTS) {
 
@@ -1463,7 +1463,7 @@ mgr_hook_import(struct batch_request *preq)
 		set_srv_pwr_prov_attribute(); /* check and set power attributes */
 		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
 			/* Search and delete all already existing periodic hook task */
-			delete_task_by_parm1 (phook, DELETE_ALL);
+			delete_task_by_parm1_func (phook, NULL, DELETE_ALL);
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 		}
 	}
@@ -1812,7 +1812,7 @@ mgr_hook_set(struct batch_request *preq)
 					 *  1 - related to running the next occurance
 					 *  2 - related to running the post processing function
 					 */
-					delete_task_by_parm1(phook, DELETE_ALL);
+					delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 					if ((phook->freq > 0) && (phook->script != NULL))
 						(void)set_task(WORK_Timed, time_now + phook->freq,
 								run_periodic_hook, phook);
@@ -1827,7 +1827,7 @@ mgr_hook_set(struct batch_request *preq)
 				}
 				else
 					/* Delete any existing work task */
-					delete_task_by_parm1(phook, DELETE_ALL);
+					delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 			}
 			num_set++;
 		} else if (strcasecmp(plx->al_name, HOOKATT_DEBUG) == 0) {

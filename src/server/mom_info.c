@@ -235,7 +235,7 @@ delete_mom_entry(mominfo_t *pmom)
 	 * Remove any work_task entries that may be referencing this mom
 	 * BEFORE we free any data.
 	 */
-	delete_task_by_parm1((void *) pmom, DELETE_ONE);
+	delete_task_by_parm1_func((void *) pmom, NULL, DELETE_ONE);
 
 	/* find the entry in the arry that does point here */
 	for (i=0; i < mominfo_array_size; ++i) {

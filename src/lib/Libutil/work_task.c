@@ -164,9 +164,11 @@ delete_task(struct work_task *ptask)
  *
  * @brief
  *	Delete task found in task_list_event, task_list_immed, or
- *	task_list_timed that has a wt_parm1 field of value 'parm1'.
+ *	task_list_timed by either its function pointer, parm1, or both.
+ * 	At least one of the function pointer or parm1 must not be NULL.
  *
- * @param[in]	parm1	- parameter being matched.
+ * @param[in]	parm1	- wt->parm1 parameter to match (can be NULL)
+ * @param[in]	func	- function pointer to match (can be NULL)
  * @param[in]	option  - option is used to decide whether the
  *			  caller wants to delete all tasks that
  *			  matches parm1 values or just one.
@@ -174,17 +176,20 @@ delete_task(struct work_task *ptask)
  * @return none
  */
 void
-delete_task_by_parm1(void *parm1, enum wtask_delete_option option)
+delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wtask_delete_option option)
 {
 	struct work_task  *ptask;
 	struct work_task  *ptask_next;
 
+	if (parm1 == NULL && func == NULL)
+		return;
 
 	/* only 1 ptask can be possibly matched */
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
+		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
+		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;
@@ -195,7 +200,8 @@ delete_task_by_parm1(void *parm1, enum wtask_delete_option option)
 	ptask = (struct work_task *)GET_NEXT(task_list_timed);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
+		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
+		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;
@@ -206,7 +212,8 @@ delete_task_by_parm1(void *parm1, enum wtask_delete_option option)
 	ptask = (struct work_task *)GET_NEXT(task_list_immed);
 	while (ptask) {
 		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
+		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1) ||
+		    (ptask->wt_func != NULL) && (ptask->wt_func == func)) {
 			delete_task(ptask);
 			if (option == DELETE_ONE)
 				return;

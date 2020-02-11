@@ -1797,7 +1797,7 @@ resv_purge(resc_resv *presv)
 	delete_link(&presv->ri_allresvs);
 
 	/* Delete any lingering tasks pointing to this reservation */
-	delete_task_by_parm1(presv, DELETE_ALL);
+	delete_task_by_parm1_func(presv, NULL, DELETE_ALL);
 
 	/* Release any nodes that were associated to this reservation */
 	free_resvNodes(presv);
