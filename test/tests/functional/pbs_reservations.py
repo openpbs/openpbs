@@ -47,7 +47,7 @@ class TestReservations(TestFunctional):
     """
 
     def submit_reservation(self, select, start, end, user, rrule=None,
-                           place='free'):
+                           place='free', extra_attrs=None):
         """
         helper method to submit a reservation
         """
@@ -67,15 +67,19 @@ class TestReservations(TestFunctional):
 
             a.update({ATTR_resv_rrule: rrule, ATTR_resv_timezone: tzone})
 
+        if extra_attrs:
+            a.update(extra_attrs)
         r = Reservation(user, a)
 
         return self.server.submit(r)
 
-    def submit_asap_reservation(self, user, jid):
+    def submit_asap_reservation(self, user, jid, extra_attrs=None):
         """
         Helper method to submit an ASAP reservation
         """
         a = {ATTR_convert: jid}
+        if extra_attrs:
+            a.update(extra_attrs)
         r = Reservation(user, a)
 
         # PTL's Reservation class sets the default ATTR_resv_start
@@ -252,7 +256,7 @@ class TestReservations(TestFunctional):
         on other nodes if no space is available
         """
         t = int(time.time())
-        self.degraded_resv_failed_reconfirm(
+        self.degraded_resv_reconfirm(
             start=t + 25, end=t + 625, run=True)
 
     def test_degraded_standing_reservations_fail(self):
@@ -298,7 +302,7 @@ class TestReservations(TestFunctional):
         the reservation is back in the confirmed state
         """
 
-        a = {'reserve_retry_time': 5}
+        a = {'reserve_retry_time': 15}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'resources_available.ncpus': 1}
@@ -332,6 +336,8 @@ class TestReservations(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'}, resv_node)
 
+        self.logger.info('Sleeping until retry timer fires')
+        time.sleep(15)
         # Can't reconfirm rid1 because rid2's second occurrence should be
         # on node 2 at that time.
         self.scheduler.log_match(rid1 + ';Reservation is in degraded mode',
@@ -1575,14 +1581,9 @@ class TestReservations(TestFunctional):
         # total count of 2
         start = int(time.time()) + 10
         end = start + 25
-        a = {'Resource_List.select': '1:ncpus=4',
-             ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
-             ATTR_resv_timezone: tzone,
-             'reserve_start': start,
-             'reserve_end': end,
-             }
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=4',
+                                      rrule='FREQ=MINUTELY;INTERVAL=2;COUNT=2',
+                                      start=start, end=end)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
         rid_q = rid.split(".")[0]
@@ -1633,13 +1634,9 @@ class TestReservations(TestFunctional):
 
         start = int(time.time()) + 10
         end = int(time.time()) + 3660
-        a = {ATTR_resv_rrule: 'FREQ=DAILY;COUNT=2',
-             ATTR_resv_timezone: tzone,
-             'reserve_start': start,
-             'reserve_end': end,
-             }
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      rrule='FREQ=DAILY;COUNT=2',
+                                      start=start, end=end)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
         rid_q = rid.split(".")[0]
@@ -1790,6 +1787,166 @@ class TestReservations(TestFunctional):
             self.server.expect(JOB, {'job_state': 'F', 'substate': '93',
                                      'queue': rid_q}, extend='xt',
                                attrop=PTL_AND, id=subjob)
+
+    def test_delete_idle_resv_basic(self):
+        """
+        Test basic functionality of delete_idle_time.  Submit a reservation
+        with delete_idle_time and no jobs.  Wait until the timer expires
+        and see the reservation get deleted
+        """
+        now = int(time.time())
+        start = now + 30
+        idle_timer = 15
+        a = {'reserve_start': start, 'reserve_end': now + 3600,
+             'delete_idle_time': idle_timer}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+        self.logger.info('Sleeping until reservation starts')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        offset = start - int(time.time())
+        self.server.expect(RESV, exp_attr, id=rid, offset=offset)
+
+        self.logger.info('Sleeping until resv idle timer fires')
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=idle_timer)
+
+    def test_delete_idle_resv_job_finish(self):
+        """
+        Test that an idle reservation is properly deleted after its only
+        job runs and finishes
+        """
+        now = int(time.time())
+        start = now + 30
+        idle_timer = 15
+        a = {'reserve_start': start, 'reserve_end': now + 3600,
+             'delete_idle_time': idle_timer}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        rid_q = rid.split('.', 1)[0]
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_q: rid_q}
+        j = Job(attrs=a)
+        j.set_sleep_time(5)
+        jid = self.server.submit(j)
+
+        self.logger.info('Sleeping until reservation starts')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        offset = start - int(time.time())
+        self.server.expect(RESV, exp_attr, id=rid, offset=offset)
+
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+        # Wait for idle resv timer to hit and delete reservation
+        self.logger.info('Sleeping until resv idle timer fires')
+        self.server.expect(RESV, 'queue', op=UNSET,
+                           id=rid, offset=idle_timer + 5)
+
+    def test_delete_idle_resv_job_delete(self):
+        """
+        Test that when a running job is deleted, the
+        idle reservation is deleted
+        """
+        now = int(time.time())
+        start = now + 30
+        idle_timer = 15
+        a = {'reserve_start': start, 'reserve_end': now + 3600,
+             'delete_idle_time': 15}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        rid_q = rid.split('.', 1)[0]
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_q: rid_q}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+
+        self.logger.info('Sleeping until reservation starts')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        offset = start - int(time.time())
+        self.server.expect(RESV, exp_attr, id=rid, offset=offset)
+
+        self.server.delete(jid)
+
+        self.logger.info('Sleeping until resv idle timer fires')
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid,
+                           offset=idle_timer)
+
+    def test_delete_idle_resv_job_standing(self):
+        """
+        Test that an idle standing reservation is properly deleted after its
+        only job finishes
+        """
+        now = int(time.time())
+        start = now + 30
+        idle_timer = 15
+        extra = {'delete_idle_time': idle_timer}
+        rid = self.submit_reservation(
+            user=TEST_USER, select='1:ncpus=1', rrule='freq=HOURLY;COUNT=3',
+            start=start, end=start + 1800, extra_attrs=extra)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        rid_q = rid.split('.', 1)[0]
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_q: rid_q}
+        j = Job(attrs=a)
+        j.set_sleep_time(5)
+        jid = self.server.submit(j)
+
+        self.logger.info('Sleeping until reservation starts')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        offset = start - int(time.time())
+        self.server.expect(RESV, exp_attr, id=rid, offset=offset)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        strf_str = '%a %b %d %T %Y'
+        start_str = time.strftime(strf_str, time.localtime(start + 3600))
+
+        self.logger.info('Sleeping until resv idle timer fires')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+                    'reserve_start': start_str}
+        self.server.expect(RESV, exp_attr, id=rid, offset=idle_timer + 5)
+
+    def test_asap_delete_idle_resv_set(self):
+        """
+        Test that an ASAP reservation gets a default 10m idle timer if not set
+        or keeps its idle timer if it is set
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+        j1 = Job(attrs={'Resource_List.select': '1:ncpus=1',
+                        'Resource_List.walltime': 3600})
+        jid1 = self.server.submit(j1)
+
+        j2 = Job(attrs={'Resource_List.select': '1:ncpus=1',
+                        'Resource_List.walltime': 3600})
+        jid2 = self.server.submit(j2)
+
+        j3 = Job(attrs={'Resource_List.select': '1:ncpus=1',
+                        'Resource_List.walltime': 3600})
+        jid3 = self.server.submit(j3)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+        rid = self.submit_asap_reservation(TEST_USER, jid2)
+        self.server.expect(RESV, {'delete_idle_time': '10:00'}, id=rid)
+
+        extra_attrs = {'delete_idle_time': '5:00'}
+        rid = self.submit_asap_reservation(TEST_USER, jid3, extra_attrs)
+        self.server.expect(RESV, {'delete_idle_time': '5:00'}, id=rid)
 
     def common_config(self):
         """

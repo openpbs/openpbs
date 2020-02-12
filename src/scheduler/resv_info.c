@@ -367,9 +367,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			 * confirmed.
 			 */
 			if (resresv->resv->is_standing &&
-				(resresv->resv->resv_state == RESV_CONFIRMED ||
-				resresv->resv->resv_state == RESV_BEING_ALTERED ||
-				resresv->resv->resv_state == RESV_RUNNING)) {
+				(resresv->resv->resv_state != RESV_UNCONFIRMED)) {
 				resource_resv *resresv_ocr = NULL; /* the occurrence's resource_resv */
 				char *execvnodes_seq = NULL; /* confirmed execvnodes sequence string */
 				char **execvnode_ptr = NULL;
@@ -382,7 +380,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				struct tm* loc_time;
 				char start_time[18];
 				int count = 0;
-				int occr_count; /* occurrences  count as reported by execvnodes_seq */
+				int occr_count; /* occurrences count as reported by execvnodes_seq */
 				int occr_idx = 1; /* the occurrence index of a standing reservation */
 				int degraded_idx; /* index corrected to account for reconfirmation */
 
@@ -478,7 +476,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 							return NULL;
 						}
 						if (resresv->resv->resv_state == RESV_RUNNING ||
-							resresv->resv->resv_state == RESV_BEING_ALTERED) {
+							resresv->resv->resv_state == RESV_BEING_ALTERED ||
+							resresv->resv->resv_state == RESV_DELETING_JOBS) {
 							/* Each occurrence will be added to the simulation framework and
 							 * should not be in running state. Their state should be
 							 * Confirmed instead of possibly inheriting the Running state
@@ -1381,6 +1380,9 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					snprintf(logmsg, sizeof(logmsg), "Reservation has running jobs in it");
 				rconf = RESV_CONFIRM_FAIL;
 				break;
+			} else if (nresv->resv->is_standing && nresv->resv->resv_state == RESV_DELETING_JOBS) {
+				snprintf(logmsg, sizeof(logmsg), "Occurrence is ending, will try later");
+				rconf = RESV_CONFIRM_FAIL;
 			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT) {
 				if (nresv->resv->resv_state == RESV_RUNNING) {
 					char *sel;
@@ -1620,8 +1622,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
  *
  * @param[in]	resv	-	resv to check
  * @param[out]	tot_vnodes	-	the total number of vnodes associated to the reservation
- * @param[out]	names_of_down_vnodes	-	the string of vnodes that are down that are then
- * 												printed into the log. This has to be of maximum length MAXVNODELIST
+ * @param[out]	names_of_down_vnodes	- the string of vnodes that are down that are then
+ * 						printed into the log. This has to be of maximum length MAXVNODELIST
  *
  * @return	the number of vnodes down. The total number of vnodes is passed back
  * 			by reference.

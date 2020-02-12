@@ -239,22 +239,16 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 				while (i == 1) {
-					if (strcmp(keyword, ATTR_convert) == 0) {
+					if (strcmp(keyword, ATTR_convert) == 0)
 						qmoveflg = TRUE;
-					} else {
-						/* unknown "-W" attribute in reservation req */
-						fprintf(stderr, "pbs_rsub: unrecognized pair, %s=%s\n",
-							keyword, valuewd);
-						errflg++;
-					}
-					if (errflg == 0)
-						set_attr_error_exit(&attrib, keyword, valuewd);
+				
+					set_attr_error_exit(&attrib, keyword, valuewd);
 
 					/* move to next attribute in this "-W" specification */
 
 					i = parse_equal_string(NULL, &keyword, &valuewd);
 
-				}   /* bottom of inner while loop */
+				}
 
 				if (i == -1) {
 					fprintf(stderr, "%s", badw);

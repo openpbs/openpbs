@@ -1623,7 +1623,7 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_PERIODIC) == 0) {
 			delete_link(&phook->hi_periodic_hooks);
 			phook->event 	&= ~HOOK_EVENT_PERIODIC;
-			delete_task_by_parm1(phook, DELETE_ALL);
+			delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 		} else if (strcmp(val, HOOKSTR_RESV_END) == 0) {
 			delete_link(&phook->hi_resv_end_hooks);
 			phook->event    &= ~HOOK_EVENT_RESV_END;
@@ -2653,7 +2653,7 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 		snprintf(namebuf, MAXPATHLEN, "%s%s%s", path_hooks,
 			phook->hook_name, HOOK_CONFIG_SUFFIX);
 		if ((phook->event & HOOK_EVENT_PERIODIC) && (phook->enabled == TRUE))
-			delete_task_by_parm1(phook, DELETE_ALL);
+			delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 
 #ifdef WIN32
 		/* in case file permission got corrupted */

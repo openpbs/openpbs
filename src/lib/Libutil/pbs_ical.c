@@ -175,8 +175,6 @@ get_num_occurrences(char *rrule, time_t dtstart, char *tz)
 time_t
 get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 {
-
-
 #ifdef LIBICAL
 	struct icalrecurrencetype rt;
 	struct icaltimetype start;
@@ -200,7 +198,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 #else
 	icalerror_errors_are_fatal = 0;
 #endif
-    localzone = icaltimezone_get_builtin_timezone(tz);
+	localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
 		return -1;
@@ -220,15 +218,11 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 		icaltimezone_convert_time(&next, localzone,
 			icaltimezone_get_utc_timezone());
 		next_occr = icaltime_as_timet(next);
-	}
-	else next_occr = -1; /* If reached end of possible date-time return -1 */
-
+	} else next_occr = -1; /* If reached end of possible date-time return -1 */
 		icalrecur_iterator_free(itr);
 
 	return next_occr;
-
 #else
-
 	return dtstart;
 #endif
 }

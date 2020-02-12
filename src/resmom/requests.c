@@ -5052,7 +5052,7 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 				return;
 			}
 #endif
-			delete_task_by_parm1(phook, DELETE_ONE);
+			delete_task_by_parm1_func(phook, NULL, DELETE_ONE);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, phook->hook_name,
 				"deleted any hook task entry");

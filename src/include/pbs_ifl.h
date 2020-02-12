@@ -206,6 +206,7 @@ extern "C" {
 #define ATTR_resv_Tag	 "reservation_Tag"
 #define ATTR_resv_ID	 "reserve_ID"
 #define ATTR_resv_retry "reserve_retry"
+#define ATTR_del_idle_time "delete_idle_time"
 
 /* additional queue attributes names */
 
