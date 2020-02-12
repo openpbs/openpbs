@@ -3279,31 +3279,32 @@ Time4resvFinish(struct work_task *ptask)
 static void
 Time4occurrenceFinish(resc_resv *presv)
 {
-	time_t			newend;
-	time_t			newstart;
-	int			state = 0;
-	int			sub = 0;
-	int			rc = 0;
-	int			rcount_adjusted = 0;
-	char			*execvnodes = NULL;
-	char			*newxc = NULL;
-	char			**short_xc = NULL;
-	char			**tofree = NULL;
-	time_t			dtstart;
-	time_t			dtend;
-	time_t			next;
-	time_t			now;
-	struct work_task	*ptask = NULL;
-	pbsnode_list_t		*pl = NULL;
-	char			start_time[9] = {0};	/* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
-	resource_def		*rscdef = NULL;
-	resource		*prsc = NULL;
-	attribute		atemp = {0};
-	int			j = 2;
-	int			ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-	int			rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
-	char			*rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
-	char			*tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
+	time_t newend;
+	time_t newstart;
+	int state = 0;
+	int sub = 0;
+	int rc = 0;
+	int rcount_adjusted = 0;
+	char *execvnodes = NULL;
+	char *newxc = NULL;
+	char **short_xc = NULL;
+	char **tofree = NULL;
+	time_t dtstart;
+	time_t dtend;
+	time_t next;
+	time_t now;
+	struct work_task *ptask = NULL;
+	pbsnode_list_t *pl = NULL;
+	char start_time[9] = {0}; /* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
+	resource_def *rscdef = NULL;
+	resource *prsc = NULL;
+	attribute atemp = {0};
+	int j = 2;
+	int occurrence_ended_early = 0;
+	int ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
+	int rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
+	char *rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
+	char *tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
 
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
@@ -3327,7 +3328,13 @@ Time4occurrenceFinish(resc_resv *presv)
 	 * 2) The end of an occurrence.  We need to move onto the next.
 	 * 3) If an occurrence ends early.  We need to move onto the next.
 	 */
-	while ((presv->ri_qs.ri_substate == RESV_RUNNING && next < now) || dtend <= now) {
+	if (presv->ri_qs.ri_substate == RESV_RUNNING && next < now)
+		occurrence_ended_early = 1;
+	while (occurrence_ended_early || dtend <= now) {
+		/* We may loop and skip several occurrences for different reasons, 
+		 * if an occurrence ended early, it can only be the one we are in 
+		 */
+		occurrence_ended_early = 0;
 		/* get occurrence that is "j" numbers away from dtstart. */
 		next = get_occurrence(rrule, dtstart, tz, j);
 		if (presv->ri_alter_standing_reservation_duration) {
@@ -3349,7 +3356,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		 * missed occurrences that are noted in the log file. */
 		if (j > 3 || presv->ri_giveback == 0) {
 			if (strftime(start_time, sizeof(start_time),
-				"%H:%M:%S", localtime(&dtstart))) {
+				     "%H:%M:%S", localtime(&dtstart))) {
 				sprintf(log_buffer,
 					"reservation occurrence %d/%d "
 					"scheduled at %s was skipped because "
@@ -3359,11 +3366,12 @@ Time4occurrenceFinish(resc_resv *presv)
 				sprintf(log_buffer,
 					"reservation occurrence %d/%d was "
 					"skipped because its end time is in "
-					"the past", ridx, rcount);
+					"the past",
+					ridx, rcount);
 			}
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
-				LOG_NOTICE, presv->ri_qs.ri_resvID,
-				log_buffer);
+				  LOG_NOTICE, presv->ri_qs.ri_resvID,
+				  log_buffer);
 		}
 
 		/* The reservation index is incremented */
