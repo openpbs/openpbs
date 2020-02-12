@@ -1126,6 +1126,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         job = Job(TEST_USER, attrs={'Resource_List.select': qsub_sel})
         job.set_sleep_time(1000)
         jid = self.server.submit(job)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # 1. "pbs_release_nodes: -a and -k options cannot be used together"
         cmd = [self.rel_nodes_cmd, '-j', jid, '-a', '-k', keep_sel]
