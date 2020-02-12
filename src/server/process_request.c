@@ -890,7 +890,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				return;
 			}
 			req_stat_job(request);
-			clear_non_blocking(conn);
+			clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_StatusQue:
@@ -900,7 +900,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				return;
 			}
 			req_stat_que(request);
-			clear_non_blocking(conn);
+			clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_StatusNode:
@@ -910,7 +910,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				return;
 			}
 			req_stat_node(request);
-			clear_non_blocking(conn);
+			clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_StatusResv:
@@ -920,7 +920,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				return;
 			}
 			req_stat_resv(request);
-			clear_non_blocking(conn);
+			clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_StatusSvr:
@@ -951,7 +951,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				return;
 			}
 			req_stat_hook(request);
-			clear_non_blocking(conn);
+			clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_TrackJob:
