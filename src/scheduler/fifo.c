@@ -2693,8 +2693,10 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	if (cmd == SCH_ERROR || connector < 0)
 		return 1;
 
-	if (!validate_sched_attrs(connector))
+	if (!validate_sched_attrs(connector)) {
+		log_err(-1, __func__, "validate_sched_attrs failed");
 		return 0;
+	}
 
 	/* update the sched with new values */
 	attribs = calloc(4, sizeof(struct attropl));
