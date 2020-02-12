@@ -108,6 +108,7 @@ int verify_value_preempt_sort(int , int, int, struct attropl *, char **);
 int verify_value_dependlist(int, int, int, struct attropl *, char **);
 int verify_value_user_list(int, int, int, struct attropl *, char **);
 int verify_value_authorized_users(int, int, int, struct attropl *, char **);
+int verify_value_authorized_groups(int, int, int, struct attropl *, char **);
 int verify_value_path(int, int, int, struct attropl *, char **);
 int verify_value_jobname(int, int, int, struct attropl *, char **);
 int verify_value_checkpoint(int, int, int, struct attropl *, char **);

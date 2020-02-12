@@ -72,7 +72,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char	*endptr = NULL;
 	long	temp = 0;
 
-	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:")) != EOF) {
+	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:")) != EOF) {
 		switch (c) {
 			case 'E':
 				t = cvtdate(optarg);
@@ -130,6 +130,13 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				strcpy(dest, &optarg[1]);
 				break;
 
+			case 'U':
+				set_attr_error_exit(&attrib, ATTR_auth_u, optarg);
+				break;
+			case 'G':
+				set_attr_error_exit(&attrib, ATTR_auth_g, optarg);
+				break;
+
 			default:
 				/* pbs_ralter option not recognized */
 				errflg++;
@@ -152,6 +159,8 @@ print_usage()
 	static char usage[]=
 		"usage: pbs_ralter [-I seconds] [-m mail_points] [-M mail_list]\n"
 	"                [-N reservation_name] [-R start_time] [-E end_time]\n"
+	"                [-U (+/-)username[,(+/-)username]...]\n"
+	"                [-G [(+/-)group[,(+/-)group]...]]\n"
 	"                resv_id\n";
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
@@ -178,6 +187,8 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 		attribute = err_list->ecl_attrerr[i].ecl_attribute;
 		if (strcmp(attribute->name, ATTR_resv_end) == 0)
 			opt = "E";
+		else if (strcmp(attribute->name, ATTR_auth_g) == 0)
+			opt = "G";
 		else if (strcmp(attribute->name, ATTR_inter) == 0)
 			opt = "I";
 		else if (strcmp(attribute->name, ATTR_m) == 0)
@@ -188,6 +199,8 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 			opt = "N";
 		else if (strcmp(attribute->name, ATTR_resv_start) == 0)
 			opt = "R";
+		else if (strcmp(attribute->name, ATTR_auth_u) == 0)
+			opt = "U";
 		else
 			return ;
 
