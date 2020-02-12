@@ -213,6 +213,7 @@ struct pbs_config
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
+	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
 	char *pbs_demux_path;			/* path to pbs demux */
@@ -289,6 +290,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SERVER_NAME	"PBS_SERVER"	   /* name of the pbs server */
 #define PBS_CONF_INSTALL_MODE    "PBS_INSTALL_MODE" /* PBS installation mode */
 #define PBS_CONF_RCP		"PBS_RCP"
+#define PBS_CONF_CP		"PBS_CP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
 #define PBS_CONF_K5DCELOGIN	"PBS_K5DCELOGIN"       /* path to k5dcelogin */

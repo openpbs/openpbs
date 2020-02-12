@@ -1563,7 +1563,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 	for (loop = 1; loop < 5; ++loop) {
 		original = 0;
 		if (rmtflg == 0) {	/* local copy */
-			ag0 = "/bin/cp";
+			ag0 = pbs_conf.cp_path;
 			if (strcmp(ag3, "/dev/null") == 0)
 				return (0); /* don't need to copy, just return zero */
 			else
@@ -1713,7 +1713,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 	for (loop = 1; loop < 5; ++loop) {
 		original = 0;
 		if (rmtflg == 0) {	/* local copy */
-			ag0 = "xcopy";
+			ag0 = pbs_conf.cp_path;
 			ag1 = "/e/i/q/y";
 			/* remote, try scp */
 		} else if (pbs_conf.scp_path != NULL && (loop % 2) == 1) {

@@ -93,6 +93,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
 	NULL,					/* PBS server id */
+	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
 	NULL,					/* pbs_demux_path */
@@ -509,6 +510,10 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.scp_path);
 				pbs_conf.scp_path = shorten_and_cleanup_path(conf_value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_CP)) {
+				free(pbs_conf.cp_path);
+				pbs_conf.cp_path = shorten_and_cleanup_path(conf_value);
+			}
 			else if (!strcmp(conf_name, PBS_CONF_K5DCELOGIN)) {
 				free(pbs_conf.k5dcelogin_path);
 				pbs_conf.k5dcelogin_path = shorten_and_cleanup_path(conf_value);
@@ -919,6 +924,22 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
+	if (pbs_conf.cp_path == NULL) {
+
+#ifdef WIN32
+		if ((pbs_conf.cp_path =
+			malloc(6 * sizeof(char))) != NULL) {
+			sprintf(pbs_conf.cp_path, "xcopy");
+#else
+		if ((pbs_conf.cp_path =
+			malloc(8 * sizeof(char))) != NULL) {
+			sprintf(pbs_conf.cp_path, "/bin/cp");
+#endif
+
+		} else {
+			goto err;
+		}
+	}
 
 	free(pbs_conf.pbs_demux_path);
 	/* strlen("/sbin/pbs_demux") + '\0' == 15 + 1 == 16 */
@@ -1013,6 +1034,10 @@ err:
 	if (pbs_conf.scp_path) {
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = NULL;
+	}
+	if (pbs_conf.cp_path) {
+		free(pbs_conf.cp_path);
+		pbs_conf.cp_path = NULL;
 	}
 	if (pbs_conf.k5dcelogin_path) {
 		free(pbs_conf.k5dcelogin_path);
