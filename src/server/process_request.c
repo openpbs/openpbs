@@ -758,7 +758,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_Manager:
-			req_manager(request, conn);
+			req_manager(request);
 			break;
 
 		case PBS_BATCH_RelnodesJob:

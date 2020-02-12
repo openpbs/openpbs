@@ -403,7 +403,7 @@ extern void  req_confirmresv(struct batch_request *req);
 extern void  req_connect(struct batch_request *req);
 extern void  req_defschedreply(struct batch_request *req);
 extern void  req_locatejob(struct batch_request *req);
-extern void  req_manager(struct batch_request *req, conn_t *conn);
+extern void  req_manager(struct batch_request *req);
 extern void  req_movejob(struct batch_request *req);
 extern void  req_register(struct batch_request *req);
 extern void  req_releasejob(struct batch_request *req);

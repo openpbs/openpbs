@@ -4719,15 +4719,21 @@ mgr_resource_unset(struct batch_request *preq)
  *		appropriate function is called to perform the operation.
  *
  * @param[in]	preq	- The request containing information about the resource to perform the operation.
- * @param[in]	conn	- connection structure assosiated with preq
  *
  * @return void
  *
  */
 void
-req_manager(struct batch_request *preq, conn_t *conn)
+req_manager(struct batch_request *preq)
 {
 	int obj_name_len;
+	conn_t *conn = get_conn(preq->rq_conn);
+
+	if (!conn) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
 
 	obj_name_len = strlen(preq->rq_ind.rq_manager.rq_objname);
 
