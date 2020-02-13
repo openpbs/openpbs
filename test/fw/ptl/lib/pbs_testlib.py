@@ -14319,11 +14319,11 @@ class Reservation(ResourceResv):
 
         # These are not in dflt_attributes because of the conversion to CLI
         # options is done strictly
-        if ATTR_resv_start not in self.attributes and ATTR_job not in self.attributes:
+        if ATTR_resv_start not in self.attributes and ATTR_job not in attrs:
             self.attributes[ATTR_resv_start] = str(int(time.time()) +
                                                    36 * 3600)
 
-        if ATTR_resv_end not in self.attributes and ATTR_job not in self.attributes:
+        if ATTR_resv_end not in self.attributes and ATTR_job not in attrs:
             if ATTR_resv_duration not in self.attributes:
                 self.attributes[ATTR_resv_end] = str(int(time.time()) +
                                                      72 * 3600)
