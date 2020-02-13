@@ -926,7 +926,7 @@ __pbs_loadconf(int reload)
 	}
 	if (pbs_conf.cp_path == NULL) {
 #ifdef WIN32
-		char *cmd = 'xcopy';
+		char *cmd = "xcopy";
 #else
 		char *cmd = "/bin/cp";
 #endif
