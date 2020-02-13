@@ -45,6 +45,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <gssapi.h>
 #include <gssapi.h>
 #include <krb5.h>
@@ -58,6 +59,8 @@
 #define PBS_GSS_MECH_OID (gss_OID)gss_mech_krb5
 #endif
 
+static pthread_mutex_t gss_lock;
+static pthread_once_t gss_init_lock_once = PTHREAD_ONCE_INIT;
 char gss_log_buffer[LOG_BUF_SIZE];
 void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
 #define DEFAULT_CREDENTIAL_LIFETIME 7200
@@ -122,6 +125,30 @@ enum PBS_GSS_ERRORS {
 };
 
 static int init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size);
+static void init_gss_lock(void);
+
+static void
+init_gss_lock(void)
+{
+	pthread_mutexattr_t attr;
+
+	if (pthread_mutexattr_init(&attr) != 0) {
+		GSS_LOG_ERR("Failed to initialize mutex attr");
+		return;
+	}
+
+	if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP)) {
+		GSS_LOG_ERR("Failed to set mutex type");
+		return;
+	}
+
+	if (pthread_mutex_init(&gss_lock, &attr) != 0) {
+		GSS_LOG_ERR("Failed to initialize mutex");
+		return;
+	}
+
+	return;
+}
 
 /** @brief
  *	If oid set is null then create oid set. Once we have the oid set,
@@ -971,7 +998,20 @@ pbs_auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, 
 	}
 
 	*is_handshake_done = 0;
+
+	pthread_once(&gss_init_lock_once, init_gss_lock);
+
+	if (pthread_mutex_lock(&gss_lock) != 0) {
+		GSS_LOG_ERR("Failed to lock mutex");
+		return 1;
+	}
+
 	rc = pbs_gss_establish_context(gss_extra, data_in, len_in, data_out, len_out);
+
+	if (pthread_mutex_unlock(&gss_lock) != 0) {
+		GSS_LOG_ERR("Failed to unlock mutex");
+		return 1;
+	}
 
 	if (gss_extra->gssctx_established) {
 		*is_handshake_done = 1;

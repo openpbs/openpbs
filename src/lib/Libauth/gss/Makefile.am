@@ -46,6 +46,7 @@ libauth_gss_la_CPPFLAGS = \
 libauth_gss_la_LDFLAGS = -version-info 0:0:0
 
 libauth_gss_la_LIBADD= \
+	-lpthread \
 	@KRB5_LIBS@
 
 libauth_gss_la_SOURCES = \
