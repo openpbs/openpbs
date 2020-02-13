@@ -925,15 +925,13 @@ __pbs_loadconf(int reload)
 		}
 	}
 	if (pbs_conf.cp_path == NULL) {
-
-		if ((pbs_conf.cp_path =
-			malloc(8 * sizeof(char))) != NULL) {
 #ifdef WIN32
-			sprintf(pbs_conf.cp_path, "xcopy");
+		char *cmd = 'xcopy';
 #else
-			sprintf(pbs_conf.cp_path, "/bin/cp");
+		char *cmd = "/bin/cp";
 #endif
-		} else {
+		pbs_conf.cp_path = strdup(cmd);
+		if (pbs_conf.cp_path == NULL) {
 			goto err;
 		}
 	}
