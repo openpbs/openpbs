@@ -535,6 +535,7 @@ leaf_send_ctl_join(int tfd, void *data, void *c)
  *		     (unused)
  * @param[in] c - Context associated with this connection, points us to the
  *                router being connected to
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @return Error code
  * @retval 0 - Success
@@ -3861,6 +3862,7 @@ free_stream(unsigned int sd)
  * @param[in] tfd - The actual IO connection on which data was about to be
  *			sent (unused)
  * @param[in] pkt - The data packet that is about to be sent out by the IO thrd
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @par Side Effects:
  *	None
@@ -4041,6 +4043,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
  *
  * @param[in] tfd - The actual IO connection on which data was sent (unused)
  * @param[in] pkt - The data packet that is sent out by the IO thrd
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @par Side Effects:
  *	None
@@ -4313,6 +4316,7 @@ check_strm_valid(unsigned int src_sd, tpp_addr_t *dest_addr, int dest_sd)
  * @param[in] len  - Length of the arrived data
  * @param[in] ctx - The context (prior associated, if any) with the IO thread
  *		    (unused at the leaf)
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @par Side Effects:
  *	None
@@ -4326,14 +4330,14 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 	stream_t *strm;
 	unsigned int sd = UNINITIALIZED_INT;
 	unsigned char type;
+	void *data_out = NULL;
+	size_t len_out = 0;
 
 	type = *((char *) data);
 	errno = 0;
 
 	if (type == TPP_AUTH_CTX) {
 		tpp_auth_pkt_hdr_t ahdr = {0};
-		void *data_out = NULL;
-		size_t len_out = 0;
 		size_t len_in = 0;
 		void *data_in = NULL;
 		int is_handshake_done = 0;
@@ -4398,8 +4402,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 
 	} else if (type == TPP_ENCRYPTED_DATA) {
 		conn_auth_t *authdata = (conn_auth_t *)extra;
-		void *data_out = NULL;
-		size_t len_out = 0;
 		char *msgbuf = NULL;
 
 		if (pbs_auth_decrypt_data == NULL) {
@@ -4418,7 +4420,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			return -1;
 		}
 
-		free(data);
 		data = (char *)data_out + sizeof(int);
 		len = len_out - sizeof(int);
 
@@ -4451,6 +4452,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 					TPP_DBPRT(("received noroute, sending TPP_CMD_NET_CLOSE to %u", strm->sd));
 					send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 				}
+				if (data_out)
+					free(data_out);
 				return 0;
 			}
 
@@ -4459,6 +4462,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				if (tpp_mbox_post(&app_mbox, UNINITIALIZED_INT, TPP_CMD_NET_RESTORE, NULL) != 0) {
 					tpp_log_func(LOG_CRIT, __func__, "Error writing to app mbox");
 				}
+				if (data_out)
+					free(data_out);
 				return 0;
 			}
 
@@ -4467,6 +4472,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd %d, Received authentication error from router %s, err=%d, msg=\"%s\"", tfd,
 							tpp_netaddr(&hdr->src_addr), hdr->error_num, msg);
 				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+				if (data_out)
+					free(data_out);
 				return -1; /* close connection */
 			}
 		}
@@ -4507,6 +4514,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 								if (tpp_enque(&send_close_queue, strm) == NULL) {
 									tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueing to send close queue");
 									tpp_unlock(&strmarray_lock);
+									if (data_out)
+										free(data_out);
 									return -1;
 								}
 							}
@@ -4529,6 +4538,9 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				TPP_DBPRT(("received TPP_CTL_LEAVE, sending TPP_CMD_NET_CLOSE sd=%u", strm->sd));
 				send_app_strm_close(strm, TPP_CMD_NET_CLOSE, hdr->ecode);
 			}
+
+			if (data_out)
+				free(data_out);
 
 			return 0;
 		}
@@ -4558,6 +4570,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 
 			if (dest_sd == UNINITIALIZED_INT && type != TPP_CLOSE_STRM && sz == 0) {
 				tpp_log_func(LOG_ERR, NULL, "ack packet without dest_sd set!!!");
+				if (data_out)
+					free(data_out);
 				return -1;
 			}
 
@@ -4573,6 +4587,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 					 */
 					if ((strm = alloc_stream(&p->dest_addr, &p->src_addr)) == NULL) {
 						tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating stream");
+						if (data_out)
+							free(data_out);
 						return -1;
 					}
 				} else {
@@ -4589,10 +4605,14 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			tpp_unlock(&strmarray_lock);
 			if (strm == NULL) {
 				if (type != TPP_CLOSE_STRM && sz == 0) {
+					if (data_out)
+						free(data_out);
 					return 0; /* it is an ack packet, don't send noroute */
 				}
 				tpp_log_func(LOG_WARNING, __func__, tpp_get_logbuf());
 				tpp_send_ctl_msg(tfd, TPP_MSG_NOROUTE, &p->src_addr, &p->dest_addr, src_sd, 0, tpp_get_logbuf());
+				if (data_out)
+					free(data_out);
 				return 0;
 			}
 
@@ -4624,6 +4644,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			}
 
 			if (type != TPP_CLOSE_STRM && sz == 0) {
+				if (data_out)
+					free(data_out);
 				return 0; /* it is an ack packet, everything is done by now */
 			}
 
@@ -4676,6 +4698,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				}
 
 				strm->seq_no_expected = seq_no_expected;
+				if (data_out)
+					free(data_out);
 				return 0;
 			} else {
 				tpp_que_elem_t *n;
@@ -4700,6 +4724,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 						tpp_log_func(LOG_DEBUG, NULL, tpp_get_logbuf());
 					}
 					duppkt_cnt++;
+					if (data_out)
+						free(data_out);
 					return 0;
 				}
 
@@ -4718,8 +4744,11 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				tpp_log_func(LOG_WARNING, NULL, tpp_get_logbuf());
 
 				full_pkt = tpp_cr_pkt(data, len, 1);
-				if (full_pkt == NULL)
+				if (full_pkt == NULL) {
+					if (data_out)
+						free(data_out);
 					return -1;
+				}
 
 				n = NULL;
 				while ((n = TPP_QUE_NEXT(&strm->oo_queue, n))) {
@@ -4733,7 +4762,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 							tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 
 							tpp_free_pkt(full_pkt);
-
+							if (data_out)
+								free(data_out);
 							return 0;
 						} else if (seq_no > seq_no_recvd) {
 
@@ -4742,6 +4772,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Inserted OO packet with seq_no = %u for sd=%u", seq_no_recvd,
 								strm->sd);
 							tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
+							if (data_out)
+								free(data_out);
 							return 0;
 						}
 					}
@@ -4750,10 +4782,16 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				if (tpp_enque(&strm->oo_queue, full_pkt) == NULL) {
 					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Failed to enque OO packet for sd = %u, Out of memory", strm->sd);
 					tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+					if (data_out)
+						free(data_out);
 					return -1;
 				}
+				if (data_out)
+					free(data_out);
 				return 0;
 			}
+			if (data_out)
+				free(data_out);
 			return 0;
 		}
 		break; /* TPP_DATA, TPP_CLOSE_STRM */
@@ -4764,6 +4802,8 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 
 	} /* switch */
 
+	if (data_out)
+		free(data_out);
 	return -1;
 }
 
@@ -4783,6 +4823,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
  * @param[in] tfd - The actual IO connection on which data was about to be
  *			sent (unused)
  * @param[in] c - context associated with the IO thread (unused here)
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @par Side Effects:
  *	None

@@ -104,6 +104,8 @@ time_t router_last_leaf_joined = 0;
 static int router_send_ctl_join(int tfd, void *data, void *c);
 
 /* forward declarations */
+static int router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra);
+static int router_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra);
 static int router_pkt_handler(int phy_fd, void *data, int len, void *c, void *extra);
 static int router_close_handler(int phy_con, int error, void *c, void *extra);
 static int send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target);
@@ -522,6 +524,7 @@ router_send_ctl_join(int tfd, void *data, void *c)
  *			sent (unused)
  * @param[in] data - Any data the IO thread might want to pass to this function.
  *		     (unused)
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @return Error code
  * @retval 0 - Success
@@ -981,6 +984,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
  * @param[in] tfd   - The physical connection that went down
  * @param[in] error - Any error that was captured when the connection went down
  * @param[in] c     - The context that was associated with the connection
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @return Error code
  * @retval -1 - Failure
@@ -1071,6 +1075,154 @@ router_timer_handler(time_t now)
 
 /**
  * @brief
+ *	The pre-send handler registered with the IO thread.
+ *
+ * @par Functionality
+ *	When the IO thread is ready to send out a packet over the wire, it calls
+ *	a prior registered "pre-send" handler. This pre-send handler (for routers)
+ *	takes care of encrypting data and save unencrypted data for "post-send" handler
+ *	in extra data associated with IO connection
+ *
+ * @param[in] tfd - The actual IO connection on which data was sent (unused)
+ * @param[in] pkt - The data packet that is sent out by the IO thrd
+ * @param[in] extra - The extra data associated with IO connection
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+static int
+router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
+{
+	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
+	unsigned char type = data->type;
+
+	/* never encrypt auth context data */
+	if (type == TPP_AUTH_CTX)
+		return 0;
+
+	/*
+	 * if presend handler is called from handle_disconnect()
+	 * then extra will be NULL and this is just a sending simulation
+	 * so no encryption needed
+	 */
+	if (extra == NULL)
+		return 0;
+
+	if (!tpp_conf->is_auth_resvport && pbs_auth_encrypt_data != NULL) {
+		char *msgbuf = NULL;
+		void *data_out = NULL;
+		size_t len_out = 0;
+		size_t newpktlen = 0;
+		char *pktdata = NULL;
+		size_t npktlen = 0;
+		conn_auth_t *authdata = (conn_auth_t *)extra;
+
+		if (authdata->cleartext != NULL)
+			free(authdata->cleartext);
+
+		authdata->cleartext = malloc(pkt->len);
+		if (authdata->cleartext == NULL) {
+			tpp_log_func(LOG_CRIT, __func__, "malloc failure");
+			return -1;
+		}
+		memcpy(authdata->cleartext, pkt->data, pkt->len);
+		authdata->cleartext_len = pkt->len;
+
+		if (pbs_auth_encrypt_data(authdata->authctx, (void *)pkt->data, (size_t)pkt->len, &data_out, &len_out) != 0) {
+			return -1;
+		}
+
+		if (pkt->len > 0 && len_out <= 0) {
+			pbs_asprintf(&msgbuf, "invalid encrypted data len: %d, pktlen: %d", len_out, pkt->len);
+			tpp_log_func(LOG_CRIT, __func__, msgbuf);
+			free(msgbuf);
+			return -1;
+		}
+
+		/* + sizeof(int) for npktlen and + 1 for TPP_ENCRYPTED_DATA */
+		newpktlen = len_out + sizeof(int) + 1;
+		pktdata = malloc(newpktlen);
+		if (pktdata != NULL) {
+			free(pkt->data);
+			pkt->data = pktdata;
+		} else {
+			free(data_out);
+			tpp_log_func(LOG_CRIT, __func__, "malloc failure");
+			return -1;
+		}
+
+		pkt->pos = pkt->data;
+
+		npktlen = htonl(len_out + 1);
+		memcpy(pkt->pos, &npktlen, sizeof(int));
+		pkt->pos = pkt->pos + sizeof(int);
+
+		*pkt->pos = (char)TPP_ENCRYPTED_DATA;
+		pkt->pos++;
+		memcpy(pkt->pos, data_out, len_out);
+
+		pkt->pos = pkt->data;
+		pkt->len = newpktlen;
+
+		free(data_out);
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ *	The post-send handler registered with the IO thread.
+ *
+ * @par Functionality
+ *	After the IO thread has sent out a packet over the wire, it calls
+ *	a prior registered "post-send" handler. This handler (for routers)
+ *	takes care of restoring unencrypted data saved from "pre-send" handler.
+ *
+ * @param[in] tfd - The actual IO connection on which data was sent (unused)
+ * @param[in] pkt - The data packet that is sent out by the IO thrd
+ * @param[in] extra - The extra data associated with IO connection
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+static int
+router_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
+{
+	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
+	unsigned char type = data->type;
+
+	/*
+	 * if postsend handler is called from handle_disconnect()
+	 * then extra will be NULL and this is just a sending simulation
+	 * so no decryption needed
+	 */
+	if (extra && !tpp_conf->is_auth_resvport && type == TPP_ENCRYPTED_DATA) {
+		conn_auth_t *authdata = (conn_auth_t *)extra;
+
+		if (authdata->cleartext == NULL) {
+			tpp_log_func(LOG_CRIT, __func__, "postsend called with encrypted data but no saved cleartext data in tls");
+			return -1;
+		}
+
+		free(pkt->data);
+		pkt->data = authdata->cleartext;
+		pkt->len = authdata->cleartext_len;
+		pkt->pos = pkt->data;
+
+		authdata->cleartext = NULL;
+		authdata->cleartext_len = 0;
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *	Handler function for the router to handle incoming data. When a data
  *	packet arrives, it determines what is the intended destination and
  *	forwards the data packet to that destination.
@@ -1079,6 +1231,7 @@ router_timer_handler(time_t now)
  * @param[in] data - The pointer to the received data packet
  * @param[in] len - The length of the received data packet
  * @param[in] c   - The context associated with this physical connection
+ * @param[in] extra - The extra data associated with IO connection
  *
  * @return Error code
  * @retval -1 - Failure
@@ -1102,7 +1255,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 	tpp_addr_t *addr = tpp_get_connected_host(tfd);
 	void *data_out = NULL;
 	size_t len_out = 0;
-	void *org_data = NULL;
 
 	if (!addr)
 		return -1;
@@ -1230,7 +1382,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			return -1;
 		}
 
-		org_data = data;
 		data = (char *)data_out + sizeof(int);
 		len = len_out - sizeof(int);
 
@@ -1264,9 +1415,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0; /* let connection be alive, so we can send error */
 				} else {
 					/* reserved port based authentication, and is not yet authenticated, so check resv port */
@@ -1276,9 +1424,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return 0; /* let connection be alive, so we can send error */
 					}
 				}
@@ -1308,9 +1453,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 
@@ -1320,9 +1462,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 				}
@@ -1339,9 +1478,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 				}
@@ -1359,9 +1495,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 
 			} else if (node_type == TPP_LEAF_NODE || node_type == TPP_LEAF_NODE_LISTEN) {
@@ -1378,9 +1511,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return -1;
 				}
 				addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_join_pkt_hdr_t));
@@ -1405,9 +1535,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 				}
@@ -1427,9 +1554,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 
@@ -1460,9 +1584,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 					l->conn_fd = tfd;
@@ -1478,9 +1599,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating tpp context");
 							if (data_out)
 								free(data_out);
-							if (org_data) {
-								data = org_data;
-							}
 							return -1;
 						}
 					}
@@ -1502,9 +1620,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_unlock(&router_lock);
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0;
 				}
 
@@ -1515,9 +1630,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_unlock(&router_lock);
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return -1;
 				}
 
@@ -1556,9 +1668,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						tpp_unlock(&router_lock);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return -1;
 					}
 				}
@@ -1572,9 +1681,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							tpp_unlock(&router_lock);
 							if (data_out)
 								free(data_out);
-							if (org_data) {
-								data = org_data;
-							}
 							return -1;
 						}
 					}
@@ -1612,16 +1718,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				}
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 			if (data_out)
 				free(data_out);
-			if (org_data) {
-				data = org_data;
-			}
 			return 0;
 		}
 		break; /* TPP_CTL_JOIN */
@@ -1636,9 +1736,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				TPP_DBPRT(("tfd=%d, No context, leaving", tfd));
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 
@@ -1651,9 +1748,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return -1;
 
 			} else if (ctx->type == TPP_ROUTER_NODE) {
@@ -1673,9 +1767,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_unlock(&router_lock);
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0;
 				}
 
@@ -1685,9 +1776,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating tpp context");
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return -1;
 				}
 				ctx->ptr = l;
@@ -1700,9 +1788,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			}
 			if (data_out)
 				free(data_out);
-			if (org_data) {
-				data = org_data;
-			}
 			return 0;
 		}
 		break; /* TPP_CTL_LEAVE */
@@ -1766,9 +1851,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_log_func(LOG_CRIT, __func__, "Decompression of mcast hdr failed");
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return -1;
 				}
 			}
@@ -1838,9 +1920,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							free(minfo_base);
 						if (data_out)
 							free(data_out);
-						if (org_data) {
-							data = org_data;
-						}
 						return 0;
 					}
 				} else if (orig_hop == 0) {
@@ -1857,9 +1936,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 							if (data_out)
 								free(data_out);
-							if (org_data) {
-								data = org_data;
-							}
 							return -1;
 						}
 						csize = 0;
@@ -1893,9 +1969,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 							if (data_out)
 								free(data_out);
-							if (org_data) {
-								data = org_data;
-							}
 							return -1;
 						}
 						rsize += RLIST_INC;
@@ -1923,9 +1996,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 			if (data_out)
 				free(data_out);
-			if (org_data) {
-				data = org_data;
-			}
 
 			return 0;
 		}
@@ -1954,9 +2024,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				tpp_send_ctl_msg(tfd, TPP_MSG_NOROUTE, src_host, dest_host, src_sd, 0, msg);
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 
@@ -1971,9 +2038,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				tpp_send_ctl_msg(tfd, TPP_MSG_NOROUTE, src_host, dest_host, src_sd, 0, msg);
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 
@@ -1995,16 +2059,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				tpp_transport_close(target_fd);
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 			if (data_out)
 				free(data_out);
-			if (org_data) {
-				data = org_data;
-			}
 			return 0;
 		}
 		break; /* TPP_DATA, TPP_CLOSE_STRM */
@@ -2032,9 +2090,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_unlock(&router_lock);
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0;
 				}
 				/* find a router that is still connected */
@@ -2046,9 +2101,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_log_func(LOG_WARNING, NULL, tpp_get_logbuf());
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0;
 				}
 
@@ -2061,16 +2113,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					tpp_transport_close(target_fd);
 					if (data_out)
 						free(data_out);
-					if (org_data) {
-						data = org_data;
-					}
 					return 0;
 				}
 				if (data_out)
 					free(data_out);
-				if (org_data) {
-					data = org_data;
-				}
 				return 0;
 			}
 		}
@@ -2084,9 +2130,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 	if (data_out)
 		free(data_out);
-	if (org_data) {
-		data = org_data;
-	}
 	return -1;
 }
 
@@ -2345,7 +2388,7 @@ tpp_init_router(struct tpp_config *cnf)
 	this_router = r; /* mark this one as this router */
 
 	/* first set the transport handlers */
-	tpp_transport_set_handlers(NULL, NULL, router_pkt_handler, router_close_handler, router_post_connect_handler, router_timer_handler);
+	tpp_transport_set_handlers(router_pkt_presend_handler, router_pkt_postsend_handler, router_pkt_handler, router_close_handler, router_post_connect_handler, router_timer_handler);
 
 	if ((tpp_transport_init(tpp_conf)) == -1)
 		return -1;
