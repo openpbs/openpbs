@@ -944,8 +944,7 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		strcat(extend, "m");
-	} else if (is_job_resv)
-		strcat(extend, "j");
+	}
 
 	pbs_errno = 0;
 	new_resvname = pbs_submit_resv(connect, (struct attropl *)attrib, extend);

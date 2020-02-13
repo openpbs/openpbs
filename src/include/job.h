@@ -662,7 +662,6 @@ struct job {
 
 	struct preempt_ordering	*preempt_order;
 	int preempt_order_index;
-	int allow_job_conversion;
 
 #endif					/* END SERVER ONLY */
 

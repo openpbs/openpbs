@@ -6025,6 +6025,9 @@ class Server(PBSService):
                         if _rrule[0] not in ("'", '"'):
                             _rrule = "'" + _rrule + "'"
                         obj.custom_attrs[ATTR_resv_rrule] = _rrule
+                if ATTR_job in obj.attributes:
+                    runcmd += ['--job', obj.attributes[ATTR_job]]
+                    exclude_attrs += [ATTR_job]
 
             if not self._is_local:
                 if ATTR_queue not in obj.attributes:
@@ -6072,9 +6075,6 @@ class Server(PBSService):
 
             if isinstance(obj, Reservation) and obj.hosts:
                 runcmd += ['--hosts'] + obj.hosts
-
-            if isinstance(obj, Reservation) and obj.job:
-                runcmd += ['--job', obj.job]
 
             if _interactive_job:
                 ijid = self.submit_interactive_job(obj, runcmd)
@@ -14297,7 +14297,7 @@ class Reservation(ResourceResv):
 
     dflt_attributes = {}
 
-    def __init__(self, username=TEST_USER, attrs=None, hosts=None, job=None):
+    def __init__(self, username=TEST_USER, attrs=None, hosts=None):
         self.server = {}
         self.script = None
 
@@ -14311,11 +14311,6 @@ class Reservation(ResourceResv):
         else:
             self.hosts = []
 
-        if job:
-            self.job = job
-        else:
-            self.job = []
-
         if username is None:
             userinfo = pwd.getpwuid(os.getuid())
             self.username = userinfo[0]
@@ -14324,11 +14319,11 @@ class Reservation(ResourceResv):
 
         # These are not in dflt_attributes because of the conversion to CLI
         # options is done strictly
-        if ATTR_resv_start not in self.attributes and job is None:
+        if ATTR_resv_start not in self.attributes and ATTR_job not in self.attributes:
             self.attributes[ATTR_resv_start] = str(int(time.time()) +
                                                    36 * 3600)
 
-        if ATTR_resv_end not in self.attributes and job is None:
+        if ATTR_resv_end not in self.attributes and ATTR_job not in self.attributes:
             if ATTR_resv_duration not in self.attributes:
                 self.attributes[ATTR_resv_end] = str(int(time.time()) +
                                                      72 * 3600)

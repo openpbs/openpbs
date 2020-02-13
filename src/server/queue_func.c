@@ -341,7 +341,7 @@ find_resvqueuebyname(char *quename)
  */
 
 resc_resv *
-find_resvbyquename(char *quename)
+find_resv_by_quename(char *quename)
 {
 	char *pc;
 	resc_resv *presv;

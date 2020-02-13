@@ -70,7 +70,7 @@ j.create_resv_from_job=1
         try:
             s_ncpus_before = self.server.status(SERVER, s_ncpus)[0][s_ncpus]
             s_nodect_before = self.server.status(SERVER, s_nodect)[0][s_nodect]
-        except IndexError as e:
+        except IndexError:
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
@@ -99,11 +99,6 @@ j.create_resv_from_job=1
         self.assertEqual(s_ncpus_before, s_ncpus_after)
         self.assertEqual(s_nodect_before, s_nodect_after)
 
-        delete_hook = [qmgr_cmd, '-c', 'delete hook %s' % hook_name]
-        ret = self.du.run_cmd(self.server.hostname,
-                              cmd=delete_hook, sudo=True)
-        self.assertEqual(ret['rc'], 0)
-
     def test_create_resv_from_job_using_qsub(self):
         """
         This test is for creating a reservation out of a job using qsub.
@@ -113,7 +108,7 @@ j.create_resv_from_job=1
         try:
             s_ncpus_before = self.server.status(SERVER, s_ncpus)[0][s_ncpus]
             s_nodect_before = self.server.status(SERVER, s_nodect)[0][s_nodect]
-        except IndexError as e:
+        except IndexError:
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
@@ -148,7 +143,7 @@ j.create_resv_from_job=1
         try:
             s_ncpus_before = self.server.status(SERVER, s_ncpus)[0][s_ncpus]
             s_nodect_before = self.server.status(SERVER, s_nodect)[0][s_nodect]
-        except IndexError as e:
+        except IndexError:
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
@@ -158,7 +153,8 @@ j.create_resv_from_job=1
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
 
-        resv = Reservation(job=jid)
+        a = {ATTR_job: jid}
+        resv = Reservation(attrs=a)
         self.server.submit(resv)
 
         rid = 'R' + str(int(jid.split(".")[0]) + 1)
@@ -193,18 +189,24 @@ j.create_resv_from_job=1
         subjobs = self.server.status(JOB, id=jid, extend='t')
         jids1 = subjobs[1]['id']
 
-        resv = Reservation(job=jids1)
+        a = {ATTR_job: jids1}
+        resv = Reservation(attrs=a)
         msg = "Reservation may not be created from an array job"
         try:
             self.server.submit(resv)
         except PbsSubmitError as e:
             self.assertTrue(msg in e.msg[0])
+        else:
+            self.fail("Error message not as expected")
 
-        resv = Reservation(job=jid)
+        a = {ATTR_job: jid}
+        resv = Reservation(attrs=a)
         try:
             self.server.submit(resv)
         except PbsSubmitError as e:
             self.assertTrue(msg in e.msg[0])
+        else:
+            self.fail("Error message not as expected")
 
     def test_create_resv_by_other_user(self):
         """
@@ -215,9 +217,12 @@ j.create_resv_from_job=1
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
-        resv = Reservation(username=TEST_USER2, job=jid)
+        a = {ATTR_job: jid}
+        resv = Reservation(username=TEST_USER2, attrs=a)
         msg = "Unauthorized Request"
         try:
             self.server.submit(resv)
         except PbsSubmitError as e:
             self.assertTrue(msg in e.msg[0])
+        else:
+            self.fail("Error message not as expected")
