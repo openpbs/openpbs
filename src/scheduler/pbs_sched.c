@@ -1151,7 +1151,7 @@ main(int argc, char *argv[])
 			die(0);
 		}
 
-		auth_set_config(log_event, pbs_conf.pbs_home_path);
+		pbs_auth_set_config(log_event, pbs_conf.pbs_home_path);
 	}
 
 	{

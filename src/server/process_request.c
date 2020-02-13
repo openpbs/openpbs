@@ -337,7 +337,7 @@ process_request(int sfds)
 			char *host = NULL;
 			char *realm = NULL;
 
-			if (auth_get_userinfo(transport_chan_get_extra(sfds), &user, &host, &realm) != 0) {
+			if (pbs_auth_get_userinfo(transport_chan_get_extra(sfds), &user, &host, &realm) != 0) {
 				req_reject(PBSE_PERM, 0, request);
 				close_client(sfds);
 				return;

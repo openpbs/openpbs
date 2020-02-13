@@ -58,43 +58,43 @@ static void *libauth_handle = NULL;
  * the function pointer to set logger method for auth lib
  * MUST exist in auth lib
  */
-void (*auth_set_config)(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location) = NULL;
+void (*pbs_auth_set_config)(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location) = NULL;
 
 /*
  * the function pointer to create new auth context used by auth lib
  * MUST exist in auth lib
  */
-int (*auth_create_ctx)(void **ctx, int mode, const char *hostname) = NULL;
+int (*pbs_auth_create_ctx)(void **ctx, int mode, const char *hostname) = NULL;
 
 /*
  * the function pointer to free auth context used by auth lib
  * MUST exist in auth lib
  */
-void (*auth_destroy_ctx)(void **ctx) = NULL;
+void (*pbs_auth_destroy_ctx)(void *ctx) = NULL;
 
 /*
  * the function pointer to get user, host and realm information from authentication context
  * MUST exist in auth lib
  */
-int (*auth_get_userinfo)(void *ctx, char **user, char **host, char **realm) = NULL;
+int (*pbs_auth_get_userinfo)(void *ctx, char **user, char **host, char **realm) = NULL;
 
 /*
  * the function pointer to do auth handshake and authenticate user/connection
  * MUST exist in auth lib
  */
-int (*auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done) = NULL;
+int (*pbs_auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done) = NULL;
 
 /*
  * the function pointer to encrypt data
  * Should exist in auth lib if auth lib supports encrypt/decrypt
  */
-int (*auth_encrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out) = NULL;
+int (*pbs_auth_encrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out) = NULL;
 
 /*
  * the function pointer to decrypt data
  * Should exist in auth lib if auth lib supports encrypt/decrypt
  */
-int (*auth_decrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out) = NULL;
+int (*pbs_auth_decrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out) = NULL;
 
 
 static int tcp_send_auth_req(int);
@@ -254,7 +254,22 @@ send_auth_token(int fd, int type, void *data_in, size_t len_in)
 	return i;
 }
 
-int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
+/**
+ * @brief
+ * 	this function handles client side authentication
+ *
+ * @param[in] fd - socket descriptor
+ * @param[in] hostname - server hostname
+ * @param[out] ebuf - error buffer
+ * @param[in] ebufsz - size of error buffer
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	-1	failure
+ *
+ */
+int
+engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 {
 	void *authctx = NULL;
 	void *data_in = NULL;
@@ -264,10 +279,10 @@ int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 	int type;
 	int is_handshake_done;
 
-	auth_set_config(NULL, pbs_conf.pbs_home_path);
+	pbs_auth_set_config(NULL, pbs_conf.pbs_home_path);
 
 	if ((authctx = transport_chan_get_extra(fd)) == NULL) {
-		if (auth_create_ctx(&authctx, AUTH_CLIENT, (const char *)hostname)) {
+		if (pbs_auth_create_ctx(&authctx, AUTH_CLIENT, (const char *)hostname)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -281,7 +296,7 @@ int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 	}
 
 	do {
-		if (auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
 			snprintf(ebuf, ebufsz, "Auth handshake failed");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -318,7 +333,7 @@ int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 			}
 		} else {
 			transport_chan_set_authctx_status(fd, AUTH_STATUS_CTX_READY);
-			if (auth_encrypt_data != NULL && auth_decrypt_data != NULL)
+			if (pbs_auth_encrypt_data != NULL && pbs_auth_decrypt_data != NULL)
 				transport_chan_set_encrypted(fd);
 		}
 
@@ -330,11 +345,7 @@ int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 
 /**
  * @brief
- * 	this function handles data before process_request()
- *	if the data are GSS handshake related then handshake is done
- *	if the data are wrapped then unwrapping is done and true is returned
- *	if gss is not used (yet) then true is returned
- *
+ * 	this function handles authentication related data before process_request()
  *
  * @param[in] fd - socket descriptor
  * @param[in] hostname - server hostname
@@ -343,10 +354,8 @@ int engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
  * @param[in] ebufsz - size of error buffer
  *
  * @return	int
- * @retval	>0	data ready
- * @retval	0	no data ready
- * @retval	-1	error
- * @retval	-2	on EOF
+ * @retval	0	success
+ * @retval	-1	failure
  *
  */
 int
@@ -372,7 +381,7 @@ engage_server_auth(int fd, char *hostname, char *clienthost, char *ebuf, size_t 
 	}
 
 	if ((authctx = transport_chan_get_extra(fd)) == NULL) {
-		if (auth_create_ctx(&authctx, AUTH_SERVER, clienthost)) {
+		if (pbs_auth_create_ctx(&authctx, AUTH_SERVER, clienthost)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -390,8 +399,8 @@ engage_server_auth(int fd, char *hostname, char *clienthost, char *ebuf, size_t 
 		return -1;
 	}
 
-	if (auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
-		snprintf(ebuf, ebufsz, "auth_do_handshake failure");
+	if (pbs_auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		snprintf(ebuf, ebufsz, "pbs_auth_do_handshake failure");
 		pbs_errno = PBSE_SYSTEM;
 		free(data_in);
 		return -1;
@@ -411,7 +420,7 @@ engage_server_auth(int fd, char *hostname, char *clienthost, char *ebuf, size_t 
 
 	if (is_handshake_done) {
 		transport_chan_set_authctx_status(fd, AUTH_STATUS_CTX_READY);
-		if (auth_encrypt_data != NULL && auth_decrypt_data != NULL)
+		if (pbs_auth_encrypt_data != NULL && pbs_auth_decrypt_data != NULL)
 			transport_chan_set_encrypted(fd);
 		transport_chan_set_extra(fd, authctx);
 	}
@@ -490,18 +499,18 @@ load_auth_lib(void)
 		void **var;
 		unsigned required;
 	} funcs_to_load[] = {
-		{ "auth_set_config", (void **)&auth_set_config, 1 },
-		{ "auth_create_ctx", (void **)&auth_create_ctx, 1 },
-		{ "auth_destroy_ctx", (void **)&auth_destroy_ctx, 1 },
-		{ "auth_get_userinfo", (void **)&auth_get_userinfo, 1 },
-		{ "auth_do_handshake", (void **)&auth_do_handshake, 1 },
+		{ "pbs_auth_set_config", (void **)&pbs_auth_set_config, 1 },
+		{ "pbs_auth_create_ctx", (void **)&pbs_auth_create_ctx, 1 },
+		{ "pbs_auth_destroy_ctx", (void **)&pbs_auth_destroy_ctx, 1 },
+		{ "pbs_auth_get_userinfo", (void **)&pbs_auth_get_userinfo, 1 },
+		{ "pbs_auth_do_handshake", (void **)&pbs_auth_do_handshake, 1 },
 		/*
 		 * There are possiblity that auth lib only support authentication
 		 * but not encrypt/decrypt of data (for example munge auth lib)
 		 * so below 2 methods are marked as NOT required
 		 */
-		{ "auth_encrypt_data", (void **)&auth_encrypt_data, 0 },
-		{ "auth_decrypt_data", (void **)&auth_decrypt_data, 0 },
+		{ "pbs_auth_encrypt_data", (void **)&pbs_auth_encrypt_data, 0 },
+		{ "pbs_auth_decrypt_data", (void **)&pbs_auth_decrypt_data, 0 },
 		{ NULL, NULL, 0 }
 	};
 
@@ -552,11 +561,11 @@ unload_auth_lib(void)
 #endif
 	}
 	libauth_handle = NULL;
-	auth_set_config = NULL;
-	auth_create_ctx = NULL;
-	auth_destroy_ctx = NULL;
-	auth_get_userinfo = NULL;
-	auth_do_handshake = NULL;
-	auth_encrypt_data = NULL;
-	auth_decrypt_data = NULL;
+	pbs_auth_set_config = NULL;
+	pbs_auth_create_ctx = NULL;
+	pbs_auth_destroy_ctx = NULL;
+	pbs_auth_get_userinfo = NULL;
+	pbs_auth_do_handshake = NULL;
+	pbs_auth_encrypt_data = NULL;
+	pbs_auth_decrypt_data = NULL;
 }

@@ -90,8 +90,8 @@ tcp_get_chan(int fd)
 void
 tcp_chan_free_extra(void *extra)
 {
-	if (extra != NULL && auth_destroy_ctx) {
-		auth_destroy_ctx(&extra);
+	if (extra != NULL && pbs_auth_destroy_ctx) {
+		pbs_auth_destroy_ctx(extra);
 	}
 }
 

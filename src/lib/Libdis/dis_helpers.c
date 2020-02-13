@@ -224,10 +224,10 @@ dis_encrypt_and_send(int fd, void *data_in, size_t len_in)
 	size_t len_out = 0;
 	int rc = 0;
 
-	if (data_in == NULL || len_in == 0 || auth_encrypt_data == NULL)
+	if (data_in == NULL || len_in == 0 || pbs_auth_encrypt_data == NULL)
 		return -1;
 
-	if (auth_encrypt_data(extra, data_in, len_in, &data_out, &len_out) != 0)
+	if (pbs_auth_encrypt_data(extra, data_in, len_in, &data_out, &len_out) != 0)
 		return -1;
 
 	if (len_out <= 0)
@@ -271,7 +271,7 @@ dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 	*data_out = NULL;
 	*len_out = 0;
 
-	if (auth_decrypt_data == NULL)
+	if (pbs_auth_decrypt_data == NULL)
 		return -1;
 
 	rc = recv_auth_token(fd, &type, &data_in, &len_in);
@@ -284,7 +284,7 @@ dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 	if (len_in == 0)
 		return -2;
 
-	if (auth_decrypt_data(extra, data_in, len_in, data_out, len_out) != 0) {
+	if (pbs_auth_decrypt_data(extra, data_in, len_in, data_out, len_out) != 0) {
 		free(data_in);
 		return -1;
 	}

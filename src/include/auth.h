@@ -48,43 +48,43 @@ extern "C" {
  * the function pointer to set configuration for auth lib
  * MUST exist in auth lib
  */
-extern void (*auth_set_config)(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location);
+extern void (*pbs_auth_set_config)(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location);
 
 /*
  * the function pointer to create new auth context used by auth lib
  * MUST exist in auth lib
  */
-extern int (*auth_create_ctx)(void **ctx, int mode, const char *hostname);
+extern int (*pbs_auth_create_ctx)(void **ctx, int mode, const char *hostname);
 
 /*
  * the function pointer to free auth context used by auth lib
  * MUST exist in auth lib
  */
-extern void (*auth_destroy_ctx)(void **ctx);
+extern void (*pbs_auth_destroy_ctx)(void *ctx);
 
 /*
  * the function pointer to get user, host and realm information from authentication context
  * MUST exist in auth lib
  */
-extern int (*auth_get_userinfo)(void *ctx, char **user, char **host, char **realm);
+extern int (*pbs_auth_get_userinfo)(void *ctx, char **user, char **host, char **realm);
 
 /*
  * the function pointer to do auth handshake and authenticate user/connection
  * MUST exist in auth lib
  */
-extern int (*auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done);
+extern int (*pbs_auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done);
 
 /*
  * the function pointer to encrypt data
  * Should exist in auth lib if auth lib supports encrypt/decrypt
  */
-extern int (*auth_encrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
+extern int (*pbs_auth_encrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
 
 /*
  * the function pointer to decrypt data
  * Should exist in auth lib if auth lib supports encrypt/decrypt
  */
-extern int (*auth_decrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
+extern int (*pbs_auth_decrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
 
 
 enum AUTH_MSG_TYPES {

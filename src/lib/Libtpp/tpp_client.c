@@ -567,13 +567,13 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			tpp_log_func(LOG_CRIT, __func__, "Out of memory in post connect handler");
 			return -1;
 		}
-		if (auth_create_ctx(&(authdata->authctx), AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
+		if (pbs_auth_create_ctx(&(authdata->authctx), AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
 			return -1;
 		}
 		tpp_transport_set_conn_extra(tfd, authdata);
 
-		if (auth_do_handshake(authdata->authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_do_handshake(authdata->authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
 			return -1;
 		}
 
@@ -3966,7 +3966,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 	if (extra == NULL)
 		return 0;
 
-	if (!tpp_conf->is_auth_resvport && auth_encrypt_data != NULL) {
+	if (!tpp_conf->is_auth_resvport && pbs_auth_encrypt_data != NULL) {
 		char *msgbuf = NULL;
 		void *data_out = NULL;
 		size_t len_out = 0;
@@ -3986,7 +3986,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 		memcpy(authdata->cleartext, pkt->data, pkt->len);
 		authdata->cleartext_len = pkt->len;
 
-		if (auth_encrypt_data(authdata->authctx, (void *)pkt->data, (size_t)pkt->len, &data_out, &len_out) != 0) {
+		if (pbs_auth_encrypt_data(authdata->authctx, (void *)pkt->data, (size_t)pkt->len, &data_out, &len_out) != 0) {
 			return -1;
 		}
 
@@ -4360,7 +4360,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		}
 		memcpy(data_in, (char *)data + sizeof(tpp_auth_pkt_hdr_t), len_in);
 
-		if (auth_do_handshake(authdata->authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_do_handshake(authdata->authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
 			free(data_in);
 			return -1;
 		}
@@ -4402,12 +4402,12 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		size_t len_out = 0;
 		char *msgbuf = NULL;
 
-		if (auth_decrypt_data == NULL) {
+		if (pbs_auth_decrypt_data == NULL) {
 			tpp_log_func(LOG_CRIT, __func__, "External authentication handlers not installed");
 			return -1;
 		}
 
-		if (auth_decrypt_data(authdata->authctx, (void *)((char *)data + 1), (size_t)len - 1, &data_out, &len_out) != 0) {
+		if (pbs_auth_decrypt_data(authdata->authctx, (void *)((char *)data + 1), (size_t)len - 1, &data_out, &len_out) != 0) {
 			return -1;
 		}
 
@@ -4798,11 +4798,12 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 	tpp_router_t *r;
 	int last_state;
 
-	if (extra && auth_destroy_ctx) {
+	if (extra && pbs_auth_destroy_ctx) {
 		conn_auth_t *authdata = (conn_auth_t *)extra;
-		auth_destroy_ctx(&(authdata->authctx));
+		pbs_auth_destroy_ctx(authdata->authctx);
 		if (authdata->cleartext)
 			free(authdata->cleartext);
+		free(authdata);
 		tpp_transport_set_conn_extra(tfd, NULL);
 	}
 

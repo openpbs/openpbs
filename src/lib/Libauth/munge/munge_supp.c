@@ -262,7 +262,7 @@ err:
 /********* START OF EXPORTED FUNCS *********/
 
 /** @brief
- *	auth_set_config - Set config for this lib
+ *	pbs_auth_set_config - Set config for this lib
  *
  * @param[in] func - pointer to logger func (should have same signature as log_event in Liblog)
  * @param[in] cred_location - location to cred
@@ -271,13 +271,13 @@ err:
  *
  */
 void
-auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
+pbs_auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
 {
 	logger = func;
 }
 
 /** @brief
- *	auth_create_ctx - allocates external auth context structure for MUNGE authentication
+ *	pbs_auth_create_ctx - allocates external auth context structure for MUNGE authentication
  *
  * @param[in] ctx - pointer to external auth context to be allocated
  * @param[in] mode - AUTH_SERVER or AUTH_CLIENT
@@ -291,14 +291,14 @@ auth_set_config(void (*func)(int type, int objclass, int severity, const char *o
  * @retval	1 - error
  */
 int
-auth_create_ctx(void **ctx, int mode, const char *hostname)
+pbs_auth_create_ctx(void **ctx, int mode, const char *hostname)
 {
 	*ctx = NULL;
 	return 0;
 }
 
 /** @brief
- *	auth_destroy_ctx - destroy external auth context structure for MUNGE authentication
+ *	pbs_auth_destroy_ctx - destroy external auth context structure for MUNGE authentication
  *
  * @param[in] ctx - pointer to external auth context
  *
@@ -308,13 +308,13 @@ auth_create_ctx(void **ctx, int mode, const char *hostname)
  * @return void
  */
 void
-auth_destroy_ctx(void **ctx)
+pbs_auth_destroy_ctx(void *ctx)
 {
-	*ctx = NULL;
+	ctx = NULL;
 }
 
 /** @brief
- *	auth_get_userinfo - get user, host and realm from authentication context
+ *	pbs_auth_get_userinfo - get user, host and realm from authentication context
  *
  * @param[in] ctx - pointer to external auth context
  * @param[out] user - username assosiate with ctx
@@ -329,7 +329,7 @@ auth_destroy_ctx(void **ctx)
  * 	Currently munge doesn't have context, so just return 0
  */
 int
-auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
+pbs_auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
 {
 	*user = NULL;
 	*host = NULL;
@@ -338,7 +338,7 @@ auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
 }
 
 /** @brief
- *	auth_do_handshake - do Munge auth handshake
+ *	pbs_auth_do_handshake - do Munge auth handshake
  *
  * @param[in] ctx - pointer to external auth context
  * @param[in] data_in - received auth token data (if any)
@@ -352,7 +352,7 @@ auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
  * @retval	!0 on error
  */
 int
-auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
+pbs_auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
 {
 	int rc = -1;
 

@@ -1,7 +1,7 @@
 ***This file explains about LibAuth API Interface descriptions and design...***
 
-# auth_set_config
- - **Synopsis:** void auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
+# pbs_auth_set_config
+ - **Synopsis:** void pbs_auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
  - **Description:** This API sets configuration for the authentication library like logging method, where it can find required credentials... This API should be called first before calling any other LibAuth API.
  - **Arguments:**
 
@@ -15,8 +15,8 @@
 
  - **Return Value:** None, void
 
-# auth_create_ctx
- - **Synopsis:** int auth_create_ctx(void **ctx, int mode)
+# pbs_auth_create_ctx
+ - **Synopsis:** int pbs_auth_create_ctx(void **ctx, int mode)
  - **Description:** This API creates an authentication context for a given mode, which will be used by other LibAuth API for authentication, encrypt and decrypt data.
  - **Arguments:**
 
@@ -40,19 +40,19 @@
 
  - **Cleanup:** A context created by this API should be destroyed by auth_free_ctx when the context is no more required
 
-# auth_destroy_ctx
- - **Synopsis:** void auth_destroy_ctx(void **ctx)
- - **Description:** This API destroys the authentication context created by auth_create_ctx
+# pbs_auth_destroy_ctx
+ - **Synopsis:** void pbs_auth_destroy_ctx(void *ctx)
+ - **Description:** This API destroys the authentication context created by pbs_auth_create_ctx
  - **Arguments:**
 
-	- void **ctx
+	- void *ctx
 
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pointer to auth context to be destroyed
 
  - **Return Value:** None, void
 
-# auth_get_userinfo
- - **Synopsis:** int auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
+# pbs_auth_get_userinfo
+ - **Synopsis:** int pbs_auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
  - **Description:** Extract username and its realm, hostname of the connecting party from the given authentication context. Extracted user, host and realm values will be a null-terminated string. This API is mostly useful on authenticating server-side to get another party (aka auth client) information and the auth server might want to use this information from the auth library to match against the actual username/realm/hostname provided by the connecting party.
  - **Arguments:**
 
@@ -80,8 +80,8 @@
 
  - **Cleanup:** Returned user, host, and realm should be freed using free() when no more required, as it will be allocated heap memory.
 
-# auth_do_handshake
- - **Synopsis:** int *auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
+# pbs_auth_do_handshake
+ - **Synopsis:** int *pbs_auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
  - **Description:** Process incoming handshake data and do the handshake, and if required generate handshake data which will be sent to another party. If there is no incoming data then initiate a handshake and generate initial handshake data to be sent to the authentication server.
  - **Arguments:**
 
@@ -117,8 +117,8 @@
 
  - **Cleanup:** Returned data_out (if any) should be freed using free() when no more required, as it will be allocated heap memory.
 
-# auth_encrypt_data
- - **Synopsis:** int auth_encrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out)
+# pbs_auth_encrypt_data
+ - **Synopsis:** int pbs_auth_encrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out)
  - **Description:** Encrypt given clear text data with the given authentication context
  - **Arguments:**
 
@@ -150,8 +150,8 @@
 
  - **Cleanup:** Returned data_out should be freed using free() when no more required, as it will be allocated heap memory.
 
-# auth_decrypt_data
- - **Synopsis:** int auth_decrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out)
+# pbs_auth_decrypt_data
+ - **Synopsis:** int pbs_auth_decrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out)
  - **Description:** Decrypt given encrypted data with the given authentication context
  - **Arguments:**
 

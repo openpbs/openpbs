@@ -755,7 +755,7 @@ main(int argc, char **argv)
 			return 2;
 		}
 
-		auth_set_config(auth_logger, pbs_conf.pbs_home_path);
+		pbs_auth_set_config(auth_logger, pbs_conf.pbs_home_path);
 	}
 
 	conf.node_type = TPP_ROUTER_NODE;
