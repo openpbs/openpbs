@@ -105,7 +105,6 @@ static int router_send_ctl_join(int tfd, void *data, void *c);
 
 /* forward declarations */
 static int router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra);
-static int router_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra);
 static int router_pkt_handler(int phy_fd, void *data, int len, void *c, void *extra);
 static int router_close_handler(int phy_con, int error, void *c, void *extra);
 static int send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target);
@@ -1120,17 +1119,6 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 		size_t npktlen = 0;
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 
-		if (authdata->cleartext != NULL)
-			free(authdata->cleartext);
-
-		authdata->cleartext = malloc(pkt->len);
-		if (authdata->cleartext == NULL) {
-			tpp_log_func(LOG_CRIT, __func__, "malloc failure");
-			return -1;
-		}
-		memcpy(authdata->cleartext, pkt->data, pkt->len);
-		authdata->cleartext_len = pkt->len;
-
 		if (pbs_auth_encrypt_data(authdata->authctx, (void *)pkt->data, (size_t)pkt->len, &data_out, &len_out) != 0) {
 			return -1;
 		}
@@ -1168,55 +1156,6 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 		pkt->len = newpktlen;
 
 		free(data_out);
-	}
-	return 0;
-}
-
-/**
- * @brief
- *	The post-send handler registered with the IO thread.
- *
- * @par Functionality
- *	After the IO thread has sent out a packet over the wire, it calls
- *	a prior registered "post-send" handler. This handler (for routers)
- *	takes care of restoring unencrypted data saved from "pre-send" handler.
- *
- * @param[in] tfd - The actual IO connection on which data was sent (unused)
- * @param[in] pkt - The data packet that is sent out by the IO thrd
- * @param[in] extra - The extra data associated with IO connection
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static int
-router_pkt_postsend_handler(int tfd, tpp_packet_t *pkt, void *extra)
-{
-	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
-	unsigned char type = data->type;
-
-	/*
-	 * if postsend handler is called from handle_disconnect()
-	 * then extra will be NULL and this is just a sending simulation
-	 * so no decryption needed
-	 */
-	if (extra && !tpp_conf->is_auth_resvport && type == TPP_ENCRYPTED_DATA) {
-		conn_auth_t *authdata = (conn_auth_t *)extra;
-
-		if (authdata->cleartext == NULL) {
-			tpp_log_func(LOG_CRIT, __func__, "postsend called with encrypted data but no saved cleartext data in tls");
-			return -1;
-		}
-
-		free(pkt->data);
-		pkt->data = authdata->cleartext;
-		pkt->len = authdata->cleartext_len;
-		pkt->pos = pkt->data;
-
-		authdata->cleartext = NULL;
-		authdata->cleartext_len = 0;
 	}
 	return 0;
 }
@@ -2388,7 +2327,7 @@ tpp_init_router(struct tpp_config *cnf)
 	this_router = r; /* mark this one as this router */
 
 	/* first set the transport handlers */
-	tpp_transport_set_handlers(router_pkt_presend_handler, router_pkt_postsend_handler, router_pkt_handler, router_close_handler, router_post_connect_handler, router_timer_handler);
+	tpp_transport_set_handlers(router_pkt_presend_handler, NULL, router_pkt_handler, router_close_handler, router_post_connect_handler, router_timer_handler);
 
 	if ((tpp_transport_init(tpp_conf)) == -1)
 		return -1;
