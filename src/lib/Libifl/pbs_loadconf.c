@@ -926,16 +926,13 @@ __pbs_loadconf(int reload)
 	}
 	if (pbs_conf.cp_path == NULL) {
 
-#ifdef WIN32
-		if ((pbs_conf.cp_path =
-			malloc(6 * sizeof(char))) != NULL) {
-			sprintf(pbs_conf.cp_path, "xcopy");
-#else
 		if ((pbs_conf.cp_path =
 			malloc(8 * sizeof(char))) != NULL) {
+#ifdef WIN32
+			sprintf(pbs_conf.cp_path, "xcopy");
+#else
 			sprintf(pbs_conf.cp_path, "/bin/cp");
 #endif
-
 		} else {
 			goto err;
 		}
