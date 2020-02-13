@@ -570,7 +570,6 @@ schedule(int cmd, int sd, char *runjobid)
 			 * server through qmgr.
 			 */
 			if (!validate_sched_attrs(connector)) {
-				log_err(-1, __func__, "validate_sched_attrs failed");
 				return 0;
 			}
 			break;
@@ -2694,7 +2693,6 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		return 1;
 
 	if (!validate_sched_attrs(connector)) {
-		log_err(-1, __func__, "validate_sched_attrs failed");
 		return 0;
 	}
 
@@ -2766,6 +2764,8 @@ validate_sched_attrs(int connector)
 	ss = bs_find(all_ss, sc_name);
 
 	if (ss == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer), "Unable to retrieve the scheduler attributes from server");
+		log_err(-1, __func__, log_buffer);
 		pbs_statfree(all_ss);
 		return 0;
 	}
