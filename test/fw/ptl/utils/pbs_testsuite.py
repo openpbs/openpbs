@@ -928,6 +928,10 @@ class PBSTestSuite(unittest.TestCase):
             scppath = self.du.which(hostobj.hostname, "scp")
             if scppath != "scp":
                 return scppath
+        elif conf == "PBS_CP":
+            cppath = self.du.which(hostobj.hostname, "cp")
+            if cppath != "cp":
+                return cppath
         elif conf == "PBS_LOG_HIGHRES_TIMESTAMP":
             return "1"
         elif conf == "PBS_PUBLIC_HOST_NAME":
@@ -987,7 +991,7 @@ class PBSTestSuite(unittest.TestCase):
                 new_pbsconf["PBS_START_COMM"] = "1"
                 restart_comm = True
 
-            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_CP, and PBS_SERVER
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
                 restart_comm = True
@@ -998,6 +1002,11 @@ class PBSTestSuite(unittest.TestCase):
                 scppath = self.du.which(comm.hostname, "scp")
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
+                    restart_comm = True
+            if "PBS_CP" not in new_pbsconf:
+                cppath = self.du.which(comm.hostname, "cp")
+                if cppath != "cp":
+                    new_pbsconf["PBS_CP"] = cppath
                     restart_comm = True
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
@@ -1064,7 +1073,7 @@ class PBSTestSuite(unittest.TestCase):
                 new_pbsconf["PBS_START_MOM"] = "1"
                 restart_mom = True
 
-            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_CP, and PBS_SERVER
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
                 restart_mom = True
@@ -1075,6 +1084,11 @@ class PBSTestSuite(unittest.TestCase):
                 scppath = self.du.which(mom.hostname, "scp")
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
+                    restart_mom = True
+            if "PBS_CP" not in new_pbsconf:
+                cppath = self.du.which(mom.hostname, "cp")
+                if cppath != "cp":
+                    new_pbsconf["PBS_CP"] = cppath
                     restart_mom = True
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
@@ -1167,7 +1181,7 @@ class PBSTestSuite(unittest.TestCase):
                 # instead of making PTL start each of them one at a time
                 restart_pbs = True
 
-            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_SERVER
+            # Set PBS_CORE_LIMIT, PBS_SCP, PBS_CP, PBS_SERVER
             # and PBS_LOG_HIGHRES_TIMESTAMP
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
@@ -1179,6 +1193,11 @@ class PBSTestSuite(unittest.TestCase):
                 scppath = self.du.which(server.hostname, "scp")
                 if scppath != "scp":
                     new_pbsconf["PBS_SCP"] = scppath
+                    restart_pbs = True
+            if "PBS_CP" not in new_pbsconf:
+                cppath = self.du.which(server.hostname, "cp")
+                if cppath != "cp":
+                    new_pbsconf["PBS_CP"] = cppath
                     restart_pbs = True
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
@@ -1264,6 +1283,7 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_START_MOM": None,
             "PBS_CORE_LIMIT": None,
             "PBS_SCP": None,
+            "PBS_CP": None,
             "PBS_LOG_HIGHRES_TIMESTAMP": None
         }
 
