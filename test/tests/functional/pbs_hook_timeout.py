@@ -72,7 +72,7 @@ class TestHookTimeout(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostC)
 
-
+    @skipOnCpuSet
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for
