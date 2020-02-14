@@ -937,6 +937,7 @@ main(int argc, char *argv[])
 	int num_cores;
 	char *endp = NULL;
 	pthread_mutexattr_t attr;
+	int update_svr = 1;
 
 	/*the real deal or show version and exit?*/
 
@@ -1483,8 +1484,11 @@ main(int argc, char *argv[])
 		cmd = server_command(&runjobid);
 
 		if (connector >= 0) {
-			/* update sched object attributes on server */
-			update_svr_schedobj(connector, cmd, alarm_time);
+			if (update_svr) {
+				/* update sched object attributes on server */
+				update_svr_schedobj(connector, cmd, alarm_time);
+				update_svr = 0;
+			}
 
 			if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
 				log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");

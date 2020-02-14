@@ -1701,9 +1701,9 @@ mgr_sched_set(struct batch_request *preq)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
 		if (find_sched_from_sock(preq->rq_conn))
-			set_sched_default(psched, 0, 1);
+			set_sched_default(psched, 1);
 		else
-			set_sched_default(psched, 0, 0);
+			set_sched_default(psched, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
 
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
@@ -1771,7 +1771,7 @@ mgr_sched_unset(struct batch_request *preq)
 	else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 1, 0);
+		set_sched_default(psched, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
@@ -3645,7 +3645,7 @@ mgr_sched_create(struct batch_request *preq)
 	} else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 0, 0);
+		set_sched_default(psched, 0);
 		(void) sched_save_db(psched, SVR_SAVE_FULL);
 		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
 				preq->rq_user, preq->rq_host);

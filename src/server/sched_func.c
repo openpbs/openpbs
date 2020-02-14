@@ -886,7 +886,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
  *
   */
 void
-set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
+set_sched_default(pbs_sched *psched, int from_scheduler)
 {
 	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
@@ -899,7 +899,7 @@ set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_cycle_len]), &sched_attr_def[(int) SCHED_ATR_sched_cycle_len],
 			TOSTR(PBS_SCHED_CYCLE_LEN_DEFAULT));
 	}
-	if (!unset_flag && (psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
 		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_schediteration]), &sched_attr_def[(int) SCHED_ATR_schediteration],
 			TOSTR(PBS_SCHEDULE_CYCLE));
 	}
@@ -956,7 +956,7 @@ set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
 		flag = 1;
 	}
-	if (!unset_flag && !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
+	if ( !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_val.at_str = strdup(PBS_PREEMPT_SORT_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
 		flag = 1;

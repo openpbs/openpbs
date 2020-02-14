@@ -289,3 +289,33 @@ class TestSchedulerInterface(TestInterfaces):
                             runas=ROOT_USER)
         self.server.expect(SCHED, {'scheduler_iteration': 500},
                            id='default', max_attempts=10)
+
+    def test_scheduling_iteration(self):
+        """
+        Test scheduler_itration attribute after it is unset. It should go
+        to its default value which is 600. If this happens Server will not
+        kickoff infinite scheduling cycles. Also make sure that all other
+        scheduler attributes are set to its correct default values after
+        this change.
+        """
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {ATTR_schedit: 500},
+                            runas=ROOT_USER, id='TestCommonSched')
+        self.server.expect(SCHED, {ATTR_schedit: '500'},
+                           id='TestCommonSched', max_attempts=5)
+
+        self.server.manager(MGR_CMD_UNSET, SCHED, ATTR_schedit,
+                            id='TestCommonSched')
+
+        sched_priv = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_priv_TestCommonSched')
+        sched_logs = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_logs_TestCommonSched')
+        a = {'sched_port': 15051,
+             'sched_host': self.server.hostname,
+             'sched_priv': sched_priv,
+             'sched_log': sched_logs,
+             'scheduling': 'False',
+             'scheduler_iteration': 600,
+             'sched_cycle_length': '00:20:00'}
+        self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)
