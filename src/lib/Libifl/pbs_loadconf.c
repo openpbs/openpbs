@@ -694,6 +694,10 @@ __pbs_loadconf(int reload)
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = shorten_and_cleanup_path(gvalue);
 	}
+	if ((gvalue = getenv(PBS_CONF_CP)) != NULL) {
+		free(pbs_conf.cp_path);
+		pbs_conf.cp_path = shorten_and_cleanup_path(gvalue);
+	}
 	if ((gvalue = getenv(PBS_CONF_K5DCELOGIN)) != NULL) {
 		free(pbs_conf.k5dcelogin_path);
 		pbs_conf.k5dcelogin_path = shorten_and_cleanup_path(gvalue);
