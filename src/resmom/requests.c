@@ -3895,8 +3895,20 @@ post_chkpt(job *pjob, int  ev)
 		 **	obit is sent.
 		 */
 		if (abort) {
-			exiting_tasks = 1;
-			term_job(pjob);
+			mom_hook_input_t  *hook_input = NULL;
+
+			hook_input = (mom_hook_input_t *)malloc(sizeof(mom_hook_input_t));
+			if (hook_input) {
+				mom_hook_input_init(hook_input);
+				hook_input->pjob = pjob;
+			}
+			if ((hook_input != NULL) && (mom_process_hooks(HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input, NULL, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND)) {
+				pjob->ji_hook_running_bg_on = BG_CHECKPOINT_ABORT;
+			} else {
+				free(hook_input);
+				exiting_tasks = 1;
+				term_job(pjob);
+			}
 		} else if (pjob->ji_preq) {
 			/*
 			 **	If abort is not set and there is a request

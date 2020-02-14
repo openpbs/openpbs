@@ -2974,6 +2974,61 @@ event.accept()
                          'MemSocket assigned not match requested')
         self.logger.info('MemSocket check passed')
 
+    @requirements(num_moms=2)
+    def test_checkpoint_abort_preemption(self):
+        """
+        Test to make sure that when scheduler preempts a multi-node job with
+        checkpoint_abort, execjob_abort cgroups hook on secondary node
+        gets called.  The abort hook cleans up assigned cgroups, allowing
+        the higher priority job to run on the same node.
+        """
+        # Skip test if number of mom provided is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires two MoMs as input, " +
+                          "use -p moms=<mom1>:<mom2>")
+
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "express")
+
+        # have scheduler preempt lower priority jobs using 'checkpoint'
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # have moms do checkpoint_abort
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        a = {'resources_available.ncpus': 1}
+        for m in self.moms.values():
+            chk_file = m.add_checkpoint_abort_script(body=chk_script)
+            # ensure resulting checkpoint file has correct permission
+            self.du.chown(hostname=m.shortname, path=chk_file, uid=0, gid=0,
+                          sudo=True)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
+
+        # submit multi-node job
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Submit an express queue job requesting needing also 2 nodes
+        a[ATTR_q] = 'express'
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
+        for m in self.moms.values():
+            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
+                        regexp=True, existence=False)
+
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_default_config()

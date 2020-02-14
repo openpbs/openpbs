@@ -525,7 +525,8 @@ enum bg_hook_request {
 	BG_PBS_BATCH_DeleteJob,
 	BG_PBSE_SISCOMM,
 	BG_IM_DELETE_JOB_REPLY,
-	BG_IM_DELETE_JOB
+	BG_IM_DELETE_JOB,
+	BG_CHECKPOINT_ABORT
 };
 
 struct job {
