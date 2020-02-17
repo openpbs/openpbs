@@ -7,8 +7,8 @@ services:
         - ../../pbspro:/pbspro
         - ./:/src
         - ./logs:/logs
-      entrypoint: src/docker-entrypoint
-      env_file: .env
+      entrypoint: /src/docker-entrypoint
+      env_file: ./.env
       networks: 
         ci:
           aliases:

@@ -353,6 +353,9 @@ if __name__ == "__main__":
             write_to_file(env_file, "CONTAINER_PLATFORM="+val)
             if args.build != None:
                 delete_older_image(val)
+                if val.find("ci_pbs") != -1:
+                    val = val[:-7].replace('_', ':')
+                    write_to_file(env_file, "CONTAINER_PLATFORM="+val)
             ret = check_prerequisites()
             if ret == 1:
                 log_error(
