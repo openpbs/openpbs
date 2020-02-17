@@ -201,7 +201,7 @@ schedinit(int nthreads)
 	Py_IgnoreEnvironmentFlag = 1;
 
 	set_py_progname();
-	Py_Initialize();
+	Py_InitializeEx(0);
 
 	PyRun_SimpleString(
 		"_err =\"\"\n"
