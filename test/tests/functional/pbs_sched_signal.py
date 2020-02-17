@@ -45,4 +45,4 @@ class TestSchedSignal(TestFunctional):
         Test that pbs_sched handles sigpipe correctly
         """
         self.scheduler.signal('-PIPE')
-        self.scheduler.log_match("We've received a sigpipe: The server probably died")
+        self.scheduler.log_match("We've received a sigpipe:")
