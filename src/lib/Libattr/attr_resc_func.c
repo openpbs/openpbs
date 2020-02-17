@@ -447,3 +447,30 @@ parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p)
 	*resc_flag_p = resc_flag;
 	return 0;
 }
+
+/**
+ * @brief
+ * 		check the resource "resources_assigned" attribute is eligible
+ * 		to unset or not at this point of time.
+ *
+ * @param[in] resc - the resource structure
+ *
+ * @retval  1 if eligible to unset
+ * @retval  0 if not eligible to unset
+ */
+int
+check_resc_assign_val(resource *resc) {
+
+	if (resc->rs_value.at_type == ATR_TYPE_FLOAT) {
+		if (resc->rs_value.at_val.at_float <= 0)
+			return 1;
+	} else if (resc->rs_value.at_type == ATR_TYPE_LONG) {
+		if (resc->rs_value.at_val.at_long <= 0)
+			return 1;
+	} else if (resc->rs_value.at_type == ATR_TYPE_SIZE) {
+		if (resc->rs_value.at_val.at_size.atsv_num <= 0)
+			return 1;
+	}
+	return 0;
+}
+

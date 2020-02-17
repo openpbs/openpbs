@@ -505,10 +505,11 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 				}
 				rscdef->rs_set(&pr->rs_value, &rescp->rs_value, op);
 
-				/* if matching resources_available doesn't exist in queue then remove resources_assigned also if it's
-				 * value is equal or less than 0 (except PBS in-built resources i.e. ncpus, nodect etc).
+				/* Validate the "resources_assigned" value of resource and if it's value is equal or less than 0
+				 * then check it's corresponding "resources_available" attribute in queue if not found then
+				 * remove "resources_assigned" also(except PBS in-built resources i.e. ncpus, nodect etc).
 				 */
-				if (pr->rs_value.at_val.at_long <= 0) {
+				if (check_resc_assign_val(pr)) {
 					resource *avail_resc = NULL;
 					avail_resc = find_resc_entry(&pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAvail], rscdef);
 					if (!avail_resc) {

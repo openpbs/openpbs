@@ -36,7 +36,6 @@
 # trademark licensing policies.
 
 from tests.functional import *
-import time
 
 
 class TestQueRescUsage(TestFunctional):
@@ -51,9 +50,8 @@ class TestQueRescUsage(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, {
                             'resources_available.ncpus': 5},
                             self.mom.shortname)
-        a = {'queue_type': 'execution', 'enabled': True, 'started': True}
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='new_q')
 
+    @skipOnCpuSet
     def test_built_in_resc(self):
         """
         Test built-in resource and check the assigned resource value
@@ -61,64 +59,66 @@ class TestQueRescUsage(TestFunctional):
         """
         # Unset the resource after job completion
         a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id='new_q')
-        j_attr = {ATTR_queue: 'new_q', 'Resource_List.select': '1:ncpus=3'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        j_attr = {ATTR_queue: 'workq', 'Resource_List.select': '1:ncpus=3'}
         j = Job(TEST_USER, j_attr)
         j.set_sleep_time(20)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.ncpus', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.ncpus', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 3, self.err_msg)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.ncpus', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.ncpus', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 0, self.err_msg)
         self.server.manager(MGR_CMD_UNSET, QUEUE,
-                            'resources_available.ncpus', id='new_q')
-        q_status = self.server.status(QUEUE, id='new_q', extend='f')
+                            'resources_available.ncpus', id='workq')
+        q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
                          q_status[0].keys(), self.err_msg)
         self.assertNotIn('resources_assigned.ncpus',
                          q_status[0].keys(), self.err_msg)
 
         # Unset the resource before job completion
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id='new_q')
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
         j = Job(TEST_USER, j_attr)
         j.set_sleep_time(50)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.ncpus', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.ncpus', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 3, self.err_msg)
         self.server.manager(MGR_CMD_UNSET, QUEUE,
-                            'resources_available.ncpus', id='new_q')
-        q_status = self.server.status(QUEUE, id='new_q', extend='f')
+                            'resources_available.ncpus', id='workq')
+        q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
                          q_status[0].keys(), self.err_msg)
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 3, self.err_msg)
         self.server.delete(jid, wait=True)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.ncpus', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.ncpus', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 0, self.err_msg)
 
+    @skipOnCpuSet
     def test_custom_resc(self):
         """
         Test custom resource and check the assigned resource value
         after unset and shouldn't set to any negative value
         """
+
         # Unset the resource after job completion
         self.server.manager(MGR_CMD_CREATE, RSC, {
                             'type': 'long', 'flag': 'q'}, id='foo')
         self.scheduler.add_resource('foo')
         self.server.manager(MGR_CMD_SET, QUEUE, {
-                            'resources_available.foo': 11}, id='new_q')
-        j_attr = {ATTR_queue: 'new_q',
+                            'resources_available.foo': 11}, id='workq')
+        j_attr = {ATTR_queue: 'workq',
                   'Resource_List.select': '1:ncpus=1',
                   'Resource_List.foo': '5'}
         j = Job(TEST_USER, j_attr)
@@ -126,13 +126,13 @@ class TestQueRescUsage(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.foo', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.foo', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.foo']), 5, self.err_msg)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         self.server.manager(MGR_CMD_UNSET, QUEUE,
-                            'resources_available.foo', id='new_q')
-        q_status = self.server.status(QUEUE, id='new_q', extend='f')
+                            'resources_available.foo', id='workq')
+        q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.foo',
                          q_status[0].keys(), self.err_msg)
         self.assertNotIn(
@@ -142,8 +142,8 @@ class TestQueRescUsage(TestFunctional):
 
         # Unset the resource before job completion
         self.server.manager(MGR_CMD_SET, QUEUE, {
-                            'resources_available.foo': 11}, id='new_q')
-        j_attr = {ATTR_queue: 'new_q',
+                            'resources_available.foo': 11}, id='workq')
+        j_attr = {ATTR_queue: 'workq',
                   'Resource_List.select': '1:ncpus=1',
                   'Resource_List.foo': '5'}
         j = Job(TEST_USER, j_attr)
@@ -155,12 +155,12 @@ class TestQueRescUsage(TestFunctional):
         jid_1 = self.server.submit(j_1)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.foo', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.foo', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.foo']), 10, self.err_msg)
         self.server.manager(MGR_CMD_UNSET, QUEUE,
-                            'resources_available.foo', id='new_q')
-        q_status = self.server.status(QUEUE, id='new_q', extend='f')
+                            'resources_available.foo', id='workq')
+        q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.foo',
                          q_status[0].keys(), self.err_msg)
         self.assertEqual(
@@ -168,12 +168,12 @@ class TestQueRescUsage(TestFunctional):
         # delete one job only and check resource_assigned
         self.server.delete(jid, wait=True)
         q_status = self.server.status(
-            QUEUE, 'resources_assigned.foo', id='new_q', extend='f')
+            QUEUE, 'resources_assigned.foo', id='workq')
         self.assertEqual(
             int(q_status[0]['resources_assigned.foo']), 5, self.err_msg)
         # delete last job in queue
         self.server.delete(jid_1, wait=True)
-        q_status = self.server.status(QUEUE, id='new_q', extend='f')
+        q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn(
             'resources_assigned.foo',
             q_status[0].keys(),

@@ -133,6 +133,7 @@ extern int  parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p);
 extern int verify_resc_name(char *name);
 extern int verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, char *rescname, char *buf, int buflen, int autocorrect);
 extern void update_resc_sum(void);
+extern int check_resc_assign_val(resource *);
 
 /* Defines for entity limit tracking */
 #define PBS_ENTLIM_NOLIMIT  0	/* No entity limit has been set for this resc */

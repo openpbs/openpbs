@@ -1127,17 +1127,19 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 							if (i >= 0) {
 								if ((pattr+i)->at_flags & ATR_VFLAG_SET) {
 									resource *nresc;
-									/* if resources_assigned value is non-zero then don't unset it, otherwise it
-									 * would appear as negative in qstat once job is finished.
-									 */
-									if (((nresc = find_resc_entry((pattr+i), prsdef)) != NULL) && (nresc->rs_value.at_val.at_long == 0)) {
-										nresc->rs_defin->rs_free(&nresc->rs_value);
-										delete_link(&nresc->rs_link);
-										free(nresc);
-										nresc = (resource *)GET_NEXT((pattr+i)->at_val.at_list);
-										if (nresc == NULL)
-											(pattr+i)->at_flags &= ~ATR_VFLAG_SET;
-										(pattr+i)->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
+									if ((nresc = find_resc_entry((pattr + i), prsdef)) != NULL) {
+										/* if resources_assigned value is non-zero then don't unset it, otherwise it
+										 * would appear as negative in qstat once job is finished.
+										 */
+										if (check_resc_assign_val(nresc)) {
+											nresc->rs_defin->rs_free(&nresc->rs_value);
+											delete_link(&nresc->rs_link);
+											free(nresc);
+											nresc = (resource *)GET_NEXT((pattr+i)->at_val.at_list);
+											if (nresc == NULL)
+												(pattr+i)->at_flags &= ~ATR_VFLAG_SET;
+											(pattr+i)->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
+										}
 									}
 								}
 							}
@@ -1194,7 +1196,6 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 		indirect_target_check(0);
 	return (0);
 }
-
 
 /**
  * @brief
