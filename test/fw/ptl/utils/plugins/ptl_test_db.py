@@ -1622,6 +1622,7 @@ class JSONDb(DBType):
             self.__dbobj[_TESTRESULT_TN].seek(0)
             jdata = json.load(self.__dbobj[_TESTRESULT_TN])
         jsondata = self.res_data.get_json(data=data, prev_data=jdata)
+        self.__dbobj[_TESTRESULT_TN].truncate(0)
         self.__dbobj[_TESTRESULT_TN].seek(0)
         json.dump(jsondata, self.__dbobj[_TESTRESULT_TN], indent=2)
 
@@ -1637,6 +1638,7 @@ class JSONDb(DBType):
             df = json.load(self.__dbobj[_TESTRESULT_TN])
             dur = str(result.stop - result.start)
             df['test_summary']['test_duration'] = dur
+            self.__dbobj[_TESTRESULT_TN].truncate(0)
             self.__dbobj[_TESTRESULT_TN].seek(0)
             json.dump(df, self.__dbobj[_TESTRESULT_TN], indent=2)
         for v in self.__dbobj.values():
@@ -1657,7 +1659,7 @@ class PTLTestDb(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.__dbconn = None
-        self.__dbtype = 'JSONDb'
+        self.__dbtype = None
         self.__dbpath = None
         self.__dbaccess = None
         self.__dbmapping = {'file': FileDb,
