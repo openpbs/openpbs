@@ -1289,6 +1289,7 @@ class TestReservations(TestFunctional):
                            extend='x', attrop=PTL_AND, id=jid3)
 
     @requirements(num_moms=2)
+    @skipOnCpuSet
     def test_advance_resv_with_multinode_job_array(self):
         """
         Test multinode job array with advance reservation

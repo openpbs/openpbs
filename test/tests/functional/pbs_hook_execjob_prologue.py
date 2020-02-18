@@ -61,9 +61,7 @@ class TestPbsExecutePrologue(TestFunctional):
         self.hostB = self.momB.shortname
         self.hostC = self.momC.shortname
 
-        self.server.expect(VNODE, {'state=free': 3}, op=GE, max_attempts=10,
-                           interval=2)
-
+    @skipOnCpuSet
     def test_prologue_execute_on_all_moms(self):
         """
         Test to make sure execjob_prologue always get

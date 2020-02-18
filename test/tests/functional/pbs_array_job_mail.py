@@ -44,6 +44,7 @@ class Test_array_job_email(TestFunctional):
     This test suite is for testing arrayjob e-mailing (parent job and subjob)
     """
 
+    @skipOnCpuSet
     def test_emails(self):
         """
         Run arrayjob with -m jabe and test if the e-mails are received
