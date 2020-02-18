@@ -1234,9 +1234,28 @@ do_afslog(krb5_context context, eexec_job_info job_info)
  */
 void
 singleshot_afslog(struct krb_holder *ticket) {
+	char buf[LOG_BUF_SIZE * 2];
+	char errbuf[LOG_BUF_SIZE];
+
 	if (k_hasafs()) {
+		/* Go user */
+		if(seteuid(ticket->job_info->job_uid) < 0) {
+			strerror_r(errno, errbuf, sizeof(errbuf));
+			snprintf(buf, sizeof(buf), "Could not set uid using \"setuid()\": %s.", errbuf);
+			log_err(errno, __func__, buf);
+
+			return;
+		}
+
 		k_setpag();
 		do_afslog(ticket->context, ticket->job_info);
+
+		/* Go root */
+		if(seteuid(0) < 0) {
+			strerror_r(errno, errbuf, sizeof(errbuf));
+			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
+			log_err(errno, __func__, buf);
+		}
 	}
 }
 
@@ -1299,7 +1318,7 @@ wait_afslog() {
  */
 int
 start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
-	char buf[LOG_BUF_SIZE * 2] ;
+	char buf[LOG_BUF_SIZE * 2];
 	char errbuf[LOG_BUF_SIZE];
 	int ret = PBS_KRB5_OK;
 	char pid_file[MAXPATHLEN];
@@ -1369,7 +1388,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 		/* Go root on error */
 		if(seteuid(0) < 0) {
 			strerror_r(errno, errbuf, sizeof(errbuf));
-			snprintf(buf, sizeof(buf), "Could not reset root priviledges: %s.", errbuf);
+			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
 			log_err(errno, __func__, buf);
 
 			return PBS_KRB5_ERR_INTERNAL;
@@ -1385,7 +1404,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 		/* Go root in parent */
 		if(seteuid(0) < 0) {
 			strerror_r(errno ,errbuf, sizeof(errbuf));
-			snprintf(buf, sizeof(buf), "Could not reset root priviledges: %s.", errbuf);
+			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
 			log_err(errno, __func__, buf);
 
 			return PBS_KRB5_ERR_INTERNAL;
