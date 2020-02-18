@@ -3407,6 +3407,8 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	resource *job_resc_entry;
 	resource *resv_resc_entry;
 
+	int walltime_copied = 0;
+
 	pjob = find_job(jobid);
 
 	if (pjob == NULL)
@@ -3437,73 +3439,34 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-	resc_def = find_resc_def(svr_resc_def, WALLTIME, svr_resc_size);
-	if (resc_def != NULL) {
-		job_resc_entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_def);
+	job_resc_entry = (resource *)GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+	while (job_resc_entry) {
+		resc_def = job_resc_entry->rs_defin;
 		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
 		if (resv_resc_entry == NULL) {
 			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
 				return PBSE_SYSTEM;
 		}
-		if (job_resc_entry != NULL) {
-			if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET)
-				(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
-		} else {
+		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
+			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
+		}
+		if (!strcmp(resc_def->rs_name, WALLTIME))
+			walltime_copied = 1;
+		job_resc_entry = (resource *)GET_NEXT(job_resc_entry->rs_link);
+	}
+
+	if (!walltime_copied) {
+		resc_def = find_resc_def(svr_resc_def, WALLTIME, svr_resc_size);
+		if (resc_def != NULL) {
+			resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
+			if (resv_resc_entry == NULL) {
+				if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
+					return PBSE_SYSTEM;
+			}
 			temp.at_flags = ATR_VFLAG_SET;
 			temp.at_type = ATR_TYPE_LONG;
 			temp.at_val.at_long = RESV_INFINITY;
 			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &temp, SET);
-		}
-	}
-	resc_def = find_resc_def(svr_resc_def, "select", svr_resc_size);
-	if (resc_def != NULL) {
-		job_resc_entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_def);
-		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
-		if (resv_resc_entry == NULL) {
-			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
-				return PBSE_SYSTEM;
-		}
-		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
-			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
-		}
-	}
-
-	resc_def = find_resc_def(svr_resc_def, "place", svr_resc_size);
-	if (resc_def != NULL) {
-		job_resc_entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_def);
-		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
-		if (resv_resc_entry == NULL) {
-			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
-				return PBSE_SYSTEM;
-		}
-		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
-			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
-		}
-	}
-
-	resc_def = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-	if (resc_def != NULL) {
-		job_resc_entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_def);
-		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
-		if (resv_resc_entry == NULL) {
-			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
-				return PBSE_SYSTEM;
-		}
-		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
-			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
-		}
-	}
-
-	resc_def = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
-	if (resc_def != NULL) {
-		job_resc_entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_def);
-		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
-		if (resv_resc_entry == NULL) {
-			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
-				return PBSE_SYSTEM;
-		}
-		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
-			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
 		}
 	}
 
