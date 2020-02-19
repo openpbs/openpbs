@@ -610,7 +610,10 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	 * to job state or substate.
 	 */
 	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED)
-		return (0);
+		return 0;
+
+	if (pjob->ji_qs.ji_state == newstate && pjob->ji_qs.ji_substate == newsubstate)
+		goto jobsave;
 
 	/*
 	 * if its is a new job, then don't update counts, svr_enquejob() will
@@ -712,6 +715,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 		}
 	}
 
+jobsave:
 	if (pjob->ji_modified)
 		return (job_save(pjob, SAVEJOB_FULL));
 	else if(changed)
