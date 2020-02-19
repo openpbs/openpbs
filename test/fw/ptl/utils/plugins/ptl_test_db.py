@@ -1615,16 +1615,19 @@ class JSONDb(DBType):
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-        jdata = None
         if _TESTRESULT_TN not in self.__dbobj.keys():
-            self.__dbobj[_TESTRESULT_TN] = open(self.dbpath, 'w+')
+            self.__dbobj[_TESTRESULT_TN] = self.dbpath
+            jdata = None
+            dbobj = self.__dbobj[_TESTRESULT_TN]
         else:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            jdata = json.load(self.__dbobj[_TESTRESULT_TN])
+            dbobj = self.__dbobj[_TESTRESULT_TN]
+            with open(dbobj, 'r') as fd:
+                jdata = json.load(fd)
         jsondata = self.res_data.get_json(data=data, prev_data=jdata)
-        self.__dbobj[_TESTRESULT_TN].truncate(0)
-        self.__dbobj[_TESTRESULT_TN].seek(0)
-        json.dump(jsondata, self.__dbobj[_TESTRESULT_TN], indent=2)
+        with open(dbobj, 'w') as fd:
+            json.dump(jsondata, fd, indent=2)
+            fd.flush()
+            fd.write("\n")
 
     def write(self, data, logfile=None):
         if len(data) == 0:
@@ -1634,18 +1637,15 @@ class JSONDb(DBType):
 
     def close(self, result=None):
         if result is not None:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            df = json.load(self.__dbobj[_TESTRESULT_TN])
+            dbobj = self.__dbobj[_TESTRESULT_TN]
+            with open(dbobj, 'r') as fd:
+                jsondata = json.load(fd)
             dur = str(result.stop - result.start)
-            df['test_summary']['test_duration'] = dur
-            self.__dbobj[_TESTRESULT_TN].truncate(0)
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            json.dump(df, self.__dbobj[_TESTRESULT_TN], indent=2)
-        for v in self.__dbobj.values():
-            v.write('\n')
-            v.flush()
-            v.close()
-
+            jsondata['test_summary']['test_duration'] = dur
+            with open(dbobj, 'w') as fd:
+                json.dump(jsondata, fd, indent=2)
+                fd.flush()
+                fd.write("\n")
 
 class PTLTestDb(Plugin):
 
