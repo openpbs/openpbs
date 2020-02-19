@@ -1647,6 +1647,7 @@ class JSONDb(DBType):
                 fd.flush()
                 fd.write("\n")
 
+
 class PTLTestDb(Plugin):
 
     """
