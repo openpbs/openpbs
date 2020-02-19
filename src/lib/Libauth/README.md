@@ -80,8 +80,8 @@
 
  - **Cleanup:** Returned user, host, and realm should be freed using free() when no more required, as it will be allocated heap memory.
 
-# pbs_auth_do_handshake
- - **Synopsis:** int *pbs_auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
+# pbs_auth_process_handshake_data
+ - **Synopsis:** int pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
  - **Description:** Process incoming handshake data and do the handshake, and if required generate handshake data which will be sent to another party. If there is no incoming data then initiate a handshake and generate initial handshake data to be sent to the authentication server.
  - **Arguments:**
 

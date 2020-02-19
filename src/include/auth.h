@@ -69,10 +69,10 @@ extern void (*pbs_auth_destroy_ctx)(void *ctx);
 extern int (*pbs_auth_get_userinfo)(void *ctx, char **user, char **host, char **realm);
 
 /*
- * the function pointer to do auth handshake and authenticate user/connection
+ * the function pointer to which will process auth handshake data and authenticate user/connection
  * MUST exist in auth lib
  */
-extern int (*pbs_auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done);
+extern int (*pbs_auth_process_handshake_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done);
 
 /*
  * the function pointer to encrypt data

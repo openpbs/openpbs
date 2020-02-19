@@ -338,7 +338,7 @@ pbs_auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
 }
 
 /** @brief
- *	pbs_auth_do_handshake - do Munge auth handshake
+ *	pbs_auth_process_handshake_data - do Munge auth handshake
  *
  * @param[in] ctx - pointer to external auth context
  * @param[in] data_in - received auth token data (if any)
@@ -352,7 +352,7 @@ pbs_auth_get_userinfo(void *ctx, char **user, char **host, char **realm)
  * @retval	!0 on error
  */
 int
-pbs_auth_do_handshake(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
+pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
 {
 	int rc = -1;
 

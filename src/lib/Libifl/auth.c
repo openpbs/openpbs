@@ -79,10 +79,10 @@ void (*pbs_auth_destroy_ctx)(void *ctx) = NULL;
 int (*pbs_auth_get_userinfo)(void *ctx, char **user, char **host, char **realm) = NULL;
 
 /*
- * the function pointer to do auth handshake and authenticate user/connection
+ * the function pointer to which will process auth handshake data and authenticate user/connection
  * MUST exist in auth lib
  */
-int (*pbs_auth_do_handshake)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done) = NULL;
+int (*pbs_auth_process_handshake_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done) = NULL;
 
 /*
  * the function pointer to encrypt data
@@ -296,7 +296,7 @@ engage_client_auth(int fd, char *hostname, char *ebuf, size_t ebufsz)
 	}
 
 	do {
-		if (pbs_auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
 			snprintf(ebuf, ebufsz, "Auth handshake failed");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -399,8 +399,8 @@ engage_server_auth(int fd, char *hostname, char *clienthost, char *ebuf, size_t 
 		return -1;
 	}
 
-	if (pbs_auth_do_handshake(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
-		snprintf(ebuf, ebufsz, "pbs_auth_do_handshake failure");
+	if (pbs_auth_process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		snprintf(ebuf, ebufsz, "pbs_auth_process_handshake_data failure");
 		pbs_errno = PBSE_SYSTEM;
 		free(data_in);
 		return -1;
@@ -503,7 +503,7 @@ load_auth_lib(void)
 		{ "pbs_auth_create_ctx", (void **)&pbs_auth_create_ctx, 1 },
 		{ "pbs_auth_destroy_ctx", (void **)&pbs_auth_destroy_ctx, 1 },
 		{ "pbs_auth_get_userinfo", (void **)&pbs_auth_get_userinfo, 1 },
-		{ "pbs_auth_do_handshake", (void **)&pbs_auth_do_handshake, 1 },
+		{ "pbs_auth_process_handshake_data", (void **)&pbs_auth_process_handshake_data, 1 },
 		/*
 		 * There are possiblity that auth lib only support authentication
 		 * but not encrypt/decrypt of data (for example munge auth lib)
@@ -565,7 +565,7 @@ unload_auth_lib(void)
 	pbs_auth_create_ctx = NULL;
 	pbs_auth_destroy_ctx = NULL;
 	pbs_auth_get_userinfo = NULL;
-	pbs_auth_do_handshake = NULL;
+	pbs_auth_process_handshake_data = NULL;
 	pbs_auth_encrypt_data = NULL;
 	pbs_auth_decrypt_data = NULL;
 }

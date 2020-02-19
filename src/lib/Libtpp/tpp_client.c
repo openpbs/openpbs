@@ -574,7 +574,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		}
 		tpp_transport_set_conn_extra(tfd, authdata);
 
-		if (pbs_auth_do_handshake(authdata->authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_process_handshake_data(authdata->authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
 			return -1;
 		}
 
@@ -4364,7 +4364,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		}
 		memcpy(data_in, (char *)data + sizeof(tpp_auth_pkt_hdr_t), len_in);
 
-		if (pbs_auth_do_handshake(authdata->authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (pbs_auth_process_handshake_data(authdata->authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
 			free(data_in);
 			return -1;
 		}
