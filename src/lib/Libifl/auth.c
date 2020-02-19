@@ -518,7 +518,11 @@ load_auth_lib(void)
 		return 0;
 
 	if (libloc[0] == '\0') {
+#ifndef WIN32
 		snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.so", pbs_conf.pbs_exec_path, pbs_conf.auth_method);
+#else
+		snprintf(libloc, MAXPATHLEN, "%slib/libauth_%s.dll", pbs_conf.pbs_exec_path, pbs_conf.auth_method);
+#endif
 		libloc[MAXPATHLEN] = '\0';
 	}
 
