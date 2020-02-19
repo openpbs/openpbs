@@ -2054,7 +2054,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 			int ind = bjob->nspec_arr[i]->ninfo->node_ind;
 			add_te_list(&(bjob->nspec_arr[i]->ninfo->node_events), te_start);
 
-			if (ind != -1) {
+			if (ind != -1 && sinfo->unordered_nodes[ind]->bucket_ind != -1) {
 				node_bucket *bkt;
 
 				bkt = sinfo->buckets[sinfo->unordered_nodes[ind]->bucket_ind];
