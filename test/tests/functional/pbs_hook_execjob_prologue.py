@@ -61,6 +61,9 @@ class TestPbsExecutePrologue(TestFunctional):
         self.hostB = self.momB.shortname
         self.hostC = self.momC.shortname
 
+        for mom in self.moms.values():
+            self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
+
     @skipOnCpuSet
     def test_prologue_execute_on_all_moms(self):
         """
