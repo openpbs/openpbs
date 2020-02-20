@@ -150,7 +150,7 @@ def check_for_existing_image():
     if val != '':
         val = val.split('=')[1]
         if val[-7:] == '_ci_pbs':
-            val = val[:-7][::-1].replace('_',':',1)[::-1]
+            val = val[:-7][::-1].replace('_', ':', 1)[::-1]
     else:
         val = 'centos:7'
     search_str = val.replace(":", "_")
@@ -356,7 +356,7 @@ if __name__ == "__main__":
                 if val[-7:] == '_ci_pbs':
                     # remove '_ci_pbs' from string and replace '_' to ':'
                     # this will make it an image recognized by docker hub
-                    val = val[:-7][::-1].replace('_',':',1)[::-1]
+                    val = val[:-7][::-1].replace('_', ':', 1)[::-1]
                     write_to_file(env_file, "CONTAINER_PLATFORM="+val)
             ret = check_prerequisites()
             if ret == 1:
