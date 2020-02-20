@@ -57,7 +57,6 @@ class TestSTF(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
-    @skipOnCpuSet
     def set_primetime(self, ptime_start, ptime_end):
         """
         Set primttime to start at ptime_start and end at ptime_end.
