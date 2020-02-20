@@ -469,8 +469,8 @@ free_job_work_tasks(job *pj)
 			tbr = (struct batch_request *)pwt->wt_parm1;
 			if (tbr != NULL) {
 				/* Check if the reply is for scheduler
-					* If so, then reject the request.
-					*/
+				 * If so, then reject the request.
+				 */
 				if ((tbr->rq_orgconn != -1) &&
 					(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
 					tbr->rq_conn = tbr->rq_orgconn;
@@ -997,16 +997,16 @@ job_purge(job *pjob)
 	}
 
 	if (pjob->ji_resvp) {
-		int		rc;
+		int rc;
 
 		if (pjob->ji_resvp->ri_qs.ri_type == RESV_JOB_OBJECT) {
 
-			/*reservation structure should not point to a
-			 *job structure that is going away
+			/* reservation structure should not point to a
+			 * job structure that is going away
 			 */
 			pjob->ji_resvp->ri_jbp = 0;
 
-			/*relinquish any nodes belonging to this reservation-job*/
+			/* relinquish any nodes belonging to this reservation-job */
 
 			if (pjob->ji_resvp->ri_qs.ri_svrflags & RESV_SVFLG_HasNodes)
 				free_resvNodes(pjob->ji_resvp);
@@ -1034,8 +1034,8 @@ job_purge(job *pjob)
 	}
 
 	/* Clearing purge job info from svr_newjobs list */
-        if(pjob == (job *)GET_NEXT(svr_newjobs))
-                delete_link(&pjob->ji_alljobs);
+	if (pjob == (job *) GET_NEXT(svr_newjobs))
+		delete_link(&pjob->ji_alljobs);
 
 	job_free(pjob);
 
@@ -1780,7 +1780,7 @@ resv_purge(resc_resv *presv)
 		return;
 	}
 
-	/*reservation no longer has jobs or a supporting queue*/
+	/* reservation no longer has jobs or a supporting queue */
 
 	if (presv->ri_giveback) {
 		/*ok, resources were actually assigned to this reservation
@@ -1791,12 +1791,15 @@ resv_purge(resc_resv *presv)
 		presv->ri_giveback = 0;
 	}
 
-	/*Remove reservation's link element from whichever of the server's
-	 *global lists (svr_allresvs or svr_newresvs) has it
+	/* Remove reservation's link element from whichever of the server's
+	 * global lists (svr_allresvs or svr_newresvs) has it
 	 */
 	delete_link(&presv->ri_allresvs);
 
-	/*Release any nodes that were associated to this reservation*/
+	/* Delete any lingering tasks pointing to this reservation */
+	delete_task_by_parm1_func(presv, NULL, DELETE_ALL);
+
+	/* Release any nodes that were associated to this reservation */
 	free_resvNodes(presv);
 	set_scheduler_flag(SCH_SCHEDULE_TERM, dflt_scheduler);
 
@@ -1806,9 +1809,7 @@ resv_purge(resc_resv *presv)
 	if (pbs_db_delete_obj(svr_db_conn, &obj) == -1)
 		log_err(errno, __func__, msg_purgeResvDb);
 
-	/*Free resc_resv struct, any hanging substructs, any attached
-	 *work_task structs
-	 */
+	/* Free resc_resv struct, any hanging substructs, any attached *work_task structs */
 	resv_free(presv);
 	return;
 }

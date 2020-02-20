@@ -42,9 +42,9 @@
  * 	req_rescq.c	-	Functions relating to the Resource Query Batch Request.
  *
  * Included functions are:
- *	cnvrt_delete()
+ *	resv_idle_delete()
  *	cnvrt_qmove()
- *	cnvrt_timer_init()
+ *	resv_timer_init()
  *	assign_resv_resc()
  *	req_confirmresv()
  *
@@ -95,45 +95,69 @@ extern time_t  time_now;
 extern int cnvrt_local_move(job *, struct batch_request *);
 
 /**
- * @brief
- * 		cnvrt_delete - delete reservation when no reservation job for 10 min
- *
- * @param[in,out]	pwt	-	work task structure which contains the reservation
+ * @brief work task to delete reservation if there are no jobs in the reservation queue
+ * 
+ * @param[in] ptask - work task
+ * 
  */
 void
-cnvrt_delete(struct work_task *ptask)
+resv_idle_delete(struct work_task *ptask)
 {
-	int flag = FALSE;
-	resc_resv *ptmp, *presv;
-	struct work_task *wt;
+	resc_resv *presv;
+	int num_jobs;
 
-	ptmp = (resc_resv *)ptask->wt_parm1;
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	if (presv == NULL || ptmp == NULL) return;
+	presv = ptask->wt_parm1;
 
-	while (presv) {
-		if ((presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) &&
-			(ptmp->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL)) {
-			if (strcmp(presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str,
-				ptmp->ri_wattr[(int)RESV_ATR_convert].at_val.at_str) == 0) {
-				flag = TRUE;
-				break;
-			}
-		}
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-	}
-
-	if (presv == NULL && flag == FALSE) return;
-
-	if (flag == TRUE  &&  ptmp->ri_qp->qu_numjobs == 0) {
-		gen_future_deleteResv(ptmp, 10);
+	if (presv == NULL)
 		return;
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] + 
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
 	}
 
-	wt = set_task(WORK_Timed, (time_now + 600), cnvrt_delete, ptmp);
-	append_link(&presv->ri_svrtask, &wt->wt_linkobj, wt);
+	if (num_jobs == 0) {
+		log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_DEBUG, presv->ri_qs.ri_resvID, 
+			"Deleting reservation after being idle for %d seconds",
+			presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long);
+		gen_future_deleteResv(presv, 1);
+	}
 }
 
+/**
+ * @brief if there are no jobs in the reservation queue, set a timer to delete the reservation
+ *
+ * @param[in]	presv - pointer to reservation
+ */
+void
+set_idle_delete_task(resc_resv *presv)
+{
+	struct work_task *wt;
+	long retry_time;
+	int num_jobs;
+
+	if (presv == NULL) 
+		return;
+
+	if (!(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET))
+		return;
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
+	}
+
+	if (num_jobs == 0 && presv->ri_qs.ri_state == RESV_RUNNING) {
+		delete_task_by_parm1_func(presv, resv_idle_delete, DELETE_ONE); /* Delete the previous task if it exists */
+		retry_time = time_now + presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long;
+		if (retry_time < presv->ri_qs.ri_etime) {
+			wt = set_task(WORK_Timed, retry_time, resv_idle_delete, presv);
+			append_link(&presv->ri_svrtask, &wt->wt_linkobj, wt);
+		}
+	}
+}
 
 /**
  * @brief
@@ -148,11 +172,10 @@ cnvrt_delete(struct work_task *ptask)
  *
  */
 int
-cnvrt_qmove(resc_resv  *presv)
+cnvrt_qmove(resc_resv *presv)
 {
 	int rc;
 	struct job *pjob;
-	struct work_task wtnew;
 	char *q_job_id, *at;
 	struct batch_request *reqcnvrt;
 
@@ -187,8 +210,6 @@ cnvrt_qmove(resc_resv  *presv)
 
 	snprintf(pjob->ji_qs.ji_destin, PBS_MAXROUTEDEST, "%s", reqcnvrt->rq_ind.rq_move.rq_destin);
 	rc = cnvrt_local_move(pjob, reqcnvrt);
-	wtnew.wt_parm1 = (void *)presv;
-	cnvrt_delete(&wtnew);
 
 	if (rc != 0) return (-1);
 	return (0);
@@ -197,18 +218,16 @@ cnvrt_qmove(resc_resv  *presv)
 
 /**
  * @brief
- * 		cnvrt_timer_init - initialize timed task for removing empty reservation
+ * 		resv_timer_init - initialize timed task for removing empty reservation
  */
 void
-cnvrt_timer_init()
+resv_timer_init(void)
 {
 	resc_resv *presv;
-	struct work_task wtnew;
 	presv = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (presv) {
-		if (presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) {
-			wtnew.wt_parm1 = (void *)presv;
-			cnvrt_delete(&wtnew);
+		if (presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET) {
+			set_idle_delete_task(presv);
 		}
 		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
 	}
@@ -465,7 +484,7 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 		&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
-		/*update resc_resv object's RESV_ATR_resv_nodes attribute*/
+		/* update resc_resv object's RESV_ATR_resv_nodes attribute */
 
 		resv_attr_def[(int)RESV_ATR_resv_nodes].at_free(
 			&presv->ri_wattr[(int)RESV_ATR_resv_nodes]);
@@ -801,15 +820,15 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (presv->ri_brp) {
 		presv = find_resv(presv->ri_qs.ri_resvID);
-		if (presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) {
+		if (presv->ri_wattr[(int) RESV_ATR_convert].at_val.at_str != NULL) {
 			rc = cnvrt_qmove(presv);
 			if (rc != 0) {
-				snprintf(buf, sizeof(buf), "%.240s FAILED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s FAILED", presv->ri_qs.ri_resvID);
 			} else {
-				snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 			}
 		} else {
-			snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+			snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 		}
 
 		rc = reply_text(presv->ri_brp, PBSE_NONE, buf);

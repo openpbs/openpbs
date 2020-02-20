@@ -2667,6 +2667,12 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_wattr[(int)RESV_ATR_mtime].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
+	if (presv->ri_wattr[(int) RESV_ATR_convert].at_flags & ATR_VFLAG_SET &&
+	    !(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET)) {
+		presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long = RESV_ASAP_IDLE_TIME;
+		presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+	}
+
 	presv->ri_alter_stime = 0;
 	presv->ri_alter_etime = 0;
 	presv->ri_alter_flags = 0;
@@ -2763,14 +2769,14 @@ req_resvSub(struct batch_request *preq)
 		snprintf(log_buffer, sizeof(log_buffer), "New reservation submitted start=%s end=%s", tbuf1, tbuf2);
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer), "New reservation submitted start=%s end=%s "
-                                    "recurrence_rrule=%s timezone=%s",
+				    "recurrence_rrule=%s timezone=%s",
 				    tbuf1, tbuf2,
 				    presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
 				    presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str);
 	}
 	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 		presv->ri_qs.ri_resvID, log_buffer);
-
+		
 	/* link reservation into server's reservation list
 	 * and let the scheduler know that something new
 	 * is available for consideration

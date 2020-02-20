@@ -37,6 +37,7 @@
 
 import datetime
 import json
+import copy
 import logging
 import os
 import platform
@@ -1608,22 +1609,18 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
-        self.__dbobj = {}
+        self.jdata = None
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-        jdata = None
-        if _TESTRESULT_TN not in self.__dbobj.keys():
-            self.__dbobj[_TESTRESULT_TN] = open(self.dbpath, 'w+')
-        else:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            jdata = json.load(self.__dbobj[_TESTRESULT_TN])
-        jsondata = self.res_data.get_json(data=data, prev_data=jdata)
-        self.__dbobj[_TESTRESULT_TN].seek(0)
-        json.dump(jsondata, self.__dbobj[_TESTRESULT_TN], indent=2)
+        prev_data = copy.deepcopy(self.jdata)
+        self.jdata = self.res_data.get_json(data=data, prev_data=prev_data)
+        with open(self.dbpath, 'w') as fd:
+            json.dump(self.jdata, fd, indent=2)
+            fd.write("\n")
 
     def write(self, data, logfile=None):
         if len(data) == 0:
@@ -1633,16 +1630,11 @@ class JSONDb(DBType):
 
     def close(self, result=None):
         if result is not None:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            df = json.load(self.__dbobj[_TESTRESULT_TN])
             dur = str(result.stop - result.start)
-            df['test_summary']['test_duration'] = dur
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            json.dump(df, self.__dbobj[_TESTRESULT_TN], indent=2)
-        for v in self.__dbobj.values():
-            v.write('\n')
-            v.flush()
-            v.close()
+            self.jdata['test_summary']['test_duration'] = dur
+            with open(self.dbpath, 'w') as fd:
+                json.dump(self.jdata, fd, indent=2)
+                fd.write("\n")
 
 
 class PTLTestDb(Plugin):
@@ -1657,7 +1649,7 @@ class PTLTestDb(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.__dbconn = None
-        self.__dbtype = 'JSONDb'
+        self.__dbtype = None
         self.__dbpath = None
         self.__dbaccess = None
         self.__dbmapping = {'file': FileDb,

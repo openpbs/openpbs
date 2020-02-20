@@ -72,6 +72,7 @@ api_to_cli = {
     ATTR_resv_duration: 'D',
     ATTR_resv_state: 'reserve_state',
     ATTR_resv_substate: 'reserve_substate',
+    ATTR_del_idle_time: 'W delete_idle_time=',
     ATTR_auth_u: 'U',
     ATTR_auth_g: 'G',
     ATTR_auth_h: 'Authorized_Hosts',

@@ -798,11 +798,11 @@ req_modifyReservation(struct batch_request *preq)
 
 		resc_access_perm = resc_access_perm_save; /* reset */
 		if (psatl->al_flags & ATR_VFLAG_HOOK) {
-			resc_access_perm = ATR_DFLAG_USWR | \
-					    ATR_DFLAG_OPWR | \
-					    ATR_DFLAG_MGWR | \
-				            ATR_DFLAG_SvWR | \
-					    ATR_DFLAG_Creat;
+			resc_access_perm = ATR_DFLAG_USWR |
+					   ATR_DFLAG_OPWR |
+					   ATR_DFLAG_MGWR |
+					   ATR_DFLAG_SvWR |
+					   ATR_DFLAG_Creat;
 		}
 		if ((pdef->at_flags & resc_access_perm) == 0) {
 			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);

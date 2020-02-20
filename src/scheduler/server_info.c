@@ -1804,7 +1804,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 	 *      double count them
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
-		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 			req = resresv->job->resreq_rel;
 		else
 			req = resresv->resreq;
@@ -1953,8 +1953,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 */
 	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
 
-		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') &&
-		    (policy->rel_on_susp != NULL))
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 			req = resresv->job->resreq_rel;
 		else
 			req = resresv->resreq;

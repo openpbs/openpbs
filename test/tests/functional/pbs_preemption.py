@@ -676,3 +676,34 @@ exit 3
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[1])
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[3])
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[4])
+
+    @skipOnCpuSet
+    def test_preempt_requeue_resc(self):
+        """
+        Test that scheduler will preempt jobs for resources with rrtros
+        set for other resources
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'type': 'long', 'flag': 'q'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='foo')
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
+
+        a = {'resources_available.foo': 2,
+             ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.scheduler.add_resource('foo')
+
+        a = {'Resource_List.foo': 1}
+        jid1 = self.server.submit(Job(attrs=a))
+        jid2 = self.server.submit(Job(attrs=a))
+
+        self.server.expect(JOB, {'job_state=R': 2})
+        a = {'Resource_List.foo': 1,
+             'queue': 'expressq'}
+        hjid = self.server.submit(Job(attrs=a))
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+        self.server.expect(JOB, {'job_state=Q': 1})

@@ -151,8 +151,8 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	if ((queues = pbs_statque(pbs_sd, NULL, NULL, NULL)) == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
-			errmsg = "";	
-	log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_QUEUE, LOG_NOTICE, "queue_info", 
+			errmsg = "";
+	log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_QUEUE, LOG_NOTICE, "queue_info",
 			"Statque failed: %s (%d)", errmsg, pbs_errno);
 		free_schd_error(sch_err);
 		return NULL;
@@ -241,7 +241,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
 							 * failover reasons (see bz3002)
 							 */
-							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO, qinfo->name, 
+							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO, qinfo->name,
 								"Can not connect to peer %s", conf.peer_queues[j].remote_server);
 							conf.peer_queues[j].peer_sd = -1;
 							peer_on = 0; /* do not proceed */
@@ -666,7 +666,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 			multi_node_sort);
 
 
-	if ((job_state != NULL) && (*job_state == 'S'))
+	if ((job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 		req = resresv->job->resreq_rel;
 	else
 		req = resresv->resreq;
@@ -746,7 +746,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	if (qinfo == NULL || resresv == NULL)
 		return;
 
-	if (resresv->is_job && resresv->job ==NULL)
+	if (resresv->is_job && resresv->job == NULL)
 		return;
 
 	if (resresv->is_job) {
@@ -760,7 +760,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 		state_count_add(&(qinfo->sc), job_state, 1);
 	}
 
-	if ((job_state != NULL) && (*job_state == 'S') && (resresv->server->policy->rel_on_susp != NULL))
+	if ((job_state != NULL) && (*job_state == 'S') && (resresv->job->resreq_rel != NULL))
 		req = resresv->job->resreq_rel;
 	else
 		req = resresv->resreq;
@@ -772,7 +772,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 			res->assigned -= req->amount;
 
 			if (res->assigned < 0) {
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, 
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 					"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 				res->assigned = 0;
 			}

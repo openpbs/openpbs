@@ -244,15 +244,6 @@ node_sort_key: "sort_priority HIGH"	ALL
 
 provision_policy: "aggressive_provision"
 
-#
-# sort_queues 
-#	sort queues by the priority attribute
-#
-#	PRIME OPTION
-#
-
-sort_queues:	true	ALL
-
 #### SMP JOB OPTIONS: 
 
 #

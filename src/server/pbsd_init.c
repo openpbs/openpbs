@@ -615,7 +615,7 @@ pbsd_init(int type)
 			/* No Schedulers found in DB */
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-			set_sched_default(dflt_scheduler, 0, 0);
+			set_sched_default(dflt_scheduler, 0);
 			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		} else {
 			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
@@ -662,7 +662,7 @@ pbsd_init(int type)
 		}
 		svr_save_db(&server, SVR_SAVE_NEW);
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-		set_sched_default(dflt_scheduler, 0, 0);
+		set_sched_default(dflt_scheduler, 0);
 		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 	}
 
@@ -951,15 +951,15 @@ pbsd_init(int type)
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		return (-1);
 
-	/* If we have trial licenses, we would need to immediately   */
-	/* license the jobs under svr_unlicensedjobs list.           */
-	/* If we have a license server, then                         */
-	/* relicense_svr_unlicensedjobs() is periodically called by  */
-	/* return_licenses() in checkkey.c.                          */
+	/* If we have trial licenses, we would need to immediately
+	 * license the jobs under svr_unlicensedjobs list
+	 * If we have a license server, then
+	 * relicense_svr_unlicensedjobs() is periodically called by
+	 * return_licenses() in checkkey.c.
+	 */
 
 	if( !(server.sv_attr[SRV_ATR_pbs_license_info].at_flags & ATR_VFLAG_SET) ||
-	(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
-                                                               == '\0') ) {
+	(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] == '\0') ) {
 		relicense_svr_unlicensedjobs();
 	}
 
@@ -972,7 +972,7 @@ pbsd_init(int type)
 	remove_deleted_resvs();
 	add_resv_beginEnd_tasks();
 
-	cnvrt_timer_init(); /* !! */
+	resv_timer_init();
 
 	/* Put us back in the Server's Private directory */
 

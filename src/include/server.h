@@ -282,7 +282,7 @@ extern int			sched_save_db(pbs_sched *, int mode);
 extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);
-extern void			set_sched_default(pbs_sched *, int unset_flag, int from_scheduler);
+extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			set_attr_svr(attribute *pattr, attribute_def *pdef, char *value);
 extern int			license_sanity_check(void);
 extern void			memory_debug_log(struct work_task *ptask);

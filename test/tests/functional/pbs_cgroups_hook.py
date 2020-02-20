@@ -251,22 +251,9 @@ if sleeptime > 0:
             'let i=0; while [ $i -lt 500000 ]; do let i+=1 ; done\n' \
             'python - 90 5 30 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script
-        self.cpuset_mem_script = """#!/bin/bash
-#PBS -joe
-echo $PBS_JOBID
-cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
-             sort | tail -1`
-if [ -z "$cpuset_base" ]; then
-    echo "Cpuset subsystem not mounted."
-    exit 1
-fi
-echo "cpuset_base is $cpuset_base"
-if [ -d "$cpuset_base/pbspro" ]; then
-    base="$cpuset_base/pbspro/$PBS_JOBID"
-else
-    jobnum=${PBS_JOBID%%.*}
-    base="$cpuset_base/pbspro.slice/pbspro-${jobnum}.*.slice"
-fi
+
+        self.cpuset_mem_script = """
+base='%s'
 echo "cgroups base path for cpuset is $base"
 if [ -d $base ]; then
     cpupath1=$base/cpuset.cpus
@@ -288,63 +275,24 @@ if [ -d $base ]; then
 else
     echo "Cpuset subsystem job directory not created."
 fi
-memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2 | \
-             tr " " "\n" | sed -n '1p'`
-if [ -d "$memory_base" ]; then
-    if [ -d "$memory_base/pbspro" ]; then
-        base="$memory_base/pbspro/$PBS_JOBID"
-    else
-        jobnum=${PBS_JOBID%%.*}
-        base="$memory_base/pbspro.slice/pbspro-${jobnum}.*.slice"
-    fi
-    echo "cgroups base path for memory is $base"
-    if [ -d $base ]; then
-        mem_limit=`cat $base/memory.limit_in_bytes`
+mbase='%s'
+if [ "${mbase}" != "None" ] ; then
+    echo "cgroups base path for memory is $mbase"
+    if [ -d $mbase ]; then
+        mem_limit=`cat $mbase/memory.limit_in_bytes`
         echo "MemoryLimit=${mem_limit}"
-        memsw_limit=`cat $base/memory.memsw.limit_in_bytes`
-       echo "MemswLimit=${memsw_limit}"
+        memsw_limit=`cat $mbase/memory.memsw.limit_in_bytes`
+        echo "MemswLimit=${memsw_limit}"
     else
         echo "Memory subsystem job directory not created."
     fi
 fi
-sleep 10
 """
+
         self.check_dirs_script = """
-PBS_JOBID=$(qstat | tail -1 | awk '{print $1}')
-
-check_file_diff() {
-    for filename in $1/*.*; do
-        filename=$(basename $filename)
-        [ $filename = memory.kmem.slabinfo ] && continue
-        [ ! -r $1/$filename ] && continue
-        [ ! -r $2/$filename ] && continue
-        if ! diff $1/$filename $2/$filename >/dev/null ; then
-            echo "Disabled cgroup subsystems are populated with the job id"
-        fi
-    done
-}
-
+PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
-cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
-             sort | tail -1`
-if [ -d "$cpuset_base/propbs" ]; then
-    cpuset_job="$cpuset_base/propbs/$PBS_JOBID"
-else
-    cpuset_job="$cpuset_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-cpuacct_base=`grep cgroup /proc/mounts | grep cpuacct | cut -d' ' -f2`
-if [ -d "$cpuacct_base/propbs" ]; then
-    cpuacct_job="$cpuacct_base/propbs/$PBS_JOBID"
-else
-    cpuacct_job="$cpuacct_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2`
-if [ -d "$memory_base/propbs" ]; then
-    memory_job="$memory_base/propbs/$PBS_JOBID"
-else
-    memory_job="$memory_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
+devices_base='%s'
 if [ -d "$devices_base/propbs" ]; then
     if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
         devices_job="$devices_base/propbs/$PBS_JOBID"
@@ -354,45 +302,16 @@ if [ -d "$devices_base/propbs" ]; then
 else
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
-echo ====
-ls -l $devices_base
-echo ====
-ls -l $devices_job
-ret=$?
-if [ $ret -eq 0 ] ; then
-    echo "cgroup devices dir exists"
-else
-    echo "cgroup devices dir does not exist"
-    exit $ret
-fi
-echo ====
+echo "devices_job: $devices_job"
+sleep 10
 if [ -d $devices_job ]; then
     device_list=`cat $devices_job/devices.list`
     echo "${device_list}"
-    if type systemctl ; then
-        sysd=`systemctl --version | grep systemd | awk '{print $2}'`
-        if [ "$sysd" -ge 205 ]; then
-            if [ -d $cpuacct_job ]; then
-                check_file_diff $cpuacct_base/propbs.slice/ $cpuacct_job
-            fi
-            if [ -d $cpuset_job ]; then
-                check_file_diff $cpuset_base/propbs.slice/ $cpuset_job
-            fi
-            if [ -d $memory_job ] ; then
-                check_file_diff $memory_base/propbs.slice/ $memory_job
-            fi
-        else
-            if [ -d $cpuacct_job -o -d $cpuset_job -o -d $memory_job ]; then
-                echo "Disabled cgroup subsystems are populated with the job id"
-            fi
-        fi
-    else
-        echo "systemctl command not found"
-    fi
 else
     echo "Devices directory should be populated"
 fi
 """
+
         self.check_gpu_script = """#!/bin/bash
 #PBS -joe
 
@@ -977,14 +896,18 @@ if %s e.job.in_ms_mom():
 
     def get_cgroup_job_dir(self, subsys, jobid, host):
         """
-        Returns path of subsystem
+        Returns path of subsystem for jobid
         """
         basedir = self.paths[subsys]
-        if self.du.isdir(hostname=host, path=os.path.join(basedir, 'pbspro')):
-            return os.path.join(basedir, 'pbspro', jobid)
-        else:
-            return os.path.join(basedir, 'pbspro.slice',
-                                'pbspro-%s.slice' % systemd_escape(jobid))
+        # one of these should exist depending on platform
+        jobdirs = [os.path.join(basedir, 'pbspro', jobid),
+                   os.path.join(basedir, 'pbspro.slice',
+                                'pbspro-%s.slice' % systemd_escape(jobid)),
+                   os.path.join(basedir, 'pbspro',
+                                'pbspro-%s.slice' % systemd_escape(jobid))]
+        for jdir in jobdirs:
+            if self.du.isdir(hostname=host, path=jdir):
+                return jdir
 
     def load_hook(self, filename):
         """
@@ -1427,100 +1350,67 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP1'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.cpuset_mem_script)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        filename = j.attributes[ATTR_o]
-        self.tempfile.append(filename)
-        ehost = j.attributes['exec_host']
-        tmp_file = filename.split(':')[1]
-        tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
-        self.logger.info("Job output is %s\n" % tmp_out)
-        self.assertTrue(jid in tmp_out)
-        self.logger.info('job dir check passed')
-        if self.paths['cpuacct']:
-            cpuids = None
-            for kv in tmp_out:
-                if 'CpuIDs=' in kv:
-                    cpuids = kv.split("=")[1]
-                    break
-            self.assertEqual(count_items(cpuids), 1,
-                             'Number of CpIDs assigned not 1')
-            self.logger.info('CpuIDs check passed')
-        if self.paths['memory']:
-            memsocket = None
-            for kv in tmp_out:
-                if 'MemorySocket=' in kv:
-                    memsocket = kv.split("=")[1]
-                    break
-            self.assertEqual(count_items(memsocket), 1,
-                             'Number of MemorySocket not 1')
-            self.logger.info('MemorySocket check passed')
-            if self.swapctl == 'true':
-                self.assertTrue('MemoryLimit=314572800' in tmp_out)
-                self.logger.info('MemoryLimit check passed')
+        fna = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
+        fnma = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
+        memscr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fna, fnma)],
+                                 as_script=True)
+        memscr_out = memscr['out']
+        self.logger.info('memscr_out:\n%s' % memscr_out)
+        self.assertTrue('CpuIDs=0' in memscr_out)
+        self.logger.info('CpuIDs check passed')
+        self.assertTrue('MemorySocket=0' in memscr_out)
+        self.logger.info('MemorySocket check passed')
+        if self.swapctl == 'true':
+            self.assertTrue('MemoryLimit=314572800' in memscr_out)
+            self.logger.info('MemoryLimit check passed')
 
     def test_cgroup_cpuset_and_memsw(self):
         """
         Test to verify that the job cgroup is created correctly
         using the default memory and vmem
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
-        memory.limit_in_bytes = 268435456
-        memory.memsw.limit_in_bytes = 268435456
+        memory.limit_in_bytes = 100663296
+        memory.memsw.limit_in_bytes = 100663296
         """
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.cpuset_mem_script)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        filename = j.attributes[ATTR_o]
-        self.tempfile.append(filename)
-        ehost = j.attributes['exec_host']
-        tmp_file = filename.split(':')[1]
-        tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
-        self.logger.info("Job output is %s\n" % tmp_out)
-        self.assertTrue(jid in tmp_out)
-        self.logger.info('job dir check passed')
-        if self.paths['cpuacct']:
-            cpuids = None
-            for kv in tmp_out:
-                if 'CpuIDs=' in kv:
-                    cpuids = kv.split("=")[1]
-                    break
-            self.assertEqual(count_items(cpuids), 1,
-                             'Number of CpIDs assigned not 1')
-            self.logger.info('CpuIDs check passed')
-        if self.paths['memory']:
-            memsocket = None
-            for kv in tmp_out:
-                if 'MemorySocket=' in kv:
-                    memsocket = kv.split("=")[1]
-                    break
-            self.assertEqual(count_items(memsocket), 1,
-                             'Number of MemorySocket not 1')
-            self.logger.info('MemorySocket check passed')
-            if self.swapctl == 'true':
-                self.assertTrue('MemoryLimit=100663296' in tmp_out)
-                self.assertTrue('MemswLimit=100663296' in tmp_out)
-                self.logger.info('MemoryLimit check passed')
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
+        fnm = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
+        scr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn, fnm)],
+                              as_script=True)
+        scr_out = scr['out']
+        self.logger.info('scr_out:\n%s' % scr_out)
+        self.assertTrue('CpuIDs=0' in scr_out)
+        self.logger.info('CpuIDs check passed')
+        self.assertTrue('MemorySocket=0' in scr_out)
+        self.logger.info('MemorySocket check passed')
+        if self.swapctl == 'true':
+            self.assertTrue('MemoryLimit=100663296' in scr_out)
+            self.assertTrue('MemswLimit=100663296' in scr_out)
+            self.logger.info('MemoryLimit check passed')
 
     def test_cgroup_prefix_and_devices(self):
         """
-        Test to verify that the cgroup prefix is set to pbs and that
-        only the devices subsystem is enabled with the correct devices
-        allowed
+        Test to verify that the cgroup prefix is set to propbs and that
+        the devices subsystem exists with the correct devices allowed
         """
         if not self.paths['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
@@ -1533,10 +1423,12 @@ if %s e.job.in_ms_mom():
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
-        scr = self.du.run_cmd(cmd=[self.check_dirs_script], as_script=True)
+        devd = self.paths['devices']
+        scr = self.du.run_cmd(
+            cmd=[self.check_dirs_script % (jid, devd)],
+            as_script=True)
         scr_out = scr['out']
-        if 'cgroup devices dir does not exist' in scr_out:
-            self.skipTest('Test requires cgroup devices dir')
+        self.logger.info('scr_out:\n%s' % scr_out)
         check_devices = ['b *:* rwm',
                          'c 5:1 rwm',
                          'c 4:* rwm',
@@ -1546,10 +1438,6 @@ if %s e.job.in_ms_mom():
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
         self.logger.info('device_list check passed')
-        self.assertFalse('Disabled cgroup subsystems are populated '
-                         'with the job id' in scr_out,
-                         'Found disabled cgroup subsystems populated')
-        self.logger.info('Disabled subsystems check passed')
 
     def test_cgroup_cpuset(self):
         """
@@ -1568,52 +1456,38 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.cpuset_mem_script)
+        j1.create_script(self.sleep15_job)
         jid1 = self.server.submit(j1)
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
-        j2.create_script(self.cpuset_mem_script)
+        j2.create_script(self.sleep15_job)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
         # Make sure they are both running
         self.server.expect(JOB, a, jid1)
         self.server.expect(JOB, a, jid2)
-        # Status the jobs for their output files
-        attrib = [ATTR_o]
-        self.server.status(JOB, attrib, jid1)
-        filename1 = j1.attributes[ATTR_o]
-        self.logger.info('Job1 .o file: %s' % filename1)
-        self.tempfile.append(filename1)
-        self.server.status(JOB, attrib, jid2)
-        filename2 = j2.attributes[ATTR_o]
-        self.logger.info('Job2 .o file: %s' % filename2)
-        self.tempfile.append(filename2)
-        # Read the output files
-        tmp_file1 = filename1.split(':')[1]
-        tmp_out1 = self.wait_and_read_file(filename=tmp_file1,
-                                           host=self.hosts_list[0])
-        self.logger.info("test output for job1: %s" % (tmp_out1))
-        self.assertTrue(
-            jid1 in tmp_out1, '%s not found in output on host %s'
-            % (jid1, self.hosts_list[0]))
-        tmp_file2 = filename2.split(':')[1]
-        tmp_out2 = self.wait_and_read_file(filename=tmp_file2,
-                                           host=self.hosts_list[0])
-        self.logger.info("test output for job2: %s" % (tmp_out2))
-        self.assertTrue(
-            jid2 in tmp_out2, '%s not found in output on host %s'
-            % (jid2, self.hosts_list[0]))
-        self.logger.info('job dir check passed')
+        # cpuset paths for both jobs
+        fn1 = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        fn2 = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
+        # Capture the output of cpuset_mem_script for both jobs
+        scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
+                               as_script=True)
+        scr1_out = scr1['out']
+        self.logger.info('scr1_out:\n%s' % scr1_out)
+        scr2 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn2, None)],
+                               as_script=True)
+        scr2_out = scr2['out']
+        self.logger.info('scr2_out:\n%s' % scr2_out)
         # Ensure the CPU ID for each job differs
         cpuid1 = None
-        for kv in tmp_out1:
+        for kv in scr1_out:
             if 'CpuIDs=' in kv:
                 cpuid1 = kv
                 break
         self.assertNotEqual(cpuid1, None, 'Could not read first CPU ID.')
         cpuid2 = None
-        for kv in tmp_out2:
+        for kv in scr2_out:
             if 'CpuIDs=' in kv:
                 cpuid2 = kv
                 break
@@ -1668,7 +1542,6 @@ if %s e.job.in_ms_mom():
              self.hosts_list[0], ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
-            j.create_script(self.cpuset_mem_script)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
             self.server.expect(JOB, a1, jid, max_attempts=10)
@@ -1676,7 +1549,6 @@ if %s e.job.in_ms_mom():
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
-        j2.create_script(self.cpuset_mem_script)
         jid2 = self.server.submit(j2)
         b1 = {'job_state': 'Q'}
         self.server.expect(JOB, b1, jid2, max_attempts=10)
@@ -1690,6 +1562,8 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1701,7 +1575,7 @@ if %s e.job.in_ms_mom():
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         # mem and vmem limit will both be set, and either could be detected
-        self.moms_list[0].log_match(
+        self.mom.log_match(
             '%s;Cgroup mem(ory|sw) limit exceeded' % jid,
             regexp=True,
             max_attempts=20)
@@ -1716,15 +1590,15 @@ if %s e.job.in_ms_mom():
         # run the test if swap space is available
         if have_swap() == 0:
             self.skipTest('no swap space available on the local host')
-        fn = self.get_cgroup_job_dir('memory', '123.foo', self.hosts_list[0])
         # Get the grandparent directory
-        fn = os.path.dirname(fn)
-        fn = os.path.dirname(fn)
+        fn = self.paths['memory']
         fn = os.path.join(fn, 'memory.memsw.limit_in_bytes')
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
         name = 'CGROUP6'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
@@ -1752,16 +1626,14 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP7'
         if 'freezer' not in self.paths:
             self.skipTest('Freezer cgroup is not mounted')
-        fdir = self.get_cgroup_job_dir('freezer',
-                                       '123.foo',
-                                       self.hosts_list[0])
         # Get the grandparent directory
-        fdir = os.path.dirname(fdir)
-        fdir = os.path.dirname(fdir)
+        fdir = self.paths['freezer']
         if not self.is_dir(fdir, self.hosts_list[0]):
             self.skipTest('Freezer cgroup is not found')
         # Configure the hook
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], 'Resource_List.walltime': 3, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2002,8 +1874,8 @@ if %s e.job.in_ms_mom():
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
-        # Restart mom for changes made by cgroups hook to take affect
-        self.moms_list[0].restart()
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2017,8 +1889,8 @@ if %s e.job.in_ms_mom():
         mem1 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-1: %s' % mem1.value)
         self.load_config(self.cfg4 % (self.swapctl))
-        # Restart mom for changes made by cgroups hook to take affect
-        self.moms_list[0].restart()
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         if self.swapctl == 'true':
@@ -2084,6 +1956,8 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ('', '', '', '', self.swapctl))
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name, ATTR_J: '1-4',
              'Resource_List.place': 'pack:excl'}
@@ -2235,8 +2109,8 @@ if %s e.job.in_ms_mom():
         # Fetch the unmodified value of resources_available.ncpus
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
                                       'false', self.swapctl))
-        # Restart mom for cgroups hook changes to take affect
-        self.moms_list[0].restart()
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2249,8 +2123,8 @@ if %s e.job.in_ms_mom():
         # Now exclude CPU zero
         self.load_config(self.cfg5 % ('false', '0', 'false', 'false',
                                       'false', self.swapctl))
-        # Restart mom for cgroups hook changes to take affect
-        self.moms_list[0].restart()
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2263,8 +2137,8 @@ if %s e.job.in_ms_mom():
         vnode = '%s[0]' % self.nodes_list[0]
         self.load_config(self.cfg5 % ('true', '', 'false', 'false',
                                       'false', self.swapctl))
-        # Restart mom for cgroups hook changes to take affect
-        self.moms_list[0].restart()
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2275,8 +2149,8 @@ if %s e.job.in_ms_mom():
         # Exclude CPU zero again
         self.load_config(self.cfg5 % ('true', '0', 'false', 'false',
                                       'false', self.swapctl))
-        # Restart mom for cgroups hook changes to take affect
-        self.moms_list[0].restart()
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
                            id=vnode, interval=1)
         result = self.server.status(NODE, 'resources_available.ncpus',
@@ -2288,12 +2162,8 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_fences affects setting of cpuset.mems
         """
-        cpuset_base = self.get_cgroup_job_dir('cpuset',
-                                              '123.foo',
-                                              self.hosts_list[0])
         # Get the grandparent directory
-        cpuset_base = os.path.dirname(cpuset_base)
-        cpuset_base = os.path.dirname(cpuset_base)
+        cpuset_base = self.paths['cpuset']
         cpuset_mems = os.path.join(cpuset_base, 'cpuset.mems')
         result = self.du.cat(hostname=self.hosts_list[0], filename=cpuset_mems,
                              sudo=True)
@@ -2369,6 +2239,9 @@ if %s e.job.in_ms_mom():
         if self.noprefix:
             memh_path = 'mem_hardwall'
         fn = os.path.join(fn, memh_path)
+        self.logger.info('fn is %s' % fn)
+        if not (self.is_file(fn, self.hosts_list[0])):
+            self.skipTest('cgroup mem_hardwall of job does not exist')
         result = self.du.cat(hostname=self.hosts_list[0],
                              filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
@@ -2389,6 +2262,8 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         fn = os.path.join(fn, memh_path)
+        if not (self.is_file(fn, self.hosts_list[0])):
+            self.skipTest('cgroup mem_hardwall of job does not exist')
         result = self.du.cat(hostname=self.hosts_list[0],
                              filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
@@ -3024,8 +2899,8 @@ event.accept()
         """
         name = 'CGROUP_BIG'
         self.load_config(self.cfg9)
-        # Restart mom for changes made by cgroups hook to take affect
-        self.moms_list[0].restart()
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
 
         vnodes_count = 10
         try:
@@ -3054,7 +2929,6 @@ event.accept()
         select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
         a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.create_script(self.cpuset_mem_script)
         jid1 = self.server.submit(j1)
         a = {'job_state': 'R'}
         # Make sure they are both running
@@ -3099,6 +2973,61 @@ event.accept()
         self.assertEqual(mem_assn, vnodes_count,
                          'MemSocket assigned not match requested')
         self.logger.info('MemSocket check passed')
+
+    @requirements(num_moms=2)
+    def test_checkpoint_abort_preemption(self):
+        """
+        Test to make sure that when scheduler preempts a multi-node job with
+        checkpoint_abort, execjob_abort cgroups hook on secondary node
+        gets called.  The abort hook cleans up assigned cgroups, allowing
+        the higher priority job to run on the same node.
+        """
+        # Skip test if number of mom provided is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires two MoMs as input, " +
+                          "use -p moms=<mom1>:<mom2>")
+
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "express")
+
+        # have scheduler preempt lower priority jobs using 'checkpoint'
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # have moms do checkpoint_abort
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        a = {'resources_available.ncpus': 1}
+        for m in self.moms.values():
+            chk_file = m.add_checkpoint_abort_script(body=chk_script)
+            # ensure resulting checkpoint file has correct permission
+            self.du.chown(hostname=m.shortname, path=chk_file, uid=0, gid=0,
+                          sudo=True)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
+
+        # submit multi-node job
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Submit an express queue job requesting needing also 2 nodes
+        a[ATTR_q] = 'express'
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
+        for m in self.moms.values():
+            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
+                        regexp=True, existence=False)
+
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
     def tearDown(self):
         TestFunctional.tearDown(self)

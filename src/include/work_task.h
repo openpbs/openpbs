@@ -80,7 +80,7 @@ struct work_task  {
 	long		 wt_event;	/* event id: time, pid, socket, ... */
 	char		*wt_event2;	/* if replies on the same handle, then additional distinction */
 	enum work_type	 wt_type;	/* type of event */
-	void	       (*wt_func)(struct work_task *);	/* function to perform task */
+	void		(*wt_func)(struct work_task *);	/* function to perform task */
 	void		*wt_parm1;	/* obj pointer for use by func */
 	void		*wt_parm2;	/* optional pointer for use by func */
 	void		*wt_parm3;	/* used to store reply for deferred cmds TPP */
@@ -92,7 +92,7 @@ extern struct work_task *set_task(enum work_type, long event, void (*func)(), vo
 extern void clear_task(struct work_task *ptask);
 extern void dispatch_task(struct work_task *);
 extern void delete_task(struct work_task *);
-extern void delete_task_by_parm1(void *parm1, enum wtask_delete_option option);
+extern void delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wtask_delete_option option);
 extern int  has_task_by_parm1(void *parm1);
 extern time_t default_next_task(void);
 
