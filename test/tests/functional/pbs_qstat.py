@@ -74,6 +74,8 @@ class TestQstat(TestFunctional):
 
         sjids = [j.create_subjob_id(jid, x) for x in range(1, job_count)]
         for sjid in sjids:
+            if len(sjid) > 17:
+                sjid = sjid[0:16] + '*'
             self.assertIn(sjid, qstat_out, 'Job %s not in output' % sjid)
             sj_escaped = re.escape(sjid)
             match = re.search(
