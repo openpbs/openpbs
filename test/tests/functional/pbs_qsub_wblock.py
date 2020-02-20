@@ -49,9 +49,10 @@ class TestQsubWblock(TestFunctional):
         j = Job(TEST_USER, attrs={ATTR_block: 'true'})
         j.set_sleep_time(1)
         jid = self.server.submit(j)
+        client_host = socket.getfqdn(self.server.client)
         msg = 'Server@%s;Job;%s;check_block_wt: Write successful' \
               ' to client %s for job %s' % \
-              (self.server.shortname, jid, self.server.client, jid)
+              (self.server.shortname, jid, client_host, jid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     def test_block_job_array(self):
@@ -61,7 +62,8 @@ class TestQsubWblock(TestFunctional):
         j = Job(TEST_USER, attrs={ATTR_block: 'true', ATTR_J: '1-3'})
         j.set_sleep_time(1)
         jid = self.server.submit(j)
+        client_host = socket.getfqdn(self.server.client)
         msg = 'Server@%s;Job;%s;check_block_wt: Write successful ' \
               'to client %s for job %s' % \
-              (self.server.shortname, jid, self.server.client, jid)
+              (self.server.shortname, jid, client_host, jid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
