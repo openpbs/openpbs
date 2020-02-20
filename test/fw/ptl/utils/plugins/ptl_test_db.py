@@ -37,6 +37,7 @@
 
 import datetime
 import json
+import copy
 import logging
 import os
 import platform
@@ -1608,25 +1609,17 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
-        self.__dbobj = {}
+        self.jdata = None
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-        if _TESTRESULT_TN not in self.__dbobj.keys():
-            self.__dbobj[_TESTRESULT_TN] = self.dbpath
-            jdata = None
-            dbobj = self.__dbobj[_TESTRESULT_TN]
-        else:
-            dbobj = self.__dbobj[_TESTRESULT_TN]
-            with open(dbobj, 'r') as fd:
-                jdata = json.load(fd)
-        jsondata = self.res_data.get_json(data=data, prev_data=jdata)
-        with open(dbobj, 'w') as fd:
-            json.dump(jsondata, fd, indent=2)
-            fd.flush()
+        prev_data = copy.deepcopy(self.jdata)
+        self.jdata = self.res_data.get_json(data=data, prev_data=prev_data)
+        with open(self.dbpath, 'w') as fd:
+            json.dump(self.jdata, fd, indent=2)
             fd.write("\n")
 
     def write(self, data, logfile=None):
@@ -1637,14 +1630,10 @@ class JSONDb(DBType):
 
     def close(self, result=None):
         if result is not None:
-            dbobj = self.__dbobj[_TESTRESULT_TN]
-            with open(dbobj, 'r') as fd:
-                jsondata = json.load(fd)
             dur = str(result.stop - result.start)
-            jsondata['test_summary']['test_duration'] = dur
-            with open(dbobj, 'w') as fd:
-                json.dump(jsondata, fd, indent=2)
-                fd.flush()
+            self.jdata['test_summary']['test_duration'] = dur
+            with open(self.dbpath, 'w') as fd:
+                json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
 
 
