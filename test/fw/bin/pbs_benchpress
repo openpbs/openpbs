@@ -108,9 +108,9 @@ def usage():
     msg += ['.Plugin\n']
     msg += ['--db-type=<type>: Type of database to use.']
     msg += [' can be one of "html", "file", "sqlite", "pgsql", "json".']
-    msg += [' Default to "file"\n']
+    msg += [' Default to "json"\n']
     msg += ['--db-name=<name>: database name. Default to']
-    msg += [' ptl_test_results.db\n']
+    msg += [' ptl_test_results.json\n']
     msg += ['--db-access=<path>: Path to a file that defines db options '
             '(PostreSQL only)\n']
     msg += ['--lcov-bin=<bin>: path to lcov binary. Defaults to lcov\n']
