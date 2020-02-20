@@ -10969,24 +10969,61 @@ mom_topology(void)
 #ifndef NAS /* localmod 113 */
 	extern char mom_short_name[];
 	extern callfunc_t vn_callback;
-	int ret;
+	int ret = -1;
 	char *xmlbuf = NULL;
 	int xmllen = 0;
 	vnl_t *vtp = NULL;
 	char *topology_type;
+	int fd[2];
+	int pid;
 
 #ifndef	WIN32
-	hwloc_topology_t topology;
-	ret = 0;
-	if (hwloc_topology_init(&topology) == -1)
-		ret = -1;
-	else if ((hwloc_topology_set_flags(topology,
-			HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
-			== -1) || (hwloc_topology_load(topology) == -1)
-			|| (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen)
-					== -1)) {
+	pipe(fd);
+
+	if ((pid = fork()) == -1) {
+		log_err(PBSE_SYSTEM, __func__, "fork failed");
+		return;
+	}
+
+	if (pid == 0) {
+		hwloc_topology_t topology;
+		ret = 0;
+
+		close(fd[0]);
+
+		if (hwloc_topology_init(&topology) == -1)
+			ret = -1;
+		else if ((hwloc_topology_set_flags(topology,
+				HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
+				== -1) || (hwloc_topology_load(topology) == -1)
+				|| (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen)
+						== -1)) {
+			ret = -1;
+		}
+
+		write(fd[1], &ret, (sizeof(ret)));
+		write(fd[1], &xmllen, (sizeof(xmllen)));
+		write(fd[1], xmlbuf, xmllen);
+
+		hwloc_free_xmlbuffer(topology, xmlbuf);
 		hwloc_topology_destroy(topology);
-		ret = -1;
+
+		exit(0);
+	} else {
+		close(fd[1]);
+
+		read(fd[0], &ret, sizeof(ret));
+		read(fd[0], &xmllen, sizeof(xmllen));
+		if ((xmlbuf = malloc(xmllen + 1)) == NULL) {
+			log_err(PBSE_SYSTEM, __func__, "malloc failed");
+			return;
+		}
+		xmlbuf[xmllen] = '\0';
+		read(fd[0], xmlbuf, xmllen);
+
+		close(fd[0]);
+
+		waitpid(pid, NULL, 0);
 	}
 	if (ret < 0) {
 		/* on any failure above, issue log message */
@@ -11107,8 +11144,7 @@ mom_topology(void)
 	}
 bad:
 #ifndef WIN32
-	hwloc_free_xmlbuffer(topology, xmlbuf);
-	hwloc_topology_destroy(topology);
+	free(xmlbuf);
 #else
 	;
 #endif

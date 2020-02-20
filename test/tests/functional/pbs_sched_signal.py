@@ -38,32 +38,11 @@
 from tests.functional import *
 
 
-class TestQsubWblock(TestFunctional):
-    """
-    This test suite contains the block job feature tests
-    """
-    def test_block_job(self):
-        """
-        Test to submit a block job and verify the Server response
-        """
-        j = Job(TEST_USER, attrs={ATTR_block: 'true'})
-        j.set_sleep_time(1)
-        jid = self.server.submit(j)
-        client_host = socket.getfqdn(self.server.client)
-        msg = 'Server@%s;Job;%s;check_block_wt: Write successful' \
-              ' to client %s for job %s' % \
-              (self.server.shortname, jid, client_host, jid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+class TestSchedSignal(TestFunctional):
 
-    def test_block_job_array(self):
+    def test_sigpipe(self):
         """
-        Test to submit a block array job and verify the Server response
+        Test that pbs_sched receives a SIGPIPE correctly and it is not ignored
         """
-        j = Job(TEST_USER, attrs={ATTR_block: 'true', ATTR_J: '1-3'})
-        j.set_sleep_time(1)
-        jid = self.server.submit(j)
-        client_host = socket.getfqdn(self.server.client)
-        msg = 'Server@%s;Job;%s;check_block_wt: Write successful ' \
-              'to client %s for job %s' % \
-              (self.server.shortname, jid, client_host, jid)
-        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.scheduler.signal('-PIPE')
+        self.scheduler.log_match("We've received a sigpipe:")
