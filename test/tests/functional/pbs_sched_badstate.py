@@ -40,7 +40,6 @@ from tests.functional import *
 
 class TestSchedBadstate(TestFunctional):
 
-    @skipOnCpuSet
     def test_sched_badstate_subjob(self):
         """
         This test case tests if scheduler goes into infinite loop
@@ -56,7 +55,7 @@ class TestSchedBadstate(TestFunctional):
 
         self.mom.signal('-KILL')
 
-        attr = {'state': 'free', 'resources_available.ncpus': '2'}
+        attr = {'state': 'free'}
         self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname)
 
         attr = {'scheduling': 'False'}

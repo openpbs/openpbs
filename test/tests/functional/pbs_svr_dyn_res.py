@@ -46,8 +46,10 @@ class TestServerDynRes(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         # Setup node
+        """
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        """
 
     def check_access_log(self, fp, exist=True):
         """
@@ -94,7 +96,6 @@ class TestServerDynRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         return scripts
 
-    @skipOnCpuSet
     def test_invalid_script_out(self):
         """
         Test that the scheduler handles incorrect output from server_dyn_res
@@ -138,7 +139,6 @@ class TestServerDynRes(TestFunctional):
             "Insufficient amount of server resource: %s (R: 1 A: 0 T: 0)"
             % (resname[0]), level=logging.DEBUG2)
 
-    @skipOnCpuSet
     def test_res_long_pos(self):
         """
         Test that server_dyn_res accepts command line arguments to the
@@ -161,7 +161,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar': '4'}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
     def test_res_long_neg(self):
         """
         Test that server_dyn_res accepts command line arguments to the
@@ -189,7 +188,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_whitespace(self):
         """
         Test for parse errors when more than one white space
@@ -270,7 +268,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar_large': 18}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
     def test_res_string(self):
         """
         Test that server_dyn_res accepts a string value returned
@@ -307,7 +304,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_string_array(self):
         """
         Test that server_dyn_res accepts string array returned
@@ -438,7 +434,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_size_invalid_input(self):
         """
         Test invalid values returned from server_dyn_resource
@@ -469,7 +464,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_float_invalid_input(self):
         """
         Test invalid values returned from server_dyn_resource
@@ -501,7 +495,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_boolean_invalid_input(self):
         """
         Test invalid values returned from server_dyn_resource
@@ -533,7 +526,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
     def test_res_timeout(self):
         """
         Test server_dyn_res script timeouts after 30 seconds
@@ -564,7 +556,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
     def test_res_set_timeout(self):
         """
         Test setting server_dyn_res script to timeout after 10 seconds
@@ -598,7 +589,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_svr_dyn_res_permissions(self):
         """
         Test whether scheduler rejects the server_dyn_res script when the

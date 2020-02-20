@@ -44,7 +44,6 @@ class Test_array_job_email(TestFunctional):
     This test suite is for testing arrayjob e-mailing (parent job and subjob)
     """
 
-    @skipOnCpuSet
     def test_emails(self):
         """
         Run arrayjob with -m jabe and test if the e-mails are received
@@ -52,9 +51,6 @@ class Test_array_job_email(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'true'})
-        self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.ncpus': 2},
-                            id=self.mom.shortname)
 
         mailfile = os.path.join("/var/mail", str(TEST_USER))
         if not os.path.isfile(mailfile):
