@@ -112,10 +112,13 @@ exit 0
                 n = m.split('=')[0]
                 break
         # Adjustments in bash due to ShellShock malware fix in various OS
-        os.environ[n] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
-        script = ['#PBS -V']
-        script += ['env | grep -A 3 foo\n']
-        script += ['foo\n']
+        script = """#!/bin/bash
+foo() { if [ /bin/true ]; then\necho hello;\nfi\n}
+export -f foo
+#PBS -V
+env | grep -A 3 foo\n
+foo\n
+"""
         # Submit a job without hooks in the system
         jid = self.create_and_submit_job(user=TEST_USER, content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
@@ -124,7 +127,7 @@ exit 0
         job_output = ""
         ret = self.du.cat(self.server.client, filename=job_outfile,
                           runas=TEST_USER, logerr=False)
-        job_output = (' '.join(ret['out'])).strip()
+        job_output = ('\n'.join(ret['out'])).strip()
         match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
