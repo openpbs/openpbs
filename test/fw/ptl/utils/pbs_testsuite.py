@@ -440,6 +440,8 @@ class PBSTestSuite(unittest.TestCase):
     scheds = {}
     moms = None
     comms = None
+    users = ""
+    added_users = []
 
     @classmethod
     def setUpClass(cls):
@@ -450,6 +452,19 @@ class PBSTestSuite(unittest.TestCase):
         cls.check_users_exist()
         cls.init_servers()
         if cls.use_cur_setup:
+            test_user = pwd.getpwuid(os.getuid())[0] + '@*'
+            cls.users = {test_user: "managers",
+                         str(MGR_USER) + '@*': "managers",
+                         str(OPER_USER) + '@*': "operators"}
+            server_stat = cls.server.status(SERVER, ["managers", "operators"])
+            if len(server_stat) > 0:
+                server_stat = server_stat[0]
+            for user, role in cls.users.items():
+                if role not in server_stat or user not in server_stat[role]:
+                    attr = {role: (INCR, user)}
+                    cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
+                    cls.added_users.append(user)
+
             _, path = tempfile.mkstemp(prefix="saved_custom_setup",
                                        suffix=".json")
             ret = cls.server.save_configuration(path, 'w')
@@ -1586,4 +1601,7 @@ class PBSTestSuite(unittest.TestCase):
             if not ret:
                 raise Exception("Failed to load custom setup")
         if cls.use_cur_setup:
+            for user in cls.added_users:
+                attr = {cls.users[user]: (DECR, user)}
+                cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
             cls.du.rm(path=cls.saved_file)
