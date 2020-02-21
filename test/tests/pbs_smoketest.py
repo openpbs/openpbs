@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from ptl.utils.pbs_testsuite import *
+from ptl.utils.pbs_dshutils import TimeOut
 
 
 @tags('smoke')
@@ -1371,17 +1372,27 @@ class SmokeTest(PBSTestSuite):
                                 id=self.resc_name, logerr=False)
         except (PbsManagerError, PbsStatusError):
             pass
-        for k in self.objs:
-            if k not in self.obj_map:
-                self.logger.error('can not map object ' + k)
-                continue
-            v = self.obj_map[k]
-            for t in self.resc_types:
-                for f in self.resc_flags:
-                    for c in self.resc_flags_ctl:
-                        self.delete_resource_helper(
-                            self.resc_name, t, f, c, k, v)
-                        self.logger.info("")
+        count = 0
+        starttime = int(time.time())
+        try:
+            for k in self.objs:
+                if k not in self.obj_map:
+                    self.logger.error('can not map object ' + k)
+                    continue
+                v = self.obj_map[k]
+                for t in self.resc_types:
+                    for f in self.resc_flags:
+                        for c in self.resc_flags_ctl:
+                            self.delete_resource_helper(
+                                self.resc_name, t, f, c, k, v)
+                            self.logger.info("")
+                            count += 1
+        except TimeOut:
+            raise
+        finally:
+            endtime = int(time.time())
+            self.logger.info("test_resource_delete, took %s seconds, "
+                             "count:%s" % (endtime - starttime, count))
 
     def setup_fs(self, formula):
 

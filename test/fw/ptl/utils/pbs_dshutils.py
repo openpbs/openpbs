@@ -61,6 +61,14 @@ logging.INFOCLI = logging.INFO - 1
 logging.INFOCLI2 = logging.INFOCLI - 1
 
 
+class TimeOut(Exception):
+
+    """
+    Raise this exception to mark a test as timed out.
+    """
+    pass
+
+
 class PbsConfigError(Exception):
     """
     Initialize PBS configuration error
@@ -1023,7 +1031,12 @@ class DshUtils(object):
                 e = p.stderr.readline()
                 ret['rc'] = 0
             else:
-                (o, e) = p.communicate(input)
+                try:
+                    (o, e) = p.communicate(input)
+                except TimeOut:
+                    self.logger.error("TimeOut Exception, cmd:%s" %
+                                      str(runcmd))
+                    raise
                 ret['rc'] = p.returncode
 
             if as_script:
