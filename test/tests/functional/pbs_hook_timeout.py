@@ -73,7 +73,6 @@ class TestHookTimeout(TestFunctional):
         for mom in self.moms.values():
             self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
 
-    @timeout(600)
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for
