@@ -9576,7 +9576,11 @@ main(int argc, char *argv[])
 
 #ifdef PYTHON
 	set_py_progname();
-	Py_Initialize();
+	Py_NoSiteFlag = 1;
+	Py_FrozenFlag = 1;
+	Py_OptimizeFlag = 2;
+	Py_IgnoreEnvironmentFlag = 1;
+	Py_InitializeEx(0);
 #endif
 
 #ifndef	WIN32

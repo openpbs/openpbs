@@ -48,24 +48,27 @@
  * 	Find and return where python binary is located
  *
  * @param[in] dest - buffer to copy python path
- * @param[in] dest_sz - size of dest
  *
  * @return int
  * @retval 0 - Success
  * @retval 1 - Fail
  */
 int
-get_py_progname(char **dest, int dest_sz)
+get_py_progname(char **binpath, char **homepath)
 {
 #ifdef PYTHON
 	static char python_binpath[MAXPATHLEN + 1] = {'\0'};
+	static char python_homepath[MAXPATHLEN + 1] = { '\0' };
 
 	if (python_binpath[0] == '\0') {
 #ifndef WIN32
+		snprintf(python_homepath, MAXPATHLEN, "%s/python", pbs_conf.pbs_exec_path);
 		snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
 #else
-		snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
+		snprintf(python_homepath, MAXPATHLEN, "%spython", pbs_conf.pbs_exec_path);
+		snprintf(python_binpath, MAXPATHLEN, "%spython/python.exe", pbs_conf.pbs_exec_path);
 		forward2back_slash(python_binpath);
+		forward2back_slash(python_homepath);
 #endif
 		if (!file_exists(python_binpath)) {
 #ifdef PYTHON_BIN_PATH
@@ -78,8 +81,15 @@ get_py_progname(char **dest, int dest_sz)
 			}
 		}
 	}
-	strncpy(*dest, python_binpath, dest_sz - 1);
-	(*dest)[dest_sz] = '\0';
+	*binpath = strdup(python_binpath);
+	if (*binpath == NULL)
+		return 1;
+	*homepath = strdup(python_homepath);
+	if (*homepath == NULL) {
+		free(*binpath);
+		*binpath = NULL;
+		return 1;
+	}
 	return 0;
 #else
 	return 1;
@@ -98,18 +108,23 @@ int
 set_py_progname(void)
 {
 #ifdef PYTHON
-	char python_binpath[MAXPATHLEN + 1] = {'\0'};
-	char *ptr = python_binpath;
+	char *python_binpath = NULL;
+	char *python_homepath = NULL;
 	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
+	static wchar_t w_python_homepath[MAXPATHLEN + 1] = { '\0' };
 
 	if (w_python_binpath[0] == '\0') {
-		if (get_py_progname(&ptr, MAXPATHLEN)) {
+		if (get_py_progname(&python_binpath, &python_homepath)) {
 			log_err(-1, __func__, "Failed to find python binary path!");
 			return 1;
 		}
 		mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
+		mbstowcs(w_python_homepath, python_homepath, MAXPATHLEN + 1);
+		free(python_binpath);
+		free(python_homepath);
 	}
 	Py_SetProgramName(w_python_binpath);
+	Py_SetPythonHome(w_python_homepath);
 	return 0;
 #else
 	return 0;
