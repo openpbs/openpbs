@@ -183,6 +183,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         return jid1, jid2, jid3s1
 
+    @skipOnCpuSet
     def test_Rrecord_with_nodefailrequeue(self):
         """
         Scenario: The node on which the job was running goes down and
@@ -201,6 +202,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*',
             id=jid3s1, regexp=True)
 
+    @skipOnCpuSet
     def test_Rrecord_when_mom_restarted_with_r(self):
         """
         Scenario: The node on which the job was running goes down and
@@ -222,6 +224,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
 
+    @skipOnCpuSet
     def test_Rrecord_for_nonrerunnable_jobs(self):
         """
         Scenario: One non-rerunnable job. The node on which the job was
@@ -244,6 +247,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
 
+    @skipOnCpuSet
     def test_Rrecord_when_mom_restarted_without_r(self):
         """
         Scenario: Mom restarted without '-r' option and jobs are requeued
@@ -289,6 +293,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             regexp=True)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+    @skipOnCpuSet
     def test_Rrecord_with_multiple_reruns(self):
         """
         Scenario: Job is rerun multiple times.
@@ -390,6 +395,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
 
+    @skipOnCpuSet
     def test_Rrecord_with_multiple_reruns_case2(self):
         """
         Scenario: Jobs submitted with select cput and ncpus. Job is rerun
@@ -465,6 +471,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=2.*',
             id=jid2, regexp=True)
 
+    @skipOnCpuSet
     def test_Rrecord_job_rerun_forcefully(self):
         """
         Scenario: Job is forcefully rerun.

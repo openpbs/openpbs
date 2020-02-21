@@ -41,7 +41,6 @@ from tests.functional import *
 
 @requirements(num_moms=3)
 class TestHookTimeout(TestFunctional):
-
     """
     Test to make sure hooks are resent to moms that don't ack when
     the hooks are sent
@@ -71,11 +70,9 @@ class TestHookTimeout(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostC)
+        for mom in self.moms.values():
+            self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
 
-        self.server.expect(VNODE, {'state=free': 3}, op=EQ, count=True,
-                           max_attempts=10, interval=2)
-
-    @timeout(600)
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for

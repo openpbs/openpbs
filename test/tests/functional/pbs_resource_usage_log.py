@@ -53,6 +53,7 @@ class TestResourceUsageLog(TestFunctional):
         attr2 = {'resources_available.mem': '200gb'}
         self.server.manager(MGR_CMD_SET, NODE, attr2, id=self.mom.shortname)
 
+    @skipOnCpuSet
     def test_acclog_for_job_states(self):
         """
         Check accounting logs when a job completes successfully and when
@@ -107,6 +108,7 @@ class TestResourceUsageLog(TestFunctional):
             '.*Exit_status=271.*resources_used.*run_count=1', id=jid3,
             regexp=True)
 
+    @skipOnCpuSet
     def test_acclog_mom_down(self):
         """
         Check accounting logs when node is down and MoM is restarted
@@ -196,6 +198,7 @@ class TestResourceUsageLog(TestFunctional):
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0', id=jid_a, regexp=True)
 
+    @skipOnCpuSet
     def test_acclog_job_multiple_qrerun(self):
         """
         Check for R record in accounting logs when job is
@@ -286,6 +289,7 @@ class TestResourceUsageLog(TestFunctional):
             '.*Exit_status=1.*run_count=0',
             id=jid_a, regexp=True)
 
+    @skipOnCpuSet
     def test_acclog_force_requeue(self):
         """
         Check for resource usage when job is force requeued
@@ -309,6 +313,7 @@ class TestResourceUsageLog(TestFunctional):
             msg='.*R;' + jid1 + '.*Exit_status=0.*resources_used.*run_count=1',
             id=jid1, regexp=True)
 
+    @skipOnCpuSet
     def test_acclog_services_restart(self):
         """
         Check for resource usage in accounting logs after
@@ -334,6 +339,7 @@ class TestResourceUsageLog(TestFunctional):
             msg='R;' + jid1 + '.*resources_used.*run_count=1', id=jid1,
             regexp=True)
 
+    @skipOnCpuSet
     def test_acclog_preempt_order(self):
         """
         Check for R record when editing preempt order to "R" and requeuing job

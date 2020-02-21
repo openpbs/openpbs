@@ -429,6 +429,7 @@ class TestPbsResvAlter(TestFunctional):
                 self.assertFalse("Reservation alter allowed when it should" +
                                  "not be.")
 
+    @skipOnCpuSet
     def test_alter_advance_resv_start_time_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -460,6 +461,7 @@ class TestPbsResvAlter(TestFunctional):
                                                       -shift, alter_s=True,
                                                       sequence=3)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_start_time_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -491,6 +493,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                  whichMessage=0)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_end_time_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -521,6 +524,7 @@ class TestPbsResvAlter(TestFunctional):
                                                       shift, alter_e=True,
                                                       sequence=3)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_end_time_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -548,6 +552,7 @@ class TestPbsResvAlter(TestFunctional):
         self.check_resv_running(rid, duration, 0)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_both_times_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -579,6 +584,7 @@ class TestPbsResvAlter(TestFunctional):
                                                       -shift, alter_s=True,
                                                       alter_e=True, sequence=3)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_both_times_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -613,6 +619,7 @@ class TestPbsResvAlter(TestFunctional):
                                  shift, alter_s=True,
                                  alter_e=True, whichMessage=0)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_start_time_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -660,6 +667,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_start_time_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -704,6 +712,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_end_time_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -758,6 +767,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_end_time_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -801,6 +811,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_both_times_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -849,6 +860,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_both_times_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -897,6 +909,7 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
+    @skipOnCpuSet
     def test_conflict_two_advance_resvs(self):
         """
         This test confirms that an advance reservation cannot be extended
@@ -927,6 +940,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid2, start2, end2, -shift, alter_s=True,
                                  whichMessage=3, interactive=5, sequence=2)
 
+    @skipOnCpuSet
     def test_conflict_two_standing_resvs(self):
         """
         This test confirms that an occurrence of a standing reservation cannot
@@ -957,6 +971,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid2, start2, end2, -shift, alter_s=True,
                                  whichMessage=3, interactive=5, sequence=2)
 
+    @skipOnCpuSet
     def test_check_alternate_nodes_advance_resv_endtime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -991,6 +1006,7 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
+    @skipOnCpuSet
     def test_check_alternate_nodes_advance_resv_starttime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -1026,6 +1042,7 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
+    @skipOnCpuSet
     def test_check_alternate_nodes_standing_resv_endtime(self):
         """
         This test confirms that an occurrence of a standing reservation can be
@@ -1063,6 +1080,7 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
+    @skipOnCpuSet
     def test_check_alternate_nodes_standing_resv_starttime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -1099,6 +1117,7 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
+    @skipOnCpuSet
     def test_conflict_standing_resv_occurrence(self):
         """
         This test confirms that if the requested time while altering an
@@ -1117,6 +1136,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, shift, alter_e=True,
                                  whichMessage=0)
 
+    @skipOnCpuSet
     def test_large_resv_nodes_server_crash(self):
         """
         This test is to test whether the server crashes or not when a very
@@ -1137,6 +1157,7 @@ class TestPbsResvAlter(TestFunctional):
 
         self.alter_a_reservation(rid, start, end, shift, alter_s=True)
 
+    @skipOnCpuSet
     def test_alter_advance_resv_boundary_values(self):
         """
         This test checks the alter of start and end times at the boundary
@@ -1158,6 +1179,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(
             rid, start, end, -shift, alter_s=True, sequence=4)
 
+    @skipOnCpuSet
     def test_alter_standing_resv_boundary_values(self):
         """
         This test checks the alter of start and end times at the boundary
@@ -1179,6 +1201,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(
             rid, start, end, -shift, alter_s=True, sequence=4)
 
+    @skipOnCpuSet
     def test_alter_degraded_resv_mom_down(self):
         """
         This test checks the alter of start and end times of reservations
@@ -1238,6 +1261,7 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_e=True, whichMessage=3, interactive=2,
                                  sequence=4)
 
+    @skipOnCpuSet
     def test_alter_resv_name(self):
         """
         This test checks the alter of reservation name.
@@ -1258,6 +1282,7 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attr1, id=rid1[0])
         self.server.expect(RESV, attr2, id=rid2[0])
 
+    @skipOnCpuSet
     def test_alter_user_permission(self):
         """
         This test checks the user permissions for pbs_ralter.

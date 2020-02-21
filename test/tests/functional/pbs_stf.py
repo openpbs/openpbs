@@ -109,6 +109,7 @@ class TestSTF(TestFunctional):
         self.server.expect(JOB, ATTR_comment, op=SET)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_1_3(self):
         """
         Test shrink to fit by setting a dedicated time that started 20 minutes
@@ -159,6 +160,7 @@ class TestSTF(TestFunctional):
         msg = "Job;%s;Job will run for duration=[%s|%s]" % (j2id, wt, wt2)
         self.scheduler.log_match(msg, regexp=True, max_attempts=5, interval=2)
 
+    @skipOnCpuSet
     def test_t_4_1_1(self):
         """
         Test shrink to fit by setting a dedicated time that starts 1 hour
@@ -182,6 +184,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_2_1(self):
         """
         Test shrink to fit by setting primetime that starts 4 hours from now
@@ -216,6 +219,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=j2id)
 
+    @skipOnCpuSet
     def test_t_4_2_3(self):
         """
         Test shrink to fit by setting primetime that starts 4 hours from now
@@ -245,6 +249,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_2_4(self):
         """
         Test shrink to fit by setting primetime that started 22 minutes ago
@@ -274,6 +279,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (GE, '00:01:00')}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_3_1(self):
         """
         Test shrink to fit by creating 16 reservations, say from R110 to R125,
@@ -325,6 +331,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_3_6(self):
         """
         Test shrink to fit by creating one reservation having ncpus=1,
@@ -382,6 +389,7 @@ class TestSTF(TestFunctional):
                                  max_attempts=5)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_3_8(self):
         """
         Test shrink to fit by submitting a STF job and then creating a
@@ -427,6 +435,7 @@ class TestSTF(TestFunctional):
 
         self.server.log_match(rid2 + ";reservation deleted", max_attempts=10)
 
+    @skipOnCpuSet
     def test_t_4_4_1(self):
         """
         Test shrink to fit by submitting top jobs as barrier.
@@ -476,6 +485,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (LE, '05:00:00')}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_t_4_5_1(self):
         """
         Test shrink to fit by setting primetime that started 45 minutes ago
@@ -510,6 +520,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (LE, '00:05:00')}
         self.server.expect(JOB, attr, id=j2id)
 
+    @skipOnCpuSet
     def test_t_4_6_1(self):
         """
         Test shrink to fit by submitting a reservation and top jobs as
@@ -550,6 +561,7 @@ class TestSTF(TestFunctional):
         attr = {'Resource_List.walltime': (LE, '00:15:00')}
         self.server.expect(JOB, attr, id=jid3)
 
+    @skipOnCpuSet
     def test_t_5_1_1(self):
         """
         STF job's min/max_walltime relative to resources_min/max.walltime
@@ -622,6 +634,7 @@ class TestSTF(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_t_5_1_2(self):
         """
         STF job's max_walltime relative to resources_max.walltime
@@ -656,6 +669,7 @@ class TestSTF(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_t_5_2_1(self):
         """
         Setting resources_max.min_walltime on a queue.
@@ -667,6 +681,7 @@ class TestSTF(TestFunctional):
             self.assertTrue('Resource limits can not be set for the resource'
                             in e.msg[0])
 
+    @skipOnCpuSet
     def test_t_5_2_2(self):
         """
         Setting resources_max.min_walltime on the server.
@@ -678,6 +693,7 @@ class TestSTF(TestFunctional):
             self.assertTrue('Resource limits can not be set for the resource'
                             in e.msg[0])
 
+    @skipOnCpuSet
     def test_t_6(self):
         """
         Test to see that the min_walltime is not unset if the max_walltime

@@ -90,6 +90,7 @@ class TestReservations(TestFunctional):
 
         return self.server.submit(r)
 
+    @skipOnCpuSet
     def degraded_resv_reconfirm(self, start, end, rrule=None, run=False):
         """
         Test that a degraded reservation gets reconfirmed
@@ -141,6 +142,7 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, a, id=rid, interval=1)
 
+    @skipOnCpuSet
     def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
                                        run=False, resume=False):
         """
@@ -295,6 +297,7 @@ class TestReservations(TestFunctional):
         self.degraded_resv_failed_reconfirm(
             start=t + 25, end=t + 625, run=True)
 
+    @skipOnCpuSet
     def test_standing_reservation_occurrence_two_not_degraded(self):
         """
         Test that when a standing reservation's occurrence 1 is on an offline
@@ -355,6 +358,7 @@ class TestReservations(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid2, offset=end - int(time.time()))
 
+    @skipOnCpuSet
     def test_degraded_reservation_reconfirm_running_job(self):
         """
         Test that a reservation isn't reconfirmed if there is a running job
@@ -399,6 +403,7 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, {'reserve_substate': 5}, id=rid)
 
+    @skipOnCpuSet
     def test_not_honoring_resvs(self):
         """
         PBS schedules jobs on nodes without accounting
@@ -453,6 +458,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
 
+    @skipOnCpuSet
     def test_sched_cycle_starts_on_resv_end(self):
         """
         This test checks whether the sched cycle gets started
@@ -493,6 +499,7 @@ class TestReservations(TestFunctional):
                               id=resid, interval=5)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_exclusive_state(self):
         """
         Test that the resv-exclusive and job-exclusive
@@ -530,6 +537,7 @@ class TestReservations(TestFunctional):
         self.assertIn('resv-exclusive', states)
         self.assertIn('job-exclusive', states)
 
+    @skipOnCpuSet
     def test_resv_excl_future_resv(self):
         """
         Test to see that exclusive reservations in the near term do not
@@ -556,6 +564,7 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, exp_attr, id=rid2)
 
+    @skipOnCpuSet
     def test_job_exceed_resv_end(self):
         """
         Test to see that a job when submitted to a reservation without the
@@ -627,6 +636,7 @@ class TestReservations(TestFunctional):
         self.server.log_match(rid1 + ";Reservation denied",
                               id=rid1, interval=5)
 
+    @skipOnCpuSet
     def test_future_resv_confirms_after_running_job(self):
         """
         Test if a future reservation gets confirmed if its start time starts
@@ -671,6 +681,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
 
+    @skipOnCpuSet
     def test_future_resv_confirms_before_non_excl_job(self):
         """
         Test if a future reservation gets confirmed if its start time starts
@@ -716,6 +727,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
 
+    @skipOnCpuSet
     def test_future_resv_with_non_excl_jobs(self):
         """
         Test if future reservations with/without exclusive placement are
@@ -774,6 +786,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid3)
 
+    @skipOnCpuSet
     def test_resv_excl_with_jobs(self):
         """
         Test to see that exclusive reservations in the near term do not
@@ -843,6 +856,7 @@ class TestReservations(TestFunctional):
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=self.mom.shortname)
 
+    @skipOnCpuSet
     def test_multiple_asap_resv(self):
         """
         Test that multiple ASAP reservations are scheduled one after another
@@ -888,6 +902,7 @@ class TestReservations(TestFunctional):
         msg = 'ASAP reservation has incorrect start time'
         self.assertEqual(resv2_stime, resv1_stime + 3600, msg)
 
+    @skipOnCpuSet
     def test_excl_asap_resv_before_longterm_resvs(self):
         """
         Test if an ASAP reservation created from an exclusive
@@ -951,6 +966,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid3)
 
+    @skipOnCpuSet
     def test_excl_asap_resv_after_longterm_resvs(self):
         """
         Test if an exclusive ASAP reservation created from an exclusive
@@ -1026,6 +1042,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid3)
 
+    @skipOnCpuSet
     def test_multi_vnode_excl_advance_resvs(self):
         """
         Test if long term exclusive reservations do not interfere
@@ -1072,6 +1089,7 @@ class TestReservations(TestFunctional):
         exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
         self.server.expect(RESV, exp_attr, id=rid3, offset=30)
 
+    @skipOnCpuSet
     def test_multi_vnode_excl_asap_resv(self):
         """
         Test if an ASAP reservation created from a excl placement
@@ -1129,6 +1147,7 @@ class TestReservations(TestFunctional):
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
 
+    @skipOnCpuSet
     def test_fail_confirm_resv_message(self):
         """
         Test if the scheduler fails to reserve a
@@ -1270,6 +1289,7 @@ class TestReservations(TestFunctional):
                            extend='x', attrop=PTL_AND, id=jid3)
 
     @requirements(num_moms=2)
+    @skipOnCpuSet
     def test_advance_resv_with_multinode_job_array(self):
         """
         Test multinode job array with advance reservation
@@ -1354,6 +1374,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'},
                            id=jid2, extend='x', interval=10, offset=120)
 
+    @skipOnCpuSet
     def test_reservations_with_expired_subjobs(self):
         """
         Test that an array job submitted to a reservation ends when
@@ -1960,6 +1981,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'True'})
 
+    @skipOnCpuSet
     def test_ASAP_resv_with_multivnode_job_array(self):
         """
         Test 2 multivnode job array converted to ASAP resv
@@ -2029,6 +2051,7 @@ class TestReservations(TestFunctional):
         self.mom.isUp()
         self.scheduler.isUp()
 
+    @skipOnCpuSet
     def test_standing_resv_with_multivnode_job_array(self):
         """
         Test multivnode job array with standing reservation. Also
