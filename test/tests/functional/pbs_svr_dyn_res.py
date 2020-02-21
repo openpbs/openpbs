@@ -45,11 +45,6 @@ class TestServerDynRes(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        # Setup node
-        """
-        a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
-        """
 
     def check_access_log(self, fp, exist=True):
         """
