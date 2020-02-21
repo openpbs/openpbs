@@ -1441,6 +1441,7 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 				 "Failed to add mom at %s:%d to ping mcast", pmom->mi_host, pmom->mi_port);
 		log_err(-1, __func__, log_buffer);
 		rpp_close(psvrmom->msr_stream);
+		tdelete2((u_long)psvrmom->msr_stream, 0, &streams);
 		psvrmom->msr_stream = -1;
 	}
 }
