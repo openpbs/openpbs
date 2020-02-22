@@ -2336,10 +2336,7 @@ main(int argc, char *argv[], char *envp[])
 
 	if ((argv[1] == NULL) || (strcmp(argv[1], HOOK_MODE) != 0)) {
 		char *python_path = NULL;
-		char *python_home = NULL;
-		//check pointers usability and if not in use then free it
-		// check mom up and simple job run, mom hooks, run regression in th3, stage-in and stage-out
-		if (get_py_progname(&python_path, &python_home)) {
+		if (get_py_progname(&python_path)) {
 			log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
 			return -1;
 		}
@@ -2445,6 +2442,7 @@ main(int argc, char *argv[], char *envp[])
 			rc = execve(python_path, argv, lenvp);
 		}
 #endif
+		free(python_path);
 	} else { /* hook mode */
 
 		char 	**argv2 = NULL;

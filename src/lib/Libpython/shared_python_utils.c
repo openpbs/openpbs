@@ -43,6 +43,38 @@
 #include "pbs_internal.h"
 #include "log.h"
 
+
+#ifdef WIN32
+
+/**
+ * @brief get_py_homepath
+ * 	Find and return where python binary is located
+ *
+ * @param[in] dest - buffer to copy python path
+ *
+ * @return int
+ * @retval 0 - Success
+ * @retval 1 - Fail
+ */
+
+int
+get_py_homepath(char **homepath) {
+#ifdef PYTHON
+	static char python_homepath[MAXPATHLEN + 1] = {'\0'};
+	if (python_homepath[0] == '\0') {
+		snprintf(python_homepath, MAXPATHLEN, "%spython", pbs_conf.pbs_exec_path);
+		forward2back_slash(python_homepath);
+		if (!file_exists(python_homepath)) {
+				log_err(-1, __func__, "Python home not found!");
+				return 1;
+		}
+	}
+#else
+	return 1;
+#endif
+}
+#endif
+
 /**
  * @brief get_py_progname
  * 	Find and return where python binary is located
@@ -54,21 +86,16 @@
  * @retval 1 - Fail
  */
 int
-get_py_progname(char **binpath, char **homepath)
+get_py_progname(char **binpath)
 {
 #ifdef PYTHON
 	static char python_binpath[MAXPATHLEN + 1] = {'\0'};
-	static char python_homepath[MAXPATHLEN + 1] = { '\0' };
-
 	if (python_binpath[0] == '\0') {
 #ifndef WIN32
-		snprintf(python_homepath, MAXPATHLEN, "%s/python", pbs_conf.pbs_exec_path);
 		snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
 #else
-		snprintf(python_homepath, MAXPATHLEN, "%spython", pbs_conf.pbs_exec_path);
 		snprintf(python_binpath, MAXPATHLEN, "%spython/python.exe", pbs_conf.pbs_exec_path);
 		forward2back_slash(python_binpath);
-		forward2back_slash(python_homepath);
 #endif
 		if (!file_exists(python_binpath)) {
 #ifdef PYTHON_BIN_PATH
@@ -84,12 +111,6 @@ get_py_progname(char **binpath, char **homepath)
 	*binpath = strdup(python_binpath);
 	if (*binpath == NULL)
 		return 1;
-	*homepath = strdup(python_homepath);
-	if (*homepath == NULL) {
-		free(*binpath);
-		*binpath = NULL;
-		return 1;
-	}
 	return 0;
 #else
 	return 1;
@@ -109,22 +130,33 @@ set_py_progname(void)
 {
 #ifdef PYTHON
 	char *python_binpath = NULL;
-	char *python_homepath = NULL;
 	static wchar_t w_python_binpath[MAXPATHLEN + 1] = {'\0'};
-	static wchar_t w_python_homepath[MAXPATHLEN + 1] = { '\0' };
 
 	if (w_python_binpath[0] == '\0') {
-		if (get_py_progname(&python_binpath, &python_homepath)) {
+		if (get_py_progname(&python_binpath)) {
 			log_err(-1, __func__, "Failed to find python binary path!");
 			return 1;
 		}
 		mbstowcs(w_python_binpath, python_binpath, MAXPATHLEN + 1);
-		mbstowcs(w_python_homepath, python_homepath, MAXPATHLEN + 1);
 		free(python_binpath);
-		free(python_homepath);
 	}
 	Py_SetProgramName(w_python_binpath);
+#ifdef WIN32
+	/*
+	 *  There is a bug in windows version of python resulting need to set python home explicitly.
+	 */
+	static wchar_t w_python_homepath[MAXPATHLEN + 1] = { '\0' };
+	char *python_homepath = NULL;
+	if (w_python_homepath[0] == '\0') {
+		if (get_py_homepath(&python_homepath)) {
+			log_err(-1, __func__, "Failed to find python home path!");
+			return 1;
+		}
+		mbstowcs(w_python_homepath, python_homepath, MAXPATHLEN + 1);
+		free(python_homepath);
+	}
 	Py_SetPythonHome(w_python_homepath);
+#endif
 	return 0;
 #else
 	return 0;
