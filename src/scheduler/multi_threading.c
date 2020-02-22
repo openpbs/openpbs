@@ -206,8 +206,8 @@ init_multi_threading(int nthreads)
 		return 1; /* main thread will act as the only worker thread */
 	}
 
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			"", "Launching worker threads");
+	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			"", "Launching %d worker threads", num_threads);
 
 	threads = malloc(num_threads * sizeof(pthread_t));
 	if (threads == NULL) {
