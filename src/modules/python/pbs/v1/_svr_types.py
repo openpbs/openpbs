@@ -43,8 +43,6 @@ __doc__ = """
 This module captures all the python types representing the PBS Server objects
 (server,queue,job,resv, etc.)
 """
-from typing import List
-
 from ._base_types import (PbsAttributeDescriptor, PbsReadOnlyDescriptor,
                           pbs_resource, pbs_bool, _LOG,
                           )
@@ -1377,7 +1375,7 @@ class _server_attribute:
     """
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
-    def __init__(self, name: str, resource: str, value: str, op: int, flags: int):
+    def __init__(self, name, resource, value, op, flags):
         self.name = name
         self.resource = resource
         self.value = value
@@ -1398,7 +1396,7 @@ class _server_attribute:
         super().__setattr__(name, value)
     #: m(__setattr__)
 
-    def extract_flags_str(self) -> List[str]:
+    def extract_flags_str(self):
         """returns the string values from the attribute flags."""
         lst = []
         for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
@@ -1407,7 +1405,7 @@ class _server_attribute:
         return lst
     #: m(extract_flags_str)
 
-    def extract_flags_int(self) -> List[int]:
+    def extract_flags_int(self):
         """returns the integer values from the attribute flags."""
         lst = []
         for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
@@ -1491,8 +1489,6 @@ management = _management
 #:------------------------------------------------------------------------
 #                  Reverse Lookup for _pv1mod_insert_int_constants
 #:-------------------------------------------------------------------------
-from collections import defaultdict
-dct = defaultdict(dict)
 _pbs_v1.REVERSE_MGR_CMDS = {}
 _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
