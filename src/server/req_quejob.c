@@ -3403,6 +3403,8 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	job *pjob;
 	char buf[256];
 	attribute temp;
+	resource *presc;
+	resource_def *prdefsl;
 	resource_def *resc_def;
 	resource *job_resc_entry;
 	resource *resv_resc_entry;
@@ -3425,10 +3427,6 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_nodes],
 		&resv_attr_def[(int)RESV_ATR_resv_nodes], pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
 
-	(void)resv_attr_def[(int)RESV_ATR_SchedSelect].at_decode(
-			&presv->ri_wattr[(int)RESV_ATR_SchedSelect],
-			NULL, NULL, pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str);
-
 	if (pjob->ji_wattr[(int)JOB_ATR_stime].at_flags & ATR_VFLAG_SET)
 		presv->ri_wattr[(int)RESV_ATR_start].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_stime].at_val.at_long;
 	else
@@ -3440,7 +3438,7 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	job_resc_entry = (resource *)GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
-	while (job_resc_entry) {
+	for (; job_resc_entry; job_resc_entry = (resource *)GET_NEXT(job_resc_entry->rs_link)) {
 		resc_def = job_resc_entry->rs_defin;
 		resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
 		if (resv_resc_entry == NULL) {
@@ -3452,7 +3450,6 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 		}
 		if (!strcmp(resc_def->rs_name, WALLTIME))
 			walltime_copied = 1;
-		job_resc_entry = (resource *)GET_NEXT(job_resc_entry->rs_link);
 	}
 
 	if (!walltime_copied) {
@@ -3469,6 +3466,9 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &temp, SET);
 		}
 	}
+	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+	presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+	make_schedselect(&pjob->ji_wattr[(int)JOB_ATR_resource], presc , NULL, &presv->ri_wattr[(int)RESV_ATR_SchedSelect]);
 
 	return 0;
 }

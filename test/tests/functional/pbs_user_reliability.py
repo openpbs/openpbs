@@ -80,14 +80,16 @@ j.create_resv_from_job=1
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
 
-        rid = 'R' + str(int(jid.split(".")[0]) + 1)
-        a = {ATTR_queue: rid}
-        self.server.expect(JOB, a, id=jid)
+        a = {ATTR_job: jid}
+        rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
         a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING",
              'Resource_List.select': '1:ncpus=3',
              'Resource_List.walltime': 9999}
         self.server.expect(RESV, a, id=rid)
+
+        a = {ATTR_queue: rid}
+        self.server.expect(JOB, a, id=jid)
 
         self.server.deljob(jid, wait=True)
         self.server.expect(RESV, a, id=rid)
@@ -117,12 +119,14 @@ j.create_resv_from_job=1
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
 
-        rid = 'R' + str(int(jid.split(".")[0]) + 1)
-        a = {ATTR_queue: rid}
-        self.server.expect(JOB, a, id=jid)
+        a = {ATTR_job: jid}
+        rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
         a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING"}
         self.server.expect(RESV, a, id=rid)
+
+        a = {ATTR_queue: rid}
+        self.server.expect(JOB, a, id=jid)
 
         self.server.deljob(jid, wait=True)
         self.server.expect(RESV, a, id=rid)
@@ -157,12 +161,14 @@ j.create_resv_from_job=1
         resv = Reservation(attrs=a)
         self.server.submit(resv)
 
-        rid = 'R' + str(int(jid.split(".")[0]) + 1)
-        a = {ATTR_queue: rid}
-        self.server.expect(JOB, a, id=jid)
+        a = {ATTR_job: jid}
+        rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
         a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING"}
         self.server.expect(RESV, a, id=rid)
+
+        a = {ATTR_queue: rid}
+        self.server.expect(JOB, a, id=jid)
 
         self.server.deljob(jid, wait=True)
         self.server.expect(RESV, a, id=rid)

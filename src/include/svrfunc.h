@@ -143,6 +143,7 @@ extern int confirm_resv_locally(resc_resv *presv, struct batch_request *orig_pre
 extern int set_select_and_place(int objtype, void *pobj, attribute *patr);
 extern pbs_queue *find_resvqueuebyname(char *quename);
 extern resc_resv *find_resv_by_quename(char *quename);
+extern int make_schedselect(attribute *patrl, resource *pselect, pbs_queue *pque, attribute *psched);
 
 #ifdef	_PROVISION_H
 extern int find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_name);

@@ -278,9 +278,9 @@ que_purge(pbs_queue *pque)
 pbs_queue *
 find_queuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
 	qname[PBS_MAXDEST] ='\0';
@@ -288,10 +288,9 @@ find_queuebyname(char *quename)
 	if (pc)
 		*pc = '\0';
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (; pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */
@@ -320,11 +319,10 @@ find_resvqueuebyname(char *quename)
 	if (pc)
 		*pc = '\0';
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (; pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
 			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */

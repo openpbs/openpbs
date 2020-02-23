@@ -4624,8 +4624,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 						ATTR_create_resv_from_job, NULL, 0, NULL, 0);
 
 				if (new_conv_str != NULL)
-					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
-						"Found job "ATTR_create_resv_from_job" attribute flagged to be set");
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
+						"Found job " ATTR_create_resv_from_job " attribute flagged to be set");
 			}
 
 			vnode_modified = pbs_python_has_vnode_set();

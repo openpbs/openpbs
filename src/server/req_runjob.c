@@ -1983,9 +1983,7 @@ convert_job_to_resv(job *pjob)
 	newreq = alloc_br(PBS_BATCH_SubmitResv);
 	if (newreq == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
-			pjob->ji_qs.ji_jobid, "batch request allocation failed");
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
-			pjob->ji_qs.ji_jobid, "Could not create reservation from the job");
+			pjob->ji_qs.ji_jobid, "batch request allocation failed, could not create reservation from the job");
 		return;
 	}
 	newreq->rq_type = PBS_BATCH_SubmitResv;

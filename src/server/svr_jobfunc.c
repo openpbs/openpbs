@@ -2321,7 +2321,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 
 extern int resc_access_perm;
 
-static int
+int
 make_schedselect(attribute *patrl, resource *pselect,
 	pbs_queue *pque, attribute *psched)
 {
