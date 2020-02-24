@@ -83,7 +83,7 @@ get_py_homepath(char **homepath) {
  * @brief get_py_progname
  * 	Find and return where python binary is located
  *
- * @param[in] dest - buffer to copy python path
+ * @param[in] binpath - buffer to copy python binary path
  *
  * @return int
  * @retval 0 - Success
