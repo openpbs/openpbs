@@ -48,9 +48,9 @@
 
 /**
  * @brief get_py_homepath
- * 	Find and return where python binary is located
+ * 	Find and return where python home is located
  *
- * @param[in] dest - buffer to copy python path
+ * @param[in] homepath - buffer to copy python home path
  *
  * @return int
  * @retval 0 - Success
@@ -69,6 +69,10 @@ get_py_homepath(char **homepath) {
 				return 1;
 		}
 	}
+	*homepath = strdup(python_homepath);
+	if (*homepath == NULL)
+		return 1;
+	return 0;
 #else
 	return 1;
 #endif
