@@ -112,8 +112,6 @@ pbs_python_CPPFLAGS =  \
 	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
 
 pbs_python_LDADD = \
-	$(top_builddir)/src/lib/Libpython/libpbspython.a \
-	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
@@ -126,6 +124,15 @@ pbs_python_LDADD = \
 	@KRB5_LIBS@
 
 pbs_python_SOURCES = \
+	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
+	$(top_builddir)/src/lib/Libpython/common_python_utils.c \
+	$(top_builddir)/src/lib/Libpython/pbs_ifl_wrap.c \
+	$(top_builddir)/src/lib/Libpython/pbs_python_external.c \
+	$(top_builddir)/src/lib/Libpython/pbs_python_svr_external.c \
+	$(top_builddir)/src/lib/Libpython/module_pbs_v1.c \
+	$(top_builddir)/src/lib/Libpython/pbs_python_svr_internal.c \
+	$(top_builddir)/src/lib/Libpython/pbs_python_svr_size_type.c \
+	$(top_builddir)/src/lib/Libpython/pbs_python_import_types.c \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/node_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/queue_attr_def.c \
