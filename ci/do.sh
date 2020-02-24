@@ -165,7 +165,13 @@ set -e
 pbs_config --make-ug
 
 if [ "x${RUN_TESTS}" == "x1" ];then
-  ptl_tests_dir=$(dirname ${prefix})/ptl/tests
+  if [ "x${ID}" == "xcentos" ];then
+    export LC_ALL=en_US.utf-8 
+    export LANG=en_US.utf-8
+  elif [ "x${ID}" == "xopensuse" ]; then
+    export LC_ALL=C.utf8
+  fi
+  ptl_tests_dir=/pbspro/test/tests
   cd ${ptl_tests_dir}/
   benchpress_opt="$( cat ${workdir}/.benchpress_opt )"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"

@@ -83,7 +83,7 @@ def commit_docker_image():
     env_file = os.path.join(pbs_dirname, ".env")
     image_name = read_from_file(env_file)
     image_name = image_name.split('=')[1]
-    if image_name.find('_ci_pbs') == -1:
+    if image_name[-7:] != '_ci_pbs':
         image_name += '_ci_pbs'
         image_name = image_name.replace(':', '_')
         try:
@@ -111,7 +111,7 @@ def delete_older_image(bad_images):
     '''
     When building a newer '_ci_pbs' image this fucntion will delete any older such instance
     '''
-    if bad_images.find('_ci_pbs') == -1:
+    if bad_images[-7:] != '_ci_pbs':
         bad_images = bad_images.replace(':', '_')
         bad_images += '_ci_pbs'
     cmd = "docker images -q " + bad_images
@@ -149,8 +149,8 @@ def check_for_existing_image():
     val = read_from_file(env_file)
     if val != '':
         val = val.split('=')[1]
-        if val.find('_ci_pbs') != -1:
-            val = val[:-7].replace('_', ':')
+        if val[-7:] == '_ci_pbs':
+            val = val[:-7][::-1].replace('_', ':', 1)[::-1]
     else:
         val = 'centos:7'
     search_str = val.replace(":", "_")
@@ -353,6 +353,11 @@ if __name__ == "__main__":
             write_to_file(env_file, "CONTAINER_PLATFORM="+val)
             if args.build != None:
                 delete_older_image(val)
+                if val[-7:] == '_ci_pbs':
+                    # remove '_ci_pbs' from string and replace '_' to ':'
+                    # this will make it an image recognized by docker hub
+                    val = val[:-7][::-1].replace('_', ':', 1)[::-1]
+                    write_to_file(env_file, "CONTAINER_PLATFORM="+val)
             ret = check_prerequisites()
             if ret == 1:
                 log_error(

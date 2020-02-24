@@ -7,7 +7,7 @@ services:
         - ../../pbspro:/pbspro
         - ./:/src
         - ./logs:/logs
-      entrypoint: src/docker-entrypoint
+      entrypoint: /src/docker-entrypoint
       env_file: .env
       networks: 
         ci:
@@ -19,4 +19,3 @@ services:
 networks: 
   ci:
     driver: bridge
-    
