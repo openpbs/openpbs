@@ -480,7 +480,7 @@ copy_env_value(char *dest, char *pv, int quote_flg)
 			case ESC_CHAR: /* backslash in value, escape it */
 				*dest++ = *pv;
 				if (*(pv + 1) != ',') /* do not escape if ESC_CHAR already escapes */
-					*dest++ = *pv;
+					*dest++ = *++pv;
 				break;
 
 			case ',':
