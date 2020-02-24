@@ -5151,7 +5151,7 @@ class Server(PBSService):
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
         return True
 
-    def unset_svr_attrib(self, server_stat=None, sudo=False):
+    def unset_svr_attrib(self, server_stat=None):
         """
         Unset server attributes
         """
@@ -5173,9 +5173,9 @@ class Server(PBSService):
             else:
                 unsetlist.append(k)
         if len(unsetlist) != 0:
-            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist, sudo=sudo)
+            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
 
-    def delete_site_hooks(self, sudo=False):
+    def delete_site_hooks(self):
         """
         Delete site hooks from PBS
         """
@@ -5186,9 +5186,9 @@ class Server(PBSService):
             if h in hooks:
                 hooks.remove(h)
         if len(hooks) > 0:
-            self.manager(MGR_CMD_DELETE, HOOK, id=hooks, sudo=sudo)
+            self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
 
-    def delete_queues(self, sudo=False):
+    def delete_queues(self):
         """
         Delete queues
         """
@@ -5203,7 +5203,7 @@ class Server(PBSService):
                                      node['id'])
             except:
                 pass
-            self.manager(MGR_CMD_DELETE, QUEUE, id=queues, sudo=sudo)
+            self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
     def delete_sched_config(self, sudo=False):
         """
@@ -5223,12 +5223,12 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name, sudo=sudo)
 
-    def delete_nodes(self, sudo=False):
+    def delete_nodes(self):
         """
         Remove all the nodes from PBS
         """
         try:
-            self.manager(MGR_CMD_DELETE, VNODE, id="@default", sudo=sudo)
+            self.manager(MGR_CMD_DELETE, VNODE, id="@default")
         except PbsManagerError as e:
             if "Unknown node" not in e.msg[0]:
                 raise
@@ -13214,7 +13214,7 @@ class MoM(PBSService):
 
         return self.version
 
-    def delete_vnodes(self, sudo=False):
+    def delete_vnodes(self):
         rah = ATTR_rescavail + '.host'
         rav = ATTR_rescavail + '.vnode'
         a = {rah: self.hostname, rav: None}
@@ -13235,7 +13235,7 @@ class MoM(PBSService):
             if v[rav].split('.')[0] != v[rah].split('.')[0]:
                 vs.append(v['id'])
         if len(vs) > 0:
-            self.server.manager(MGR_CMD_DELETE, VNODE, id=vs, sudo=sudo)
+            self.server.manager(MGR_CMD_DELETE, VNODE, id=vs)
 
     def revert_to_defaults(self, delvnodedefs=True):
         """
