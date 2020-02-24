@@ -451,28 +451,6 @@ class PBSTestSuite(unittest.TestCase):
         cls.check_users_exist()
         cls.init_servers()
         if cls.use_cur_setup:
-            attr = {}
-            test_user = pwd.getpwuid(os.getuid())[0] + '@*'
-            mgrs_opers = {"managers": [test_user, str(MGR_USER) + '@*'],
-                          "operators": [str(OPER_USER) + '@*']}
-            server_stat = cls.server.status(SERVER, ["managers", "operators"])
-            if len(server_stat) > 0:
-                server_stat = server_stat[0]
-            for role, users in mgrs_opers.items():
-                if role not in server_stat:
-                    attr[role] = (INCR, ','.join(users))
-                    cls.added_mgrs_opers[role] = users
-                else:
-                    add_users = []
-                    for user in users:
-                        if user not in server_stat[role]:
-                            add_users.append(user)
-                    if len(add_users) > 0:
-                        attr[role] = (INCR, ",".join(add_users))
-                        cls.added_mgrs_opers[role] = add_users
-            if len(attr) > 0:
-                cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
-
             _, path = tempfile.mkstemp(prefix="saved_custom_setup",
                                        suffix=".json")
             ret = cls.server.save_configuration(path, 'w')
@@ -506,7 +484,28 @@ class PBSTestSuite(unittest.TestCase):
         # once save & load configurations are implemented for
         # comm, mom, scheduler
         if self.use_cur_setup:
-            self.server.delete_nodes()
+            self.server.delete_nodes(True)
+            attr = {}
+            test_user = pwd.getpwuid(os.getuid())[0] + '@*'
+            mgrs_opers = {"managers": [test_user, str(MGR_USER) + '@*'],
+                          "operators": [str(OPER_USER) + '@*']}
+            server_stat = self.server.status(SERVER, ["managers", "operators"])
+            if len(server_stat) > 0:
+                server_stat = server_stat[0]
+            for role, users in mgrs_opers.items():
+                if role not in server_stat:
+                    attr[role] = (INCR, ','.join(users))
+                    self.added_mgrs_opers[role] = users
+                else:
+                    add_users = []
+                    for user in users:
+                        if user not in server_stat[role]:
+                            add_users.append(user)
+                    if len(add_users) > 0:
+                        attr[role] = (INCR, ",".join(add_users))
+                        self.added_mgrs_opers[role] = add_users
+            if len(attr) > 0:
+                self.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
         else:
             self.revert_servers()
             self.revert_pbsconf()
@@ -1548,15 +1547,15 @@ class PBSTestSuite(unittest.TestCase):
         cls.logger.info('=' * _m_len)
 
     @staticmethod
-    def delete_current_state(svr, moms):
+    def delete_current_state(svr, moms, sudo=False):
         """
         Delete nodes, queues, site hooks, reservations and
         vnodedef file
         """
         # unset server attributes
-        svr.unset_svr_attrib()
+        svr.unset_svr_attrib(sudo=sudo)
         # Delete site hooks
-        svr.delete_site_hooks()
+        svr.delete_site_hooks(sudo=sudo)
         # cleanup reservations
         svr.cleanup_reservations()
         # Delete vnodedef file & vnodes
@@ -1564,12 +1563,12 @@ class PBSTestSuite(unittest.TestCase):
             # Check if vnodedef file is present
             if moms[m].has_vnode_defs():
                 moms[m].delete_vnode_defs()
-                moms[m].delete_vnodes()
+                moms[m].delete_vnodes(sudo=sudo)
                 moms[m].restart()
         # Delete nodes
-        svr.delete_nodes()
+        svr.delete_nodes(sudo=sudo)
         # Delete queues
-        svr.delete_queues()
+        svr.delete_queues(sudo=sudo)
 
     def tearDown(self):
         """
@@ -1593,7 +1592,12 @@ class PBSTestSuite(unittest.TestCase):
         for sched in self.scheds:
             self.scheds[sched].cleanup_files()
         if self.use_cur_setup:
-            self.delete_current_state(self.server, self.moms)
+            if len(self.added_mgrs_opers) > 0:
+                attr = {}
+                for role, added_users in self.added_mgrs_opers.items():
+                    attr[role] = (DECR, ",".join(added_users))
+                self.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
+            self.delete_current_state(self.server, self.moms, sudo=True)
             ret = self.server.load_configuration(self.saved_file)
             if not ret:
                 raise Exception("Failed to load test setup")
@@ -1603,15 +1607,10 @@ class PBSTestSuite(unittest.TestCase):
     def tearDownClass(cls):
         cls._testMethodName = 'tearDownClass'
         if cls.use_cur_setup:
-            PBSTestSuite.delete_current_state(cls.server, cls.moms)
+            PBSTestSuite.delete_current_state(cls.server, cls.moms, sudo=True)
             PBSTestSuite.config_saved = False
             ret = cls.server.load_configuration(cls.saved_file)
             if not ret:
                 raise Exception("Failed to load custom setup")
         if cls.use_cur_setup:
-            if len(cls.added_mgrs_opers) > 0:
-                attr = {}
-                for role, added_users in cls.added_mgrs_opers.items():
-                    attr[role] = (DECR, ",".join(added_users))
-                cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
             cls.du.rm(path=cls.saved_file)

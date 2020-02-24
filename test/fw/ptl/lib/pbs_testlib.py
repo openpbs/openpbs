@@ -5151,7 +5151,7 @@ class Server(PBSService):
                 self.manager(MGR_CMD_DELETE, RSC, id=rescs)
         return True
 
-    def unset_svr_attrib(self, server_stat=None):
+    def unset_svr_attrib(self, server_stat=None, sudo=False):
         """
         Unset server attributes
         """
@@ -5173,9 +5173,9 @@ class Server(PBSService):
             else:
                 unsetlist.append(k)
         if len(unsetlist) != 0:
-            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
+            self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist, sudo=sudo)
 
-    def delete_site_hooks(self):
+    def delete_site_hooks(self, sudo=False):
         """
         Delete site hooks from PBS
         """
@@ -5186,9 +5186,9 @@ class Server(PBSService):
             if h in hooks:
                 hooks.remove(h)
         if len(hooks) > 0:
-            self.manager(MGR_CMD_DELETE, HOOK, id=hooks)
+            self.manager(MGR_CMD_DELETE, HOOK, id=hooks, sudo=sudo)
 
-    def delete_queues(self):
+    def delete_queues(self, sudo=False):
         """
         Delete queues
         """
@@ -5203,9 +5203,9 @@ class Server(PBSService):
                                      node['id'])
             except:
                 pass
-            self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
+            self.manager(MGR_CMD_DELETE, QUEUE, id=queues, sudo=sudo)
 
-    def delete_sched_config(self):
+    def delete_sched_config(self, sudo=False):
         """
         Delete sched_priv & sched_log files
         """
@@ -5221,14 +5221,14 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.du.rm(path=sched_priv, sudo=True,
                            recursive=True, force=True)
-                self.manager(MGR_CMD_DELETE, SCHED, id=name)
+                self.manager(MGR_CMD_DELETE, SCHED, id=name, sudo=sudo)
 
-    def delete_nodes(self):
+    def delete_nodes(self, sudo=False):
         """
         Remove all the nodes from PBS
         """
         try:
-            self.manager(MGR_CMD_DELETE, VNODE, id="@default")
+            self.manager(MGR_CMD_DELETE, VNODE, id="@default", sudo=sudo)
         except PbsManagerError as e:
             if "Unknown node" not in e.msg[0]:
                 raise
@@ -5296,7 +5296,7 @@ class Server(PBSService):
         else:
             conf['qmgr_print_sched'] = ret['out']
         ret = self.du.run_cmd(self.hostname, [pbsnodes, '-av'],
-                              logerr=False, level=logging.DEBUG)
+                              logerr=False, level=logging.DEBUG, sudo=True)
         err_msg = "Server has no node list"
         # pbsnodes -av returns a non zero exit code when there are
         # no nodes in cluster
@@ -13214,7 +13214,7 @@ class MoM(PBSService):
 
         return self.version
 
-    def delete_vnodes(self):
+    def delete_vnodes(self, sudo=False):
         rah = ATTR_rescavail + '.host'
         rav = ATTR_rescavail + '.vnode'
         a = {rah: self.hostname, rav: None}
@@ -13235,7 +13235,7 @@ class MoM(PBSService):
             if v[rav].split('.')[0] != v[rah].split('.')[0]:
                 vs.append(v['id'])
         if len(vs) > 0:
-            self.server.manager(MGR_CMD_DELETE, VNODE, id=vs)
+            self.server.manager(MGR_CMD_DELETE, VNODE, id=vs, sudo=sudo)
 
     def revert_to_defaults(self, delvnodedefs=True):
         """
