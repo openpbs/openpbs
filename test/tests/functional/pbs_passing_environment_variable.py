@@ -180,6 +180,7 @@ exit 0
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
                                                    'SET_IN_SUBMISSION=false')},
                            id=jid1)
+
     def test_passing_env_special_char_via_qsub(self):
         """
         Submit a job with -v ENV_TEST=N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii
@@ -200,4 +201,3 @@ exit 0
         exp_string = "ENV_TEST=N:\\\\aa\\\\bb\\\\cc\\\\dd"
         exp_string += "\\\\ee\\\\ff\\\\gg\\\\hh\\\\ii"
         self.assertIn(exp_string, var_list)
-
