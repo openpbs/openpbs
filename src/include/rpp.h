@@ -57,7 +57,7 @@ extern "C" {
 /*
  * Default number of RPP packets to check every server iteration
  */
-#define RPP_MAX_PKT_CHECK_DEFAULT	1024
+#define RPP_MAX_PKT_CHECK_DEFAULT	64
 
 /* TPP specific definitions and structures */
 #define TPP_DEF_ROUTER_PORT 17001
