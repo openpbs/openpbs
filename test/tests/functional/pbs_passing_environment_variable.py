@@ -183,3 +183,24 @@ foo\n
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
                                                    'SET_IN_SUBMISSION=false')},
                            id=jid1)
+
+    def test_passing_env_special_char_via_qsub(self):
+        """
+        Submit a job with -v ENV_TEST=N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii
+        and check that the value is passed correctly
+
+        NOTE: As per the Guide 5.2.4.7 Special Characters
+        in Variable_List Job Attribute
+        Python requires that double quotes
+        and backslashes also be escaped with a backslash
+        """
+        a = {ATTR_v: 'ENV_TEST="N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii"'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        qstat = self.server.status(JOB, ATTR_v, id=jid2)
+        job_outfile = qstat[0]['Variable_List']
+        var_list = job_outfile.split(",")
+        exp_string = "ENV_TEST=N:\\\\aa\\\\bb\\\\cc\\\\dd"
+        exp_string += "\\\\ee\\\\ff\\\\gg\\\\hh\\\\ii"
+        self.assertIn(exp_string, var_list)
