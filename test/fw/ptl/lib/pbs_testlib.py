@@ -5205,7 +5205,7 @@ class Server(PBSService):
                 pass
             self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
-    def delete_sched_config(self, sudo=False):
+    def delete_sched_config(self):
         """
         Delete sched_priv & sched_log files
         """
@@ -5221,7 +5221,7 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.du.rm(path=sched_priv, sudo=True,
                            recursive=True, force=True)
-                self.manager(MGR_CMD_DELETE, SCHED, id=name, sudo=sudo)
+                self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
     def delete_nodes(self):
         """
