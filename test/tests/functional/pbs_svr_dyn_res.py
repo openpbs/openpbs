@@ -417,8 +417,9 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid)
 
         # Change script during job run
-        cmd = ["echo", "\"echo 50gb\"", " > ", filenames[0]]
-        self.du.run_cmd(cmd=cmd, runas=ROOT_USER, as_script=True)
+        tmp_file = self.du.create_temp_file(body="echo 50gb")
+        self.du.run_copy(src=tmp_file, dest=filenames[0], sudo=True,
+                         preserve_permission=False)
 
         # Rerun job
         self.server.rerunjob(jid)
