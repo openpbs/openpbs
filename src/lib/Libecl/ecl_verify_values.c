@@ -289,7 +289,7 @@ verify_value_authorized_groups(int batch_request, int parent_object, int cmd,
 		return PBSE_BADATVAL;
 
 	if (pattr->value[0] == '\0') {
-		//unset group
+		/* unset group */
 		return PBSE_NONE;
 	}
 
