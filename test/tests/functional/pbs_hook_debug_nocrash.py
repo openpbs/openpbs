@@ -82,7 +82,7 @@ class TestHookDebugNoCrash(TestFunctional):
             self.skipTest(msg)
         TestFunctional.setUp(self)
 
-    @timeout(400)
+    @timeout(1000)
     def test_hook_debug_no_crash(self):
 
         hook_body = """
