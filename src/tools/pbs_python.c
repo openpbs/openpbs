@@ -2274,9 +2274,6 @@ argv_list_to_str(pbs_list_head *argv_list)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	char python_path[MAXPATHLEN + 1] = {'\0'};
-	char *p_python_path = python_path;
-
 #ifndef WIN32
 	char dirname[MAXPATHLEN + 1];
 	int  env_len = 0;
@@ -2337,12 +2334,12 @@ main(int argc, char *argv[], char *envp[])
 		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
 	/* last entry is left with null pointer */
 
-	if (get_py_progname(&p_python_path, MAXPATHLEN)) {
-		log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
-		return -1;
-	}
-
 	if ((argv[1] == NULL) || (strcmp(argv[1], HOOK_MODE) != 0)) {
+		char *python_path = NULL;
+		if (get_py_progname(&python_path)) {
+			log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
+			return -1;
+		}
 #ifdef WIN32
 		/* unset PYTHONHOME if any */
 		SetEnvironmentVariable(PYHOME, NULL);
@@ -2445,6 +2442,7 @@ main(int argc, char *argv[], char *envp[])
 			rc = execve(python_path, argv, lenvp);
 		}
 #endif
+		free(python_path);
 	} else { /* hook mode */
 
 		char 	**argv2 = NULL;

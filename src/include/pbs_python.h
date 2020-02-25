@@ -238,7 +238,7 @@ extern int  pbs_python_ext_alloc_python_script(
 extern void pbs_python_ext_quick_start_interpreter(void);
 extern void pbs_python_ext_quick_shutdown_interpreter(void);
 extern int set_py_progname(void);
-extern int get_py_progname(char **dest, int dest_sz);
+extern int get_py_progname(char **);
 
 
 /* -- END pbs_python_external.c implementations -- */
