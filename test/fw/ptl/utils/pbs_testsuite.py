@@ -458,7 +458,7 @@ class PBSTestSuite(unittest.TestCase):
             else:
                 cls.logger.error("Failed to save custom setup")
                 raise Exception("Failed to save custom setup")
-            cls().add_mgrs_opers(cls.server)
+            cls.add_mgrs_opers()
         cls.init_comms()
         cls.init_schedulers()
         cls.init_moms()
@@ -1309,23 +1309,24 @@ class PBSTestSuite(unittest.TestCase):
         for mom in self.moms.values():
             self.revert_mom(mom, force)
 
-    def add_mgrs_opers(self, server):
+    @classmethod
+    def add_mgrs_opers(cls):
         """
         Adding manager and operator users
         """
-        if not self.use_cur_setup:
+        if not cls.use_cur_setup:
             try:
                 # Unset managers list
-                server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True)
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True)
                 # Unset operators list
-                server.manager(MGR_CMD_UNSET, SERVER, 'operators', sudo=True)
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'operators', sudo=True)
             except PbsManagerError as e:
                 self.logger.error(e.msg)
         attr = {}
         current_user = pwd.getpwuid(os.getuid())[0] + '@*'
         mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
                       "operators": [str(OPER_USER) + '@*']}
-        server_stat = server.status(SERVER, ["managers", "operators"])
+        server_stat = cls.server.status(SERVER, ["managers", "operators"])
         if len(server_stat) > 0:
             server_stat = server_stat[0]
         for role, users in mgrs_opers.items():
@@ -1339,7 +1340,7 @@ class PBSTestSuite(unittest.TestCase):
                 if len(add_users) > 0:
                     attr[role] = (INCR, ",".join(add_users))
         if len(attr) > 0:
-            self.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
+            cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
 
     def revert_server(self, server, force=False):
         """
@@ -1352,7 +1353,7 @@ class PBSTestSuite(unittest.TestCase):
             msg = 'Failed to restart server ' + server.hostname
             self.assertTrue(server.isUp(), msg)
         server_stat = server.status(SERVER)[0]
-        self.add_mgrs_opers(server)
+        self.add_mgrs_opers()
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
                 force):
             server.revert_to_defaults(reverthooks=self.revert_hooks,
