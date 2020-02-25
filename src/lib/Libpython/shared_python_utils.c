@@ -50,6 +50,8 @@
  * @brief get_py_homepath
  * 	Find and return where python home is located
  *
+ * NOTE: Caller need to free allocated memory to the variable "homepath" manually after use
+ *
  * @param[in] homepath - buffer to copy python home path
  *
  * @return int
@@ -82,6 +84,8 @@ get_py_homepath(char **homepath) {
 /**
  * @brief get_py_progname
  * 	Find and return where python binary is located
+ *
+ * NOTE: Caller need to free allocated memory to the variable "binpath" manually after use
  *
  * @param[in] binpath - buffer to copy python binary path
  *
