@@ -692,6 +692,7 @@ conn_to_mom_failed(job *pjob, void(*func)(struct work_task *))
 		svr_disconnect(pjob->ji_momhandle);
 	} else {
 		rpp_close(pjob->ji_momhandle);
+		tdelete2((u_long)pjob->ji_momhandle, 0, &streams);
 	}
 	pjob->ji_momhandle = -1;
 	ptask = set_task(WORK_Immed, 0, func, pjob);
