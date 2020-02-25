@@ -5295,6 +5295,11 @@ class Server(PBSService):
             return False
         else:
             conf['qmgr_print_sched'] = ret['out']
+
+        # sudo=True is added while running "pbsnodes -av", to make
+        # sure that all the node attributes are preserved in
+        # save_configuration. If this command is run without sudo,
+        # some of the node attributes like port, version is not listed.
         ret = self.du.run_cmd(self.hostname, [pbsnodes, '-av'],
                               logerr=False, level=logging.DEBUG, sudo=True)
         err_msg = "Server has no node list"

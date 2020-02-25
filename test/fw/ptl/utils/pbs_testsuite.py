@@ -1317,9 +1317,11 @@ class PBSTestSuite(unittest.TestCase):
         if not cls.use_cur_setup:
             try:
                 # Unset managers list
-                cls.server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True)
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'managers',
+                                   sudo=True)
                 # Unset operators list
-                cls.server.manager(MGR_CMD_UNSET, SERVER, 'operators', sudo=True)
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'operators',
+                                   sudo=True)
             except PbsManagerError as e:
                 self.logger.error(e.msg)
         attr = {}
