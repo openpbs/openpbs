@@ -1388,7 +1388,6 @@ class TestPbsResvAlter(TestFunctional):
         jid = self.submit_job_to_resv(rid, user=TEST_USER4)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
 
-
     @skipOnShasta
     def test_auth_group_restart(self):
         """
