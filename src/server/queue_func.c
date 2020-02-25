@@ -287,8 +287,8 @@ find_queuebyname(char *quename)
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	for (; pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
 			break;
 	}
@@ -318,8 +318,8 @@ find_resvqueuebyname(char *quename)
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	for (; pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
 			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
 			break;

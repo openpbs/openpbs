@@ -44,9 +44,6 @@ class Test_user_reliability(TestFunctional):
     """
     This test suite is for testing the user reliability workflow feature.
     """
-    def setUp(self):
-        TestFunctional.setUp(self)
-
     def test_create_resv_from_job_using_runjob_hook(self):
         """
         This test is for creating a reservation out of a job using runjob hook.
@@ -83,7 +80,7 @@ j.create_resv_from_job=1
         a = {ATTR_job: jid}
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
-        a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING",
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
              'Resource_List.select': '1:ncpus=3',
              'Resource_List.walltime': 9999}
         self.server.expect(RESV, a, id=rid)
@@ -122,7 +119,7 @@ j.create_resv_from_job=1
         a = {ATTR_job: jid}
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
-        a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING"}
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, a, id=rid)
 
         a = {ATTR_queue: rid}
@@ -164,7 +161,7 @@ j.create_resv_from_job=1
         a = {ATTR_job: jid}
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
-        a = {ATTR_job: jid, 'reserve_state': "RESV_RUNNING"}
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, a, id=rid)
 
         a = {ATTR_queue: rid}
