@@ -1135,10 +1135,10 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 											nresc->rs_defin->rs_free(&nresc->rs_value);
 											delete_link(&nresc->rs_link);
 											free(nresc);
-											nresc = (resource *)GET_NEXT((pattr+i)->at_val.at_list);
+											nresc = (resource *)GET_NEXT((pattr + i)->at_val.at_list);
 											if (nresc == NULL)
-												(pattr+i)->at_flags &= ~ATR_VFLAG_SET;
-											(pattr+i)->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
+												(pattr + i)->at_flags &= ~ATR_VFLAG_SET;
+											(pattr + i)->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
 										}
 									}
 								}
