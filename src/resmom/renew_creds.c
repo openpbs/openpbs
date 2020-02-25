@@ -227,7 +227,7 @@ init_ticket_from_ccache(job *pjob, const task *ptask, struct krb_holder *ticket)
 		return ret;
 	}
 
-	if((ret = krb5_init_context(&ticket->context)) != 0) {
+	if ((ret = krb5_init_context(&ticket->context)) != 0) {
 		log_err(ret, __func__, "Failed to initialize kerberos context.");
 		return PBS_KRB5_ERR_CONTEXT_INIT;
 	}
@@ -264,7 +264,7 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 	int ret;
 	char buf[LOG_BUF_SIZE];
 
-	if((ret = krb5_init_context(&ticket->context)) != 0) {
+	if ((ret = krb5_init_context(&ticket->context)) != 0) {
 		log_err(ret, __func__, "Failed to initialize context.");
 		return PBS_KRB5_ERR_CONTEXT_INIT;
 	}
@@ -283,7 +283,7 @@ init_ticket(struct krb_holder *ticket, int cred_action)
 			break;
 
 		case CRED_DESTROY:
-			if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
+			if ((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
 				snprintf(buf, sizeof(buf), "Could not resolve ccache name \"krb5_cc_resolve()\" : %s.", error_message(ret));
 				log_err(errno, __func__, buf);
 				return(ret);
@@ -320,17 +320,17 @@ store_ticket(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 {
 	krb5_error_code  ret;
 
-	if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
+	if ((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
 		snprintf(errbuf, errbufsz, "%s - Could not resolve cache name \"krb5_cc_resolve()\" : %s.", __func__, error_message(ret));
 		return(ret);
 	}
 
-	if((ret = krb5_cc_initialize(ticket->context, ticket->job_info->ccache, ticket->job_info->creds->client))) {
+	if ((ret = krb5_cc_initialize(ticket->context, ticket->job_info->ccache, ticket->job_info->creds->client))) {
 		snprintf(errbuf, errbufsz, "%s - Could not initialize cache \"krb5_cc_initialize()\" : %s.", __func__, error_message(ret));
 		return(ret);
 	}
 
-	if((ret = krb5_cc_store_cred(ticket->context, ticket->job_info->ccache, ticket->job_info->creds))) {
+	if ((ret = krb5_cc_store_cred(ticket->context, ticket->job_info->ccache, ticket->job_info->creds))) {
 		snprintf(errbuf, errbufsz, "%s - Could not store credentials initialize cache \"krb5_cc_store_cred()\" : %s.", __func__, error_message(ret));
 		return(ret);
 	}
@@ -366,20 +366,20 @@ get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 	}
 
 	/* Go user */
-	if(seteuid(ticket->job_info->job_uid) < 0) {
+	if (seteuid(ticket->job_info->job_uid) < 0) {
 		strerror_r(errno, strerrbuf, LOG_BUF_SIZE);
 		snprintf(errbuf, errbufsz, "%s - Could not set uid using \"setuid()\": %s.", __func__, strerrbuf);
 		return errno;
 	}
 
 	/* Store TGT */
-	if((ret = store_ticket(ticket, errbuf, errbufsz))) {
+	if ((ret = store_ticket(ticket, errbuf, errbufsz))) {
 		seteuid(0);
 		return ret;
 	}
 
 	/* Go root */
-	if(seteuid(0) < 0) {
+	if (seteuid(0) < 0) {
 		snprintf(errbuf, errbufsz, "%s - Could not reset root privileges.", __func__);
 		return errno;
 	}
@@ -499,14 +499,14 @@ get_ticket_from_ccache(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 	}
 	memset(mcreds, 0, sizeof(krb5_creds));
 
-	if((ret = krb5_copy_principal(ticket->context, ticket->job_info->client, &mcreds->client))) {
+	if ((ret = krb5_copy_principal(ticket->context, ticket->job_info->client, &mcreds->client))) {
 		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
 		snprintf(errbuf, errbufsz,"krb5_get_ticket - couldn't copy client principal - (%s)", krb5_err);
 		krb5_free_error_message(ticket->context, krb5_err);
 		goto out;
 	}
 
-	if((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
+	if ((ret = krb5_cc_resolve(ticket->context, ticket->job_info->ccache_name, &ticket->job_info->ccache))) {
 		const char *krb5_err = krb5_get_error_message(ticket->context, ret);
 		snprintf(errbuf, errbufsz, "krb5_cc_resolve failed; Error text: %s", krb5_err);
 		krb5_free_error_message(ticket->context, krb5_err);
@@ -1239,7 +1239,7 @@ singleshot_afslog(struct krb_holder *ticket) {
 
 	if (k_hasafs()) {
 		/* Go user */
-		if(seteuid(ticket->job_info->job_uid) < 0) {
+		if (seteuid(ticket->job_info->job_uid) < 0) {
 			strerror_r(errno, errbuf, sizeof(errbuf));
 			snprintf(buf, sizeof(buf), "Could not set uid using \"setuid()\": %s.", errbuf);
 			log_err(errno, __func__, buf);
@@ -1251,7 +1251,7 @@ singleshot_afslog(struct krb_holder *ticket) {
 		do_afslog(ticket->context, ticket->job_info);
 
 		/* Go root */
-		if(seteuid(0) < 0) {
+		if (seteuid(0) < 0) {
 			strerror_r(errno, errbuf, sizeof(errbuf));
 			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
 			log_err(errno, __func__, buf);
@@ -1386,7 +1386,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 	pid = fork();
 	if (pid < 0) {
 		/* Go root on error */
-		if(seteuid(0) < 0) {
+		if (seteuid(0) < 0) {
 			strerror_r(errno, errbuf, sizeof(errbuf));
 			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
 			log_err(errno, __func__, buf);
@@ -1402,7 +1402,7 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 
 	if (pid > 0) {
 		/* Go root in parent */
-		if(seteuid(0) < 0) {
+		if (seteuid(0) < 0) {
 			strerror_r(errno ,errbuf, sizeof(errbuf));
 			snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
 			log_err(errno, __func__, buf);
