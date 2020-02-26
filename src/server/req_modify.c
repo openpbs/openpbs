@@ -890,6 +890,13 @@ req_modifyReservation(struct batch_request *preq)
 	if (psatl)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
+
+	/* If Authorized_Groups is modified, we need to update the queue's acl_users
+	 * Authorized_Users cannot be unset, it must always have a value
+	 * The queue will have acl_user_enable set to 1 by default
+	 * If Authorized_Groups is modified, we need to update the queue's acl_groups and acl_group_enable
+	 * Authorized_Groups could be unset, so we need to update the queue accordingly, unsetting both acl_groups and acl_group_enable
+	 */
 	if (presv->ri_wattr[(int)RESV_ATR_auth_u].at_flags & ATR_VFLAG_MODIFY) {
 		svrattrl *pattrl;
 		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_u], NULL, resv_attr_def[(int)RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
@@ -901,8 +908,11 @@ req_modifyReservation(struct batch_request *preq)
 			svrattrl *pattrl = NULL;
 			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
 			set_attr_svr(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value);
-			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
-			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
+				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long != 1)) {
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			}
 			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
 			free(pattrl);
 		} else {
