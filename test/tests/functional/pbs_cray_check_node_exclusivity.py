@@ -526,7 +526,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node)
-        j2 = Job(Test_USER, attrs=a)
+        j2 = Job(TEST_USER, attrs=a)
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
@@ -555,7 +555,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
              'Resource_List.place': 'shared'}
-        j2 = Job(Test_USER, attrs=a)
+        j2 = Job(TEST_USER, attrs=a)
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
@@ -585,13 +585,13 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
-        j2 = Job(Test_USER, attrs=a)
+        j2 = Job(TEST_USER, attrs=a)
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=2',
              'Resource_List.place': 'shared'}
-        j3 = Job(Test_USER, attrs=a)
+        j3 = Job(TEST_USER, attrs=a)
         j3.create_script(self.script)
         jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
@@ -625,7 +625,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
                            id=resv_node)
         a = {ATTR_q: rid_q}
-        j2 = Job(Test_USER, attrs=a)
+        j2 = Job(TEST_USER, attrs=a)
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
