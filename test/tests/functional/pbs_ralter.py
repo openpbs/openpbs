@@ -226,7 +226,7 @@ class TestPbsResvAlter(TestFunctional):
                  'reserve_duration': duration}
         self.server.expect(RESV, attrs, id=rid)
 
-    def submit_job_to_resv(self, rid, sleep=10):
+    def submit_job_to_resv(self, rid, sleep=10, user=None):
         """
         Helper method for submitting a sleep job to the reservation.
 
@@ -238,7 +238,9 @@ class TestPbsResvAlter(TestFunctional):
         """
         r_queue = rid.split('.')[0]
         a = {'queue': r_queue}
-        j = Job(TEST_USER, a)
+        if not user:
+            user = TEST_USER
+        j = Job(user, a)
         j.set_sleep_time(sleep)
         jid = self.server.submit(j)
         return jid
@@ -1309,3 +1311,119 @@ class TestPbsResvAlter(TestFunctional):
             self.server.alterresv(rid2, attr, runas=TEST_USER1)
         except PbsResvAlterError as e:
             self.assertTrue("Unauthorized Request" in e.msg[0])
+
+    def test_auth_user(self):
+        """
+        This test checks changing Authorized_Users
+        """
+        duration = 30
+        offset = 1000
+        rid = self.submit_and_confirm_reservation(offset, duration)[0]
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        with self.assertRaises(PbsSubmitError):
+            self.submit_job_to_resv(rid, user=TEST_USER1)
+
+        attr = {ATTR_auth_u: str(TEST_USER1)}
+        self.server.alterresv(rid, attr)
+
+        with self.assertRaises(PbsSubmitError):
+            self.submit_job_to_resv(rid, user=TEST_USER)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        attr = {ATTR_auth_u: str(TEST_USER) + ',' + str(TEST_USER1)}
+        self.server.alterresv(rid, attr)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        attr = {ATTR_auth_u: str(TEST_USER) + ',-' + str(TEST_USER1)}
+        self.server.alterresv(rid, attr)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        with self.assertRaises(PbsSubmitError):
+            self.submit_job_to_resv(rid, user=TEST_USER1)
+
+    @skipOnShasta
+    def test_auth_group(self):
+        """
+        This test checks changing Authorized_Groups
+        Skipped on shasta due to groups not being setup on the server
+        """
+        duration = 30
+        offset = 1000
+        rid = self.submit_and_confirm_reservation(offset, duration)[0]
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        with self.assertRaises(PbsSubmitError):
+            self.submit_job_to_resv(rid, user=TEST_USER4)
+
+        attr = {ATTR_auth_g: str(TSTGRP0) + ',' + str(TSTGRP1)}
+        self.server.alterresv(rid, attr)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        with self.assertRaises(PbsSubmitError):
+            self.submit_job_to_resv(rid, user=TEST_USER4)
+
+        attr = {ATTR_auth_u: str(TEST_USER) + ',' + str(TEST_USER4),
+                ATTR_auth_g: str(TSTGRP0) + ',' + str(TSTGRP1)}
+        self.server.alterresv(rid, attr)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER4)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+    @skipOnShasta
+    def test_auth_group_restart(self):
+        """
+        This test checks changing Authorized_Groups survives a server restart
+        Skipped on shasta due to groups not being setup on the server
+        """
+        self.skipTest('skipped due to existing bug unsetting attributes')
+        duration = 30
+        offset = 1000
+        rid = self.submit_and_confirm_reservation(offset, duration)[0]
+        qid = rid.split('.')[0]
+
+        attr = {ATTR_auth_g: str(TSTGRP0) + ',' + str(TSTGRP1)}
+        self.server.alterresv(rid, attr)
+        attr2 = {
+            ATTR_aclgroup: attr[ATTR_auth_g],
+            ATTR_aclgren: 'True'
+        }
+
+        self.server.expect(RESV, attr, id=rid, max_attempts=5)
+        self.server.expect(QUEUE, attr2, id=qid, max_attempts=5)
+
+        self.server.restart()
+
+        self.server.expect(RESV, attr, id=rid, max_attempts=5)
+        self.server.expect(QUEUE, attr2, id=qid, max_attempts=5)
+
+        attr = {ATTR_auth_g: ''}
+        self.server.alterresv(rid, attr)
+
+        attr = [ATTR_auth_g]
+        attr2 = [ATTR_aclgroup, ATTR_aclgren]
+        self.server.expect(RESV, attr, op=UNSET, id=rid, max_attempts=5)
+        self.server.expect(QUEUE, attr2, op=UNSET, id=qid, max_attempts=5)
+
+        self.server.restart()
+
+        self.server.expect(RESV, attr, op=UNSET, id=rid, max_attempts=5)
+        self.server.expect(QUEUE, attr2, op=UNSET, id=qid, max_attempts=5)
