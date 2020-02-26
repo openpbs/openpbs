@@ -266,6 +266,11 @@ int is_string_in_arr(char **strarr, char *str);
 void free_string_array(char **arr);
 
 /*
+ * convert_string_to_lowercase - convert string to lower case
+ */
+char *convert_string_to_lowercase(char *str);
+
+/*
  *      Escape every occurrence of 'delim' in 'str' with 'esc'
  */
 char * escape_delimiter(char *str, char *delim, char esc);

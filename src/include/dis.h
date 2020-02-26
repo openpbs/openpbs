@@ -45,6 +45,7 @@ extern "C" {
 #include <limits.h>
 #include <float.h>
 #include "Long.h"
+#include "auth.h"
 
 #ifndef TRUE
 #define TRUE	1
@@ -213,20 +214,24 @@ typedef struct pbs_dis_buf {
 	char *tdis_thebuf;
 } pbs_dis_buf_t;
 
+typedef struct pbs_tcp_auth_data {
+	int ctx_status;
+	void *ctx;
+	auth_def_t *def;
+} pbs_tcp_auth_data_t;
+
 typedef struct pbs_tcp_chan {
 	pbs_dis_buf_t readbuf;
 	pbs_dis_buf_t writebuf;
-	int authctx_status;
-	int is_encrypted;
-	void *extra;
+	pbs_tcp_auth_data_t auths[2];
 } pbs_tcp_chan_t;
 
-void transport_chan_set_extra(int, void *);
-void * transport_chan_get_extra(int);
-void transport_chan_set_encrypted(int);
-int transport_chan_is_encrypted(int);
-void transport_chan_set_authctx_status(int, int);
-int transport_chan_get_authctx_status(int);
+void transport_chan_set_ctx_status(int, int, int);
+int transport_chan_get_ctx_status(int, int);
+void transport_chan_set_authctx(int, void *, int);
+void * transport_chan_get_authctx(int, int);
+void transport_chan_set_authdef(int, auth_def_t *, int);
+auth_def_t * transport_chan_get_authdef(int, int);
 void dis_clear_buf(pbs_dis_buf_t *);
 void dis_reset_buf(int, int);
 int disr_skip(int, size_t);
@@ -241,7 +246,7 @@ void dis_destroy_chan(int);
 
 pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
 int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
-void (*pfn_transport_chan_free_extra)(void *);
+void (*pfn_transport_chan_free_authctx)(pbs_tcp_chan_t *);
 int (*pfn_transport_recv)(int, void *, int);
 int (*pfn_transport_send)(int, void *, int);
 
@@ -249,10 +254,10 @@ int (*pfn_transport_send)(int, void *, int);
 #define transport_send(x, y, z) (*pfn_transport_send)(x, y, z)
 #define transport_get_chan(x) (*pfn_transport_get_chan)(x)
 #define transport_set_chan(x, y) (*pfn_transport_set_chan)(x, y)
-#define transport_chan_free_extra(x) \
+#define transport_chan_free_authctx(x) \
 	do { \
-		if (pfn_transport_chan_free_extra != NULL) { \
-			(*pfn_transport_chan_free_extra)(x); \
+		if (pfn_transport_chan_free_authctx != NULL) { \
+			(*pfn_transport_chan_free_authctx)(x); \
 		} \
 	} while(0)
 

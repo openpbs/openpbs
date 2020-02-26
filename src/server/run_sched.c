@@ -312,7 +312,7 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		return (-1);
 	}
 	DIS_tcp_funcs();
-	transport_chan_set_authctx_status(sock, AUTH_STATUS_CTX_READY);
+	transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
 	net_add_close_func(sock, scheduler_close);
 
 	if (set_nodelay(sock) == -1) {

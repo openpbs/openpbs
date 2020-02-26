@@ -49,8 +49,9 @@
 #include <gssapi.h>
 #include <gssapi.h>
 #include <krb5.h>
-#include "pbs_internal.h"
+#include "pbs_ifl.h"
 #include "log.h"
+#include "auth.h"
 
 #if defined(KRB5_HEIMDAL)
 #define PBS_GSS_MECH_OID GSS_KRB5_MECHANISM

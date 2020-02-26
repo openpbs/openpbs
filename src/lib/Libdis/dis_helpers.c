@@ -48,39 +48,17 @@ static pbs_dis_buf_t * dis_get_readbuf(int);
 static pbs_dis_buf_t * dis_get_writebuf(int);
 static void dis_pack_buf(pbs_dis_buf_t *);
 static int dis_resize_buf(pbs_dis_buf_t *, size_t, size_t);
+static int transport_chan_is_encrypted(int);
 static int dis_encrypt_and_send(int, void *, size_t);
 static int dis_recv_and_decrypt(int, void **, size_t *);
 
-
 /**
  * @brief
- * 	transport_chan_set_encrypted - set tcp chan assosiated with given fd as encrypted chan
- *
- * @param[in] fd - file descriptor
- *
- * @return void
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void
-transport_chan_set_encrypted(int fd)
-{
-	pbs_tcp_chan_t *chan = transport_get_chan(fd);
-	if (chan == NULL)
-		return;
-	chan->is_encrypted = 1;
-}
-
-/**
- * @brief
- * 	transport_chan_set_authctx_status - set auth context status tcp chan assosiated with given fd
+ * 	transport_chan_set_ctx_status - set auth context status tcp chan assosiated with given fd
  *
  * @param[in] fd - file descriptor
  * @param[in] status - auth ctx status
+ * @param[in] for_encrypt - is authctx for encrypt/decrypt?
  *
  * @return void
  *
@@ -91,19 +69,20 @@ transport_chan_set_encrypted(int fd)
  *
  */
 void
-transport_chan_set_authctx_status(int fd, int status)
+transport_chan_set_ctx_status(int fd, int status, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
 	if (chan == NULL)
 		return;
-	chan->authctx_status = status;
+	chan->auths[for_encrypt].ctx_status = status;
 }
 
 /**
  * @brief
- * 	transport_chan_get_authctx_status - get auth context status tcp chan assosiated with given fd
+ * 	transport_chan_get_ctx_status - get auth context status tcp chan assosiated with given fd
  *
  * @param[in] fd - file descriptor
+ * @param[in] for_encrypt - whether to get encrypt/decrypt authctx status or for authentication
  *
  * @return int
  *
@@ -117,13 +96,118 @@ transport_chan_set_authctx_status(int fd, int status)
  *
  */
 int
-transport_chan_get_authctx_status(int fd)
+transport_chan_get_ctx_status(int fd, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
 	if (chan == NULL)
 		return -1;
-	return (chan->authctx_status);
+	return chan->auths[for_encrypt].ctx_status;
 }
+
+/**
+ * @brief
+ * 	transport_chan_set_authctx - associates authenticaion context with connection
+ *
+ * @param[in] fd - file descriptor
+ * @param[in] authctx - the context
+ * @param[in] for_encrypt - is authctx for encrypt/decrypt?
+ *
+ * @return void
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void
+transport_chan_set_authctx(int fd, void *authctx, int for_encrypt)
+{
+	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+	if (chan == NULL)
+		return;
+	chan->auths[for_encrypt].ctx = authctx;
+}
+
+/**
+ * @brief
+ * 	transport_chan_get_authctx - gets authentication context associated with connection
+ *
+ * @param[in] fd - file descriptor
+ * @param[in] for_encrypt - whether to get encrypt/decrypt authctx or for authentication
+ *
+ * @return void *
+ *
+ * @retval !NULL - success
+ * @retval NULL - error
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void *
+transport_chan_get_authctx(int fd, int for_encrypt)
+{
+	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+	if (chan == NULL)
+		return NULL;
+	return chan->auths[for_encrypt].ctx;
+}
+
+/**
+ * @brief
+ * 	transport_chan_set_authdef - associates authdef structure with connection
+ *
+ * @param[in] fd - file descriptor
+ * @param[in] authdef - the authdef structure for association
+ * @param[in] for_encrypt - is authdef for encrypt/decrypt?
+ *
+ * @return void
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void
+transport_chan_set_authdef(int fd, auth_def_t *authdef, int for_encrypt)
+{
+	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+	if (chan == NULL)
+		return;
+	chan->auths[for_encrypt].def = authdef;
+}
+
+/**
+ * @brief
+ * 	transport_chan_get_authdef - gets authdef structure associated with connection
+ *
+ * @param[in] fd - file descriptor
+ * @param[in] for_encrypt - whether to get encrypt/decrypt authdef or for authentication
+ *
+ * @return auth_def_t *
+ *
+ * @retval !NULL - success
+ * @retval NULL - error
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+auth_def_t *
+transport_chan_get_authdef(int fd, int for_encrypt)
+{
+	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+	if (chan == NULL)
+		return NULL;
+	return chan->auths[for_encrypt].def;
+}
+
 
 /**
  * @brief
@@ -142,63 +226,13 @@ transport_chan_get_authctx_status(int fd)
  * @par MT-safe: Yes
  *
  */
-int
+static int
 transport_chan_is_encrypted(int fd)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
 	if (chan == NULL)
 		return 0;
-	return (chan->is_encrypted == 1 && chan->authctx_status == AUTH_STATUS_CTX_READY);
-}
-
-/**
- * @brief
- * 	transport_chan_set_extra - associates optional structure with connection
- *
- * @param[in] fd - file descriptor
- * @param[in] extra - the structure for association
- *
- * @return void
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void
-transport_chan_set_extra(int fd, void *extra)
-{
-	pbs_tcp_chan_t *chan = transport_get_chan(fd);
-	if (chan == NULL)
-		return;
-	chan->extra = extra;
-}
-
-/**
- * @brief
- * 	transport_chan_get_extra - gets optional structure associated with connection
- *
- * @param[in] fd - file descriptor
- *
- * @return void *
- *
- * @retval !NULL - success
- * @retval NULL - error
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void *
-transport_chan_get_extra(int fd)
-{
-	pbs_tcp_chan_t *chan = transport_get_chan(fd);
-	if (chan == NULL)
-		return NULL;
-	return chan->extra;
+	return (chan->auths[FOR_ENCRYPT].def != NULL && chan->auths[FOR_ENCRYPT].ctx_status == AUTH_STATUS_CTX_READY);
 }
 
 /**
@@ -219,15 +253,16 @@ transport_chan_get_extra(int fd)
 static int
 dis_encrypt_and_send(int fd, void *data_in, size_t len_in)
 {
-	void *extra = transport_chan_get_extra(fd);
+	void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
+	auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
 	void *data_out = NULL;
 	size_t len_out = 0;
 	int rc = 0;
 
-	if (data_in == NULL || len_in == 0 || pbs_auth_encrypt_data == NULL)
+	if (data_in == NULL || len_in == 0 || authdef == NULL || authdef->encrypt_data == NULL)
 		return -1;
 
-	if (pbs_auth_encrypt_data(extra, data_in, len_in, &data_out, &len_out) != 0)
+	if (authdef->encrypt_data(authctx, data_in, len_in, &data_out, &len_out) != 0)
 		return -1;
 
 	if (len_out <= 0)
@@ -262,7 +297,8 @@ dis_encrypt_and_send(int fd, void *data_in, size_t len_in)
 static int
 dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 {
-	void *extra = transport_chan_get_extra(fd);
+	void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
+	auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
 	void *data_in = NULL;
 	size_t len_in = 0;
 	int type = 0;
@@ -271,7 +307,7 @@ dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 	*data_out = NULL;
 	*len_out = 0;
 
-	if (pbs_auth_decrypt_data == NULL)
+	if (authdef == NULL || authdef->decrypt_data == NULL)
 		return -1;
 
 	rc = recv_auth_token(fd, &type, &data_in, &len_in);
@@ -284,7 +320,7 @@ dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 	if (len_in == 0)
 		return -2;
 
-	if (pbs_auth_decrypt_data(extra, data_in, len_in, data_out, len_out) != 0) {
+	if (authdef->decrypt_data(authctx, data_in, len_in, data_out, len_out) != 0) {
 		free(data_in);
 		return -1;
 	}
@@ -798,9 +834,15 @@ dis_destroy_chan(int fd)
 		return;
 	chan = transport_get_chan(fd);
 	if (chan != NULL) {
-		if (chan->extra) {
-			transport_chan_free_extra(chan->extra);
-			chan->extra = NULL;
+		if (chan->auths[FOR_AUTH].ctx || chan->auths[FOR_ENCRYPT].ctx) {
+			/* DO NOT free authdef here, it will be done in unload_auths() */
+			transport_chan_free_authctx(chan);
+			chan->auths[FOR_AUTH].ctx = NULL;
+			chan->auths[FOR_AUTH].def = NULL;
+			chan->auths[FOR_AUTH].ctx_status = AUTH_STATUS_UNKNOWN;
+			chan->auths[FOR_ENCRYPT].ctx = NULL;
+			chan->auths[FOR_ENCRYPT].def = NULL;
+			chan->auths[FOR_ENCRYPT].ctx_status = AUTH_STATUS_UNKNOWN;
 		}
 		if (chan->readbuf.tdis_thebuf) {
 			free(chan->readbuf.tdis_thebuf);

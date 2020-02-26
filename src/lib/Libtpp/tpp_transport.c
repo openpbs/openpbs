@@ -155,8 +155,6 @@ static  char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentat
 
 static thrd_data_t **thrd_pool; /* array of threads - holds the thread pool */
 static int num_threads;       /* number of threads in the thread pool */
-
-static int is_auth_resvport = -1;
 static int last_thrd = -1;    /* global index to rotate work amongst threads */
 static int max_con = MAX_CON; /* nfiles */
 
@@ -169,7 +167,7 @@ static struct tpp_config *tpp_conf;  /* store a pointer to the tpp_config suppli
 typedef struct {
 	char *hostname; /* the host name to connect to */
 	int port;       /* the port to connect to */
-	int is_auth_resvport;  /* bind to resv port? */
+	int need_resvport;  /* bind to resv port? */
 } conn_param_t;
 
 /*
@@ -624,7 +622,6 @@ tpp_transport_init(struct tpp_config *conf)
 	}
 
 	tpp_conf = conf;
-	is_auth_resvport = conf->is_auth_resvport;
 	num_threads = conf->numthreads;
 
 	for (i = 0; i < conf->numthreads; i++) {
@@ -783,7 +780,6 @@ alloc_conn(int tfd)
  *	a leaf.
  *
  * @param[in] hostname - hostname to connect to
- * @param[in] is_auth_resvport - bind to resv port?
  * @param[in] delay    - Connect after delay of this much seconds
  * @param[in] ctx      - Associate the passed ctx with the connection fd
  * @param[in] tctx     - Transport thrd context of the caller
@@ -800,7 +796,7 @@ alloc_conn(int tfd)
  *
  */
 int
-tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd, void *tctx)
+tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, void *tctx)
 {
 	phy_conn_t *conn;
 	int fd;
@@ -843,7 +839,7 @@ tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void 
 		free(host);
 		return -1;
 	}
-	conn->conn_params->is_auth_resvport = is_auth_resvport;
+	conn->conn_params->need_resvport = strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) == 0;
 	conn->conn_params->hostname = host;
 	conn->conn_params->port = port;
 
@@ -859,13 +855,12 @@ tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void 
 
 /**
  * @brief
- *	Wrapper to the call to tpp_transport_connect_specific, It calls
+ *	Wrapper to the call to tpp_transport_connect_spl, It calls
  *	tpp_transport_connect_spl with the tctx parameter as NULL.
  *
  * @param[in] hostname - hostname to connect to
- * @param[in] is_auth_resvport - bind to resv port?
  * @param[in] delay    - Connect after delay of this much seconds
- * @param[in] ctx	   - Associate the passed ctx with the connection fd
+ * @param[in] ctx     - Associate the passed ctx with the connection fd
  * @param[out] ret_tfd - The fd of the connection returned
  *
  * @return  Error code
@@ -879,9 +874,9 @@ tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void 
  *
  */
 int
-tpp_transport_connect(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd)
+tpp_transport_connect(char *hostname, int delay, void *ctx, int *ret_tfd)
 {
-	return tpp_transport_connect_spl(hostname, is_auth_resvport, delay, ctx, ret_tfd, NULL);
+	return tpp_transport_connect_spl(hostname, delay, ctx, ret_tfd, NULL);
 }
 
 /**
@@ -1302,7 +1297,7 @@ add_transport_conn(phy_conn_t *conn)
 		int fd = conn->sock_fd;
 
 		/* authentication */
-		if (conn->conn_params->is_auth_resvport) {
+		if (conn->conn_params->need_resvport) {
 			int tryport;
 			int start;
 			int rc = -1;
@@ -1788,7 +1783,7 @@ work(void *v)
 				tpp_sock_close(newfd);
 				return NULL;
 			}
-			conn->conn_params->is_auth_resvport = is_auth_resvport;
+			conn->conn_params->need_resvport = strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) == 0;
 			conn->conn_params->hostname = strdup(tpp_netaddr_sa(&clientaddr));
 			conn->conn_params->port = ntohs(((struct sockaddr_in *) &clientaddr)->sin_port);
 

@@ -101,6 +101,10 @@ cnt2server_extend(char *server, char *extend)
 					fprintf(stderr, "Communication failure.\n");
 					break;
 
+				case PBSE_NOSUP:
+					fprintf(stderr, "No support for requested service.\n");
+					break;
+
 			}
 		} else if (errno != 0)
 			perror(NULL);

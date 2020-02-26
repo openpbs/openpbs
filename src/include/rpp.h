@@ -67,8 +67,10 @@ struct tpp_config {
 	char   **routers; /* other proxy names (and backups) to connect to */
 	int    numthreads;
 	char   *node_name; /* list of comma separated node names */
-	char   auth_type[MAXAUTHNAME + 1];
-	int    is_auth_resvport;
+	char   pbs_home_path[MAXPATHLEN + 1];
+	char   auth_method[MAXAUTHNAME + 1];
+	char   encrypt_method[MAXAUTHNAME + 1];
+	int    encrypt_mode;
 	int    compress;
 	int    tcp_keepalive; /* use keepalive? */
 	int    tcp_keep_idle;

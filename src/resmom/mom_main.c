@@ -1064,7 +1064,7 @@ die(int sig)
 
 	cleanup();
 	log_close(1);
-	unload_auth_lib();
+	unload_auths();
 #ifdef	WIN32
 	ExitThread(1);
 #else
@@ -9026,13 +9026,9 @@ main(int argc, char *argv[])
 	}
 
 	/*Initialize security library's internal data structures*/
-	if (!pbs_conf.is_auth_resvport) {
-		if (load_auth_lib()) {
-			log_err(-1, "pbsd_main", "Failed to load auth lib");
-			exit(3);
-		}
-
-		pbs_auth_set_config(log_event, pbs_conf.pbs_home_path);
+	if (load_auths()) {
+		log_err(-1, "pbsd_main", "Failed to load auth lib");
+		exit(3);
 	}
 
 	{
@@ -10263,7 +10259,7 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_Finalize();
 #endif
-	unload_auth_lib();
+	unload_auths();
 	return (0);
 }
 

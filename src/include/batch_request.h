@@ -243,8 +243,9 @@ struct rq_register {
 
 /* Authenticate request */
 struct rq_auth {
-	unsigned rq_is_auth_resvport;
-	char rq_auth_type[MAXAUTHNAME + 1];
+	char rq_auth_method[MAXAUTHNAME + 1];
+	char rq_encrypt_method[MAXAUTHNAME + 1];
+	unsigned int rq_encrypt_mode;
 	unsigned int rq_port;
 };
 

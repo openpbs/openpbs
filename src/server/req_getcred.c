@@ -55,6 +55,7 @@
 #include "net_connect.h"
 #include "batch_request.h"
 #include "pbs_share.h"
+#include "log.h"
 
 
 extern void DIS_tpp_funcs();
@@ -126,6 +127,17 @@ req_authenResvPort(struct batch_request *preq)
 	for (cp = (conn_t *)GET_NEXT(svr_allconns); cp; cp = GET_NEXT(cp->cn_link)) {
 		if (authrequest_port == cp->cn_port && req_addr == cp->cn_addr) {
 			if ((cp->cn_authen & (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL)) == 0) {
+				if (preq->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
+					auth_def_t *encryptdef = get_auth(preq->rq_ind.rq_auth.rq_encrypt_method);
+					if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL) {
+						req_reject(PBSE_NOSUP, 0, preq);
+						return;
+					}
+					encryptdef->set_config(log_event, pbs_conf.pbs_home_path);
+					transport_chan_set_authdef(cp->cn_sock, encryptdef, FOR_ENCRYPT);
+					transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+				}
+
 				(void) strcpy(cp->cn_username, preq->rq_user);
 				(void)strcpy(cp->cn_hostname, preq->rq_host);
 				/* time stamp just for the record */
@@ -135,7 +147,7 @@ req_authenResvPort(struct batch_request *preq)
 					DIS_tpp_funcs();
 				else
 					DIS_tcp_funcs();
-				transport_chan_set_authctx_status(cp->cn_sock, AUTH_STATUS_CTX_READY);
+				transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
 			}
 			reply_ack(preq);
 			return;

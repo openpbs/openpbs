@@ -91,12 +91,13 @@ main(int argc, char *argv[], char *envp[])
 	struct sockaddr_in sockname;
 	pbs_socklen_t	 socknamelen;
 	int		 testmode = 0;
-	struct batch_reply   *reply;
 	extern int	optind;
 	char *cln_hostaddr = NULL;
 
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
+
+	pbs_loadconf(0);
 
 	cln_hostaddr = getenv(PBS_IFF_CLIENT_ADDR);
 
@@ -237,48 +238,29 @@ main(int argc, char *argv[], char *envp[])
 		parentport = ntohs(parentsock_port);
 
 
-	for (i=0; i<4; i++) {
-		/* send authentication information */
-
-		if (encode_DIS_ReqHdr(sock, PBS_BATCH_Authenticate, pwent->pw_name) ||
-			diswui(sock, 1) || /* is_auth_resvport */
-			diswui(sock, parentport) ||
-			encode_DIS_ReqExtend(sock, NULL)) {
-			return (2);
-		}
-		if (dis_flush(sock)) {
-			return (2);
-		}
-
-		/* read back the response */
-
-		reply = PBSD_rdrpy(sock);
-		if (reply == NULL) {
-			fprintf(stderr, "pbs_iff: error returned: %d\n", pbs_errno);
-			return (1);
-		}
-
-		if (reply->brp_code == PBSE_BADCRED) {
+	for (i = 0; i < 4; i++) {
+		int rc = 0;
+		pbs_errno = 0;
+		rc = tcp_send_auth_req(sock, parentport, pwent->pw_name);
+		if (rc != 0 && pbs_errno != PBSE_BADCRED)
+			return 2;
+		if (pbs_errno == PBSE_BADCRED) {
 			if (i>2)
 				sleep(1);
-		} else if (reply->brp_code == 0)
+		} else if (pbs_errno == 0)
 			break;
 	}
 	(void)pbs_disconnect(sock);
 
-	if (reply->brp_code != 0) {
-		fprintf(stderr, "pbs_iff: error returned: %d\n", reply->brp_code);
-		if (reply->brp_choice == BATCH_REPLY_CHOICE_Text)
-			fprintf(stderr, "pbs_iff: %s\n", reply->brp_un.brp_txt.brp_str);
-		PBSD_FreeReply(reply);
+	if (pbs_errno != 0) {
+		char *msg = get_conn_errtxt(sock);
+		fprintf(stderr, "pbs_iff: error returned: %d\n", pbs_errno);
+		if (msg != NULL)
+			fprintf(stderr, "pbs_iff: %s\n", msg);
 		return (1);
 	}
 
-	/* free the batch_reply struct */
-	PBSD_FreeReply(reply);
-
 	/* send back "type none" credential */
-
 	while (write(fileno(stdout), &auth_type, sizeof(int)) == -1) {
 		if (errno != EINTR)
 			break;

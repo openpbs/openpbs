@@ -78,8 +78,10 @@ struct pbs_config pbs_conf = {
 	0,					/* start_sched */
 	0,					/* start comm */
 	0,					/* locallog */
+	NULL,					/* default to NULL for supported auths */
+	ENCRYPT_DISABLE,			/* default encrypt/decrypt disabled */
+	{'\0'},					/* default no auth method to encrypt/decrypt data */
 	AUTH_RESVPORT_NAME,			/* default to reserved port authentication */
-	1,					/* default true for resvport auth */
 	0,					/* sched_modify_event */
 	0,					/* syslogfac */
 	3,					/* syslogsvr - LOG_ERR from syslog.h */
@@ -584,11 +586,39 @@ __pbs_loadconf(int reload)
 			}
 #endif
 			else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
-				int i = 0;
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
 				memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
-				for (i = 0; i < strlen(conf_value); i++) {
-					pbs_conf.auth_method[i] = tolower(conf_value[i]);
+				strcpy(pbs_conf.auth_method, value);
+				free(value);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_METHOD)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));
+				strcpy(pbs_conf.encrypt_method, value);
+				free(value);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_MODE)) {
+				if (sscanf(conf_value, "%u", &uvalue) == 1)
+					pbs_conf.encrypt_mode = uvalue;
+				if (pbs_conf.encrypt_mode < ENCRYPT_DISABLE || pbs_conf.encrypt_mode > ENCRYPT_ALL) {
+					fprintf(stderr, "pbsconf error: invalid PBS_ENCRYPT_MODE value: %d\n", uvalue);
+					goto err;
 				}
+			}
+			else if (!strcmp(conf_name, PBS_CONF_SUPPORTED_AUTH_METHODS)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				pbs_conf.supported_auth_methods = break_comma_list(value);
+				if (pbs_conf.supported_auth_methods == NULL) {
+					free(value);
+					goto err;
+				}
+				free(value);
 			}
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
@@ -929,17 +959,57 @@ __pbs_loadconf(int reload)
 	}
 
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {
-		int i = 0;
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
 		memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
-		for (i = 0; i < strlen(gvalue); i++) {
-			pbs_conf.auth_method[i] = tolower(gvalue[i]);
+		strcpy(pbs_conf.auth_method, value);
+		free(value);
+	}
+	if ((gvalue = getenv(PBS_CONF_ENCRYPT_METHOD)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));
+		strcpy(pbs_conf.encrypt_method, value);
+		free(value);
+	}
+	if ((gvalue = getenv(PBS_CONF_ENCRYPT_MODE)) != NULL) {
+		if (sscanf(gvalue, "%u", &uvalue) == 1)
+			pbs_conf.encrypt_mode = uvalue;
+		if (pbs_conf.encrypt_mode < ENCRYPT_DISABLE || pbs_conf.encrypt_mode > ENCRYPT_ALL) {
+			fprintf(stderr, "pbsconf error: invalid PBS_ENCRYPT_MODE value: %d\n", uvalue);
+			goto err;
 		}
 	}
+	if ((gvalue = getenv(PBS_CONF_SUPPORTED_AUTH_METHODS)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		free_string_array(pbs_conf.supported_auth_methods);
+		pbs_conf.supported_auth_methods = break_comma_list(value);
+		if (pbs_conf.supported_auth_methods == NULL) {
+			free(value);
+			goto err;
+		}
+		free(value);
+	}
 
-	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) == 0) {
-		pbs_conf.is_auth_resvport = 1;
-	} else {
-		pbs_conf.is_auth_resvport = 0;
+	if (pbs_conf.supported_auth_methods == NULL && strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
+		fprintf(stderr, "Empty PBS_SUPPORTED_AUTH_METHODS!\n");
+		goto err;
+	}
+
+	if (pbs_conf.encrypt_method[0] == '\0' && pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
+		strcpy(pbs_conf.encrypt_method, pbs_conf.auth_method);
+	}
+
+	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
+		/* encryption is not disabled, validate encrypt method */
+		if (is_valid_encrypt_method(pbs_conf.encrypt_method) != 1) {
+			fprintf(stderr, "The given PBS_ENCRYPT_METHOD = %s does not support encrypt/decrypt of data\n", pbs_conf.encrypt_method);
+			goto err;
+		}
 	}
 
 	pbs_conf.pbs_tmpdir = pbs_get_tmpdir();
@@ -1037,6 +1107,10 @@ err:
 	if (pbs_conf.pbs_lr_save_path) {
 		free(pbs_conf.pbs_lr_save_path);
 		pbs_conf.pbs_lr_save_path = NULL;
+	}
+	if (pbs_conf.supported_auth_methods) {
+		free_string_array(pbs_conf.supported_auth_methods);
+		pbs_conf.supported_auth_methods = NULL;
 	}
 
 	pbs_conf.load_failed = 1;

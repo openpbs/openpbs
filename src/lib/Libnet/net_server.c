@@ -772,6 +772,9 @@ add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port
 	conn->cn_oncl = 0;
 	conn->cn_authen = 0;
 	conn->cn_prio_flag = 0;
+	conn->cn_is_auth_resvport = 1;
+	conn->cn_encrypt_mode = ENCRYPT_DISABLE;
+	strcpy(conn->cn_auth_method, AUTH_RESVPORT_NAME);
 
 	num_connections++;
 

@@ -417,6 +417,9 @@ extern char *PBSD_modify_resv(int connect, char *resv_id,
 	struct attropl *attrib, char *extend);
 
 extern int PBSD_cred(int c, char *rq_credid, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid);
+
+int tcp_send_auth_req(int sock, unsigned int port, char *user);
+
 #ifdef	__cplusplus
 }
 #endif

@@ -101,6 +101,13 @@ void (*tpp_log_func)(int level, const char *id, char *mess) = NULL;
 /* extern functions called from this file into the tpp_transport.c */
 static pbs_tcp_chan_t * tppdis_get_user_data(int sd);
 
+void
+tpp_auth_logger(int type, int objclass, int severity, const char *objname, const char *text)
+{
+	if (tpp_log_func)
+		tpp_log_func(severity, objname, (char *)text);
+}
+
 /**
  * @brief
  *	Get the user buffer associated with the tpp channel. If no buffer has
@@ -148,7 +155,7 @@ DIS_tpp_funcs()
 {
 	pfn_transport_get_chan = tppdis_get_user_data;
 	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) &tpp_set_user_data;
-	pfn_transport_chan_free_extra = NULL;
+	pfn_transport_chan_free_authctx = NULL;
 	pfn_transport_recv = tpp_recv;
 	pfn_transport_send = tpp_send;
 }
@@ -302,16 +309,25 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	tpp_conf->node_type = TPP_LEAF_NODE;
 	tpp_conf->numthreads = 1;
 
-	memset(tpp_conf->auth_type, '\0', sizeof(tpp_conf->auth_type));
-	strcpy(tpp_conf->auth_type, pbs_conf->auth_method);
-	tpp_conf->is_auth_resvport = pbs_conf->is_auth_resvport;
+	memset(tpp_conf->pbs_home_path, '\0', sizeof(tpp_conf->pbs_home_path));
+	strcpy(tpp_conf->pbs_home_path, pbs_conf->pbs_home_path);
 
-	if (tpp_conf->is_auth_resvport) {
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP set to use reserved port authentication");
-	} else {
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP set to use external authentication");
-	}
+	memset(tpp_conf->auth_method, '\0', sizeof(tpp_conf->auth_method));
+	strcpy(tpp_conf->auth_method, pbs_conf->auth_method);
+
+	memset(tpp_conf->encrypt_method, '\0', sizeof(tpp_conf->encrypt_method));
+	if (pbs_conf->encrypt_method[0] != '\0')
+		strcpy(tpp_conf->encrypt_method, pbs_conf->encrypt_method);
+	tpp_conf->encrypt_mode = pbs_conf->encrypt_mode;
+
+	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_method);
 	tpp_log_func(LOG_INFO, NULL, log_buffer);
+	if (tpp_conf->encrypt_mode != ENCRYPT_DISABLE) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encrypt mode = %d", tpp_conf->encrypt_mode);
+		tpp_log_func(LOG_INFO, NULL, log_buffer);
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encryption method = %s", tpp_conf->encrypt_method);
+		tpp_log_func(LOG_INFO, NULL, log_buffer);
+	}
 
 #ifdef PBS_COMPRESSION_ENABLED
 	tpp_conf->compress = pbs_conf->pbs_use_compression;

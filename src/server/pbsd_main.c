@@ -721,17 +721,32 @@ tcp_pre_process(conn_t *conn)
 	char errbuf[LOG_BUF_SIZE];
 	int rc;
 
-	if (pbs_conf.is_auth_resvport)
-		return 1;
-
 	DIS_tcp_funcs();
-	rc = transport_chan_get_authctx_status(conn->cn_sock);
+	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_AUTH);
 	if (rc == (int)AUTH_STATUS_UNKNOWN)
 		return 1;
 
+
 	if (rc < (int)AUTH_STATUS_CTX_READY) {
 		errbuf[0] = '\0';
-		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, errbuf, sizeof(errbuf));
+		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
+		if (errbuf[0] != '\0') {
+			if (rc != 0)
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+			else
+				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+		}
+		return rc;
+	}
+
+	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
+	if (rc == (int)AUTH_STATUS_UNKNOWN)
+		return 1;
+
+
+	if (rc < (int)AUTH_STATUS_CTX_READY) {
+		errbuf[0] = '\0';
+		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
 		if (errbuf[0] != '\0') {
 			if (rc != 0)
 				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
@@ -1175,13 +1190,9 @@ main(int argc, char **argv)
 	}
 
 	/*Initialize security library's internal data structures*/
-	if (!pbs_conf.is_auth_resvport) {
-		if (load_auth_lib()) {
-			log_err(-1, "pbsd_main", "Failed to load auth lib");
-			exit(3);
-		}
-
-		pbs_auth_set_config(log_event, pbs_conf.pbs_home_path);
+	if (load_auths()) {
+		log_err(-1, "pbsd_main", "Failed to load auth lib");
+		exit(3);
 	}
 
 	{
@@ -2010,7 +2021,7 @@ try_db_again:
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
 	(void)unlink(lockfile);
-	unload_auth_lib();
+	unload_auths();
 
 	if (*state == SV_STATE_SECIDLE) {
 		/*

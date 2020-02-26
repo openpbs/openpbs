@@ -1251,6 +1251,40 @@ free_string_array(char **arr)
 
 /**
  * @brief
+ *	convert_string_to_lowercase - Convert string to lowercase
+ *
+ * @param[in]	str - string to be converted
+ *
+ * @return	char *
+ * @retval	!NULL - converted string
+ * @retval	NULL - failure
+ *
+ * @note
+ * 	Returned string will be malloced area, so free after use
+ *
+ */
+char *
+convert_string_to_lowercase(char *str)
+{
+	char *ret = NULL;
+	int i = 0;
+	int len = 0;
+
+	if (str == NULL || *str == '\0')
+		return NULL;
+
+	len = strlen(str);
+	if ((ret = calloc(1, len + 1)) == NULL)
+		return NULL;
+
+	for (i = 0; i < len; i++)
+		ret[i] = tolower(str[i]);
+
+	return ret;
+}
+
+/**
+ * @brief
  * 		Convert a duration to HH:MM:SS format string
  *
  * @param[in]	duration	-	the duration

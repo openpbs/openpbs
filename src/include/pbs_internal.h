@@ -45,6 +45,7 @@ extern "C" {
 
 #include "pbs_ifl.h"
 #include "libutil.h"
+#include "auth.h"
 
 /*
  *
@@ -189,22 +190,6 @@ extern "C" {
 /* Default value of preempt_sort */
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
-#define AUTH_RESVPORT_NAME "resvport"
-#define MAXAUTHNAME 100
-
-enum AUTH_ROLE {
-	AUTH_ROLE_UNKNOWN = 0,
-	AUTH_CLIENT,
-	AUTH_SERVER,
-	AUTH_ROLE_LAST
-};
-
-enum AUTH_CTX_STATUS {
-	AUTH_STATUS_UNKNOWN = 0,
-	AUTH_STATUS_CTX_ESTABLISHING,
-	AUTH_STATUS_CTX_READY
-};
-
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -214,8 +199,10 @@ struct pbs_config
 	unsigned start_sched:1;		/* should the scheduler be started */
 	unsigned start_comm:1; 		/* should the comm daemon be started */
 	unsigned locallog:1;			/* do local logging */
-	char auth_method[MAXAUTHNAME + 1];	/* set auth_method to use */
-	unsigned is_auth_resvport;		/* is resvport auth? */
+	char **supported_auth_methods;		/* supported auth methods on server */
+	unsigned int encrypt_mode;		/* which communication to encrypt/decrypt */
+	char encrypt_method[MAXAUTHNAME + 1];	/* auth method to used for encrypt/decrypt data */
+	char auth_method[MAXAUTHNAME + 1];	/* default auth_method to used by client */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -319,7 +306,10 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_OUTPUT_HOST_NAME "PBS_OUTPUT_HOST_NAME"
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
-#define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
+#define PBS_CONF_AUTH		"PBS_AUTH_METHOD"
+#define PBS_CONF_ENCRYPT_METHOD	"PBS_ENCRYPT_METHOD"
+#define PBS_CONF_ENCRYPT_MODE	"PBS_ENCRYPT_MODE"
+#define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
 #define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"

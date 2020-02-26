@@ -54,6 +54,7 @@ extern "C" {
 
 #include "avltree.h"
 #include "log.h"
+#include "auth.h"
 
 #if defined (PBS_HAVE_DEVPOLL)
 #define PBS_USE_DEVPOLL
@@ -150,6 +151,7 @@ typedef struct {
  */
 typedef struct {
 	unsigned char type;
+	unsigned int for_encrypt;
 	char auth_type[MAXAUTHNAME + 1];
 } tpp_auth_pkt_hdr_t;
 /* the authentication data follows this packet */
@@ -394,9 +396,12 @@ typedef struct {
 } tpp_tls_t;
 
 typedef struct {
-	void *authctx;
 	void *cleartext;
 	int cleartext_len;
+	void *authctx;
+	auth_def_t *authdef;
+	void *encryptctx;
+	auth_def_t *encryptdef;
 } conn_auth_t;
 
 tpp_que_elem_t* tpp_enque(tpp_que_t *l, void *data);
@@ -436,7 +441,7 @@ void tpp_router_shutdown(void);
 void tpp_router_terminate(void);
 void tpp_free_tls(void);
 
-int tpp_transport_connect(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd);
+int tpp_transport_connect(char *hostname, int delay, void *ctx, int *ret_tfd);
 int tpp_transport_vsend(int tfd, tpp_chunk_t *chunk, int count);
 int tpp_transport_isresvport(int tfd);
 int tpp_transport_vsend_extra(int tfd, tpp_chunk_t *chunk, int count, void *extra);
@@ -459,7 +464,7 @@ void tpp_transport_set_conn_ctx(int tfd, void *ctx);
 void *tpp_transport_get_conn_ctx(int tfd);
 void *tpp_transport_get_thrd_context(int tfd);
 int tpp_transport_wakeup_thrd(int tfd);
-int tpp_transport_connect_spl(char *hostname, int is_auth_resvport, int delay, void *ctx, int *ret_tfd, void *tctx);
+int tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, void *tctx);
 int tpp_transport_close(int tfd);
 
 int tpp_init_lock(pthread_mutex_t *lock);
@@ -511,6 +516,8 @@ char *tpp_netaddr(tpp_addr_t *);
 char *tpp_netaddr_sa(struct sockaddr *);
 
 extern void (*tpp_log_func)(int level, const char *id, char *mess); /* log function */
+ /* auth logger function - just a wrapper of tpp_log_func to match signature with log_event() from Liblog */
+extern void tpp_auth_logger(int type, int objclass, int severity, const char *objname, const char *text);
 
 extern int tpp_dbprt;
 
