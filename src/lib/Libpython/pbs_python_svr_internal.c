@@ -12677,17 +12677,6 @@ PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
 		log_err(PBSE_INTERNAL, __func__, "could not build args list for server_attribute");
 		goto server_attribute_exit;
 	}
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "attribute->al_name:<%s>", attribute->al_name);
-	log_err(PBSE_INTERNAL, __func__, log_buffer);
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "attribute->al_resc:<%s>", attribute->al_resc);
-	log_err(PBSE_INTERNAL, __func__, log_buffer);
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "attribute->al_value:<%s>", attribute->al_value);
-	log_err(PBSE_INTERNAL, __func__, log_buffer);
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "attribute->al_op:<%d>", attribute->al_op);
-	log_err(PBSE_INTERNAL, __func__, log_buffer);
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "attribute->al_flags:<%d>", attribute->al_flags);
-	log_err(PBSE_INTERNAL, __func__, log_buffer);
-
 	py_server_attribute = PyObject_CallObject(py_server_attribute_class, py_server_attribute_args);
 
 	if (!py_server_attribute) {
