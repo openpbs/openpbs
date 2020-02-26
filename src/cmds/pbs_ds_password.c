@@ -123,6 +123,9 @@ pbs_db_conn_t *conn = NULL;
 struct passwd	*pwent;
 char pwd_file_new[MAXPATHLEN+1];
 
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
+
 /**
  * @brief
  *	At exit handler to close database connection,
@@ -521,7 +524,7 @@ main(int argc, char *argv[])
 		gen_password(passwd, 16);
 	}
 
-	rc = pbs_encrypt_pwd(passwd, &cred_type, &cred_buf, &cred_len);
+	rc = pbs_encrypt_pwd(passwd, &cred_type, &cred_buf, &cred_len, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv);
 	if (rc != 0) {
 		fprintf(stderr, "%s: Failed to encrypt password\n", prog);
 		return (-1);

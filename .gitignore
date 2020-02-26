@@ -145,11 +145,9 @@ src/cmds/pbs_attach
 src/cmds/pbs_demux
 src/cmds/pbs_ds_password.bin
 src/cmds/pbs_lamboot
-src/cmds/pbs_migrate_users
 src/cmds/pbs_mpihp
 src/cmds/pbs_mpilam
 src/cmds/pbs_mpirun
-src/cmds/pbs_password
 src/cmds/pbs_rdel
 src/cmds/pbs_remsh
 src/cmds/pbs_rstat

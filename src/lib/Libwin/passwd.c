@@ -160,6 +160,9 @@ static struct cache cache_array[CACHE_NELEM] = {0};
  *
  */
 
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
+
 /**
  * @brief
  *	manipulate and return the input string using hash function algorithm.
@@ -3938,7 +3941,7 @@ int
 setuser_with_password(char *user,
 	char *cred_buf,
 	size_t cred_len,
-	int (*decrypt_func)(char *, int, size_t, char **))
+	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *))
 {
 
 	SID     *usid;
@@ -3976,7 +3979,7 @@ setuser_with_password(char *user,
 		char *pass = NULL;
 		char *p = NULL;
 
-		if (decrypt_func(cred_buf, PBS_CREDTYPE_AES, cred_len, &pass) != 0) {/* fails */
+		if (decrypt_func(cred_buf, PBS_CREDTYPE_AES, cred_len, &pass, pbs_aes_key, pbs_aes_iv) != 0) {/* fails */
 			return (0);
 		}
 		strncpy(thepass, pass, cred_len);
@@ -4771,7 +4774,6 @@ err:
 /* 	     messages stored on 'msg'. The logon handle is created from       */
 /* 	     'cred' if one exists, and adds 'username' to window station      */
 /*	     permission access if use_winsta is set.                          */
-/* NEW MOD for Single, Signon Password Scheme:                                */
 /* This will only return NULL if username was not found in the                */
 /*           the system, or user  has no homedir.                             */
 /*           The failure case where the logon  handle returned is             */
@@ -4784,7 +4786,7 @@ struct	passwd *
 logon_pw(char *username,
 	char *credb,
 	size_t credl,
-	int (*decrypt_func)(char *, int, size_t, char **),
+	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *),
 	int use_winsta,
 	char *msg)
 {
@@ -4863,10 +4865,10 @@ logon_pw(char *username,
 
 	(void)LocalFree(usid);
 
-	if (credb) { /* there's password supplied via qsub -Wpwd="" */
+	if (credb) {
 		char *pass = NULL;
 
-		if (decrypt_func(credb, PBS_CREDTYPE_AES, credl, &pass) != 0) { /* fails */
+		if (decrypt_func(credb, PBS_CREDTYPE_AES, credl, &pass, pbs_aes_key, pbs_aes_iv) != 0) { /* fails */
 			sprintf(msg2, "decrypt_func for User %s failed!",
 				username);
 			strcat(msg, msg2);
@@ -5025,7 +5027,7 @@ cache_usertoken_and_homedir(char *user,
 	size_t passl,
 	int (*read_password_func)(void *, char **, size_t *),
 	void *param,
-	int (*decrypt_func)(char *, int, size_t, char **),
+	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *),
 	int force)
 {
 	char	msg[4096] = {'\0'};

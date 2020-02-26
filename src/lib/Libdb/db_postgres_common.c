@@ -62,7 +62,9 @@
 
 #define IPV4_STR_LEN	15
 
-extern int pbs_decrypt_pwd(char *, int, size_t, char **);
+extern int pbs_decrypt_pwd(char *, int, size_t, char **, const unsigned char *, const unsigned char *);
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 /**
  * @brief
@@ -318,7 +320,7 @@ pbs_get_dataservice_password(char *user, char *errmsg, int len)
 		buf[st.st_size] = 0;
 		close(fd);
 
-		if (pbs_decrypt_pwd(buf, PBS_CREDTYPE_AES, st.st_size, &str) != 0)
+		if (pbs_decrypt_pwd(buf, PBS_CREDTYPE_AES, st.st_size, &str, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0)
 			return NULL;
 
 		return (str);

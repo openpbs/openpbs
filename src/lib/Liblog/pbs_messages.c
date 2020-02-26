@@ -204,7 +204,7 @@ char *msg_baduser	= "Bad UID for job execution - could be an administrator-type 
 char *msg_baduser	= "Bad UID for job execution";
 #endif
 
-char *msg_bad_password  = "job has bad password - pls run pbs_password";
+char *msg_bad_password  = "job has bad password";
 char *msg_badgrp	= "Bad GID for job execution";
 char *msg_badRuser	= "Bad effective UID for reservation";
 char *msg_badRgrp	= "Bad effective GID for reservation";
@@ -263,12 +263,6 @@ char *msg_resvauth_G	= "Requestor's group not authorized to submit reservations"
 char *msg_resvauth_U	= "Requestor not authorized to make reservations";
 char *msg_licenseunav 	= "Floating License unavailable";
 char *msg_rescnotstr    = "Resource is not of type string or array_of_strings";
-char *msg_ssignon_unset_reject = "single_signon_password_enable not set";
-char *msg_ssignon_set_reject = "single_signon_password_enable set";
-char *msg_ssignon_bad_transition1 = "single_signon_password_enable from true to false: jobs exist!";
-char *msg_ssignon_bad_transition2 = "single_signon_password_enable from false to true: not all jobs have a bad password hold!";
-char *msg_ssignon_noconnect_dest = "failed to connect to destination host on a user migration request.";
-char *msg_ssignon_no_password= "single_signon_password_enable is true but execution user has no password - pls run pbs_password";
 char *msg_maxarraysize = "Array job exceeds server or queue size limit";
 char *msg_invalselectresc = "Resource invalid in \"select\" specification";
 char *msg_invaljobresc = "\"-lresource=\" cannot be used with \"select\" or \"place\", resource is";
@@ -515,12 +509,6 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{ PBSE_RESVAUTH_U, &msg_resvauth_U },
 	{ PBSE_LICENSEUNAV, &msg_licenseunav },
 	{ PBSE_RESCNOTSTR, &msg_rescnotstr },
-	{ PBSE_SSIGNON_UNSET_REJECT, &msg_ssignon_unset_reject },
-	{ PBSE_SSIGNON_SET_REJECT, &msg_ssignon_set_reject },
-	{ PBSE_SSIGNON_BAD_TRANSITION1, &msg_ssignon_bad_transition1 },
-	{ PBSE_SSIGNON_BAD_TRANSITION2, &msg_ssignon_bad_transition2 },
-	{ PBSE_SSIGNON_NOCONNECT_DEST, &msg_ssignon_noconnect_dest },
-	{ PBSE_SSIGNON_NO_PASSWORD, &msg_ssignon_no_password },
 	{ PBSE_MaxArraySize, &msg_maxarraysize },
 	{ PBSE_NOSCHEDULER, &msg_sched_nocall },
 	{ PBSE_INVALSELECTRESC, &msg_invalselectresc },

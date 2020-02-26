@@ -90,36 +90,3 @@ decode_DIS_UserCred(int sock, struct batch_request *preq)
 		&rc);
 	return rc;
 }
-
-/**
- * @brief-
- * 	decode a User Migrate batch request
- *
- * @par	NOTE:
- *	The batch_request structure must already exist (be allocated by the
- *	caller.   It is assumed that the header fields (protocol type,
- *	protocol version, request type, and user name) have already be decoded.
- *
- * @par	Data items are:\n
- *		string         the destination host to migrate users to
- *
- *
- * @param[in] sock - socket descriptor
- * @param[out] preq - pointer to batch_request structure
- *
- * @return      int
- * @retval      DIS_SUCCESS(0)  success
- * @retval      error code      error
- *
- */
-
-int
-decode_DIS_UserMigrate(int sock, struct batch_request *preq)
-{
-	int rc;
-
-	rc = disrfst(sock, PBS_MAXHOSTNAME+1,
-		preq->rq_ind.rq_user_migrate.rq_tohost);
-
-	return rc;
-}

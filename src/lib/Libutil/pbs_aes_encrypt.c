@@ -9,6 +9,7 @@
 #include <openssl/aes.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
+#include <openssl/sha.h>
 #include "ticket.h"
 /**
  * @file	pbs_aes_encrypt.c
@@ -40,7 +41,7 @@ extern unsigned char pbs_aes_iv[];
  *
  */
 int
-pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen)
+pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen, const unsigned char *aes_key, const unsigned char *aes_iv)
 {
         int plen, len2 = 0;
         unsigned char *cblk;
@@ -55,7 +56,7 @@ pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen)
 
         CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0) {
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
                 CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
         }
@@ -106,7 +107,7 @@ pbs_encrypt_pwd(char *uncrypted, int *credtype, char **crypted, size_t *outlen)
  *
  */
 int
-pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
+pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted, const unsigned char *aes_key, const unsigned char *aes_iv)
 {
         unsigned char *cblk;
         int plen, len2 = 0;
@@ -120,7 +121,7 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
 
         CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0) {
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) aes_key, (const unsigned char *) aes_iv) == 0) {
                 CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
         }
@@ -257,4 +258,26 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 	}
 	BIO_free_all(mem_obj1);
 	return 0;
+}
+/** @brief
+ *	encode_SHA - Returns the hexadecimal hash.
+ *
+ *	@param[in] : str - token to hash
+ *	@param[in] : len - length of the 
+ *	@param[in] ebufsz - size of ebuf
+ *	@return	int
+ *	@retval 1 on error
+ *			0 on success
+ */
+
+void
+encode_SHA(char* token, size_t cred_len, char ** hex_digest)
+{
+    unsigned char obuf[SHA_DIGEST_LENGTH] = {'\0'};
+    int i;
+
+    SHA1((const unsigned char*)token, cred_len, obuf);
+    for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
+        sprintf((char*) (*hex_digest + (i*2)) , "%02x", obuf[i] );
+    }
 }

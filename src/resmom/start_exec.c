@@ -134,6 +134,8 @@ struct var_table vtable;		/* for building up Job's environ */
 extern int x11_reader_go;
 extern int enable_exechost2;
 extern char *msg_err_malloc;
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 int	ptc = -1;	/* fd for master pty */
 #ifndef WIN32
@@ -1333,7 +1335,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			}
 
 			name = NULL;
-			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name) != 0) {
+			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
 				log_joberr(-1, __func__, "decrypt_pwd", pjob->ji_qs.ji_jobid);
 				close(fds[0]);
 			} else if (writepipe(fds[1], name, cred_len) != cred_len) {

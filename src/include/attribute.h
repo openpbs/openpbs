@@ -564,8 +564,6 @@ extern int set_rcost(attribute *attr,  attribute *new,  enum batch_op);
 extern void free_rcost(attribute *attr);
 extern int decode_null(attribute *patr,  char *name,  char *rn,  char *val);
 extern int set_null(attribute *patr,  attribute *new,  enum batch_op op);
-extern int ssignon_transition_okay(attribute *patr,  void *pobject,
-	int actmode);
 extern int eligibletime_action(attribute *pattr,  void *pobject,  int actmode);
 extern int decode_formula(attribute *patr,  char *name,  char *rn,  char *val);
 extern int action_backfill_depth(attribute *pattr,  void *pobj,  int actmode);
