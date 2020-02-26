@@ -740,6 +740,7 @@ req_modifyReservation(struct batch_request *preq)
 	int		next_occr_start = 0;
 	extern char	*msg_stdg_resv_occr_conflict;
 	resc_resv	*presv;
+	int num_jobs;
 
 	if (preq == NULL)
 		return;
@@ -767,6 +768,12 @@ req_modifyReservation(struct batch_request *preq)
 	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
 		return;
+	}
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
 	}
 
 	is_standing = presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long;
@@ -811,8 +818,7 @@ req_modifyReservation(struct batch_request *preq)
 
 		switch (index) {
 			case RESV_ATR_start:
-				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) ||
-					!(presv->ri_qp->qu_numjobs)) {
+				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
 					if ((temp > time(NULL)) &&
 						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
@@ -832,7 +838,7 @@ req_modifyReservation(struct batch_request *preq)
 						return;
 					}
 				} else {
-					if (presv->ri_qp->qu_numjobs)
+					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 					else
 						req_reject(PBSE_BADTSPEC, 0, preq);
