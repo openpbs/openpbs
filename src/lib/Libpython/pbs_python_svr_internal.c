@@ -12598,25 +12598,25 @@ const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
  *	Returns a Python List of _server_attribute objects.
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
- * @return PyObject*
+* @return 	PyObject *
+* @retval	<object>	- the Python list object holding
+* @retval				the _server_attribute objects.
+* @retval	NULL		- if an error occurred.
  */
 PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 {
-	// FIXME: add error checking like create_py_strlist_from_svrattrl_names
 	svrattrl *plist = NULL;
 	PyObject* py_list = PyList_New(0);
 
 	if (phead == NULL) {
 		log_err(errno, __func__, "NULL input parameters!");
-		return py_list;
+		return NULL;
 	}
 
 	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
 		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
 		PyObject *py_server_attribute = svrattrl_to_server_attribute(plist);
-		if (!py_server_attribute) {
-			py_server_attribute = Py_None;
-		} else {
+		if (py_server_attribute) {
 			svrattrl *slist = NULL;
 			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "sisters");
 			if (py_slist) {
@@ -12632,9 +12632,9 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 				log_err(PBSE_INTERNAL, __func__,
 					"failed to acquire sisters in server_attribute object");
 			}
+			PyList_Append(py_list, py_server_attribute);
+			Py_CLEAR(py_server_attribute);
 		}
-		PyList_Append(py_list, py_server_attribute);
-		Py_CLEAR(py_server_attribute);
 	}
 	return py_list;
 }
@@ -12645,14 +12645,19 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
  *	Returns a Python List of _server_attribute objects.
  * @param[in]	attribute	- pointer to the head of the list containing data.
  *
- * @return PyObject*
+ * @return 	PyObject *
+ * @retval	<object>	- the Python _server_attribute object.
+ * @retval	NULL		- if an error occurred.
  */
 PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
 {
-	// FIXME: add error checking like create_py_strlist_from_svrattrl_names
 	PyObject *py_server_attribute = NULL;
 	PyObject *py_server_attribute_class = NULL;
 	PyObject *py_server_attribute_args = NULL;
+
+	if (attribute == NULL){
+		goto server_attribute_exit;
+	}
 
 	py_server_attribute_class = pbs_python_types_table[PP_SERVER_ATTRIBUTE_IDX].t_class;
 	if (!py_server_attribute_class) {
