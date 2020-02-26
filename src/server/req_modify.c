@@ -909,7 +909,7 @@ req_modifyReservation(struct batch_request *preq)
 			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
 			set_attr_svr(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value);
 			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
-				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long != 1)) {
+				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 			}
