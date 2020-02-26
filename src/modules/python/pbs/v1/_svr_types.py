@@ -1385,7 +1385,6 @@ class _server_attribute:
     #: m(__init__)
 
     def __str__(self):
-        #   return f"{self.name}:{self.resource}:{self.value}:{self.op}:{self.flags}"
         return "%s:%s:%s:%s:%s" % self.tup()
     #: m(__str__)
 
@@ -1418,8 +1417,6 @@ class _server_attribute:
         return self.name, self.resource, self.value, self.op, self.flags, self.sisters
     #: m(tup)
 
-# FIXME: do we need the following lines?  what purpose do they serve?
-# do we need to add others?
 _server_attribute._connect_server = PbsAttributeDescriptor(
     _server_attribute, '_connect_server', "", (str,))
 #: C(_server_attribute)
@@ -1456,8 +1453,6 @@ class _management:
 
     def __str__(self):
         """String representation of the object"""
-        # vvv FIXME: DOES NOT WORK vvv
-        #return f"{self.cmd}:{self.objtype}:{self.objname}"
         return "%s:%s:%s" % (
             _pbs_v1.REVERSE_MGR_CMDS.get(self.cmd, self.cmd),
             _pbs_v1.REVERSE_MGR_OBJS.get(self.objtype, self.objtype),
@@ -1472,8 +1467,6 @@ class _management:
         super().__setattr__(name, value)
     #: m(__setattr__)
 
-# FIXME: do we need the following lines?  what purpose do they serve?
-# do we need to add others?
 _management.cmd = PbsAttributeDescriptor(_management, 'cmd', None, (int,))
 _management.objtype = PbsAttributeDescriptor(_management, 'objtype', None, (int,))
 _management.objname = PbsAttributeDescriptor(_management, 'objname', "", (str,))

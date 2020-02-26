@@ -4955,13 +4955,8 @@ req_manager(struct batch_request *preq)
 	}
 req_manager_exit:
 	{
-		/* 
-		 * code goes here for all hooks for qmgr
-		 */
-		char		  hook_msg[HOOK_MSG_SIZE];
-		/* int rc; */
-		/* rc = */ process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-		/* FIXME: log an error if non-zero */
+		char hook_msg[HOOK_MSG_SIZE];
+		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 	}
 	if (--preq->rq_refct == 0) {
 		reply_send(preq);
