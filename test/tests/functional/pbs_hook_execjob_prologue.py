@@ -176,7 +176,7 @@ class TestPbsExecutePrologue(TestFunctional):
         attr = {'event': 'execjob_prologue',
                 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
-        self.server.expect(HOOK, {'fail_action': 'none'})
+        self.server.expect(HOOK, {'fail_action': 'none'}, id=hook_name)
 
         self.server.manager(MGR_CMD_SET, HOOK,
                             {'fail_action': 'offline_vnodes'},
