@@ -818,8 +818,7 @@ req_modifyReservation(struct batch_request *preq)
 
 		switch (index) {
 			case RESV_ATR_start:
-				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) ||
-					!(num_jobs)) {
+				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
 					if ((temp > time(NULL)) &&
 						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
