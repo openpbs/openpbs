@@ -501,3 +501,134 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(RESV, a, id=rid, offset=10)
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node, op=NE)
+
+    def test_multijob_on_resv_exclusive_node(self):
+        """
+        Test multiple jobs request inside a reservation
+        if none(node,reservation or job) asks for exclusivity
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'shared', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'}, id=resv_node)
+        a = {ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        j2 = Job(Test_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+    def test_job_with_exclusive_placement(self):
+        """
+        Job will honour exclusivity inside the reservation
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'excl', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'excl'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'shared'}
+        j2 = Job(Test_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+    def test_job_running_on_multinode_reservation(self):
+        """
+        Test to submit job on multinode reservation with different placement
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '2:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'excl', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'excl'}
+        j2 = Job(Test_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=2',
+             'Resource_List.place': 'shared'}
+        j3 = Job(Test_USER, attrs=a)
+        j3.create_script(self.script)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+    def test_job_with_exclhost_placement_inside_resv(self):
+        """
+        Job inside a reservation asking for place=exclhost on host
+        will have all resources of the vnodes present on host assigned to it
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'exclhost', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'}, id=resv_node)
+        
+        a = {ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        a = {ATTR_q: rid_q}
+        j2 = Job(Test_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'free'}, id=resv_node)
