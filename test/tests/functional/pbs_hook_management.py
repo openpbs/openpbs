@@ -48,6 +48,7 @@ from tests.functional import Job
 from tests.functional import JOB
 
 
+@tags('hooks', 'smoke')
 class TestHookManagement(TestFunctional):
 
     def test_hook_00(self):
