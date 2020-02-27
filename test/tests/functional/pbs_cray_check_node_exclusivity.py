@@ -542,11 +542,9 @@ class TestCheckNodeExclusivity(TestFunctional):
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
         node = self.server.status(RESV, 'resv_nodes', id=rid)
-        
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
-        
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
         j1 = Job(TEST_USER, attrs=a)
@@ -572,11 +570,9 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
-        
         a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
              'Resource_List.place': 'scatter'}
         j1 = Job(TEST_USER, attrs=a)
@@ -616,7 +612,6 @@ class TestCheckNodeExclusivity(TestFunctional):
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
         self.server.expect(NODE, {'state': 'resv-exclusive'}, id=resv_node)
-        
         a = {ATTR_q: rid_q}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script(self.script)
