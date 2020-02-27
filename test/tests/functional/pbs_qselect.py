@@ -47,7 +47,9 @@ class TestQselect(TestFunctional):
         Check that various qselect option arguments does not buffer overflow
         """
         # test -q option
-        ret = self.du.run_cmd(cmd=['qselect', '-q',
+        qselect_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                   'bin', 'qselect')
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-q',
                                    ('a' * 30) + '@' + ('b' * 30)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
@@ -55,52 +57,52 @@ class TestQselect(TestFunctional):
                       'aaaaaaaaaaaaaa@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
                       ret['err'])
         # test -c
-        ret = self.du.run_cmd(cmd=['qselect', '-c.abcd.w'])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-c.abcd.w'])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -c value', ret['err'])
-        ret = self.du.run_cmd(cmd=['qselect', '-c.eq.abcdefg'])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-c.eq.abcdefg'])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -c value', ret['err'])
         # test -a
-        ret = self.du.run_cmd(cmd=['qselect', '-a.ne.' + ('1' * 100)])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-a.ne.' + ('1' * 100)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -a value', ret['err'])
-        ret = self.du.run_cmd(cmd=['qselect', '-a.abcd.5001011212'])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-a.abcd.5001011212'])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -a value', ret['err'])
         # test accounting string buf and optarg buf using -A
-        ret = self.du.run_cmd(cmd=['qselect', '-A', ('a' * 300)])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-A', ('a' * 300)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertEqual(ret['err'], [])
         # test -l
-        ret = self.du.run_cmd(cmd=['qselect', '-l',
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-l',
                                    ('a' * 300) + '.abcd.' + ('b' * 300)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -l value', ret['err'])
         # test -N
-        ret = self.du.run_cmd(cmd=['qselect', '-N', ('a' * 300)])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-N', ('a' * 300)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -N value', ret['err'])
         # test -u
-        ret = self.du.run_cmd(cmd=['qselect', '-u',
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-u',
                                    ('a' * 300) + '@' + ('b' * 300)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -u value', ret['err'])
         # test -S
-        ret = self.du.run_cmd(cmd=['qselect', '-s', 'ABCD'])
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-s', 'ABCD'])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
         self.assertIn('qselect: illegal -s value', ret['err'])
         # test -t
-        ret = self.du.run_cmd(cmd=['qselect', '-t',
+        ret = self.du.run_cmd(cmd=[qselect_cmd, '-t',
                                    ('a' * 90) + '.eq.' + ('1' * 90)])
         self.assertNotEqual(ret, None)
         self.assertIn('err', ret)
