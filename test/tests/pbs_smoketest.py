@@ -753,7 +753,8 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state=R': 9})
         end_time = int(time.time()) + 1
         cycle = self.scheduler.cycles(start=start_time, end=end_time)
-        self.logger.info("len(cycle):%s, td:%s" % (len(cycle), end_time - start_time))
+        self.logger.info("len(cycle):%s, td:%s" % (len(cycle),
+                         end_time - start_time))
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
