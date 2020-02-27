@@ -751,13 +751,18 @@ class SmokeTest(PBSTestSuite):
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(JOB, {'job_state=R': 9})
-        cycle = self.scheduler.cycles(start=start_time, end=int(time.time()))
+        end_time = int(time.time()) + 1
+        cycle = self.scheduler.cycles(start=start_time, end=end_time)
+        self.logger.info("len(cycle):%s, td:%s" % (len(cycle), end_time - start_time))
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
                 i -= 1
             if i < 0:
                 self.assertTrue(False, 'failed to found political order')
+            for j, _cycle in enumerate(cycle):
+                self.logger.info("cycle:%s:%s" % (i, _cycle.political_order))
+            self.logger.info("cycle i:%s" % i)
             cycle = cycle[i]
             jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7],
                     jids[2], jids[5], jids[8]]
