@@ -447,7 +447,7 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 		win_pread(&pio, (char *)&rc, (int)sizeof(int));
 		pbs_errno = rc;
 		if (rc > 0) {
-			rc = -1
+			rc = -1;
 			win_pread(&pio, (char *)&rc, (int)sizeof(int));
 			if (rc > 0) {
 				if (rc > (ebufsz - 1))
