@@ -312,6 +312,9 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	memset(tpp_conf->auth_config.pbs_home_path, '\0', sizeof(tpp_conf->auth_config.pbs_home_path));
 	strcpy(tpp_conf->auth_config.pbs_home_path, pbs_conf->pbs_home_path);
 
+	memset(tpp_conf->auth_config.pbs_exec_path, '\0', sizeof(tpp_conf->auth_config.pbs_exec_path));
+	strcpy(tpp_conf->auth_config.pbs_exec_path, pbs_conf->pbs_exec_path);
+
 	memset(tpp_conf->auth_config.auth_method, '\0', sizeof(tpp_conf->auth_config.auth_method));
 	strcpy(tpp_conf->auth_config.auth_method, pbs_conf->auth_method);
 

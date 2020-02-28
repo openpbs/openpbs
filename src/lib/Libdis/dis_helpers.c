@@ -39,6 +39,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#ifdef WIN32
+#include <winsock.h>
+#endif
 #include "dis.h"
 #include "pbs_error.h"
 #include "pbs_internal.h"
@@ -268,6 +271,8 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 {
 	int i = 0;
 	char ndlen[sizeof(int)];
+	size_t datasz = 0;
+	void *data = NULL;
 
 	*type = 0;
 	*data_out = NULL;
@@ -280,24 +285,23 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 	i = transport_recv(fd, ndlen, sizeof(int));
 	if (i != sizeof(int))
 		return i;
-	*len_out = (size_t)ntohl(*((int *) ndlen));
-	if (*len_out <= 0) {
-		*len_out = 0;
+	datasz = ntohl(*((int *) ndlen));
+	if (datasz <= 0) {
 		return -1;
 	}
 
-	*data_out = malloc(*len_out);
-	if (*data_out == NULL) {
-		*len_out = 0;
+	data = malloc(datasz);
+	if (data == NULL) {
 		return -1;
 	}
-	i = transport_recv(fd, *data_out, *len_out);
-	if (i != *len_out) {
-		free(*data_out);
-		*data_out = NULL;
-		*len_out = 0;
+	i = transport_recv(fd, data, datasz);
+	if (i != datasz) {
+		free(data);
 		return i;
 	}
+
+	*data_out = data;
+	*len_out = datasz;
 
 	return i;
 }
