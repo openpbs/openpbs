@@ -253,10 +253,6 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
         goto ERROR_EXIT;
     }
     Py_XDECREF(m);
-    Py_XDECREF(d);
-    Py_XDECREF(f);
-    Py_XDECREF(sigint);
-    Py_XDECREF(handler);
     log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, interp_data->daemon_name, "successfully set up signal.default_int_handler");
 #endif
 
