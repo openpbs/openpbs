@@ -91,7 +91,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 60}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -135,7 +135,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              }
         rid = self.submit_and_confirm_resv(a, 1)
         rid_q = rid.split(".")[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -181,7 +181,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 30}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -220,7 +220,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 60}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.logger.info('Waiting 20s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
@@ -254,7 +254,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 1600}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split(".")[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()
         self.logger.info('Waiting 10s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
@@ -296,7 +296,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excl
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % resv_node,
@@ -319,7 +319,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
         # on vnode in resv_node
@@ -364,7 +364,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_start': now + 10,
              'reserve_end': now + 3100}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
         # on vnode in resv_node
@@ -402,7 +402,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -451,7 +451,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 300}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'}, id=resv_node)
         self.logger.info('Waiting 10s for reservation to start')
@@ -492,7 +492,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Wait for reservation to start and verify
         # node state should not be resv-exclusive
@@ -513,7 +513,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
@@ -541,7 +541,6 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
@@ -557,7 +556,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=5)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
     def test_job_running_on_multinode_reservation(self):
@@ -591,7 +590,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         j3.create_script(self.script)
         jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=5)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
 
@@ -606,7 +605,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
