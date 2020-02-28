@@ -67,10 +67,6 @@ struct tpp_config {
 	char   **routers; /* other proxy names (and backups) to connect to */
 	int    numthreads;
 	char   *node_name; /* list of comma separated node names */
-	char   pbs_home_path[MAXPATHLEN + 1];
-	char   auth_method[MAXAUTHNAME + 1];
-	char   encrypt_method[MAXAUTHNAME + 1];
-	int    encrypt_mode;
 	int    compress;
 	int    tcp_keepalive; /* use keepalive? */
 	int    tcp_keep_idle;
@@ -79,6 +75,7 @@ struct tpp_config {
 	int    tcp_user_timeout;
 	int    buf_limit_per_conn; /* buffer limit per physical connection */
 	int    force_fault_tolerance; /* by default disabled */
+	pbs_auth_config_t auth_config;
 };
 
 /* rpp node types, leaf and router */

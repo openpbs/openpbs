@@ -133,7 +133,7 @@ req_authenResvPort(struct batch_request *preq)
 						req_reject(PBSE_NOSUP, 0, preq);
 						return;
 					}
-					encryptdef->set_config(log_event, pbs_conf.pbs_home_path);
+					encryptdef->set_config((const pbs_auth_config_t *)&(cp->cn_auth_config));
 					transport_chan_set_authdef(cp->cn_sock, encryptdef, FOR_ENCRYPT);
 					transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
 				}

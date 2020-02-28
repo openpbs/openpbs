@@ -46,6 +46,7 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #include <grp.h>
+#include "auth.h"
 #include "pbs_ifl.h"
 #include "log.h"
 
@@ -55,15 +56,15 @@ static void *munge_dlhandle = NULL; /* MUNGE dynamic loader handle */
 static int (*munge_encode)(char **, void *, const void *, int) = NULL; /* MUNGE munge_encode() function pointer */
 static int (*munge_decode)(const char *cred, void *, void **, int *, uid_t *, gid_t *) = NULL; /* MUNGE munge_decode() function pointer */
 static char * (*munge_strerror) (int) = NULL; /* MUNGE munge_stderror() function pointer */
-static void (*logger)(int type, int objclass, int severity, const char *objname, const char *text) = NULL;
+static pbs_auth_config_t auth_config = {{0}};
 
 #define __MUNGE_LOGGER(e, c, s, m) \
 	do { \
-		if (logger == NULL) { \
+		if (auth_config.logfunc == NULL) { \
 			if (s != LOG_DEBUG) \
 				fprintf(stderr, "%s: %s\n", __func__, m); \
 		} else { \
-			logger(e, c, s, __func__, m); \
+			auth_config.logfunc(e, c, s, __func__, m); \
 		} \
 	} while(0)
 #define MUNGE_LOG_ERR(m) __MUNGE_LOGGER(PBSEVENT_ERROR|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
@@ -264,16 +265,15 @@ err:
 /** @brief
  *	pbs_auth_set_config - Set config for this lib
  *
- * @param[in] func - pointer to logger func (should have same signature as log_event in Liblog)
- * @param[in] cred_location - location to cred
+ * @param[in] config - auth config structure
  *
  * @return void
  *
  */
 void
-pbs_auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
+pbs_auth_set_config(const pbs_auth_config_t *config)
 {
-	logger = func;
+	auth_config.logfunc = config->logfunc;
 }
 
 /** @brief

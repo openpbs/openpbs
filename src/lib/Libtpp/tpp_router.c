@@ -547,7 +547,7 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 	if (ctx->type != TPP_ROUTER_NODE)
 		return 0;
 
-	if (strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) != 0) {
+	if (strcmp(tpp_conf->auth_config.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		void *data_out = NULL;
 		size_t len_out = 0;
 		int is_handshake_done = 0;
@@ -559,13 +559,13 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			return -1;
 		}
 
-		authdef = get_auth(tpp_conf->auth_method);
+		authdef = get_auth(tpp_conf->auth_config.auth_method);
 		if (authdef == NULL) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 			return -1;
 		}
 
-		authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+		authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 		if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -577,6 +577,10 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		tpp_transport_set_conn_extra(tfd, authdata);
 
 		if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+			if (len_out > 0) {
+				tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+				free(data_out);
+			}
 			return -1;
 		}
 
@@ -620,8 +624,8 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		}
 	}
 
-	if (tpp_conf->encrypt_mode == ENCRYPT_ALL) {
-		if (strcmp(tpp_conf->auth_method, tpp_conf->encrypt_method) != 0) {
+	if (tpp_conf->auth_config.encrypt_mode == ENCRYPT_ALL) {
+		if (strcmp(tpp_conf->auth_config.auth_method, tpp_conf->auth_config.encrypt_method) != 0) {
 			void *data_out = NULL;
 			size_t len_out = 0;
 			int is_handshake_done = 0;
@@ -633,13 +637,13 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 				return -1;
 			}
 
-			authdef = get_auth(tpp_conf->encrypt_method);
+			authdef = get_auth(tpp_conf->auth_config.encrypt_method);
 			if (authdef == NULL) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 				return -1;
 			}
 
-			authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+			authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -651,6 +655,10 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			tpp_transport_set_conn_extra(tfd, authdata);
 
 			if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+				if (len_out > 0) {
+					tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+					free(data_out);
+				}
 				return -1;
 			}
 
@@ -1321,9 +1329,9 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
 
 		if (ahdr.for_encrypt == FOR_AUTH)
-			method = tpp_conf->auth_method;
+			method = tpp_conf->auth_config.auth_method;
 		else
-			method = tpp_conf->encrypt_method;
+			method = tpp_conf->auth_config.encrypt_method;
 		if (strcmp(ahdr.auth_type, method) != 0) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method mismatch in connection %s", tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption", tpp_netaddr(&connected_host));
 			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
@@ -1357,7 +1365,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		if (ahdr.for_encrypt == FOR_AUTH) {
 			if (authdata->authdef == NULL) {
 				authdata->authdef = authdef;
-				authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+				authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 				if (authdef->create_ctx(&(authdata->authctx), AUTH_SERVER, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create server auth context");
 					return -1;
@@ -1368,7 +1376,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		} else {
 			if (authdata->encryptdef == NULL) {
 				authdata->encryptdef = authdef;
-				authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+				authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 				if (authdef->create_ctx(&(authdata->encryptctx), AUTH_SERVER, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create server auth extra");
 					return -1;
@@ -1379,6 +1387,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		}
 
 		if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+			if (len_out > 0) {
+				tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+				free(data_out);
+			}
 			free(data_in);
 			return -1;
 		}
@@ -1417,18 +1429,18 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		if (is_handshake_done != 1)
 			return 0;
 
-		if (tpp_conf->encrypt_mode == ENCRYPT_ALL &&
+		if (tpp_conf->auth_config.encrypt_mode == ENCRYPT_ALL &&
 			ahdr.for_encrypt == FOR_AUTH &&
 			(ctx != NULL && ((tpp_router_t *)ctx)->initiator == 1) &&
-			strcmp(tpp_conf->auth_method, tpp_conf->encrypt_method) != 0) {
+			strcmp(tpp_conf->auth_config.auth_method, tpp_conf->auth_config.encrypt_method) != 0) {
 			authdata = NULL;
-			authdef = get_auth(tpp_conf->encrypt_method);
+			authdef = get_auth(tpp_conf->auth_config.encrypt_method);
 			if (authdef == NULL) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 				return -1;
 			}
 
-			authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+			authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -1440,6 +1452,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			tpp_transport_set_conn_extra(tfd, authdata);
 
 			if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+				if (len_out > 0) {
+					tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+					free(data_out);
+				}
 				return -1;
 			}
 
@@ -1489,7 +1505,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			ctx->type = TPP_AUTH_NODE; /* denoting that this is an authenticated connection */
 		}
 
-		if (tpp_conf->encrypt_mode == ENCRYPT_ALL && strcmp(tpp_conf->auth_method, tpp_conf->encrypt_method) == 0) {
+		if (tpp_conf->auth_config.encrypt_mode == ENCRYPT_ALL && strcmp(tpp_conf->auth_config.auth_method, tpp_conf->auth_config.encrypt_method) == 0) {
 			authdata->encryptctx = authdata->authctx;
 			authdata->encryptdef = authdata->authdef;
 			tpp_transport_set_conn_extra(tfd, authdata);
@@ -1543,7 +1559,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			node_type = hdr->node_type;
 
 			if (ctx == NULL) { /* connection not yet authenticated */
-				if (strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) != 0) {
+				if (strcmp(tpp_conf->auth_config.auth_method, AUTH_RESVPORT_NAME) != 0) {
 					/*
 					 * In case of external authentication, ctx must already be set
 					 * so error out if ctx is not set.

@@ -839,7 +839,7 @@ tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, vo
 		free(host);
 		return -1;
 	}
-	conn->conn_params->need_resvport = strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) == 0;
+	conn->conn_params->need_resvport = strcmp(tpp_conf->auth_config.auth_method, AUTH_RESVPORT_NAME) == 0;
 	conn->conn_params->hostname = host;
 	conn->conn_params->port = port;
 
@@ -1783,7 +1783,7 @@ work(void *v)
 				tpp_sock_close(newfd);
 				return NULL;
 			}
-			conn->conn_params->need_resvport = strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) == 0;
+			conn->conn_params->need_resvport = strcmp(tpp_conf->auth_config.auth_method, AUTH_RESVPORT_NAME) == 0;
 			conn->conn_params->hostname = strdup(tpp_netaddr_sa(&clientaddr));
 			conn->conn_params->port = ntohs(((struct sockaddr_in *) &clientaddr)->sin_port);
 

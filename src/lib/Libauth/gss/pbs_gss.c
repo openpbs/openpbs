@@ -62,17 +62,17 @@
 
 static pthread_mutex_t gss_lock;
 static pthread_once_t gss_init_lock_once = PTHREAD_ONCE_INIT;
-char gss_log_buffer[LOG_BUF_SIZE];
-void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
+static char gss_log_buffer[LOG_BUF_SIZE];
+static pbs_auth_config_t auth_config = {{0}};
 #define DEFAULT_CREDENTIAL_LIFETIME 7200
 
 #define __GSS_LOGGER(e, c, s, m) \
 	do { \
-		if (logger == NULL) { \
+		if (auth_config.logfunc == NULL) { \
 			if (s != LOG_DEBUG) \
 				fprintf(stderr, "%s: %s\n", __func__, m); \
 		} else { \
-			logger(e, c, s, "", m); \
+			auth_config.logfunc(e, c, s, "", m); \
 		} \
 	} while(0)
 #define GSS_LOG_ERR(m) __GSS_LOGGER(PBSEVENT_ERROR|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
@@ -824,16 +824,15 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 /** @brief
  *	pbs_auth_set_config - Set config for this lib
  *
- * @param[in] func - pointer to logger func (should have same signature as log_event in Liblog)
- * @param[in] cred_location - location to cred
+ * @param[in] config - auth config structure
  *
  * @return void
  *
  */
 void
-pbs_auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
+pbs_auth_set_config(const pbs_auth_config_t *config)
 {
-	logger = func;
+	auth_config.logfunc = config->logfunc;
 }
 
 /** @brief

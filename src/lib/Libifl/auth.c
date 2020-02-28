@@ -56,7 +56,7 @@
 static auth_def_t **auths = NULL;
 
 static int _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz);
-static int _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, char *ebuf, size_t ebufsz);
+static int _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
 static char * _get_load_lib_error(int reset);
 static void * _load_lib(char *loc);
 static void * _load_symbol(char *libloc, void *libhandle, char *name, int required);
@@ -502,7 +502,7 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 }
 
 static int
-_handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, char *ebuf, size_t ebufsz)
+_handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz)
 {
 	void *data_in = NULL;
 	size_t len_in = 0;
@@ -523,7 +523,7 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 	DIS_tcp_funcs();
 
 	transport_chan_set_authdef(fd, authdef, for_encrypt);
-	authdef->set_config(NULL, pbs_conf.pbs_home_path);
+	authdef->set_config((const pbs_auth_config_t *)config);
 	if ((authctx = transport_chan_get_authctx(fd, for_encrypt)) == NULL) {
 		if (authdef->create_ctx(&authctx, AUTH_CLIENT, (const char *)hostname)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
@@ -535,7 +535,16 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 
 	do {
 		if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
-			snprintf(ebuf, ebufsz, "Auth handshake failed");
+			if (len_out > 0) {
+				size_t len = len_out;
+				if (len > ebufsz)
+					len = ebufsz;
+				strncpy(ebuf, (char *)data_out, len);
+				ebuf[len] = '\0';
+				free(data_out);
+			} else {
+				snprintf(ebuf, ebufsz, "auth_process_handshake_data failure");
+			}
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
 		}
@@ -609,6 +618,21 @@ int
 engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 {
 	int rc = 0;
+	pbs_auth_config_t *config = NULL;
+
+	config = (pbs_auth_config_t *)calloc(1, sizeof(pbs_auth_config_t));
+	if (config == NULL) {
+		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+
+	(void) strcpy(config->auth_method, pbs_conf.auth_method);
+	(void) strcpy(config->encrypt_method, pbs_conf.encrypt_method);
+	(void) strcpy(config->pbs_exec_path, pbs_conf.pbs_exec_path);
+	(void) strcpy(config->pbs_home_path, pbs_conf.pbs_home_path);
+	config->logfunc = NULL;
+	config->encrypt_mode = pbs_conf.encrypt_mode;
 
 	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) == 0) {
 		if ((rc = CS_client_auth(fd)) == CS_SUCCESS)
@@ -616,7 +640,7 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 
 		if (rc == CS_AUTH_USE_IFF) {
 			if (_invoke_pbs_iff(fd, hostname, port, ebuf, ebufsz) != 0) {
-				sprintf(ebuf, "Unable to authenticate connection (%s:%d)", hostname, port);
+				snprintf(ebuf, ebufsz, "Unable to authenticate connection (%s:%d)", hostname, port);
 				return -1;
 			}
 		}
@@ -626,14 +650,14 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 			return -1;
 		}
 
-		rc = _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, ebuf, ebufsz);
+		rc = _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
 		if (rc != 0)
 			return rc;
 	}
 
 	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
 		if (pbs_conf.encrypt_method[0] != '\0' && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
-			return _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, ebuf, ebufsz);
+			return _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
 		} else {
 			transport_chan_set_ctx_status(fd, transport_chan_get_ctx_status(fd, FOR_AUTH), FOR_ENCRYPT);
 			transport_chan_set_authdef(fd, transport_chan_get_authdef(fd, FOR_AUTH), FOR_ENCRYPT);

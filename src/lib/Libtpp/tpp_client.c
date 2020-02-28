@@ -559,7 +559,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 	if (ctx->type != TPP_ROUTER_NODE)
 		return 0;
 
-	if (strcmp(tpp_conf->auth_method, AUTH_RESVPORT_NAME) != 0) {
+	if (strcmp(tpp_conf->auth_config.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		void *data_out = NULL;
 		size_t len_out = 0;
 		int is_handshake_done = 0;
@@ -571,13 +571,13 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			return -1;
 		}
 
-		authdef = get_auth(tpp_conf->auth_method);
+		authdef = get_auth(tpp_conf->auth_config.auth_method);
 		if (authdef == NULL) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 			return -1;
 		}
 
-		authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+		authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 		if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -589,6 +589,10 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		tpp_transport_set_conn_extra(tfd, authdata);
 
 		if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+			if (len_out > 0) {
+				tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+				free(data_out);
+			}
 			return -1;
 		}
 
@@ -631,8 +635,8 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			return 0;
 	}
 
-	if (tpp_conf->encrypt_mode == ENCRYPT_ALL) {
-		if (strcmp(tpp_conf->auth_method, tpp_conf->encrypt_method) != 0) {
+	if (tpp_conf->auth_config.encrypt_mode == ENCRYPT_ALL) {
+		if (strcmp(tpp_conf->auth_config.auth_method, tpp_conf->auth_config.encrypt_method) != 0) {
 			void *data_out = NULL;
 			size_t len_out = 0;
 			int is_handshake_done = 0;
@@ -644,13 +648,13 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 				return -1;
 			}
 
-			authdef = get_auth(tpp_conf->encrypt_method);
+			authdef = get_auth(tpp_conf->auth_config.encrypt_method);
 			if (authdef == NULL) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 				return -1;
 			}
 
-			authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+			authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -662,6 +666,10 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			tpp_transport_set_conn_extra(tfd, authdata);
 
 			if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+				if (len_out > 0) {
+					tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+					free(data_out);
+				}
 				return -1;
 			}
 
@@ -4443,10 +4451,10 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
 		if (ahdr.for_encrypt == FOR_AUTH) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method mismatch in connection", tfd);
-			method = tpp_conf->auth_method;
+			method = tpp_conf->auth_config.auth_method;
 		} else {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Encryption method mismatch in connection", tfd);
-			method = tpp_conf->encrypt_method;
+			method = tpp_conf->auth_config.encrypt_method;
 		}
 		if (strcmp(ahdr.auth_type, method) != 0) {
 			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
@@ -4469,6 +4477,10 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		}
 
 		if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+			if (len_out > 0) {
+				tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+				free(data_out);
+			}
 			free(data_in);
 			return -1;
 		}
@@ -4507,16 +4519,16 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		if (is_handshake_done != 1)
 			return 0;
 
-		if (tpp_conf->encrypt_mode == ENCRYPT_ALL && ahdr.for_encrypt == FOR_AUTH) {
-			if (strcmp(tpp_conf->auth_method, tpp_conf->encrypt_method) != 0) {
+		if (tpp_conf->auth_config.encrypt_mode == ENCRYPT_ALL && ahdr.for_encrypt == FOR_AUTH) {
+			if (strcmp(tpp_conf->auth_config.auth_method, tpp_conf->auth_config.encrypt_method) != 0) {
 				authdata = NULL;
-				authdef = get_auth(tpp_conf->encrypt_method);
+				authdef = get_auth(tpp_conf->auth_config.encrypt_method);
 				if (authdef == NULL) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef in post connect handler");
 					return -1;
 				}
 
-				authdef->set_config(tpp_auth_logger, tpp_conf->pbs_home_path);
+				authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
 
 				if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -4528,6 +4540,10 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 				tpp_transport_set_conn_extra(tfd, authdata);
 
 				if (authdef->process_handshake_data(authctx, NULL, 0, &data_out, &len_out, &is_handshake_done) != 0) {
+					if (len_out > 0) {
+						tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+						free(data_out);
+					}
 					return -1;
 				}
 

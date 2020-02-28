@@ -1,11 +1,11 @@
 ***This file explains about LibAuth API Interface descriptions and design...***
 
 # pbs_auth_set_config
- - **Synopsis:** void pbs_auth_set_config(void (*func)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
+ - **Synopsis:** void pbs_auth_set_config(void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
  - **Description:** This API sets configuration for the authentication library like logging method, where it can find required credentials... This API should be called first before calling any other LibAuth API.
  - **Arguments:**
 
-	- void (*func)(int type, int objclass, int severity, const char *objname, const char *text)
+	- void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text)
 
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Function pointer to the logging method with the same signature as log_event from Liblog. With this, the user of the authentication library can redirect logs from the authentication library into respective log files or stderr in case no log files. If func is set to NULL then logs will be written to stderr (if available, else no logging at all).
 
