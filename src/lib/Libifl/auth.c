@@ -154,7 +154,11 @@ _load_auth(char *name)
 	strcpy(auth->name, name);
 	auth->name[MAXAUTHNAME] = '\0';
 
+#ifndef WIN32
 	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.so", pbs_conf.pbs_exec_path, name);
+#else
+	snprintf(libloc, MAXPATHLEN, "%slib/libauth_%s.dll", pbs_conf.pbs_exec_path, name);
+#endif
 	libloc[MAXPATHLEN] = '\0';
 
 	auth->lib_handle = _load_lib(libloc);
