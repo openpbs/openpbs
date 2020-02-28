@@ -1086,12 +1086,12 @@ find_job(char *jobid)
 #endif
 	char *at;
 	job  *pj = NULL;
-	char buf[PBS_MAXSVRJOBID+1];
+	char buf[PBS_MAXSVRJOBID + 1];
 
-	/* Make a copy of the job ID string before we modify it. */
 	if (jobid == NULL)
 		return NULL;
 
+	/* Make a copy of the job ID string before we modify it. */
 	snprintf(buf, sizeof(buf), "%s", jobid);
 	/*
 	 * If @server_name was specified, it was used to route the

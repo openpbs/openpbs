@@ -2122,7 +2122,7 @@ req_resvSub(struct batch_request *preq)
 	 * buf and buf1 are used to hold user@hostname strings together
 	 * with a small amount (less than 64 characters) of text.
 	 */
-	char buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 64];
+	char buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 64] = {0};
 	char buf1[PBS_MAXUSER + PBS_MAXHOSTNAME + 64] = {0};
 	int created_here = 0;
 	int i = 0;
@@ -2483,7 +2483,8 @@ req_resvSub(struct batch_request *preq)
 		presv->ri_qs.ri_type = RESC_RESV_OBJECT;
 	}
 
-	/* for resources that are not specified in the request and
+	/*
+	 * for resources that are not specified in the request and
 	 * for which default values can be determined, set these values
 	 * as the values for those resources
 	 */

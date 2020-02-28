@@ -331,7 +331,7 @@ find_resvqueuebyname(char *quename)
 
 /**
  * @brief
- * 		find_resvbyquename() - find a reservation by the name of its queue
+ * 		find_resv_by_quename() - find a reservation by the name of its queue
  *
  * @param[in]	quename	- queue name.
  *
@@ -343,10 +343,10 @@ find_resv_by_quename(char *quename)
 {
 	char *pc;
 	resc_resv *presv;
-	char qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXQUEUENAME + 1];
 
-	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] = '\0';
+	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
+	qname[PBS_MAXQUEUENAME] = '\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';

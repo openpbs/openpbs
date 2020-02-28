@@ -1970,6 +1970,17 @@ req_defschedreply(struct batch_request *preq)
 	reply_send(preq);
 }
 
+/**
+ * @brief
+ *	convert_job_to_resv - creates a reservation out of the job
+ * 			      and moved the job to the newly created
+ * 			      reservation.
+ *
+ * @param[in]	pjob - pointer to the job object
+ *
+ * @return	void
+ */
+
 void
 convert_job_to_resv(job *pjob)
 {
@@ -2001,7 +2012,6 @@ convert_job_to_resv(job *pjob)
 	plhed = &newreq->rq_ind.rq_queuejob.rq_attr;
 	CLEAR_HEAD(newreq->rq_ind.rq_queuejob.rq_attr);
 	if ((psatl = attrlist_create(ATTR_resv_job, NULL, len)) != NULL) {
-
 		psatl->al_flags = resv_attr_def[RESV_ATR_job].at_flags;
 		strcpy(psatl->al_value, pjob->ji_qs.ji_jobid);
 		append_link(plhed, &psatl->al_link, psatl);
