@@ -409,7 +409,6 @@ static int
 _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz)
 {
 	char cmd[2][PBS_MAXSERVERNAME + 80];
-	int i;
 	int k;
 	char *pbs_client_addr = NULL;
 	u_short psock_port = 0;
@@ -419,6 +418,7 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 #ifdef WIN32
 	struct pio_handles pio;
 #else
+	int i;
 	FILE *piff;
 #endif
 
@@ -450,8 +450,8 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 			rc = -1;
 			win_pread(&pio, (char *)&rc, (int)sizeof(int));
 			if (rc > 0) {
-				if (rc > (ebufsz - 1))
-					rc = ebufsz - 1;
+				if (rc > (int)(ebufsz - 1))
+					rc = (int)(ebufsz - 1);
 				win_pread(&pio, ebuf, rc);
 				ebuf[ebufsz] = '\0';
 			}

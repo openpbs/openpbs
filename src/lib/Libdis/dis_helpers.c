@@ -270,7 +270,8 @@ int
 transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 {
 	int i = 0;
-	char ndlen[sizeof(int)];
+	char ndbuf[sizeof(int)];
+	int ndlen = 0;
 	size_t datasz = 0;
 	void *data = NULL;
 
@@ -282,10 +283,11 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 	if (i != 1)
 		return i;
 
-	i = transport_recv(fd, ndlen, sizeof(int));
+	i = transport_recv(fd, (void *)&ndbuf, sizeof(int));
 	if (i != sizeof(int))
 		return i;
-	datasz = ntohl(*((int *) ndlen));
+	memcpy(&ndlen, (void *)&ndbuf, sizeof(int));
+	datasz = ntohl(ndlen);
 	if (datasz <= 0) {
 		return -1;
 	}

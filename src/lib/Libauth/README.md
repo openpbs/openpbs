@@ -124,9 +124,11 @@
 
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Outgoing handshake data to be sent to another authentication party, this can be NULL is handshake is completed and no further data needs to be sent.
 
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;On failure (aka return 1 by this API), data in data_out will be considered as error data/message, which will be sent to another authentication party as auth error data.
+
 	- size_t *len_out
 
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Length of outgoing handshake data if any, else 0
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Length of outgoing handshake/auth error data if any, else 0
 
 	- int *is_handshake_done
 
