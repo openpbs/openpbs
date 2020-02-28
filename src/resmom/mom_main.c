@@ -6501,6 +6501,12 @@ kill_job(job *pjob, int sig)
 		tsk_ct = kill_task(ptask, sig, 0);
 		ct += tsk_ct;
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		if (sig == SIGKILL) { /* only stop afslog when the task is finally dying */
+			AFSLOG_TERM(ptask);
+		}
+#endif
+
 		/*
 		 ** If this is an orphan task, force it to be EXITED
 		 ** since it will not be seen by scan_for_terminated.
@@ -6522,6 +6528,9 @@ kill_job(job *pjob, int sig)
 			 */
 			if (ptask->ti_qs.ti_parenttask == TM_NULL_TASK)
 				exiting_tasks = 1;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			AFSLOG_TERM(ptask);
+#endif
 		}
 	}
 

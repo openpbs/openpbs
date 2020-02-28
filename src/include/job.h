@@ -738,11 +738,6 @@ struct job {
 			unsigned long long	ji_pagg;
 			/* ALPS process aggregate ID */
 #endif	/* MOM_ALPS */
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-			int32_t	ji_pag;		/* afs token group id */
-#endif
-#endif
 #endif /* PBS_MOM */
 		} ji_ext;
 	} ji_extended;
