@@ -1,17 +1,40 @@
 ***This file explains about LibAuth API Interface descriptions and design...***
 
 # pbs_auth_set_config
- - **Synopsis:** void pbs_auth_set_config(void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text), char *cred_location)
- - **Description:** This API sets configuration for the authentication library like logging method, where it can find required credentials... This API should be called first before calling any other LibAuth API.
+ - **Synopsis:** void pbs_auth_set_config(const pbs_auth_config_t *auth_config)
+ - **Description:** This API sets configuration for the authentication library like logging method, where it can find required credentials etc... This API should be called first before calling any other LibAuth API.
  - **Arguments:**
 
-	- void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text)
+	- const pbs_auth_config_t *auth_config
 
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Function pointer to the logging method with the same signature as log_event from Liblog. With this, the user of the authentication library can redirect logs from the authentication library into respective log files or stderr in case no log files. If func is set to NULL then logs will be written to stderr (if available, else no logging at all).
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pointer to a configuration structure as shown below for the authentication library.
 
-	- char *cred_location
+		```c
+		typedef struct pbs_auth_config {
+			/* Path to PBS_HOME directory (aka same value as PBS_HOME in pbs.conf). This must be a null-terminated string. */
+			char *pbs_home_path;
 
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Path to the location where the authentication library can find the required credentials. This should be a null-terminated string.
+			/* Path to PBS_EXEC directory (aka same value as PBS_EXEC in pbs.conf). This must be a null-terminated string. */
+			char *pbs_exec_path;
+
+			/* Name of authentication method (aka same value as PBS_AUTH_METHOD in pbs.conf). This must be a null-terminated string. */
+			char *auth_method;
+
+			/* Name of encryption method (aka same value as PBS_ENCRYPT_METHOD in pbs.conf). This must be a null-terminated string. */
+			char *encrypt_method;
+
+			/* Encryption mode (aka same value as PBS_ENCRYPT_MODE in pbs.conf) */
+			int encrypt_mode;
+
+			/*
+			 * Function pointer to the logging method with the same signature as log_event from Liblog.
+			 * With this, the user of the authentication library can redirect logs from the authentication
+			 * library into respective log files or stderr in case no log files.
+			 * If func is set to NULL then logs will be written to stderr (if available, else no logging at all).
+			 */
+			void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text);
+		} pbs_auth_config_t;
+		```
 
  - **Return Value:** None, void
 
