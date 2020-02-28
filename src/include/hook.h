@@ -237,7 +237,7 @@ typedef struct hook hook;
 #define HOOKSTR_PROVISION	"provision"
 #define HOOKSTR_PERIODIC	"periodic"
 #define HOOKSTR_RESV_END	"resv_end"
-#define HOOKSTR_MANAGEMENT        "management"
+#define HOOKSTR_MANAGEMENT      "management"
 #define HOOKSTR_EXECJOB_BEGIN   "execjob_begin"
 #define HOOKSTR_EXECJOB_PROLOGUE "execjob_prologue"
 #define HOOKSTR_EXECJOB_EPILOGUE "execjob_epilogue"
