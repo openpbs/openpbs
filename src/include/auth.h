@@ -72,16 +72,16 @@ enum AUTH_CTX_STATUS {
 
 typedef struct pbs_auth_config {
 	/* Path to PBS_HOME directory (aka PBS_HOME in pbs.conf). This should be a null-terminated string. */
-	char pbs_home_path[MAXPATHLEN + 1];
+	char *pbs_home_path;
 
 	/* Path to PBS_EXEC directory (aka PBS_EXEC in pbs.conf). This should be a null-terminated string. */
-	char pbs_exec_path[MAXPATHLEN + 1];
+	char *pbs_exec_path;
 
 	/* Name of authentication method (aka PBS_AUTH_METHOD in pbs.conf). This should be a null-terminated string. */
-	char auth_method[MAXAUTHNAME + 1];
+	char *auth_method;
 
 	/* Name of encryption method (aka PBS_ENCRYPT_METHOD in pbs.conf). This should be a null-terminated string. */
-	char encrypt_method[MAXAUTHNAME + 1];
+	char *encrypt_method;
 
 	/* Encryption mode (aka PBS_ENCRYPT_MODE in pbs.conf) */
 	int encrypt_mode;
@@ -105,7 +105,7 @@ typedef struct auth_def {
 	/*
 	 * the function pointer to set logger method for auth lib
 	 */
-	void (*set_config)(const pbs_auth_config_t *config);
+	void (*set_config)(const pbs_auth_config_t *auth_config);
 
 	/*
 	 * the function pointer to create new auth context used by auth lib

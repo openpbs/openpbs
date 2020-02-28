@@ -127,13 +127,27 @@ req_authenResvPort(struct batch_request *preq)
 	for (cp = (conn_t *)GET_NEXT(svr_allconns); cp; cp = GET_NEXT(cp->cn_link)) {
 		if (authrequest_port == cp->cn_port && req_addr == cp->cn_addr) {
 			if ((cp->cn_authen & (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL)) == 0) {
+				cp->cn_auth_config->auth_method = strdup(preq->rq_ind.rq_auth.rq_auth_method);
+				if (cp->cn_auth_config->auth_method == NULL) {
+					req_reject(PBSE_SYSTEM, 0, preq);
+					return;
+				}
+				if (preq->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
+					cp->cn_auth_config->encrypt_method = strdup(preq->rq_ind.rq_auth.rq_encrypt_method);
+					if (cp->cn_auth_config->encrypt_method == NULL) {
+						req_reject(PBSE_SYSTEM, 0, preq);
+						return;
+					}
+				}
+				cp->cn_auth_config->encrypt_mode = preq->rq_ind.rq_auth.rq_encrypt_mode;
+
 				if (preq->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
 					auth_def_t *encryptdef = get_auth(preq->rq_ind.rq_auth.rq_encrypt_method);
 					if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL) {
 						req_reject(PBSE_NOSUP, 0, preq);
 						return;
 					}
-					encryptdef->set_config((const pbs_auth_config_t *)&(cp->cn_auth_config));
+					encryptdef->set_config((const pbs_auth_config_t *)(cp->cn_auth_config));
 					transport_chan_set_authdef(cp->cn_sock, encryptdef, FOR_ENCRYPT);
 					transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
 				}

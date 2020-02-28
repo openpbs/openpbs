@@ -225,7 +225,6 @@ struct connection {
 	char            cn_hostname[PBS_MAXHOSTNAME + 1];
 	char            *cn_credid;
 	char            cn_physhost[PBS_MAXHOSTNAME + 1];
-	int             cn_is_auth_resvport;
-	pbs_auth_config_t   cn_auth_config;
+	pbs_auth_config_t   *cn_auth_config;
 };
 #endif	/* _NET_CONNECT_H */

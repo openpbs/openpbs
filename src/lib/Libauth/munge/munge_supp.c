@@ -56,15 +56,15 @@ static void *munge_dlhandle = NULL; /* MUNGE dynamic loader handle */
 static int (*munge_encode)(char **, void *, const void *, int) = NULL; /* MUNGE munge_encode() function pointer */
 static int (*munge_decode)(const char *cred, void *, void **, int *, uid_t *, gid_t *) = NULL; /* MUNGE munge_decode() function pointer */
 static char * (*munge_strerror) (int) = NULL; /* MUNGE munge_stderror() function pointer */
-static pbs_auth_config_t auth_config = {{0}};
+static void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
 
 #define __MUNGE_LOGGER(e, c, s, m) \
 	do { \
-		if (auth_config.logfunc == NULL) { \
+		if (logger == NULL) { \
 			if (s != LOG_DEBUG) \
 				fprintf(stderr, "%s: %s\n", __func__, m); \
 		} else { \
-			auth_config.logfunc(e, c, s, __func__, m); \
+			logger(e, c, s, __func__, m); \
 		} \
 	} while(0)
 #define MUNGE_LOG_ERR(m) __MUNGE_LOGGER(PBSEVENT_ERROR|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
@@ -273,7 +273,7 @@ err:
 void
 pbs_auth_set_config(const pbs_auth_config_t *config)
 {
-	auth_config.logfunc = config->logfunc;
+	logger = config->logfunc;
 }
 
 /** @brief

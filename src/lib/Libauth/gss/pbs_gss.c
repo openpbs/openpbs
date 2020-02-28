@@ -63,16 +63,16 @@
 static pthread_mutex_t gss_lock;
 static pthread_once_t gss_init_lock_once = PTHREAD_ONCE_INIT;
 static char gss_log_buffer[LOG_BUF_SIZE];
-static pbs_auth_config_t auth_config = {{0}};
+static void (*logger)(int type, int objclass, int severity, const char *objname, const char *text);
 #define DEFAULT_CREDENTIAL_LIFETIME 7200
 
 #define __GSS_LOGGER(e, c, s, m) \
 	do { \
-		if (auth_config.logfunc == NULL) { \
+		if (logger == NULL) { \
 			if (s != LOG_DEBUG) \
 				fprintf(stderr, "%s: %s\n", __func__, m); \
 		} else { \
-			auth_config.logfunc(e, c, s, "", m); \
+			logger(e, c, s, "", m); \
 		} \
 	} while(0)
 #define GSS_LOG_ERR(m) __GSS_LOGGER(PBSEVENT_ERROR|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, m)
@@ -832,7 +832,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 void
 pbs_auth_set_config(const pbs_auth_config_t *config)
 {
-	auth_config.logfunc = config->logfunc;
+	logger = config->logfunc;
 }
 
 /** @brief

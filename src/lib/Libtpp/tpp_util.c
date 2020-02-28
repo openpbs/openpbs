@@ -309,27 +309,43 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	tpp_conf->node_type = TPP_LEAF_NODE;
 	tpp_conf->numthreads = 1;
 
-	memset(tpp_conf->auth_config.pbs_home_path, '\0', sizeof(tpp_conf->auth_config.pbs_home_path));
-	strcpy(tpp_conf->auth_config.pbs_home_path, pbs_conf->pbs_home_path);
+	tpp_conf->auth_config = (pbs_auth_config_t *)calloc(1, sizeof(pbs_auth_config_t));
+	if (tpp_conf->auth_config == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+		return -1;
+	}
 
-	memset(tpp_conf->auth_config.pbs_exec_path, '\0', sizeof(tpp_conf->auth_config.pbs_exec_path));
-	strcpy(tpp_conf->auth_config.pbs_exec_path, pbs_conf->pbs_exec_path);
+	tpp_conf->auth_config->pbs_home_path = strdup(pbs_conf->pbs_home_path);
+	if (tpp_conf->auth_config->pbs_home_path == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+		return -1;
+	}
+	tpp_conf->auth_config->pbs_exec_path = strdup(pbs_conf->pbs_exec_path);
+	if (tpp_conf->auth_config->pbs_exec_path == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+		return -1;
+	}
+	tpp_conf->auth_config->auth_method = strdup(pbs_conf->auth_method);
+	if (tpp_conf->auth_config->auth_method == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+		return -1;
+	}
+	if (pbs_conf->encrypt_method[0] != '\0') {
+		tpp_conf->auth_config->encrypt_method = strdup(pbs_conf->encrypt_method);
+		if (tpp_conf->auth_config->pbs_home_path == NULL) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+			return -1;
+		}
+	}
+	tpp_conf->auth_config->encrypt_mode = pbs_conf->encrypt_mode;
+	tpp_conf->auth_config->logfunc = tpp_auth_logger;
 
-	memset(tpp_conf->auth_config.auth_method, '\0', sizeof(tpp_conf->auth_config.auth_method));
-	strcpy(tpp_conf->auth_config.auth_method, pbs_conf->auth_method);
-
-	memset(tpp_conf->auth_config.encrypt_method, '\0', sizeof(tpp_conf->auth_config.encrypt_method));
-	if (pbs_conf->encrypt_method[0] != '\0')
-		strcpy(tpp_conf->auth_config.encrypt_method, pbs_conf->encrypt_method);
-	tpp_conf->auth_config.encrypt_mode = pbs_conf->encrypt_mode;
-	tpp_conf->auth_config.logfunc = tpp_auth_logger;
-
-	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_config.auth_method);
+	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
 	tpp_log_func(LOG_INFO, NULL, log_buffer);
-	if (tpp_conf->auth_config.encrypt_mode != ENCRYPT_DISABLE) {
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encrypt mode = %d", tpp_conf->auth_config.encrypt_mode);
+	if (tpp_conf->auth_config->encrypt_mode != ENCRYPT_DISABLE) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encrypt mode = %d", tpp_conf->auth_config->encrypt_mode);
 		tpp_log_func(LOG_INFO, NULL, log_buffer);
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encryption method = %s", tpp_conf->auth_config.encrypt_method);
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encryption method = %s", tpp_conf->auth_config->encrypt_method);
 		tpp_log_func(LOG_INFO, NULL, log_buffer);
 	}
 

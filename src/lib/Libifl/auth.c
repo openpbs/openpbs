@@ -631,10 +631,40 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 		return -1;
 	}
 
-	(void) strcpy(config->auth_method, pbs_conf.auth_method);
-	(void) strcpy(config->encrypt_method, pbs_conf.encrypt_method);
-	(void) strcpy(config->pbs_exec_path, pbs_conf.pbs_exec_path);
-	(void) strcpy(config->pbs_home_path, pbs_conf.pbs_home_path);
+	config->auth_method = strdup(pbs_conf.auth_method);
+	if (config->auth_method == NULL) {
+		free(config);
+		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	config->encrypt_method = strdup(pbs_conf.encrypt_method);
+	if (config->encrypt_method == NULL) {
+		free(config->auth_method);
+		free(config);
+		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	config->pbs_exec_path = strdup(pbs_conf.pbs_exec_path);
+	if (config->pbs_exec_path == NULL) {
+		free(config->encrypt_method);
+		free(config->auth_method);
+		free(config);
+		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	config->pbs_home_path = strdup(pbs_conf.pbs_home_path);
+	if (config->pbs_home_path == NULL) {
+		free(config->pbs_exec_path);
+		free(config->encrypt_method);
+		free(config->auth_method);
+		free(config);
+		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
 	config->logfunc = NULL;
 	config->encrypt_mode = pbs_conf.encrypt_mode;
 

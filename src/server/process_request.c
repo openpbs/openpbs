@@ -220,27 +220,31 @@ authenticate_external(conn_t *conn, struct batch_request *request)
 			return -2;
 	}
 
-	(void) strcpy(conn->cn_auth_config.auth_method, request->rq_ind.rq_auth.rq_auth_method);
-	if (request->rq_ind.rq_auth.rq_encrypt_method[0] != '\0')
-		(void) strcpy(conn->cn_auth_config.encrypt_method, request->rq_ind.rq_auth.rq_encrypt_method);
-	if (strcmp(conn->cn_auth_config.auth_method, AUTH_RESVPORT_NAME) != 0)
-		conn->cn_is_auth_resvport = 0;
-	conn->cn_timestamp = time_now;
-	conn->cn_auth_config.encrypt_mode = request->rq_ind.rq_auth.rq_encrypt_mode;
-	conn->cn_auth_config.logfunc = log_event;
-	(void) strcpy(conn->cn_auth_config.pbs_exec_path, pbs_conf.pbs_exec_path);
-	(void) strcpy(conn->cn_auth_config.pbs_home_path, pbs_conf.pbs_home_path);
+	conn->cn_auth_config->auth_method = strdup(request->rq_ind.rq_auth.rq_auth_method);
+	if (conn->cn_auth_config->auth_method == NULL) {
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	if (request->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
+		conn->cn_auth_config->encrypt_method = strdup(request->rq_ind.rq_auth.rq_encrypt_method);
+		if (conn->cn_auth_config->encrypt_method == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			return -1;
+		}
+	}
+	conn->cn_auth_config->encrypt_mode = request->rq_ind.rq_auth.rq_encrypt_mode;
 
 	(void) strcpy(conn->cn_username, request->rq_user);
 	(void) strcpy(conn->cn_hostname, request->rq_host);
+	conn->cn_timestamp = time_now;
 
-	authdef->set_config((const pbs_auth_config_t *)&(conn->cn_auth_config));
+	authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
 	transport_chan_set_authdef(request->rq_conn, authdef, FOR_AUTH);
 	transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_AUTH);
 
 	if (encryptdef) {
 		if (encryptdef != authdef)
-			authdef->set_config((const pbs_auth_config_t *)&(conn->cn_auth_config));
+			authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
 		transport_chan_set_authdef(request->rq_conn, encryptdef, FOR_ENCRYPT);
 		transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
 	}
@@ -354,14 +358,14 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if (!conn->cn_is_auth_resvport && (conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect && request->rq_type != PBS_BATCH_Authenticate) {
+	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect && request->rq_type != PBS_BATCH_Authenticate) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY) {
 			req_reject(PBSE_BADCRED, 0, request);
 			close_client(sfds);
 			return;
 		}
 
-		if (conn->cn_credid == NULL && strcmp(conn->cn_auth_config.auth_method, AUTH_RESVPORT_NAME) != 0) {
+		if (conn->cn_credid == NULL && conn->cn_auth_config->auth_method != NULL && strcmp(conn->cn_auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 			char *user = NULL;
 			char *host = NULL;
 			char *realm = NULL;
@@ -420,7 +424,10 @@ process_request(int sfds)
 
 	/* FIXME: Do we need realm check for all auth ? */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (conn->cn_credid != NULL && (conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && strcmp(conn->cn_auth_config.auth_method, AUTH_GSS_NAME) == 0) {
+	if (conn->cn_credid != NULL &&
+		(conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 &&
+		conn->cn_auth_config->auth_method != NULL &&
+		strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		strcpy(request->rq_user, conn->cn_username);
 		strcpy(request->rq_host, conn->cn_hostname);
 

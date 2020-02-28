@@ -75,7 +75,7 @@ struct tpp_config {
 	int    tcp_user_timeout;
 	int    buf_limit_per_conn; /* buffer limit per physical connection */
 	int    force_fault_tolerance; /* by default disabled */
-	pbs_auth_config_t auth_config;
+	pbs_auth_config_t *auth_config;
 };
 
 /* rpp node types, leaf and router */
