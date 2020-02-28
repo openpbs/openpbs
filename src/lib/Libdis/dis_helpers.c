@@ -46,6 +46,7 @@
 
 static pbs_dis_buf_t * dis_get_readbuf(int);
 static pbs_dis_buf_t * dis_get_writebuf(int);
+static int __transport_read(int fd);
 static void dis_pack_buf(pbs_dis_buf_t *);
 static int dis_resize_buf(pbs_dis_buf_t *, size_t, size_t);
 static int transport_chan_is_encrypted(int);
@@ -235,6 +236,72 @@ transport_chan_is_encrypted(int fd)
 	return (chan->auths[FOR_ENCRYPT].def != NULL && chan->auths[FOR_ENCRYPT].ctx_status == AUTH_STATUS_CTX_READY);
 }
 
+int
+transport_send_pkt(int fd, int type, void *data_in, size_t len_in)
+{
+	int i = 0;
+	int ndlen = 0;
+	void *pkt = NULL;
+	char *pos = NULL;
+	size_t pktlen = 1 + sizeof(int) + len_in;
+
+	pkt = malloc(pktlen);
+	if (pkt == NULL)
+		return -1;
+	pos = (char *)pkt;
+	*pos++ = (char)type;
+	ndlen = htonl(len_in);
+	memcpy(pos, &ndlen, sizeof(int));
+	pos += sizeof(int);
+
+	memcpy(pos, data_in, len_in);
+
+	i = transport_send(fd, pkt, pktlen);
+	free(pkt);
+	if (i > 0 && i != pktlen)
+		return -1;
+	return i;
+}
+
+int
+transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
+{
+	int i = 0;
+	char ndlen[sizeof(int)];
+
+	*type = 0;
+	*data_out = NULL;
+	*len_out = 0;
+
+	i = transport_recv(fd, (void *)type, 1);
+	if (i != 1)
+		return i;
+
+	i = transport_recv(fd, ndlen, sizeof(int));
+	if (i != sizeof(int))
+		return i;
+	*len_out = (size_t)ntohl(*((int *) ndlen));
+	if (*len_out <= 0) {
+		*len_out = 0;
+		return -1;
+	}
+
+	*data_out = malloc(*len_out);
+	if (*data_out == NULL) {
+		*len_out = 0;
+		return -1;
+	}
+	i = transport_recv(fd, *data_out, *len_out);
+	if (i != *len_out) {
+		free(*data_out);
+		*data_out = NULL;
+		*len_out = 0;
+		return i;
+	}
+
+	return i;
+}
+
 /**
  * @brief
  * 	dis_encrypt_and_send - encrypt given data, assemble and send auth token
@@ -268,7 +335,7 @@ dis_encrypt_and_send(int fd, void *data_in, size_t len_in)
 	if (len_out <= 0)
 		return -1;
 
-	rc = send_auth_token(fd, AUTH_ENCRYPTED_DATA, data_out, len_out);
+	rc = transport_send_pkt(fd, AUTH_ENCRYPTED_DATA, data_out, len_out);
 	if (rc <= 0) {
 		free(data_out);
 		return rc;
@@ -310,7 +377,7 @@ dis_recv_and_decrypt(int fd, void **data_out, size_t *len_out)
 	if (authdef == NULL || authdef->decrypt_data == NULL)
 		return -1;
 
-	rc = recv_auth_token(fd, &type, &data_in, &len_in);
+	rc = transport_recv_pkt(fd, &type, &data_in, &len_in);
 	if (rc <= 0)
 		return rc;
 
@@ -561,34 +628,30 @@ disr_skip(int fd, size_t ct)
  * @par MT-safe: Yes
  *
  */
-int
+static int
 __transport_read(int fd)
 {
 	int i;
+	void *data = NULL;
+	size_t len = 0;
 	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
 
 	if (tp == NULL)
 		return -1;
 	dis_pack_buf(tp);
 	if (transport_chan_is_encrypted(fd)) {
-		void *data = NULL;
-		size_t len = 0;
-
 		i = dis_recv_and_decrypt(fd, &data, &len);
-		if (i <= 0)
-			return i;
-		dis_resize_buf(tp, len, 0);
-		memcpy(&(tp->tdis_thebuf[tp->tdis_eod]), data, len);
-		tp->tdis_eod += len;
-		free(data);
-		i = len;
 	} else {
-		dis_resize_buf(tp, PBS_DIS_BUFSZ, 0);
-		i = transport_recv(fd, &(tp->tdis_thebuf[tp->tdis_eod]), tp->tdis_bufsize - tp->tdis_eod);
-		if (i > 0)
-			tp->tdis_eod += i;
+		int type; /* unused */
+		i = transport_recv_pkt(fd, &type, &data, &len);
 	}
-	return i;
+	if (i <= 0)
+		return i;
+	dis_resize_buf(tp, len, 0);
+	memcpy(&(tp->tdis_thebuf[tp->tdis_eod]), data, len);
+	tp->tdis_eod += len;
+	free(data);
+	return len;
 }
 
 /**
@@ -802,9 +865,9 @@ dis_flush(int fd)
 		if (dis_encrypt_and_send(fd, (void *)tp->tdis_thebuf, tp->tdis_trail) <= 0)
 			return -1;
 	} else {
-		if (transport_send(fd, tp->tdis_thebuf, tp->tdis_trail) != tp->tdis_trail) {
+		/* DIS doesn't have pkt type, pass 0 always for type in transport_send_pkt */
+		if (transport_send_pkt(fd, 0, (void *)tp->tdis_thebuf, tp->tdis_trail) <= 0)
 			return -1;
-		}
 	}
 	tp->tdis_eod = tp->tdis_lead;
 	dis_pack_buf(tp);

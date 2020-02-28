@@ -76,7 +76,6 @@
 int
 main(int argc, char *argv[], char *envp[])
 {
-	int		 auth_type = PBS_credentialtype_none;
 	int		 err = 0;
 	pbs_net_t	 hostaddr = 0;
 	int		 i;
@@ -156,7 +155,7 @@ main(int argc, char *argv[], char *envp[])
 	}
 
 #ifdef WIN32
-		if (winsock_init()) {
+	if (winsock_init()) {
 		return 1;
 	}
 #endif
@@ -170,7 +169,7 @@ main(int argc, char *argv[], char *envp[])
 	if ((servport = atoi(argv[++optind])) <= 0)
 		return (1);
 
-	for (i=0; i<PBS_IFF_MAX_CONN_RETRIES; i++) {
+	for (i = 0; i < PBS_IFF_MAX_CONN_RETRIES; i++) {
 		sock = client_to_svr_extend(hostaddr, (unsigned int)servport, 1, cln_hostaddr);
 		if (sock != PBS_NET_RC_RETRY)
 			break;
@@ -237,34 +236,35 @@ main(int argc, char *argv[], char *envp[])
 	else
 		parentport = ntohs(parentsock_port);
 
+	pbs_errno = 0;
+	err = tcp_send_auth_req(sock, parentport, pwent->pw_name);
+	if (err != 0 && pbs_errno != PBSE_BADCRED)
+		return 2;
 
-	for (i = 0; i < 4; i++) {
-		int rc = 0;
-		pbs_errno = 0;
-		rc = tcp_send_auth_req(sock, parentport, pwent->pw_name);
-		if (rc != 0 && pbs_errno != PBSE_BADCRED)
-			return 2;
-		if (pbs_errno == PBSE_BADCRED) {
-			if (i>2)
-				sleep(1);
-		} else if (pbs_errno == 0)
-			break;
-	}
-	(void)pbs_disconnect(sock);
-
-	if (pbs_errno != 0) {
-		char *msg = get_conn_errtxt(sock);
-		fprintf(stderr, "pbs_iff: error returned: %d\n", pbs_errno);
-		if (msg != NULL)
-			fprintf(stderr, "pbs_iff: %s\n", msg);
-		return (1);
-	}
-
-	/* send back "type none" credential */
-	while (write(fileno(stdout), &auth_type, sizeof(int)) == -1) {
+	err = pbs_errno;
+	while (write(fileno(stdout), &err, sizeof(int)) == -1) {
 		if (errno != EINTR)
 			break;
 	}
+	if (pbs_errno != 0) {
+		char *msg = get_conn_errtxt(sock);
+		int len = 0;
+		if (msg != NULL)
+			len = strlen(msg);
+		while (write(fileno(stdout), (char *)&len, sizeof(int)) == -1) {
+			if (errno != EINTR)
+				break;
+		}
+		if (len > 0) {
+			while (write(fileno(stdout), msg, strlen(msg)) == -1) {
+				if (errno != EINTR)
+					break;
+			}
+		}
+		return (1);
+	}
+
+	(void)pbs_disconnect(sock);
 	(void)fclose(stdout);
 	return (0);
 }

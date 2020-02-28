@@ -55,7 +55,7 @@
 
 static auth_def_t **auths = NULL;
 
-static int _invoke_pbs_iff(int psock, char *server_name, int server_port);
+static int _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz);
 static int _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, char *ebuf, size_t ebufsz);
 static char * _get_load_lib_error(int reset);
 static void * _load_lib(char *loc);
@@ -310,110 +310,6 @@ is_valid_encrypt_method(char *method)
 
 /**
  * @brief
- *	recv_auth_token - receive auth token
- *
- * @param[in] fd - file descriptor
- * @param[out] type - token type - context or wrapped msg
- * @param[out] data_out - token string data
- * @param[out] len_out - length of data
- *
- * @return	int
- * @retval	>0	number of characters read
- * @retval	0	if EOD (no data currently avalable)
- * @retval	-1	if error
- * @retval	-2	if EOF (stream closed)
- *
- */
-int
-recv_auth_token(int fd, int *type, void **data_out, size_t *len_out)
-{
-	int i = 0;
-	void *pkt = NULL;
-
-	*type = 0;
-	*data_out = NULL;
-	*len_out = 0;
-
-	i = transport_recv(fd, (char *)type, 1);
-	if (i != 1)
-		return i;
-
-	pkt = malloc(sizeof(int));
-	if (pkt == NULL)
-		return -1;
-	i = transport_recv(fd, pkt, sizeof(int));
-	if (i != sizeof(int))
-		return -1;
-	*len_out = (size_t)ntohl(*((int *) pkt));
-	free(pkt);
-	if (*len_out <= 0) {
-		*len_out = 0;
-		return -1;
-	}
-
-	*data_out = malloc(*len_out);
-	if (*data_out == NULL) {
-		*len_out = 0;
-		return -1;
-	}
-	i = transport_recv(fd, *data_out, *len_out);
-	if (i != *len_out) {
-		free(*data_out);
-		*data_out = NULL;
-		*len_out = 0;
-		return i;
-	}
-
-	return i;
-}
-
-/**
- * @brief
- *	send_auth_token - assemble and send auth token
- *
- * @param[in] fd - file descriptor
- * @param[in] type - token type - context or wrapped msg
- * @param[in] data - token string data
- * @param[in] len - length of data
- *
- * @return	int
- * @retval	>0	number of characters read
- * @retval	0	if EOD (no data currently avalable)
- * @retval	-1	if error
- * @retval	-2	if EOF (stream closed)
- *
- */
-int
-send_auth_token(int fd, int type, void *data_in, size_t len_in)
-{
-	int ndlen = 0;
-	int i = 0;
-	void *pkt = NULL;
-	char *pos = NULL;
-	int pktlen = 1 + sizeof(int) + len_in;
-
-	pkt = malloc(pktlen);
-	if (pkt == NULL)
-		return -1;
-	pos = (char *)pkt;
-
-	*pos++ = (char)type;
-
-	ndlen = htonl(len_in);
-	memcpy(pos, &ndlen, sizeof(int));
-	pos += sizeof(int);
-
-	memcpy(pos, data_in, len_in);
-
-	i = transport_send(fd, pkt, pktlen);
-	free(pkt);
-	if (i > 0 && i != pktlen)
-		return -1;
-	return i;
-}
-
-/**
- * @brief
  *	tcp_send_auth_req - encodes and sends PBS_BATCH_Authenticate request
  *
  * @param[in] sock - socket descriptor
@@ -506,10 +402,9 @@ tcp_send_auth_req(int sock, unsigned int port, char *user)
  * @retval -1 on failure.
  */
 static int
-_invoke_pbs_iff(int psock, char *server_name, int server_port)
+_invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz)
 {
 	char cmd[2][PBS_MAXSERVERNAME + 80];
-	int cred_type;
 	int i;
 	int k;
 	char *pbs_client_addr = NULL;
@@ -545,39 +440,61 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port)
 			rc = -1;
 			break;
 		}
-		i = win_pread(&pio, (char *)&cred_type, (int)sizeof(int));
+		win_pread(&pio, (char *)&rc, (int)sizeof(int));
+		pbs_errno = rc;
+		if (rc > 0) {
+			rc = -1
+			win_pread(&pio, (char *)&rc, (int)sizeof(int));
+			if (rc > 0) {
+				if (rc > (ebufsz - 1))
+					rc = ebufsz - 1;
+				win_pread(&pio, ebuf, rc);
+				ebuf[ebufsz] = '\0';
+			}
+			rc = -1;
+		}
 		win_pclose(&pio);
 		SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, NULL);
-
-		if ((i != sizeof(int)) || (cred_type != PBS_credentialtype_none)) {
-			rc = -1;
-		} else {
+		if (rc == 0)
 			break;
-		}
 	}
 
 #else	/* UNIX code here */
 	(void)snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s=%s %s %s %u %d %u", PBS_IFF_CLIENT_ADDR, pbs_client_addr, pbs_conf.iff_path, server_name, server_port, psock, psock_port);
 
 	for (k = 0; k < 2; k++) {
-		rc = 0;
+		rc = -1;
 		piff = (FILE *)popen(cmd[k], "r");
 		if (piff == NULL) {
-			rc = -1;
 			break;
 		}
 
-		while ((i = read(fileno(piff), &cred_type, sizeof(int))) == -1) {
+		while ((i = read(fileno(piff), &rc, sizeof(int))) == -1) {
 			if (errno != EINTR)
 				break;
 		}
+		pbs_errno = rc;
+		if (rc > 0) {
+			rc = -1;
+			while ((i = read(fileno(piff), &rc, sizeof(int))) == -1) {
+				if (errno != EINTR)
+					break;
+			}
+			if (rc > 0) {
+				if (rc > (ebufsz - 1))
+					rc = ebufsz - 1;
+				while ((i = read(fileno(piff), (void *)ebuf, rc)) == -1) {
+					if (errno != EINTR)
+						break;
+				}
+				ebuf[ebufsz] = '\0';
+			}
+			rc = -1;
+		}
 
 		(void)pclose(piff);
-		if ((i != sizeof(int)) || (cred_type != PBS_credentialtype_none)) {
-			rc = -1;
-		} else {
+		if (rc == 0)
 			break;
-		}
 	}
 #endif	/* end of UNIX code */
 
@@ -630,7 +547,7 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 		}
 
 		if (len_out > 0) {
-			if (send_auth_token(fd, AUTH_CTX_DATA, data_out, len_out) <= 0) {
+			if (transport_send_pkt(fd, AUTH_CTX_DATA, data_out, len_out) <= 0) {
 				snprintf(ebuf, ebufsz, "Failed to send auth context token");
 				pbs_errno = PBSE_SYSTEM;
 				free(data_out);
@@ -643,9 +560,21 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 
 		if (is_handshake_done == 0) {
 			/* recieve ctx token */
-			if (recv_auth_token(fd, &type, &data_in, &len_in) <= 0) {
+			if (transport_recv_pkt(fd, &type, &data_in, &len_in) <= 0) {
+				snprintf(ebuf, ebufsz, "Failed to receive auth token");
 				return -1;
 			}
+
+			if (type == AUTH_ERR_DATA) {
+				if (len_in > ebufsz)
+					len_in = ebufsz;
+				strncpy(ebuf, (char *)data_in, len_in);
+				ebuf[len_in] = '\0';
+				free(data_in);
+				pbs_errno = PBSE_BADCRED;
+				return -1;
+			}
+
 			if (type != AUTH_CTX_DATA) {
 				free(data_in);
 				snprintf(ebuf, ebufsz, "incorrect auth token type");
@@ -686,7 +615,7 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 			return (0);
 
 		if (rc == CS_AUTH_USE_IFF) {
-			if (_invoke_pbs_iff(fd, hostname, port) != 0) {
+			if (_invoke_pbs_iff(fd, hostname, port, ebuf, ebufsz) != 0) {
 				sprintf(ebuf, "Unable to authenticate connection (%s:%d)", hostname, port);
 				return -1;
 			}
@@ -769,8 +698,11 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 		transport_chan_set_authctx(fd, authctx, for_encrypt);
 	}
 
-	if (recv_auth_token(fd, &type, &data_in, &len_in) <= 0)
+	if (transport_recv_pkt(fd, &type, &data_in, &len_in) <= 0) {
+		snprintf(ebuf, ebufsz, "failed to receive auth token");
+		pbs_errno = PBSE_SYSTEM;
 		return -1;
+	}
 
 	if (type != AUTH_CTX_DATA) {
 		snprintf(ebuf, ebufsz, "received incorrect auth token");
@@ -780,7 +712,17 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 	}
 
 	if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
-		snprintf(ebuf, ebufsz, "auth_process_handshake_data failure");
+		if (len_out > 0) {
+			size_t len = len_out;
+			if (len > ebufsz)
+				len = ebufsz;
+			strncpy(ebuf, (char *)data_out, len);
+			ebuf[len] = '\0';
+			(void)transport_send_pkt(fd, AUTH_ERR_DATA, data_out, len_out);
+			free(data_out);
+		} else {
+			snprintf(ebuf, ebufsz, "auth_process_handshake_data failure");
+		}
 		pbs_errno = PBSE_SYSTEM;
 		free(data_in);
 		return -1;
@@ -789,7 +731,7 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 	free(data_in);
 
 	if (len_out > 0) {
-		if (send_auth_token(fd, AUTH_CTX_DATA, data_out, len_out) <= 0) {
+		if (transport_send_pkt(fd, AUTH_CTX_DATA, data_out, len_out) <= 0) {
 			snprintf(ebuf, ebufsz, "Failed to send auth context token");
 			free(data_out);
 			return -1;

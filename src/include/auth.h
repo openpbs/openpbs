@@ -112,6 +112,7 @@ typedef struct auth_def {
 
 enum AUTH_MSG_TYPES {
 	AUTH_CTX_DATA = 1, /* starts from 1, zero means EOF */
+	AUTH_ERR_DATA,
 	AUTH_ENCRYPTED_DATA,
 	AUTH_LAST_MSG
 };
@@ -121,8 +122,6 @@ extern int load_auths(void);
 extern void unload_auths(void);
 int is_valid_encrypt_method(char *);
 
-extern int recv_auth_token(int, int *, void **, size_t *);
-extern int send_auth_token(int, int, void *, size_t);
 extern int engage_client_auth(int, char *, int , char *, size_t);
 extern int engage_server_auth(int, char *, char *, int, char *, size_t);
 

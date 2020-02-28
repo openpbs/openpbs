@@ -232,6 +232,8 @@ void transport_chan_set_authctx(int, void *, int);
 void * transport_chan_get_authctx(int, int);
 void transport_chan_set_authdef(int, auth_def_t *, int);
 auth_def_t * transport_chan_get_authdef(int, int);
+int transport_send_pkt(int, int, void *, size_t);
+int transport_recv_pkt(int, int *, void **, size_t *);
 void dis_clear_buf(pbs_dis_buf_t *);
 void dis_reset_buf(int, int);
 int disr_skip(int, size_t);

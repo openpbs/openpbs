@@ -216,13 +216,13 @@ struct connection {
 	void		(*cn_func)(int); /* read function when data rdy */
 	void		(*cn_oncl)(int); /* func to call on close */
 	unsigned short	cn_prio_flag;	/* flag for a priority socket */
+	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
 	/* following attributes are for */
 	/* credential checking */
 	time_t          cn_timestamp;
 	void            *cn_data;         /* pointer to some data for cn_func */
 	char            cn_username[PBS_MAXUSER + 1];
 	char            cn_hostname[PBS_MAXHOSTNAME + 1];
-	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
 	char            *cn_credid;
 	char            cn_physhost[PBS_MAXHOSTNAME + 1];
 	int             cn_is_auth_resvport;

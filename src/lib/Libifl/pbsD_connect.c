@@ -459,9 +459,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 	PBSD_FreeReply(reply);
 
 	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
-		CLOSESOCKET(sock);
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
+		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
+		if (errbuf[0] != '\0')
+			fprintf(stderr, "auth: %s\n", errbuf);
+		CLOSESOCKET(sock);
 		return -1;
 	}
 

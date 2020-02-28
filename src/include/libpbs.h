@@ -314,7 +314,6 @@ struct batch_reply {
 #define PBS_BATCH_FileOpt_OFlg		1
 #define PBS_BATCH_FileOpt_EFlg		2
 
-#define PBS_credentialtype_none 0
 #define PBS_IFF_CLIENT_ADDR	"PBS_IFF_CLIENT_ADDR"
 
 /* time out values for tcp_dis read/write */
