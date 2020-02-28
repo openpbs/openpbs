@@ -1359,12 +1359,29 @@ start_afslog(const task *ptask, struct krb_holder *ticket, int fd1, int fd2) {
 
 	if (ticket == NULL) {
 		ticket = alloc_ticket();
-		if (ticket == NULL)
+		if (ticket == NULL) {
+			/* Go root on error */
+			if (seteuid(0) < 0) {
+				strerror_r(errno, errbuf, sizeof(errbuf));
+				snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
+				log_err(errno, __func__, buf);
+			}
+
 			return PBS_KRB5_ERR_INTERNAL;
+		}
 
 		if ((ret = init_ticket_from_ccache(pjob, NULL, ticket)) != PBS_KRB5_OK) {
 			if (local_ticket)
 				free_ticket(ticket, CRED_RENEWAL);
+
+			/* Go root */
+			if (seteuid(0) < 0) {
+				strerror_r(errno, errbuf, sizeof(errbuf));
+				snprintf(buf, sizeof(buf), "Could not reset root privileges: %s.", errbuf);
+				log_err(errno, __func__, buf);
+
+				return PBS_KRB5_ERR_INTERNAL;
+			}
 
 			/* job without a principal */
 			/* not an error, but do nothing */
