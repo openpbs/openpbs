@@ -1972,8 +1972,8 @@ req_defschedreply(struct batch_request *preq)
 
 /**
  * @brief
- *	convert_job_to_resv - creates a reservation out of the job
- * 			      and moved the job to the newly created
+ *	convert_job_to_resv - create a reservation out of the job
+ * 			      and move the job to the newly created
  * 			      reservation.
  *
  * @param[in]	pjob - pointer to the job object
