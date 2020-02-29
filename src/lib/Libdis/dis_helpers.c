@@ -905,7 +905,14 @@ dis_destroy_chan(int fd)
 	if (chan != NULL) {
 		if (chan->auths[FOR_AUTH].ctx || chan->auths[FOR_ENCRYPT].ctx) {
 			/* DO NOT free authdef here, it will be done in unload_auths() */
-			transport_chan_free_authctx(chan);
+			if (chan->auths[FOR_AUTH].ctx && chan->auths[FOR_AUTH].def) {
+				chan->auths[FOR_AUTH].def->destroy_ctx(chan->auths[FOR_AUTH].ctx);
+			}
+			if (chan->auths[FOR_ENCRYPT].def != chan->auths[FOR_AUTH].def &&
+				chan->auths[FOR_ENCRYPT].ctx &&
+				chan->auths[FOR_ENCRYPT].def) {
+				chan->auths[FOR_ENCRYPT].def->destroy_ctx(chan->auths[FOR_ENCRYPT].ctx);
+			}
 			chan->auths[FOR_AUTH].ctx = NULL;
 			chan->auths[FOR_AUTH].def = NULL;
 			chan->auths[FOR_AUTH].ctx_status = AUTH_STATUS_UNKNOWN;

@@ -772,23 +772,7 @@ add_conn_priority(int sd, enum conn_type type, pbs_net_t addr, unsigned int port
 	conn->cn_oncl = 0;
 	conn->cn_authen = 0;
 	conn->cn_prio_flag = 0;
-	conn->cn_auth_config = calloc(1, sizeof(pbs_auth_config_t));
-	if (conn->cn_auth_config == NULL) {
-		free(conn);
-		return NULL;
-	}
-	conn->cn_auth_config->logfunc = log_event;
-	conn->cn_auth_config->pbs_exec_path = strdup(pbs_conf.pbs_exec_path);
-	if (conn->cn_auth_config->pbs_exec_path == NULL) {
-		free(conn);
-		return NULL;
-	}
-	conn->cn_auth_config->pbs_home_path = strdup(pbs_conf.pbs_home_path);
-	if (conn->cn_auth_config->pbs_home_path == NULL) {
-		free(conn->cn_auth_config->pbs_exec_path);
-		free(conn);
-		return NULL;
-	}
+	conn->cn_auth_config = NULL;
 
 	num_connections++;
 
@@ -992,15 +976,7 @@ cleanup_conn(int idx)
 	}
 
 	if (svr_conn[idx]->cn_auth_config) {
-		if (svr_conn[idx]->cn_auth_config->pbs_exec_path)
-			free(svr_conn[idx]->cn_auth_config->pbs_exec_path);
-		if (svr_conn[idx]->cn_auth_config->pbs_home_path)
-			free(svr_conn[idx]->cn_auth_config->pbs_home_path);
-		if (svr_conn[idx]->cn_auth_config->auth_method)
-			free(svr_conn[idx]->cn_auth_config->auth_method);
-		if (svr_conn[idx]->cn_auth_config->encrypt_method)
-			free(svr_conn[idx]->cn_auth_config->encrypt_method);
-		free(svr_conn[idx]->cn_auth_config);
+		free_auth_config(svr_conn[idx]->cn_auth_config);
 		svr_conn[idx]->cn_auth_config = NULL;
 	}
 

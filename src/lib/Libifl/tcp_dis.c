@@ -87,18 +87,6 @@ tcp_get_chan(int fd)
 	return chan;
 }
 
-void
-tcp_chan_free_authctx(pbs_tcp_chan_t *chan)
-{
-	/* DO NOT free authdef here, it will be done in unload_auths() */
-	if (chan->auths[FOR_AUTH].ctx && chan->auths[FOR_AUTH].def) {
-		chan->auths[FOR_AUTH].def->destroy_ctx(chan->auths[FOR_AUTH].ctx);
-	}
-	if (chan->auths[FOR_ENCRYPT].def != chan->auths[FOR_AUTH].def && chan->auths[FOR_ENCRYPT].ctx && chan->auths[FOR_ENCRYPT].def) {
-		chan->auths[FOR_ENCRYPT].def->destroy_ctx(chan->auths[FOR_ENCRYPT].ctx);
-	}
-}
-
 /**
  * @brief
  * 	tcp_recv - receive data from tcp stream
@@ -268,7 +256,6 @@ DIS_tcp_funcs()
 {
 	pfn_transport_get_chan = tcp_get_chan;
 	pfn_transport_set_chan = set_conn_chan;
-	pfn_transport_chan_free_authctx = tcp_chan_free_authctx;
 	pfn_transport_recv = tcp_recv;
 	pfn_transport_send = tcp_send;
 }

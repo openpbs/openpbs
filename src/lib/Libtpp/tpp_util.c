@@ -155,7 +155,6 @@ DIS_tpp_funcs()
 {
 	pfn_transport_get_chan = tppdis_get_user_data;
 	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) &tpp_set_user_data;
-	pfn_transport_chan_free_authctx = NULL;
 	pfn_transport_recv = tpp_recv;
 	pfn_transport_send = tpp_send;
 }
@@ -309,36 +308,11 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	tpp_conf->node_type = TPP_LEAF_NODE;
 	tpp_conf->numthreads = 1;
 
-	tpp_conf->auth_config = (pbs_auth_config_t *)calloc(1, sizeof(pbs_auth_config_t));
+	tpp_conf->auth_config = make_auth_config(pbs_conf->auth_method, pbs_conf->encrypt_method, pbs_conf->encrypt_mode, (void *)tpp_auth_logger);
 	if (tpp_conf->auth_config == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
 		return -1;
 	}
-
-	tpp_conf->auth_config->pbs_home_path = strdup(pbs_conf->pbs_home_path);
-	if (tpp_conf->auth_config->pbs_home_path == NULL) {
-		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
-		return -1;
-	}
-	tpp_conf->auth_config->pbs_exec_path = strdup(pbs_conf->pbs_exec_path);
-	if (tpp_conf->auth_config->pbs_exec_path == NULL) {
-		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
-		return -1;
-	}
-	tpp_conf->auth_config->auth_method = strdup(pbs_conf->auth_method);
-	if (tpp_conf->auth_config->auth_method == NULL) {
-		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
-		return -1;
-	}
-	if (pbs_conf->encrypt_method[0] != '\0') {
-		tpp_conf->auth_config->encrypt_method = strdup(pbs_conf->encrypt_method);
-		if (tpp_conf->auth_config->pbs_home_path == NULL) {
-			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
-			return -1;
-		}
-	}
-	tpp_conf->auth_config->encrypt_mode = pbs_conf->encrypt_mode;
-	tpp_conf->auth_config->logfunc = tpp_auth_logger;
 
 	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
 	tpp_log_func(LOG_INFO, NULL, log_buffer);

@@ -147,14 +147,14 @@ CS_read(int sd, char *buf, size_t len)
 /**
  * @brief
  * 	CS_write - write data
- * 
+ *
  * @par	call:
  *      r = CS_write ( fid, buf, len )
  *
  * @param[in]	fid     - file id to write to
  * @param[in]	buf     - address of the buffer to write
  * @param[in]	len     - number of bytes to transfer
- * 
+ *
  * @returns	int
  * @retval	- number of bytes read
  * @retval	CS_IO_FAIL (-1) on error
@@ -228,10 +228,10 @@ CS_server_auth(int sd)
  * 	r = CS_close_socket ( fd );
  *
  * @param[in]	fd	- socket file id
- * 
+ *
  * @return	int
  * @retval	status result, 0 => success
- * 
+ *
  * @par	note:
  * 	The socket should still be open when this function is called.
  * 	The pointer to the security blob may be modified, hence pctx
@@ -253,7 +253,7 @@ CS_close_socket(int sd)
 /**
  * @brief
  * 	CS_close_app - the global cleanup function
- * 
+ *
  * @par	call:
  *	r = CS_close_app();
  *
@@ -265,7 +265,6 @@ CS_close_socket(int sd)
 int
 CS_close_app(void)
 {
-
 	return (CS_SUCCESS);
 }
 
@@ -346,7 +345,7 @@ CS_verify()
  * @retval	CS_SUCCESS
  * @retval	CS_FATAL
  *
- * @par	Remark:  
+ * @par	Remark:
  *	If the return value is CS_FATAL the connection should be
  *	CS_close_socket should be called on the original descriptor
  *	to deallocate the tracking table entry, and the connection

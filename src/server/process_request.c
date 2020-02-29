@@ -220,19 +220,14 @@ authenticate_external(conn_t *conn, struct batch_request *request)
 			return -2;
 	}
 
-	conn->cn_auth_config->auth_method = strdup(request->rq_ind.rq_auth.rq_auth_method);
-	if (conn->cn_auth_config->auth_method == NULL) {
+	conn->cn_auth_config = make_auth_config(request->rq_ind.rq_auth.rq_auth_method,
+						request->rq_ind.rq_auth.rq_encrypt_method,
+						request->rq_ind.rq_auth.rq_encrypt_mode,
+						(void *)log_event);
+	if (conn->cn_auth_config == NULL) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-	if (request->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
-		conn->cn_auth_config->encrypt_method = strdup(request->rq_ind.rq_auth.rq_encrypt_method);
-		if (conn->cn_auth_config->encrypt_method == NULL) {
-			pbs_errno = PBSE_SYSTEM;
-			return -1;
-		}
-	}
-	conn->cn_auth_config->encrypt_mode = request->rq_ind.rq_auth.rq_encrypt_mode;
 
 	(void) strcpy(conn->cn_username, request->rq_user);
 	(void) strcpy(conn->cn_hostname, request->rq_host);

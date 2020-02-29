@@ -597,7 +597,6 @@ __pbs_disconnect(int connect)
 		return -1;
 
 	(void)destroy_connection(connect);
-	unload_auths();
 
 	return 0;
 }

@@ -311,10 +311,10 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		log_err(errno, __func__, "Out of memory!");
 		return (-1);
 	}
-	conn->cn_auth_config->auth_method = strdup(AUTH_RESVPORT_NAME);
-	if (conn->cn_auth_config->auth_method == NULL) {
+	conn->cn_auth_config = make_auth_config(AUTH_RESVPORT_NAME, "", 0, (void *)log_event);
+	if (conn->cn_auth_config == NULL) {
 		log_err(errno, __func__, "Out of memory!");
-		return (-1);
+		return -1;
 	}
 	DIS_tcp_funcs();
 	transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_READY, FOR_AUTH);

@@ -654,7 +654,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 				return -1;
 			}
 
-			authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
+			authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
 
 			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -4528,7 +4528,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 					return -1;
 				}
 
-				authdef->set_config((const pbs_auth_config_t *)&(tpp_conf->auth_config));
+				authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
 
 				if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
@@ -5035,7 +5035,7 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 		if (authdata->authctx && authdata->authdef)
 			authdata->authdef->destroy_ctx(authdata->authctx);
-		if (authdata->authdef != authdata->encryptctx && authdata->encryptctx && authdata->encryptdef)
+		if (authdata->authdef != authdata->encryptdef && authdata->encryptctx && authdata->encryptdef)
 			authdata->encryptdef->destroy_ctx(authdata->encryptctx);
 		if (authdata->cleartext)
 			free(authdata->cleartext);

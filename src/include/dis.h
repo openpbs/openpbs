@@ -226,14 +226,6 @@ typedef struct pbs_tcp_chan {
 	pbs_tcp_auth_data_t auths[2];
 } pbs_tcp_chan_t;
 
-void transport_chan_set_ctx_status(int, int, int);
-int transport_chan_get_ctx_status(int, int);
-void transport_chan_set_authctx(int, void *, int);
-void * transport_chan_get_authctx(int, int);
-void transport_chan_set_authdef(int, auth_def_t *, int);
-auth_def_t * transport_chan_get_authdef(int, int);
-int transport_send_pkt(int, int, void *, size_t);
-int transport_recv_pkt(int, int *, void **, size_t *);
 void dis_clear_buf(pbs_dis_buf_t *);
 void dis_reset_buf(int, int);
 int disr_skip(int, size_t);
@@ -246,9 +238,17 @@ int dis_flush(int);
 void dis_setup_chan(int, pbs_tcp_chan_t * (*)(int));
 void dis_destroy_chan(int);
 
+void transport_chan_set_ctx_status(int, int, int);
+int transport_chan_get_ctx_status(int, int);
+void transport_chan_set_authctx(int, void *, int);
+void * transport_chan_get_authctx(int, int);
+void transport_chan_set_authdef(int, auth_def_t *, int);
+auth_def_t * transport_chan_get_authdef(int, int);
+int transport_send_pkt(int, int, void *, size_t);
+int transport_recv_pkt(int, int *, void **, size_t *);
+
 pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
 int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
-void (*pfn_transport_chan_free_authctx)(pbs_tcp_chan_t *);
 int (*pfn_transport_recv)(int, void *, int);
 int (*pfn_transport_send)(int, void *, int);
 
@@ -256,12 +256,6 @@ int (*pfn_transport_send)(int, void *, int);
 #define transport_send(x, y, z) (*pfn_transport_send)(x, y, z)
 #define transport_get_chan(x) (*pfn_transport_get_chan)(x)
 #define transport_set_chan(x, y) (*pfn_transport_set_chan)(x, y)
-#define transport_chan_free_authctx(x) \
-	do { \
-		if (pfn_transport_chan_free_authctx != NULL) { \
-			(*pfn_transport_chan_free_authctx)(x); \
-		} \
-	} while(0)
 
 #ifdef	__cplusplus
 }

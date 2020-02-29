@@ -849,8 +849,11 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
 int
 pbs_auth_create_ctx(void **ctx, int mode, const char *hostname)
 {
+	pbs_gss_extra_t *gss_extra = NULL;
+
 	*ctx = NULL;
-	pbs_gss_extra_t *gss_extra = calloc(1, sizeof(pbs_gss_extra_t));
+
+	gss_extra = (pbs_gss_extra_t *)calloc(1, sizeof(pbs_gss_extra_t));
 	if (gss_extra == NULL) {
 		return 1;
 	}
@@ -897,6 +900,7 @@ pbs_auth_destroy_ctx(void *ctx)
 	if (gss_extra->gssctx != GSS_C_NO_CONTEXT)
 		(void)gss_delete_sec_context(&min_stat, &gss_extra->gssctx, GSS_C_NO_BUFFER);
 
+	memset(gss_extra, 0, sizeof(pbs_gss_extra_t));
 	free(gss_extra);
 	ctx = NULL;
 }
@@ -991,6 +995,11 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 {
 	pbs_gss_extra_t *gss_extra = (pbs_gss_extra_t *) ctx;
 	int rc = 0;
+
+	if (gss_extra == NULL) {
+		GSS_LOG_ERR("No GSS context given");
+		return 1;
+	}
 
 	if (gss_extra->gssctx_established) {
 		GSS_LOG_ERR("GSS context already established");

@@ -225,7 +225,20 @@ _unload_auth(auth_def_t *auth)
 	return;
 }
 
-
+/**
+ * @brief
+ *	get_auth - find and return auth defination struture for given method
+ *
+ * @param[in] method - auth method name
+ *
+ * @return	auth_def_t *
+ * @retval	!NULL - success
+ * @retval	NULL - failure
+ *
+ * @note
+ * 	Returned value is from global static area so
+ * 	caller MUST NOT modify it
+ */
 auth_def_t *
 get_auth(char *method)
 {
@@ -243,6 +256,14 @@ get_auth(char *method)
 	return NULL;
 }
 
+/**
+ * @brief
+ *	load_auths - load all configured auth (aka PBS_SUPPORTED_AUTH_METHODS)
+ *
+ * @return	int
+ * @retval	0 - success
+ * @retval	1 - failure
+ */
 int
 load_auths(void)
 {
@@ -270,6 +291,10 @@ load_auths(void)
 			i++;
 			continue;
 		}
+		if (get_auth(pbs_conf.supported_auth_methods[i]) != NULL) {
+			i++;
+			continue;
+		}
 		auth = _load_auth(pbs_conf.supported_auth_methods[i]);
 		if (auth == NULL) {
 			unload_auths();
@@ -282,6 +307,12 @@ load_auths(void)
 	return 0;
 }
 
+/**
+ * @brief
+ *	unload_auths - unload all loaded auths
+ *
+ * @return	void
+ */
 void
 unload_auths(void)
 {
@@ -298,6 +329,16 @@ unload_auths(void)
 	auths = NULL;
 }
 
+/**
+ * @brief
+ *	is_valid_encrypt_method - validate given auth method can be used as encryption/decryption or not
+ *
+ * @param[in] method - auth method name to be validated
+ *
+ * @return	int
+ * @retval	0 - given method can't be used for encrypt/decrypt
+ * @retval	1 - given method can be used for encrypt/decrypt
+ */
 int
 is_valid_encrypt_method(char *method)
 {
@@ -606,7 +647,81 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 
 /**
  * @brief
- * 	this function handles client side authenication
+ * 	free_auth_config - free auth config structure
+ *
+ * @param[in] config - auth config structure to be freed
+ *
+ * @return	void
+ *
+ */
+void
+free_auth_config(pbs_auth_config_t *config)
+{
+	if (config) {
+		if (config->auth_method)
+			free(config->auth_method);
+		if (config->encrypt_method)
+			free(config->encrypt_method);
+		if (config->pbs_exec_path)
+			free(config->pbs_exec_path);
+		if (config->pbs_home_path)
+			free(config->pbs_home_path);
+		free(config);
+	}
+}
+
+/**
+ * @brief
+ * 	make_auth_config - allocate and return auth config structure
+ *
+ * @param[in] auth_method - auth method name
+ * @param[in] encrypt_method - encrypt method name
+ * @param[in] encrypt_mode - encrypt mode
+ * @param[in] logger - pointer to logger function for auth lib
+ *
+ * @return	pbs_auth_config_t *
+ * @retval	!NULL	success
+ * @retval	NULL	failure
+ *
+ */
+pbs_auth_config_t *
+make_auth_config(char *auth_method, char *encrypt_method, int encrypt_mode, void *logger)
+{
+	pbs_auth_config_t *config = NULL;
+
+	config = (pbs_auth_config_t *)calloc(1, sizeof(pbs_auth_config_t));
+	if (config == NULL) {
+		return NULL;
+	}
+
+	config->auth_method = strdup(auth_method);
+	if (config->auth_method == NULL) {
+		free_auth_config(config);
+		return NULL;
+	}
+	config->encrypt_method = strdup(encrypt_method);
+	if (config->encrypt_method == NULL) {
+		free_auth_config(config);
+		return NULL;
+	}
+	config->pbs_exec_path = strdup(pbs_conf.pbs_exec_path);
+	if (config->pbs_exec_path == NULL) {
+		free_auth_config(config);
+		return NULL;
+	}
+	config->pbs_home_path = strdup(pbs_conf.pbs_home_path);
+	if (config->pbs_home_path == NULL) {
+		free_auth_config(config);
+		return NULL;
+	}
+	config->logfunc = logger;
+	config->encrypt_mode = encrypt_mode;
+	return config;
+}
+
+/**
+ * @brief
+ * 	engage_client_auth - this function handles client side authenication
  *
  * @param[in] fd - socket descriptor
  * @param[in] hostname - server hostname
@@ -621,89 +736,60 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 int
 engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 {
-	int rc = 0;
-	pbs_auth_config_t *config = NULL;
+	int rc = -1;
+	pbs_auth_config_t *config = make_auth_config(pbs_conf.auth_method, pbs_conf.encrypt_method, pbs_conf.encrypt_mode, NULL);
 
-	config = (pbs_auth_config_t *)calloc(1, sizeof(pbs_auth_config_t));
 	if (config == NULL) {
 		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
-	config->auth_method = strdup(pbs_conf.auth_method);
-	if (config->auth_method == NULL) {
-		free(config);
-		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	config->encrypt_method = strdup(pbs_conf.encrypt_method);
-	if (config->encrypt_method == NULL) {
-		free(config->auth_method);
-		free(config);
-		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	config->pbs_exec_path = strdup(pbs_conf.pbs_exec_path);
-	if (config->pbs_exec_path == NULL) {
-		free(config->encrypt_method);
-		free(config->auth_method);
-		free(config);
-		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	config->pbs_home_path = strdup(pbs_conf.pbs_home_path);
-	if (config->pbs_home_path == NULL) {
-		free(config->pbs_exec_path);
-		free(config->encrypt_method);
-		free(config->auth_method);
-		free(config);
-		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	config->logfunc = NULL;
-	config->encrypt_mode = pbs_conf.encrypt_mode;
-
 	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) == 0) {
-		if ((rc = CS_client_auth(fd)) == CS_SUCCESS)
+		if ((rc = CS_client_auth(fd)) == CS_SUCCESS) {
+			free_auth_config(config);
 			return (0);
+		}
 
 		if (rc == CS_AUTH_USE_IFF) {
 			if (_invoke_pbs_iff(fd, hostname, port, ebuf, ebufsz) != 0) {
 				snprintf(ebuf, ebufsz, "Unable to authenticate connection (%s:%d)", hostname, port);
+				free_auth_config(config);
 				return -1;
 			}
 		}
 	} else {
 		if (tcp_send_auth_req(fd, 0, pbs_current_user) != 0) {
 			snprintf(ebuf, ebufsz, "Failed to send auth request");
+			free_auth_config(config);
 			return -1;
 		}
 
 		rc = _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
-		if (rc != 0)
+		if (rc != 0) {
+			free_auth_config(config);
 			return rc;
+		}
 	}
 
 	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
 		if (pbs_conf.encrypt_method[0] != '\0' && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
-			return _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
+			rc = _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
+			free_auth_config(config);
+			return rc;
 		} else {
 			transport_chan_set_ctx_status(fd, transport_chan_get_ctx_status(fd, FOR_AUTH), FOR_ENCRYPT);
 			transport_chan_set_authdef(fd, transport_chan_get_authdef(fd, FOR_AUTH), FOR_ENCRYPT);
 			transport_chan_set_authctx(fd, transport_chan_get_authctx(fd, FOR_AUTH), FOR_ENCRYPT);
 		}
 	}
+	free_auth_config(config);
 	return 0;
 }
 
 /**
  * @brief
- * 	this function handles incoming authenication related data
+ * 	engage_server_auth - this function handles incoming authenication related data
  *
  * @param[in] fd - socket descriptor
  * @param[in] hostname - server hostname
