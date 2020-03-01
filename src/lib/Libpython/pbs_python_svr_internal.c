@@ -12684,7 +12684,6 @@ PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
 		goto server_attribute_exit;
 	}
 server_attribute_exit:
-	Py_CLEAR(py_server_attribute_class);
 	Py_CLEAR(py_server_attribute_args);
 	return py_server_attribute;
 }
