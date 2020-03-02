@@ -1707,7 +1707,7 @@ class NodeUtils(object):
                    'cgroup_jobs file content: %s' % str(jobdict))
         try:
             for jobfile in glob.glob(os.path.join(PBS_MOM_JOBS, '*.JB')):
-                jobid = os.path.splitext(os.path.basename(jobfile))
+                (jobid, jb_extension) = os.path.splitext(os.path.basename(jobfile))
                 if jobid not in jobdict:
                     if os.stat_float_times():
                         jobdict[jobid] = os.path.getmtime(jobfile)
