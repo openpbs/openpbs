@@ -55,7 +55,6 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
-	$(top_builddir)/src/lib/Libpython/libpbspython.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libdb.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \

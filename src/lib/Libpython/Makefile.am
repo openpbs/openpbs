@@ -46,14 +46,23 @@ libpbspython_a_SOURCES = \
 	shared_python_utils.c \
 	common_python_utils.c \
 	pbs_ifl_wrap.c \
-	pbs_python_external.c
+	pbs_python_external.c \
+	pbs_python_svr_external.c \
+	module_pbs_v1.c \
+	pbs_python_svr_internal.c \
+	pbs_python_svr_size_type.c \
+	pbs_python_import_types.c
 
 libpbspython_svr_a_CPPFLAGS = \
+	-DLIBPYTHONSVR \
 	-I$(top_srcdir)/src/include \
 	@PYTHON_INCLUDES@
 
 libpbspython_svr_a_SOURCES = \
 	shared_python_utils.c \
+	common_python_utils.c \
+	pbs_ifl_wrap.c \
+	pbs_python_external.c \
 	pbs_python_svr_external.c \
 	module_pbs_v1.c \
 	pbs_python_svr_internal.c \

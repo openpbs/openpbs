@@ -239,7 +239,7 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 
 	interp_data->pbs_python_types_loaded = 1; /* just in case */
 
-#if !defined(PBS_PYTHON)
+#ifdef LIBPYTHONSVR
 	PyObject *m, *d, *f, *handler, *sigint;
     m = PyImport_ImportModule("signal");
     d = PyModule_GetDict(m);
