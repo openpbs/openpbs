@@ -1707,7 +1707,7 @@ class NodeUtils(object):
                    'cgroup_jobs file content: %s' % str(jobdict))
         try:
             for jobfile in glob.glob(os.path.join(PBS_MOM_JOBS, '*.JB')):
-                (jobid, jb_extension) = os.path.splitext(os.path.basename(jobfile))
+                (jobid, dot_jb) = os.path.splitext(os.path.basename(jobfile))
                 if jobid not in jobdict:
                     if os.stat_float_times():
                         jobdict[jobid] = os.path.getmtime(jobfile)
@@ -2050,10 +2050,10 @@ class NodeUtils(object):
                         # Set the value on the natural vnode to zero
                         host_resc_avail['hpmem'] = pbs.size('0')
                     else:
-                        val = node.get_hpmem_on_node()
+                        val = self.get_hpmem_on_node()
                         # remove X MB - handle jitter in mem reported by OS
                         val -= (1024 * 1024
-                                * self.cfg['cgroup']['hpmem']
+                                * self.cfg['cgroup']['hugetlb']
                                           ['vnode_hidden_mb'])
                         if val < 0:
                             val = 0
@@ -2462,20 +2462,29 @@ class CgroupUtils(object):
                                 prefix + cgfile)
         return os.path.join(subdir, prefix + cgfile)
 
-    def morph_config_dict_bools(self, config_dict):
-        # function to morph "vntype in: vntype1,vntype2,..."
-        # and "vntype not in: ..." values
-        # into booleans depending on the vntype in the CgroupConfig object
-        # Ditto for "host in:" and "host not in:"
-        # Convert old run_only_on_hosts and exclude_vntypes to derive
-        # "enabled" boolean (which will now _always_ be defined)
-        pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Config file parsing" % caller_name())
+    def morph_config_dict_bools(self, config_dict, subsection=None):
+        """
+        function to morph 'vntype in: vntype1,vntype2,...'
+        and 'vntype not in: ...' values
+        into booleans depending on the vntype in the CgroupConfig object
+        Ditto for 'host in:' and 'host not in:'
+        Convert old run_only_on_hosts and exclude_vntypes to derive
+        'enabled' boolean (which will now _always_ be defined)
+        """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         vntype = self.vntype
         # avoid crashes in fnmatch if no vntype was specified on the host
         if not vntype:
             vntype = "__UNKNOWN__"
-        # We want a view/iterator object, not sth that creates copied lists
-        # Unfortunately iteritems/viewitems() no longer exists in Py3
+        # get a 'basestring' type that identifies all string types
+        # already exists in Python 2 (has both std and unicode strings)
+        # but not in Python 3, which only has "str" (always unicode)
+        try:
+            basestring
+        except NameError:
+            basestring = str
+        # We want a view/iterator object, not something that creates copied
+        # lists. Unfortunately, iteritems/viewitems() no longer exists in Py3
         # since items() itself is now implemented as a view object.
         dict_iter_object = (config_dict.items() if sys.version_info[0] >= 3
                             else config_dict.iteritems())
@@ -2485,7 +2494,7 @@ class CgroupUtils(object):
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            "%s: Cfg file parsing, subsection for %s"
                            % (caller_name(), key_found))
-                self.morph_config_dict_bools(value_found)
+                self.morph_config_dict_bools(value_found, key_found)
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            "%s: Cfg file parsing, finished subsection for %s"
                            % (caller_name(), key_found))
@@ -2553,14 +2562,22 @@ class CgroupUtils(object):
                 and config_dict['exclude_vntypes']):
             if ("enabled" not in config_dict
                     or not isinstance(config_dict['enabled'], bool)):
-                config_dict['enabled'] = \
-                    (not any([fnmatch.fnmatch(vntype, p)
-                             for p in config_dict['exclude_vntypes']]))
-            else:
-                config_dict['enabled'] = \
-                    (config_dict['enabled']
-                     and not any([fnmatch.fnmatch(vntype, p)
-                                 for p in config_dict['exclude_vntypes']]))
+                config_dict['enabled'] = False
+            if (config_dict['enabled'] and
+                    any([fnmatch.fnmatch(vntype, p)
+                        for p in config_dict['exclude_vntypes']])):
+                config_dict['enabled'] = False
+                if subsection is None:
+                    subname = 'all subsystems'
+                else:
+                    subname = 'subsystem ' + subsection
+                pbs.logmsg(pbs.EVENT_DEBUG,
+                           '%s: cgroup excluded for '
+                           '%s on vnode type %s' %
+                           (caller_name(), subname, vntype))
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s is in the excluded vnode type list: %s' %
+                           (vntype, config_dict['exclude_vntypes']))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on exclude_vntypes"
@@ -2573,20 +2590,27 @@ class CgroupUtils(object):
                 and config_dict['exclude_hosts']):
             if ("enabled" not in config_dict
                     or not isinstance(config_dict['enabled'], bool)):
-                config_dict['enabled'] = \
-                    (not any([fnmatch.fnmatch(self.hostname, p)
-                             for p in config_dict['exclude_hosts']]))
-            else:
-                config_dict['enabled'] = \
-                    (config_dict['enabled']
-                     and not any([fnmatch.fnmatch(self.hostname, p)
-                                  for p in config_dict['exclude_hosts']]))
+                config_dict['enabled'] = False
+            if (config_dict['enabled'] and
+                any([fnmatch.fnmatch(self.hostname, p)
+                    for p in config_dict['exclude_hosts']])):
+                config_dict['enabled'] = False
+                if subsection is None:
+                    subname = 'all subsystems'
+                else:
+                    subname = 'subsystem ' + subsection
+                pbs.logmsg(pbs.EVENT_DEBUG,
+                           '%s: cgroup excluded for '
+                           '%s on host %s' %
+                           (caller_name(), subname, self.hostname))
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s is in the excluded host list: %s' %
+                           (self.hostname, config_dict['exclude_hosts']))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
                        "set %s to %s based on exclude_hosts"
                        % (caller_name(), 'enabled',
                           str(config_dict['enabled'])))
-
         # mirror image include_hosts of old "exclude_hosts"
         # now modulates current "enabled" (if present)
         # or creates enabled if it is non-empty
@@ -2610,10 +2634,10 @@ class CgroupUtils(object):
 
         # Add "enabled" if unspecified
         if "enabled" not in config_dict:
-            config_dict['enabled'] = True
+            config_dict['enabled'] = False
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing, "
-                       "section enabled by default"
+                       "section disabled by default"
                        % caller_name())
 
         # Old "run_only_on_hosts" limits enabled hosts if present
@@ -4687,51 +4711,70 @@ class CgroupUtils(object):
         if not jobid:
             raise ValueError('Invalid job ID')
         finished = False
+        giveup_time = time.time() + self.cfg['kill_timeout']
         try:
-            with Timeout(self.cfg['kill_timeout'],
-                         'Timed out deleting cgroup for job: %s' % jobid):
-                self._delete_slice(jobid)
-                while not finished:
-                    # can loop 'as fast as possible':
-                    # _remove_cgroup has delay
-                    failure = False
-                    if 'systemd' in self.paths:
-                        keys_to_process = \
-                            (['systemd']
-                             + [x for x in self.paths if x != 'systemd'])
-                    else:
-                        keys_to_process = [x for x in self.paths]
-                    for key in keys_to_process:
-                        cgroup_path = self._cgroup_path(key)
-                        path = os.path.dirname(self._cgroup_path(key))
-                        pattern = self._systemd_subdir_wildcard()
-                        for subdir in glob.glob(os.path.join(path, pattern)):
-                            # Make sure it matches exactly
-                            dname = os.path.basename(subdir)
-                            subdir_jobid = self._systemd_subdir_to_jobid(dname)
-                            subdir_parent = os.path.dirname(subdir)
-                            if subdir_jobid != jobid:
-                                continue
-                            # Make sure it still exists
-                            if not os.path.isdir(subdir):
-                                continue
-                            # Remove it
-                            if not self._remove_cgroup(subdir_parent, jobid):
-                                pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
-                                           'delete cgroup for job %s' %
-                                           (caller_name(), jobid))
-                                failure = True
-                    if not failure:
-                        finished = True
-        except TimeoutError:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Timed out removing cgroup '
-                       'for %s' % (caller_name(), jobid))
-            finished = false  # interrupted, so not sure we're done
+            self._delete_slice(jobid)
+            while not finished:
+                failure = False
+                if 'systemd' in self.paths:
+                    keys_to_process = \
+                        (['systemd']
+                         + [x for x in self.paths if x != 'systemd'])
+                else:
+                    keys_to_process = [x for x in self.paths]
+                for key in keys_to_process:
+                    cgroup_path = self._cgroup_path(key)
+                    path = os.path.dirname(self._cgroup_path(key))
+                    pattern = self._systemd_subdir_wildcard()
+                    for subdir in glob.glob(os.path.join(path, pattern)):
+                        # Make sure it matches exactly
+                        dname = os.path.basename(subdir)
+                        subdir_jobid = self._systemd_subdir_to_jobid(dname)
+                        subdir_parent = os.path.dirname(subdir)
+                        if subdir_jobid != jobid:
+                            pbs.logmsg(pbs.EVENT_DEBUG4,
+                                       '%s: Skipping because %s != %s' %
+                                       (caller_name(), finished,
+                                        subdir_jobid, jobid))
+                            continue
+                        # Make sure it still exists
+                        if not os.path.isdir(subdir):
+                            pbs.logmsg(pbs.EVENT_DEBUG4,
+                                       '%s: Skipping because %s is gone' %
+                                       (caller_name(), finished, subdir))
+                            continue
+                        # Remove it
+                        pbs.logmsg(pbs.EVENT_DEBUG4,
+                                   '%s: Attempting to delete %s' %
+                                   (caller_name(), subdir))
+                        if not self._remove_cgroup(subdir_parent, jobid):
+                            pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
+                                       'delete cgroup for job %s' %
+                                       (caller_name(), jobid))
+                        # Check again
+                        if os.path.isdir(subdir):
+                            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Deletion '
+                                       'failed: %s still exists' %
+                                       (caller_name(), subdir))
+                            failure = True
+                        else:
+                            pbs.logmsg(pbs.EVENT_DEBUG4,
+                                       '%s: Deleted %s' %
+                                       (caller_name(), subdir))
+                if not failure:
+                    finished = True
+                elif time.time() > giveup_time:
+                    finished = True
+                else:
+                    time.sleep(0.2)
         except Exception as exc:
+            failure = True
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Error removing cgroup '
                        'for %s: %s' % (caller_name(), jobid, exc))
-        if finished:
+
+        if finished and not failure:
             return True
+
         # Handle deletion failure
         if not offline_node:
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Offline not requested' %
