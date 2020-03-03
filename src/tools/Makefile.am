@@ -113,7 +113,6 @@ pbs_python_CPPFLAGS =  \
 
 pbs_python_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython.a \
-	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
