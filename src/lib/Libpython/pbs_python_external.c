@@ -241,19 +241,28 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 
 #ifdef LIBPYTHONSVR
 	PyObject *m, *d, *f, *handler, *sigint;
-    m = PyImport_ImportModule("signal");
-    d = PyModule_GetDict(m);
-    f = PyDict_GetItemString(d, "signal");
-    handler = PyDict_GetItemString(d, "default_int_handler");
-    sigint = PyDict_GetItemString(d, "SIGINT");
-    if (f && PyCallable_Check(f)) {
-        PyObject_CallFunctionObjArgs(f, sigint, handler, NULL);
-    } else {
-        log_err(-1, __func__, "could not set up python signal.default_int_handler");
-        goto ERROR_EXIT;
-    }
-    Py_XDECREF(m);
-    log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, interp_data->daemon_name, "successfully set up signal.default_int_handler");
+	m = PyImport_ImportModule("signal");
+	if (!m) {
+		log_err(-1, __func__, "failed to import the signal module");
+		goto ERROR_EXIT;
+	}
+	d = PyModule_GetDict(m);
+	f = PyDict_GetItemString(d, "signal");
+	handler = PyDict_GetItemString(d, "default_int_handler");
+	sigint = PyDict_GetItemString(d, "SIGINT");
+	if (f && PyCallable_Check(f)) {
+		if (!PyObject_CallFunctionObjArgs(f, sigint, handler, NULL)) {
+			Py_CLEAR(m);
+			log_err(-1, __func__, "could not set up signal.default_int_handler");
+			goto ERROR_EXIT;
+		}
+	} else {
+		Py_CLEAR(m);
+		log_err(-1, __func__, "could not call signal.signal");
+		goto ERROR_EXIT;
+	}
+	Py_CLEAR(m);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, interp_data->daemon_name, "successfully set up signal.default_int_handler");
 #endif
 
 SUCCESS_EXIT:
