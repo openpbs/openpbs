@@ -142,27 +142,27 @@ extern attribute_def que_attr_def[];
 /* at last we come to the queue definition itself	*/
 
 struct pbs_queue {
-	pbs_list_link	qu_link;		/* forward/backward links */
-	pbs_list_head	qu_jobs;		/* jobs in this queue */
-	resc_resv	*qu_resvp;		/* !=NULL if que established */
+	pbs_list_link qu_link;		/* forward/backward links */
+	pbs_list_head qu_jobs;		/* jobs in this queue */
+	resc_resv *qu_resvp;		/* != NULL if que established */
 	/* to support a reservation */
-	int		 qu_nseldft;		/* number of elm in qu_seldft */
-	key_value_pair  *qu_seldft;		/* defaults for job -l select */
+	int qu_nseldft;		/* number of elm in qu_seldft */
+	key_value_pair *qu_seldft;		/* defaults for job -l select */
 	struct queuefix {
-		int	qu_modified;		/* != 0 => update disk file */
-		int	qu_type;		/* queue type: exec, route */
-		time_t	qu_ctime;		/* time queue created */
-		time_t	qu_mtime;		/* time queue last modified */
-		char	qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
+		int qu_modified;		/* != 0 => update disk file */
+		int qu_type;		/* queue type: exec, route */
+		time_t qu_ctime;		/* time queue created */
+		time_t qu_mtime;		/* time queue last modified */
+		char qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
 	} qu_qs;
 
-	int	qu_numjobs;			/* current numb jobs in queue */
-	int	qu_njstate[PBS_NUMJOBSTATE];	/* # of jobs per state */
-	char	qu_jobstbuf[150];
+	int qu_numjobs;			/* current numb jobs in queue */
+	int qu_njstate[PBS_NUMJOBSTATE];	/* # of jobs per state */
+	char qu_jobstbuf[150];
 
 	/* the queue attributes */
 
-	attribute	qu_attr[QA_ATR_LAST];
+	attribute qu_attr[QA_ATR_LAST];
 };
 typedef struct pbs_queue pbs_queue;
 

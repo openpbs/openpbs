@@ -1081,7 +1081,10 @@ find_job(char *jobid)
 #endif
 	char *at;
 	job  *pj = NULL;
-	char buf[PBS_MAXSVRJOBID+1];
+	char buf[PBS_MAXSVRJOBID + 1];
+
+	if (jobid == NULL)
+		return NULL;
 
 	/* Make a copy of the job ID string before we modify it. */
 	snprintf(buf, sizeof(buf), "%s", jobid);

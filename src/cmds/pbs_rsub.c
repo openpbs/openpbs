@@ -59,6 +59,7 @@ static time_t dtstart;
 static time_t dtend;
 static int is_stdng_resv = 0;
 static int is_maintenance_resv = 0;
+static int is_job_resv = 0;
 static char **maintenance_hosts = NULL;
 
 /* The maximum buffer size that is allowed not to exceed 80 columns.
@@ -259,6 +260,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			case '-':
 				if (strcmp(optarg, "hosts") == 0)
 					is_maintenance_resv = 1;
+				else if (strcmp(optarg, "job") == 0) {
+					set_attr_error_exit(&attrib, ATTR_resv_job, argv[optind]);
+					is_job_resv = 1;
+					++optind;
+				}
 				else
 					errflg++;
 				break;
@@ -330,6 +336,12 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		}
 	}
 
+	if (is_job_resv && ((dtstart != 0) || (dtend != 0))) {
+		fprintf(stderr, "pbs_rsub: Start/End time cannot be used with --job option");
+		fprintf(stderr, "\n");
+		return (++errflg);
+	}
+
 	if (!errflg) {
 		errflg = (optind != argc);
 		if (errflg) {
@@ -358,7 +370,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 int
 set_resv_env(char **envp)
 {
-	char *job_env;
+	char *resv_env;
 	char *c, *env;
 	char host[PBS_MAXHOSTNAME+1];
 	int len;
@@ -383,25 +395,25 @@ set_resv_env(char **envp)
 	len += PBS_MAXHOSTNAME;
 	len += MAXPATHLEN;
 	len += len;     /* Double it for all the commas, etc. */
-	if ((job_env = (char *) malloc(len)) == NULL) {
+	if ((resv_env = (char *) malloc(len)) == NULL) {
 		fprintf(stderr, "pbs_rsub: Out of memory\n");
 		return FALSE;
 	}
-	*job_env = '\0';
+	*resv_env = '\0';
 
-	/* Send the required variables with the job. */
+	/* Send the required variables with the reservation. */
 	c = getenv("LOGNAME");
 	if (c != NULL) {
-		strcat(job_env, "PBS_O_LOGNAME=");
-		strcat(job_env, c);
+		strcat(resv_env, "PBS_O_LOGNAME=");
+		strcat(resv_env, c);
 	}
 	if ((rc = gethostname(host, (sizeof(host) - 1))) == 0) {
 		if ((rc = get_fullhostname(host, host, (sizeof(host) - 1))) == 0) {
-			if (*job_env)
-				strcat(job_env, ",PBS_O_HOST=");
+			if (*resv_env)
+				strcat(resv_env, ",PBS_O_HOST=");
 			else
-				strcat(job_env, "PBS_O_HOST=");
-			strcat(job_env, host);
+				strcat(resv_env, "PBS_O_HOST=");
+			strcat(resv_env, host);
 		}
 	}
 
@@ -410,8 +422,8 @@ set_resv_env(char **envp)
 #ifdef WIN32
 		back2forward_slash(c);
 #endif
-		strcat(job_env, ",PBS_O_MAIL=");
-		strcat(job_env, c);
+		strcat(resv_env, ",PBS_O_MAIL=");
+		strcat(resv_env, c);
 	}
 	if (rc != 0) {
 		fprintf(stderr, "pbs_rsub: cannot get full local host name\n");
@@ -419,8 +431,8 @@ set_resv_env(char **envp)
 	}
 	c = getenv("PBS_TZID");
 	if (c != NULL) {
-		strcat(job_env, ",PBS_TZID=");
-		strcat(job_env, c);
+		strcat(resv_env, ",PBS_TZID=");
+		strcat(resv_env, c);
 		set_attr_error_exit(&attrib, ATTR_resv_timezone, c);
 	}
 	else if (is_stdng_resv) {
@@ -428,8 +440,8 @@ set_resv_env(char **envp)
 		exit(2);
 	}
 
-	set_attr_error_exit(&attrib, ATTR_v, job_env);
-	free(job_env);
+	set_attr_error_exit(&attrib, ATTR_v, resv_env);
+	free(resv_env);
 	return TRUE;
 }
 

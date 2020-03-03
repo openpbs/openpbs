@@ -260,6 +260,8 @@ extern "C" {
 
 #define PBSE_SOFTWT_STF		     15180 /* soft_walltime is incompatible with STF jobs */
 
+#define PBSE_RESV_FROM_RESVJOB	     15181 /* Job already in a reservation used to create a reservation */
+#define PBSE_RESV_FROM_ARRJOB	     15182 /* Array job used to create a reservation */
 /*
  ** 	Resource monitor specific
  */

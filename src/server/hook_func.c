@@ -3353,6 +3353,7 @@ struct attribute_jobmap runjob_accept_attrlist[] = {
 	{	JOB_ATR_errpath,	{0} },
 	{	JOB_ATR_resource,	{0} },
 	{	JOB_ATR_variables,	{0} },
+	{	JOB_ATR_create_resv_from_job, {0} },
 	{	(enum job_atr) -1,	{0} }
 };
 
@@ -3412,6 +3413,7 @@ do_runjob_accept_actions(job *pjob, char *hook_name, char *msg, int msg_len)
 				return (1);
 			}
 		} else if ((strcmp(attr_name, ATTR_o) == 0) ||
+			(strcmp(attr_name, ATTR_create_resv_from_job) == 0) ||
 			(strcmp(attr_name, ATTR_e) == 0)) {
 			new_attrval_str =
 				pbs_python_event_job_getval_hookset(attr_name,
@@ -4280,7 +4282,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		}
 	}
 
-	rc=pbs_python_check_and_compile_script(&svr_interp_data,
+	rc = pbs_python_check_and_compile_script(&svr_interp_data,
 		phook->script);
 
 	/* reset global flag to allow modification of */
@@ -4553,6 +4555,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			char	*new_hold_types_str = NULL;
 			char	*new_project_str = NULL;
 			char	*new_depend_str = NULL;
+			char	*new_conv_str = NULL;
 			char	hold_opval[HOOK_BUF_SIZE];
 			char	hold_delval[HOOK_BUF_SIZE];
 			int	job_modified = 0;
@@ -4613,6 +4616,16 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
 
 				}
+			}
+
+			if (job_modified != 1) {
+				new_conv_str =
+					pbs_python_event_job_getval_hookset(
+						ATTR_create_resv_from_job, NULL, 0, NULL, 0);
+
+				if (new_conv_str != NULL)
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
+						"Found job " ATTR_create_resv_from_job " attribute flagged to be set");
 			}
 
 			vnode_modified = pbs_python_has_vnode_set();

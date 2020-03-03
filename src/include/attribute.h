@@ -168,7 +168,7 @@ union attr_val {	      /* the attribute value	*/
 	pbs_list_head	      at_list;	/* list of resources,  ... */
 	struct  pbsnode	     *at_jinfo; /* ptr to node's job info  */
 	short		      at_short;	/* short int; node's state */
-	float		      at_float;	/* floating point vaule */
+	float		      at_float;	/* floating point value */
 	struct attr_entity    at_enty;	/* FGC entity tree head */
 };
 

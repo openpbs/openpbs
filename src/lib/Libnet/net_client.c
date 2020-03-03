@@ -312,7 +312,6 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 			if (bind(sock, (struct sockaddr *)&local,
 				sizeof(local)) == 0)
 				break;
-
 #ifdef WIN32
 			errno = WSAGetLastError();
 			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL && errno != WSAEACCES) {

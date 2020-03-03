@@ -6895,7 +6895,7 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
  *		either to the original strings or a string living in a static buffer.
  *
  *		"svr_init" is only set to TRUE when the server is recovering running
- *		jobs on startup.   This flag tells the function to ingnore certain
+ *		jobs on startup. This flag tells the function to ignore certain
  *		errors, such as:
  *	   	- unknown resources
  *			It is possible that a resource definition has been removed,
@@ -6924,8 +6924,8 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
  * @param[in]	svr_init     -  if True, server is recovering jobs.
  *
  * @return	int
- * @retval	 PBSE_NONE : success
- * @retval	 non-zero  : various PBSE error returns.
+ * @retval	PBSE_NONE : success
+ * @retval	non-zero  : various PBSE error returns.
  *
  * @par Side Effects: None
  *
