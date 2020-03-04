@@ -103,7 +103,10 @@ tcp_get_chan(int fd)
 static int
 tcp_recv(int fd, void *data, int len)
 {
-	int i;
+	int i = 0;
+	int torecv = len;
+	char *pb = (char *)data;
+	int amt = 0;
 #ifdef WIN32
 	fd_set readset;
 	struct timeval timeout;
@@ -133,33 +136,44 @@ tcp_recv(int fd, void *data, int len)
 #endif
 		if (pbs_tcp_interrupt)
 			break;
+	}
 #ifdef WIN32
-	} while ((i == -1) && (errno == WSAEINTR));
+	while (i == -1 && errno == WSAEINTR);
 #else
-	} while ((i == -1) && (errno == EINTR));
+	while (i == -1 && errno == EINTR);
 #endif
 
-	if ((i == 0) || (i < 0))
+	if (i == 0 || i < 0)
 		return i;
 
+	while (torecv > 0) {
 #ifdef WIN32
-	while ((i = recv(fd, (char *)data, len, 0)) == -1) {
+		i = recv(fd, pb, torecv, 0);
 		errno = WSAGetLastError();
-		if (errno != WSAEINTR) {
-			if (errno == WSAECONNRESET) {
-				i = 0;	/* treat like no data for winsock */
-				/* will return this if remote */
-				/* connection prematurely closed */
-			}
-			break;
-		}
 #else
-	while ((i = CS_read(fd, (char *)data, (size_t)len)) == CS_IO_FAIL) {
-		if (errno != EINTR)
-			break;
+		i = CS_read(fd, pb, torecv);
 #endif
+		if (i <= 0) {
+#ifdef WIN32
+			/*
+			 * for WASCONNRESET, treat like no data for winsock
+			 * will return this if remote
+			 * connection prematurely closed
+			 */
+			if (errno == WSAECONNRESET)
+				return 0;
+			if (errno != WSAEINTR)
+#else
+			if (errno != EINTR)
+#endif
+				return ((i == 0) ? -2 : i);
+		} else {
+			torecv -= i;
+			pb += i;
+			amt += i;
+		}
 	}
-	return ((i == 0) ? -2 : i);
+	return amt;
 }
 
 /**

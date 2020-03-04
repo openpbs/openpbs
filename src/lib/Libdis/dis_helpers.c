@@ -299,7 +299,7 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 	i = transport_recv(fd, data, datasz);
 	if (i != datasz) {
 		free(data);
-		return i;
+		return (i < 0 ? i : -1);
 	}
 
 	*data_out = data;
@@ -562,6 +562,7 @@ dis_clear_buf(pbs_dis_buf_t *tp)
 	tp->tdis_lead = 0;
 	tp->tdis_trail = 0;
 	tp->tdis_eod = 0;
+	memset(tp->tdis_thebuf, '\0', tp->tdis_bufsize);
 }
 
 /**
