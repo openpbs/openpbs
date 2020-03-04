@@ -446,7 +446,7 @@ class TestPBSSnapshot(TestFunctional):
         # Let's submit a reservation with Authorized_Users and
         # Authorized_Groups set
         attribs = {ATTR_auth_u: TEST_USER1, ATTR_auth_g: TSTGRP0,
-                   ATTR_l + ".ncpus": 2, 'reserve_start': now + 25,
+                   ATTR_l + ".ncpus": 1, 'reserve_start': now + 25,
                    'reserve_end': now + 45}
         resv_obj = Reservation(attrs=attribs)
         resv_id = self.server.submit(resv_obj)
