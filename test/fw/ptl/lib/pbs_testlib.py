@@ -5277,7 +5277,6 @@ class Server(PBSService):
         :returns: True on success, False on error
         """
         conf = {}
-        self.saved_config[MGR_OBJ_SERVER] = {}
         # save pbs.conf file
         cfg_path = self.du.get_pbs_conf_file()
         with open(cfg_path, 'r') as p:
@@ -5336,6 +5335,7 @@ class Server(PBSService):
             try:
                 with open(outfile, mode) as f:
                     json.dump(self.saved_config, f)
+                    self.saved_config[MGR_OBJ_SERVER].clear()
             except:
                 self.logger.error('Error processing file ' + outfile)
                 return False
@@ -6118,7 +6118,6 @@ class Server(PBSService):
                 objid = None
             else:
                 objid = ret['out'][0]
-
             if ret['err'] != ['']:
                 self.last_error = ret['err']
             self.last_rc = rc = ret['rc']
@@ -11570,7 +11569,6 @@ class Scheduler(PBSService):
         :returns: True on success and False otherwise
         """
         conf = {}
-        self.server.saved_config[MGR_OBJ_SCHED] = {}
         if 'sched_priv' in self.attributes:
             sched_priv = self.attributes['sched_priv']
         else:
@@ -11590,6 +11588,7 @@ class Scheduler(PBSService):
             try:
                 with open(outfile, mode) as f:
                     json.dump(self.server.saved_config, f)
+                    self.server.saved_config[MGR_OBJ_SCHED].clear()
             except:
                 self.logger.error('error saving configuration ' + outfile)
                 return False
