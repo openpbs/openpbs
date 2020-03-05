@@ -542,11 +542,11 @@ class PBSLogUtils(object):
                     d1 = time.strftime("%Y%m%d", time.localtime(tm[0]))
                     if start is not None:
                         d2 = time.strftime("%Y%m%d", time.localtime(start))
-                        if d1 < d2:
+                        if d1 <= d2:
                             continue
                     if end is not None:
                         d2 = time.strftime("%Y%m%d", time.localtime(end))
-                        if d1 > d2:
+                        if d1 >= d2:
                             continue
                 paths.append(f)
         elif self.du.isfile(hostname, path, sudo=sudo):
