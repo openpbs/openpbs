@@ -3785,7 +3785,7 @@ join_err:
 					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
 				}
 				/* Call the execjob_end hook now */
-				if (mom_process_hooks( HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
+				if (mom_process_hooks(HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
 						hook_output_ptr, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
 						pjob->ji_hook_running_bg_on = BG_IM_DELETE_JOB2;
 						break;
