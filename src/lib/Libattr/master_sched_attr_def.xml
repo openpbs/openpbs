@@ -504,8 +504,8 @@
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
 	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	<ECL>verify_datatype_long</ECL>
+	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
 
