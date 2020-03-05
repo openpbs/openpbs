@@ -1989,7 +1989,6 @@ convert_job_to_resv(job *pjob)
 	pbs_list_head *plhed;
 	struct work_task *pwt;
 	struct batch_request *newreq;
-	char owner[PBS_MAXUSER + 1];
 
 	newreq = alloc_br(PBS_BATCH_SubmitResv);
 	if (newreq == NULL) {
@@ -1999,8 +1998,7 @@ convert_job_to_resv(job *pjob)
 	}
 	newreq->rq_type = PBS_BATCH_SubmitResv;
 
-	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, owner);
-	strncpy(newreq->rq_user, owner, PBS_MAXUSER);
+	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, newreq->rq_user);
 
 	strncpy(newreq->rq_host, pjob->ji_wattr[JOB_ATR_submit_host].at_val.at_str, PBS_MAXHOSTNAME);
 	newreq->rq_perm = READ_WRITE | ATR_DFLAG_ALTRUN;
