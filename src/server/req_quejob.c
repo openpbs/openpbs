@@ -3552,7 +3552,7 @@ confirm_resv_locally(resc_resv *presv, struct batch_request *orig_preq, char *pa
 	/* extend field format is "PBS_RESV_CONFIRM_SUCCESS:partition=<partition name>"
 	 * allocate enough memory to be able to support the format.
 	 */
-	extend_size = strlen(PBS_RESV_CONFIRM_SUCCESS) + strlen(partition_name) + 16;
+	extend_size = strlen(PBS_RESV_CONFIRM_SUCCESS) + strlen(partition_name) + 12;
 	preq->rq_extend = malloc(extend_size);
 	if (preq->rq_extend == NULL) {
 		free_br(preq);
