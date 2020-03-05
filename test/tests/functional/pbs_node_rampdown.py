@@ -7255,10 +7255,11 @@ pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
 
         # Wait for the job to start
         self.server.expect(JOB, {'job_state': 'R'},
-                           offset=30, id=jid, max_attempts=30)	
+                           offset=30, id=jid, max_attempts=30)
 
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
-        ret = self.server.du.run_cmd(self.server.hostname, cmd, runas=TEST_USER)
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
 
         # Check the sister mom log for the "execjob_end hook executed"
@@ -7266,4 +7267,4 @@ pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
 
         # Verify the rest of the job is still running
         self.server.expect(JOB, {'job_state': 'R'},
-                           id=jid, max_attempts=30)        
+                           id=jid, max_attempts=30)
