@@ -2881,7 +2881,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				else {
 					empty_nspec_array(nsa);
 					if(failerr->status_code == SCHD_UNKWN)
-						copy_schd_error(failerr, err);
+						move_schd_error(failerr, err);
 					clear_schd_error(err);
 
 				}
@@ -2929,7 +2929,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							else {
 								empty_nspec_array(nsa);
 								if (failerr->status_code == SCHD_UNKWN)
-									copy_schd_error(failerr, err);
+									move_schd_error(failerr, err);
 								clear_schd_error(err);
 							}
 						}
@@ -2944,6 +2944,10 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
 							resresv->name, "Insufficient host-level resources %s", reason);
+
+						/* don't be so specific in the comment since it's only for a single host */
+						set_schd_error_arg(err, ARG1, NULL);
+
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
@@ -3011,6 +3015,9 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
 							resresv->name, "Insufficient host-level resources %s", reason);
+
+						/* don't be so specific in the comment since it's only for a single host */
+						set_schd_error_arg(err, ARG1, NULL);
 
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
@@ -3113,13 +3120,13 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							resresv->name, "Insufficient host-level resources %s", reason);
 #ifdef NAS /* localmod 998 */
 						set_schd_error_codes(err, NOT_RUN, RESOURCES_INSUFFICIENT);
-#else
-						set_schd_error_codes(err, NOT_RUN, SET_TOO_SMALL);
-#endif /* localmod 998 */
 						set_schd_error_arg(err, ARG1, "Host");
 						set_schd_error_arg(err, ARG2, hostsets[i]->name);
+#endif /* localmod 998 */
+						/* don't be so specific in the comment since it's only for a single host */
+						set_schd_error_arg(err, ARG1, NULL);
 
-						if (failerr->status_code != SCHD_UNKWN)
+						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
 					}
@@ -3631,8 +3638,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
 		move_schd_error(err, failerr);
 	/* don't be so specific in the comment since it's only for a single node */
-	free(err->arg1);
-	err->arg1 = NULL;
+	set_schd_error_arg(err, ARG1, NULL);
 	return 0;
 }
 

@@ -2092,10 +2092,10 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case INSUFFICIENT_RESOURCE:
 			if (comment_msg != NULL && err->rdef != NULL)
 				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), err->rdef->name,
-					arg1);
+					arg1 == NULL ? "" : arg1);
 			if (log_msg != NULL && err->rdef != NULL)
 				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), err->rdef->name,
-					arg1);
+					arg1 == NULL ? "" : arg1);
 			break;
 
 		/* codes using arg1, arg3 and resource definition (in a weird order) */
