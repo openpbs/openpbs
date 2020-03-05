@@ -2788,11 +2788,12 @@ class CgroupUtils(object):
         Create the cgroup parent directories that will contain the jobs
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        old_umask = os.umask(0o022)
         try:
             # Create a systemd slice for PBS
             self._create_slice()
             # Create the directories that PBS will use to house the jobs
-            old_umask = os.umask(0o022)
+
             for subsys in self.subsystems:
                 subdir = self._cgroup_path(subsys)
                 if not subdir:
