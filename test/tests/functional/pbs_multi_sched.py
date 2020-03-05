@@ -2170,3 +2170,58 @@ e.accept()
         now = int(time.time())
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
+
+    def test_resv_from_job_in_multi_sched_using_qsub(self):
+        """
+        Test that a user is able to create a reservation out of a job using
+        qsub when the job is part of a non-default partition
+        """
+        self.common_setup()
+        # Turn off scheduling in all schedulers but sc1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        a = {ATTR_W: 'create_resv_from_job=1', ATTR_q: 'wq1',
+             'Resource_List.walltime': 1000}
+        job = Job(TEST_USER, a)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+
+        a = {ATTR_job: jid}
+        rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
+
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+             'partition': 'P1'}
+        self.server.expect(RESV, a, id=rid)
+
+    def test_resv_from_job_in_multi_sched_using_rsub(self):
+        """
+        Test that a user is able to create a reservation out of a job using
+        pbs_rsub when the job is part of a non-default partition
+        """
+        self.common_setup()
+        # Turn off scheduling in all schedulers but sc1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_q: 'wq1',
+             'Resource_List.walltime': 1000}
+        job = Job(TEST_USER, a)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+
+        a = {ATTR_job: jid}
+        resv = Reservation(attrs=a)
+        rid = self.server.submit(resv)
+
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+             'partition': 'P1'}
+        self.server.expect(RESV, a, id=rid)
