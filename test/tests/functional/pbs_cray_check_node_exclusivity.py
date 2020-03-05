@@ -564,27 +564,27 @@ class TestCheckNodeExclusivity(TestFunctional):
         Test to submit job on multinode reservation with different placement
         """
         now = int(time.time())
-        a = {'Resource_List.select': '2:ncpus=2:vntype=cray_compute',
+        a = {'Resource_List.select': '4:ncpus=10:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
-             'reserve_end': now + 40}
+             'reserve_end': now + 60}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
         self.logger.info('Waiting for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=10)
-        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '2:ncpus=10',
              'Resource_List.place': 'scatter'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script(self.script)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=10',
              'Resource_List.place': 'excl'}
         j2 = Job(TEST_USER, attrs=a)
         j2.create_script(self.script)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
-        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=2',
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=20',
              'Resource_List.place': 'shared'}
         j3 = Job(TEST_USER, attrs=a)
         j3.create_script(self.script)
@@ -592,7 +592,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=5)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
     def test_job_with_exclhost_placement_inside_resv(self):
         """
