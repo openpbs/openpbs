@@ -881,7 +881,7 @@ remove_ptr_from_array(void **arr, void *ptr)
 
 	if (arr[i] != NULL) {
 		for (j = i; arr[j] != NULL; j++)
-			arr[j] = arr[j+1];
+			arr[j] = arr[j + 1];
 		return 1;
 	}
 
@@ -944,27 +944,12 @@ clear_schd_error(schd_error *err)
 		return;
 
 	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
+	set_schd_error_arg(err, ARG1, NULL);
+	set_schd_error_arg(err, ARG2, NULL);
+	set_schd_error_arg(err, ARG3, NULL);
+	set_schd_error_arg(err, SPECMSG, NULL);
 	err->rdef = NULL;
-
-	if (err->arg1 != NULL) {
-		free(err->arg1);
-		err->arg1 = NULL;
-	}
-
-	if (err->arg2 != NULL) {
-		free(err->arg2);
-		err->arg2 = NULL;
-	}
-
-	if (err->arg3 != NULL) {
-		free(err->arg3);
-		err->arg3 = NULL;
-	}
-
-	if (err->specmsg != NULL) {
-		free(err->specmsg);
-		err->specmsg = NULL;
-	}
+	err->next = NULL;
 }
 
 /**
@@ -977,17 +962,11 @@ clear_schd_error(schd_error *err)
 schd_error *
 new_schd_error() {
 	schd_error *err;
-	if ((err = malloc(sizeof(schd_error))) == NULL) {
+	if ((err = calloc(1, sizeof(schd_error))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
-	err->rdef = NULL;
-	err->arg1 = NULL;
-	err->arg2 = NULL;
-	err->arg3 = NULL;
-	err->specmsg = NULL;
-	err->next = NULL;
+	clear_schd_error(err);
 	return err;
 }
 
@@ -1010,43 +989,12 @@ dup_schd_error(schd_error *oerr) {
 	if(nerr == NULL)
 		return NULL;
 
-	/* Do shallow copy, dup pointers later */
-	memcpy(nerr, oerr, sizeof(schd_error));
-
-	nerr->arg1 = NULL;
-	nerr->arg2 = NULL;
-	nerr->arg3 = NULL;
-	nerr->specmsg = NULL;
-	nerr->next = NULL;
-
-	if (oerr->arg1 != NULL) {
-		nerr->arg1 = string_dup(oerr->arg1);
-		if (nerr->arg1 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if (oerr->arg2 != NULL) {
-		nerr->arg2 = string_dup(oerr->arg2);
-		if (nerr->arg2 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if (oerr->arg3 != NULL) {
-		nerr->arg3 = string_dup(oerr->arg3);
-		if (nerr->arg3 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if(oerr->specmsg != NULL) {
-		nerr->specmsg = string_dup(oerr->specmsg);
-		if(nerr->specmsg == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
+	nerr->rdef = oerr->rdef;
+	set_schd_error_codes(nerr, oerr->status_code, oerr->error_code);
+	set_schd_error_arg(nerr, ARG1, oerr->arg1);
+	set_schd_error_arg(nerr, ARG2, oerr->arg2);
+	set_schd_error_arg(nerr, ARG3, oerr->arg3);
+	set_schd_error_arg(nerr, SPECMSG, oerr->specmsg);
 
 	return nerr;
 }
@@ -1117,25 +1065,37 @@ copy_schd_error(schd_error *err, schd_error *oerr)
  */
 void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
 
-	if(err == NULL || arg == NULL)
+	if(err == NULL)
 		return;
 
 	switch(arg_field) {
 		case ARG1:
 			free(err->arg1);
-			err->arg1 = string_dup(arg);
+			if (arg != NULL)
+				err->arg1 = string_dup(arg);
+			else
+				err->arg1 = NULL;
 			break;
 		case ARG2:
 			free(err->arg2);
-			err->arg2 = string_dup(arg);
+			if (arg != NULL)
+				err->arg2 = string_dup(arg);
+			else
+				err->arg2 = NULL;
 			break;
 		case ARG3:
 			free(err->arg3);
-			err->arg3 = string_dup(arg);
+			if (arg != NULL)
+				err->arg3 = string_dup(arg);
+			else
+				err->arg3 = NULL;
 			break;
 		case SPECMSG:
 			free(err->specmsg);
-			err->specmsg = string_dup(arg);
+			if (arg != NULL)
+				err->specmsg = string_dup(arg);
+			else
+				err->specmsg = NULL;
 			break;
 		default:
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");

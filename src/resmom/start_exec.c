@@ -3238,14 +3238,6 @@ finish_exec(job *pjob)
 	pjob->ji_qs.ji_stime = time_now;
 	pjob->ji_sampletim  = time_now;
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	setpag(pjob->ji_extended.ji_ext.ji_pag);
-	if (pjob->ji_extended.ji_ext.ji_pag == 0)
-		pjob->ji_extended.ji_ext.ji_pag = getpag();
-#endif
-#endif
-
 	/*
 	 * Fork the child process that will become the job.
 	 */
@@ -3461,11 +3453,6 @@ finish_exec(job *pjob)
 		if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
 			send_cred_sisters(pjob);
 		}
-
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-		/* remove afs pag from main process */
-		removepag();
-#endif
 #endif
 
 		return;
@@ -3584,6 +3571,15 @@ finish_exec(job *pjob)
 	if (cred_by_job(ptask->ti_job, CRED_RENEWAL) != PBS_KRB5_OK) {
 		starter_return(upfds, downfds, JOB_EXEC_FAIL_KRB5, &sjr);
 	}
+
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	if (start_afslog(ptask, NULL, pipe_script[0], pipe_script[1]) != PBS_KRB5_OK) {
+		sprintf(log_buffer, "afslog for task %8.8X not started",
+			ptask->ti_qs.ti_task);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	}
+#endif
 #endif
 
 	/*  First variables from the local environment */
@@ -4884,6 +4880,15 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			"failed to set credentials for task %8.8X",
 			ptask->ti_qs.ti_task);
 	}
+
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+	if (start_afslog(ptask, NULL, kid_write, kid_read) != PBS_KRB5_OK) {
+		sprintf(log_buffer, "afslog for task %8.8X not started",
+			ptask->ti_qs.ti_task);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	}
+#endif
 #endif
 
 	/* First variables from the local environment */
@@ -6959,7 +6964,11 @@ catchinter(int sig)
 		return;
 	if (pid == writerpid) {
 		kill(shellpid, SIGKILL);
+#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+		waitpid(shellpid, &status, WNOHANG);
+#else
 		(void)wait(&status);
+#endif
 		mom_reader_go = 0;
 		x11_reader_go = 0;
 	}

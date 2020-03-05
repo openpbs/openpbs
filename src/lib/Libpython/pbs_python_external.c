@@ -115,12 +115,6 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 	char pbs_python_destlib2[MAXPATHLEN + 1] = {'\0'};
 	int  evtype;
 	int  rc;
-#ifndef WIN32
-	struct sigaction act;
-	struct sigaction oact;
-#else
-	void *oact;
-#endif
 
 	/*
 	 * initialize the convenience global pbs_python_daemon_name, as it is
@@ -188,46 +182,12 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 		goto ERROR_EXIT;
 	}
 
-#ifndef WIN32
-	/*
-	 * Temporary set SIGINT to SIG_DFL, so Py_InitializeEx can setup proper SIGINT handler
-	 * see https://github.com/python/cpython/blob/3.6/Modules/signalmodule.c#L1280
-	 * as per above, If SIGINT is not set to SIG_DFL then Python won't register it's SIGINT handler
-	 * which means Python won't raise KeyBoardInterrupt on PyErr_SetInterrupt()
-	 * instead it will throw NoneType object is not callable exception
-	 */
-	sigemptyset(&act.sa_mask);
-	act.sa_flags   = 0;
-	act.sa_handler = SIG_DFL;
-	if (sigaction(SIGINT, &act, &oact) != 0) {
-		log_err(errno, __func__, "Failed to set SIG_DFL on SIGINT");
-		return 1;
-	}
-#else
-	oact = signal(SIGINT, SIG_DFL);
-	if (oact == SIG_ERR) {
-		log_err(errno, __func__, "Failed to set SIG_DFL on SIGINT");
-		return 1;
-	}
-#endif
 	/*
 	 * arg '1' means to not skip init of signals
 	 * we want signals to propagate to the executing
 	 * Python script to be able to interrupt it
 	 */
 	Py_InitializeEx(1);
-
-	/* revert SIGINT to original sig handler */
-#ifndef WIN32
-	if (sigaction(SIGINT, &oact, NULL) != 0)
-#else
-	if (signal(SIGINT, oact) == SIG_ERR)
-#endif
-	{
-		log_err(errno, __func__, "Failed to revert signal handler for SIGINT");
-		return 1;
-	}
-
 
 	if (Py_IsInitialized()) {
 		char *msgbuf;
@@ -278,6 +238,33 @@ pbs_python_ext_start_interpreter(struct python_interpreter_data *interp_data)
 	}
 
 	interp_data->pbs_python_types_loaded = 1; /* just in case */
+
+#ifdef LIBPYTHONSVR
+	PyObject *m, *d, *f, *handler, *sigint;
+	m = PyImport_ImportModule("signal");
+	if (!m) {
+		log_err(-1, __func__, "failed to import the signal module");
+		goto ERROR_EXIT;
+	}
+	d = PyModule_GetDict(m);
+	f = PyDict_GetItemString(d, "signal");
+	handler = PyDict_GetItemString(d, "default_int_handler");
+	sigint = PyDict_GetItemString(d, "SIGINT");
+	if (f && PyCallable_Check(f)) {
+		if (!PyObject_CallFunctionObjArgs(f, sigint, handler, NULL)) {
+			Py_CLEAR(m);
+			log_err(-1, __func__, "could not set up signal.default_int_handler");
+			goto ERROR_EXIT;
+		}
+	} else {
+		Py_CLEAR(m);
+		log_err(-1, __func__, "could not call signal.signal");
+		goto ERROR_EXIT;
+	}
+	Py_CLEAR(m);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, interp_data->daemon_name, "successfully set up signal.default_int_handler");
+#endif
+
 SUCCESS_EXIT:
 	return 0;
 ERROR_EXIT:

@@ -112,6 +112,7 @@ class TestPBSSnapshot(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id=sched_id)
 
+    @skipOnCpuSet
     def setup_queues_nodes(self, num_partitions):
         """
         Given a no. of partitions, create equal no. of associated queues
@@ -445,7 +446,7 @@ class TestPBSSnapshot(TestFunctional):
         # Let's submit a reservation with Authorized_Users and
         # Authorized_Groups set
         attribs = {ATTR_auth_u: TEST_USER1, ATTR_auth_g: TSTGRP0,
-                   ATTR_l + ".ncpus": 2, 'reserve_start': now + 25,
+                   ATTR_l + ".ncpus": 1, 'reserve_start': now + 25,
                    'reserve_end': now + 45}
         resv_obj = Reservation(attrs=attribs)
         resv_id = self.server.submit(resv_obj)
@@ -832,6 +833,19 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         real_values[ATTR_aclgroup] = [TSTGRP0]
         real_values[ATTR_acluser] = [TEST_USER]
 
+        # Create a custom resource
+        attr = {"type": "long", "flag": "nh"}
+        rsc_id = "myres"
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id=rsc_id,
+                            logerr=False)
+
+        # Make it schedulable
+        self.scheduler.add_resource("myres")
+
+        # Set myres on the vnode
+        attr = {"resources_available.myres": 1}
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+
         # Set acls on server
         self.server.manager(MGR_CMD_SET, SERVER,
                             {ATTR_aclResvgroup: TSTGRP0,
@@ -866,7 +880,8 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         # Submit a job with sensitive attributes set
         a = {ATTR_project: 'p1', ATTR_A: 'a1', ATTR_g: TSTGRP0,
              ATTR_M: TEST_USER, ATTR_u: TEST_USER,
-             ATTR_l + ".walltime": "00:01:00", ATTR_S: "/bin/bash"}
+             ATTR_l + ".walltime": "00:01:00",
+             ATTR_l + ".myres": 1, ATTR_S: "/bin/bash"}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1000)
         self.server.submit(j)
@@ -883,6 +898,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         real_values[ATTR_owner] = [TEST_USER, self.server.hostname]
         real_values[ATTR_exechost] = [self.server.hostname]
         real_values[ATTR_S] = ["/bin/bash"]
+        real_values[ATTR_l] = ["myres"]
 
         # Take a snapshot with --obfuscate
         (_, snap_dir) = self.take_snapshot(obfuscate=True)

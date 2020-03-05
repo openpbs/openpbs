@@ -124,7 +124,7 @@ static int  svr_strtjob2(job *, struct batch_request *);
 static job *chk_job_torun(struct batch_request *preq, job *);
 static void req_runjob2(struct batch_request *preq, job *pjob);
 static job *where_to_runjob(struct batch_request *preq, job *);
-
+static void convert_job_to_resv(job *pjob);
 /* Global Data Items: */
 
 extern int       license_expired;
@@ -999,6 +999,9 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	}
 	if (rc != 0)
 		return rc;
+
+	if (pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_flags & ATR_VFLAG_SET)
+		convert_job_to_resv(pjob);
 
 	/* Move job_kill_delay attribute from Server to MOM */
 	if (pque->qu_attr[(int)QE_ATR_KillDelay].at_flags & ATR_VFLAG_SET)
@@ -1965,4 +1968,56 @@ req_defschedreply(struct batch_request *preq)
 	free(pdefr);
 
 	reply_send(preq);
+}
+
+/**
+ * @brief
+ *	convert_job_to_resv - create a reservation out of the job
+ * 			      and move the job to the newly created
+ * 			      reservation.
+ *
+ * @param[in]	pjob - pointer to the job object
+ *
+ * @return	void
+ */
+
+void
+convert_job_to_resv(job *pjob)
+{
+	svrattrl *psatl;
+	unsigned int len;
+	pbs_list_head *plhed;
+	struct work_task *pwt;
+	struct batch_request *newreq;
+
+	newreq = alloc_br(PBS_BATCH_SubmitResv);
+	if (newreq == NULL) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, "batch request allocation failed, could not create reservation from the job");
+		return;
+	}
+	newreq->rq_type = PBS_BATCH_SubmitResv;
+
+	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, newreq->rq_user);
+
+	strncpy(newreq->rq_host, pjob->ji_wattr[JOB_ATR_submit_host].at_val.at_str, PBS_MAXHOSTNAME);
+	newreq->rq_perm = READ_WRITE | ATR_DFLAG_ALTRUN;
+
+	newreq->rq_ind.rq_queuejob.rq_jid[0] = '\0';
+	newreq->rq_ind.rq_queuejob.rq_destin[0] = '\0';
+
+	len = strlen(pjob->ji_qs.ji_jobid) + 1;
+	plhed = &newreq->rq_ind.rq_queuejob.rq_attr;
+	CLEAR_HEAD(newreq->rq_ind.rq_queuejob.rq_attr);
+	if ((psatl = attrlist_create(ATTR_resv_job, NULL, len)) != NULL) {
+		psatl->al_flags = resv_attr_def[RESV_ATR_job].at_flags;
+		strcpy(psatl->al_value, pjob->ji_qs.ji_jobid);
+		append_link(plhed, &psatl->al_link, psatl);
+	}
+
+	if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, release_req, &pwt, 0) == -1) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, "Could not create reservation from the job");
+		free_br(newreq);
+	}
 }

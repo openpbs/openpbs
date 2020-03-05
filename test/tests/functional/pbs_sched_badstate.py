@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestSchedBadstate(TestFunctional):
 
-    @timeout(600)
+    @skipOnCpuSet
     def test_sched_badstate_subjob(self):
         """
         This test case tests if scheduler goes into infinite loop
@@ -76,6 +76,7 @@ class TestSchedBadstate(TestFunctional):
                                  interval=1)
         self.server.delete(j1id)
 
+    @skipOnCpuSet
     def test_sched_unknown_node_state(self):
         """
         Test to see if the scheduler reports node states as 'Unknown'

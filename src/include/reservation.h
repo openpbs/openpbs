@@ -118,6 +118,7 @@ enum resv_atr {
 	RESV_ATR_resv_timezone,
 	RESV_ATR_retry,
 	RESV_ATR_del_idle_time,
+	RESV_ATR_job,
 	RESV_ATR_node_set,
 	RESV_ATR_UNKN,
 	RESV_ATR_LAST
@@ -232,6 +233,7 @@ struct resc_resv {
 	/* Reservation start and end tasks */
 	struct work_task	*resv_start_task;
 	struct work_task	*resv_end_task;
+	int resv_from_job;
 
 	/*
 	 * fixed size internal data - maintained via "quick save"

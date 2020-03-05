@@ -45,9 +45,6 @@ class TestServerDynRes(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        # Setup node
-        a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
     def check_access_log(self, fp, exist=True):
         """
@@ -224,6 +221,7 @@ class TestServerDynRes(TestFunctional):
         # Cleanup dynamically created file
         self.du.rm(fpath_out, sudo=True, force=True)
 
+    @skipOnCpuSet
     def test_multiple_res(self):
         """
         Test multiple dynamic resources specified in resourcedef
@@ -337,6 +335,7 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
+    @skipOnCpuSet
     def test_res_size(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"
@@ -391,6 +390,7 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid1)
         self.server.expect(JOB, a, id=jid2)
 
+    @skipOnCpuSet
     def test_res_size_runtime(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"
@@ -417,8 +417,9 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid)
 
         # Change script during job run
-        cmd = ["echo", "\"echo 50gb\"", " > ", filenames[0]]
-        self.du.run_cmd(cmd=cmd, runas=ROOT_USER, as_script=True)
+        tmp_file = self.du.create_temp_file(body="echo 50gb")
+        self.du.run_copy(src=tmp_file, dest=filenames[0], sudo=True,
+                         preserve_permission=False)
 
         # Rerun job
         self.server.rerunjob(jid)

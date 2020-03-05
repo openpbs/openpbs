@@ -250,6 +250,8 @@ char *msg_Resv_Cancel   = "Attempting to cancel reservation";
 char *msg_unknownResvtype = "unknown reservation type";
 char *msg_unkresvID	= "Unknown Reservation Id";
 char *msg_resvExist	= "Reservation with requested ID already exists";
+char *msg_resvfromresvjob	= "Reservation may not be created from a job already within a reservation";
+char *msg_resvfromarrjob	= "Reservation may not be created from an array job";
 char *msg_resvFail	= "reservation failure";
 char *msg_delProgress	= "Delete already in progress";
 char *msg_BadTspec	= "Bad time specification(s)";
@@ -492,6 +494,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{ PBSE_IRESVE, &msg_resvsyserr },
 	{ PBSE_UNKRESVTYPE, &msg_unknownResvtype },
 	{ PBSE_RESVEXIST, &msg_resvExist },
+	{ PBSE_RESV_FROM_RESVJOB, &msg_resvfromresvjob },
+	{ PBSE_RESV_FROM_ARRJOB, &msg_resvfromarrjob },
 	{ PBSE_resvFail, &msg_resvFail },
 	{ PBSE_genBatchReq, &msg_genBatchReq },
 	{ PBSE_mgrBatchReq, &msg_mgrBatchReq },

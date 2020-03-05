@@ -61,8 +61,8 @@ class TestPbsExecutePrologue(TestFunctional):
         self.hostB = self.momB.shortname
         self.hostC = self.momC.shortname
 
-        self.server.expect(VNODE, {'state=free': 3}, op=GE, max_attempts=10,
-                           interval=2)
+        for mom in self.moms.values():
+            self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
 
     def test_prologue_execute_on_all_moms(self):
         """
@@ -76,12 +76,6 @@ class TestPbsExecutePrologue(TestFunctional):
                      "pbs.logjobmsg(e.job.id, 'executed prologue hook')\n")
         attr = {'event': 'execjob_prologue', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
-
-        attr = {'resources_available.ncpus': 1,
-                'resources_available.mem': '2gb'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.hostA)
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.hostB)
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.hostC)
 
         attr = {'Resource_List.select': '3:ncpus=1',
                 'Resource_List.place': 'scatter',
@@ -182,7 +176,7 @@ class TestPbsExecutePrologue(TestFunctional):
         attr = {'event': 'execjob_prologue',
                 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
-        self.server.expect(HOOK, {'fail_action': 'none'})
+        self.server.expect(HOOK, {'fail_action': 'none'}, id=hook_name)
 
         self.server.manager(MGR_CMD_SET, HOOK,
                             {'fail_action': 'offline_vnodes'},

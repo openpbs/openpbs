@@ -332,7 +332,7 @@ void req_stat_job(struct batch_request *preq)
 		type = 1;
 		rc = PBSE_UNKJOBID;
 
-	} else if ( isalpha((int)*name) ) {
+	} else if (isalpha((int)*name) ) {
 		pque = find_queuebyname(name)	/* status jobs in a queue */;
 #ifdef NAS /* localmod 075 */
 		if (pque == NULL)

@@ -51,9 +51,6 @@ class Test_array_job_email(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'true'})
-        self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.ncpus': 2},
-                            id=self.mom.shortname)
 
         mailfile = os.path.join("/var/mail", str(TEST_USER))
         if not os.path.isfile(mailfile):

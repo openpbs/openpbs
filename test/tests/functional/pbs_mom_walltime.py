@@ -116,6 +116,7 @@ class TestMomWalltime(TestFunctional):
         a = {'Resource_List.ncpus': 1}
 
         script_content = (
+            '#!/bin/bash\n'
             'for i in {1..30}\n'
             'do\n'
             '\techo "time wait"\n'

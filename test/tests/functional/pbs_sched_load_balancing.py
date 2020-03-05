@@ -68,7 +68,7 @@ class TestSchedLoadBalancing(TestFunctional):
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         ipaddr = socket.gethostbyname(self.mom.hostname)
         self.server.manager(MGR_CMD_CREATE, NODE,  id=ipaddr)
-        self.server.expect(NODE, {'state=free': 1})
+        self.server.expect(NODE, {'state': 'free'}, id=ipaddr)
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)

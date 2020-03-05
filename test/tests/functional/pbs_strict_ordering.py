@@ -48,6 +48,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
     Test strict ordering when backfilling is truned off
     """
     @timeout(1800)
+    @skipOnCpuSet
     def test_t1(self):
 
         a = {'resources_available.ncpus': 4}
@@ -95,6 +96,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
     backfilling is off
     """
 
+    @skipOnCpuSet
     def test_t2(self):
         rv = self.scheduler.set_sched_config(
             {'by_queue': 'false prime', 'strict_ordering': 'true all'})
@@ -155,6 +157,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
                            max_attempts=30,
                            interval=2)
 
+    @skipOnCpuSet
     def test_zero_backfill_depth_on_queue(self):
         """
         Test if scheduler tries to run a job when strict ordering is enabled
@@ -233,6 +236,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid6)
         self.scheduler.log_match(jid5 + ";Job is a top job")
 
+    @skipOnCpuSet
     def test_zero_backfill_depth_on_one_queue(self):
         """
         Test if scheduler tries to run a job when strict ordering is enabled

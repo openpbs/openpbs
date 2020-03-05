@@ -138,6 +138,7 @@ class Test_run_count(TestFunctional):
         jid = self.server.submit(j)
         self.subjob_check(jid=jid, sjid=j.create_subjob_id(jid, 1))
 
+    @skipOnCpuSet
     def test_run_count_subjob_in_x(self):
         """
         Submit a job array and check if the subjob and the parent are getting
@@ -178,6 +179,7 @@ class Test_run_count(TestFunctional):
         self.subjob_check(jid, sjid, maxruncount="40")
         return sjid
 
+    @skipOnCpuSet
     def test_large_run_count_subjob_in_x(self):
         """
         Submit a job array and check if the subjob and the parent are getting

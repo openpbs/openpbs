@@ -82,7 +82,7 @@
 /* -----                        GLOBALS                        -----    */
 
 /* pipe-separated string lists  */
-#define runjob_modifiable_jobattrs	ATTR_h "|" ATTR_a "|" ATTR_project "|" ATTR_e "|" ATTR_o "|" ATTR_l "|" ATTR_v "|" ATTR_depend
+#define runjob_modifiable_jobattrs	ATTR_h "|" ATTR_a "|" ATTR_project "|" ATTR_e "|" ATTR_o "|" ATTR_l "|" ATTR_v "|" ATTR_depend "|" ATTR_create_resv_from_job
 #define runjob_modifiable_vnattrs	ATTR_NODE_state
 
 #define FMT_RUNJOB_ERRMSG	"Can only set job's (%s) attribute, or a vnode's (%s) attribute under RUNJOB event - got <%s>"

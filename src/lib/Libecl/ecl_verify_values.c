@@ -218,10 +218,10 @@ verify_value_user_list(int batch_request, int parent_object, int cmd,
 
 /**
  * @brief
- *	Verify authorized users (ATTR_auth_u/g)
+ *	Verify authorized users (ATTR_auth_u)
  *
  * @par Functionality:
- *	verify function for the attributes ATTR_auth_u, ATTR_auth_g\n
+ *	verify function for the attribute ATTR_auth_u
  *	calls parse_at_list to parse the list of values
  *
  * @see
@@ -254,6 +254,51 @@ verify_value_authorized_users(int batch_request, int parent_object, int cmd,
 
 	return PBSE_NONE;
 }
+
+/**
+ * @brief
+ *	Verify authorized groups (ATTR_auth_g)
+ *
+ * @par Functionality:
+ *	verify function for the attribute ATTR_auth_g
+ *	calls parse_at_list to parse the list of values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ * @par Reentrancy
+ *	MT-safe
+ */
+int
+verify_value_authorized_groups(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	if (pattr->value == NULL)
+		return PBSE_BADATVAL;
+
+	if (pattr->value[0] == '\0') {
+		/* unset group */
+		return PBSE_NONE;
+	}
+
+	if (parse_at_list(pattr->value, FALSE, FALSE))
+		return PBSE_BADATVAL;
+
+	return PBSE_NONE;
+}
+
 
 /**
  * @brief

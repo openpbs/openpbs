@@ -278,26 +278,24 @@ que_purge(pbs_queue *pque)
 pbs_queue *
 find_queuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
 	qname[PBS_MAXDEST] ='\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#ifdef NAS /* localmod 075 */
 
 /**
  * @brief
@@ -311,27 +309,57 @@ find_queuebyname(char *quename)
 pbs_queue *
 find_resvqueuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] ='\0';
+	qname[PBS_MAXDEST] = '\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
 			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#endif /* localmod 075 */
+
+/**
+ * @brief
+ * 		find_resv_by_quename() - find a reservation by the name of its queue
+ *
+ * @param[in]	quename	- queue name.
+ *
+ * @return	resc_resv *
+ */
+
+resc_resv *
+find_resv_by_quename(char *quename)
+{
+	char *pc;
+	resc_resv *presv;
+	char qname[PBS_MAXQUEUENAME + 1];
+
+	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
+	qname[PBS_MAXQUEUENAME] = '\0';
+	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
+	if (pc)
+		*pc = '\0';
+	presv = (resc_resv *)GET_NEXT(svr_allresvs);
+	while (presv != NULL) {
+		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
+			break;
+		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	}
+	if (pc)
+		*pc = '@';	/* restore '@' server portion */
+	return (presv);
+}
 
 /**
  * @brief

@@ -1528,7 +1528,7 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_license_linger) == 0) {
 			unset_license_linger();
-		} else if (strcasecmp(plist->al_name, ATTR_resv_retry_init) == 0 || 
+		} else if (strcasecmp(plist->al_name, ATTR_resv_retry_init) == 0 ||
 				strcasecmp(plist->al_name, ATTR_resv_retry_time) == 0) {
 			resv_retry_time = RESV_RETRY_TIME_DEFAULT;
 		} else if (strcasecmp(plist->al_name,

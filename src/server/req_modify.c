@@ -740,6 +740,7 @@ req_modifyReservation(struct batch_request *preq)
 	int		next_occr_start = 0;
 	extern char	*msg_stdg_resv_occr_conflict;
 	resc_resv	*presv;
+	int num_jobs;
 
 	if (preq == NULL)
 		return;
@@ -767,6 +768,12 @@ req_modifyReservation(struct batch_request *preq)
 	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
 		return;
+	}
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
 	}
 
 	is_standing = presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long;
@@ -811,8 +818,7 @@ req_modifyReservation(struct batch_request *preq)
 
 		switch (index) {
 			case RESV_ATR_start:
-				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) ||
-					!(presv->ri_qp->qu_numjobs)) {
+				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
 					if ((temp > time(NULL)) &&
 						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
@@ -832,7 +838,7 @@ req_modifyReservation(struct batch_request *preq)
 						return;
 					}
 				} else {
-					if (presv->ri_qp->qu_numjobs)
+					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 					else
 						req_reject(PBSE_BADTSPEC, 0, preq);
@@ -889,6 +895,42 @@ req_modifyReservation(struct batch_request *preq)
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	if (psatl)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
+
+
+	/* If Authorized_Groups is modified, we need to update the queue's acl_users
+	 * Authorized_Users cannot be unset, it must always have a value
+	 * The queue will have acl_user_enable set to 1 by default
+	 * If Authorized_Groups is modified, we need to update the queue's acl_groups and acl_group_enable
+	 * Authorized_Groups could be unset, so we need to update the queue accordingly, unsetting both acl_groups and acl_group_enable
+	 */
+	if (presv->ri_wattr[(int)RESV_ATR_auth_u].at_flags & ATR_VFLAG_MODIFY) {
+		svrattrl *pattrl;
+		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_u], NULL, resv_attr_def[(int)RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+		set_attr_svr(&presv->ri_qp->qu_attr[(int)QA_ATR_AclUsers], &que_attr_def[(int)QA_ATR_AclUsers], pattrl->al_atopl.value);
+		free(pattrl);
+	}
+	if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_MODIFY) {
+		if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_SET) {
+			svrattrl *pattrl = NULL;
+			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+			set_attr_svr(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value);
+			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
+				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			}
+			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+			free(pattrl);
+		} else {
+			resv_attr_def[(int)RESV_ATR_auth_g].at_free(&presv->ri_wattr[(int)RESV_ATR_auth_g]);
+			presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags |= ATR_VFLAG_MODIFY;
+			que_attr_def[(int)QE_ATR_AclGroup].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup]);
+			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup].at_flags |= ATR_VFLAG_MODIFY;
+			que_attr_def[(int)QE_ATR_AclGroupEnabled].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled]);
+			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_MODIFY;
+			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+		}
+	}
 
 	if (send_to_scheduler)
 		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);

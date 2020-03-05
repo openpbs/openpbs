@@ -140,7 +140,7 @@ class TestMomDynRes(TestFunctional):
     def test_res_string_perticular_value(self):
         """
         Test for host level string resource
-        with mom dynamic value “This is a test”
+        with mom dynamic value "This is a test"
         """
 
         resc_name = ["foo"]

@@ -97,9 +97,15 @@ int im_cred_send(job *pjob, hnodent *xp, int stream);
 int im_cred_read(job *pjob, hnodent *np, int stream);
 
 #if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
+void singleshot_afslog(struct krb_holder *ticket);
+int start_afslog(const task *ptask, struct krb_holder *ticket, int, int);
+int signal_afslog(const task *ptask, int signal);
+
 int32_t getpag();
-void setpag(int32_t pag);
-void removepag();
+
+#define AFSLOG_TERM(x) {if (signal_afslog(x, SIGTERM)) log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, x->ti_job->ji_qs.ji_jobid, "sending SIGTERM to afslog process failed");}
+#else
+#define AFSLOG_TERM(x) {}
 #endif /* OpenAFS */
 
 #endif

@@ -384,11 +384,6 @@ job_alloc(void)
 	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	pj->ji_extended.ji_ext.ji_pag = 0;
-#endif
-#endif
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -1086,7 +1081,10 @@ find_job(char *jobid)
 #endif
 	char *at;
 	job  *pj = NULL;
-	char buf[PBS_MAXSVRJOBID+1];
+	char buf[PBS_MAXSVRJOBID + 1];
+
+	if (jobid == NULL)
+		return NULL;
 
 	/* Make a copy of the job ID string before we modify it. */
 	snprintf(buf, sizeof(buf), "%s", jobid);

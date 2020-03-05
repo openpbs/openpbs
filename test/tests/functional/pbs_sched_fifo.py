@@ -42,6 +42,7 @@ class TestSchedFifo(TestFunctional):
     """
     Test suite for PBSPro's FIFO scheduling
     """
+    @skipOnCpuSet
     def test_sched_fifo(self):
         """
         Check that FIFO works.

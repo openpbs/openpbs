@@ -5295,8 +5295,13 @@ class Server(PBSService):
             return False
         else:
             conf['qmgr_print_sched'] = ret['out']
+
+        # sudo=True is added while running "pbsnodes -av", to make
+        # sure that all the node attributes are preserved in
+        # save_configuration. If this command is run without sudo,
+        # some of the node attributes like port, version is not listed.
         ret = self.du.run_cmd(self.hostname, [pbsnodes, '-av'],
-                              logerr=False, level=logging.DEBUG)
+                              logerr=False, level=logging.DEBUG, sudo=True)
         err_msg = "Server has no node list"
         # pbsnodes -av returns a non zero exit code when there are
         # no nodes in cluster
@@ -6020,6 +6025,9 @@ class Server(PBSService):
                         if _rrule[0] not in ("'", '"'):
                             _rrule = "'" + _rrule + "'"
                         obj.custom_attrs[ATTR_resv_rrule] = _rrule
+                if ATTR_job in obj.attributes:
+                    runcmd += ['--job', obj.attributes[ATTR_job]]
+                    exclude_attrs += [ATTR_job]
 
             if not self._is_local:
                 if ATTR_queue not in obj.attributes:
@@ -6088,6 +6096,7 @@ class Server(PBSService):
                 objid = None
             else:
                 objid = ret['out'][0]
+
             if ret['err'] != ['']:
                 self.last_error = ret['err']
             self.last_rc = rc = ret['rc']
@@ -14310,11 +14319,13 @@ class Reservation(ResourceResv):
 
         # These are not in dflt_attributes because of the conversion to CLI
         # options is done strictly
-        if ATTR_resv_start not in self.attributes:
+        if ATTR_resv_start not in self.attributes and \
+           ATTR_job not in self.attributes:
             self.attributes[ATTR_resv_start] = str(int(time.time()) +
                                                    36 * 3600)
 
-        if ATTR_resv_end not in self.attributes:
+        if ATTR_resv_end not in self.attributes and \
+           ATTR_job not in self.attributes:
             if ATTR_resv_duration not in self.attributes:
                 self.attributes[ATTR_resv_end] = str(int(time.time()) +
                                                      72 * 3600)
