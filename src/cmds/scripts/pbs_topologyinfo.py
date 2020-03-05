@@ -57,7 +57,8 @@ class Inventory(object):
         self.CrayVersion = "0.0"
         self.ndevices = 0
         self.gpudevices = 0
-        self.flagc = False
+        self.cardflag = False
+        self.renderflag = False
 
     def __init__(self):
         self.reset()
@@ -169,13 +170,11 @@ class Inventory(object):
         Used when an import of the xml.parsers.expat module fails.
         This version makes use of regex expressions.
         """
-        gpuflag = 0
-        gpuflag1 = 0
         socketpattern = r'<\s*object\s+type="Socket"'
         packagepattern = r'<\s*object\s+type="Package"'
         gpupattern = r'<\s*object\s+type="OSDev"\s+name="card\d+"\s+' \
             'osdev_type="1"'
-        gpupattern1 = r'<\s*object\s+type="OSDev"\s+name="renderD\d+"\s+' \
+        renderpattern = r'<\s*object\s+type="OSDev"\s+name="renderD\d+"\s+' \
             'osdev_type="1"'
         micpattern = r'<\s*object\s+type="OSDev"\s+name="mic\d+"\s+' \
             'osdev_type="5"'
@@ -216,10 +215,10 @@ class Inventory(object):
                                                             line))):
                     self.nsockets += 1
                     self.ndevices += 1
-                gpuflag += 1 if re.search(gpupattern, line) else 0
-                gpuflag1 += 1 if re.search(gpupattern1, line) else 0
+                self.cardflag += 1 if re.search(gpupattern, line) else 0
+                self.renderflag += 1 if re.search(renderpattern, line) else 0
                 self.ndevices += 1 if re.search(micpattern, line) else 0
-        self.gpudevices = min(gpuflag, gpuflag1)
+        self.gpudevices = min(self.cardflag, self.renderflag)
 
 
 def socketXMLstart(name, attrs):
@@ -255,15 +254,15 @@ def socketXMLstart(name, attrs):
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "1" and
                 attrs.get("name").startswith("card")):
-            inventory.flagc = True
+            inventory.cardflag = True
         elif (name == "object" and attrs.get("type") == "OSDev" and
               attrs.get("osdev_type") == "1" and
                 attrs.get("name").startswith("renderD")):
-            if inventory.flagc is True:
+            if inventory.cardflag is True:
                 inventory.gpudevices += 1
-                inventory.flagc = False
+                inventory.cardflag = False
         else:
-            inventory.flagc = False
+            inventory.cardflag = False
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "5" and
                 attrs.get("name").startswith("mic")):
