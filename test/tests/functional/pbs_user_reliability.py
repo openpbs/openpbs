@@ -41,6 +41,11 @@ import re
 
 class Test_user_reliability(TestFunctional):
 
+    def setUp(self):
+        TestFunctional.setUp(self)
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
     """
     This test suite is for testing the user reliability workflow feature.
     """
