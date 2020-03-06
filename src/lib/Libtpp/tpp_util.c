@@ -1730,7 +1730,11 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	z_stream strm;
 	void *outbuf = NULL;
 
-	outbuf = malloc(totlen);
+	/* 
+	 * in some rare cases totlen < compressed_len (inlen)
+	 * so safer to malloc the larger of the two values
+	 */
+	outbuf = malloc(totlen > inlen ? totlen:inlen);
 	if (!outbuf) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating inflate buffer %d bytes", totlen);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
