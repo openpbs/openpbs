@@ -744,13 +744,13 @@ class SmokeTest(PBSTestSuite):
             a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: queue}
             j = Job(TEST_USER, a)
             jids.append(self.server.submit(j))
-        start_time = int(time.time())
+        start_time = time.time()
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(JOB, {'job_state=R': 9})
-        cycle = self.scheduler.cycles(start=start_time, end=int(time.time()))
+        cycle = self.scheduler.cycles(start=start_time, end=time.time())
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
