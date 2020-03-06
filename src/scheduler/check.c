@@ -1588,8 +1588,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			/* if there are nodes assigned to the queue, then check those */
 			if (qinfo->has_nodes)
 				ninfo_arr = qinfo->nodes;
-			else if (qinfo->partition != NULL)
-				ninfo_arr = qinfo->nodes_in_partition;
 			else
 				ninfo_arr = sinfo->unassoc_nodes;
 		} else

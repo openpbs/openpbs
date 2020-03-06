@@ -3069,8 +3069,7 @@ Time4resv(struct work_task *ptask)
 		presv->ri_giveback = 1;
 
 		resv_exclusive_handler(presv);
-
-		set_scheduler_flag(SCH_SCHEDULE_JOBRESV,dflt_scheduler);
+		notify_scheds_about_resv(SCH_SCHEDULE_JOBRESV, presv);
 
 		/*notify the relevant persons that the reservation time has arrived*/
 		if (presv->ri_qs.ri_tactive == time_now){
@@ -3249,16 +3248,15 @@ Time4resvFinish(struct work_task *ptask)
 		strcpy(preq->rq_ind.rq_delete.rq_objname,
 			presv->ri_qs.ri_resvID);
 
-		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
-			resvFinishReply, NULL, 0);
-
 		/*notify relevant parties that the reservation's
 		 *ending time has arrived and reservation is being deleted
 		 */
 		svr_mailownerResv(presv, MAIL_END, MAIL_NORMAL, "");
 
-		tickle_for_reply();
 		set_last_used_time_node(presv, 1);
+		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
+			resvFinishReply, NULL, 0);
+		tickle_for_reply();
 	}
 }
 
@@ -3524,6 +3522,14 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	if (sub == RESV_DEGRADED) {
 		DBPRT(("degraded_time of %s is %s", presv->ri_qs.ri_resvID, ctime(&presv->ri_degraded_time)))
+		/* If no jobs are running in this reservation, unset the scheduler name
+		 * so that the reservation can be confirmed by any scheduler
+		 */
+		if (presv->ri_qp->qu_njstate[JOB_STATE_RUNNING] + presv->ri_qp->qu_njstate[JOB_STATE_EXITING] == 0) {
+			resv_attr_def[(int)RESV_ATR_partition].at_free(&presv->ri_wattr[(int)RESV_ATR_partition]);
+			presv->rep_sched_count= 0;
+			presv->req_sched_count= 0;
+		}
 	}
 
 	/* Set the reservation state and substate */
@@ -3898,7 +3904,7 @@ resv_retry_handler(struct work_task *ptask)
 		return;
 
 	/* Notify scheduler that a reservation needs to be reconfirmed */
-	set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
+	notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
 }
 
 /**

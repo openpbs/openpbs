@@ -1079,8 +1079,6 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 		if (qinfo->has_nodes)
 			ninfo_arr = qinfo->nodes;
-		else if (qinfo->partition != NULL)
-			ninfo_arr = qinfo->nodes_in_partition;
 		else
 			ninfo_arr = sinfo->unassoc_nodes;
 

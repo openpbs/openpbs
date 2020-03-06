@@ -202,7 +202,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 			return;
 		}
 
-		if (node_in_partition(ninfo, sinfo->partitions)) {
+		if (node_in_partition(ninfo, sinfo->partition)) {
 			if (first_talk_with_mom) {	/* need to acquire a lock for talk_with_mom the first time */
 				pthread_mutex_lock(&general_lock);
 				if (!first_talk_with_mom)
@@ -1309,8 +1309,8 @@ talk_with_mom(node_info *ninfo)
  * @param[in]	filter_func	-	pointer to a function that will filter the nodes
  *								- returns 1: job will be added to filtered array
  *								- returns 0: job will NOT be added to filtered array
- *	  							arg - an optional arg passed to filter_func
- *	  							flags - describe how nodes are filtered
+ * @param[in]	arg - an optional arg passed to filter_func
+ * @param[in]	flags - describe how nodes are filtered
  *
  * @return pointer to filtered array
  *
@@ -6276,7 +6276,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
  *	node_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	ninfo		-  node information
- * @param[in]	partitions	-  array of partitions associated to scheduler
+ * @param[in]	partition	-  partition associated to scheduler
  *
  *
  * @return	int
@@ -6284,7 +6284,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
  * @retval	0	: if failure
  */
 int
-node_in_partition(node_info *ninfo, char **partitions)
+node_in_partition(node_info *ninfo, char *partition)
 {
 	if (dflt_sched) {
 		if (ninfo->partition == NULL)
@@ -6295,7 +6295,7 @@ node_in_partition(node_info *ninfo, char **partitions)
 	if (ninfo->partition == NULL)
 		return 0;
 
-	if (is_string_in_arr(partitions, ninfo->partition))
+	if (strcmp(partition, ninfo->partition) == 0)
 		return 1;
 	else
 		return 0;

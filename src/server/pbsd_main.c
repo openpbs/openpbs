@@ -1749,8 +1749,7 @@ try_db_again:
 				/* if time or event says to run scheduler, do it */
 
 				/* if we have a high prio sched command, send it 1st */
-				if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
-					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
+				if (psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 

@@ -47,7 +47,7 @@ class TestMultipleSchedulers(TestFunctional):
     """
 
     def setup_sc1(self):
-        a = {'partition': 'P1,P4',
+        a = {'partition': 'P1',
              'sched_host': self.server.hostname,
              'sched_port': '15050'}
         self.server.manager(MGR_CMD_CREATE, SCHED,
@@ -92,21 +92,17 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
-        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq4')
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq1')
         p2 = {'partition': 'P2'}
         self.server.manager(MGR_CMD_SET, QUEUE, p2, id='wq2')
         p3 = {'partition': 'P3'}
         self.server.manager(MGR_CMD_SET, QUEUE, p3, id='wq3')
-        p4 = {'partition': 'P4'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p4, id='wq4')
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 5, self.mom)
+        self.server.create_vnodes('vnode', a, 4, self.mom)
         self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]')
         self.server.manager(MGR_CMD_SET, NODE, p2, id='vnode[1]')
         self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[2]')
-        self.server.manager(MGR_CMD_SET, NODE, p4, id='vnode[3]')
 
     def common_setup(self):
         self.setup_sc1()
@@ -121,6 +117,15 @@ class TestMultipleSchedulers(TestFunctional):
             if vnode not in nodes:
                 self.assertFalse(True, str(vnode) +
                                  " is not in exec_vnode list as expected")
+
+    def get_tzid(self):
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            tzone = 'America/Los_Angeles'
+        return tzone
 
     @skipOnCpuSet
     def test_job_sort_formula_multisched(self):
@@ -341,11 +346,8 @@ class TestMultipleSchedulers(TestFunctional):
         unsets partition attribute on scheduler and update scheduler logs.
         """
         self.setup_sc1()
-        # self.setup_sc2()
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'partition': (DECR, 'P1')}, id="sc1")
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'partition': (DECR, 'P4')}, id="sc1")
+        self.server.manager(MGR_CMD_UNSET, SCHED,
+                            'partition', id="sc1")
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id="sc1")
         log_msg = "Scheduler does not contain a partition"
@@ -387,39 +389,6 @@ class TestMultipleSchedulers(TestFunctional):
             starttime=self.server.ctime)
 
     @skipOnCpuSet
-    def test_multiple_partition_same_sched(self):
-        """
-        Test that scheduler will serve the jobs from different
-        partition and run on nodes assigned to respective partitions.
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
-                                   'Resource_List.select': '1:ncpus=1'})
-        jid1 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.check_vnodes(j, ['vnode[0]'], jid1)
-        self.scheds['sc1'].log_match(
-            jid1 + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
-                                   'Resource_List.select': '1:ncpus=1'})
-        jid2 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.check_vnodes(j, ['vnode[3]'], jid2)
-        self.scheds['sc1'].log_match(
-            jid2 + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
-                                   'Resource_List.select': '1:ncpus=1'})
-        jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.check_vnodes(j, ['vnode[0]'], jid3)
-        self.scheds['sc1'].log_match(
-            jid3 + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-
-    @skipOnCpuSet
     def test_multiple_queue_same_partition(self):
         """
         Test multiple queue associated with same partition
@@ -436,8 +405,8 @@ class TestMultipleSchedulers(TestFunctional):
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
         p1 = {'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq4')
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
+        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq3')
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=1'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -454,19 +423,19 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.common_setup()
         prio = {'Priority': 150, 'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, QUEUE, prio, id='wq4')
+        self.server.manager(MGR_CMD_SET, QUEUE, prio, id='wq3')
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=2'})
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
         t = time.time()
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=2'})
         jid2 = self.server.submit(j)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=2'})
         jid3 = self.server.submit(j)
         self.server.expect(JOB, ATTR_comment, op=SET, id=jid3)
@@ -631,24 +600,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1',
                            attrop=PTL_AND, max_attempts=10)
 
-    @skipOnCpuSet
-    def test_resv_default_sched(self):
-        """
-        Test reservations will only go to defualt scheduler
-        """
-        self.setup_queues_nodes()
-        t = int(time.time())
-        r = Reservation(TEST_USER)
-        a = {'Resource_List.select': '2:ncpus=1'}
-        r.set_attributes(a)
-        rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, rid)
-        self.scheds['default'].log_match(
-            rid + ';Reservation Confirmed',
-            max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
     def test_job_sorted_per_scheduler(self):
         """
         Test jobs are sorted as per job_sort_formula
@@ -1111,32 +1062,6 @@ class TestMultipleSchedulers(TestFunctional):
         return ret_jids
 
     @skipOnCpuSet
-    def test_equiv_partition(self):
-        """
-        Test the basic behavior of job equivalence classes: submit two
-        different types of jobs into 2 partitions and see they are
-        in four different equivalence classes
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'False'}, id="sc1")
-        # Eat up all the resources with the first job to each queue
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        self.submit_jobs(4, a)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        self.submit_jobs(4, a)
-        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
     def test_equiv_multisched(self):
         """
         Test the basic behavior of job equivalence classes: submit two
@@ -1174,260 +1099,34 @@ class TestMultipleSchedulers(TestFunctional):
                                      max_attempts=10, starttime=t)
 
     @skipOnCpuSet
-    def test_select_partition(self):
-        """
-        Test to see if jobs with select resources not in the resources line
-        fall into the same equivalence class and jobs in different partition
-        fall into different equivalence classes
-        """
-        self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'long', 'flag': 'nh'}, id='foo')
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-
-        # Four equivalence classes: two for the resource eating job in each
-        # partition and two for the other jobs in each partition. While jobs
-        # have different amount of the foo resources which isn't in the
-        # resources line
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_select_res_partition(self):
-        """
-        Test to see if jobs with select resources in the resources line and
-        in different partitions fall into the different equivalence class
-        """
-        self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'long', 'flag': 'nh'}, id='foo')
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        self.scheds['sc1'].add_resource("foo")
-        t = int(time.time())
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-
-        # Six equivalence classes: two for the resource eating jobs in each
-        # partition and 4 for the other jobs requesting different amounts of
-        # the foo resource in each partition.
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_multiple_res_partition(self):
-        """
-        Test to see if jobs with select resources in the resources line
-        with multiple custom resources fall into the different equiv class
-        and jobs in different partitions fall into different equiv classes
-        """
-        self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'long', 'flag': 'nh'}, id='foo')
-        self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'string', 'flag': 'h'}, id='colour')
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        self.scheds['sc1'].add_resource("foo")
-        self.scheds['sc1'].add_resource("colour")
-        t = int(time.time())
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:colour=blue',
-             ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1:colour=blue',
-             ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-
-        # Six equivalence classes: two for the resource eating job in each
-        # partition and four for the other jobs. While jobs have different
-        # resource requests two for each resource in different partitions
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_place_partition(self):
-        """
-        Test to see if jobs with different place statements and different
-        partitions fall into the different equivalence classes
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2',
-             ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2',
-             ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'free',
-             ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'free',
-             ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-
-        # Six equivalence classes: two for the resource eating job in
-        # each partition and one for each place statement in each partition
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_nolimits_partition(self):
-        """
-        Test to see that jobs from different users, groups, and projects
-        all fall into the same equivalence class when there are no limits
-        but fall into different equivalence classes for each partition
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        self.server.submit(J)
-        a = {ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a, user=TEST_USER)
-        self.submit_jobs(3, a, user=TEST_USER2)
-        a = {ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a, user=TEST_USER)
-        self.submit_jobs(3, a, user=TEST_USER2)
-
-        b = {'group_list': TSTGRP1, ATTR_queue: 'wq1'}
-        self.submit_jobs(3, b, TEST_USER1)
-        b = {'group_list': TSTGRP2, ATTR_queue: 'wq1'}
-        self.submit_jobs(3, b, TEST_USER1)
-        b = {'group_list': TSTGRP1, ATTR_queue: 'wq4'}
-        self.submit_jobs(3, b, TEST_USER1)
-        b = {'group_list': TSTGRP2, ATTR_queue: 'wq4'}
-        self.submit_jobs(3, b, TEST_USER1)
-
-        b = {'project': 'p1', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, b)
-        b = {'project': 'p2', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, b)
-        b = {'project': 'p1', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, b)
-        b = {'project': 'p2', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, b)
-
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-
-        # Four equivalence classes: two for the resource eating job in each
-        # partition and two for the rest. Since there are no limits, user,
-        # group, nor project are taken into account
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_limits_partition(self):
+    def test_limits_queues(self):
         """
         Test to see that jobs from different users fall into different
-        equivalence classes with queue hard limits and partitions
+        equivalence classes with queue hard limits.
         """
         self.setup_sc1()
         self.setup_queues_nodes()
+        p1 = {'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq3')
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc1")
         self.server.manager(MGR_CMD_SET, QUEUE,
                             {'max_run': '[u:PBS_GENERIC=1]'}, id='wq1')
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'max_run': '[u:PBS_GENERIC=1]'}, id='wq4')
+                            {'max_run': '[u:PBS_GENERIC=1]'}, id='wq3')
 
         # Eat up all the resources
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
         J = Job(TEST_USER, attrs=a)
         self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq3'}
         J = Job(TEST_USER, attrs=a)
         self.server.submit(J)
         a = {ATTR_queue: 'wq1'}
         self.submit_jobs(3, a, user=TEST_USER1)
         self.submit_jobs(3, a, user=TEST_USER2)
-        a = {ATTR_queue: 'wq4'}
+        a = {ATTR_queue: 'wq3'}
         self.submit_jobs(3, a, user=TEST_USER1)
         self.submit_jobs(3, a, user=TEST_USER2)
 
@@ -1437,107 +1136,6 @@ class TestMultipleSchedulers(TestFunctional):
         # Six equivalence classes. Two for the resource eating job in
         # different partitions and one for each user per partition.
         self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_job_array_partition(self):
-        """
-        Test that various job types will fall into single equivalence
-        class with same type of request and will only fall into different
-        equivalence class if partition is different
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', 'queue': 'wq1'}
-        J = Job(TEST_USER1, attrs=a)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', 'queue': 'wq4'}
-        J = Job(TEST_USER1, attrs=a)
-        self.server.submit(J)
-
-        # Submit a job array
-        j = Job(TEST_USER)
-        j.set_attributes(
-            {ATTR_J: '1-3:1',
-             'Resource_List.select': '1:ncpus=2',
-             'queue': 'wq1'})
-        self.server.submit(j)
-        j.set_attributes(
-            {ATTR_J: '1-3:1',
-             'Resource_List.select': '1:ncpus=2',
-             'queue': 'wq4'})
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        # Two equivalence class one for each partition
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_equiv_suspend_jobs(self):
-        """
-        Test that jobs fall into different equivalence classes
-        after they get suspended
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'False'}, id="sc1")
-        # Eat up all the resources
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        J = Job(TEST_USER, attrs=a)
-        jid1 = self.server.submit(J)
-        self.server.submit(J)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        J = Job(TEST_USER, attrs=a)
-        jid3 = self.server.submit(J)
-        self.server.submit(J)
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        # 2 equivalence classes one for each partition
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
-                                     max_attempts=10, starttime=t)
-        t = int(time.time())
-        # Make sure that Job is in R state before issuing a signal to suspend
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.sigjob(jobid=jid1, signal="suspend")
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.server.sigjob(jobid=jid3, signal="suspend")
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        # 4 equivalance classes 2 for partition 2 for suspended jobs
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
-                                     max_attempts=10, starttime=t)
-
-    @skipOnCpuSet
-    def test_equiv_single_partition(self):
-        """
-        Test that jobs fall into same equivalence class if jobs fall
-        into queues set to same partition
-        """
-        self.setup_sc1()
-        self.setup_queues_nodes()
-        t = int(time.time())
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'False'}, id="sc1")
-        self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'partition': 'P1'}, id='wq4')
-        # Eat up all the resources with the first job to  wq1
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
-        self.submit_jobs(4, a)
-        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq1'}
-        self.submit_jobs(3, a)
-        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq4'}
-        self.submit_jobs(3, a)
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 'True'}, id="sc1")
-        # 2 equivalence classes one for each with different ncpus request
-        # as both queues are having same partition
-        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
                                      max_attempts=10, starttime=t)
 
     def test_list_multi_sched(self):
@@ -1753,8 +1351,10 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.setup_sc1()
         self.setup_queues_nodes()
+        p1 = {'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq3')
         prio = {'Priority': 150, 'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, QUEUE, prio, id='wq4')
+        self.server.manager(MGR_CMD_SET, QUEUE, prio, id='wq3')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_preempt_enforce_resumption': 'true'},
                             id='sc1')
@@ -1787,7 +1387,7 @@ class TestMultipleSchedulers(TestFunctional):
         j = Job(TEST_USER, {'queue': 'highp', 'Resource_List.walltime': '60',
                             'Resource_List.ncpus': '2'})
         jid3 = self.server.submit(j)
-        j = Job(TEST_USER, {'queue': 'wq4', 'Resource_List.walltime': '60',
+        j = Job(TEST_USER, {'queue': 'wq3', 'Resource_List.walltime': '60',
                             'Resource_List.ncpus': '2'})
         jid4 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
@@ -2143,28 +1743,26 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]')
-        # Offlining the node as we do not need for the test
-        a = {'state': 'offline'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[4]')
+
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl',
              ATTR_queue: 'wq1'}
         j = Job(TEST_USER1, a)
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[3]'], jid)
-        j = Job(TEST_USER1, a)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.check_vnodes(j, ['vnode[2]'], jid1)
+        self.check_vnodes(j, ['vnode[3]'], jid1)
         j = Job(TEST_USER1, a)
         jid2 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.check_vnodes(j, ['vnode[1]'], jid2)
+        self.check_vnodes(j, ['vnode[2]'], jid2)
         j = Job(TEST_USER1, a)
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.check_vnodes(j, ['vnode[0]'], jid3)
+        self.check_vnodes(j, ['vnode[1]'], jid3)
+        j = Job(TEST_USER1, a)
+        jid4 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        self.check_vnodes(j, ['vnode[0]'], jid4)
 
     @skipOnCpuSet
     def test_multi_sched_priority_sockets(self):
@@ -2195,3 +1793,435 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)
+
+    def test_advance_resv_in_multi_sched(self):
+        """
+        Test that advance reservations in a multi-sched environment can be
+        serviced by any scheduler
+        """
+        # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
+        self.common_setup()
+        # Consume all resources in partitions serviced by sc1 and sc3 and
+        # default scheduler
+        a = {ATTR_queue: 'wq1',
+             'Resource_List.select': '1:ncpus=2',
+             'Resource_List.walltime': 60}
+        j = Job(TEST_USER1, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        a = {ATTR_queue: 'wq3',
+             'Resource_List.select': '1:ncpus=2'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        a = {ATTR_queue: 'workq',
+             'Resource_List.select': '1:ncpus=2'}
+        j3 = Job(TEST_USER, attrs=a)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+        # Now submit a reservation which only sc2 can confirm because
+        # it has free nodes
+        t = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
+             'reserve_end': t + 15}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, rid)
+        rnodes = {'resv_nodes': '(vnode[1]:ncpus=2)'}
+        self.server.expect(RESV, rnodes, id=rid)
+
+        # Wait for reservation to run and then submit a job to the
+        # reservation
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, rid)
+        a = {ATTR_q: rid.split('.')[0]}
+        j4 = Job(TEST_USER, attrs=a)
+        jid4 = self.server.submit(j4)
+        result = {'job_state': 'R', 'exec_vnode': '(vnode[1]:ncpus=1)'}
+        self.server.expect(JOB, result, id=jid4)
+
+    def test_resv_in_empty_multi_sched_env(self):
+        """
+        Test that advance reservations gets confirmed by all the schedulers
+        running in the complex
+        """
+        # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
+        self.common_setup()
+        # Submit 4 reservations and check they get confirmed
+        for _ in range(4):
+            t = int(time.time())
+            a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 25,
+                 'reserve_end': t + 55}
+            r = Reservation(TEST_USER, attrs=a)
+            rid = self.server.submit(r)
+            a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            self.server.expect(RESV, a, rid)
+
+        # Submit 5th reservation and check that it is denied
+        t = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 25,
+             'reserve_end': t + 55}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        msg = "Resv;" + rid + ";Reservation denied"
+        self.server.log_match(msg)
+
+    def test_asap_resv(self):
+        """
+        Test ASAP reservation in multisched environment. It should not
+        matter if a job is part of a partition. An ASAP reservation could
+        confirm on any of the existing partitions and then moved to the
+        reservation queue.
+        """
+        # Create 3 multi-scheds sc1, sc2 and sc3, 4 partitions and 4 vnodes
+        self.common_setup()
+        # Turn off scheduling in all schedulers but one (say sc3)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        # submit a job in partition serviced by sc1
+        a = {ATTR_queue: 'wq1',
+             'Resource_List.select': '1:ncpus=2',
+             'Resource_List.walltime': 600}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        # Now turn this job into a reservation and notice that it runs inside
+        # a reservation running on vnode[2] which is part of sc3
+        a = {ATTR_convert: jid}
+        r = Reservation(TEST_USER, a)
+        r.unset_attributes(['reserve_start', 'reserve_end'])
+        rid = self.server.submit(r)
+        exp_attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, exp_attrs, id=rid)
+        result = {'job_state': 'R', 'exec_vnode': '(vnode[2]:ncpus=2)'}
+        self.server.expect(JOB, result, id=jid)
+
+    def test_standing_resv_reject(self):
+        """
+        Test that if a scheduler serving a partition is not able to
+        confirm all the occurrences of the standing reservation on the same
+        partition then it will reject it.
+        """
+
+        self.common_setup()
+        # Turn off scheduling in all schedulers but sc1 because sc1 serves
+        # partition P1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        # Submit an advance reservation which is going to occupy full
+        # partition in future
+        t = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 200,
+             'reserve_end': t + 4000}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, rid)
+
+        # Submit a standing reservation such that it consumes one partition
+        # and an occurrence finishes before the advance reservation starts.
+        # This means scheduler will try to place the first occurance right
+        # before the advance reservation was confirmed because the
+        # node is free, it will not be able to place the second occurrence
+        # because of the advance reservation
+        start = int(time.time()) + 10
+        end = start + 150
+        tzone = self.get_tzid()
+        a = {ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             'Resource_List.select': '1:ncpus=2'
+             }
+        sr = Reservation(TEST_USER, attrs=a)
+        srid = self.server.submit(sr)
+        msg = "Resv;" + srid + ";Reservation denied"
+        self.server.log_match(msg)
+
+    def test_printing_partition_resv_hook(self):
+        """
+        Test if a reservation having a partition set on it is readable in
+        a reservation hook
+        """
+        hook_body = """
+import pbs
+e = pbs.event()
+resv = e.resv
+pbs.logmsg(pbs.EVENT_DEBUG, "Resv partition is %s" % resv.partition)
+e.accept()
+"""
+        a = {'event': 'resv_end', 'enabled': 'true', 'debug': 'true'}
+        self.server.create_import_hook("h1", a, hook_body)
+        # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
+        self.common_setup()
+        # Turn off scheduling in all schedulers but one (say sc3)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+        t = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
+             'reserve_end': t + 15}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, rid)
+        self.logger.info("Wait for reservation to end")
+        time.sleep(10)
+        msg = "Resv partition is P3"
+        self.server.log_match(msg)
+
+    def test_setting_partition_resv_hook(self):
+        """
+        Test if a reservation can set partition name on reservation object
+        """
+        hook_body = """
+import pbs
+e = pbs.event()
+resv = e.resv
+resv.partition = "P-3"
+pbs.logmsg(pbs.EVENT_DEBUG, "Resv partition is %s" % resv.partition)
+e.accept()
+"""
+        a = {'event': 'resvsub', 'enabled': 'true', 'debug': 'true'}
+        self.server.create_import_hook("h1", a, hook_body)
+        # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
+        self.common_setup()
+        t = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
+             'reserve_end': t + 15}
+        r = Reservation(TEST_USER, a)
+        with self.assertRaises(PbsSubmitError) as e:
+            rid = self.server.submit(r)
+        msg = "resv attribute 'partition' is readonly"
+        self.server.log_match(msg)
+        self.assertIn("hook 'h1' encountered an exception",
+                      e.exception.msg[0])
+
+    def test_resv_alter(self):
+        """
+        Test if a reservation confirmed by a multi-sched can be altered by the
+        same scheduler.
+        """
+        self.common_setup()
+        # Submit 4 reservations to fill up the system and check they are
+        # confirmed
+        for _ in range(4):
+            t = int(time.time())
+            a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 60,
+                 'reserve_end': t + 120}
+            r = Reservation(TEST_USER, a)
+            rid = self.server.submit(r)
+            attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            self.server.expect(RESV, attr, rid)
+            partition = self.server.status(RESV, 'partition', id=rid)
+            if (partition[0]['partition'] == 'P1'):
+                    old_end_time = a['reserve_end']
+                    modify_resv = rid
+        # Modify the endtime of reservation confirmed on partition P1 and
+        # make sure the node solution is correct.
+        end_time = old_end_time + 60
+        bu = BatchUtils()
+        new_end_time = bu.convert_seconds_to_datetime(end_time)
+        attrs = {'reserve_end': new_end_time}
+        time_now = time.time()
+        self.server.alterresv(modify_resv, attrs)
+        attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+                'partition': 'P1'}
+        self.server.expect(RESV, attr, modify_resv)
+        rnodes = {'resv_nodes': '(vnode[0]:ncpus=2)'}
+        self.server.expect(RESV, rnodes, id=modify_resv)
+        msg = modify_resv + ";Reservation Confirmed"
+        self.scheds['sc1'].log_match(msg, starttime=time_now)
+
+    def test_setting_default_partition(self):
+        """
+        Test if setting default partition on pbs scheduler/queue/node fails
+        """
+
+        self.common_setup()
+        a = {'partition': 'pbs-default'}
+        with self.assertRaises(PbsManagerError) as e:
+            self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        self.assertIn("Default partition name is not allowed",
+                      e.exception.msg[0])
+        with self.assertRaises(PbsManagerError) as e:
+            self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]')
+        self.assertIn("Default partition name is not allowed",
+                      e.exception.msg[0])
+        with self.assertRaises(PbsManagerError) as e:
+            self.server.manager(MGR_CMD_SET, SCHED, a, id='sc1')
+        self.assertIn("Default partition name is not allowed",
+                      e.exception.msg[0])
+
+    def degraded_resv_reconfirm(self, start, end, rrule=None, run=False):
+        """
+        Test that a degraded reservation gets reconfirmed in a multi-sched env
+        """
+        # Add two nodes to partition P1 and turn off scheduling for all other
+        # schedulers serving partition P2 and P3. Make scheduler sc1 serve
+        # only partition P1 (vnode[0], vnode[1]).
+        self.common_setup()
+        p1 = {'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, NODE, p1, id="vnode[1]")
+        self.server.expect(SCHED, p1, id="sc1")
+
+        a = {'reserve_retry_time': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        attr = {'Resource_List.select': '1:ncpus=2',
+                'reserve_start': start,
+                'reserve_end': end}
+        if rrule is not None:
+            attr.update({ATTR_resv_rrule: rrule,
+                         ATTR_resv_timezone: self.get_tzid()})
+        resv = Reservation(TEST_USER, attr)
+        rid = self.server.submit(resv)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        if run:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            self.logger.info('Sleeping until reservation starts')
+            offset = start - int(time.time())
+            self.server.expect(RESV, resv_state, id=rid,
+                               offset=offset, interval=1)
+        else:
+            resv_state = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+
+        ret = self.server.status(RESV, 'partition', id=rid)
+        a = {'state': 'offline'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=resv_node)
+
+        a = {'reserve_substate': 10}
+        a.update(resv_state)
+        self.server.expect(RESV, a, id=rid)
+
+        other_node = "vnode[1]"
+        if resv_node == "vnode[1]":
+            other_node = "vnode[0]"
+
+        if run:
+            a = {'reserve_substate': 5}
+        else:
+            a = {'reserve_substate': 2}
+        a.update({'resv_nodes': (MATCH_RE, re.escape(other_node))})
+
+        self.server.expect(RESV, a, id=rid, interval=1)
+
+    def test_advance_confimred_resv_reconfirm(self):
+        """
+        Test degraded reservation gets reconfirmed on a different
+        node of the same partition in multi-sched environment
+        """
+        now = int(time.time())
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200)
+
+    def test_advance_running_resv_reconfirm(self):
+        """
+        Test degraded running reservation gets reconfirmed on a different
+        node of the same partition in multi-sched environment
+        """
+        now = int(time.time())
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True)
+
+    def test_standing_confimred_resv_reconfirm(self):
+        """
+        Test degraded standing resv gets reconfirmed on a different
+        node of the same partition in multi-sched environment
+        """
+        now = int(time.time())
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200,
+                                     rrule='FREQ=HOURLY;COUNT=2')
+
+    def test_standing_running_resv_reconfirm(self):
+        """
+        Test degraded running standing resv gets reconfirmed on a different
+        node of the same partition in multi-sched environment
+        """
+        now = int(time.time())
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
+                                     rrule='FREQ=HOURLY;COUNT=2')
+
+    def test_resv_from_job_in_multi_sched_using_qsub(self):
+        """
+        Test that a user is able to create a reservation out of a job using
+        qsub when the job is part of a non-default partition
+        """
+        self.common_setup()
+        # Turn off scheduling in all schedulers but sc1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        a = {ATTR_W: 'create_resv_from_job=1', ATTR_q: 'wq1',
+             'Resource_List.walltime': 1000}
+        job = Job(TEST_USER, a)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+
+        a = {ATTR_job: jid}
+        rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
+
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+             'partition': 'P1'}
+        self.server.expect(RESV, a, id=rid)
+
+    def test_resv_from_job_in_multi_sched_using_rsub(self):
+        """
+        Test that a user is able to create a reservation out of a job using
+        pbs_rsub when the job is part of a non-default partition
+        """
+        self.common_setup()
+        # Turn off scheduling in all schedulers but sc1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_q: 'wq1',
+             'Resource_List.walltime': 1000}
+        job = Job(TEST_USER, a)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+
+        a = {ATTR_job: jid}
+        resv = Reservation(attrs=a)
+        rid = self.server.submit(resv)
+
+        a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+             'partition': 'P1'}
+        self.server.expect(RESV, a, id=rid)

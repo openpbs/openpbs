@@ -246,12 +246,16 @@ query_server(status *pol, int pbs_sd)
 	query_sched_obj(policy, sched, sinfo);
 	pbs_statfree(all_sched);
 
-	if (!dflt_sched && (sinfo->partitions == NULL)) {
+	if (!dflt_sched && (sinfo->partition == NULL)) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
 		return NULL;
+	}
+	/* If it is a default scheduler then set the partition to have only one value "pbs-default" */
+	if (dflt_sched) {
+		sinfo->partition = string_dup(DEFAULT_PARTITION);
 	}
 
 	/* to avoid a possible race condition in which the time it takes to
@@ -260,10 +264,7 @@ query_server(status *pol, int pbs_sd)
 	 * will populate internal data structures based on this batch status
 	 * after all other data is queried
 	 */
-	if (dflt_sched)
-		bs_resvs = stat_resvs(pbs_sd);
-	else
-		bs_resvs = NULL;
+	bs_resvs = stat_resvs(pbs_sd);
 
 	/* get the nodes, if any - NOTE: will set sinfo -> num_nodes */
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
@@ -873,7 +874,7 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
 			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_partition)) {
-			sinfo->partitions = break_comma_list(attrp->value);
+			sinfo->partition = string_dup(attrp->value);
 		} else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
 			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
@@ -1204,8 +1205,8 @@ free_server_info(server_info *sinfo)
 		free_queue_list(sinfo->queue_list);
 	if(sinfo->equiv_classes != NULL)
 		free_resresv_set_array(sinfo->equiv_classes);
-	if (sinfo->partitions != NULL)
-		free_string_array(sinfo->partitions);
+	if (sinfo->partition != NULL)
+		free(sinfo->partition);
 	if(sinfo->buckets != NULL)
 		free_node_bucket_array(sinfo->buckets);
 
@@ -1322,7 +1323,7 @@ new_server_info(int limallocflag)
 	sinfo->pset_metadata_stale = 0;
 	sinfo->sched_cycle_len = 0;
 	sinfo->num_parts = 0;
-	sinfo->partitions = NULL;
+	sinfo->partition = NULL;
 	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
 	sinfo->res = NULL;
@@ -2332,7 +2333,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
-	nsinfo->partitions = dup_string_array(osinfo->partitions);
+	nsinfo->partition = string_dup(osinfo->partition);
 	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
 	nsinfo->name = string_dup(osinfo->name);
 	nsinfo->preempt_targets_enable = osinfo->preempt_targets_enable;

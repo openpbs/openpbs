@@ -299,6 +299,8 @@ extern "C" {
 #define PBSE_SCHED_PARTITION_ALREADY_EXISTS 15224 /* Partition already exists */
 #define PBSE_INVALID_MAX_JOB_SEQUENCE_ID 15225 /* Invalid max_job_sequence_id < 9999999, or > 999999999999 */
 #define PBSE_SVR_SCHED_JSF_INCOMPAT 15226	/* Server's job_sort_formula is incompatible with sched's */
+#define PBSE_NODE_BUSY	15227		 /* Node is busy */
+#define PBSE_DEFAULT_PARTITION 15228	/* Default partition name is not allowed */
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

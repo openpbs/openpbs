@@ -1323,7 +1323,6 @@ free_string_array(char **arr)
 	}
 }
 
-
 /**
  * @brief
  * 		Convert a duration to HH:MM:SS format string

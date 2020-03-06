@@ -530,6 +530,7 @@ req_confirmresv(struct batch_request *preq)
 	int sub = 0;
 	int resv_count = 0;
 	int is_degraded = 0;
+	int is_confirmed = 0;
 	char *execvnodes = NULL;
 	char *next_execvnode = NULL;
 	char **short_xc = NULL;
@@ -540,6 +541,7 @@ req_confirmresv(struct batch_request *preq)
 	char *tmp_buf = NULL;
 	size_t tmp_buf_size = 0;
 	char buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME+256] = {0}; /* FQDN resvID+text */
+	char *partition_name = NULL;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -553,6 +555,12 @@ req_confirmresv(struct batch_request *preq)
 	}
 	is_degraded = (presv->ri_qs.ri_substate == RESV_DEGRADED || presv->ri_qs.ri_substate == RESV_IN_CONFLICT) ? 1 : 0;
 	is_being_altered = presv->ri_alter_flags;
+	is_confirmed = (presv->ri_qs.ri_substate == RESV_CONFIRMED) ? 1 : 0;
+
+	/* Check if preq is coming from scheduler */
+	/* Increment reply count if reservation is not already confirmed*/
+	if (!is_confirmed && !is_degraded && !is_being_altered)
+		presv->rep_sched_count++;
 
 	if (preq->rq_extend == NULL) {
 		req_reject(PBSE_resvFail, 0, preq);
@@ -578,32 +586,32 @@ req_confirmresv(struct batch_request *preq)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 			}
 		} else {
-			if (!is_being_altered)
-				log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
-					LOG_INFO, presv->ri_qs.ri_resvID,
-					"Reservation denied");
-
-			/* Clients waiting on an interactive request must be
-			 * notified of the failure to confirm
-			 */
-			if ((presv->ri_brp != NULL) &&
-				(presv->ri_wattr[RESV_ATR_interactive].at_flags &
-				ATR_VFLAG_SET)) {
-				presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-				snprintf(buf, sizeof(buf), "%s DENIED",
-					presv->ri_qs.ri_resvID);
-				(void)reply_text(presv->ri_brp,
-					PBSE_NONE, buf);
-				presv->ri_brp = NULL;
-			}
-			if (!is_being_altered) {
-				(void)snprintf(log_buffer, sizeof(log_buffer),
-					"requestor=%s@%s", msg_daemonname, server_host);
-				account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-					LOG_NOTICE, presv->ri_qs.ri_resvID,
-					"reservation deleted");
-				resv_purge(presv);
+			if (presv->rep_sched_count >= presv->req_sched_count && !is_confirmed) {
+				/* Clients waiting on an interactive request must be
+				* notified of the failure to confirm
+				*/
+				if ((presv->ri_brp != NULL) &&
+					(presv->ri_wattr[RESV_ATR_interactive].at_flags &
+					ATR_VFLAG_SET)) {
+					presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
+					snprintf(buf, sizeof(buf), "%s DENIED",
+						presv->ri_qs.ri_resvID);
+					(void)reply_text(presv->ri_brp,
+						PBSE_NONE, buf);
+					presv->ri_brp = NULL;
+				}
+				if (!is_being_altered) {
+					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
+						LOG_INFO, presv->ri_qs.ri_resvID,
+						"Reservation denied");
+					(void)snprintf(log_buffer, sizeof(log_buffer),
+						"requestor=%s@%s", msg_daemonname, server_host);
+					account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
+						LOG_NOTICE, presv->ri_qs.ri_resvID,
+						"reservation deleted");
+					resv_purge(presv);
+				}
 			}
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
@@ -613,6 +621,21 @@ req_confirmresv(struct batch_request *preq)
 		}
 		reply_ack(preq);
 		return;
+	}
+	if (strncmp(preq->rq_extend, PBS_RESV_CONFIRM_SUCCESS, strlen(PBS_RESV_CONFIRM_SUCCESS)) == 0) {
+		char *p_tmp;
+		p_tmp = strstr(preq->rq_extend, ":partition=");
+		if (p_tmp) {
+			p_tmp += strlen(":partition=");
+			partition_name = strdup(p_tmp);
+		} else
+			partition_name = strdup(DEFAULT_PARTITION);
+
+		if (partition_name == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
 	}
 
 #ifdef NAS /* localmod 122 */
@@ -808,7 +831,38 @@ req_confirmresv(struct batch_request *preq)
 	cmp_resvStateRelated_attrs((void *)presv,
 		presv->ri_qs.ri_type);
 	Update_Resvstate_if_resv(presv->ri_jbp);
-
+	if (state == RESV_CONFIRMED && partition_name != NULL) {
+		/* Set the name of the partition where the reservation is confirmed*/
+		pbs_queue *rque = NULL;
+		char *qname = NULL;
+		char *p;
+		resv_attr_def[(int)RESV_ATR_partition].at_decode(
+			&presv->ri_wattr[(int)RESV_ATR_partition], NULL, NULL, partition_name);
+		qname = strdup(presv->ri_qs.ri_resvID);
+		if (qname == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "malloc failed");
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free(partition_name);
+			return;
+		}
+		p = strpbrk(qname, ".");
+		if (p != NULL)
+			*p = '\0';
+		rque = find_queuebyname(qname);
+		if (rque == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "Reservation queue not found");
+			req_reject(PBSE_INTERNAL, 0, preq);
+			free(partition_name);
+			free (qname);
+			return;
+		} else {
+			que_attr_def[(int)QA_ATR_partition].at_decode(&rque->qu_attr[QA_ATR_partition],
+									NULL, NULL, partition_name);
+			que_save_db(rque, QUE_SAVE_FULL);
+		}
+		free(partition_name);
+		free(qname);
+	}
 	if (presv->ri_modified)
 		(void)job_or_resv_save((void *)presv, SAVERESV_FULL, RESC_RESV_OBJECT);
 
@@ -871,10 +925,9 @@ req_confirmresv(struct batch_request *preq)
 
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 			  presv->ri_qs.ri_resvID, "Reservation alter confirmed");
-	} else {
+	} else
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 			  presv->ri_qs.ri_resvID, "Reservation confirmed");
-	}
 
 	if (!is_degraded) {
 		/* 100 extra bytes for field names, times, and count */

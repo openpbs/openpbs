@@ -108,7 +108,7 @@ void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	char *job_state);
 
-int queue_in_partition(queue_info *qinfo, char **partitions);
+int queue_in_partition(queue_info *qinfo, char *partition);
 
 
 #ifdef	__cplusplus

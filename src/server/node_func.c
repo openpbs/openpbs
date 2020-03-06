@@ -2331,7 +2331,7 @@ chk_vnode_pool (attribute *new, void *pobj, int actmode)
 
 /**
  * @brief
- * 		action routine for the queue's "partition" attribute
+ *		action routine for the node's "partition" attribute
  *
  * @param[in]	pattr	-	attribute being set
  * @param[in]	pobj	-	Object on which attribute is being set
@@ -2347,8 +2347,12 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 {
 	struct pbsnode *pnode;
 	pbs_queue 	*pq;
+	struct  pbssubn *psn;
 
 	pnode = (pbsnode *)pobj;
+
+	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
+		return PBSE_DEFAULT_PARTITION;
 
 	if (pnode->nd_attr[(int)ND_ATR_Queue].at_flags & ATR_VFLAG_SET) {
 		pq = find_queuebyname(pnode->nd_attr[(int)ND_ATR_Queue].at_val.at_str);
@@ -2361,5 +2365,13 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 		}
 	}
 
+	/* reject setting the node partition if the node is busy or has a reservation scheduled to run on it */
+	if (pnode->nd_resvp != NULL)
+		return PBSE_NODE_BUSY;
+
+
+	for (psn = pnode->nd_psn; psn; psn = psn->next)
+		if (psn->jobs != NULL)
+			return PBSE_NODE_BUSY;
 	return PBSE_NONE;
 }

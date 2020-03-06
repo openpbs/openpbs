@@ -2109,6 +2109,50 @@ locate_new_job(struct batch_request *preq, char *jobid)
 
 #ifndef PBS_MOM	/* SERVER only */
 /**
+ * @brief  Function to notify relevant scheduler of the command passed to this function
+ *
+ * @param[in] cmd - The command that is to be notified to the scheduler
+ * @param[in] resv - The reservation related to the command
+ *
+ * @return void
+ *
+ */
+void notify_scheds_about_resv(int cmd, resc_resv *resv)
+{
+	pbs_sched *psched;
+	char *partition_name = NULL;
+
+	if (resv != NULL && resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
+		partition_name = resv->ri_wattr[(int)RESV_ATR_partition].at_val.at_str;
+
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		if (partition_name != NULL) {
+			if (strcmp(partition_name, DEFAULT_PARTITION) == 0) {
+				if (dflt_scheduler->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+					set_scheduler_flag(cmd, dflt_scheduler);
+					resv->req_sched_count++;
+				}
+				break;
+			} else {
+				pbs_sched *tmp;
+				tmp = find_sched_from_partition(partition_name);
+				if (tmp != NULL && (tmp->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1)) {
+					set_scheduler_flag(cmd, tmp);
+					resv->req_sched_count++;
+					break;
+				}
+			}
+		} else {
+			if (psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+				set_scheduler_flag(cmd, psched);
+				resv->req_sched_count++;
+			}
+		}
+	}
+	return;
+}
+
+/**
  * @brief
  *		"resvSub" Batch Request processing routine
  *
@@ -2147,6 +2191,7 @@ req_resvSub(struct batch_request *preq)
 	job *pjob;
 	int rc2 = 0;
 	char owner[PBS_MAXUSER + 1];
+	char *partition_name = NULL;
 
 	if (preq->rq_extend && strchr(preq->rq_extend, 'm'))
 		is_maintenance = 1;
@@ -2400,6 +2445,10 @@ req_resvSub(struct batch_request *preq)
 				resv_free(presv);
 				return;
 			}
+			if (pjob->ji_qhdr->qu_attr[(int)QA_ATR_partition].at_flags & ATR_VFLAG_SET)
+				partition_name = pjob->ji_qhdr->qu_attr[(int)QA_ATR_partition].at_val.at_str;
+			else
+				partition_name = DEFAULT_PARTITION;
 			is_resv_from_job = 1;
 		}
 
@@ -2758,8 +2807,7 @@ req_resvSub(struct batch_request *preq)
 
 	/* link reservation into server's reservation list */
 	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-
-	if ((is_resv_from_job) && (confirm_resv_locally(presv, preq))) {
+	if ((is_resv_from_job) && (confirm_resv_locally(presv, preq, partition_name))) {
 		resv_purge(presv);
 		req_reject(PBSE_resvFail, 0, preq);
 		return;
@@ -2831,13 +2879,12 @@ req_resvSub(struct batch_request *preq)
 	}
 	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 		presv->ri_qs.ri_resvID, log_buffer);
-		
-	/* link reservation into server's reservation list
-	 * and let the scheduler know that something new
+
+	/* let the scheduler know that something new
 	 * is available for consideration
 	 */
 	if (!is_maintenance && !is_resv_from_job)
-		set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
+		notify_scheds_about_resv(SCH_SCHEDULE_NEW, presv);
 }
 
 static struct dont_set_in_max {
@@ -3479,18 +3526,20 @@ copy_params_from_job(char *jobid, resc_resv *presv)
  *
  * @param[in] - presv - reservation that needs to be confirmed.
  * @param[in] - orig_preq - batch request.
+ * @param[in] - partition_name - partition in which the reservation needs to be confirmed.
  *
  * @return int
  * @retval 0: Success
  * @retval != 0: error
  */
 int
-confirm_resv_locally(resc_resv *presv, struct batch_request *orig_preq)
+confirm_resv_locally(resc_resv *presv, struct batch_request *orig_preq, char *partition_name)
 {
 	char *at;
 	job *pjob;
 	struct work_task *pwt;
 	struct batch_request *preq;
+	int extend_size = 0;
 
 	presv->resv_from_job = 1;
 	preq = alloc_br(PBS_BATCH_ConfirmResv);
@@ -3500,12 +3549,17 @@ confirm_resv_locally(resc_resv *presv, struct batch_request *orig_preq)
 		return 1;
 	}
 
-	preq->rq_extend = strdup(PBS_RESV_CONFIRM_SUCCESS);
+	/* extend field format is "PBS_RESV_CONFIRM_SUCCESS:partition=<partition name>"
+	 * allocate enough memory to be able to support the format.
+	 */
+	extend_size = strlen(PBS_RESV_CONFIRM_SUCCESS) + strlen(partition_name) + 12;
+	preq->rq_extend = malloc(extend_size);
 	if (preq->rq_extend == NULL) {
 		free_br(preq);
 		return 1;
 	}
-	
+	snprintf(preq->rq_extend, extend_size, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS, partition_name);
+
 	(void)strcpy(preq->rq_ind.rq_run.rq_jid, presv->ri_qs.ri_resvID);
 	preq->rq_perm |= ATR_DFLAG_MGWR;
 
