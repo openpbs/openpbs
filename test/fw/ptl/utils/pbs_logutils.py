@@ -1293,6 +1293,7 @@ class PBSSchedulerLog(PBSLogAnalyzer):
         m = self.tm_tag.match(rec)
         if m:
             tm = self.logutils.convert_date_time(m.group('datetime'))
+            tm = round(tm, 0)
             self.record_tm.append(tm)
             if self.logutils.in_range(tm, start, end):
                 rv = self._parse_line(rec)
