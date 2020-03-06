@@ -330,6 +330,10 @@ process_request(int sfds)
 
 #ifndef PBS_MOM
 	strcpy(conn->cn_physhost, request->rq_host);
+	if (conn->cn_username[0] == '\0')
+		strcpy(conn->cn_username, request->rq_user);
+	if (conn->cn_hostname[0] == '\0')
+		strcpy(conn->cn_hostname, request->rq_host);
 	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) != 0) {
 		/*
 		 * If the request is coming on the socket we opened to the
@@ -354,13 +358,17 @@ process_request(int sfds)
 
 #ifndef PBS_MOM
 	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect && request->rq_type != PBS_BATCH_Authenticate) {
-		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY) {
+		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
+			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
 			req_reject(PBSE_BADCRED, 0, request);
 			close_client(sfds);
 			return;
 		}
 
-		if (conn->cn_credid == NULL && conn->cn_auth_config->auth_method != NULL && strcmp(conn->cn_auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
+		if (conn->cn_credid == NULL &&
+			conn->cn_auth_config != NULL &&
+			conn->cn_auth_config->auth_method != NULL &&
+			strcmp(conn->cn_auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 			char *user = NULL;
 			char *host = NULL;
 			char *realm = NULL;
@@ -421,6 +429,7 @@ process_request(int sfds)
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	if (conn->cn_credid != NULL &&
 		(conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 &&
+		conn->cn_auth_config != NULL &&
 		conn->cn_auth_config->auth_method != NULL &&
 		strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		strcpy(request->rq_user, conn->cn_username);

@@ -758,7 +758,10 @@ req_quejob(struct batch_request *preq)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* save gssapi/krb5 creds for this job */
-	if (conn->cn_credid != NULL && conn->cn_auth_config->auth_method != NULL && strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
+	if (conn->cn_credid != NULL &&
+		conn->cn_auth_config != NULL &&
+		conn->cn_auth_config->auth_method != NULL
+		&& strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 			"saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
 
