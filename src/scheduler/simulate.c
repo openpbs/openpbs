@@ -1099,6 +1099,7 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
 		return NULL;
 
 	nte = create_event(ote->event_type, ote->event_time, event_ptr, ote->event_func, ote->event_func_arg);
+	set_timed_event_disabled(nte, ote->disabled);
 
 	return nte;
 }
