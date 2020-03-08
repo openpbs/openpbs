@@ -2388,8 +2388,8 @@ class CgroupUtils(object):
                 prefix = ''
             else:
                 prefix = subsys + '.'
-        if self.systemd_version < 205:
-            return os.path.join(mnt_point, self.cfg['cgroup_prefix'], prefix)
+#        if self.systemd_version < 205:
+#            now return the exact same path -- do not try to elide ".slice"
         return os.path.join(mnt_point,
                             str(self.cfg['cgroup_prefix']) + '.slice', prefix)
 
@@ -4201,9 +4201,6 @@ class CgroupUtils(object):
         self._create_slice(jobid)
         # Iterate over the enabled subsystems
         for subsys in self.subsystems:
-            if subsys == 'systemd':
-                # The _create_slice method already created a directory
-                continue
             # Create a directory for the job
             old_umask = os.umask(0o022)
             try:
