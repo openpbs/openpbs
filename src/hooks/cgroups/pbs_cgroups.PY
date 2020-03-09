@@ -2242,6 +2242,8 @@ class CgroupUtils(object):
             self.systemd_version = systemd_version
         else:
             self.systemd_version = self._get_systemd_version()
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: systemd version seems to be %d'
+                   % (caller_name(), self.systemd_version))
         # Collect the cgroup mount points
         if paths is not None:
             self.paths = paths
@@ -2347,8 +2349,9 @@ class CgroupUtils(object):
                 subsystems.append(key)
         # Add an entry for systemd if anything else is enabled. This allows
         # the hook to cleanup any directories systemd leaves behind.
+        # Add at start since we want this processed first
         if subsystems and self.systemd_version >= 205:
-            subsystems.append('systemd')
+            subsystems.insert(0, 'systemd')
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Enabled subsystems: %s' %
                    (caller_name(), subsystems))
         # It is not an error for all subsystems to be disabled.
@@ -2793,7 +2796,6 @@ class CgroupUtils(object):
             # Create a systemd slice for PBS
             self._create_slice()
             # Create the directories that PBS will use to house the jobs
-
             for subsys in self.subsystems:
                 subdir = self._cgroup_path(subsys)
                 if not subdir:
@@ -3044,11 +3046,13 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         ver = 0
         try:
-            process = subprocess.Popen(['systemctl', '--version'], shell=False,
+            process = subprocess.Popen(['systemctl', '--system', 'show',
+                                        '--property=Version'],
+                                       shell=False,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
-            ver = int(re.sub(r'systemd ([0-9]+)', r'\1', out.splitlines()[0]))
+            ver = int(re.sub(r'Version=([0-9]+)', r'\1', out.splitlines()[0]))
         except Exception:
             # Loop through the mounts to see if systemd is present. Do not
             # rely on self.paths because it has not been initialized yet.
@@ -3062,6 +3066,10 @@ class CgroupUtils(object):
                         # Must be at least version 205 if the cgroup is present
                         return 205
             # systemd is missing or broken
+            return 0
+        if not os.path.exists(
+                os.path.join(os.sep, 'run', 'systemd', 'system')):
+            # no place to put slices in? systemd not running in system mode?
             return 0
         return ver
 
@@ -4198,6 +4206,8 @@ class CgroupUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         # Create a systemd slice for the job
+        # if there is a recent systemd, should create the "systemd" directory
+        # so that systemd doesn't delete what we create here
         self._create_slice(jobid)
         # Iterate over the enabled subsystems
         for subsys in self.subsystems:
@@ -4649,7 +4659,7 @@ class CgroupUtils(object):
         self.cleanup_hook_data(local_jobs)
         self.cleanup_env_files(local_jobs)
         remaining = 0
-        # Always do systemd first, to prevent it from "mirroring"
+        # Always do systemd first, to prevent it from re-"mirroring"
         # that directory into other hierarchies behind our back
         if 'systemd' in self.paths:
             keys_to_process = \
@@ -4714,6 +4724,8 @@ class CgroupUtils(object):
             self._delete_slice(jobid)
             while not finished:
                 failure = False
+                # Always do systemd first, to prevent it from re-"mirroring"
+                # that directory into other hierarchies behind our back
                 if 'systemd' in self.paths:
                     keys_to_process = \
                         (['systemd']
