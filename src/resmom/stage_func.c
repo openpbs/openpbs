@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -167,8 +168,14 @@ is_child_path(char *dir, char *path)
 		snprintf(fullpath, sizeof(fullpath), "%s", path);
 	}
 
+#ifdef WIN32
 	dir_real = malloc(sizeof(char) * (MAXPATHLEN + 1));
 	fullpath_real = malloc(sizeof(char) * (2 * MAXPATHLEN + 2));
+#else
+	dir_real = realpath(dir, NULL);
+	fullpath_real = realpath(fullpath, NULL);
+#endif
+
 	if (dir_real == NULL || fullpath_real == NULL) {
 		return_value = -1;
 		goto error_exit;
@@ -181,11 +188,7 @@ is_child_path(char *dir, char *path)
 	forward2back_slash(fullpath);
 	strncpy(dir_real, lpath2short(dir), MAXPATHLEN);
 	strncpy(fullpath_real, lpath2short(fullpath), 2 * MAXPATHLEN + 1);
-#else
-	realpath(dir, dir_real);
-	realpath(fullpath, fullpath_real);
 #endif
-
 	/* check that fullpath_real begins with dir_real */
 	if (strlen(dir_real) && strlen(fullpath_real)) {
 		pos = strstr(fullpath_real, dir_real);

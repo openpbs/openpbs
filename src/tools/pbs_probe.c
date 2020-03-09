@@ -83,10 +83,10 @@
 #include <sys/utsname.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
