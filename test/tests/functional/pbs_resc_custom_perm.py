@@ -82,8 +82,8 @@ e.vnode_list[localnode].resources_available['foo_strh'] = "str_hook"
             startup_hook_body,
             overwrite=True)
 
-        # Restart the MoM so that exechost_startup hook can run.
-        self.momA.restart()
+        # HUP the MoM so that exechost_startup hook can run.
+        self.momA.signal("-HUP")
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
