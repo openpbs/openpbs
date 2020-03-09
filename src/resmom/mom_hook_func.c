@@ -3531,7 +3531,7 @@ void reply_hook_bg(job *pjob)
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)strncpy(pjob2->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+					(void)snprintf(pjob2->ji_qs.ji_jobid, PBS_MAXSVRJOBID, jobid);
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
 							runver;
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
