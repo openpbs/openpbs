@@ -1780,7 +1780,8 @@ class BatchUtils(object):
                 m = self.pbsobjattrval_re.match(l)
                 if m:
                     attr = m.group('attribute')
-                    if attribs is None or attr in attribs:
+                    if (attribs is None or str(attr).lower() in attribs
+                            or attr in attribs):
                         if attr in d:
                             d[attr] = d[attr] + "," + m.group('value')
                         else:
