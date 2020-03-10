@@ -1611,7 +1611,7 @@ class JSONDb(DBType):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
         self.jdata = {
             'test_conf': {},
-            'test_summary':{
+            'test_summary': {
                 'result_summary': {
                     'run': 0,
                     'succeeded': 0,
