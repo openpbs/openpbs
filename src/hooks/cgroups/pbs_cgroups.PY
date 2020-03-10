@@ -3064,7 +3064,7 @@ class CgroupUtils(object):
                     flags = entries[3].split(',')
                     if 'systemd' in flags or 'name=systemd' in flags:
                         # Must be at least version 205 if the cgroup is present
-                        return 205
+                        ver = 205
             # systemd is missing or broken
             return 0
         if not os.path.exists(
