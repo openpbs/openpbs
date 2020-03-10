@@ -56,7 +56,7 @@ def get_hook_body(hook_msg):
     pbs.logmsg(pbs.LOG_DEBUG, '%s')
     """ % hook_msg
     hook_body = textwrap.dedent(hook_body)
-    return hook_msg
+    return hook_body
 
 
 @tags('hooks', 'smoke')
@@ -70,43 +70,14 @@ class TestHookManagement(TestFunctional):
         hook_name = "management"
         hook_msg = 'running management hook_00'
         hook_body = get_hook_body(hook_msg)
-        # attrs = {'event': 'management', 'enabled': 'True'}
-        # rv = self.server.create_import_hook(
-        #     hook_name, attrs=attrs, body=hook_body, overwrite=True)
-
-        qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"], "bin",
-                                 "qmgr")
-        fn00 = self.du.create_temp_file()
-        fn01 = self.du.create_temp_file()
-        with open(fn00, "w+") as tempfd:
-            tempfd_name = tempfd.name
-            tempfd.write(hook_body)
-            self.logger.info("tempfd_name:%s" % tempfd_name)
-
-        self.logger.info("hook_name:%s" % hook_name)
-        qmgr_setup = [qmgr_path, "-c",
-                      "create hook %s event=management" % hook_name]
-        qmgr_cmd = [qmgr_path, "-c",
-                    "import hook %s application/x-python default %s" %
-                    (hook_name, tempfd_name)]
-        qmgr_cleanup = [qmgr_path, "-c",
-                        "delete hook %s event=management" % hook_name]
-        self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
-        current_host = socket.gethostname().split('.')[0]
-
-        start_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        attrs = {'event': 'management', 'enabled': 'True'}
         start_time = int(time.time())
-        with open(fn01, "w+") as tempfd2:
-            ret = self.du.run_cmd(current_host, qmgr_setup, stdout=tempfd2,
-                                  runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cmd, stdout=tempfd2,
-                                  runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cleanup, stdout=tempfd2,
-                                  runas='root')
-            self.logger.info("tempfd2.name:%s, ts:%s dt:%s" % (tempfd2.name,
-                             start_time, start_dt))
-        with open(fn01, "r") as tempfd2:
-            self.logger.info(tempfd2.read())
+        ret = self.server.create_hook(hook_name, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
+        ret = self.server.import_hook(hook_name, hook_body)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
+        ret = self.server.delete_hook(hook_name)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
 
         self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
@@ -114,120 +85,67 @@ class TestHookManagement(TestFunctional):
     def test_hook_01(self):
         """
         By creating an import hook, it executes a management hook.
-        hit it again!
+        Create three hooks, and create, import and delete each one.
         """
         self.logger.info("**************** HOOK START ****************")
         hook_msg = 'running management hook_01'
         hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
-
-        qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"],
-                                 "bin", "qmgr")
-        fn00 = self.du.create_temp_file()
-        fn01 = self.du.create_temp_file()
-        with open(fn00, "w+") as tempfd:
-            tempfd_name = tempfd.name
-            tempfd.write(hook_body)
-            self.logger.info("tempfd_name:%s" % tempfd_name)
+        start_time = int(time.time())
         for hook_name in ['a1234', 'b1234', 'c1234']:
             self.logger.info("hook_name:%s" % hook_name)
-            qmgr_setup = [qmgr_path, "-c",
-                          "create hook %s event=management" % hook_name]
-            qmgr_cmd = [qmgr_path, "-c",
-                        "import hook %s application/x-python default %s" %
-                        (hook_name, tempfd_name)]
-            qmgr_cleanup = [qmgr_path, "-c",
-                            "delete hook %s event=management" % hook_name]
-            self.logger.info("qmgr_cmd:%s" % qmgr_cmd)
-            current_host = socket.gethostname().split('.')[0]
-
-            start_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            start_time = int(time.time())
-            with open(fn01, "w+") as tempfd2:
-                ret = self.du.run_cmd(current_host, qmgr_setup,
-                                      stdout=tempfd2, runas='root')
-                ret = self.du.run_cmd(current_host, qmgr_cmd,
-                                      stdout=tempfd2, runas='root')
-                ret = self.du.run_cmd(current_host, qmgr_cleanup,
-                                      stdout=tempfd2, runas='root')
-                self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
-                                 (tempfd2.name, start_time, start_dt))
-            with open(fn01, "r") as tempfd2:
-                self.logger.info(tempfd2.read())
+            ret = self.server.create_hook(hook_name, attrs)
+            self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
+            ret = self.server.import_hook(hook_name, hook_body)
+            self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
+            ret = self.server.delete_hook(hook_name)
+            self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
             self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
 
     def test_hook_02(self):
         """
         By creating an import hook, it executes a management hook.
-        hit it again!
+        Create three hooks serially, then delete them out of order.
         """
         self.logger.info("**************** HOOK START ****************")
-        hook_msg = 'running management hook_02'
-        hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
 
-        qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"],
-                                 "bin", "qmgr")
-        fn00 = self.du.create_temp_file()
-        fn01 = self.du.create_temp_file()
-        with open(fn00, "w+") as tempfd:
-            tempfd_name = tempfd.name
-            tempfd.write(hook_body)
-            self.logger.info("tempfd_name:%s" % tempfd_name)
-
         hook_name_00 = 'a1234'
-        qmgr_setup_00 = [qmgr_path, "-c",
-                         "create hook %s event=management" % hook_name_00]
-        qmgr_cmd_00 = [qmgr_path, "-c",
-                       "import hook %s application/x-python default %s" %
-                       (hook_name_00, tempfd_name)]
-        qmgr_cleanup_00 = [qmgr_path, "-c",
-                           "delete hook %s event=management" % hook_name_00]
         hook_name_01 = 'b1234'
-        qmgr_setup_01 = [qmgr_path, "-c",
-                         "create hook %s event=management" % hook_name_01]
-        qmgr_cmd_01 = [qmgr_path, "-c",
-                       "import hook %s application/x-python default %s" %
-                       (hook_name_01, tempfd_name)]
-        qmgr_cleanup_01 = [qmgr_path, "-c", "delete hook %s event=management" %
-                           hook_name_01]
         hook_name_02 = 'c1234'
-        qmgr_setup_02 = [qmgr_path, "-c",
-                         "create hook %s event=management" % hook_name_02]
-        qmgr_cmd_02 = [qmgr_path, "-c",
-                       "import hook %s application/x-python default %s" %
-                       (hook_name_02, tempfd_name)]
-        qmgr_cleanup_02 = [qmgr_path, "-c",
-                           "delete hook %s event=management" % hook_name_02]
+        hook_msg_00 = 'running management hook_02 name:%s' % hook_name_00
+        hook_body_00 = get_hook_body(hook_msg_00)
+        hook_msg_01 = 'running management hook_02 name:%s' % hook_name_01
+        hook_body_01 = get_hook_body(hook_msg_01)
+        hook_msg_02 = 'running management hook_02 name:%s' % hook_name_02
+        hook_body_02 = get_hook_body(hook_msg_02)
 
-        current_host = socket.gethostname().split('.')[0]
-
-        start_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         start_time = int(time.time())
-        with open(fn01, "w+") as tempfd2:
-            ret = self.du.run_cmd(current_host, qmgr_setup_00,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_setup_01,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_setup_02,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cmd_00,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cmd_01,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cmd_02,
-                                  stdout=tempfd2, runas='root')
-            # out of order delete
-            ret = self.du.run_cmd(current_host, qmgr_cleanup_01,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cleanup_00,
-                                  stdout=tempfd2, runas='root')
-            ret = self.du.run_cmd(current_host, qmgr_cleanup_02,
-                                  stdout=tempfd2, runas='root')
-            self.logger.info("tempfd2.name:%s, ts:%s dt:%s" %
-                             (tempfd2.name, start_time, start_dt))
-        with open(fn01, "r") as tempfd2:
-            self.logger.info(tempfd2.read())
-        self.server.log_match(hook_msg, starttime=start_time)
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.create_hook(hook_name_01, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_01)
+        ret = self.server.create_hook(hook_name_02, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_02)
+
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_01, hook_body_01)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_01)
+        ret = self.server.import_hook(hook_name_02, hook_body_02)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_02)
+
+        # out of order delete
+        ret = self.server.delete_hook(hook_name_01)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_01)
+        ret = self.server.delete_hook(hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
+        ret = self.server.delete_hook(hook_name_02)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_02)
+
+        self.server.log_match(hook_msg_00, starttime=start_time)
+        self.server.log_match(hook_msg_01, starttime=start_time)
+        self.server.log_match(hook_msg_02, starttime=start_time)
+
         self.logger.info("**************** HOOK END ****************")
