@@ -2156,3 +2156,28 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
         self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+    def test_server_recover_resv_queue(self):
+        """
+        Test that PBS server can recover a reservation queue after a
+        restart
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        now = int(time.time())
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      start=now + 5, end=now + 100)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.status(RESV, a, id=rid)
+
+        self.server.restart()
+        self.server.status(RESV, a, id=rid)
+
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: resv_queue}
+        J = Job(attrs=a)
+        jid = self.server.submit(J)
+
+        self.server.status(JOB, {ATTR_state: 'R'}, id=jid)

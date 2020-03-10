@@ -1022,6 +1022,9 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 	pbs_sched* pin_sched;
 	attribute *part_attr;
 
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
 	if (pobj == dflt_scheduler)
 		return PBSE_SCHED_OP_NOT_PERMITTED;
 	pin_sched = (pbs_sched*)pobj;
