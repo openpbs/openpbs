@@ -3403,10 +3403,11 @@ req_cpyfile(struct batch_request *preq)
 				if ((pbs_asprintf(&temp_buff, "%s\n", token)) != -1) {
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 						dup_rqcpf_jobid, temp_buff);
-					token = strtok_r(NULL, "\n", &save_ptr);
 					free(temp_buff);
 					temp_buff = NULL;
-				}
+				} else
+					break;
+				token = strtok_r(NULL, "\n", &save_ptr);
 			}
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 					dup_rqcpf_jobid, "---->>>>");
@@ -3572,10 +3573,11 @@ struct batch_request *preq;
 				if ((pbs_asprintf(&temp_buff, "%s\n", token)) != -1) {
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 						preq->rq_ind.rq_cpyfile.rq_jobid, temp_buff);
-					token = strtok_r(NULL, "\n", &save_ptr);
 					free(temp_buff);
 					temp_buff = NULL;
-				}	
+				} else
+					break;
+				token = strtok_r(NULL, "\n", &save_ptr);
 			}
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");	
