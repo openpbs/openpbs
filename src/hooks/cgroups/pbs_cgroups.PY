@@ -4744,14 +4744,14 @@ class CgroupUtils(object):
                         if subdir_jobid != jobid:
                             pbs.logmsg(pbs.EVENT_DEBUG4,
                                        '%s: Skipping because %s != %s' %
-                                       (caller_name(), finished,
+                                       (caller_name(),
                                         subdir_jobid, jobid))
                             continue
                         # Make sure it still exists
                         if not os.path.isdir(subdir):
                             pbs.logmsg(pbs.EVENT_DEBUG4,
                                        '%s: Skipping because %s is gone' %
-                                       (caller_name(), finished, subdir))
+                                       (caller_name(), subdir))
                             continue
                         # Remove it
                         pbs.logmsg(pbs.EVENT_DEBUG4,
