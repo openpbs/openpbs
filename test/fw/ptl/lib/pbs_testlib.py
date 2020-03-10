@@ -9626,7 +9626,7 @@ class Server(PBSService):
         for hook in hooks:
             if hook['id'] == name:
                 self.logger.info("Removing hook:%s" % name)
-                self.manager(MGR_CMD_DELETE, HOOK, id=[name])
+                self.manager(MGR_CMD_DELETE, HOOK, id=name)
         return True
 
     def import_hook(self, name, body, level=logging.INFO):
