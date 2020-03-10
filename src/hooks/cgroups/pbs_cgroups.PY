@@ -4736,41 +4736,33 @@ class CgroupUtils(object):
                     cgroup_path = self._cgroup_path(key)
                     path = os.path.dirname(self._cgroup_path(key))
                     pattern = self._systemd_subdir_wildcard()
-                    for subdir in glob.glob(os.path.join(path, pattern)):
-                        # Make sure it matches exactly
-                        dname = os.path.basename(subdir)
-                        subdir_jobid = self._systemd_subdir_to_jobid(dname)
-                        subdir_parent = os.path.dirname(subdir)
-                        if subdir_jobid != jobid:
-                            pbs.logmsg(pbs.EVENT_DEBUG4,
-                                       '%s: Skipping because %s != %s' %
-                                       (caller_name(),
-                                        subdir_jobid, jobid))
-                            continue
-                        # Make sure it still exists
-                        if not os.path.isdir(subdir):
-                            pbs.logmsg(pbs.EVENT_DEBUG4,
-                                       '%s: Skipping because %s is gone' %
-                                       (caller_name(), subdir))
-                            continue
-                        # Remove it
+                    subdir_basename = self._jobid_to_systemd_subdir(jobid)
+                    subdir = os.path.join(path, subdir_basename)
+                    subdir_parent = path
+                    # Make sure it still exists
+                    if not os.path.isdir(subdir):
                         pbs.logmsg(pbs.EVENT_DEBUG4,
-                                   '%s: Attempting to delete %s' %
+                                  '%s: Skipping because %s is gone' %
+                                  (caller_name(), subdir))
+                        continue
+                    # Remove it
+                    pbs.logmsg(pbs.EVENT_DEBUG4,
+                               '%s: Attempting to delete %s' %
+                               (caller_name(), subdir))
+                    if not self._remove_cgroup(subdir_parent, jobid):
+                        pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
+                                   'delete cgroup for job %s' %
+                                   (caller_name(), jobid))
+                    # Check again
+                    if os.path.isdir(subdir):
+                        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Deletion '
+                                   'failed: %s still exists' %
                                    (caller_name(), subdir))
-                        if not self._remove_cgroup(subdir_parent, jobid):
-                            pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Unable to '
-                                       'delete cgroup for job %s' %
-                                       (caller_name(), jobid))
-                        # Check again
-                        if os.path.isdir(subdir):
-                            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Deletion '
-                                       'failed: %s still exists' %
-                                       (caller_name(), subdir))
-                            failure = True
-                        else:
-                            pbs.logmsg(pbs.EVENT_DEBUG4,
-                                       '%s: Deleted %s' %
-                                       (caller_name(), subdir))
+                        failure = True
+                    else:
+                        pbs.logmsg(pbs.EVENT_DEBUG4,
+                                   '%s: Deleted %s' %
+                                   (caller_name(), subdir))
                 if not failure:
                     finished = True
                 elif time.time() > giveup_time:
