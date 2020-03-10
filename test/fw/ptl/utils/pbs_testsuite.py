@@ -172,9 +172,12 @@ def skipOnCpuSet(function):
     """
     Decorator to skip a test on a CpuSet system
     """
-
     def wrapper(self, *args, **kwargs):
-        if self.mom.is_cpuset_mom():
+        flag = False
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                flag = True
+        if flag:
             self.skipTest(reason='capability not supported on Cpuset')
         else:
             function(self, *args, **kwargs)
