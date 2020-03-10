@@ -2170,14 +2170,14 @@ class TestReservations(TestFunctional):
                                       start=now + 5, end=now + 100)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-        self.server.status(RESV, a, id=rid)
+        self.server.expect(RESV, a, id=rid)
 
         self.server.restart()
-        self.server.status(RESV, a, id=rid)
+        self.server.expect(RESV, a, id=rid)
 
         resv_queue = rid.split('.')[0]
         a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: resv_queue}
         J = Job(attrs=a)
         jid = self.server.submit(J)
 
-        self.server.status(JOB, {ATTR_state: 'R'}, id=jid)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
