@@ -12562,26 +12562,34 @@ release_nodes_exit:
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
  * @return char*
+ * @retval	NULL		- if an error occurred.
  */
 
 const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
 {
-	char *buf = strdup(head_str);
-	size_t size = strlen(buf);
+	char *buf = NULL;
+	size_t size = NULL;
 	svrattrl *plist = NULL;
 
 	if ((head_str == NULL) || (phead == NULL)) {
 		log_err(errno, __func__, "NULL input parameters!");
-		return buf;
+		return NULL;
 	}
+
+	buf = strdup(head_str);
+	size = strlen(buf);
 
 	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
 		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
 		char * tmp_buf;
 		size_t tmp_size;
-		pbs_asprintf(&tmp_buf, " %s.%s[%s]=%s", head_str,
-			plist->al_name, plist->al_resc, plist->al_value);
-		tmp_size = strlen(tmp_buf);
+		if (plist->al_resc) {
+			tmp_size = pbs_asprintf(&tmp_buf, " %s.%s[%s]=%s", head_str,
+				plist->al_name, plist->al_resc, plist->al_value);
+		} else {
+			tmp_size = pbs_asprintf(&tmp_buf, " %s.%s=%s", head_str,
+				plist->al_name, plist->al_value);
+		}
 		buf = realloc(buf, size + tmp_size + 1);
 		strcpy(buf + size, tmp_buf);
 		size += tmp_size;
@@ -12594,13 +12602,13 @@ const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
 /**
  *
  * @brief
- *	Returns a Python List of _server_attribute objects.
+ *	Returns a Python List of _server_attribute objects or  or NULL on error.
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
-* @return 	PyObject *
-* @retval	<object>	- the Python list object holding
-* @retval				the _server_attribute objects.
-* @retval	NULL		- if an error occurred.
+ * @return 	PyObject *
+ * @retval	<object>	- the Python list object holding
+ * @retval				the _server_attribute objects.
+ * @retval	NULL		- if an error occurred.
  */
 PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 {
@@ -12609,6 +12617,7 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 
 	if (phead == NULL) {
 		log_err(errno, __func__, "NULL input parameters!");
+		Py_CLEAR(py_list);
 		return NULL;
 	}
 
@@ -12624,13 +12633,18 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 					if (py_server_attribute_sister) {
 						PyList_Append(py_slist, py_server_attribute_sister);
 						Py_CLEAR(py_server_attribute_sister);
+					} else {
+						snprintf(log_buffer, LOG_BUF_SIZE-1,
+							"could not translate the sister for attribute <%s>", plist->al_name);
+						log_buffer[LOG_BUF_SIZE-1] = '\0';
+						log_err(PBSE_INTERNAL, __func__, log_buffer);
+						break;
 					}
 				}
-				Py_CLEAR(py_slist);
-			} else {
+			}/* else {
 				log_err(PBSE_INTERNAL, __func__,
 					"failed to acquire sisters in server_attribute object");
-			}
+			} */
 			PyList_Append(py_list, py_server_attribute);
 			Py_CLEAR(py_server_attribute);
 		}
@@ -12641,7 +12655,7 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 /**
  *
  * @brief
- *	Returns a Python List of _server_attribute objects.
+ *	Returns a Python _server_attribute object or NULL on error.
  * @param[in]	attribute	- pointer to the head of the list containing data.
  *
  * @return 	PyObject *
