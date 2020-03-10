@@ -660,7 +660,7 @@ check_node_eligibility_chunk(th_data_nd_eligible *data);
 void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl,
 		int num_nodes, schd_error *err);
 
-int node_in_partition(node_info *ninfo, char **partitions);
+int node_in_partition(node_info *ninfo, char *partition);
 /* add a node to a node array*/
 node_info **add_node_to_array(node_info **ninfo_arr, node_info *node);
 

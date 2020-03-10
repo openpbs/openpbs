@@ -157,6 +157,9 @@ class TestPbsNodeRampDown(TestFunctional):
         for _ in range(n):
             server_stat = self.server.status(SERVER, 'license_count')
             lic_count = server_stat[0]['license_count']
+            if lic_count.find('Avail_Global:10000000 ' +
+                              'Avail_Local:10000000 Used:0') != -1:
+                return
             for lic in lic_count.split():
                 lic_split = lic.split(':')
                 if lic_split[0] == 'Used':
@@ -7228,3 +7231,43 @@ else:
                                  'schedselect': newsel,
                                  'exec_host': new_exec_host,
                                  'exec_vnode': new_exec_vnode}, id=jid)
+
+    def test_execjob_end_called(self):
+        """
+        Test:
+             Test to make sure when a job is removed from
+             a mom host that the execjob_end hook is called on
+             that mom.
+        """
+
+        # First, submit an execjob_end hook:
+
+        hook_body = """
+import pbs
+pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
+"""
+
+        a = {'event': 'execjob_end', 'enabled': 'true'}
+        self.server.create_import_hook("endjob", a, hook_body)
+
+        # Create a multinode job request
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Wait for the job to start
+        self.server.expect(JOB, {'job_state': 'R'},
+                           offset=30, id=jid, max_attempts=30)
+
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, runas=TEST_USER)
+        self.assertEqual(ret['rc'], 0)
+
+        # Check the sister mom log for the "execjob_end hook executed"
+        self.momB.log_match("execjob_end hook executed")
+
+        # Verify the rest of the job is still running
+        self.server.expect(JOB, {'job_state': 'R'},
+                           id=jid, max_attempts=30)

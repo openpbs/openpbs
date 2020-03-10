@@ -488,7 +488,7 @@ static struct fc_translation_table fctt[] = {
 		"Too few free resources",
 		"Too few free resources",
 #endif
-	}
+	},
 };
 
 #define	ERR2COMMENT(code)	(fctt[(code) - RET_BASE].fc_comment)
@@ -2194,7 +2194,6 @@ new_resresv_set(void)
 	rset->user = NULL;
 	rset->group = NULL;
 	rset->project = NULL;
-	rset->partition = NULL;
 	rset->place_spec = NULL;
 	rset->req = NULL;
 	rset->select_spec = NULL;
@@ -2214,7 +2213,6 @@ free_resresv_set(resresv_set *rset) {
 	free(rset->user);
 	free(rset->group);
 	free(rset->project);
-	free(rset->partition);
 	free_selspec(rset->select_spec);
 	free_place(rset->place_spec);
 	free_resource_req_list(rset->req);
@@ -2271,11 +2269,6 @@ dup_resresv_set(resresv_set *oset, server_info *nsinfo)
 	}
 	rset->project = string_dup(oset->project);
 	if (oset->project != NULL && rset->project == NULL) {
-		free_resresv_set(rset);
-		return NULL;
-	}
-	rset->partition = string_dup(oset->partition);
-	if (oset->partition != NULL && rset->partition == NULL) {
 		free_resresv_set(rset);
 		return NULL;
 	}
@@ -2529,11 +2522,6 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 	if (resresv_set_use_proj(sinfo, rset->qinfo))
 		rset->project = string_dup(resresv->project);
 
-	if (resresv->is_job && resresv->job != NULL) {
-		if (resresv->job->queue->partition != NULL)
-			rset->partition = string_dup(resresv->job->queue->partition);
-	}
-
 	rset->select_spec = dup_selspec(resresv_set_which_selspec(resresv));
 	if (rset->select_spec == NULL) {
 		free_resresv_set(rset);
@@ -2568,7 +2556,7 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
  * @retval -1 if not found or on error
  */
 int
-find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, char *partition, selspec *sel, place *pl, resource_req *req, queue_info *qinfo)
+find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo)
 {
 	int i;
 
@@ -2594,11 +2582,6 @@ find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, c
 		if ((project != NULL && rsets[i]->project == NULL) || (project == NULL && rsets[i]->project != NULL))
 			continue;
 		if (project != NULL && cstrcmp(project, rsets[i]->project) != 0)
-			continue;
-
-		if ((partition != NULL && rsets[i]->partition == NULL) || (partition == NULL && rsets[i]->partition != NULL))
-			continue;
-		if (partition != NULL && cstrcmp(partition, rsets[i]->partition) != 0)
 			continue;
 
 		if (compare_selspec(rsets[i]->select_spec, sel) == 0)
@@ -2627,7 +2610,6 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	char *user = NULL;
 	char *grp = NULL;
 	char *proj = NULL;
-	char *partition = NULL;
 	queue_info *qinfo = NULL;
 	selspec *sspec;
 
@@ -2647,14 +2629,9 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	if (resresv_set_use_proj(resresv->server, qinfo))
 		proj = resresv->project;
 
-	if (resresv->is_job && resresv->job != NULL) {
-		if (resresv->job->queue->partition != NULL)
-			partition = resresv->job->queue->partition;
-	}
-
 	sspec = resresv_set_which_selspec(resresv);
 
-	return find_resresv_set(policy, rsets, user, grp, proj, partition, sspec, resresv->place_spec, resresv->resreq, qinfo);
+	return find_resresv_set(policy, rsets, user, grp, proj, sspec, resresv->place_spec, resresv->resreq, qinfo);
 }
 
 /**

@@ -473,6 +473,7 @@ alloc_tdata_dup_nodes(resource_resv **oresresv_arr, resource_resv **nresresv_arr
 	tdata->nqinfo = nqinfo;
 	tdata->sidx = sidx;
 	tdata->eidx = eidx;
+	tdata->error = 0;
 
 	return tdata;
 }
@@ -593,7 +594,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 
 	if (oresresv == NULL || nsinfo == NULL || err == NULL)
 		return NULL;
-	
+
 	clear_schd_error(err);
 
 	if (!is_resource_resv_valid(oresresv, err)) {

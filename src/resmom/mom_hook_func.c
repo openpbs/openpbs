@@ -3421,6 +3421,8 @@ void reply_hook_bg(job *pjob)
 	int	n = 0;
 	int	ret = 0;
 	char	jobid[PBS_MAXSVRJOBID+1] = {'\0'};
+	job	*pjob2 = NULL;
+	long	runver;
 #if !MOM_ALPS
 	struct	batch_request *preq = pjob->ji_preq;
 #endif
@@ -3493,6 +3495,7 @@ void reply_hook_bg(job *pjob)
 			case BG_NONE:
 			case BG_IM_DELETE_JOB_REPLY:
 			case BG_IM_DELETE_JOB:
+			case BG_IM_DELETE_JOB2:
 			case BG_IS_DISCARD_JOB:
 				break;
 
@@ -3509,6 +3512,39 @@ void reply_hook_bg(job *pjob)
 			case BG_IM_DELETE_JOB:
 				pjob->ji_hook_running_bg_on = BG_NONE;
 				mom_deljob(pjob);
+				break;
+			case BG_IM_DELETE_JOB2:
+				strcpy(jobid, pjob->ji_qs.ji_jobid);
+				pjob->ji_hook_running_bg_on = BG_NONE;
+				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
+					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+				} else {
+					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
+				}
+				mom_deljob(pjob);
+
+				/* Needed to create a lightweight copy of the job to
+				 * contain only the jobid info, so I can just call
+				 * new_job_action() to create a JOB_ACT_REQ_DEALLOCATE
+				 * request. Can't use the original 'pjob' structure as
+				 * before creating the request, the real job should have
+				 * been deleted already.
+				 */
+				if ((pjob2 = job_alloc()) != NULL) {
+					(void)snprintf(pjob2->ji_qs.ji_jobid, PBS_MAXSVRJOBID, "%s", jobid);
+					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
+							runver;
+					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+					/* JOB_ACT_REQ_DEALLOCATE request will tell the
+					 * the server that this mom has completely deleted the
+					 * job and now the server can officially free up the
+					 * job from the nodes managed by this mom, allowing
+					 * other jobs to run.
+					 */
+					new_job_action_req(pjob2, HOOK_PBSADMIN, JOB_ACT_REQ_DEALLOCATE);
+					job_free(pjob2);
+				}
+				break;
 
 			/**
 			 * Following cases to avoid the below compilation

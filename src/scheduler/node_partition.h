@@ -109,9 +109,10 @@ node_partition **copy_node_partition_ptr_array(node_partition **onp_arr, node_pa
  *
  *      create_node_partitions - break apart nodes into partitions
  *
- *         IN: sinfo - nodes to create partitions from
+ *         IN: policy - policy info
+ *         IN: nodes  -  the nodes to create partitions from
  *	   IN: resname - node grouping resource name
- *         IN: dont_set_node - don't set the np_arr flags on the nodes
+ *         IN: flags - flags which change operations of node partition creation
  *	  OUT: num_parts - the number of node partitions created
  *
  *      returns node_partition array or NULL on error
@@ -214,7 +215,7 @@ int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *
  *				   nodes, rather than from a placement
  *				   set resource=value
  */
-node_partition *create_specific_nodepart(status *policy, char *name, node_info **nodes);
+node_partition *create_specific_nodepart(status *policy, char *name, node_info **nodes, int flags );
 /* create the placement sets for the server and queues */
 int create_placement_sets(status *policy, server_info *sinfo);
 

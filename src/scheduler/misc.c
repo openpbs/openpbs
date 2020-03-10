@@ -890,6 +890,41 @@ remove_ptr_from_array(void **arr, void *ptr)
 
 /**
  * @brief
+ *		remove_str_from_array - remove a string from a ptr list and move
+ *				the rest of the pointers up to fill the hole
+ *				Pointer array size will not change - an extra
+ *				NULL is added to the end
+ *
+ *	  arr - pointer array
+ *	  str - string  to remove from array
+ *
+ *	returns non-zero if the str was successfully removed from the array
+ *		zero if the array has not been modified
+ *
+ */
+int
+remove_str_from_array(char **arr, char *str)
+{
+	int i, j;
+
+	if (arr == NULL || str == NULL)
+		return 0;
+
+	for (i = 0; arr[i] != NULL && (strcmp(arr[i], str) != 0); i++)
+		;
+
+	if (arr[i] != NULL) {
+		free(arr[i]);
+		for (j = i; arr[j] != NULL; j++)
+			arr[j] = arr[j + 1];
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief
  *		is_valid_pbs_name - is str a valid pbs username (POSIX.1 + ' ')
  *			    a valid name is: alpha numeric '-' '_' '.' ' '
  * 			    For fairshare entities: colen ':'

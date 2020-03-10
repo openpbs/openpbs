@@ -896,7 +896,6 @@ req_modifyReservation(struct batch_request *preq)
 	if (psatl)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
-
 	/* If Authorized_Groups is modified, we need to update the queue's acl_users
 	 * Authorized_Users cannot be unset, it must always have a value
 	 * The queue will have acl_user_enable set to 1 by default
@@ -932,8 +931,11 @@ req_modifyReservation(struct batch_request *preq)
 		}
 	}
 
-	if (send_to_scheduler)
-		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
+	if (send_to_scheduler) {
+		presv->rep_sched_count = 0;
+		presv->req_sched_count = 0;
+		notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
+	}
 
 	(void)sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {

@@ -357,6 +357,7 @@ enum accrue_types {
 
 #define PBS_RESV_CONFIRM_FAIL "PBS_RESV_CONFIRM_FAIL"   /* Used to inform server that a reservation could not be confirmed */
 #define PBS_RESV_CONFIRM_SUCCESS "PBS_RESV_CONFIRM_SUCCESS"   /* Used to inform server that a reservation could be confirmed */
+#define DEFAULT_PARTITION "pbs-default" /* Default partition name set on the reservation queue when the reservation is confirmed by default scheduler */
 
 #define PBS_USE_IFF		1	/* pbs_connect() to call pbs_iff */
 
