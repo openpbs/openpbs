@@ -57,6 +57,8 @@ class Inventory(object):
         self.CrayVersion = "0.0"
         self.ndevices = 0
         self.gpudevices = 0
+        self.cardflag = False
+        self.renderflag = False
 
     def __init__(self):
         self.reset()
@@ -145,13 +147,12 @@ class Inventory(object):
                                   % (name, e.lineno, e.offset))
                     else:
                         self.countsockets(topo_file)
-
                     if options.sockets:
                         print("%-*s%d" % (maxwidth + 1, name, self.nsockets))
                     else:
                         self.nnodes += self.calculate()
                         print("%-*s%d" % (maxwidth + 1, name,
-                              inventory.nnodes))
+                                          inventory.nnodes))
 
             except IOError as err:
                 (e, strerror) = err.args
@@ -173,7 +174,7 @@ class Inventory(object):
         packagepattern = r'<\s*object\s+type="Package"'
         gpupattern = r'<\s*object\s+type="OSDev"\s+name="card\d+"\s+' \
             'osdev_type="1"'
-        nongpupattern = r'<\s*object\s+type="OSDev"\s+name="controlD\d+"\s+' \
+        renderpattern = r'<\s*object\s+type="OSDev"\s+name="renderD\d+"\s+' \
             'osdev_type="1"'
         micpattern = r'<\s*object\s+type="OSDev"\s+name="mic\d+"\s+' \
             'osdev_type="5"'
@@ -184,6 +185,7 @@ class Inventory(object):
         hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+'
 
         for line in topo_file:
+            line = line.decode('utf-8')
             if re.search(craypattern, line):
                 start_index = line.find('protocol="') + len('protocol="')
                 self.CrayVersion = line[start_index:
@@ -213,11 +215,10 @@ class Inventory(object):
                                                             line))):
                     self.nsockets += 1
                     self.ndevices += 1
-                self.gpudevices += 1 if re.search(gpupattern, line) else 0
-                if re.search(nongpupattern, line):
-                    if (self.gpudevices > 0):
-                        self.gpudevices -= 1
+                self.cardflag += 1 if re.search(gpupattern, line) else 0
+                self.renderflag += 1 if re.search(renderpattern, line) else 0
                 self.ndevices += 1 if re.search(micpattern, line) else 0
+        self.gpudevices = min(self.cardflag, self.renderflag)
 
 
 def socketXMLstart(name, attrs):
@@ -225,7 +226,6 @@ def socketXMLstart(name, attrs):
     StartElementHandler for expat parser
     """
     global inventory
-
     if name == "BasilResponse":
         inventory.CrayVersion = attrs.get("protocol")
         return
@@ -254,12 +254,15 @@ def socketXMLstart(name, attrs):
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "1" and
                 attrs.get("name").startswith("card")):
-            inventory.gpudevices += 1
-        if (name == "object" and attrs.get("type") == "OSDev" and
-            attrs.get("osdev_type") == "1" and
-                attrs.get("name").startswith("controlD")):
-            if (inventory.gpudevices > 0):
-                inventory.gpudevices -= 1
+            inventory.cardflag = True
+        elif (name == "object" and attrs.get("type") == "OSDev" and
+              attrs.get("osdev_type") == "1" and
+                attrs.get("name").startswith("renderD")):
+            if inventory.cardflag is True:
+                inventory.gpudevices += 1
+                inventory.cardflag = False
+        else:
+            inventory.cardflag = False
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "5" and
                 attrs.get("name").startswith("mic")):
