@@ -48,6 +48,17 @@ from tests.functional import Job
 from tests.functional import JOB
 
 
+def get_hook_body(hook_msg):
+    hook_body = """
+    import pbs
+    e = pbs.event()
+    m = e.management
+    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    """ % hook_msg
+    hook_body = textwrap.dedent(hook_body)
+    return hook_msg
+
+
 @tags('hooks', 'smoke')
 class TestHookManagement(TestFunctional):
 
@@ -56,16 +67,9 @@ class TestHookManagement(TestFunctional):
         By creating an import hook, it executes a management hook.
         """
         self.logger.info("**************** HOOK START ****************")
-        # hook_name = "test_management"
         hook_name = "management"
         hook_msg = 'running management hook_00'
-        hook_body = """
-        import pbs
-        e = pbs.event()
-        m = e.management
-        pbs.logmsg(pbs.LOG_DEBUG, '%s')
-        """ % hook_msg
-        hook_body = textwrap.dedent(hook_body)
+        hook_body = get_hook_body(hook_msg)
         # attrs = {'event': 'management', 'enabled': 'True'}
         # rv = self.server.create_import_hook(
         #     hook_name, attrs=attrs, body=hook_body, overwrite=True)
@@ -114,13 +118,7 @@ class TestHookManagement(TestFunctional):
         """
         self.logger.info("**************** HOOK START ****************")
         hook_msg = 'running management hook_01'
-        hook_body = """
-        import pbs
-        e = pbs.event()
-        m = e.management
-        pbs.logmsg(pbs.LOG_DEBUG, '%s')
-        """ % hook_msg
-        hook_body = textwrap.dedent(hook_body)
+        hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
 
         qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"],
@@ -166,13 +164,7 @@ class TestHookManagement(TestFunctional):
         """
         self.logger.info("**************** HOOK START ****************")
         hook_msg = 'running management hook_02'
-        hook_body = """
-        import pbs
-        e = pbs.event()
-        m = e.management
-        pbs.logmsg(pbs.LOG_DEBUG, '%s')
-        """ % hook_msg
-        hook_body = textwrap.dedent(hook_body)
+        hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
 
         qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"],
