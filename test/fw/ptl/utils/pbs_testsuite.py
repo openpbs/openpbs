@@ -179,8 +179,6 @@ def skipOnCpuSet(function):
                 flag = True
         if flag:
             self.skipTest(reason='capability not supported on Cpuset')
-        else:
-            function(self, *args, **kwargs)
     wrapper.__doc__ = function.__doc__
     wrapper.__name__ = function.__name__
     return wrapper
