@@ -115,7 +115,6 @@ extern void hook_action_tid_set(long long int);
 extern long long int hook_action_tid_get(void);
 extern void set_srv_pwr_prov_attribute(void);
 extern void fprint_svrattrl_list(FILE *, char *, pbs_list_head *);
-extern const char * asprint_svrattrl_list_all(char *, pbs_list_head *);
 
 #ifdef	_BATCH_REQUEST_H
 extern int status_hook(hook *, struct batch_request *, pbs_list_head *, char *, size_t);

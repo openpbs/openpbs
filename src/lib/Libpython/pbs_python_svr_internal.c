@@ -12556,52 +12556,6 @@ release_nodes_exit:
 /**
  *
  * @brief
- *	Returns a String containing a space separated list of attribute name,
- *  resource name and attribute/resource value.  For debugging only.
- * @param[in]	head_str- some string to print out the beginning.
- * @param[in]	phead	- pointer to the head of the list containing data.
- *
- * @return char*
- * @retval	NULL		- if an error occurred.
- */
-
-const char * asprint_svrattrl_list_all(char *head_str, pbs_list_head *phead)
-{
-	char *buf = NULL;
-	size_t size = NULL;
-	svrattrl *plist = NULL;
-
-	if ((head_str == NULL) || (phead == NULL)) {
-		log_err(errno, __func__, "NULL input parameters!");
-		return NULL;
-	}
-
-	buf = strdup(head_str);
-	size = strlen(buf);
-
-	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
-		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
-		char * tmp_buf;
-		size_t tmp_size;
-		if (plist->al_resc) {
-			tmp_size = pbs_asprintf(&tmp_buf, " %s.%s[%s]=%s", head_str,
-				plist->al_name, plist->al_resc, plist->al_value);
-		} else {
-			tmp_size = pbs_asprintf(&tmp_buf, " %s.%s=%s", head_str,
-				plist->al_name, plist->al_value);
-		}
-		buf = realloc(buf, size + tmp_size + 1);
-		strcpy(buf + size, tmp_buf);
-		size += tmp_size;
-		free(tmp_buf);
-	}
-	return buf;
-}
-
-
-/**
- *
- * @brief
  *	Returns a Python List of _server_attribute objects or  or NULL on error.
  * @param[in]	phead	- pointer to the head of the list containing data.
  *
