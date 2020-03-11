@@ -3264,10 +3264,14 @@ im_request(int stream, int version)
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			switch ((hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
+			hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
 					PBS_MOM_SERVICE_NAME, mom_host,
 					&hook_input, &hook_output,
-					hook_msg, sizeof(hook_msg), 1))) {
+					hook_msg, sizeof(hook_msg), 1);
+/* MLIU */
+			snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at sister on job start, hook_rc=%d", hook_rc);
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+			switch (hook_rc) {
 				case 1:   	/* explicit accept */
 					break;
 				case 2:	/* no hook script executed - go ahead and accept event*/
@@ -4329,6 +4333,39 @@ join_err:
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobid, "RESTART received");
 
+			/* NULL value passed to hook_input.vnl */
+			/* means to assign */
+			/* vnode list using pjob->ji_host[].   */
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &hook_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+
+			
+			hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
+					PBS_MOM_SERVICE_NAME, mom_host,
+					&hook_input, &hook_output,
+					hook_msg, sizeof(hook_msg), 1);
+			snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at sister on job checkpoint restart, hook_rc=%d", hook_rc);
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
+			
+			if (hook_rc <= 0) {
+				/* a value of '0' means explicit reject encountered. */
+				if (hook_rc != 0) {
+					/* we've hit an internal error (malloc error, full disk, etc...), so */
+					/* treat this now like a  hook error so hook fail_action will be consulted.  */
+					/* Before, behavior of an internal error was to ignore it! */
+					hook_errcode = PBSE_HOOKERROR;
+					send_hook_fail_action(last_phook);
+				}
+				SEND_ERR2(hook_errcode, (char *)hook_msg);
+				mom_deljob(pjob);
+				break;
+			}
+			
 			errcode = local_restart(pjob, NULL);
 
 			if (errcode != PBSE_NONE) {	/* error, send reply */

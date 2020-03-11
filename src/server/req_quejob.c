@@ -1214,8 +1214,12 @@ req_quejob(struct batch_request *preq)
 	hook_output.last_phook = &last_phook;
 	hook_output.fail_action = &hook_fail_action;
 
-	switch ((hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN, PBS_MOM_SERVICE_NAME,
-			mom_host, &hook_input, &hook_output, hook_buf, sizeof(hook_buf), 1))) {
+	hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN, PBS_MOM_SERVICE_NAME,
+			mom_host, &hook_input, &hook_output, hook_buf, sizeof(hook_buf), 1);
+	snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at ms on job start, hook_rc=%d", hook_rc);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pj->ji_qs.ji_jobid, log_buffer);
+
+	switch (hook_rc) {
 		case 1:   /* explicit accept */
 			break;
 		case 2:	/* no hook script executed - go ahead and accept event*/
