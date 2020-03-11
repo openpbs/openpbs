@@ -245,10 +245,11 @@ class TestPbsResvAlter(TestFunctional):
         jid = self.server.submit(j)
         return jid
 
-    def alter_a_reservation(self, r, start, end, shift,
+    def alter_a_reservation(self, r, start, end, shift=0,
                             alter_s=False, alter_e=False,
-                            whichMessage=1, confirm=True,
-                            interactive=0, sequence=1):
+                            whichMessage=1, confirm=True, check_log=True,
+                            interactive=0, sequence=1, alter_d=False,
+                            a_duration=None):
         """
         Helper method for altering a reservation.
         This method also checks for the server and accounting logs.
@@ -314,7 +315,17 @@ class TestPbsResvAlter(TestFunctional):
         if interactive > 0:
             attrs['interactive'] = interactive
 
-        new_duration = new_end - new_start
+        if a_duration:
+            if isinstance(a_duration, str) and ':' in a_duration:
+                new_duration_conv = self.bu.convert_duration(a_duration)
+            else:
+                new_duration_conv = a_duration
+        else:
+            new_duration_conv = new_end - new_start
+
+        if a_duration:
+            attrs['reserve_duration'] = new_duration_conv
+
         if whichMessage:
             msg = ['']
             acct_msg = ['']
@@ -329,26 +340,30 @@ class TestPbsResvAlter(TestFunctional):
             else:
                 msg = "pbs_ralter: " + r + " ALTER REQUESTED"
 
+            print(str(attrs))
             self.server.alterresv(r, attrs)
 
             self.assertEqual(msg, self.server.last_out[0])
             self.logger.info(msg + " displayed")
 
-            msg = "Resv;" + r + ";Attempting to modify reservation "
-            if alter_s:
-                msg += "start="
-                msg += time.strftime(self.fmt, time.localtime(int(new_start)))
-
-            if alter_e:
+            if check_log:
+                msg = "Resv;" + r + ";Attempting to modify reservation "
                 if alter_s:
-                    msg += " "
-                    acct_msg += " "
-                msg += "end="
-                msg += time.strftime(self.fmt, time.localtime(int(new_end)))
-                acct_msg += "end="
-                acct_msg += str(new_end)
+                    msg += "start="
+                    msg += time.strftime(self.fmt,
+                                         time.localtime(int(new_start)))
 
-            self.server.log_match(msg, interval=2, max_attempts=30)
+                if alter_e:
+                    if alter_s:
+                        msg += " "
+                        acct_msg += " "
+                    msg += "end="
+                    msg += time.strftime(self.fmt,
+                                         time.localtime(int(new_end)))
+                    acct_msg += "end="
+                    acct_msg += str(new_end)
+
+                self.server.log_match(msg, interval=2, max_attempts=30)
 
             if whichMessage == 1:
                 if alter_s:
@@ -361,7 +376,8 @@ class TestPbsResvAlter(TestFunctional):
                         new_end, self.fmt)
                     attrs['reserve_end'] = new_end_conv
 
-                attrs['reserve_duration'] = new_duration
+                if a_duration:
+                    attrs['reserve_duration'] = new_duration_conv
 
                 if confirm:
                     attrs['reserve_state'] = (MATCH_RE, 'RESV_CONFIRMED|2')
@@ -369,20 +385,23 @@ class TestPbsResvAlter(TestFunctional):
                     attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
 
                 self.server.expect(RESV, attrs, id=r)
-                acct_msg = "Y;" + r + ";requestor=Scheduler@.*" + " start="
-                acct_msg += str(new_start) + " end=" + str(new_end)
-                self.server.status(RESV, 'resv_nodes', id=r)
-                acct_msg += " nodes="
-                acct_msg += re.escape(self.server.reservations[r].resvnodes())
+                if check_log:
+                    acct_msg = "Y;" + r + ";requestor=Scheduler@.*" + " start="
+                    acct_msg += str(new_start) + " end=" + str(new_end)
+                    self.server.status(RESV, 'resv_nodes', id=r)
+                    acct_msg += " nodes="
+                    acct_msg += re.escape(self.server.reservations[r].
+                                          resvnodes())
 
-                if r[0] == 'S':
-                    self.server.status(RESV, 'reserve_count', id=r)
-                    count = self.server.reservations[r].attributes[
-                        'reserve_count']
-                    acct_msg += " count=" + count
+                    if r[0] == 'S':
+                        self.server.status(RESV, 'reserve_count', id=r)
+                        count = self.server.reservations[r].attributes[
+                            'reserve_count']
+                        acct_msg += " count=" + count
 
-                self.server.accounting_match(acct_msg, regexp=True, interval=2,
-                                             max_attempts=30, n='ALL')
+                    self.server.accounting_match(acct_msg, regexp=True,
+                                                 interval=2,
+                                                 max_attempts=30, n='ALL')
 
                 # Check if reservation reports new start time
                 # and updated duration.
@@ -430,6 +449,20 @@ class TestPbsResvAlter(TestFunctional):
             else:
                 self.assertFalse("Reservation alter allowed when it should" +
                                  "not be.")
+
+    def get_resv_time_info(self, rid):
+        """
+        Get the start time, end time and duration of a reservation
+        in seconds
+        :param rid: reservation id
+        :type  rid: string
+        """
+        resv_data = self.server.status(RESV, id=rid)
+        t_duration = int(resv_data[0]['reserve_duration'])
+        t_end = self.bu.convert_stime_to_seconds(resv_data[0]['reserve_end'])
+        t_start = self.bu.convert_stime_to_seconds(resv_data[0]
+                                                   ['reserve_start'])
+        return t_duration, t_start, t_end
 
     @skipOnCpuSet
     def test_alter_advance_resv_start_time_before_run(self):
@@ -566,7 +599,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 40
+        offset = 30
         duration = 20
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
@@ -598,7 +631,7 @@ class TestPbsResvAlter(TestFunctional):
         Only operation 1 should be successful, operation 2 should fail.
         """
         offset = 10
-        duration = 20
+        duration = 200
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
@@ -1516,3 +1549,253 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid1, start1, end1, shift=300,
                                  alter_e=True, whichMessage=3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+    def test_adv_resv_duration_before_start(self):
+        """
+        Test duration of reservation can be changed. In this case end
+        time changes, and start time remains the same.
+        """
+
+        offset = 20
+        duration = 20
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        self.alter_a_reservation(rid, start, end, a_duration=30,
+                                 check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+
+        self.assertEqual(t_end, end+10)
+        self.assertEqual(t_start, start)
+        self.assertEqual(t_duration, 30)
+
+        # Submit a job to the reservation and change its duration.
+        self.submit_job_to_resv(rid)
+
+        temp_end = t_end
+        temp_start = t_start
+
+        self.alter_a_reservation(rid, temp_start, temp_end, sequence=2,
+                                 a_duration=40, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_end, temp_end+10)
+        self.assertEqual(t_start, temp_start)
+        self.assertEqual(t_duration, 40)
+
+    def test_adv_resv_dur_and_endtime_before_start(self):
+        """
+        Test that duration and end time of reservation can be changed together.
+        In this case the start time of reservation may also change.
+        """
+
+        offset = 20
+        duration = 20
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        self.alter_a_reservation(rid, start, end, shift=shift,
+                                 alter_e=True, a_duration=40, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+
+        self.assertEqual(t_end, end+10)
+        self.assertEqual(t_start, start-10)
+        self.assertEqual(t_duration, 40)
+
+        # Submit a job to the reservation and change its start time.
+        self.submit_job_to_resv(rid)
+        temp_end = t_end
+        temp_start = t_start
+
+        self.alter_a_reservation(rid, temp_start, temp_end, shift=shift,
+                                 alter_e=True, sequence=2,
+                                 a_duration=50, check_log=False)
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_end, temp_end+10)
+        self.assertEqual(t_start, temp_start)
+        self.assertEqual(t_duration, 50)
+
+    def test_adv_resv_dur_and_starttime_before_start(self):
+        """
+        Test duration and starttime of reservation can be changed together.
+        In this case the endtime will change accordingly
+        """
+
+        offset = 60
+        duration = 20
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        self.alter_a_reservation(rid, start, end, shift=shift,
+                                 alter_s=True, a_duration=30, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+
+        self.assertEqual(t_end, end+20)
+        self.assertEqual(t_start, start+10)
+        self.assertEqual(t_duration, 30)
+
+        # Submit a job to the reservation and change its start time.
+        self.submit_job_to_resv(rid)
+        temp_end = t_end
+        temp_start = t_start
+
+        self.alter_a_reservation(rid, temp_start, temp_end, shift=shift,
+                                 alter_s=True, sequence=2,
+                                 a_duration=40, check_log=False)
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_end, temp_end+20)
+        self.assertEqual(t_start, temp_start+10)
+        self.assertEqual(t_duration, 40)
+
+    def test_adv_res_dur_after_start(self):
+        """
+        Test that duration can be changed after the reservation starts.
+        Test that if the duration changes endtime of the reservation to an
+        already passed time, the reservation is deleted
+        """
+        offset = 10
+        duration = 20
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        self.check_resv_running(rid, offset)
+
+        self.alter_a_reservation(rid, start, end, a_duration=30,
+                                 confirm=False, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_duration, 30)
+
+        time.sleep(5)
+        attr = {'reserve_duration': 5}
+        self.server.alterresv(rid, attr)
+        self.server.log_match(rid + ";Reservation alter denied",
+                              id=rid, interval=2)
+        rid = rid.split('.')[0]
+        self.server.log_match(rid + ";deleted at request of pbs_server",
+                              id=rid, interval=2)
+
+    def test_adv_resv_endtime_starttime_dur_together(self):
+        """
+        Test that all three end, start and duration can be changed together
+        """
+        offset = 20
+        duration = 20
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+        new_start = self.bu.convert_seconds_to_datetime(start + shift)
+        new_end = self.bu.convert_seconds_to_datetime(end + shift)
+        new_duration = self.bu.convert_seconds_to_datetime(duration + 10)
+
+        try:
+            attr = {'reserve_start': new_start, 'reserve_end': new_end,
+                    'reserve_duration': new_duration}
+            self.server.alterresv(rid, attr)
+        except PbsResvAlterError as e:
+            self.assertTrue("pbs_ralter: Bad time specification(s)" in
+                            e.msg[0])
+
+    def test_standing_resv_duration(self):
+        """
+        This test case covers the below scenarios for a standing reservation.
+
+        1. Change duration of standing reservation occurance
+        2. After the first occurrence of the reservation finishes, verify that
+           the start and end time of the second occurrence have not changed.
+
+        All the above operations are expected to be successful.
+        """
+        offset = 20
+        duration = 20
+        shift = 15
+        rid, start, end = self.submit_and_confirm_reservation(offset,
+                                                              duration,
+                                                              standing=True)
+
+        self.alter_a_reservation(rid, start, end, shift=shift,
+                                 a_duration=30, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_duration, 30)
+
+        # Wait for the reservation to start running.
+        self.check_resv_running(rid, offset - shift)
+
+        # Wait for the reservation occurrence to finish.
+        new_duration = t_end - t_start
+        self.check_occr_finish(rid, new_duration)
+
+        # Check that duration of the second occurrence is not altered.
+        self.check_standing_resv_second_occurrence(rid, start, end)
+
+    def test_standing_resv_duration_and_endtime(self):
+        """
+        This test case covers the below scenarios for a standing reservation.
+
+        1. Change duration and endtime of standing reservation
+        2. After the first occurrence of the reservation finishes, verify that
+           the start and end time of the second occurrence have not changed.
+
+        All the above operations are expected to be successful.
+        """
+        offset = 20
+        duration = 20
+        shift = 15
+        rid, start, end = self.submit_and_confirm_reservation(offset,
+                                                              duration,
+                                                              standing=True)
+
+        self.alter_a_reservation(rid, start, end, shift=shift, alter_e=True,
+                                 a_duration=30, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_end, end+15)
+        self.assertEqual(t_start, start+5)
+
+        # Wait for the reservation to start running.
+        self.check_resv_running(rid, offset - shift)
+
+        # Wait for the reservation occurrence to finish.
+        new_duration = t_end - t_start
+        self.check_occr_finish(rid, new_duration)
+
+        # Check that duration of the second occurrence is not altered.
+        self.check_standing_resv_second_occurrence(rid, start, end)
+
+    def test_standing_resv_duration_and_starttime(self):
+        """
+        This test case covers the below scenarios for a standing reservation.
+
+        1. Change duration and endtime of standing reservation
+        2. After the first occurrence of the reservation finishes, verify that
+           the start and end time of the second occurrence have not changed.
+
+        All the above operations are expected to be successful.
+        """
+        offset = 20
+        duration = 20
+        shift = 15
+        rid, start, end = self.submit_and_confirm_reservation(offset,
+                                                              duration,
+                                                              standing=True)
+
+        self.alter_a_reservation(rid, start, end, shift=shift, alter_s=True,
+                                 a_duration=30, check_log=False)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_end, end+25)
+        self.assertEqual(t_start, start+15)
+
+        # Wait for the reservation to start running.
+        self.check_resv_running(rid, offset - shift)
+
+        # Wait for the reservation occurrence to finish.
+        new_duration = t_end - t_start
+        self.check_occr_finish(rid, new_duration)
+
+        # Check that duration of the second occurrence is not altered.
+        self.check_standing_resv_second_occurrence(rid, start, end)

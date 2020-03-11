@@ -785,6 +785,10 @@ req_modifyReservation(struct batch_request *preq)
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	presv->ri_alter_flags = 0;
+	int d = 0;
+	int r = 0;
+	int e = 0;
+
 	while (psatl) {
 		long temp = 0;
 		char *end = NULL;
@@ -815,17 +819,19 @@ req_modifyReservation(struct batch_request *preq)
 			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);
 			return;
 		}
-
+		
 		switch (index) {
 			case RESV_ATR_start:
 				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
-					if ((temp > time(NULL)) &&
-						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
+					if (temp > time(NULL)) {
 						if (!is_standing || (temp < next_occr_start)) {
 							send_to_scheduler = RESV_START_TIME_MODIFIED;
 							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
+							pdef->at_decode(&presv->ri_wattr[RESV_ATR_start], 
+							psatl->al_name, psatl->al_resc, psatl->al_value);
+							r = 1;
 						} else {
 							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
@@ -844,13 +850,15 @@ req_modifyReservation(struct batch_request *preq)
 						req_reject(PBSE_BADTSPEC, 0, preq);
 					return;
 				}
+				
+				if (d==1) {
+					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
+				}
+
 				break;
 			case RESV_ATR_end:
 				temp = strtol(psatl->al_value, &end, 10);
-				if (temp == presv->ri_wattr[RESV_ATR_end].at_val.at_long) {
-					req_reject(PBSE_BADTSPEC, 0, preq);
-					return;
-				}
 				if (!is_standing || temp < next_occr_start) {
 					send_to_scheduler = RESV_END_TIME_MODIFIED;
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
@@ -862,9 +870,41 @@ req_modifyReservation(struct batch_request *preq)
 					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 					return;
 				}
+				e = 1;
+				if (d==1) {
+					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
+				}
+
+				break;
+			case RESV_ATR_duration:
+				if (r==1) {
+					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
+				} else if (e==1) {
+					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
+				}
+				else {
+					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
+				}
+				d = 1;
+				send_to_scheduler = RESV_DURATION_MODIFIED;
+				presv->ri_alter_flags |= RESV_DURATION_MODIFIED;
 				break;
 			default:
 				break;
+		}
+
+		if (d == 0) {
+			presv->ri_wattr[RESV_ATR_duration].at_flags &= ~ATR_VFLAG_SET;
+		}
+
+		if (d==1 && r==1 && e==1) {
+			req_reject(PBSE_BADTSPEC, 0, preq);
+			resv_revert_alter_times(presv);
+			return;
 		}
 
 		/* decode attribute */
@@ -875,7 +915,7 @@ req_modifyReservation(struct batch_request *preq)
 			reply_badattr(rc, 1, psatl, preq);
 			return;
 		}
-
+		
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 	}
 	resc_access_perm = resc_access_perm_save; /* restore perm */

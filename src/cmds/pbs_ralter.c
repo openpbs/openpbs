@@ -65,14 +65,17 @@ int
 process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 {
 	int	c = 0;
+	
 	int	errflg = 0;
 	time_t	t;
 
 	char	time_buf[80] = {0};
 	char	*endptr = NULL;
 	long	temp = 0;
+	char dur_buf[800];
+	int i = 0;
 
-	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:")) != EOF) {
+	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:")) != EOF) {
 		switch (c) {
 			case 'E':
 				t = cvtdate(optarg);
@@ -137,6 +140,14 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				set_attr_error_exit(&attrib, ATTR_auth_g, optarg);
 				break;
 
+			case 'D':
+				sprintf(dur_buf, "%s", optarg);
+				i = set_attr(&attrib, ATTR_resv_duration, dur_buf);
+				if (i != 0) {
+					fprintf(stderr, "pbs_ralter: illegal -D time value\n");
+					errflg++;
+				}
+				break;				
 			default:
 				/* pbs_ralter option not recognized */
 				errflg++;
@@ -161,7 +172,7 @@ print_usage()
 	"                [-N reservation_name] [-R start_time] [-E end_time]\n"
 	"                [-U (+/-)username[,(+/-)username]...]\n"
 	"                [-G [(+/-)group[,(+/-)group]...]]\n"
-	"                resv_id\n";
+	"                [-D durationn] resv_id\n";
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
 }
@@ -201,6 +212,8 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 			opt = "R";
 		else if (strcmp(attribute->name, ATTR_auth_u) == 0)
 			opt = "U";
+		else if (strcmp(attribute->name, ATTR_resv_duration) == 0)
+			opt = "D";
 		else
 			return ;
 

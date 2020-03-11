@@ -4590,21 +4590,18 @@ start_end_dur_wall(void *pobj, int objtype)
 	} else
 		return (-1);
 
-	if (pstate != RESV_BEING_ALTERED) {
-		if (pstime->at_flags & ATR_VFLAG_SET)
-			swcode += 1;			/*have start*/
-		if (petime->at_flags & ATR_VFLAG_SET)
-			swcode += 2;			/*have end  */
-		if (pduration->at_flags & ATR_VFLAG_SET)
-			swcode += 4;			/*have duration*/
-		if (prsc)
-			swcode += 8;			/*have walltime*/
-		else if (!(prsc = add_resource_entry(pattr, rscdef)))
-			return (-1);
-	}
-	else {
-		swcode = 3;
-	}
+	if (pstime->at_flags & ATR_VFLAG_SET)
+		swcode += 1;			/*have start*/
+	if (petime->at_flags & ATR_VFLAG_SET)
+		swcode += 2;			/*have end  */
+	if (pduration->at_flags & ATR_VFLAG_SET)
+		swcode += 4;			/*have duration*/
+	if (prsc)
+		swcode += 8;			/*have walltime*/
+	if(pstate == RESV_BEING_ALTERED)
+		swcode -= 8;			/*remove walltime in case of altering reservation*/
+	else if (!(prsc = add_resource_entry(pattr, rscdef)))
+		return (-1);
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
@@ -4624,16 +4621,26 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  5:	/*start, duration*/
-			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
+			if ((((check_start) && pstime->at_val.at_long < time_now) && ((pstate != RESV_BEING_ALTERED) && (!presv->ri_qp->qu_numjobs))) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
 				petime->at_flags |= ATR_VFLAG_SET |
 					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
-					presv->ri_qs.ri_duration;
+					pduration->at_val.at_long;
 			}
 			break;
+		
+		case 4: /*duration*/
+			if (pduration->at_val.at_long <= 0)
+				rc = -1;
+			else {
+				atemp.at_val.at_long = (petime->at_val.at_long -
+					pstime->at_val.at_long);
+				(void)pddef->at_set(pduration, &atemp, SET);
+				(void)rscdef->rs_set(&prsc->rs_value, &atemp, SET);
+			}
 
 		case  7:	/*start, end, duration*/
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
@@ -4644,6 +4651,7 @@ start_end_dur_wall(void *pobj, int objtype)
 				rc = -1;
 			break;
 
+		case  6:
 		case  8:	/* end, duration */
 			if ((pduration->at_val.at_long <= 0) ||
 				(petime->at_val.at_long - pduration->at_val.at_long <
