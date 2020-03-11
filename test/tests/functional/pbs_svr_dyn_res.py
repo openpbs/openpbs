@@ -91,11 +91,14 @@ class TestServerDynRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         return scripts
 
+    @skipOnCpuSet
     def test_invalid_script_out(self):
         """
         Test that the scheduler handles incorrect output from server_dyn_res
         script correctly
         """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a server_dyn_res of type long
         resname = ["mybadres"]
         restype = ["long"]
@@ -227,6 +230,8 @@ class TestServerDynRes(TestFunctional):
         Test multiple dynamic resources specified in resourcedef
         and sched_config
         """
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create resources of type long
         resname = ["foobar_small", "foobar_medium", "foobar_large"]
         restype = ["long", "long", "long"]
@@ -263,11 +268,14 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar_large': 18}
         self.server.expect(JOB, a, id=jid)
 
+    @skipOnCpuSet
     def test_res_string(self):
         """
         Test that server_dyn_res accepts a string value returned
         by a script
         """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type string
         resname = ["foobar"]
         restype = ["string"]
@@ -299,11 +307,14 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
+    @skipOnCpuSet
     def test_res_string_array(self):
         """
         Test that server_dyn_res accepts string array returned
         by a script
         """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type string_array
         resname = ["foobar"]
         restype = ["string_array"]
@@ -341,6 +352,8 @@ class TestServerDynRes(TestFunctional):
         Test that server_dyn_res accepts type "size" and a "value"
         returned by a script
         """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type size
         resname = ["foobar"]
         restype = ["size"]
