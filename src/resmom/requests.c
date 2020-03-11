@@ -3392,9 +3392,25 @@ req_cpyfile(struct batch_request *preq)
 		}
 	} else {
 		if (stage_inout.bad_files) {
-			sprintf(log_buffer, "Job files not copied: %s", stage_inout.bad_list);
+			char *token = NULL; 
+			char *rest = stage_inout.bad_list; 
+			char *save_ptr = NULL;
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-					dup_rqcpf_jobid, log_buffer);
+				dup_rqcpf_jobid, "Job files not copied:---->>>>");
+			token = strtok_r(rest, "\n", &save_ptr);
+			while (token != NULL) {
+				char *temp_buff = NULL;
+				if ((pbs_asprintf(&temp_buff, "%s\n", token)) != -1) {
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						dup_rqcpf_jobid, temp_buff);
+					free(temp_buff);
+					temp_buff = NULL;
+				} else
+					break;
+				token = strtok_r(NULL, "\n", &save_ptr);
+			}
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+					dup_rqcpf_jobid, "---->>>>");
 		}
 	}
 
@@ -3546,9 +3562,25 @@ struct batch_request *preq;
 		if (!preq->isrpp) {
 			reply_text(preq, rc, bad_list);
 		} else {
-			sprintf(log_buffer, "Job files not deleted: %s", bad_list);
+			char *token = NULL;
+			char *rest = bad_list;
+			char *save_ptr = NULL;
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				preq->rq_ind.rq_cpyfile.rq_jobid, log_buffer);
+				preq->rq_ind.rq_cpyfile.rq_jobid, "Job files not deleted:---->>>>");
+			token = strtok_r(rest, "\n", &save_ptr);
+			while (token != NULL) {
+				char *temp_buff = NULL;
+				if ((pbs_asprintf(&temp_buff, "%s\n", token)) != -1) {
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						preq->rq_ind.rq_cpyfile.rq_jobid, temp_buff);
+					free(temp_buff);
+					temp_buff = NULL;
+				} else
+					break;
+				token = strtok_r(NULL, "\n", &save_ptr);
+			}
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");	
 		}
 	} else {
 		if (!preq->isrpp)
