@@ -541,6 +541,7 @@ req_confirmresv(struct batch_request *preq)
 	char *tmp_buf = NULL;
 	size_t tmp_buf_size = 0;
 	char buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME + 256] = {0}; /* FQDN resvID+text */
+	char *partition_name = NULL;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
