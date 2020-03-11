@@ -175,7 +175,8 @@ def skipOnCpuSet(function):
     def wrapper(self, *args, **kwargs):
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                self.skipTest(reason='capability not supported on Cpuset')
+                msg = 'capability not supported on Cpuset mom:' + mom.shortname
+                self.skipTest(reason=msg)
                 break
         else:
             function(self, *args, **kwargs)
