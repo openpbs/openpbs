@@ -91,14 +91,11 @@ class TestServerDynRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         return scripts
 
-    @skipOnCpuSet
     def test_invalid_script_out(self):
         """
         Test that the scheduler handles incorrect output from server_dyn_res
         script correctly
         """
-        a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a server_dyn_res of type long
         resname = ["mybadres"]
         restype = ["long"]
@@ -109,6 +106,7 @@ class TestServerDynRes(TestFunctional):
 
         # Submit a job
         j = Job(TEST_USER)
+        j.set_sleep_time(1)
         jid = self.server.submit(j)
 
         # Make sure that "Problem with creating server data structure"
@@ -224,14 +222,11 @@ class TestServerDynRes(TestFunctional):
         # Cleanup dynamically created file
         self.du.rm(fpath_out, sudo=True, force=True)
 
-    @skipOnCpuSet
     def test_multiple_res(self):
         """
         Test multiple dynamic resources specified in resourcedef
         and sched_config
         """
-        a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create resources of type long
         resname = ["foobar_small", "foobar_medium", "foobar_large"]
         restype = ["long", "long", "long"]
@@ -244,6 +239,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_small': '4'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -253,6 +249,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_medium': '10'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -268,14 +265,11 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar_large': 18}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
     def test_res_string(self):
         """
         Test that server_dyn_res accepts a string value returned
         by a script
         """
-        a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type string
         resname = ["foobar"]
         restype = ["string"]
@@ -288,6 +282,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'abc'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -307,14 +302,11 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_string_array(self):
         """
         Test that server_dyn_res accepts string array returned
         by a script
         """
-        a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type string_array
         resname = ["foobar"]
         restype = ["string_array"]
@@ -327,6 +319,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'red'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -384,8 +377,6 @@ class TestServerDynRes(TestFunctional):
         # The job shouldn't run
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid2, attrop=PTL_AND)
-
-        # Delete jobs
         self.server.deljob(jid1, wait=True, runas=TEST_USER)
         self.server.deljob(jid2, wait=True, runas=TEST_USER)
 
