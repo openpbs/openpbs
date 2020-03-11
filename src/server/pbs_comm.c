@@ -743,7 +743,7 @@ main(int argc, char **argv)
 		return (2);
 	}
 
-	if (load_auths()) {
+	if (load_auths(AUTH_SERVER)) {
 		log_err(-1, "pbs_comm", "Failed to load auth lib");
 		return 2;
 	}

@@ -995,11 +995,6 @@ __pbs_loadconf(int reload)
 		free(value);
 	}
 
-	if (pbs_conf.supported_auth_methods == NULL && strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
-		fprintf(stderr, "Empty PBS_SUPPORTED_AUTH_METHODS!\n");
-		goto err;
-	}
-
 	if (pbs_conf.encrypt_method[0] == '\0' && pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
 		strcpy(pbs_conf.encrypt_method, pbs_conf.auth_method);
 	}

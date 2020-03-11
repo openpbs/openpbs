@@ -425,7 +425,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * connection handle is not yet been returned to the client
 	 */
 
-	if (load_auths()) {
+	if (load_auths(AUTH_CLIENT)) {
 		CLOSESOCKET(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
@@ -820,7 +820,7 @@ err:
 	 * so others threads cannot use it
 	 */
 
-	if (load_auths()) {
+	if (load_auths(AUTH_CLIENT)) {
 		CLOSESOCKET(sock);
 		return -1;
 	}

@@ -1190,7 +1190,7 @@ main(int argc, char **argv)
 	}
 
 	/*Initialize security library's internal data structures*/
-	if (load_auths()) {
+	if (load_auths(AUTH_SERVER)) {
 		log_err(-1, "pbsd_main", "Failed to load auth lib");
 		exit(3);
 	}

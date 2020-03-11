@@ -260,48 +260,71 @@ get_auth(char *method)
  * @brief
  *	load_auths - load all configured auth (aka PBS_SUPPORTED_AUTH_METHODS)
  *
+ * @param[in] mode - AUTH_CLIENT or AUTH_SERVER
+ *
  * @return	int
  * @retval	0 - success
  * @retval	1 - failure
  */
 int
-load_auths(void)
+load_auths(int mode)
 {
 	int i = 0;
 	int count = 0;
 
-	if (pbs_conf.supported_auth_methods == NULL || auths != NULL)
+	if (auths != NULL)
 		return 0;
 
-	i = 0;
-	while (pbs_conf.supported_auth_methods[i++] != NULL) count++;
-
-	if (count == 0)
-		return 1;
+	if (pbs_conf.supported_auth_methods != NULL && mode == AUTH_SERVER) {
+		i = 0;
+		while (pbs_conf.supported_auth_methods[i++] != NULL) count++;
+	} else {
+		/* for auth and encrypt methods */
+		count = 2;
+	}
 
 	auths = (auth_def_t **)calloc(1, sizeof(auth_def_t *) * (count + 1)); /* +1 for last NULL */
 	if (auths == NULL)
 		return 1;
 
 	count = 0;
-	i = 0;
-	while (pbs_conf.supported_auth_methods[i] != NULL) {
-		auth_def_t *auth = NULL;
-		if (strcmp(pbs_conf.supported_auth_methods[i], AUTH_RESVPORT_NAME) == 0) {
-			i++;
-			continue;
+	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
+		auth_def_t *auth = _load_auth(pbs_conf.auth_method);
+		if (auth == NULL) {
+			return 1;
 		}
-		if (get_auth(pbs_conf.supported_auth_methods[i]) != NULL) {
-			i++;
-			continue;
-		}
-		auth = _load_auth(pbs_conf.supported_auth_methods[i]);
+		auths[count++] = auth;
+	}
+
+	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
+		auth_def_t *auth = _load_auth(pbs_conf.encrypt_method);
 		if (auth == NULL) {
 			unload_auths();
 			return 1;
 		}
 		auths[count++] = auth;
-		i++;
+	}
+
+	if (pbs_conf.supported_auth_methods != NULL && mode == AUTH_SERVER) {
+		i = 0;
+		while (pbs_conf.supported_auth_methods[i] != NULL) {
+			auth_def_t *auth = NULL;
+			if (strcmp(pbs_conf.supported_auth_methods[i], AUTH_RESVPORT_NAME) == 0) {
+				i++;
+				continue;
+			}
+			if (get_auth(pbs_conf.supported_auth_methods[i]) != NULL) {
+				i++;
+				continue;
+			}
+			auth = _load_auth(pbs_conf.supported_auth_methods[i]);
+			if (auth == NULL) {
+				unload_auths();
+				return 1;
+			}
+			auths[count++] = auth;
+			i++;
+		}
 	}
 
 	return 0;

@@ -146,7 +146,7 @@ enum AUTH_MSG_TYPES {
 };
 
 extern auth_def_t * get_auth(char *);
-extern int load_auths(void);
+extern int load_auths(int mode);
 extern void unload_auths(void);
 int is_valid_encrypt_method(char *);
 pbs_auth_config_t * make_auth_config(char *, char *, int, void *);

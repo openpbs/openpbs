@@ -1145,7 +1145,7 @@ main(int argc, char *argv[])
 	}
 
 	/*Initialize security library's internal data structures*/
-	if (load_auths()) {
+	if (load_auths(AUTH_SERVER)) {
 		log_err(-1, "pbs_sched", "Failed to load auth lib");
 		die(0);
 	}
