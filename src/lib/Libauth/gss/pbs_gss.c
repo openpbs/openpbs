@@ -997,7 +997,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	int rc = 0;
 
 	if (gss_extra == NULL) {
-		GSS_LOG_ERR("No GSS context given");
+		GSS_LOG_ERR("No auth context available");
 		return 1;
 	}
 
@@ -1011,14 +1011,14 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	pthread_once(&gss_init_lock_once, init_gss_lock);
 
 	if (pthread_mutex_lock(&gss_lock) != 0) {
-		GSS_LOG_ERR("Failed to lock mutex");
+		GSS_LOG_ERR("Failed to lock gss mutex");
 		return 1;
 	}
 
 	rc = pbs_gss_establish_context(gss_extra, data_in, len_in, data_out, len_out);
 
 	if (pthread_mutex_unlock(&gss_lock) != 0) {
-		GSS_LOG_ERR("Failed to unlock mutex");
+		GSS_LOG_ERR("Failed to unlock gss mutex");
 		return 1;
 	}
 
@@ -1061,7 +1061,12 @@ pbs_auth_encrypt_data(void *ctx, void *data_in, size_t len_in, void **data_out, 
 	int conf_state = 0;
 
 	if (gss_extra == NULL) {
-		GSS_LOG_ERR("No GSS auth extra available");
+		GSS_LOG_ERR("No auth context available");
+		return PBS_GSS_ERR_INTERNAL;
+	}
+
+	if (len_in == 0) {
+		GSS_LOG_ERR("No data available to encrypt");
 		return PBS_GSS_ERR_INTERNAL;
 	}
 
