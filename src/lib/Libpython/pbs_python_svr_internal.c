@@ -12563,6 +12563,9 @@ release_nodes_exit:
  * @retval	<object>	- the Python list object holding
  * @retval				the _server_attribute objects.
  * @retval	NULL		- if an error occurred.
+ * @note
+ * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
+ * 		reference.
  */
 PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
 {
@@ -12615,6 +12618,9 @@ PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
  * @return 	PyObject *
  * @retval	<object>	- the Python _server_attribute object.
  * @retval	NULL		- if an error occurred.
+ * @note
+ * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
+ * 		reference.
  */
 PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
 {
