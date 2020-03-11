@@ -410,16 +410,6 @@ process_request(int sfds)
 			}
 		}
 
-		if (strcmp(request->rq_user, conn->cn_username) != 0) {
-			pbs_errno = PBSE_BADCRED;
-			log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_REQUEST, LOG_CRIT, "",
-					"Unauthorized access!, request user = %s@%s, authenticated user = %s, sock=%d",
-					request->rq_user, request->rq_host, conn->cn_credid, request->rq_conn);
-			req_reject(PBSE_BADCRED, 0, request);
-			close_client(sfds);
-			return;
-		}
-
 		conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 	}
 

@@ -125,6 +125,7 @@ enum PBS_GSS_ERRORS {
 	PBS_GSS_ERR_LAST
 };
 
+static int pbs_gss_can_get_creds(const gss_OID_set oidset);
 static int init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size);
 static void init_gss_lock(void);
 
@@ -453,6 +454,33 @@ pbs_gss_server_establish_context(gss_cred_id_t server_creds, gss_cred_id_t* clie
 	return PBS_GSS_OK;
 }
 
+/**
+ * @brief
+ *	Determines whether GSS credentials can be acquired
+ *
+ * @return	int
+ * @retval	!= 0 if creds can be acquired
+ * @retval	0 if creds can not be acquired
+ */
+static int
+pbs_gss_can_get_creds(const gss_OID_set oidset)
+{
+	OM_uint32 maj_stat;
+	OM_uint32 min_stat;
+	OM_uint32 valid_sec = 0;
+	gss_cred_id_t creds = GSS_C_NO_CREDENTIAL;
+
+	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, oidset, GSS_C_INITIATE, &creds, NULL, &valid_sec);
+	if (maj_stat == GSS_S_COMPLETE && creds != GSS_C_NO_CREDENTIAL)
+		gss_release_cred(&min_stat, &creds);
+
+	/*
+	 * There is a bug in old MIT implementation.
+	 * It causes valid_sec is always 0.
+	 * The problem is fixed in version >= 1.14
+	 */
+	return (maj_stat == GSS_S_COMPLETE && valid_sec > 10);
+}
 
 /**
  * @brief
@@ -480,9 +508,6 @@ init_pbs_client_ccache_from_keytab(char *err_buf, int err_buf_size)
 	char **realms = NULL;
 	char hostname[PBS_MAXHOSTNAME + 1];
 	int endtime = 0;
-
-	if (isatty(0) || isatty(1) || isatty(2))
-		return 0;
 
 	creds = malloc(sizeof(krb5_creds));
 	if (creds == NULL) {
@@ -655,6 +680,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 	gss_OID_set oidset = GSS_C_NO_OID_SET;
 	int ret;
 	gss_buffer_desc client_name = {0};
+	int ccache_from_keytab = 0;
 
 	if (gss_extra == NULL)
 		return PBS_GSS_ERR_INTERNAL;
@@ -679,13 +705,17 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 	switch(gss_extra->role) {
 
 		case AUTH_CLIENT:
-			if (init_pbs_client_ccache_from_keytab(gss_log_buffer, LOG_BUF_SIZE)) {
-				GSS_LOG_DBG(gss_log_buffer);
-				unsetenv("KRB5CCNAME");
-			}
-
 			if (pbs_gss_oidset_mech(&oidset) != PBS_GSS_OK)
 				return PBS_GSS_ERR_OID;
+
+			if (!pbs_gss_can_get_creds(oidset)) {
+				ccache_from_keytab = 1;
+
+				if (init_pbs_client_ccache_from_keytab(gss_log_buffer, LOG_BUF_SIZE)) {
+					GSS_LOG_DBG(gss_log_buffer);
+					unsetenv("KRB5CCNAME");
+				}
+			}
 
 			maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE, oidset, GSS_C_INITIATE, &creds, NULL, NULL);
 
@@ -693,6 +723,8 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 
 			if (maj_stat != GSS_S_COMPLETE) {
 				GSS_LOG_STS("gss_acquire_cred", maj_stat, min_stat);
+				if (ccache_from_keytab)
+					unsetenv("KRB5CCNAME");
 				return PBS_GSS_ERR_ACQUIRE_CREDS;
 			}
 
@@ -701,7 +733,8 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 
 			ret = pbs_gss_client_establish_context(service_name, creds, oid, gss_flags, &gss_context, &ret_flags, data_in, len_in, data_out, len_out);
 
-			unsetenv("KRB5CCNAME");
+			if (ccache_from_keytab)
+				unsetenv("KRB5CCNAME");
 
 			if (creds != GSS_C_NO_CREDENTIAL) {
 				maj_stat = gss_release_cred(&min_stat, &creds);
