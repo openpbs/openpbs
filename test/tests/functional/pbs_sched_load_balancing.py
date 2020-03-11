@@ -58,7 +58,7 @@ class TestSchedLoadBalancing(TestFunctional):
         cmd = os.path.join(self.server.pbs_conf[
                            'PBS_EXEC'], 'unsupported', 'pbs_rmget')
         cmd += ' -m ' + self.mom.hostname + ' loadave '
-        ret = self.du.run_cmd(self.mom.hostname, cmd)
+        ret = self.du.run_cmd(self.mom.hostname, cmd, sudo=True)
         current_load = float(ret['out'][0].split('=')[1])
         # Considering our job will need 1 cpu
         ideal_load = current_load + 1
