@@ -2960,6 +2960,10 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         assigned = {}
         for key in self.paths:
+            if key in ('blkio', 'cpu', 'cpuacct', 'freezer', 'systemd'):
+                continue
+            if not self.enabled(key):
+                continue
             path = os.path.dirname(self._cgroup_path(key))
             # Adjust the wildcard for systemd, do not exclude orphans
             pattern = self._systemd_subdir_wildcard()
@@ -2973,10 +2977,6 @@ class CgroupUtils(object):
                            (caller_name(), jobid))
                 if jobid not in assigned:
                     assigned[jobid] = {}
-                if key in ('blkio', 'cpu', 'cpuacct', 'freezer', 'systemd'):
-                    continue
-                if not self.enabled(key):
-                    continue
                 if key not in assigned[jobid]:
                     assigned[jobid][key] = {}
                 if key == 'cpuset':
@@ -3054,18 +3054,7 @@ class CgroupUtils(object):
             out, err = process.communicate()
             ver = int(re.sub(r'Version=([0-9]+)', r'\1', out.splitlines()[0]))
         except Exception:
-            # Loop through the mounts to see if systemd is present. Do not
-            # rely on self.paths because it has not been initialized yet.
-            with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as desc:
-                for line in desc:
-                    entries = line.split()
-                    if entries[2] != 'cgroup':
-                        continue
-                    flags = entries[3].split(',')
-                    if 'systemd' in flags or 'name=systemd' in flags:
-                        # Must be at least version 205 if the cgroup is present
-                        ver = 205
-            # systemd is missing or broken
+            # Note we also get here if we can't decode an int version
             return 0
         if not os.path.exists(
                 os.path.join(os.sep, 'run', 'systemd', 'system')):
@@ -4742,8 +4731,8 @@ class CgroupUtils(object):
                     # Make sure it still exists
                     if not os.path.isdir(subdir):
                         pbs.logmsg(pbs.EVENT_DEBUG4,
-                                  '%s: Skipping because %s is gone' %
-                                  (caller_name(), subdir))
+                                   '%s: Skipping because %s is gone' %
+                                   (caller_name(), subdir))
                         continue
                     # Remove it
                     pbs.logmsg(pbs.EVENT_DEBUG4,
