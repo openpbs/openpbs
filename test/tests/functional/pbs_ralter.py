@@ -1472,7 +1472,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t = start1 - int(time.time())
         self.logger.info('Sleeping until reservation starts')
-        self.server.expect(RESV, {'reserve_state': (MATCH_RE, 'RESV_RUNNING')},
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
                            id=rid1, offset=t)
 
         # sequence=2 because we'll get one message from the last alter attempt

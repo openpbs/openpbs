@@ -1209,33 +1209,6 @@ cmp_starving_jobs(const void *j1, const void *j2)
 
 /**
  * @brief
- * cmp_nodes_sort	- compare nodes based on to_be_sorted's
- * 			  value in the node scratch area.
- *
- * @param[in] n1	- node to compare.
- * @param[in] n2	- node to compare.
- *
- * @return - int
- * @retval  1: If n2's to_be_sorted is set and n1's is not.
- *          0: If both the nodes have to_be_sorted equal.
- *         -1: If n1's to_be_sorted is set and n2's is not.
- */
-int
-cmp_nodes_sort(const void *n1, const void *n2)
-{
-	int n1_sort = (*(node_info **)n1)->nscr.to_be_sorted;
-	int n2_sort = (*(node_info **)n2)->nscr.to_be_sorted;
-
-	if (n1_sort && !n2_sort)
-		return 1;
-	if (!n1_sort && n2_sort)
-		return -1;
-	else
-		return 0;
-}
-
-/**
- * @brief
  * cmp_resv_state	- compare reservation state with RESV_BEING_ALTERED.
  *
  * @param[in] r1	- reservation to compare.
