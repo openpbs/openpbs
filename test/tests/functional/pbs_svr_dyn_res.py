@@ -339,7 +339,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_size(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"
@@ -381,18 +380,11 @@ class TestServerDynRes(TestFunctional):
         self.server.deljob(jid2, wait=True, runas=TEST_USER)
 
         # Submit jobs again
-        a = {'Resource_List.foobar': '50gb'}
+        a = {'Resource_List.foobar': '100gb'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
-
-        a = {'Resource_List.foobar': '50gb'}
-        j2 = Job(TEST_USER, attrs=a)
-        jid2 = self.server.submit(j2)
-
-        # Both jobs must run successfully
-        a = {'job_state': 'R', 'Resource_List.foobar': '50gb'}
+        a = {'job_state': 'R', 'Resource_List.foobar': '100gb'}
         self.server.expect(JOB, a, id=jid1)
-        self.server.expect(JOB, a, id=jid2)
 
     @skipOnCpuSet
     def test_res_size_runtime(self):
