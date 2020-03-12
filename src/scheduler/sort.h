@@ -189,11 +189,6 @@ int cmp_preemption(resource_resv *r1, resource_resv *r2);
 int cmp_starving_jobs(const void *j1, const void *j2);
 
 /*
- * cmp_nodes_sort - compare based on to_be_sorted in node scratch area.
- */
-int cmp_nodes_sort(const void *n1, const void *n2);
-
-/*
  * cmp_resv_state - compare based on resv_state
  */
 int cmp_resv_state(const void *r1, const void *r2);

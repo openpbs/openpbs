@@ -1427,3 +1427,92 @@ class TestPbsResvAlter(TestFunctional):
 
         self.server.expect(RESV, attr, op=UNSET, id=rid, max_attempts=5)
         self.server.expect(QUEUE, attr2, op=UNSET, id=qid, max_attempts=5)
+
+    @skipOnCpuSet
+    def test_ralter_psets(self):
+        """
+        Test that PBS will not place a job across placement sets after
+        successfully being altered
+        """
+        duration = 120
+        offset1 = 30
+        offset2 = 180
+
+        a = {'type': 'string', 'flag': 'h'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='color')
+
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
+        self.server.create_vnodes('vn', a, 3, self.mom)
+
+        a = {'resources_available.color': 'red'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[0]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[1]')
+        a = {'resources_available.color': 'green'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[2]')
+
+        a = {'node_group_key': 'color', 'node_group_enable': True}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        rid1, start1, end1 = self.submit_and_confirm_reservation(
+            offset1, duration, select="2:ncpus=4")
+
+        self.server.status(RESV)
+        nodes = self.server.reservations[rid1].get_vnodes()
+
+        rid2, start2, end2 = self.submit_and_confirm_reservation(
+            offset2, duration, select="1:ncpus=4:vnode=" + nodes[0])
+
+        c = 'resources_available.color'
+        color1 = self.server.status(NODE, c, id=nodes[0])[0][c]
+        color2 = self.server.status(NODE, c, id=nodes[1])[0][c]
+        self.assertEqual(color1, color2)
+
+        self.alter_a_reservation(rid1, start1, end1, shift=300,
+                                 alter_e=True, whichMessage=3)
+
+        t = start1 - int(time.time())
+        self.logger.info('Sleeping until reservation starts')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid1, offset=t)
+
+        # sequence=2 because we'll get one message from the last alter attempt
+        # and one message from this alter attempt
+        self.alter_a_reservation(rid1, start1, end1, shift=300,
+                                 alter_e=True, sequence=2, whichMessage=3)
+
+    @skipOnCpuSet
+    def test_failed_ralter(self):
+        """
+        Test that a failed ralter does not allow jobs to interfere with
+        that reservation.
+        """
+        self.skipTest('Skipped due to ralter reservation/job overlap bug')
+        duration = 120
+        offset1 = 30
+        offset2 = 180
+
+        rid1, start1, end1 = self.submit_and_confirm_reservation(
+            offset1, duration, select="2:ncpus=4")
+
+        j = Job(attrs={'Resource_List.walltime': 100})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q',
+                                 'comment': (MATCH_RE, 'Not Running')}, id=jid)
+
+        rid2, start2, end2 = self.submit_and_confirm_reservation(
+            offset2, duration, select="2:ncpus=4")
+
+        self.alter_a_reservation(rid1, start1, end1, shift=300,
+                                 alter_e=True, whichMessage=3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        self.logger.info('Sleeping until reservation starts')
+        t = start1 - int(time.time())
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_RUNNING|5')},
+                           offset=t, id=rid1)
+
+        self.alter_a_reservation(rid1, start1, end1, shift=300,
+                                 alter_e=True, whichMessage=3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)

@@ -881,9 +881,6 @@ create_events(server_info *sinfo)
 	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
 
 	for (i = 0; all[i] != NULL && is_timed(all[i]); i++) {
-		if (all[i]->is_resv && all[i]->resv != NULL &&
-			all[i]->resv->resv_state == RESV_BEING_ALTERED)
-			continue;
 		/* only add a run event for a job or reservation if they're
 		 * in a runnable state (i.e. don't add it if they're running)
 		 */
@@ -910,7 +907,7 @@ create_events(server_info *sinfo)
 
 	/* for nodes that are in state=sleep add a timed event */
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
-	        node_info *node = sinfo->nodes[i];
+		node_info *node = sinfo->nodes[i];
 		if (node->is_sleeping) {
 			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
 					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);

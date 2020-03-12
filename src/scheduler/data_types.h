@@ -726,10 +726,6 @@ struct node_info
 struct resv_info
 {
 	unsigned 	 is_standing:1;			/* set to 1 for a standing reservation */
-	unsigned 	 check_alternate_nodes:1;	/* set to 1 while altering a reservation if
-							 * the request can be confirmed on nodes other
-							 * than the ones currently assigned to it.
-							 */
 	char		 *queuename;			/* the name of the queue */
 	char		 *rrule;			/* recurrence rule for standing reservations */
 	char		 *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
