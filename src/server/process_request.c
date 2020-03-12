@@ -516,7 +516,7 @@ process_request(int sfds)
 			return;
 		}
 
-		request->rq_perm = svr_get_privilege(conn->cn_username, conn->cn_physhost);
+		request->rq_perm = svr_get_privilege(request->rq_user, request->rq_host);
 	}
 
 	/* if server shutting down, disallow new jobs and new running */
@@ -933,7 +933,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusHook:
-			if (!is_local_root(conn->cn_username, conn->cn_physhost)) {
+			if (!is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);
