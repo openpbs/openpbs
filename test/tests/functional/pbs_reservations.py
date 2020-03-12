@@ -633,9 +633,8 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit a reservation that will start after the job starts running
-        b = {'reserve_start': now + 360,
-             'reserve_end': now + 3600}
-        a.update(b)
+        a['reserve_start'] = now + 360
+        a['reserve_end'] = now + 3600
 
         r1 = Reservation(TEST_USER, attrs=a)
         rid1 = self.server.submit(r1)
