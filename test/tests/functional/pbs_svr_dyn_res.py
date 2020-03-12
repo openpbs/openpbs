@@ -356,6 +356,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
         j1 = Job(TEST_USER, attrs=a)
+        j1.set_sleep_time(5)
         jid1 = self.server.submit(j1)
 
         # Job must run successfully
@@ -374,7 +375,7 @@ class TestServerDynRes(TestFunctional):
         # The job shouldn't run
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid2, attrop=PTL_AND)
-        self.server.deljob(jid1, wait=True, runas=TEST_USER)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1)
         self.server.deljob(jid2, wait=True, runas=TEST_USER)
 
         # Submit jobs again
