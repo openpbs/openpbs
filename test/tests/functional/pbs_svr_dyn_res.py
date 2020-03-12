@@ -384,7 +384,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar': '100gb'}
         self.server.expect(JOB, a, id=jid1)
 
-    @skipOnCpuSet
     def test_res_size_runtime(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"
