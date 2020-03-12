@@ -344,8 +344,6 @@ class TestServerDynRes(TestFunctional):
         Test that server_dyn_res accepts type "size" and a "value"
         returned by a script
         """
-        a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         # Create a resource of type size
         resname = ["foobar"]
         restype = ["size"]
