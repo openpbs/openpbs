@@ -627,17 +627,15 @@ class TestReservations(TestFunctional):
              'Resource_List.place': 'excl'}
         if self.mom.is_cpuset_mom():
             a['Resource_List.select'] = vnode_val
+
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit a reservation that will start after the job starts running
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 360,
+        b = {'reserve_start': now + 360,
              'reserve_end': now + 3600}
-        if self.mom.is_cpuset_mom():
-            a['Resource_List.select'] = vnode_val
+        a.update(b)
 
         r1 = Reservation(TEST_USER, attrs=a)
         rid1 = self.server.submit(r1)
@@ -1953,25 +1951,29 @@ class TestReservations(TestFunctional):
                     'reserve_start': start_str}
         self.server.expect(RESV, exp_attr, id=rid, offset=idle_timer + 5)
 
-    @skipOnCpuSet
     def test_asap_delete_idle_resv_set(self):
         """
         Test that an ASAP reservation gets a default 10m idle timer if not set
         or keeps its idle timer if it is set
         """
-        self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.ncpus': 1},
-                            id=self.mom.shortname)
-        j1 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        ncpus = self.server.status(NODE)[0]['resources_available.ncpus']
+
+        a = {'Resource_List.select': '1:ncpus=' + ncpus,
+             'Resource_List.walltime': 3600}
+
+        vnode_val = None
+        if self.mom.is_cpuset_mom():
+            vnode_val = 'vnode=' + self.server.status(NODE)[1]['id']
+            ncpus = self.server.status(NODE)[1]['resources_available.ncpus']
+            a['Resource_List.select'] = vnode_val + ":ncpus=" + ncpus
+
+        j1 = Job(attrs=a)
         jid1 = self.server.submit(j1)
 
-        j2 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        j2 = Job(attrs=a)
         jid2 = self.server.submit(j2)
 
-        j3 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        j3 = Job(attrs=a)
         jid3 = self.server.submit(j3)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
