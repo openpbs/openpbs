@@ -104,6 +104,7 @@ typedef struct {
 	int gssctx_established;	/* true if gss context has been established */
 	int is_secure;		/* wrapping includes encryption */
 	enum AUTH_ROLE role;	/* value is client or server */
+	int conn_type;		/* type of connection one of user-oriented or service-oriented */
 	char *hostname;		/* server name */
 	char *clientname;	/* client name in string */
 } pbs_gss_extra_t;
@@ -708,9 +709,16 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 			if (pbs_gss_oidset_mech(&oidset) != PBS_GSS_OK)
 				return PBS_GSS_ERR_OID;
 
-			if (!pbs_gss_can_get_creds(oidset)) {
-				ccache_from_keytab = 1;
+			if (gss_extra->conn_type == AUTH_USER_CONN) {
+				if (!pbs_gss_can_get_creds(oidset)) {
+					ccache_from_keytab = 1;
 
+					if (init_pbs_client_ccache_from_keytab(gss_log_buffer, LOG_BUF_SIZE)) {
+						GSS_LOG_DBG(gss_log_buffer);
+						unsetenv("KRB5CCNAME");
+					}
+				}
+			} else {
 				if (init_pbs_client_ccache_from_keytab(gss_log_buffer, LOG_BUF_SIZE)) {
 					GSS_LOG_DBG(gss_log_buffer);
 					unsetenv("KRB5CCNAME");
@@ -723,7 +731,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 
 			if (maj_stat != GSS_S_COMPLETE) {
 				GSS_LOG_STS("gss_acquire_cred", maj_stat, min_stat);
-				if (ccache_from_keytab)
+				if (ccache_from_keytab || gss_extra->conn_type == AUTH_SERVICE_CONN)
 					unsetenv("KRB5CCNAME");
 				return PBS_GSS_ERR_ACQUIRE_CREDS;
 			}
@@ -733,7 +741,7 @@ pbs_gss_establish_context(pbs_gss_extra_t *gss_extra, void *data_in, size_t len_
 
 			ret = pbs_gss_client_establish_context(service_name, creds, oid, gss_flags, &gss_context, &ret_flags, data_in, len_in, data_out, len_out);
 
-			if (ccache_from_keytab)
+			if (ccache_from_keytab || gss_extra->conn_type == AUTH_SERVICE_CONN)
 				unsetenv("KRB5CCNAME");
 
 			if (creds != GSS_C_NO_CREDENTIAL) {
@@ -873,6 +881,7 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
  *
  * @param[in] ctx - pointer to external auth context to be allocated
  * @param[in] mode - AUTH_SERVER or AUTH_CLIENT
+ * @param[in] conn_type - AUTH_USER_CONN or AUTH_SERVICE_CONN
  * @param[in] hostname - hostname of other authenticating party in case of AUTH_CLIENT else not used
  *
  * @return	int
@@ -880,7 +889,7 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
  * @retval	1 - error
  */
 int
-pbs_auth_create_ctx(void **ctx, int mode, const char *hostname)
+pbs_auth_create_ctx(void **ctx, int mode, int conn_type, const char *hostname)
 {
 	pbs_gss_extra_t *gss_extra = NULL;
 
@@ -893,6 +902,7 @@ pbs_auth_create_ctx(void **ctx, int mode, const char *hostname)
 
 	gss_extra->gssctx = GSS_C_NO_CONTEXT;
 	gss_extra->role = mode;
+	gss_extra->conn_type = conn_type;
 	if (gss_extra->role == AUTH_SERVER) {
 		char *hn = NULL;
 		if ((hn = malloc(PBS_MAXHOSTNAME + 1)) == NULL) {

@@ -567,7 +567,7 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 
 		authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
 
-		if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
+		if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 			tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
 			return -1;
 		}
@@ -645,7 +645,7 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 
 			authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
 
-			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
+			if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
 				return -1;
 			}
@@ -1366,7 +1366,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			if (authdata->authdef == NULL) {
 				authdata->authdef = authdef;
 				authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
-				if (authdef->create_ctx(&(authdata->authctx), AUTH_SERVER, tpp_transport_get_conn_hostname(tfd))) {
+				if (authdef->create_ctx(&(authdata->authctx), AUTH_SERVER, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create server auth context");
 					return -1;
 				}
@@ -1377,7 +1377,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			if (authdata->encryptdef == NULL) {
 				authdata->encryptdef = authdef;
 				authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
-				if (authdef->create_ctx(&(authdata->encryptctx), AUTH_SERVER, tpp_transport_get_conn_hostname(tfd))) {
+				if (authdef->create_ctx(&(authdata->encryptctx), AUTH_SERVER, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create server auth extra");
 					return -1;
 				}
@@ -1442,7 +1442,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 			authdef->set_config((const pbs_auth_config_t *)(tpp_conf->auth_config));
 
-			if (authdef->create_ctx(&authctx, AUTH_CLIENT, tpp_transport_get_conn_hostname(tfd))) {
+			if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
 				tpp_log_func(LOG_CRIT, __func__, "Failed to create client auth context");
 				return -1;
 			}

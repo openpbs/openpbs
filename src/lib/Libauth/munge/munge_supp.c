@@ -281,6 +281,7 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
  *
  * @param[in] ctx - pointer to external auth context to be allocated
  * @param[in] mode - AUTH_SERVER or AUTH_CLIENT
+ * @param[in] conn_type - AUTH_USER_CONN or AUTH_SERVICE_CONN
  * @param[in] hostname - hostname of other authenticating party
  *
  * @note
@@ -291,7 +292,7 @@ pbs_auth_set_config(const pbs_auth_config_t *config)
  * @retval	1 - error
  */
 int
-pbs_auth_create_ctx(void **ctx, int mode, const char *hostname)
+pbs_auth_create_ctx(void **ctx, int mode, int conn_type, const char *hostname)
 {
 	*ctx = NULL;
 	return 0;

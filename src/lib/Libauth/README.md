@@ -39,8 +39,8 @@
  - **Return Value:** None, void
 
 # pbs_auth_create_ctx
- - **Synopsis:** int pbs_auth_create_ctx(void **ctx, int mode)
- - **Description:** This API creates an authentication context for a given mode, which will be used by other LibAuth API for authentication, encrypt and decrypt data.
+ - **Synopsis:** int pbs_auth_create_ctx(void **ctx, int mode, int conn_type, char *hostname)
+ - **Description:** This API creates an authentication context for a given mode and conn_type, which will be used by other LibAuth API for authentication, encrypt and decrypt data.
  - **Arguments:**
 
 	- void **ctx
@@ -54,6 +54,35 @@
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use AUTH_CLIENT for client-side (aka who is initiating authentication) context
 
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use AUTH_SERVER for server-side (aka who is authenticating incoming user/connection) context
+
+		```c
+		enum AUTH_ROLE {
+			AUTH_ROLE_UNKNOWN = 0,
+			AUTH_CLIENT,
+			AUTH_SERVER,
+			AUTH_ROLE_LAST
+		};
+		```
+
+	- int conn_type
+
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Specify which type of connection is for which context to be created, should be one of AUTH_USER_CONN or AUTH_SERVICE_CONN
+
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use AUTH_USER_CONN for user-oriented connection (aka like PBS client is connecting to PBS Server)
+
+
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use AUTH_SERVICE_CONN for service-oriented connection (aka like PBS Mom is connecting to PBS Server via PBS Comm)
+
+		```c
+		enum AUTH_CONN_TYPE {
+			AUTH_USER_CONN = 0,
+			AUTH_SERVICE_CONN
+		};
+		```
+
+	- char *hostname
+
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The null-terminated hostname of another authenticating party
 
  - **Return Value:** Integer
 
@@ -102,6 +131,8 @@
 	- 1 - On Failure
 
  - **Cleanup:** Returned user, host, and realm should be freed using free() when no more required, as it will be allocated heap memory.
+
+ - **Example:** This example shows what will be the value of the user, host, and realm. Let's take an example of GSS/Kerberos authentication, where auth client hostname is "xyz.abc.com", the username is "test" and in Kerberos configuration domain realm is "PBSPRO" so when this auth client authenticates to server using Kerberos authentication method, it will be authenticated as "test@PBSPRO" and this API will return user = test, host = xyz.abc.com, and realm = PBSPRO.
 
 # pbs_auth_process_handshake_data
  - **Synopsis:** int pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)

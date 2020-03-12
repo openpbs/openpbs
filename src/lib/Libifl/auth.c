@@ -593,7 +593,7 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 	transport_chan_set_authdef(fd, authdef, for_encrypt);
 	authdef->set_config((const pbs_auth_config_t *)config);
 	if ((authctx = transport_chan_get_authctx(fd, for_encrypt)) == NULL) {
-		if (authdef->create_ctx(&authctx, AUTH_CLIENT, (const char *)hostname)) {
+		if (authdef->create_ctx(&authctx, AUTH_CLIENT, AUTH_USER_CONN, (const char *)hostname)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
@@ -857,7 +857,7 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 	}
 
 	if ((authctx = transport_chan_get_authctx(fd, for_encrypt)) == NULL) {
-		if (authdef->create_ctx(&authctx, AUTH_SERVER, clienthost)) {
+		if (authdef->create_ctx(&authctx, AUTH_SERVER, AUTH_USER_CONN, clienthost)) {
 			snprintf(ebuf, ebufsz, "Failed to create auth context");
 			pbs_errno = PBSE_SYSTEM;
 			return -1;

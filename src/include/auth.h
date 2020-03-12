@@ -64,6 +64,11 @@ enum AUTH_ROLE {
 	AUTH_ROLE_LAST
 };
 
+enum AUTH_CONN_TYPE {
+	AUTH_USER_CONN = 0,
+	AUTH_SERVICE_CONN
+};
+
 enum AUTH_CTX_STATUS {
 	AUTH_STATUS_UNKNOWN = 0,
 	AUTH_STATUS_CTX_ESTABLISHING,
@@ -110,7 +115,7 @@ typedef struct auth_def {
 	/*
 	 * the function pointer to create new auth context used by auth lib
 	 */
-	int (*create_ctx)(void **ctx, int mode, const char *hostname);
+	int (*create_ctx)(void **ctx, int mode, int conn_type, const char *hostname);
 
 	/*
 	 * the function pointer to free auth context used by auth lib
