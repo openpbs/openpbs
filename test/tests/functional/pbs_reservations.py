@@ -616,11 +616,17 @@ class TestReservations(TestFunctional):
         resv from getting confirmed.
         """
 
+        vnode_val = None
+        if self.mom.is_cpuset_mom():
+            vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
+
         now = int(time.time())
         # Submit a job but do not specify walltime, scheduler will consider
         # the walltime of such a job to be 5 years
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
+        if self.mom.is_cpuset_mom():
+            a['Resource_List.select'] = vnode_val
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -630,6 +636,9 @@ class TestReservations(TestFunctional):
              'Resource_List.place': 'excl',
              'reserve_start': now + 360,
              'reserve_end': now + 3600}
+        if self.mom.is_cpuset_mom():
+            a['Resource_List.select'] = vnode_val
+
         r1 = Reservation(TEST_USER, attrs=a)
         rid1 = self.server.submit(r1)
 
@@ -839,6 +848,9 @@ class TestReservations(TestFunctional):
              'Resource_List.select': '1:ncpus=1:vnode=' +
              self.mom.shortname,
              'Resource_List.place': 'excl'}
+        if self.mom.is_cpuset_mom():
+            vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
+            a['Resource_List.select'] = vnode_val
 
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
@@ -853,8 +865,11 @@ class TestReservations(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, a, id=rid, offset=sleep_time)
 
+        mom_name = self.mom.shortname
+        if self.mom.is_cpuset_mom():
+            mom_name = self.server.status(NODE)[1]['id']
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.mom.shortname)
+                           id=mom_name)
 
     @skipOnCpuSet
     def test_multiple_asap_resv(self):
@@ -1938,6 +1953,7 @@ class TestReservations(TestFunctional):
                     'reserve_start': start_str}
         self.server.expect(RESV, exp_attr, id=rid, offset=idle_timer + 5)
 
+    @skipOnCpuSet
     def test_asap_delete_idle_resv_set(self):
         """
         Test that an ASAP reservation gets a default 10m idle timer if not set
