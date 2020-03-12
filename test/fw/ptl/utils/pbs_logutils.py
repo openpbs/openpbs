@@ -1276,7 +1276,7 @@ class PBSSchedulerLog(PBSLogAnalyzer):
 
         cycles = []
         if end is None:
-            end = int(time.time())
+            end = time.time()
         for c in self.cycles:
             if c.start >= start and c.end < end:
                 cycles.append(c)
