@@ -83,7 +83,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                                 hook end messages.
         """
         occurance = 0
-        time_expected = int(time.time()) + freq
         # time after which we want to start matching log
         search_after = int(time.time())
         intr = freq
@@ -92,8 +91,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
             msg = self.server.log_match(msg_expected,
                                         interval=(intr + 1),
                                         starttime=search_after)
-            time_logged = self.get_timestamp(msg[1])
-            self.assertFalse((time_logged - time_expected) > freq)
+            if occurance == 0:
+                time_expected = time_logged = self.get_timestamp(msg[1])
+            else:
+                time_logged = self.get_timestamp(msg[1])
+                self.assertFalse((time_logged - time_expected) > 1)
 
             if check_for_hook_end is True:
                 time_expected = time_logged + hook_run_time
@@ -104,7 +106,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                                             interval=(hook_run_time + 1),
                                             starttime=search_after)
                 time_logged = self.get_timestamp(msg[1])
-                self.assertFalse((time_logged - time_expected) > freq)
+                self.assertFalse((time_logged - time_expected) > 1)
 
                 if hook_run_time <= freq:
                     intr = freq - hook_run_time
@@ -119,7 +121,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
             # we just matched hook start/end message, next start message is
             # surely after time_expected.
             search_after = time_expected
-            time_expected = time_expected + intr
+            time_expected = time_logged + intr
             occurance += 1
 
     def test_sp_hook_run(self):
