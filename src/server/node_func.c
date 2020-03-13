@@ -2351,6 +2351,9 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 
 	pnode = (pbsnode *)pobj;
 
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
 	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
 		return PBSE_DEFAULT_PARTITION;
 
