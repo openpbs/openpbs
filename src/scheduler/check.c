@@ -1536,18 +1536,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			return NULL;
 	}
 
-	/* For a reservation alter, if the reservation has not started running
-	 * note that alternate nodes (that do not belong to the reservation)
-	 * should also be looked at if the alter cannot be confirmed on the
-	 * nodes belonging to the reservation.
-	 */
-	if (resresv->is_resv && resresv->resv &&
-		resresv->resv->resv_state == RESV_BEING_ALTERED &&
-		resresv->resv->resv_substate == RESV_CONFIRMED) {
-
-		resresv->resv->check_alternate_nodes = 1;
-	}
-
 	/* Sets of nodes:
 	   * 1. job is in a reservation - use reservation nodes
 	   * 2. job or reservation has nodes -- use them
@@ -1565,10 +1553,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 		ninfo_arr = resresv->job->resv->resv->resv_nodes;
 		nodepart = NULL;
 	}
-	else if (resresv->is_resv && resresv->resv && resresv->resv->check_alternate_nodes) {
-		ninfo_arr = sinfo->unassoc_nodes;
-		nodepart = NULL;
-	}
+
 	/* if we have nodes, use them
 	 * don't care about node grouping because nodes are already assigned
 	 * to the job.  We won't need to search for them.
@@ -1997,8 +1982,7 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*spec = resresv->select;
 		}
 	} else if (resresv->is_resv && resresv->resv != NULL) {
-		if ((resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING) && 
-				!resresv->resv->check_alternate_nodes)
+		if (resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING)
 			*spec = resresv->execselect;
 		else
 			*spec = resresv->select;

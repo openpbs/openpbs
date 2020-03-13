@@ -54,17 +54,16 @@ class TestReservationRequests(TestFunctional):
         duration and endtime, making the server calculate
         the starttime.
         """
-        # create reservation to end in 5 seconds and lasts 1.
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_end': now + 5,
-             'reserve_duration': 1}
+             'reserve_end': now + 30,
+             'reserve_duration': 5}
         R = Reservation(TEST_USER, attrs=a)
         R.unset_attributes(['reserve_start'])
         rid = self.server.submit(R)
 
         a = {'reserve_start': self.bu.convert_seconds_to_datetime(
-            now + 4, self.fmt)}
+            now + 25, self.fmt)}
         self.server.expect(RESV, a, id=rid)
 
     def test_duration_end_resv_fail(self):
@@ -73,10 +72,9 @@ class TestReservationRequests(TestFunctional):
         duration and endtime, making the server calculate
         the starttime and rejects if the starttime is before now.
         """
-        # create reservation to end in 5 seconds and lasts 10.
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_end': int(time.time()) + 5,
-             'reserve_duration': 10}
+             'reserve_end': int(time.time()) + 15,
+             'reserve_duration': 20}
         R = Reservation(TEST_USER, attrs=a)
         R.unset_attributes(['reserve_start'])
         rid = None
@@ -96,8 +94,8 @@ class TestReservationRequests(TestFunctional):
         """
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 10,
-             'reserve_end': now + 30,
+             'reserve_start': now + 20,
+             'reserve_end': now + 40,
              'reserve_duration': 10}
         R = Reservation(TEST_USER, attrs=a)
         rid = None
@@ -158,4 +156,4 @@ class TestReservationRequests(TestFunctional):
         out = self.server.status(RESV, 'reserve_duration', id=rid)[0][
             'reserve_duration']
         dur = int(out)
-        self.assertTrue(dur > 0, 'Duration ' + str(dur) + 'is negative.')
+        self.assertGreater(dur, 0, 'Duration ' + str(dur) + 'is negative.')

@@ -190,7 +190,7 @@ exit 1
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
-        self.mom.add_checkpoint_abort_script(body=self.chk_script)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
     @skipOnCpuSet

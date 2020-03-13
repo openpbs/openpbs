@@ -71,8 +71,7 @@ j.create_resv_from_job=1
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
-        a = {'Resource_List.select': '1:ncpus=3',
-             'Resource_List.walltime': 9999}
+        a = {'Resource_List.walltime': 9999}
         job = Job(TEST_USER, a)
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
@@ -81,7 +80,6 @@ j.create_resv_from_job=1
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
 
         a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
-             'Resource_List.select': '1:ncpus=3',
              'Resource_List.walltime': 9999}
         self.server.expect(RESV, a, id=rid)
 
@@ -148,8 +146,7 @@ j.create_resv_from_job=1
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
-        a = {'Resource_List.select': '1:ncpus=3',
-             'Resource_List.walltime': 9999}
+        a = {'Resource_List.walltime': 9999}
         job = Job(TEST_USER, a)
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)

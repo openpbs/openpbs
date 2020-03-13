@@ -101,17 +101,20 @@ class TestServerDynRes(TestFunctional):
         restype = ["long"]
         script_body = ['echo abc']
 
+        start_time = time.time()
         # Add it as a server_dyn_res that returns a string output
         filenames = self.setup_dyn_res(resname, restype, script_body)
 
         # Submit a job
         j = Job(TEST_USER)
+        j.set_sleep_time(1)
         jid = self.server.submit(j)
 
         # Make sure that "Problem with creating server data structure"
         # is not logged in sched_logs
         self.scheduler.log_match("Problem with creating server data structure",
-                                 existence=False, max_attempts=10)
+                                 existence=False, max_attempts=10,
+                                 starttime=start_time)
 
         # Also check that "<script> returned bad output"
         # is in the logs
@@ -221,7 +224,6 @@ class TestServerDynRes(TestFunctional):
         # Cleanup dynamically created file
         self.du.rm(fpath_out, sudo=True, force=True)
 
-    @skipOnCpuSet
     def test_multiple_res(self):
         """
         Test multiple dynamic resources specified in resourcedef
@@ -239,6 +241,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_small': '4'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -248,6 +251,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_medium': '10'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -280,6 +284,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'abc'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -316,6 +321,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'red'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -335,7 +341,6 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_res_size(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"
@@ -353,6 +358,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
         j1 = Job(TEST_USER, attrs=a)
+        j1.set_sleep_time(5)
         jid1 = self.server.submit(j1)
 
         # Job must run successfully
@@ -371,26 +377,16 @@ class TestServerDynRes(TestFunctional):
         # The job shouldn't run
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid2, attrop=PTL_AND)
-
-        # Delete jobs
-        self.server.deljob(jid1, wait=True, runas=TEST_USER)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1)
         self.server.deljob(jid2, wait=True, runas=TEST_USER)
 
         # Submit jobs again
-        a = {'Resource_List.foobar': '50gb'}
+        a = {'Resource_List.foobar': '100gb'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
-
-        a = {'Resource_List.foobar': '50gb'}
-        j2 = Job(TEST_USER, attrs=a)
-        jid2 = self.server.submit(j2)
-
-        # Both jobs must run successfully
-        a = {'job_state': 'R', 'Resource_List.foobar': '50gb'}
+        a = {'job_state': 'R', 'Resource_List.foobar': '100gb'}
         self.server.expect(JOB, a, id=jid1)
-        self.server.expect(JOB, a, id=jid2)
 
-    @skipOnCpuSet
     def test_res_size_runtime(self):
         """
         Test that server_dyn_res accepts type "size" and a "value"

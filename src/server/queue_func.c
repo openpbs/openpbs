@@ -476,6 +476,9 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 {
 	int i;
 
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
 	if (((pbs_queue *)pobj)->qu_qs.qu_type  == QTYPE_RoutePush)
 		return PBSE_ROUTE_QUE_NO_PARTITION;
 

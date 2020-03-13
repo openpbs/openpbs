@@ -172,10 +172,12 @@ def skipOnCpuSet(function):
     """
     Decorator to skip a test on a CpuSet system
     """
-
     def wrapper(self, *args, **kwargs):
-        if self.mom.is_cpuset_mom():
-            self.skipTest(reason='capability not supported on Cpuset')
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                msg = 'capability not supported on Cpuset mom:' + mom.shortname
+                self.skipTest(reason=msg)
+                break
         else:
             function(self, *args, **kwargs)
     wrapper.__doc__ = function.__doc__
@@ -449,18 +451,22 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_param()
         cls.check_users_exist()
         cls.init_servers()
+        cls.init_schedulers()
         if cls.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_custom_setup",
                                        suffix=".json")
-            ret = cls.server.save_configuration(path, 'w')
+            ret = cls.server.save_configuration()
+            if not ret:
+                cls.logger.error("Failed to save server's custom setup")
+                raise Exception("Failed to save server's custom setup")
+            ret = cls.scheduler.save_configuration(path, 'w')
             if ret:
                 cls.saved_file = path
             else:
-                cls.logger.error("Failed to save custom setup")
-                raise Exception("Failed to save custom setup")
+                cls.logger.error("Failed to save scheduler's custom setup")
+                raise Exception("Failed to save scheduler's custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
-        cls.init_schedulers()
         cls.init_moms()
         cls.log_end_setup(True)
 
@@ -472,13 +478,17 @@ class PBSTestSuite(unittest.TestCase):
         if not PBSTestSuite.config_saved and self.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_test_setup",
                                        suffix=".json")
-            ret = self.server.save_configuration(path, 'w')
+            ret = self.server.save_configuration()
+            if not ret:
+                self.logger.error("Failed to save server's test setup")
+                raise Exception("Failed to save server's test setup")
+            ret = self.scheduler.save_configuration(path, 'w')
             if ret:
                 self.saved_file = path
-                PBSTestSuite.config_saved = True
             else:
-                self.logger.error("Failed to save test setup")
-                raise Exception("Failed to save test setup")
+                self.logger.error("Failed to save scheduler's test setup")
+                raise Exception("Failed to save scheduler's test setup")
+            PBSTestSuite.config_saved = True
         # Adding only server and pbs.conf methods in use current
         # setup block, rest of them to be added to this block
         # once save & load configurations are implemented for
@@ -488,9 +498,9 @@ class PBSTestSuite(unittest.TestCase):
         else:
             self.revert_servers()
             self.revert_pbsconf()
+            self.revert_schedulers()
         self.revert_moms()
         self.revert_comms()
-        self.revert_schedulers()
         self.log_end_setup()
         self.measurements = []
 
@@ -1596,7 +1606,10 @@ class PBSTestSuite(unittest.TestCase):
             self.delete_current_state(self.server, self.moms)
             ret = self.server.load_configuration(self.saved_file)
             if not ret:
-                raise Exception("Failed to load test setup")
+                raise Exception("Failed to load server's test setup")
+            ret = self.scheduler.load_configuration(self.saved_file)
+            if not ret:
+                raise Exception("Failed to load scheduler's test setup")
         self.log_end_teardown()
 
     @classmethod
@@ -1607,6 +1620,9 @@ class PBSTestSuite(unittest.TestCase):
             PBSTestSuite.config_saved = False
             ret = cls.server.load_configuration(cls.saved_file)
             if not ret:
-                raise Exception("Failed to load custom setup")
+                raise Exception("Failed to load server's custom setup")
+            ret = cls.scheduler.load_configuration(cls.saved_file)
+            if not ret:
+                raise Exception("Failed to load scheduler's custom setup")
         if cls.use_cur_setup:
             cls.du.rm(path=cls.saved_file)

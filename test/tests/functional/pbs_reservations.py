@@ -616,20 +616,26 @@ class TestReservations(TestFunctional):
         resv from getting confirmed.
         """
 
+        vnode_val = None
+        if self.mom.is_cpuset_mom():
+            vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
+
         now = int(time.time())
         # Submit a job but do not specify walltime, scheduler will consider
         # the walltime of such a job to be 5 years
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
+        if self.mom.is_cpuset_mom():
+            a['Resource_List.select'] = vnode_val
+
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit a reservation that will start after the job starts running
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 360,
-             'reserve_end': now + 3600}
+        a['reserve_start'] = now + 360
+        a['reserve_end'] = now + 3600
+
         r1 = Reservation(TEST_USER, attrs=a)
         rid1 = self.server.submit(r1)
 
@@ -839,6 +845,9 @@ class TestReservations(TestFunctional):
              'Resource_List.select': '1:ncpus=1:vnode=' +
              self.mom.shortname,
              'Resource_List.place': 'excl'}
+        if self.mom.is_cpuset_mom():
+            vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
+            a['Resource_List.select'] = vnode_val
 
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
@@ -853,8 +862,11 @@ class TestReservations(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, a, id=rid, offset=sleep_time)
 
+        mom_name = self.mom.shortname
+        if self.mom.is_cpuset_mom():
+            mom_name = self.server.status(NODE)[1]['id']
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.mom.shortname)
+                           id=mom_name)
 
     @skipOnCpuSet
     def test_multiple_asap_resv(self):
@@ -1943,19 +1955,24 @@ class TestReservations(TestFunctional):
         Test that an ASAP reservation gets a default 10m idle timer if not set
         or keeps its idle timer if it is set
         """
-        self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.ncpus': 1},
-                            id=self.mom.shortname)
-        j1 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        ncpus = self.server.status(NODE)[0]['resources_available.ncpus']
+
+        a = {'Resource_List.select': '1:ncpus=' + ncpus,
+             'Resource_List.walltime': 3600}
+
+        vnode_val = None
+        if self.mom.is_cpuset_mom():
+            vnode_val = 'vnode=' + self.server.status(NODE)[1]['id']
+            ncpus = self.server.status(NODE)[1]['resources_available.ncpus']
+            a['Resource_List.select'] = vnode_val + ":ncpus=" + ncpus
+
+        j1 = Job(attrs=a)
         jid1 = self.server.submit(j1)
 
-        j2 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        j2 = Job(attrs=a)
         jid2 = self.server.submit(j2)
 
-        j3 = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                        'Resource_List.walltime': 3600})
+        j3 = Job(attrs=a)
         jid3 = self.server.submit(j3)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
@@ -2156,3 +2173,28 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
         self.server.expect(SERVER, {'resources_assigned.ncpus': 0})
+
+    def test_server_recover_resv_queue(self):
+        """
+        Test that PBS server can recover a reservation queue after a
+        restart
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        now = int(time.time())
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      start=now + 5, end=now + 100)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.restart()
+        self.server.expect(RESV, a, id=rid)
+
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: resv_queue}
+        J = Job(attrs=a)
+        jid = self.server.submit(J)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
