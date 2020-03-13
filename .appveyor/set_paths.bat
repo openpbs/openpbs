@@ -47,6 +47,10 @@ if not defined CMAKE_BIN (
     set CMAKE_BIN=cmake
 )
 
+if not defined 7Z_BIN (
+    set 7Z_BIN=7z
+)
+
 if not defined __BINARIESDIR (
     set __BINARIESDIR=%CD%\binaries
 )
