@@ -55,7 +55,12 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
 
         a = {'resources_available.mem': '1gb',
              'resources_available.ncpus': '1'}
-        self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom)
+        self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
+                                  expect=False)
+        # Make sure all the nodes are in state free.  We can't let
+        # create_vnodes() do this because it does a pbsnodes -v on each vnode.
+        # This takes a long time.
+        self.server.expect(NODE, {'state=free': (GE, 5000)})
         # Restart mom explicitly due to PP-993
         self.mom.restart()
 
