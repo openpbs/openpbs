@@ -3323,7 +3323,7 @@ class PBSObject(object):
         self.dflt_attributes = defaults
         self.attropl = None
         self.custom_attrs = OrderedDict()
-        self.ctime = int(time.time())
+        self.ctime = time.time()
 
         self.set_attributes(attrs)
 
@@ -3895,7 +3895,7 @@ class PBSService(PBSObject):
         lines = []
         sudo = False
         if endtime is None:
-            endtime = int(time.time())
+            endtime = time.time()
         if starttime is None:
             starttime = self.ctime
         try:
@@ -8542,7 +8542,7 @@ class Server(PBSService):
                         runas=ROOT_USER, wait=False)
         except PbsDeljobError:
             pass
-        st = int(time.time())
+        st = time.time()
         if len(job_ids) > 100:
             for host, pids in host_pid_map.items():
                 chunks = [pids[i:i + 5000] for i in range(0, len(pids), 5000)]
@@ -11307,7 +11307,7 @@ class Scheduler(PBSService):
         if len(config) == 0:
             return True
 
-        reconfig_time = int(time.time())
+        reconfig_time = time.time()
         try:
             fn = self.du.create_temp_file()
             with open(fn, "w", encoding="utf-8") as fd:
@@ -12695,7 +12695,7 @@ class Scheduler(PBSService):
                 self.hostname, self.resource_group_file)
         if isinstance(name, PbsUser):
             name = str(name)
-        reconfig_time = int(time.time())
+        reconfig_time = time.time()
         rc = self.resource_group.create_node(name, fairshare_id,
                                              parent_name=parent,
                                              nshares=nshares)
