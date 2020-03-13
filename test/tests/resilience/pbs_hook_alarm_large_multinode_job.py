@@ -55,11 +55,16 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
 
         a = {'resources_available.mem': '1gb',
              'resources_available.ncpus': '1'}
-        self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom)
+        self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
+                                  expect=False)
+        # Make sure all the nodes are in state free.  We can't let
+        # create_vnodes() do this because it does a pbsnodes -v on each vnode.
+        # This takes a long time.
+        self.server.expect(NODE, {'state=free': (GE, 5000)})
         # Restart mom explicitly due to PP-993
         self.mom.restart()
 
-    @timeout(1800)
+    @timeout(400)
     def test_begin_hook(self):
         """
         Create an execjob_begin hook, import a hook content with a small
@@ -97,7 +102,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Started, pid" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(1800)
+    @timeout(400)
     def test_prolo_hook(self):
         """
         Create an execjob_prologue hook, import a hook content with a
@@ -133,7 +138,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
             "Job;%s;alarm call while running %s hook" % (jid, hook_event),
             n=100, max_attempts=5, interval=5, regexp=True, existence=False)
 
-    @timeout(1800)
+    @timeout(400)
     def test_epi_hook(self):
         """
         Create an execjob_epilogue hook, import a hook content with a small
@@ -177,7 +182,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Obit sent" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(1800)
+    @timeout(400)
     def test_end_hook(self):
         """
         Create an execjob_end hook, import a hook content with a small
