@@ -101,6 +101,7 @@ class TestServerDynRes(TestFunctional):
         restype = ["long"]
         script_body = ['echo abc']
 
+        start_time = time.time()
         # Add it as a server_dyn_res that returns a string output
         filenames = self.setup_dyn_res(resname, restype, script_body)
 
@@ -112,7 +113,8 @@ class TestServerDynRes(TestFunctional):
         # Make sure that "Problem with creating server data structure"
         # is not logged in sched_logs
         self.scheduler.log_match("Problem with creating server data structure",
-                                 existence=False, max_attempts=10)
+                                 existence=False, max_attempts=10,
+                                 starttime=start_time)
 
         # Also check that "<script> returned bad output"
         # is in the logs
