@@ -183,11 +183,7 @@ foo\n
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
                                                    'SET_IN_SUBMISSION=false')},
                            id=jid1)
-<<<<<<< HEAD
     
-=======
-
->>>>>>> 5e617dc... Done commit signature changes
     def test_passing_env_special_char_via_qsub(self):
         """
         Submit a job with -v ENV_TEST=N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii

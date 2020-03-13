@@ -480,7 +480,7 @@ copy_env_value(char *dest, char *pv, int quote_flg)
 			case ESC_CHAR: /* backslash in value, escape it */
 				*dest++ = *pv;
 				if (*(pv + 1) != ',') /* do not escape if ESC_CHAR already escapes */
-					*dest++ = *++pv;
+					*dest++ = *pv;
 				break;
 
 			case ',':
@@ -537,10 +537,12 @@ expand_varlist(char *varlist)
 	char *vv = NULL;
 	char *p1, *p2, *p;
 	char *ev;
+	char *ev2;
 	int v_value1_sz=0;
 	char *pc;
 	int special_char_cnt = 0;
 	int len = 0;
+	int esc_char_cnt = 0;
 
 	/*
 	 * count special characters as they are escaped with '\' in copy_env_value function
@@ -587,8 +589,16 @@ expand_varlist(char *varlist)
 				fprintf(stderr, "qsub: cannot send environment with the job\n");
 				goto expand_varlist_err;
 			}
+			/* count escape characters as they are escaped with '\'*/
+			ev2 = ev;
+			len = 0;
+			for (; *ev2; ev2++) {
+				if ((*ev2 == ESC_CHAR))
+					esc_char_cnt++;
 
-			v_value1_sz = v_value1_sz + strlen(ev) + 1; /* include '=' */
+				len++;
+			}
+			v_value1_sz = v_value1_sz + len + esc_char_cnt + 1; /* include '=' */
 			p = realloc(v_value1, v_value1_sz);
 			if (p == NULL) {
 				fprintf(stderr, "qsub: out of memory\n");
