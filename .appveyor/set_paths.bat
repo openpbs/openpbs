@@ -47,9 +47,9 @@ if not defined CMAKE_BIN (
     set CMAKE_BIN=cmake
 )
 
-REM Define the 7Z_BIN environment variable if not
-if not defined 7Z_BIN (
-    set 7Z_BIN=7z
+REM Define the ENV_7Z_BIN environment variable if not
+if not defined ENV_7Z_BIN (
+    set ENV_7Z_BIN=7z
 )
 
 if not defined __BINARIESDIR (

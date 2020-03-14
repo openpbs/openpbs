@@ -60,8 +60,8 @@ if not exist "%BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz" (
 
 2>nul rd /S /Q "%BINARIESDIR%\zlib-%ZLIB_VERSION%"
 
-REM Use the 7Z_BIN environment variable
-"%7Z_BIN%" x -y "%BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz" -so | "%7Z_BIN%" x -y -aoa -si -ttar -o"%BINARIESDIR%"
+REM Use the ENV_7Z_BIN environment variable
+"%ENV_7Z_BIN%" x -y "%BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz" -so | "%ENV_7Z_BIN%" x -y -aoa -si -ttar -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\zlib-%ZLIB_VERSION%.tar.gz"
     exit /b 1
