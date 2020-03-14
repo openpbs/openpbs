@@ -56,6 +56,7 @@ if exist C:\Python36 (
         exit /b 1
     )
 ) else if exist "%BINARIESDIR%\python.zip" (
+    REM Use the 7Z_BIN environment variable
     "%7Z_BIN%" x -y "%BINARIESDIR%\python.zip" -o"%BINARIESDIR%"
     if not %ERRORLEVEL% == 0 (
         echo "Failed to extract %BINARIESDIR%\python.zip"
@@ -118,6 +119,7 @@ if exist C:\Python36-x64 (
         exit /b 1
     )
 ) else if exist "%BINARIESDIR%\python_x64.zip" (
+    REM Use the 7Z_BIN environment variable
     "%7Z_BIN%" x -y "%BINARIESDIR%\python_x64.zip" -o"%BINARIESDIR%"
     if not %ERRORLEVEL% == 0 (
         echo "Failed to extract %BINARIESDIR%\python_x64.zip"
@@ -180,6 +182,8 @@ if not exist "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" (
     )
 )
 2>nul rd /S /Q "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
+
+REM Use the 7Z_BIN environment variable
 "%7Z_BIN%" x -y "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" -o"%BINARIESDIR%"
 cd "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
 

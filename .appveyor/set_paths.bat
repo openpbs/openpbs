@@ -47,6 +47,7 @@ if not defined CMAKE_BIN (
     set CMAKE_BIN=cmake
 )
 
+REM Define the 7Z_BIN environment variable if not
 if not defined 7Z_BIN (
     set 7Z_BIN=7z
 )
@@ -68,7 +69,7 @@ if exist "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional" (
 )
 
 if not exist "%VS150COMNTOOLS%" (
-    echo "Could not fine VS2017 common tools"
+    echo "Could not find VS2017 common tools"
     exit 1
 )
 
