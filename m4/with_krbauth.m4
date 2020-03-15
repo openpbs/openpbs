@@ -113,7 +113,7 @@ AC_DEFUN([PBS_AC_WITH_KRBAUTH],
     [AS_HELP_STRING([--with-krbauth],
        [enable kerberos authentication, krb5-config required for setup])],
     [],[with_krbauth=no])
-
+  AM_CONDITIONAL([KRB5_ENABLED], [test "x$with_krbauth" != xno])
   AS_IF([test "x$with_krbauth" != xno],
     [
     AC_MSG_RESULT([requested])

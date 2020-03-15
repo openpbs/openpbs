@@ -98,7 +98,6 @@ pbs_server_bin_SOURCES = \
 	reply_send.c \
 	req_delete.c \
 	req_getcred.c \
-	req_gss_auth.c \
 	req_holdjob.c \
 	req_jobobit.c \
 	req_locate.c \
@@ -135,7 +134,6 @@ pbs_server_bin_SOURCES = \
 	svr_recov_db.c \
 	svr_resccost.c \
 	svr_credfunc.c \
-	svr_tcp_gss.c \
 	user_func.c \
 	vnparse.c
 

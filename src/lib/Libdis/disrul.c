@@ -90,8 +90,6 @@ disrul(int stream, int *retval)
 	int		negate;
 	unsigned long	value;
 
-	assert(disr_commit != NULL);
-
 	locret = disrsl_(stream, &negate, &value, 1, 0);
 	if (locret != DIS_SUCCESS) {
 		value = 0;
@@ -99,7 +97,7 @@ disrul(int stream, int *retval)
 		value = 0;
 		locret = DIS_BADSIGN;
 	}
-	*retval = ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0) ?
+	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : locret;
 	return (value);
 }

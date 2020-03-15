@@ -123,7 +123,6 @@
 #include "sched_cmds.h"
 #include "rpp.h"
 #include "dis.h"
-#include "dis_init.h"
 #include "libsec.h"
 #include "pbs_version.h"
 #include "pbs_license.h"
@@ -135,6 +134,7 @@
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
 #include "pbs_undolr.h"
+#include "auth.h"
 
 /* External functions called */
 
@@ -314,10 +314,6 @@ char *db_err_msg = NULL;
 extern void		ping_nodes(struct work_task *ptask);
 extern void mark_nodes_unknown(int);
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-extern int tcp_gss_process(int sfds);
-#endif
-
 /*
  * Used only by the TPP layer, to ping nodes only if the connection to the
  * local router to the server is up.
@@ -420,7 +416,7 @@ do_rpp(int stream)
 	void			is_request(int, int);
 	void			stream_eof(int, int, char *);
 
-	DIS_rpp_reset();
+	DIS_rpp_funcs();
 	proto = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS) {
 		stream_eof(stream, ret, NULL);
@@ -703,6 +699,64 @@ static int
 can_schedule()
 {
 	return (1);
+}
+
+
+
+/**
+ * @brief
+ *	this function handles auth related data before process_request()
+ *
+ * @param[in] conn - connection data
+ *
+ * @return	int
+ * @retval	>0	data ready
+ * @retval	0	no data ready
+ * @retval	-1	error
+ * @retval	-2	on EOF
+ */
+int
+tcp_pre_process(conn_t *conn)
+{
+	char errbuf[LOG_BUF_SIZE];
+	int rc;
+
+	DIS_tcp_funcs();
+	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_AUTH);
+	if (rc == (int)AUTH_STATUS_UNKNOWN)
+		return 1;
+
+
+	if (rc < (int)AUTH_STATUS_CTX_READY) {
+		errbuf[0] = '\0';
+		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
+		if (errbuf[0] != '\0') {
+			if (rc != 0)
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+			else
+				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+		}
+		return rc;
+	}
+
+	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
+	if (rc == (int)AUTH_STATUS_UNKNOWN)
+		return 1;
+
+
+	if (rc < (int)AUTH_STATUS_CTX_READY) {
+		errbuf[0] = '\0';
+		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
+		if (errbuf[0] != '\0') {
+			if (rc != 0)
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+			else
+				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+		}
+		return rc;
+	}
+
+	return 1;
 }
 
 /**
@@ -1136,6 +1190,10 @@ main(int argc, char **argv)
 	}
 
 	/*Initialize security library's internal data structures*/
+	if (load_auths(AUTH_SERVER)) {
+		log_err(-1, "pbsd_main", "Failed to load auth lib");
+		exit(3);
+	}
 
 	{
 		int	csret;
@@ -1478,11 +1536,7 @@ try_db_again:
 		log_err(errno, msg_daemonname, "sigprocmask(BLOCK)");
 
 	/* initialize the network interface */
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (init_network_add(sock, tcp_gss_process, process_request) != 0) {
-#else
-	if (init_network_add(sock, NULL, process_request) != 0) {
-#endif
+	if (init_network_add(sock, tcp_pre_process, process_request) != 0) {
 		(void) sprintf(log_buffer, "add connection for init_network failed");
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
@@ -1530,18 +1584,8 @@ try_db_again:
 
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
-
-		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
-		} else {
-			/* for all non-resv-port based authentication use a callback from TPP */
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
-		}
-
+		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers);
 		free(nodename);
-
 		if (rc == -1) {
 			(void) sprintf(log_buffer, "Error setting TPP config");
 			fprintf(stderr, "%s", log_buffer);
@@ -1977,6 +2021,7 @@ try_db_again:
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
 	(void)unlink(lockfile);
+	unload_auths();
 
 	if (*state == SV_STATE_SECIDLE) {
 		/*

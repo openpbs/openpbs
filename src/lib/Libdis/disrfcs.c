@@ -87,8 +87,6 @@ disrfcs(int stream, size_t *nchars, size_t achars, char *value)
 
 	assert(nchars != NULL);
 	assert(value != NULL);
-	assert(dis_gets != NULL);
-	assert(disr_commit != NULL);
 
 	locret = disrsi_(stream, &negate, &count, 1, 0);
 	if (locret == DIS_SUCCESS) {
@@ -96,10 +94,10 @@ disrfcs(int stream, size_t *nchars, size_t achars, char *value)
 			locret = DIS_BADSIGN;
 		else if ((*nchars = count) > achars)
 			locret = DIS_OVERFLOW;
-		else if ((*dis_gets)(stream, value, *nchars) != *nchars)
+		else if (dis_gets(stream, value, *nchars) != *nchars)
 			locret = DIS_PROTO;
 	}
-	locret = (*disr_commit)(stream, locret == DIS_SUCCESS) ?
+	locret = disr_commit(stream, locret == DIS_SUCCESS) ?
 		DIS_NOCOMMIT : locret;
 	if (locret != DIS_SUCCESS)
 		*nchars = 0;

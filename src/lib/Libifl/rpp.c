@@ -67,7 +67,6 @@
 #include	"rpp.h"
 #include	"pbs_internal.h"
 #include	"pbs_error.h"
-#include	"dis_init.h"
 
 #if !defined(H_ERRNO_DECLARED)
 extern int h_errno;
@@ -93,13 +92,11 @@ int                     (*pfn_rpp_skip)(int, size_t);
 int                     (*pfn_rpp_eom)(int);
 int                     (*pfn_rpp_getc)(int);
 int                     (*pfn_rpp_putc)(int, int);
-void			 		(*pfn_DIS_rpp_reset)();
-void			 		(*pfn_DIS_rpp_setup)(int);
+void			 		(*pfn_DIS_rpp_funcs)();
 void 					(*pfn_rpp_add_close_func)(int, void (*func)(int));
 
 /* forward declarations */
-void 			__DIS_rpp_setup(int);
-void 			__DIS_rpp_reset(void);
+void 			__DIS_rpp_funcs(void);
 int                     __rpp_open(char *, unsigned int);
 int                     __rpp_bind(unsigned int);
 int                     __rpp_poll(void);
@@ -118,21 +115,7 @@ int                     __rpp_skip(int, size_t);
 int                     __rpp_eom(int);
 int                     __rpp_getc(int);
 int                     __rpp_putc(int, int);
-void			__DIS_rpp_reset();
-void			__DIS_rpp_setup(int);
-
-/**
- * @brief
- *	-wrapper function for __DIS_rpp_reset.
- *
- * @param[in] stream - socket stream
- *
- */
-void
-__DIS_rpp_setup(int stream)
-{
-	__DIS_rpp_reset();
-}
+void			__DIS_rpp_funcs();
 
 /*
  *	Boolean Constants
@@ -857,7 +840,7 @@ static u_long crctab[] = {
  *
  * @return	u_long
  * @retval	crc value	success
- * 
+ *
  */
 
 u_long
@@ -936,7 +919,7 @@ dos2unix(char *buf, unsigned long buf_sz, int *new_buf_sz)
 
 /**
  * @brief
- * 	Given a file represented by 'filepath', return its crc value. 
+ * 	Given a file represented by 'filepath', return its crc value.
  *
  * @param[in]	filepath	- file being crc-ed.
  *
@@ -956,7 +939,7 @@ crc_file(char *filepath)
 	u_char	*tmp_str = NULL;
 	int	nread = 0;
 	int	count;
-	u_char	*tmpbuf;	
+	u_char	*tmpbuf;
 #ifdef WIN32
 	u_char	*tr_buf = NULL;
 	int	tr_buf_sz = 0;
@@ -965,7 +948,7 @@ crc_file(char *filepath)
 
 	if (filepath == NULL)
 		return (0);
-	
+
 
 	if (stat(filepath, &sb) == -1) {
 		return (0);
@@ -1027,7 +1010,7 @@ crc_file(char *filepath)
  *	-Generate a sequence number for a packet.
  *
  * @param[in] seq - previous sequence number
- * 
+ *
  * @return	int
  * @retval	0	success
  * @retval	-1	error
@@ -1085,11 +1068,11 @@ netaddr(struct sockaddr_in *ap)
 
 /**
  * @brief
- * 	-fix_connreset_msbug: this is the Microsoft fix to issue Q263823 where 
- *	if sendto(sd) receives an "ICMP Port unreachable" message,  then 
- *      a corresponding select() and a recvfrom() will return 
- *	"WSAECONNRESET (10054)" instead of blocking or timing out. 
- *      NOTE: This fix requires Windows 2000 Service Pack 2 
+ * 	-fix_connreset_msbug: this is the Microsoft fix to issue Q263823 where
+ *	if sendto(sd) receives an "ICMP Port unreachable" message,  then
+ *      a corresponding select() and a recvfrom() will return
+ *	"WSAECONNRESET (10054)" instead of blocking or timing out.
+ *      NOTE: This fix requires Windows 2000 Service Pack 2
  *
  */
 
@@ -2200,7 +2183,7 @@ err_out:
  * @retval      -1                                              error
  * @retval      -2                                              not data
  * @retval      -3                                              no data to read.
- * 
+ *
  */
 static
 int
@@ -3514,14 +3497,14 @@ __rpp_putc(int index, int c)
  * @par IMPORTANT NOTE
  * This function should only be called on an event like the daemon (server)
  * restart when it is known that the other end (mom) does not have the other
- * end of the stream open.   Unlike rpp_close() there is no attempt to send 
+ * end of the stream open.   Unlike rpp_close() there is no attempt to send
  * control packets back and forth for an orderly close of the stream.
  *
  * @param[in]   stream - rpp stream to distroy
  *
  * @return void
  */
-void 
+void
 __rpp_destroy(int stream)
 {
 	struct stream  *sp;
@@ -3531,22 +3514,15 @@ __rpp_destroy(int stream)
 	}
 }
 
-/** 
+/**
  * @brief
  *	-reset the rpp setup
  *
  */
 void
-__DIS_rpp_reset()
+__DIS_rpp_funcs()
 {
-	if (dis_getc != __rpp_getc) {
-		dis_getc = __rpp_getc;
-		dis_puts = (int (*)(int, const char *, size_t))__rpp_write;
-		dis_gets = (int (*)(int, char *, size_t))__rpp_read;
-		disr_skip   = (int (*)(int, size_t))__rpp_skip;
-		disr_commit = __rpp_rcommit;
-		disw_commit = __rpp_wcommit;
-	}
+	return;
 }
 
 /**
@@ -3575,9 +3551,7 @@ set_rpp_funcs(void (*log_fn)(char *))
 	pfn_rpp_eom = __rpp_eom;
 	pfn_rpp_getc = __rpp_getc;
 	pfn_rpp_putc = __rpp_putc;
-	pfn_DIS_rpp_reset = __DIS_rpp_reset;
-	pfn_DIS_rpp_setup = __DIS_rpp_setup;
+	pfn_DIS_rpp_funcs = __DIS_rpp_funcs;
 	pfn_rpp_add_close_func = NULL; /* if called with dump core, which is good */
 	rpp_logfunc = log_fn;
 }
-

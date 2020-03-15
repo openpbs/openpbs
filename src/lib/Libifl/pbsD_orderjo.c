@@ -68,14 +68,11 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 {
 	struct batch_reply *reply;
 	int rc;
-	int sock;
 
 
 	if ((job1 == NULL) || (*job1 == '\0') ||
 		(job2 == NULL) || (*job2 == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
-
-	sock = connection[c].ch_socket;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -88,13 +85,12 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_OrderJob, pbs_current_user)) ||
-		(rc = encode_DIS_MoveJob(sock, job1, job2)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_OrderJob, pbs_current_user)) ||
+		(rc = encode_DIS_MoveJob(c, job1, job2)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -102,7 +98,7 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
@@ -114,7 +110,7 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

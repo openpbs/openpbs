@@ -758,7 +758,10 @@ req_quejob(struct batch_request *preq)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* save gssapi/krb5 creds for this job */
-	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+	if (conn->cn_credid != NULL &&
+		conn->cn_auth_config != NULL &&
+		conn->cn_auth_config->auth_method != NULL
+		&& strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 			"saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
 
@@ -877,11 +880,7 @@ req_quejob(struct batch_request *preq)
 
 		job_attr_def[(int)JOB_ATR_submit_host].at_free(
 			&pj->ji_wattr[(int)JOB_ATR_submit_host]);
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 		(void)strcpy(buf, conn->cn_physhost);
-#else
-		(void)strcpy(buf, preq->rq_host);
-#endif
 		job_attr_def[(int)JOB_ATR_submit_host].at_decode(
 			&pj->ji_wattr[(int)JOB_ATR_submit_host],
 			NULL, NULL, buf);
@@ -907,11 +906,7 @@ req_quejob(struct batch_request *preq)
 			(void)strcat(buf, ",");
 			(void)strcat(buf, pbs_o_host);
 			(void)strcat(buf, "=");
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 			(void)strcat(buf, conn->cn_physhost);
-#else
-			(void)strcat(buf, preq->rq_host);
-#endif
 		}
 		job_attr_def[(int)JOB_ATR_variables].at_decode(&tempattr,
 			NULL, NULL, buf);

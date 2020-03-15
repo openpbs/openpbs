@@ -93,7 +93,6 @@ short disrss(int stream, int *retval)
 	unsigned	uvalue;
 
 	assert(retval != NULL);
-	assert(disr_commit != NULL);
 
 	value = 0;
 	switch (locret = disrsi_(stream, &negate, &uvalue, 1, 0)) {
@@ -106,7 +105,7 @@ short disrss(int stream, int *retval)
 		case DIS_OVERFLOW:
 			value = negate ? SHRT_MIN : SHRT_MAX;
 	}
-	*retval = ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0) ?
+	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : locret;
 	return (value);
 }

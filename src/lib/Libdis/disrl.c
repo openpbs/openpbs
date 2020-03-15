@@ -94,7 +94,6 @@ disrl(int stream, int *retval)
 	dis_long_double_t 	ldval;
 
 	assert(retval != NULL);
-	assert(disr_commit != NULL);
 
 	ldval = 0.0L;
 	locret = disrl_(stream, &ldval, &ndigs, &nskips, LDBL_DIG, 1, 0);
@@ -125,7 +124,7 @@ disrl(int stream, int *retval)
 			}
 		}
 	}
-	if ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0)
+	if (disr_commit(stream, locret == DIS_SUCCESS) < 0)
 		locret = DIS_NOCOMMIT;
 	*retval = locret;
 	return (ldval);

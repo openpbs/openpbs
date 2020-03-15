@@ -38,7 +38,9 @@
 
 sbin_PROGRAMS = pbs_rcp
 
-pbs_rcp_CPPFLAGS = -I$(top_srcdir)/src/include
+pbs_rcp_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@KRB5_CFLAGS@
 
 pbs_rcp_LDADD = @socket_lib@
 
@@ -49,4 +51,3 @@ pbs_rcp_SOURCES = \
 	rcp.c \
 	replace.c \
 	util.c
-

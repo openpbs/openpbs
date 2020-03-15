@@ -140,26 +140,22 @@ static int
 PBS_resc(int c, int reqtype, char **rescl, int ct, pbs_resource_t rh)
 {
 	int rc;
-	int sock;
-
-	sock = connection[c].ch_socket;
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
-		(rc = encode_DIS_Resc(sock, rescl, ct, rh)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
+		(rc = encode_DIS_Resc(c, rescl, ct, rh)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
 		}
 		return (pbs_errno);
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 	return (0);
@@ -201,7 +197,11 @@ pbs_rescquery(int c, char **resclist, int num_resc,
 		return pbs_errno;
 
 	if (resclist == 0) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMNOPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
@@ -217,13 +217,17 @@ pbs_rescquery(int c, char **resclist, int num_resc,
 	/* read in reply */
 
 	reply = PBSD_rdrpy(c);
-	if ((rc = connection[c].ch_errno) == PBSE_NONE &&
+	if ((rc = get_conn_errno(c)) == PBSE_NONE &&
 		reply->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {
 		struct	brp_rescq	*resq = &reply->brp_un.brp_rescq;
 
 		if (resq == NULL || num_resc != resq->brq_number) {
-			rc = pbs_errno = connection[c].ch_errno =
-				PBSE_IRESVE;
+			rc = PBSE_IRESVE;
+			if (set_conn_errno(c, PBSE_IRESVE) != 0) {
+				pbs_errno = PBSE_SYSTEM;
+			} else {
+				pbs_errno = PBSE_IRESVE;
+			}
 			goto done;
 		}
 
@@ -279,12 +283,20 @@ pbs_rescreserve(int c, char **rl, int num_resc, pbs_resource_t *prh)
 		return pbs_errno;
 
 	if (rl == NULL) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMNOPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
 	if (prh == NULL) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMBADPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
@@ -302,7 +314,7 @@ pbs_rescreserve(int c, char **rl, int num_resc, pbs_resource_t *prh)
 
 	reply = PBSD_rdrpy(c);
 
-	if (((rc = connection[c].ch_errno) == PBSE_NONE) ||
+	if (((rc = get_conn_errno(c)) == PBSE_NONE) ||
 		(rc == PBSE_RMPART)) {
 		*prh = reply->brp_auxcode;
 	}
@@ -358,7 +370,7 @@ pbs_rescrelease(int c, pbs_resource_t rh)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

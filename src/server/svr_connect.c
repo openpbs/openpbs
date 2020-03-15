@@ -58,7 +58,6 @@
  * 	svr_connect()
  * 	svr_disconnect()
  * 	svr_disconnect_with_wait_option()
- * 	socket_to_handle()
  * 	svr_force_disconnect()
  *
  */
@@ -88,11 +87,7 @@
 
 
 /* global data */
-
-struct connect_handle connection[PBS_MAX_CONNECTIONS]; /* used by API */
-
 extern int		 errno;
-
 extern int		 pbs_errno;
 extern unsigned int	 pbs_server_port_dis;
 extern unsigned int	 pbs_mom_port;
@@ -129,8 +124,6 @@ extern sigset_t		 allsigs;		/* see pbsd_main.c */
 int
 svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_type cntype, int prot)
 {
-	int handle;
-	int mode;
 	int sock;
 	mominfo_t *pmom = 0;
 	conn_t *conn = NULL;
@@ -162,17 +155,13 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	if (sigprocmask(SIG_BLOCK, &allsigs, NULL) == -1)
 		log_err(errno, msg_daemonname, "sigprocmask(BLOCK)");
 
-	mode = B_RESERVED;
-	if (pbs_conf.auth_method == AUTH_MUNGE)
-		mode = B_EXTERNAL|B_SVR;
-
-	sock = client_to_svr(hostaddr, port, 0x0 | mode);
+	sock = client_to_svr(hostaddr, port, B_RESERVED);
 	if (pbs_errno == PBSE_NOLOOPBACKIF)
 		log_err(PBSE_NOLOOPBACKIF, "client_to_svr", msg_noloopbackif);
 
 	if ((sock < 0) && (errno == ECONNREFUSED)) {
 		/* try one additional time */
-		sock = client_to_svr(hostaddr, port, 0x0 | mode);
+		sock = client_to_svr(hostaddr, port, B_RESERVED);
 		if (pbs_errno == PBSE_NOLOOPBACKIF)
 			log_err(PBSE_NOLOOPBACKIF, "client_to_svr", msg_noloopbackif);
 	}
@@ -209,21 +198,10 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 		return (PBS_NET_RC_FATAL);
 	}
 
-	/* add_conn() may have created an entry already. If not,        */
-	/* connection_find_usable_index() will give us an empty slot.   */
 	conn->cn_sock = sock;
 	conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 
-	/* find a connect_handle entry we can use and pass to the PBS_*() */
-
-	handle = socket_to_handle(sock);
-	if (handle == -1) {
-		close_conn(sock);
-		pbs_errno = PBSE_NOCONNECTS;
-		return (PBS_NET_RC_RETRY);
-	}
-
-	return (handle);
+	return (sock);
 }
 /**
  * @brief
@@ -270,123 +248,64 @@ svr_disconnect(int handle)
  */
 
 void
-svr_disconnect_with_wait_option(int handle, int wait)
+svr_disconnect_with_wait_option(int sock, int wait)
 {
-	int sock;
 	char x;
 
-	if ((handle >= 0) && (handle < PBS_LOCAL_CONNECTION)) {
-		if (pbs_client_thread_lock_connection(handle) != 0)
-			return;
+	if (sock < 0 || sock >= PBS_LOCAL_CONNECTION)
+		return ;
+	if (pbs_client_thread_lock_connection(sock) != 0)
+		return;
+	DIS_tcp_funcs();
+	if ((encode_DIS_ReqHdr(sock, PBS_BATCH_Disconnect, pbs_current_user) == 0) && (dis_flush(sock) == 0)) {
+		conn_t *conn = get_conn(sock);
 
-		sock = connection[handle].ch_socket;
-		DIS_tcp_setup(sock);
-		if ((encode_DIS_ReqHdr(sock, PBS_BATCH_Disconnect, pbs_current_user) == 0) && (DIS_tcp_wflush(sock) == 0)) {
-			conn_t *conn = get_conn(sock);
+		/* if no error, will be closed when process_request */
+		/* sees the EOF					    */
 
-			/* if no error, will be closed when process_request */
-			/* sees the EOF					    */
-
-			if (wait) {
-				for (;;) {
-					/* wait for EOF (closed connection) */
-					/* from remote host, in response to */
-					/* PBS_BATCH_Disconnect */
-					if (read(sock, &x, 1) < 1)
-						break;
-				}
-
-				(void)close(connection[handle].ch_socket);
-			} else if (conn) {
-				conn->cn_func = close_conn;
-				conn->cn_oncl = 0;
+		if (wait) {
+			for (;;) {
+				/* wait for EOF (closed connection) */
+				/* from remote host, in response to */
+				/* PBS_BATCH_Disconnect */
+				if (read(sock, &x, 1) < 1)
+					break;
 			}
-		} else {
-			/* error sending disconnect, just close now */
-			close_conn(connection[handle].ch_socket);
-		}
-		if (connection[handle].ch_errtxt != NULL) {
-			free(connection[handle].ch_errtxt);
-			connection[handle].ch_errtxt = NULL;
-		}
-		connection[handle].ch_errno = 0;
-		connection[handle].ch_inuse = 0;
 
-		(void)pbs_client_thread_unlock_connection(handle);
-		pbs_client_thread_destroy_connect_context(handle);
+			(void)close(sock);
+		} else if (conn) {
+			conn->cn_func = close_conn;
+			conn->cn_oncl = 0;
+		}
+	} else {
+		/* error sending disconnect, just close now */
+		close_conn(sock);
 	}
+	set_conn_errtxt(sock, NULL);
+	set_conn_errno(sock, 0);
+	(void)pbs_client_thread_unlock_connection(sock);
+	pbs_client_thread_destroy_connect_context(sock);
 }
 
 /**
  * @brief
- * 		socket_to_handle() - turn a socket into a connection handle
- *		as used by the libpbs.a routines.
- *
- * @param[in]	sock	-	opened socket
- *
- * @return	int
- * @retval	>=0	: connection handle if successful
- * @retval	-1	: error, error number set in pbs_errno.
- */
-
-int
-socket_to_handle(int sock)
-{
-	int	i;
-	conn_t	*conn = get_conn(sock);
-
-	if (!conn)
-		return (-1);
-
-	for (i=0; i<PBS_MAX_CONNECTIONS; i++) {
-		if (connection[i].ch_inuse == 0) {
-
-			if (pbs_client_thread_lock_conntable() != 0)
-				return -1;
-
-			connection[i].ch_stream = 0;
-			connection[i].ch_inuse = 1;
-			connection[i].ch_errno = 0;
-			connection[i].ch_socket= sock;
-			connection[i].ch_errtxt = 0;
-
-			if (pbs_client_thread_unlock_conntable() != 0)
-				return -1;
-			/* save handle for later close */
-
-			conn->cn_handle = i;
-			return (i);
-		}
-	}
-	pbs_errno = PBSE_NOCONNECTS;
-	return (-1);
-}
-
-/**
- * @brief
- * 		svr_force_disconnect - force the close of a connection handle
+ * 		svr_force_disconnect - force the close of a connection
  *		Unlike svr_disconnect(), this does not send disconnect message
  *		and wait for the connection to be closed by the other end;
  *		just force it closed now.
  *
- * @param[in]	handle	-	connection handle
+ * @param[in]	sock	-	connection sock
  */
 void
-svr_force_disconnect(int handle)
+svr_force_disconnect(int sock)
 {
-	if ((handle >= 0) && (handle < PBS_LOCAL_CONNECTION)) {
-		if (pbs_client_thread_lock_connection(handle) != 0)
-			return;
+	if (sock < 0 || sock > PBS_LOCAL_CONNECTION)
+		return;
+	if (pbs_client_thread_lock_connection(sock) != 0)
+		return;
 
-		close_conn(connection[handle].ch_socket);
-		if (connection[handle].ch_errtxt != NULL) {
-			free(connection[handle].ch_errtxt);
-			connection[handle].ch_errtxt = NULL;
-		}
-		connection[handle].ch_errno = 0;
-		connection[handle].ch_inuse = 0;
-
-		(void)pbs_client_thread_unlock_connection(handle);
-		pbs_client_thread_destroy_connect_context(handle);
-	}
+	close_conn(sock);
+	set_conn_errtxt(sock, NULL);
+	(void)pbs_client_thread_unlock_connection(sock);
+	pbs_client_thread_destroy_connect_context(sock);
 }

@@ -91,16 +91,13 @@ diswul(int stream, unsigned long value)
 	char		*cp;
 
 	assert(stream >= 0);
-	assert(dis_puts != NULL);
-	assert(disw_commit != NULL);
-
 	cp = discul_(&dis_buffer[DIS_BUFSIZ], value, &ndigs);
 	*--cp = '+';
 	while (ndigs > 1)
 		cp = discui_(cp, ndigs, &ndigs);
-	retval = (*dis_puts)(stream, cp,
+	retval = dis_puts(stream, cp,
 		(size_t)(&dis_buffer[DIS_BUFSIZ] - cp)) < 0 ?
 		DIS_PROTO : DIS_SUCCESS;
-	return (((*disw_commit)(stream, retval == DIS_SUCCESS) < 0) ?
+	return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : retval);
 }

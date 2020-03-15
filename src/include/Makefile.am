@@ -45,6 +45,7 @@ include_HEADERS = \
 
 noinst_HEADERS = \
 	acct.h \
+	auth.h \
 	attribute.h \
 	avltree.h \
 	basil.h \
@@ -53,7 +54,6 @@ noinst_HEADERS = \
 	cmds.h \
 	credential.h \
 	dis.h \
-	dis_init.h \
 	grunt.h \
 	hook_func.h \
 	hook.h \
@@ -73,8 +73,6 @@ noinst_HEADERS = \
 	mom_server.h \
 	mom_vnode.h \
 	net_connect.h \
-	pbs_gss.h \
-	pbs_krb5.h \
 	pbs_array_list.h \
 	pbs_assert.h \
 	pbs_client_thread.h \
@@ -131,4 +129,3 @@ noinst_HEADERS = \
 	win.h \
 	win_remote_shell.h \
 	work_task.h
-

@@ -37,6 +37,7 @@
  */
 #ifndef	_LOG_H
 #define	_LOG_H
+#include <stdio.h>
 #if SYSLOG
 #include <syslog.h>
 #else
@@ -166,4 +167,3 @@ extern int  setup_env(char *filename);
 
 #define PBSEVENT_MASK	0x01ff
 #endif /* _LOG_H */
-

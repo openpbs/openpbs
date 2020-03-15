@@ -40,8 +40,7 @@
 /**
  * @file	dec_Authen.c
  * @brief
- * 	decode_DIS_AuthenResvPort() - decode a priv port based authentication request
- * 	decode_DIS_AuthExternal() - decode a External authentication request
+ * 	decode_DIS_Authenticate() - decode a authentication request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,
@@ -63,54 +62,55 @@
 
 /**
  * @brief
- *      Decode PBS batch request to authenticate user
- * @param [in] sock socket connection
- * @param [in] preq PBS bath request
- * @return in
- * @retval 0 on success 
- * @retval > 0 on failure
- */
-int
-decode_DIS_AuthenResvPort(int sock, struct batch_request *preq)
-{
-	int rc;
-
-	preq->rq_ind.rq_authen_resvport.rq_port = disrui(sock, &rc);
-	return rc;
-}
-
-/**
- * @brief
  *      Decode PBS batch request to authenticate based on external (non-resv-port) mechanisms.
  *      The batch request contains type and the auth data.
- * 
+ *
  * @param [in] sock socket connection
  * @param [in] preq PBS bath request
  * @return in
- * @retval 0 on success 
+ * @retval 0 on success
  * @retval > 0 on failure
  */
 int
-decode_DIS_AuthExternal(int sock, struct batch_request *preq)
+decode_DIS_Authenticate(int sock, struct batch_request *preq)
 {
 	int rc;
-	int cred_len = 0;
+	int len = 0;
 
-	preq->rq_ind.rq_authen_external.rq_auth_type = disruc(sock, &rc);
+
+	len = disrsi(sock, &rc);
+	if (rc != DIS_SUCCESS)
+		return (rc);
+	if (len <= 0) {
+		return DIS_PROTO;
+	}
+	rc = disrfst(sock, len, preq->rq_ind.rq_auth.rq_auth_method);
+	if (rc != DIS_SUCCESS)
+		return (rc);
+	preq->rq_ind.rq_auth.rq_auth_method[MAXAUTHNAME] = '\0';
+
+	preq->rq_ind.rq_auth.rq_encrypt_mode = disrui(sock, &rc);
 	if (rc != DIS_SUCCESS)
 		return (rc);
 
-	cred_len = disrsi(sock, &rc);
-	if (rc != DIS_SUCCESS)
-		return (rc);
-
-	switch (preq->rq_ind.rq_authen_external.rq_auth_type) {
-		case AUTH_MUNGE:
-			return (disrfst(sock, cred_len, preq->rq_ind.rq_authen_external.rq_authen_un.rq_munge.rq_authkey) != 0);
-		case AUTH_GSS:
+	if (preq->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
+		len = disrsi(sock, &rc);
+		if (rc != DIS_SUCCESS)
 			return (rc);
+		if (len <= 0) {
+			return DIS_PROTO;
+		}
+		rc = disrfst(sock, len, preq->rq_ind.rq_auth.rq_encrypt_method);
+		if (rc != DIS_SUCCESS)
+			return (rc);
+		preq->rq_ind.rq_auth.rq_encrypt_method[MAXAUTHNAME] = '\0';
+	} else {
+		preq->rq_ind.rq_auth.rq_encrypt_method[0] = '\0';
 	}
 
-	return DIS_EOF;
-}
+	preq->rq_ind.rq_auth.rq_port = disrui(sock, &rc);
+	if (rc != DIS_SUCCESS)
+		return (rc);
 
+	return (rc);
+}

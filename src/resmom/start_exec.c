@@ -1658,7 +1658,7 @@ record_finish_exec(int sd)
 	pjob->ji_jsmpipe = -1;
 	(void)close(pjob->ji_mjspipe);
 	pjob->ji_mjspipe = -1;
-	
+
 	if (pjob->ji_jsmpipe2 != -1) {
 		(void)close_conn(pjob->ji_jsmpipe2);
 		pjob->ji_jsmpipe2 = -1;
@@ -2066,7 +2066,7 @@ write_pipe_data_ack(int upfds, int downfds, void *data, size_t data_size)
 		log_err(-1, __func__, "failed to write data to pipe");
 		return (1);
 	}
-	
+
 	/* wait for acknowledgement */
 	data_recv = read_pipe_data(downfds, sizeof(size_t), PIPE_READ_TIMEOUT);
 	if (data_recv == NULL) {
@@ -2153,8 +2153,8 @@ send_string_data(int upfds, int downfds, void *r_buf, size_t r_size)
  * @retval <string_of_data>	- pointer to some string data that is in a
  *				  fixed memory area that must not be freed and
  *				  can get overwritten on a next call to this
- *				  function. 
- * @retval NULL			- if no data was found or error encountered.	
+ *				  function.
+ * @retval NULL			- if no data was found or error encountered.
  * @note
  *	The read time is timed out using the $job_launch_delay mom config
  *	option value.
@@ -2225,7 +2225,7 @@ send_pipe_request(int upfds, int downfds, int cmd)
 	if (r_buf == NULL) {
 		log_err(-1, __func__, "bad read from pipe");
 		return (1);
-	}	
+	}
 
 	memcpy(&cmd_read, r_buf, sizeof(int));
 	if (cmd != cmd_read) {
@@ -2430,7 +2430,7 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags &= ~ATR_VFLAG_HOOK;
 	if (exec_host2_hookset)
 		pjob->ji_wattr[JOB_ATR_exec_host2].at_flags &= ~ATR_VFLAG_HOOK;
-	else	
+	else
 		pjob->ji_wattr[JOB_ATR_exec_host].at_flags &= ~ATR_VFLAG_HOOK;
 	pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags &= ~ATR_VFLAG_HOOK;
 
@@ -2466,7 +2466,7 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
  * @return int
  * @retval 0	- for success
  * @retval 1	- for non-success due to pipes failure
- * @retval 2	- for no data found 
+ * @retval 2	- for no data found
  * @retval -1	- for non-success due to internal error.
  */
 int
@@ -2619,7 +2619,7 @@ report_failed_node_hosts_task(struct work_task *ptask)
 		rjn_next = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
 		if (strcmp(rjn->rjn_host, mom_host) == 0)
 			continue;
-		
+
 		if (!rjn->prologue_hook_success) {
 			reliable_job_node_add(&pjob->ji_failed_node_list, rjn->rjn_host);
 #ifndef WIN32
@@ -2772,7 +2772,7 @@ receive_job_update_request(int sd)
 
 	ptask = (pbs_task *)conn->cn_data;
 
-	if (ptask == NULL) 
+	if (ptask == NULL)
 		return;
 
 	pjob  = ptask->ti_job;
@@ -2819,7 +2819,7 @@ receive_job_update_request(int sd)
 			exec_bail(pjob, JOB_EXEC_RETRY, msg);
 			return;
 		}
-	
+
 #if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
 		if (modify_cpuset(pjob) < 0) {
 			exec_bail(pjob, JOB_EXEC_RETRY, "failed to modify job's current cpuset");
@@ -3112,7 +3112,7 @@ finish_exec(job *pjob)
 			} else {
 				upfds2 = jsmpipe2[1];
 			}
-	
+
 			if (mjspipe2[0] < 3) {
 				downfds2 = fcntl(mjspipe2[0], F_DUPFD, 3);
 				(void)close(mjspipe2[0]);
@@ -3141,7 +3141,7 @@ finish_exec(job *pjob)
 		/* create 3rd set of pipes between MOM and the job starter
 		 * fork the job starter which will become the job
 		 */
-	
+
 		if ((pipe(parent2child_job_update_pipe) == -1) || (pipe(child2parent_job_update_pipe) == -1)) {
 			i = -1;
 		} else {
@@ -3176,11 +3176,11 @@ finish_exec(job *pjob)
 			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
 			return;
 		}
-	
+
 		/* create 4th set of pipes between MOM and the job starter
 		 * fork the job starter which will become the job
 		 */
-	
+
 		if (pipe(parent2child_job_update_status_pipe) == -1) {
 			i = -1;
 		} else {
@@ -3204,15 +3204,15 @@ finish_exec(job *pjob)
 			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
 			return;
 		}
-	
-	
+
+
 		if (pipe(parent2child_moms_status_pipe) == -1) {
 			i = -1;
-	
+
 		} else {
-	
+
 			i = 0;
-	
+
 			/* make sure pipe file descriptors are above 2 */
 			if (parent2child_moms_status_pipe[0] < 3) {
 				parent2child_moms_status_pipe_r = fcntl(parent2child_moms_status_pipe[0], F_DUPFD, 3);
@@ -3222,7 +3222,7 @@ finish_exec(job *pjob)
 				parent2child_moms_status_pipe_r = parent2child_moms_status_pipe[0];
 			}
 		}
-	
+
 		if ((i == -1) || (parent2child_moms_status_pipe_r < 3)) {
 			if (parent2child_moms_status_pipe_r != -1)
 				(void)close(parent2child_moms_status_pipe_r);
@@ -3261,7 +3261,7 @@ finish_exec(job *pjob)
 		(void)close(parent2child_moms_status_pipe_r);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		DIS_tcp_setup(jsmpipe[0]);
+		DIS_tcp_funcs();
 #endif
 
 		/* add the pipe to the connection table so we can poll it */
@@ -3331,7 +3331,7 @@ finish_exec(job *pjob)
 			conn->cn_data = ptask;
 		}
 
-		/* 
+		/*
 		 * if there are prologue hooks to run
 		 * add the pipe to the connection table so we can poll it
 		 */
@@ -3346,13 +3346,13 @@ finish_exec(job *pjob)
 					"Unable to start job, communication connection table is full");
 				(void)close(child2parent_job_update_pipe[0]);
 				(void)close(parent2child_job_update_pipe[1]);
-			
+
 				(void)close(jsmpipe2[0]);
 				(void)close(mjspipe2[1]);
-	
+
 				(void)close(jsmpipe[0]);
 				(void)close(mjspipe[1]);
-	
+
 				if (pipe_script[0] != -1)
 					(void)close(pipe_script[0]);
 				if (pipe_script[1] != -1)
@@ -3361,10 +3361,10 @@ finish_exec(job *pjob)
 				return;
 			}
 			conn->cn_data = ptask;
-	
+
 			pjob->ji_child2parent_job_update_pipe = child2parent_job_update_pipe[0];
 			pjob->ji_parent2child_job_update_pipe = parent2child_job_update_pipe[1];
-	
+
 			pjob->ji_parent2child_job_update_status_pipe = parent2child_job_update_status_pipe[1];
 			pjob->ji_parent2child_moms_status_pipe = parent2child_moms_status_pipe[1];
 		}
@@ -3516,7 +3516,7 @@ finish_exec(job *pjob)
 		(void)close(mjspipe[1]);
 
 	if (jsmpipe2[0] != -1)
-		(void)close(jsmpipe2[0]); 
+		(void)close(jsmpipe2[0]);
 
 	if (mjspipe2[1] != -1)
 		(void)close(mjspipe2[1]);
@@ -4347,7 +4347,7 @@ finish_exec(job *pjob)
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 			/* a filled-in log_buffer could be mistaken for an error message */
 			log_buffer[0] = '\0';
-	
+
 			if (get_failed_moms_and_vnodes(pjob, parent2child_moms_status_pipe_r, (prolo_hooks > 0) ? downfds2 : -1, &vnl_fails, &vnl_good, job_launch_delay) != 0) {
 				FREE_VNLS(vnl_fails, vnl_good);
 				starter_return(upfds, downfds, JOB_EXEC_RETRY, &sjr);
@@ -6436,7 +6436,7 @@ int
 open_file_as_user(char *path, int oflag, mode_t mode, uid_t exuid, gid_t exgid)
 {
 	int fds;
-	int open_errno = 0; 
+	int open_errno = 0;
 	extern gid_t pbsgroup;
 
 	/* must open or create file as the user */

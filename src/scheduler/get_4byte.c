@@ -85,7 +85,7 @@ get_sched_cmd(int sock, int *val, char **jid)
 	int     rc = 0;
 	char	*jobid = NULL;
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	i = disrsi(sock, &rc);
 	if (rc != 0)

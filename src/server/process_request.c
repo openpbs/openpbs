@@ -104,11 +104,11 @@
 #include "batch_request.h"
 #include "log.h"
 #include "rpp.h"
-#include "dis_init.h"
 #include "dis.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "pbs_sched.h"
+#include "auth.h"
 
 /* global data items */
 
@@ -134,11 +134,6 @@ static void freebr_manage(struct rq_manage *);
 static void freebr_cpyfile(struct rq_cpyfile *);
 static void freebr_cpyfile_cred(struct rq_cpyfile_cred *);
 static void close_quejob(int sfds);
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-int req_gss_auth(struct batch_request *preq);
-int gss_set_conn(int s);
-#endif
 
 /**
  * @brief
@@ -213,63 +208,42 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 int
 authenticate_external(conn_t *conn, struct batch_request *request)
 {
-	int fromsvr = 0;
-	int rc = 0;
+	auth_def_t *authdef = NULL;
+	auth_def_t *encryptdef = NULL;
 
-	switch(request->rq_ind.rq_authen_external.rq_auth_type) {
-#ifndef WIN32
-		case AUTH_MUNGE:
-			if (pbs_conf.auth_method != AUTH_MUNGE) {
-				rc = -1;
-				snprintf(log_buffer, sizeof(log_buffer), "PBS Server not enabled for MUNGE Authentication");
-				goto err;
-			}
-
-			rc = pbs_munge_validate(request->rq_ind.rq_authen_external.rq_authen_un.rq_munge.rq_authkey, &fromsvr, log_buffer, sizeof(log_buffer));
-			if (rc != 0)
-				goto err;
-
-			(void) strcpy(conn->cn_username, request->rq_user);
-			(void) strcpy(conn->cn_hostname, request->rq_host);
-			conn->cn_timestamp = time_now;
-			conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
-			if (fromsvr == 1)
-				conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL; /* set priv connection */
-
-			return rc;
-#ifndef PBS_MOM
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		case AUTH_GSS:
-			if (pbs_conf.auth_method != AUTH_GSS) {
-				rc = -2;
-				snprintf(log_buffer, sizeof(log_buffer), "PBS Server not enabled for GSS Authentication");
-				goto err;
-			}
-
-			rc = req_gss_auth(request);
-
-			if (rc != 0)
-				goto err;
-
-			(void) strcpy(conn->cn_username, request->rq_user);
-			(void) strcpy(conn->cn_hostname, request->rq_host);
-			conn->cn_timestamp = time_now;
-			conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
-			conn->cn_authen |= PBS_NET_CONN_GSSAPIAUTH;
-
-			return rc;
-#endif
-#endif
-
-#endif
-		default:
-			snprintf(log_buffer, sizeof(log_buffer), "Authentication method not supported");
-			rc = -2;
+	authdef = get_auth(request->rq_ind.rq_auth.rq_auth_method);
+	if (authdef == NULL)
+		return -2;
+	if (request->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
+		encryptdef = get_auth(request->rq_ind.rq_auth.rq_encrypt_method);
+		if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL)
+			return -2;
 	}
 
-err:
-	log_err(-1, __func__, log_buffer);
-	return rc;
+	conn->cn_auth_config = make_auth_config(request->rq_ind.rq_auth.rq_auth_method,
+						request->rq_ind.rq_auth.rq_encrypt_method,
+						request->rq_ind.rq_auth.rq_encrypt_mode,
+						(void *)log_event);
+	if (conn->cn_auth_config == NULL) {
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+
+	(void) strcpy(conn->cn_username, request->rq_user);
+	(void) strcpy(conn->cn_hostname, request->rq_host);
+	conn->cn_timestamp = time_now;
+
+	authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
+	transport_chan_set_authdef(request->rq_conn, authdef, FOR_AUTH);
+	transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_AUTH);
+
+	if (encryptdef) {
+		if (encryptdef != authdef)
+			authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
+		transport_chan_set_authdef(request->rq_conn, encryptdef, FOR_ENCRYPT);
+		transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+	}
+	return 0;
 }
 
 /*
@@ -299,45 +273,31 @@ process_request(int sfds)
 	conn = get_conn(sfds);
 
 	if (!conn) {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR,
-			"process_request", "did not find socket in connection table");
-#ifdef WIN32
-		(void)closesocket(sfds);
-#else
-		(void)close(sfds);
-#endif
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
+		CLOSESOCKET(sfds);
 		return;
 	}
 
 	if ((request = alloc_br(0)) == NULL) {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR,
-			"process_request", "Unable to allocate request structure");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "Unable to allocate request structure");
 		close_conn(sfds);
 		return;
 	}
 	request->rq_conn = sfds;
-
-	/*
-	 * Read in the request and decode it to the internal request structure.
-	 */
-
 	if (get_connecthost(sfds, request->rq_host, PBS_MAXHOSTNAME)) {
-
-		(void)sprintf(log_buffer, "%s: %lu", msg_reqbadhost,
-			get_connectaddr(sfds));
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			"", log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, __func__, "%s: %lu", msg_reqbadhost, get_connectaddr(sfds));
 		req_reject(PBSE_BADHOST, 0, request);
 		return;
 	}
 
+	/*
+	 * Read in the request and decode it to the internal request structure.
+	 */
 #ifndef PBS_MOM
-
 	if (conn->cn_active == FromClientDIS) {
 		rc = dis_request_read(sfds, request);
 	} else {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR,
-			"process_req", "request on invalid type of connection");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "request on invalid type of connection");
 		close_conn(sfds);
 		free_br(request);
 		return;
@@ -346,13 +306,11 @@ process_request(int sfds)
 	rc = dis_request_read(sfds, request);
 #endif	/* PBS_MOM */
 
-	if (rc == -1) {		/* End of file */
+	if (rc == -1) { /* End of file */
 		close_client(sfds);
 		free_br(request);
 		return;
-
 	} else if ((rc == PBSE_SYSTEM) || (rc == PBSE_INTERNAL)) {
-
 		/* read error, likely cannot send reply so just disconnect */
 
 		/* ??? not sure about this ??? */
@@ -360,41 +318,34 @@ process_request(int sfds)
 		close_client(sfds);
 		free_br(request);
 		return;
-
 	} else if (rc > 0) {
-
 		/*
-		 * request didn't decode, either garbage or  unknown
+		 * request didn't decode, either garbage or unknown
 		 * request type, in ether case, return reject-reply
 		 */
-
 		req_reject(rc, 0, request);
 		close_client(sfds);
 		return;
 	}
 
 #ifndef PBS_MOM
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	strncpy(conn->cn_physhost, request->rq_host, strlen(request->rq_host));
-#endif
-#endif
-
-#ifndef PBS_MOM
-	/* If the request is coming on the socket we opened to the  */
-	/* scheduler,  change the "user" from "root" to "Scheduler" */
-	if (find_sched_from_sock(request->rq_conn) != NULL) {
+	strcpy(conn->cn_physhost, request->rq_host);
+	if (conn->cn_username[0] == '\0')
+		strcpy(conn->cn_username, request->rq_user);
+	if (conn->cn_hostname[0] == '\0')
+		strcpy(conn->cn_hostname, request->rq_host);
+	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) != 0) {
+		/*
+		 * If the request is coming on the socket we opened to the
+		 * scheduler, change the "user" from "root" to "Scheduler"
+		 */
 		strncpy(request->rq_user, PBS_SCHED_DAEMON_NAME, PBS_MAXUSER);
 		request->rq_user[PBS_MAXUSER] = '\0';
 	}
 #endif	/* PBS_MOM */
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "", msg_request, request->rq_type, request->rq_user, request->rq_host, sfds);
 
-	(void)sprintf(log_buffer, msg_request, request->rq_type,
-		request->rq_user, request->rq_host, sfds);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-		"", log_buffer);
-
-	/* is the request from a host acceptable to the server */
-	if (request->rq_type == PBS_BATCH_AuthExternal) {
+	if (request->rq_type == PBS_BATCH_Authenticate && strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) != 0) {
 		rc = authenticate_external(conn, request);
 		if (rc == 0)
 			reply_ack(request);
@@ -406,19 +357,71 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
+	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect && request->rq_type != PBS_BATCH_Authenticate) {
+		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
+			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
+			req_reject(PBSE_BADCRED, 0, request);
+			close_client(sfds);
+			return;
+		}
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (gss_set_conn(sfds)) {
-		req_reject(PBSE_INTERNAL, 0, request);
-		close_client(sfds);
-		return;
+		if (conn->cn_credid == NULL &&
+			conn->cn_auth_config != NULL &&
+			conn->cn_auth_config->auth_method != NULL &&
+			strcmp(conn->cn_auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
+			char *user = NULL;
+			char *host = NULL;
+			char *realm = NULL;
+			auth_def_t *authdef = transport_chan_get_authdef(sfds, FOR_AUTH);
+
+			if (authdef == NULL) {
+				req_reject(PBSE_PERM, 0, request);
+				close_client(sfds);
+				return;
+			}
+
+			if (authdef->get_userinfo(transport_chan_get_authctx(sfds, FOR_AUTH), &user, &host, &realm) != 0) {
+				req_reject(PBSE_PERM, 0, request);
+				close_client(sfds);
+				return;
+			}
+
+			if (user != NULL && realm != NULL) {
+				size_t clen = strlen(user) + strlen(realm) + 2; /* 1 for '@' and 1 for '\0' */
+				if ((conn->cn_credid = (char *)calloc(1, clen)) == NULL) {
+					req_reject(PBSE_SYSTEM, errno, request);
+					close_client(sfds);
+					return;
+				}
+				strcpy(conn->cn_credid, user);
+				strcat(conn->cn_credid, "@");
+				strcat(conn->cn_credid, realm);
+				free(realm);
+			}
+
+			if (user != NULL) {
+				strcpy(conn->cn_username, user);
+				free(user);
+			}
+
+			if (host != NULL) {
+				strcpy(conn->cn_hostname, host);
+				free(host);
+			}
+		}
+
+		conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 	}
-#endif
 
 	access_by_krb = 0;
 
+	/* FIXME: Do we need realm check for all auth ? */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if ((conn->cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+	if (conn->cn_credid != NULL &&
+		(conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 &&
+		conn->cn_auth_config != NULL &&
+		conn->cn_auth_config->auth_method != NULL &&
+		strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		strcpy(request->rq_user, conn->cn_username);
 		strcpy(request->rq_host, conn->cn_hostname);
 
@@ -439,6 +442,7 @@ process_request(int sfds)
 	}
 #endif
 
+	/* is the request from a host acceptable to the server */
 	if ((access_by_krb == 0) && (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long)) {
 		/* acl enabled, check it; always allow myself	*/
 
@@ -459,7 +463,7 @@ process_request(int sfds)
 					close_client(sfds);
 					return;
 			}
-                }
+		}
 	}
 
 	/*
@@ -500,7 +504,7 @@ process_request(int sfds)
 			return;
 		}
 
-		if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) ==0) {
+		if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
 			rc = PBSE_BADCRED;
 		} else {
 			rc = authenticate_user(request, conn);
@@ -512,8 +516,7 @@ process_request(int sfds)
 			return;
 		}
 
-		request->rq_perm =
-			svr_get_privilege(request->rq_user, request->rq_host);
+		request->rq_perm = svr_get_privilege(request->rq_user, request->rq_host);
 	}
 
 	/* if server shutting down, disallow new jobs and new running */
@@ -661,9 +664,7 @@ dispatch_request(int sfds, struct batch_request *request)
 		if (sfds != PBS_LOCAL_CONNECTION) {
 			conn = get_conn(sfds);
 			if (!conn) {
-				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST,
-				LOG_ERR,
-							"dispatch_request", "did not find socket in connection table");
+				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
@@ -932,8 +933,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusHook:
-			if (!is_local_root(request->rq_user,
-				request->rq_host)) {
+			if (!is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);
@@ -962,12 +962,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_register(request);
 			break;
 
-		case PBS_BATCH_AuthenResvPort:
-			if (pbs_conf.auth_method == AUTH_MUNGE) {
-                                req_reject(PBSE_BADCRED, 0, request);
-                                close_client(sfds);
-                                return;
-                        }
+		case PBS_BATCH_Authenticate:
 			req_authenResvPort(request);
 			break;
 
@@ -1607,4 +1602,3 @@ get_servername(unsigned int *port)
 
 	return name;
 }
-

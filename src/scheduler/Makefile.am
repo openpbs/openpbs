@@ -38,11 +38,29 @@
 
 lib_LIBRARIES = libpbs_sched.a
 
-libpbs_sched_a_CPPFLAGS = \
+common_cflags = \
 	-I$(top_srcdir)/src/include \
 	@libz_inc@ \
 	-pthread \
-	@PYTHON_INCLUDES@ @KRB5_CFLAGS@
+	@PYTHON_INCLUDES@ \
+	@KRB5_CFLAGS@
+
+common_libs = \
+	$(builddir)/libpbs_sched.a \
+	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Liblog/liblog.a \
+	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
+	@PYTHON_LDFLAGS@ \
+	@PYTHON_LIBS@ \
+	@libz_lib@ \
+	@libical_lib@ \
+	@KRB5_LIBS@
+
+libpbs_sched_a_CPPFLAGS = ${common_cflags}
+
 libpbs_sched_a_SOURCES = \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
 	buckets.c \
@@ -106,31 +124,11 @@ libpbs_sched_a_SOURCES = \
 
 sbin_PROGRAMS = pbs_sched pbsfs
 
-common_cppflags = \
-	-I$(top_srcdir)/src/include \
-	@PYTHON_INCLUDES@ \
-	@libical_inc@ \
-	@KRB5_CFLAGS@
-
-common_libs = \
-	$(builddir)/libpbs_sched.a \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libsec/libsec.a \
-	@PYTHON_LDFLAGS@ \
-	@PYTHON_LIBS@ \
-	@libz_lib@ \
-	@libical_lib@ \
-	@KRB5_LIBS@
-
-pbs_sched_CPPFLAGS = ${common_cppflags}
+pbs_sched_CPPFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
 pbs_sched_SOURCES = pbs_sched.c
 
-pbsfs_CPPFLAGS = ${common_cppflags}
+pbsfs_CPPFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
 pbsfs_SOURCES = pbsfs.c
 

@@ -46,5 +46,5 @@ SUBDIRS = \
 	Libsite \
 	Libsec \
 	Libtpp \
-	Libutil
-
+	Libutil \
+	Libauth

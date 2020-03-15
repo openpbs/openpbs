@@ -66,7 +66,7 @@
  * @retval	0	success
  * @retval	!0	error
  *
- */ 
+ */
 int
 PBSD_manager(int c, int function, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
 {
@@ -106,7 +106,7 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

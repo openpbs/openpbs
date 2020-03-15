@@ -392,6 +392,9 @@ AC_CONFIG_FILES([
 	src/lib/Libsite/Makefile
 	src/lib/Libtpp/Makefile
 	src/lib/Libutil/Makefile
+	src/lib/Libauth/Makefile
+	src/lib/Libauth/gss/Makefile
+	src/lib/Libauth/munge/Makefile
 	src/lib/Makefile
 	src/modules/Makefile
 	src/modules/python/Makefile

@@ -40,7 +40,8 @@ lib_LIBRARIES = libsite.a
 
 libsite_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/resmom/${PBS_MACH}
+	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
+	@KRB5_CFLAGS@
 
 libsite_a_SOURCES = \
 	site_alt_rte.c \
@@ -50,4 +51,3 @@ libsite_a_SOURCES = \
 	site_check_u.c \
 	site_map_usr.c \
 	site_mom_ckp.c
-

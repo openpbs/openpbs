@@ -867,9 +867,6 @@ fi
 [ -z "${PBS_START_SCHED}" ] && PBS_START_SCHED=0
 [ -z "${PBS_START_COMM}" ] && PBS_START_COMM=0
 
-# For Kerberos enabled server
-[ ! -z "${PBS_START_SERVER}" ] && export PBSPRO_IGNORE_KERBEROS=1
-
 UNIX95=1
 export UNIX95
 PBS_MOM_HOME=${PBS_MOM_HOME:-$PBS_HOME}

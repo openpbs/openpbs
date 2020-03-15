@@ -67,7 +67,7 @@
  *      it to <stream>.
  *
  * @param[in] stream	socket fd
- * @param[in] value 	value to be converted 
+ * @param[in] value 	value to be converted
  *
  * @return	int
  * @retval	DIS_SUCCESS	success
@@ -88,15 +88,13 @@ diswf(int stream, double value)
 	double		dval;
 
 	assert(stream >= 0);
-	assert(dis_puts != NULL);
-	assert(disw_commit != NULL);
 
 	/* Make zero a special case.  If we don't it will blow exponent		*/
 	/* calculation.								*/
 	if (value == 0.0) {
-		retval = (*dis_puts)(stream, "+0+0", 4) != 4 ?
+		retval = dis_puts(stream, "+0+0", 4) != 4 ?
 			DIS_PROTO : DIS_SUCCESS;
-		return (((*disw_commit)(stream, retval == DIS_SUCCESS) < 0) ?
+		return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
 			DIS_NOCOMMIT : retval);
 	}
 	/* Extract the sign from the coefficient.				*/
@@ -156,11 +154,11 @@ diswf(int stream, double value)
 	while (ndigs > 1)
 		cp = discui_(cp, ndigs, &ndigs);
 	/* The complete coefficient integer is done.  Put it out.		*/
-	retval = (*dis_puts)(stream, cp, (size_t)(ocp - cp)) < 0 ?
+	retval = dis_puts(stream, cp, (size_t)(ocp - cp)) < 0 ?
 		DIS_PROTO : DIS_SUCCESS;
 	/* If that worked, follow with the exponent, commit, and return.	*/
 	if (retval == DIS_SUCCESS)
 		return (diswsi(stream, expon));
 	/* If coefficient didn't work, negative commit and return the error.	*/
-	return (((*disw_commit)(stream, FALSE) < 0)  ? DIS_NOCOMMIT : retval);
+	return ((disw_commit(stream, FALSE) < 0)  ? DIS_NOCOMMIT : retval);
 }

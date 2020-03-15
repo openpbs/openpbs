@@ -69,31 +69,28 @@
  */
 
 int
-PBSD_status_put(int c, int function, char *id, struct attrl *attrib, 
+PBSD_status_put(int c, int function, char *id, struct attrl *attrib,
 		char *extend, int rpp, char **msgid)
 {
 	int rc = 0;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
-	if ((rc = encode_DIS_ReqHdr(sock, function, pbs_current_user))   ||
-		(rc = encode_DIS_Status(sock, id, attrib)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, function, pbs_current_user))   ||
+		(rc = encode_DIS_Status(c, id, attrib)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
-	if (DIS_wflush(sock, rpp)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 

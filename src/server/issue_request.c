@@ -78,8 +78,6 @@
 
 
 /* Global Data Items: */
-
-extern struct connect_handle connection[];
 extern pbs_list_head task_list_event;
 extern time_t	time_now;
 extern char	*msg_issuebad;
@@ -425,10 +423,10 @@ issue_Drequest(int conn,
 		request->rq_conn = conn;
 		wt   = WORK_Deferred_Reply;
 	} else {
-		sock = connection[conn].ch_socket;
+		sock = conn;
 		request->rq_conn = sock;
 		wt   = WORK_Deferred_Reply;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	}
 
 	ptask = set_task(wt, (long) conn, func, (void *) request);
@@ -539,7 +537,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 
@@ -559,7 +557,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_SignalJob:
@@ -595,7 +593,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, request->rq_extend);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_CopyFiles:
@@ -614,7 +612,7 @@ issue_Drequest(int conn,
 			rc = encode_DIS_ReqExtend(sock, get_job_credid(request->rq_ind.rq_cpyfile.rq_jobid));
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_CopyFiles_Cred:
@@ -633,7 +631,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_DelFiles:
@@ -652,7 +650,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_DelFiles_Cred:
@@ -671,7 +669,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 		case PBS_BATCH_FailOver:
@@ -700,7 +698,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_ReqExtend(sock, 0);
 			if (rc != 0)
 				break;
-			rc = DIS_wflush(sock, rpp);
+			rc = dis_flush(sock);
 			break;
 
 #endif	/* PBS_MOM */
@@ -751,38 +749,16 @@ issue_Drequest(int conn,
 void
 process_Dreply(int sock)
 {
-	int			 handle;
 	struct work_task	*ptask;
 	int			 rc;
 	struct batch_request	*request;
 #ifdef WIN32
 	int                     i;
 #endif
-
-	conn_t *conn;
-	conn = get_conn(sock);
-	if(!conn)
-		return;
-
 	/* find the work task for the socket, it will point us to the request */
-
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
-
-#ifdef WIN32
-	handle = -1;
-	for (i=0;i < PBS_MAX_CONNECTIONS; i++) {
-		if (connection[i].ch_inuse && connection[i].ch_socket == sock) {
-			handle = i;
-			break;
-		}
-	}
-#else
-	handle = conn->cn_handle;
-#endif
-
 	while (ptask) {
-		if ((ptask->wt_type == WORK_Deferred_Reply) &&
-			(ptask->wt_event == handle))
+		if ((ptask->wt_type == WORK_Deferred_Reply) && (ptask->wt_event == sock))
 			break;
 		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
 	}
@@ -838,7 +814,7 @@ process_DreplyRPP(int handle)
 	if ((pmom = tfind2((u_long) handle, 0, &streams)) == NULL)
 		return;
 
-	DIS_rpp_reset();
+	DIS_rpp_funcs();
 
 	/* find the work task for the socket, it will point us to the request */
 	msgid = disrst(handle, &rc);

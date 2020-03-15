@@ -93,7 +93,7 @@ __pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

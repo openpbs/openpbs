@@ -72,8 +72,9 @@ extern "C" {
 #define tpp_sock_setsockopt(a, b, c, d, e)   setsockopt(a, b, c, d, e)
 
 #else
-
+#ifndef EINPROGRESS
 #define EINPROGRESS   EAGAIN
+#endif
 
 int tpp_pipe_cr(int fds[2]);
 int tpp_pipe_read(int s, char *buf, int len);

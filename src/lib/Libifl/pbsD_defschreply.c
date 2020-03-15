@@ -72,15 +72,12 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 {
 	int	rc;
 	struct batch_reply   *reply;
-	int	sock;
 	int	has_txt = 0;
 
 	if ((id == NULL) || (*id == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 	if ((txt != NULL) && (*txt != '\0'))
 		has_txt = 1;
-
-	sock = connection[c].ch_socket;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -93,17 +90,16 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	/* encode request */
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_DefSchReply,
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_DefSchReply,
 		pbs_current_user)) ||
-		(rc = diswui(sock, cmd)  != 0)                        ||
-		(rc = diswst(sock, id)  != 0)                        ||
-		(rc = diswui(sock, err)  != 0)) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+		(rc = diswui(c, cmd)  != 0)                        ||
+		(rc = diswst(c, id)  != 0)                        ||
+		(rc = diswui(c, err)  != 0)) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -111,15 +107,14 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
-	rc = diswsi(sock, has_txt);
+	rc = diswsi(c, has_txt);
 	if ((has_txt == 1) && (rc == 0)) {
-		rc = diswst(sock, txt);
+		rc = diswst(c, txt);
 	}
 	if (rc == 0)
-		rc = encode_DIS_ReqExtend(sock, extend);
+		rc = encode_DIS_ReqExtend(c, extend);
 	if (rc) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -128,7 +123,7 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
@@ -137,7 +132,7 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 	/* get reply */
 
 	reply = PBSD_rdrpy(c);
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	PBSD_FreeReply(reply);
 

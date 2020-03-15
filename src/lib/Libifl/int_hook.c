@@ -75,38 +75,37 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
 {
 	struct batch_reply   *reply;
 	int	rc;
-	int	sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
 	if ((hook_filename == NULL) || (hook_filename[0] == '\0'))
 		return (pbs_errno = PBSE_PROTOCOL);
 
-	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
-		(rc = encode_DIS_CopyHookFile(sock, seq, buf, len,
+	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
+		(rc = encode_DIS_CopyHookFile(c, seq, buf, len,
 		hook_filename)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
 
-		if (!rpp)
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
+		if (!rpp) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
+				return (pbs_errno = PBSE_SYSTEM);
+		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
@@ -116,7 +115,7 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
 
 	PBSD_FreeReply(reply);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -196,38 +195,35 @@ PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
 {
 	struct batch_reply   *reply;
 	int	rc;
-	int	sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
 	if ((hook_filename == NULL) || (hook_filename[0] == '\0'))
 		return (pbs_errno = PBSE_PROTOCOL);
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_DelHookFile,
-		pbs_current_user)) ||
-		(rc = encode_DIS_DelHookFile(sock, hook_filename)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-
-		if (!rpp)
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_DelHookFile, pbs_current_user)) ||
+		(rc = encode_DIS_DelHookFile(c, hook_filename)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (!rpp) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
+				return (pbs_errno = PBSE_SYSTEM);
+		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
 	if (rpp) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (rpp_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
@@ -237,5 +233,5 @@ PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
 
 	PBSD_FreeReply(reply);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }

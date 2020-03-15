@@ -533,7 +533,7 @@ return_file(job *pjob, enum job_file which, int sock)
 		/* prq->rq_ind.rq_jobfile.rq_data = buf; */
 
 
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 		if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_MvJobFile,
 			pbs_current_user)) ||
 			(rc = encode_DIS_JobFile(sock, seq++, buf, amt,
@@ -542,7 +542,7 @@ return_file(job *pjob, enum job_file which, int sock)
 			break;
 		}
 
-		DIS_tcp_wflush(sock);
+		dis_flush(sock);
 
 		if ((DIS_reply_read(sock, &prq->rq_reply, 0) != 0) ||
 			(prq->rq_reply.brp_code != 0)) {
@@ -590,7 +590,7 @@ void
 req_deletejob(struct batch_request *preq)
 {
 	job 		*pjob;
-	mom_hook_input_t	*hook_input = NULL; 
+	mom_hook_input_t	*hook_input = NULL;
 	mom_hook_output_t	*hook_output = NULL;
 	char *jobid = NULL;
 
@@ -603,7 +603,7 @@ req_deletejob(struct batch_request *preq)
 	}
 
 	if (pjob->ji_hook_running_bg_on)
-		/* This is a duplicate request just return from here. */ 
+		/* This is a duplicate request just return from here. */
 		return;
 
 	/*
@@ -655,7 +655,7 @@ req_deletejob(struct batch_request *preq)
 	if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
 		PBS_MOM_SERVICE_NAME, mom_host, hook_input,
 		hook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
-		
+
 		pjob->ji_hook_running_bg_on = BG_PBS_BATCH_DeleteJob;
 
 		/*
@@ -675,10 +675,10 @@ req_deletejob(struct batch_request *preq)
 				pjob->ji_hook_running_bg_on = BG_PBSE_SISCOMM;
 			}
 		}
-		/* 
+		/*
 		* Hook is running in background reply to the batch
 		* request will be taken care of in mom_process_background_hooks
-		* function 
+		* function
 		*/
 		return;
 	}
@@ -1354,18 +1354,18 @@ post_suspend(job *pjob, int err)
 			hook_output.reject_errcode = &reject_errcode;
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
-		
+
 			if (mom_process_hooks(HOOK_EVENT_EXECJOB_POSTSUSPEND,
 				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
 				&hook_output, hook_msg, sizeof(hook_msg), 1) == 0) {
-				snprintf(log_buffer, sizeof(log_buffer), 
+				snprintf(log_buffer, sizeof(log_buffer),
 					"execjob_postsuspend hook rejected request: %s", hook_msg);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 			}
 		}
 		else
 		{
-			snprintf(log_buffer, sizeof(log_buffer), 
+			snprintf(log_buffer, sizeof(log_buffer),
 				"This job can't be suspended, since the job was in %d substate",pjob->ji_qs.ji_substate);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
 				log_buffer);
@@ -1717,7 +1717,7 @@ local_supres(job *pjob, int which, struct batch_request *preq)
 		if (mom_process_hooks(HOOK_EVENT_EXECJOB_PRERESUME,
 			PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
 			&hook_output, hook_msg, sizeof(hook_msg), 1) == 0) {
-			snprintf(log_buffer, sizeof(log_buffer), 
+			snprintf(log_buffer, sizeof(log_buffer),
 					"execjob_preresume hook rejected request: %s", hook_msg);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 			errno = reject_errcode;
@@ -2506,7 +2506,6 @@ req_rerunjob(struct batch_request *preq)
 	job		*pjob;
 	unsigned int	 port;
 	int		 rc;
-	int 	 	 mode;
 	int		 sock;
 	char		*svrport;
 	struct work_task *wtask = NULL;
@@ -2552,11 +2551,7 @@ req_rerunjob(struct batch_request *preq)
 	else
 		port = default_server_port;
 
-	mode = B_RESERVED;
-	if (pbs_conf.auth_method == AUTH_MUNGE)
-		mode = B_EXTERNAL|B_SVR;
-
-	sock = client_to_svr(pjob->ji_qs.ji_un.ji_momt.ji_svraddr, port, mode);
+	sock = client_to_svr(pjob->ji_qs.ji_un.ji_momt.ji_svraddr, port, B_RESERVED);
 
 	if (pbs_errno == PBSE_NOLOOPBACKIF)
 		log_err(PBSE_NOLOOPBACKIF, "client_to_svr" , msg_noloopbackif);
@@ -3195,10 +3190,15 @@ req_cpyfile(struct batch_request *preq)
 	pid_t			pid;
 	struct rqfpair		*pair;
 	int			rmtflag;
-	cpy_files	stage_inout;
+	cpy_files		stage_inout;
 	char			*prmt;
-	char                    dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
-	struct work_task *wtask = NULL;
+	char			dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
+	struct work_task	*wtask = NULL;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	struct krb_holder	*ticket = NULL;
+	char 			*krbccname = NULL;
+#endif
+
 	DBPRT(("%s: entered\n", __func__))
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred)
@@ -3278,13 +3278,9 @@ req_cpyfile(struct batch_request *preq)
 	else
 		stage_inout.direct_write = 0;
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	struct krb_holder *ticket = NULL;
-	ticket = alloc_ticket();
-#endif
-
 	/* Become the user */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	ticket = alloc_ticket();
 	pid = fork_to_user(preq, ticket);
 #else
 	pid = fork_to_user(preq);
@@ -3334,7 +3330,9 @@ req_cpyfile(struct batch_request *preq)
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	setenv("KRB5CCNAME", get_ticket_ccname(ticket), 1);
+	krbccname = get_ticket_ccname(ticket);
+	if (krbccname != NULL)
+		setenv("KRB5CCNAME", krbccname, 1);
 #endif
 
 	/*
@@ -3504,6 +3502,10 @@ struct batch_request *preq;
 	pid_t	 	pid;
 	job		*pjob;
 	char		*bad_list = NULL;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	struct krb_holder *ticket = NULL;
+	char		*krbccname = NULL;
+#endif
 
 	pjob = find_job(preq->rq_ind.rq_cpyfile.rq_jobid);
 	if (pjob) {
@@ -3528,15 +3530,12 @@ struct batch_request *preq;
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	struct krb_holder *ticket = NULL;
 	ticket = alloc_ticket();
-#endif
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if ((pid = fork_to_user(preq, ticket)) > 0) {
+	if ((pid = fork_to_user(preq, ticket)) > 0)
 #else
-	if ((pid = fork_to_user(preq)) > 0) {
+	if ((pid = fork_to_user(preq)) > 0)
 #endif
+	{
 		/* parent */
 		if (pjob) {
 			pjob->ji_momsubt = pid;
@@ -3551,7 +3550,9 @@ struct batch_request *preq;
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        setenv("KRB5CCNAME", get_ticket_ccname(ticket), 1);
+	krbccname = get_ticket_ccname(ticket);
+	if (krbccname != NULL)
+		setenv("KRB5CCNAME", krbccname, 1);
 #endif
 
 	/* Child process ... delete the files */
@@ -4909,8 +4910,8 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 		} else {
 
 			hook  *phook2;
-			int   i;	
-			int   j;	
+			int   i;
+			int   j;
 
 			if ((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) &&
 				!has_task_by_parm1(phook)) {
@@ -5090,11 +5091,11 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 				pjob = (job *)GET_NEXT(pjob->ji_alljobs);
 			}
 			if (hook_running && phook->event & HOOK_EVENT_EXECJOB_END) {
-				/** 
+				/**
 				 * This event runs hook in the background,
 				 * and it's deferred task created while
 				 * running the hook, is required for graceful
-				 * exit of the job. 
+				 * exit of the job.
 				 */
 				reply_ack(preq);
 				return;

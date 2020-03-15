@@ -68,14 +68,12 @@ disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs, unsigned *nskips, 
 	dis_long_double_t	fpnum;
 
 	assert(stream >= 0);
-	assert(dis_getc != NULL);
-	assert(disr_skip != NULL);
 
 	if (++recursv > DIS_RECURSIVE_LIMIT)
 		return (DIS_PROTO);
 
 	/* dis_umaxd would be initialized by prior call to dis_init_tables */
-	switch (c = (*dis_getc)(stream)) {
+	switch (c = dis_getc(stream)) {
 		case '-':
 		case '+':
 			negate = c == '-';
@@ -84,7 +82,7 @@ disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs, unsigned *nskips, 
 			*ndigs = count;
 			fpnum = 0.0L;
 			do {
-				if ((c = (*dis_getc)(stream)) < '0' || c > '9') {
+				if ((c = dis_getc(stream)) < '0' || c > '9') {
 					if (c < 0)
 						return (DIS_EOD);
 					return (DIS_NONDIGIT);
@@ -93,7 +91,7 @@ disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs, unsigned *nskips, 
 			} while (--count);
 			if ((count = *nskips) > 0) {
 				count--;
-				switch ((*dis_getc)(stream)) {
+				switch (dis_getc(stream)) {
 					case '5':
 						if (count == 0)
 							break;
@@ -108,7 +106,7 @@ disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs, unsigned *nskips, 
 					case '3':
 					case '4':
 						if (count > 0 &&
-							(*disr_skip)(stream, (size_t)count) == count)
+							disr_skip(stream, (size_t)count) == count)
 							return (DIS_EOD);
 						break;
 					default:
@@ -132,7 +130,7 @@ disrl_(int stream, dis_long_double_t *ldval, unsigned *ndigs, unsigned *nskips, 
 			if (count > 1) {
 				if (count > dis_umaxd)
 					break;
-				if ((*dis_gets)(stream, dis_buffer + 1, count - 1) !=
+				if (dis_gets(stream, dis_buffer + 1, count - 1) !=
 					count - 1)
 					return (DIS_EOD);
 				cp = dis_buffer;

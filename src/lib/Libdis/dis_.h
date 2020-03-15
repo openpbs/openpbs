@@ -39,7 +39,6 @@
 #include <stddef.h>
 
 #include <dis.h>
-#include <dis_init.h>
 
 #define DIS_BUFSIZ (CHAR_BIT * sizeof(ULONG_MAX))
 /* define a limit for the number of times DIS will recurse when      */

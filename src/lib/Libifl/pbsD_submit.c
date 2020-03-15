@@ -188,7 +188,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	if ((script != NULL) && (*script != '\0')) {
 		if (access(script, R_OK) != 0) {
 			pbs_errno = PBSE_BADSCRIPT;
-			if ((connection[c].ch_errtxt = strdup("cannot access script file")) == NULL)
+			if (set_conn_errtxt(c, "cannot access script file") != 0)
 				pbs_errno = PBSE_SYSTEM;
 			goto error;
 		}

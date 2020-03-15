@@ -95,7 +95,6 @@ unsigned short disrus(int stream, int *retval)
 	unsigned	value;
 
 	assert(retval != NULL);
-	assert(disr_commit != NULL);
 
 	locret = disrsi_(stream, &negate, &value, 1, 0);
 	if (locret != DIS_SUCCESS) {
@@ -107,7 +106,7 @@ unsigned short disrus(int stream, int *retval)
 		value = USHRT_MAX;
 		locret = DIS_OVERFLOW;
 	}
-	*retval = ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0) ?
+	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : locret;
 	return ((unsigned short)value);
 }

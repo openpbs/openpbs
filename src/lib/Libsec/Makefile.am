@@ -38,8 +38,9 @@
 
 noinst_LIBRARIES = libsec.a
 
-libsec_a_CPPFLAGS = -I$(top_srcdir)/src/include
+libsec_a_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@KRB5_CFLAGS@
 
 libsec_a_SOURCES = \
 	cs_standard.c
-
