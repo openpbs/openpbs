@@ -1867,7 +1867,7 @@ if %s e.job.in_ms_mom():
         """
         Test to verify that the mom reserve memory for OS
         when there is a reserve mem request in the config.
-        Install cfg3 and then cfg4 and measure diffenece
+        Install cfg3 and then cfg4 and measure difference
         between the amount of available memory and memsw.
         For example, on a system with 1GB of physical memory
         and 1GB of active swap. With cfg3 in place, we should
@@ -1908,18 +1908,27 @@ if %s e.job.in_ms_mom():
             vmem2 = PbsTypeSize(vmem[0]['resources_available.vmem'])
             self.logger.info('Vmem-2: %s' % vmem2.value)
             vmem_resv = vmem1 - vmem2
-            self.logger.info('Vmem resv: %s' % vmem_resv.value)
-            # self.assertEqual(vmem_resv.value, 97280)
-            self.assertEqual(vmem_resv.value, 51200)
-            self.assertEqual(vmem_resv.unit, 'kb')
+            if (vmem_resv.unit == 'b'):
+                vmem_resv_bytes = vmem_resv.value
+            elif (vmem_resv.unit == 'kb'):
+                vmem_resv_bytes = vmem_resv.value * 1024
+            elif (vmem_resv.unit == 'mb'):
+                vmem_resv_bytes = vmem_resv.value * 1024 * 1024
+            self.logger.info('Vmem resv difference in bytes: %s' % vmem_resv_bytes)
+            self.assertGreaterEqual(vmem_resv_bytes, 51200 * 1024)
         mem = self.server.status(NODE, 'resources_available.mem',
                                  id=self.nodes_list[0])
         mem2 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-2: %s' % mem2.value)
         mem_resv = mem1 - mem2
-        self.logger.info('Mem resv: %s' % mem_resv.value)
-        self.assertEqual(mem_resv.value, 51200)
-        self.assertEqual(mem_resv.unit, 'kb')
+        if (mem_resv.unit == 'b'):
+            mem_resv_bytes = mem_resv.value
+        elif (mem_resv.unit == 'kb'):
+            mem_resv_bytes = mem_resv.value * 1024
+        elif (mem_resv.unit == 'mb'):
+            mem_resv_bytes = mem_resv.value * 1024 * 1024
+        self.logger.info('Mem resv difference in bytes: %s' % mem_resv_bytes)
+        self.assertGreaterEqual(mem_resv_bytes, 51200 * 1024)
 
     @requirements(num_moms=2)
     def test_cgroup_multi_node(self):

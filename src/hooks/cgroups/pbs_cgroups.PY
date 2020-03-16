@@ -2635,7 +2635,7 @@ class CgroupUtils(object):
                        % (caller_name(), 'enabled',
                           str(config_dict['enabled'])))
 
-        # Add "enabled" if unspecified
+        # Add "disabled" if unspecified
         if "enabled" not in config_dict:
             config_dict['enabled'] = False
             pbs.logmsg(pbs.EVENT_DEBUG4,
