@@ -880,6 +880,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		}
 
 	} else {		/* child */
+                rpp_terminate();
+                net_close(-1);
 		(void)setsid();
 
 		myseq = getpid();
