@@ -1028,7 +1028,7 @@ class HookUtils(object):
                     except Exception:
                         result = False
             if 'hugetlb' in cgroup.subsystems:
-                val = node.get_hpmem_on_node()
+                val = node.get_hpmem_on_node(ignore_reserved=False)
                 if val is not None and val > 0:
                     try:
                         cgroup.set_limit('hpmem', val)
@@ -1941,12 +1941,54 @@ class NodeUtils(object):
         vnode_msg_cpu = '%s: vnode_list[%s].resources_available[ncpus] = %d'
         vnode_msg_mem = '%s: vnode_list[%s].resources_available[mem] = %s'
 
-        # Some kernel drivers "reserve" memory on /proc/meminfo
-        # and this is not reflected in the node meminfo; if necessary,
-        # adjust the values published as resources_available.mem
-        # on the per-socket vnodes by the difference spread over nodes
-        adjust_bytes_per_node = 0
-        if vnodes:
+        if not vnodes:
+            # memory (global for host)
+            mem = self.get_memory_on_node(ignore_reserved=False)
+            # remove X MB - handle jitter in MemTotal observed in field
+            mem -= (1024 * 1024
+                    * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
+            if mem < 0:
+                mem = 0
+            mem -= mem % (1024 * 1024)
+            mem = pbs.size(convert_size(mem, 'mb'))
+            host_resc_avail['mem'] = mem
+            pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
+                       (caller_name(), vnode_name,
+                        str(host_resc_avail['mem'])))
+            # memory+swap ('vmem') (global for host)
+            vmem = self.get_vmem_on_node(ignore_reserved=False)
+            # remove X MB - handle jitter in MemTotal observed in field
+            vmem -= (1024 * 1024
+                    * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
+            if vmem < 0:
+                vmem = 0
+            vmem -= vmem % (1024 * 1024)
+            vmem = pbs.size(convert_size(vmem, 'mb'))
+            host_resc_avail['vmem'] = vmem
+            pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
+                       (caller_name(), vnode_name,
+                        str(host_resc_avail['mem'])))
+            # huge page mem (global for host)
+            val = self.get_hpmem_on_node(ignore_reserved=False)
+            # remove X MB - handle jitter in mem reported by OS
+            val -= (1024 * 1024
+                    * self.cfg['cgroup']['hugetlb']
+                              ['vnode_hidden_mb'])
+            if val < 0:
+                val = 0
+            val -= val % (1024 * 1024)  # round down to MB
+            host_resc_avail['hpmem'] = \
+                pbs.size(convert_size(val, 'mb'))
+        else:
+            # set the value on the host to 0
+            host_resc_avail['mem'] = pbs.size('0')
+            host_resc_avail['vmem'] = pbs.size('0')
+            host_resc_avail['hpmem'] = pbs.size('0')
+            # Some kernel drivers "reserve" memory on /proc/meminfo
+            # and this is not reflected in the node meminfo; if necessary,
+            # adjust the values published as resources_available.mem
+            # on the per-socket vnodes by the difference spread over nodes
+            adjust_bytes_per_node = 0
             num_numa_nodes = len(self.numa_nodes)
             total_nodemem = 0
             for num in self.numa_nodes:
@@ -1965,8 +2007,7 @@ class NodeUtils(object):
                            'adjusting each vnode mem down by %s bytes'
                            % (caller_name(),
                               str(total_hostmem), str(total_nodemem),
-                              str(adjust_bytes_per_node)))
-
+                              str(adjust_bytes_per_node)))            
         for nnid in self.numa_nodes:
             if vnodes:
                 vnode_key = vnode_name + '[%d]' % nnid
@@ -1976,16 +2017,21 @@ class NodeUtils(object):
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
                 if key is None:
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key is None' %
-                               caller_name())
+                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key is None'
+                               % caller_name())
                     continue
                 if val is None:
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: val is None' %
-                               caller_name())
-                    continue
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s = %s' %
-                           (caller_name(), key, val))
-                if key == 'cpus':
+                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: val is None'
+                               % caller_name())
+                    continue                  
+                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s = %s'
+                           % (caller_name(), key, val))
+                if key in ['MemTotal', 'HugePages_Total']:
+                    # Irrelevant: transformed to other keys if vnodes is True
+                    # done outside of loop if vnodes is False
+                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key %s skipped'
+                               % (caller_name(), key))
+                elif key == 'cpus':
                     threads = len(val)
                     if not self.cfg['use_hyperthreads']:
                         # Do not treat a hyperthread as a core when
@@ -2017,49 +2063,6 @@ class NodeUtils(object):
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_cpu %
                                    (caller_name(), vnode_name,
                                     host_resc_avail['ncpus']))
-                elif key == 'MemTotal':
-                    mem = self.get_memory_on_node(memtotal=val)
-                    # remove X MB - handle jitter in MemTotal observed in field
-                    mem -= (1024 * 1024
-                            * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
-                    if mem < 0:
-                        mem = 0
-                    mem -= mem % (1024 * 1024)
-                    mem = pbs.size(convert_size(mem, 'mb'))
-                    if vnodes:
-                        # set the value on the host to 0
-                        host_resc_avail['mem'] = pbs.size('0')
-                        host_resc_avail['vmem'] = pbs.size('0')
-                    else:
-                        if 'mem' not in host_resc_avail:
-                            host_resc_avail['mem'] = pbs.size('0')
-                        if not isinstance(host_resc_avail['mem'], pbs.size):
-                            host_resc_avail['mem'] = pbs.size('0')
-                        host_resc_avail['mem'] += mem
-                        if 'vmem' not in host_resc_avail:
-                            host_resc_avail['vmem'] = pbs.size('0')
-                        if not isinstance(host_resc_avail['vmem'], pbs.size):
-                            host_resc_avail['vmem'] = pbs.size('0')
-                        host_resc_avail['vmem'] += mem
-                        pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
-                                   (caller_name(), vnode_name,
-                                    str(host_resc_avail['mem'])))
-                elif key == 'HugePages_Total':
-                    # Used for the natural vnode
-                    if vnodes:
-                        # Set the value on the natural vnode to zero
-                        host_resc_avail['hpmem'] = pbs.size('0')
-                    else:
-                        val = self.get_hpmem_on_node()
-                        # remove X MB - handle jitter in mem reported by OS
-                        val -= (1024 * 1024
-                                * self.cfg['cgroup']['hugetlb']
-                                          ['vnode_hidden_mb'])
-                        if val < 0:
-                            val = 0
-                        val -= val % (1024 * 1024)  # round down to MB
-                        host_resc_avail['hpmem'] = \
-                            pbs.size(convert_size(val, 'mb'))
                 elif key in ['mem', 'vmem', 'hpmem']:
                     # Used for vnodes per NUMA socket
                     if vnodes:
@@ -4342,7 +4345,7 @@ class CgroupUtils(object):
         # Initialize hpmem variables
         hpmem_enabled = 'hugetlb' in self.subsystems
         if hpmem_enabled:
-            hpmem_avail = node.get_hpmem_on_node()
+            hpmem_avail = node.get_hpmem_on_node(ignore_reserved=False)
             hpmem_limit = None
             hpmem_default = self.default('hugetlb')
             if hpmem_default is None:
