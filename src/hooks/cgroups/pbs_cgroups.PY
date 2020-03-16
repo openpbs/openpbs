@@ -1959,7 +1959,7 @@ class NodeUtils(object):
             vmem = self.get_vmem_on_node(ignore_reserved=False)
             # remove X MB - handle jitter in MemTotal observed in field
             vmem -= (1024 * 1024
-                    * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
+                     * self.cfg['cgroup']['memory']['vnode_hidden_mb'])
             if vmem < 0:
                 vmem = 0
             vmem -= vmem % (1024 * 1024)
@@ -2007,7 +2007,7 @@ class NodeUtils(object):
                            'adjusting each vnode mem down by %s bytes'
                            % (caller_name(),
                               str(total_hostmem), str(total_nodemem),
-                              str(adjust_bytes_per_node)))            
+                              str(adjust_bytes_per_node)))
         for nnid in self.numa_nodes:
             if vnodes:
                 vnode_key = vnode_name + '[%d]' % nnid
@@ -2023,7 +2023,7 @@ class NodeUtils(object):
                 if val is None:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: val is None'
                                % caller_name())
-                    continue                  
+                    continue
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s = %s'
                            % (caller_name(), key, val))
                 if key in ['MemTotal', 'HugePages_Total']:
@@ -2073,7 +2073,8 @@ class NodeUtils(object):
                         key_to_subsys = ({'mem': 'memory',
                                           'vmem': 'memsw',
                                           'hpmem': 'hugetlb'})
-                        mem_val -= adjust_bytes_per_node
+                        if key != 'hpmem':
+                            mem_val -= adjust_bytes_per_node
                         mem_val -= (1024 * 1024
                                     * self.cfg['cgroup'][key_to_subsys[key]]
                                                         ['vnode_hidden_mb'])
