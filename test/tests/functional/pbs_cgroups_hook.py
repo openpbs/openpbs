@@ -1914,7 +1914,7 @@ if %s e.job.in_ms_mom():
                 vmem_resv_bytes = vmem_resv.value * 1024
             elif (vmem_resv.unit == 'mb'):
                 vmem_resv_bytes = vmem_resv.value * 1024 * 1024
-            self.logger.info('Vmem resv difference in bytes: %s' % vmem_resv_bytes)
+            self.logger.info('Vmem resv diff in bytes: %s' % vmem_resv_bytes)
             self.assertGreaterEqual(vmem_resv_bytes, 51200 * 1024)
         mem = self.server.status(NODE, 'resources_available.mem',
                                  id=self.nodes_list[0])
@@ -1927,7 +1927,7 @@ if %s e.job.in_ms_mom():
             mem_resv_bytes = mem_resv.value * 1024
         elif (mem_resv.unit == 'mb'):
             mem_resv_bytes = mem_resv.value * 1024 * 1024
-        self.logger.info('Mem resv difference in bytes: %s' % mem_resv_bytes)
+        self.logger.info('Mem resv diff in bytes: %s' % mem_resv_bytes)
         self.assertGreaterEqual(mem_resv_bytes, 51200 * 1024)
 
     @requirements(num_moms=2)
