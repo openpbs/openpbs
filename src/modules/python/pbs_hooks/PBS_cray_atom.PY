@@ -62,6 +62,7 @@ if True:
     import pbs
     import pwd
     import copy
+    import re
 
 requests_unixsocket.monkeypatch()
 
@@ -176,6 +177,60 @@ class HookHelper(object):
         log_with_caller(pbs.EVENT_DEBUG4, 'path is %s' % path)
         return path
 
+    def is_it_exclusive(job):
+        """
+        check to see if the job requested exclusive, or if the
+        nodes are marked exclusive.  This needs to be passed
+        to ATOM.
+        """
+        place = job.Resource_List["place"]
+        log_with_caller(pbs.EVENT_DEBUG4, "place is %s" % place)
+
+        # See if the node sharing value has exclusive
+        vn = pbs.server().vnode(pbs.get_local_nodename())
+        sharing = vn.sharing
+        log_with_caller(pbs.EVENT_DEBUG4, "The sharing value is %s type %s" %
+                        (str(sharing), str(type(sharing))))
+
+        # Uses the same logic as the scheduler (is_excl())
+        if ((sharing == pbs.ND_FORCE_EXCL) or (sharing == pbs.ND_FORCE_EXCLHOST)):
+            return True
+
+        if (sharing == pbs.ND_IGNORE_EXCL):
+            return False
+
+        excls = re.findall(r'excl', str(place))
+        totalexcls = len(excls)
+        if totalexcls > 0:
+            if "group" in str(place):
+                # A group is in the place statement, is it excl 
+                output = re.search(r'(?<=group=)[^:$]*', str(place))
+                if output:
+                    groupv = output.group()
+                    log_with_caller(pbs.EVENT_DEBUG4, "The groupv is = %s" % str(groupv))
+                    groups = re.findall(r'excl', groupv)
+                    gcount = len(groups)
+                    if gcount != totalexcls:
+                        # Found excl and it wasn't in group
+                        log_with_caller(pbs.EVENT_DEBUG4, "Found excl not as group - sending true")
+                        return True
+            else:
+                # The 'excl' found is the sharing part of place not the group
+                return True
+
+        if "shared" in str(place):
+            return False
+
+        if ((sharing == pbs.ND_DEFAULT_EXCL) or
+            (sharing == pbs.ND_DEFAULT_EXCLHOST)):
+            return True
+
+        if (sharing == pbs.ND_DEFAULT_SHARED):
+            return False
+
+        pbs.logmsg(pbs.LOG_DEBUG, "It was none of the above cases,"
+                   "return not exclusive")
+        return False
 
 def post(url, json=None, **kwargs):
     """
@@ -338,9 +393,11 @@ def handle_execjob_begin():
     jid = event.job.id
     uid = pwd.getpwnam(event.job.euser).pw_uid
     log_with_caller(pbs.EVENT_DEBUG4, 'UID is %d' % uid)
+    excl = HookHelper.is_it_exclusive(event.job)
     data = {
         'jobid': jid,
-        'uid': uid
+        'uid': uid,
+        'exclusive': excl
     }
     url = HookHelper.build_path(resource='job')
     timeout = HookHelper.get_config()['post_timeout']
