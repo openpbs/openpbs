@@ -1915,8 +1915,12 @@ if %s e.job.in_ms_mom():
             elif (vmem_resv.unit == 'mb'):
                 vmem_resv_bytes = vmem_resv.value * 1024 * 1024
             self.logger.info('Vmem resv diff in bytes: %s' % vmem_resv_bytes)
-            self.assertGreaterEqual(vmem_resv_bytes, 
-                51200 * 1024 -1 * 1024 * 1024)
+            # rounding differences may make diff slighly smaller than we expect
+            # accept 1MB deviation as irrelevant
+            # Note: since we don't know if there is swap, memsw reserved
+            # increase might not have been heeded. Change this to a higher
+            # value (cfr. above) only on test harnesses that have enough swap
+            self.assertGreaterEqual(vmem_resv_bytes, (51200 - 1024) * 1024)
         mem = self.server.status(NODE, 'resources_available.mem',
                                  id=self.nodes_list[0])
         mem2 = PbsTypeSize(mem[0]['resources_available.mem'])
@@ -1929,8 +1933,9 @@ if %s e.job.in_ms_mom():
         elif (mem_resv.unit == 'mb'):
             mem_resv_bytes = mem_resv.value * 1024 * 1024
         self.logger.info('Mem resv diff in bytes: %s' % mem_resv_bytes)
-        self.assertGreaterEqual(mem_resv_bytes, 
-            51200 * 1024 - 1 * 1024 * 1024)
+        # rounding differences may make diff slighly smaller than we expect
+        # accept 1MB deviation as irrelevant
+        self.assertGreaterEqual(mem_resv_bytes, (51200 - 1024) * 1024)
 
     @requirements(num_moms=2)
     def test_cgroup_multi_node(self):
