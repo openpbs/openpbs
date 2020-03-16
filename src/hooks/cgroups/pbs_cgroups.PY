@@ -3593,21 +3593,17 @@ class CgroupUtils(object):
             if self.cfg['use_hyperthreads']:
                 # Find cores that are fully available
                 empty_cores = set()
-                for corenum in cores:
-                    if set(node.cpuinfo['cpu'][corenum]['threads']).issubset(
-                            set(available['cpus'])):
+                for corenum in sorted(cores):
+                    if (set(node.cpuinfo['cpu'][corenum]['threads'])
+                            .issubset(set(available['cpus']))
+                            and corenum not in node.cpuinfo['hyperthreads']):
                         # All hyperthreads available for this core
                         empty_cores.add(corenum)
                 # Assign threads from the empty cores
-                for corenum in empty_cores:
-                    assigned['cpuset.cpus'].append(corenum)
-                    cores.remove(corenum)
-                    needed -= 1
-                    if needed <= 0:
-                        break
+                for corenum in sorted(empty_cores):
                     for thread in node.cpuinfo['cpu'][corenum]['threads']:
                         if thread in assigned['cpuset.cpus']:
-                            # thread core already assigned
+                            # this thread is already assigned
                             continue
                         assigned['cpuset.cpus'].append(thread)
                         needed -= 1
