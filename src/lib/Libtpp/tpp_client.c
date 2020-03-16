@@ -260,7 +260,7 @@ typedef struct {
 	stream_t *strm; /* pointer to the stream structure at this slot */
 } stream_slot_t;
 stream_slot_t *strmarray = NULL; /* array of streams */
-pthread_mutex_t strmarray_lock;       /* global lock for the streams array */
+pthread_mutex_t strmarray_lock = PTHREAD_MUTEX_INITIALIZER;       /* global lock for the streams array */
 unsigned int max_strms = 0;           /* total number of streams allocated */
 
 /* the following two variables are used to quickly find out a unused slot */
