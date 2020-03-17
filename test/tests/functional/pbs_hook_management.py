@@ -96,6 +96,18 @@ def get_hook_body_reject(hook_msg):
     return hook_body
 
 
+def get_hook_body_reject_with_text(hook_msg, bad_message="badmsg"):
+    hook_body = """
+    import pbs
+    e = pbs.event()
+    m = e.management
+    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    e.reject('%s')
+    """ % (hook_msg, bad_message)
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
+
+
 @tags('hooks', 'smoke')
 class TestHookManagement(TestFunctional):
 
@@ -383,6 +395,43 @@ class TestHookManagement(TestFunctional):
         self.server.log_match("%s;deleted at request of" % hook_name_01,
                               starttime=start_time)
         self.server.log_match("%s;deleted at request of" % hook_name_02,
+                              starttime=start_time)
+
+        self.logger.info("**************** HOOK END ****************")
+
+    def test_hook_reject_02(self):
+        """
+        Tests the event.reject() of a hook.  The hook will fire and reject
+        with a message.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        attrs = {'event': 'management', 'enabled': 'True'}
+
+        hook_name_00 = 'a1234'
+        hook_msg_00 = 'running management hook_reject_02 name:%s' % \
+                      hook_name_00
+        hook_bad_msg = "badmessagetext"
+        hook_body_00 = get_hook_body_reject_with_text(hook_msg_00, hook_bad_msg)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+
+        start_time = int(time.time())
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+
+        self.server.log_match("%s;created at request" % hook_name_00,
+                              starttime=start_time)
+
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
+
+        self.server.log_match(hook_msg_00, starttime=start_time)
+        self.server.log_match(hook_bad_msg, starttime=start_time)
+
+        ret = self.server.delete_hook(hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
+
+        self.server.log_match("%s;deleted at request of" % hook_name_00,
                               starttime=start_time)
 
         self.logger.info("**************** HOOK END ****************")

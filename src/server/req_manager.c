@@ -4727,8 +4727,9 @@ void
 req_manager(struct batch_request *preq)
 {
 	int obj_name_len;
-	++preq->rq_refct;
 	conn_t *conn = NULL;
+
+	++preq->rq_refct;
 
 	if (!preq->isrpp) {
 		if (preq->rq_conn != PBS_LOCAL_CONNECTION) {
@@ -4736,7 +4737,7 @@ req_manager(struct batch_request *preq)
 			if (!conn) {
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
 				req_reject(PBSE_SYSTEM, 0, preq);
-				return;
+				goto req_manager_exit;
 			}
 		}
 	}
