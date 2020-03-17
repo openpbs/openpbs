@@ -207,7 +207,6 @@ class TestHookManagement(TestFunctional):
         self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
 
-
     def test_hook_accept_00(self):
         """
         Tests the event.accept() of a hook.
@@ -219,46 +218,37 @@ class TestHookManagement(TestFunctional):
         hook_name_01 = 'b1234'
         hook_name_02 = 'c1234'
         hook_msg_00 = 'running management hook_accept_00 name:%s' % \
-            hook_name_00
+                      hook_name_00
         hook_body_00 = get_hook_body(hook_msg_00)
         hook_msg_01 = 'running management hook_accept_00 name:%s' % \
-            hook_name_01
+                      hook_name_01
         hook_body_01 = get_hook_body(hook_msg_01)
         hook_msg_02 = 'running management hook_accept_00 name:%s' % \
-            hook_name_02
+                      hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
         start_time = int(time.time())
         ret = self.server.create_hook(hook_name_00, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_01)
         ret = self.server.create_hook(hook_name_02, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_02)
 
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_01, hook_body_01)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_01)
         ret = self.server.import_hook(hook_name_02, hook_body_02)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_02)
 
         # out of order delete
         ret = self.server.delete_hook(hook_name_01)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_01)
         ret = self.server.delete_hook(hook_name_00)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
         ret = self.server.delete_hook(hook_name_02)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_02)
 
         self.server.log_match(hook_msg_00, starttime=start_time)
         self.server.log_match(hook_msg_01, starttime=start_time)
@@ -278,68 +268,58 @@ class TestHookManagement(TestFunctional):
         hook_name_01 = 'b1234'
         hook_name_02 = 'c1234'
         hook_msg_00 = 'running management hook_reject_00 name:%s' % \
-            hook_name_00
+                      hook_name_00
         hook_body_00 = get_hook_body(hook_msg_00)
         hook_msg_01 = 'running management hook_reject_00 name:%s' % \
-            hook_name_01
+                      hook_name_01
         hook_body_01 = get_hook_body_reject(hook_msg_01)
         hook_msg_02 = 'running management hook_reject_00 name:%s' % \
-            hook_name_02
+                      hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
         start_time = int(time.time())
         ret = self.server.create_hook(hook_name_00, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_01)
         ret = self.server.create_hook(hook_name_02, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_02)
 
         self.server.log_match("%s;created at request" % hook_name_00,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;created at request" % hook_name_01,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;created at request" % hook_name_02,
-            starttime=start_time)
+                              starttime=start_time)
 
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_01, hook_body_01)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_01)
         ret = self.server.import_hook(hook_name_02, hook_body_02)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_02)
 
         self.server.log_match(hook_msg_00, starttime=start_time)
         self.server.log_match(hook_msg_01, starttime=start_time)
         # we should not see it fire because ^^^ b1234 ^^^ rejects
         self.server.log_match(hook_msg_02, starttime=start_time,
-            existence=False)
+                              existence=False)
 
         # out of order delete, make sure the reject hook is last
         ret = self.server.delete_hook(hook_name_00)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
         ret = self.server.delete_hook(hook_name_02)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_02)
         # reject hook
         ret = self.server.delete_hook(hook_name_01)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_01)
 
         self.server.log_match("%s;deleted at request of" % hook_name_00,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;deleted at request of" % hook_name_01,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;deleted at request of" % hook_name_02,
-            starttime=start_time)
-
+                              starttime=start_time)
 
     def test_hook_reject_01(self):
         """
@@ -353,43 +333,37 @@ class TestHookManagement(TestFunctional):
         hook_name_01 = 'b1234'
         hook_name_02 = 'c1234'
         hook_msg_00 = 'running management hook_reject_00 name:%s' % \
-            hook_name_00
+                      hook_name_00
         hook_body_00 = get_hook_body(hook_msg_00)
         hook_msg_01 = 'running management hook_reject_00 name:%s' % \
-            hook_name_01
+                      hook_name_01
         hook_body_01 = get_hook_body_reject(hook_msg_01)
         hook_msg_02 = 'running management hook_reject_00 name:%s' % \
-            hook_name_02
+                      hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
         start_time = int(time.time())
         ret = self.server.create_hook(hook_name_00, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_01)
         ret = self.server.create_hook(hook_name_02, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_02)
 
         self.server.log_match("%s;created at request" % hook_name_00,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;created at request" % hook_name_01,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;created at request" % hook_name_02,
-            starttime=start_time)
+                              starttime=start_time)
 
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_02, hook_body_02)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_02)
         # the bad one
         ret = self.server.import_hook(hook_name_01, hook_body_01)
-        self.assertEqual(ret, True, "Could not import hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_01)
 
         self.server.log_match(hook_msg_00, starttime=start_time)
         self.server.log_match(hook_msg_02, starttime=start_time)
@@ -397,21 +371,18 @@ class TestHookManagement(TestFunctional):
 
         # out of order delete, make sure the reject hook is last
         ret = self.server.delete_hook(hook_name_00)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
         ret = self.server.delete_hook(hook_name_02)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_02)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_02)
         # reject hook
         ret = self.server.delete_hook(hook_name_01)
-        self.assertEqual(ret, True, "Could not delete hook %s" % \
-            hook_name_01)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_01)
 
         self.server.log_match("%s;deleted at request of" % hook_name_00,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;deleted at request of" % hook_name_01,
-            starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("%s;deleted at request of" % hook_name_02,
-            starttime=start_time)
+                              starttime=start_time)
 
         self.logger.info("**************** HOOK END ****************")
