@@ -411,7 +411,8 @@ class TestHookManagement(TestFunctional):
         hook_msg_00 = 'running management hook_reject_02 name:%s' % \
                       hook_name_00
         hook_bad_msg = "badmessagetext"
-        hook_body_00 = get_hook_body_reject_with_text(hook_msg_00, hook_bad_msg)
+        hook_body_00 = get_hook_body_reject_with_text(hook_msg_00,
+                                                      hook_bad_msg)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
