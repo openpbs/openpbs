@@ -117,11 +117,11 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#include <pbs_ifl.h>
-#include <pbs_error.h>
-#include <log.h>
-#include <rpp.h>
-#include <pbs_share.h>
+#include "pbs_ifl.h"
+#include "pbs_error.h"
+#include "log.h"
+#include "tpp.h"
+#include "pbs_share.h"
 #include "server_info.h"
 #include "constant.h"
 #include "queue_info.h"
@@ -865,10 +865,8 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 
 	attrp = sched->attribs;
 
-	if (pbs_conf.pbs_use_tcp == 1) {
-		/* set throughput mode to 1 by default */
-		sinfo->throughput_mode = 1;
-	}
+	/* set throughput mode to 1 by default */
+	sinfo->throughput_mode = 1;
 
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {

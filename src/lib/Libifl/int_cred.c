@@ -52,7 +52,7 @@
 #include "dis.h"
 #include "ticket.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "attribute.h"
 #include "batch_request.h"
 
@@ -65,7 +65,7 @@
  * @param[in] jobid - job id
  * @param[in] data - credentials
  * @param[in] validity - credential validity
- * @param[in] rpp - indication for whether to use rpp
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - msg id
  *
  * @return	int
@@ -74,11 +74,11 @@
  *
  */
 int
-PBSD_cred(int c, char *credid, char *jobid, int cred_type, char *data, long validity, int rpp, char **msgid)
+PBSD_cred(int c, char *credid, char *jobid, int cred_type, char *data, long validity, int prot, char **msgid)
 {
 	int			rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -88,7 +88,7 @@ PBSD_cred(int c, char *credid, char *jobid, int cred_type, char *data, long vali
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Cred, pbs_current_user)) ||
 		(rc = encode_DIS_Cred(c, jobid, credid, cred_type, data, strlen(data), validity)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 				return (pbs_errno = PBSE_SYSTEM);
 		}

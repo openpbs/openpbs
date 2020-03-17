@@ -133,7 +133,7 @@
 #include "svrfunc.h"
 #include "pbs_error.h"
 #include "log.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "work_task.h"
 #include "net_connect.h"
 #include "cmds.h"
@@ -1402,7 +1402,7 @@ mod_node_ncpus(struct pbsnode *pnode, long ncpus, int actmode)
  * @brief
  * 		fix_indirect_resc_targets - set or clear ATR_VFLAG_TARGET flag in
  * 		a target resource "index" is the index into the node's attribute
- * 		array (which attr). If invoked with ND_ATR__ResourceAvail or 
+ * 		array (which attr). If invoked with ND_ATR__ResourceAvail or
  * 		ND_ATR_ResourceAssn, the target flag is applied on both. We need
  * 		to do this as the check for target flag in fix_indirectness relies
  * 		on resources_assigned as resources_available is already got over-written.
@@ -2043,7 +2043,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
-		
+
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;

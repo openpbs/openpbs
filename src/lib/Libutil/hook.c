@@ -68,7 +68,7 @@
 #include "pbs_nodes.h"
 #include <pbs_python.h>  /* for python interpreter */
 #include "hook.h"
-#include "rpp.h"
+#include "tpp.h"
 #include <signal.h>
 #include "hook_func.h"
 
@@ -1555,7 +1555,7 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 				"or %s for no event",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
-				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_END, 
+				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_END,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_PRETERM,
 				HOOKSTR_EXECJOB_END, HOOKSTR_EXECHOST_PERIODIC, HOOKSTR_EXECJOB_LAUNCH,
@@ -4018,10 +4018,10 @@ cleanup_hooks_workdir(struct work_task *ptask)
  *	Both 'label' and 'action' uniquely identify the
  *	data collected.
  *
- * @param[in]	label - describes a particular object 
+ * @param[in]	label - describes a particular object
  * @param[in]	action - refers to the object's action
  *
- * @param[in]	print_start_msg - if 1, then log a "profile_start" message. 
+ * @param[in]	print_start_msg - if 1, then log a "profile_start" message.
  *
  * @return void
  *
@@ -4052,10 +4052,10 @@ hook_perf_stat_start(char *label, char *action, int print_start_msg)
  * 	Log summary of what has been tracked since hook_perf_stat_start()
  *	call on the same label, action given.
  *
- * @param[in]	label - refers to a particular object 
+ * @param[in]	label - refers to a particular object
  * @param[in]	action - refers to the object's action
  *
- * @param[in]	print_end_msg - if 1, then mark a "profile_stop" message. 
+ * @param[in]	print_end_msg - if 1, then mark a "profile_stop" message.
  *
  * @return void
  *

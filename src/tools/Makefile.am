@@ -59,11 +59,18 @@ EXTRA_PROGRAMS = \
 
 common_cflags = \
 	-I$(top_srcdir)/src/include \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@libz_inc@
 
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Liblog/liblog.a \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
+	@libz_lib@ \
 	@socket_lib@ \
 	@KRB5_LIBS@
 
@@ -77,16 +84,11 @@ chk_tree_SOURCES = chk_tree.c
 pbs_ds_monitor_CPPFLAGS = ${common_cflags}
 pbs_ds_monitor_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libdb.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto \
-	@KRB5_LIBS@
+	-lcrypto
 
 pbs_ds_monitor_SOURCES = pbs_ds_monitor.c
 
@@ -118,16 +120,10 @@ pbs_python_CPPFLAGS =  \
 
 pbs_python_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@PYTHON_LDFLAGS@ \
-	@PYTHON_LIBS@ \
-	@KRB5_LIBS@
+	@PYTHON_LIBS@
 
 pbs_python_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
@@ -149,16 +145,8 @@ pbs_tclsh_CPPFLAGS = \
 	@libz_inc@
 
 pbs_tclsh_LDADD = \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@socket_lib@ \
-	@libz_lib@ \
-	@tcl_lib@ \
-	@KRB5_LIBS@
+	${common_libs} \
+	@tcl_lib@
 
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \
@@ -174,13 +162,8 @@ pbs_wish_CPPFLAGS = \
 	@tk_inc@
 
 pbs_wish_LDADD = \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	-lpthread \
-	@socket_lib@ \
-	@tk_lib@ \
-	@KRB5_LIBS@
+	${common_libs} \
+	@tk_lib@
 
 pbs_wish_SOURCES = \
 	pbs_tclWrap.c \
@@ -199,15 +182,11 @@ printjob_svr_bin_CPPFLAGS = \
 
 printjob_svr_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libdb.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto \
-	@KRB5_LIBS@
+	-lcrypto
 
 printjob_svr_bin_SOURCES = printjob.c
 

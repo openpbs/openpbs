@@ -78,7 +78,7 @@
 #include "mom_server.h"
 #include "net_connect.h"
 #include "log.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "hook.h"
 #include "pbs_python.h"
 #include "mom_hook_func.h"
@@ -333,7 +333,7 @@ fork_to_user(struct batch_request *preq)
 
 	pid = fork_me(preq->rq_conn);
 	if (pid > 0) {
-		if (!preq->isrpp)
+		if (preq->prot == PROT_TCP)
 			free_br(preq);	/* parent - note leave connection open   */
 		return (pid);
 	} else if (pid < 0)
@@ -1244,7 +1244,7 @@ post_reply(job *pjob, int err)
 			pjob->ji_postevent, pjob->ji_taskid, IM_OLD_PROTOCOL_VER);
 		(void)diswsi(stream, err);
 	}
-	(void)rpp_flush(stream);
+	(void)dis_flush(stream);
 
 	pjob->ji_postevent = TM_NULL_EVENT;
 	pjob->ji_taskid = TM_NULL_TASK;
@@ -2469,7 +2469,7 @@ del_files(struct batch_request *preq, char **pbadfile)
 /**
  * @brief
  * 	Do post rerunjob processing and cleanup for both tcp
- * 	and rpp requests
+ * 	and tpp requests
  *
  * @param[in]	ptask - Work task
  *
@@ -3082,7 +3082,7 @@ req_delfile(struct batch_request *preq)
 #else	/* UNIX---------------------------------------------------------------*/
 /**
  * @brief
- * 	Do post cpyfile processing and cleanup in case of rpp protocol
+ * 	Do post cpyfile processing and cleanup in case of tpp connection
  * 	and for stagein when the job is not yet available at the server
  *
  * @param[in]	ptask - Work task
@@ -3298,12 +3298,12 @@ req_cpyfile(struct batch_request *preq)
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
 			pjob->ji_momsubt = pid;
 			pjob->ji_mompost = post_cpyfile;
-			if (preq->isrpp)
+			if (preq->prot == PROT_TPP)
 				pjob->ji_preq = preq; /* keep the batch request pointer */
 		} else {
-			if (preq->isrpp) {
+			if (preq->prot == PROT_TPP) {
 				/* there is no job yet, so cant hang this post function to job
-				 * but this is rpp, so we cannot reply in child
+				 * but this is tpp based connection, so we cannot reply in child
 				 * lets hang the preq in a work task
 				 */
 				wtask = set_task(WORK_Deferred_Child, pid, post_cpyfile_nojob, preq);
@@ -3382,7 +3382,7 @@ req_cpyfile(struct batch_request *preq)
 	}
 
 	strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid) - 1);
-	if (!preq->isrpp) {
+	if (preq->prot == PROT_TCP) {
 		if (stage_inout.bad_files) {
 			reply_text(preq, PBSE_NOCOPYFILE, stage_inout.bad_list);
 		} else {
@@ -3390,8 +3390,8 @@ req_cpyfile(struct batch_request *preq)
 		}
 	} else {
 		if (stage_inout.bad_files) {
-			char *token = NULL; 
-			char *rest = stage_inout.bad_list; 
+			char *token = NULL;
+			char *rest = stage_inout.bad_list;
 			char *save_ptr = NULL;
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				dup_rqcpf_jobid, "Job files not copied:---->>>>");
@@ -3432,7 +3432,7 @@ req_cpyfile(struct batch_request *preq)
         free_ticket(ticket, CRED_DESTROY);
 #endif
 
-	if (preq->isrpp && stage_inout.bad_files)
+	if (preq->prot == PROT_TPP && stage_inout.bad_files)
 		exit(STAGEOUT_FAILURE);
 
 	if (stage_inout.sandbox_private && stage_inout.stageout_failed) {
@@ -3525,7 +3525,7 @@ struct batch_request *preq;
 
 	if (pjob) {
 		pjob->ji_preq = NULL;
-		if (preq->isrpp)
+		if (preq->prot == PROT_TPP)
 			pjob->ji_preq = preq; /* keep the batch request pointer */
 	}
 
@@ -3560,7 +3560,7 @@ struct batch_request *preq;
 	rc = del_files(preq, &bad_list);
 
 	if (rc != 0) {
-		if (!preq->isrpp) {
+		if (preq->prot == PROT_TCP) {
 			reply_text(preq, rc, bad_list);
 		} else {
 			char *token = NULL;
@@ -3581,10 +3581,10 @@ struct batch_request *preq;
 				token = strtok_r(NULL, "\n", &save_ptr);
 			}
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");	
+				preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");
 		}
 	} else {
-		if (!preq->isrpp)
+		if (preq->prot == PROT_TCP)
 			reply_ack(preq);
 	}
 

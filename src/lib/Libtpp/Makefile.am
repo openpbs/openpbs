@@ -44,10 +44,8 @@ libtpp_a_CPPFLAGS = \
 
 libtpp_a_SOURCES = \
 	tpp_client.c \
-	tpp_common.h \
 	tpp_em.c \
 	tpp_platform.c \
-	tpp_platform.h \
 	tpp_router.c \
 	tpp_transport.c \
 	tpp_util.c

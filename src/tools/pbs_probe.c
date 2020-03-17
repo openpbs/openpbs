@@ -543,14 +543,13 @@ static char exman3[][80] = {
 	/* 23 */ "man/man3/pbs_statserver.3B",
 	/* 24 */ "man/man3/pbs_submit.3B",
 	/* 25 */ "man/man3/pbs_terminate.3B",
-	/* 26 */ "man/man3/rpp.3",
-	/* 27 */ "man/man3/tm.3",
-	/* 28 */ "man/man3/pbs_tclapi.3B",
-	/* 29 */ "man/man3/pbs_delresv.3B",
-	/* 30 */ "man/man3/pbs_locjob.3B",
-	/* 31 */ "man/man3/pbs_selstat.3B",
-	/* 32 */ "man/man3/pbs_statresv.3B",
-	/* 33 */ "man/man3/pbs_statfree.3B"
+	/* 26 */ "man/man3/tm.3",
+	/* 27 */ "man/man3/pbs_tclapi.3B",
+	/* 28 */ "man/man3/pbs_delresv.3B",
+	/* 29 */ "man/man3/pbs_locjob.3B",
+	/* 30 */ "man/man3/pbs_selstat.3B",
+	/* 31 */ "man/man3/pbs_statresv.3B",
+	/* 32 */ "man/man3/pbs_statfree.3B"
 };
 
 static char exman7[][80] = {
@@ -960,14 +959,13 @@ static MPUG	man_mpugs[] = {
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[23], NULL }, /* pbs_statserver.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[24], NULL }, /* pbs_submit.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[25], NULL }, /* pbs_terminate.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* rpp.3 */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* tm.3 */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[28], NULL }, /* pbs_tclapi.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[29], NULL }, /* pbs_delresv.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[30], NULL }, /* pbs_locjob.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[31], NULL }, /* pbs_selstat.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[32], NULL }, /* pbs_statresv.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[33], NULL }, /* pbs_statfree.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* tm.3 */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* pbs_tclapi.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[28], NULL }, /* pbs_delresv.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[20], NULL }, /* pbs_locjob.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[30], NULL }, /* pbs_selstat.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[31], NULL }, /* pbs_statresv.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[32], NULL }, /* pbs_statfree.3B */
 
 	/*
 	 * infrastructure data associated with PBS_EXEC/man/man7
@@ -1568,7 +1566,7 @@ print_infrastruct(struct infrastruct *pinf)
 	int	i, j;
 	int	tflag;
 	MPUG	*pmpug;
-	
+
 	tflag = 0;
 	for (i=0; i<PBS_last; ++i) {
 
@@ -2103,7 +2101,7 @@ get_realpath_values(struct infrastruct *pinf)
 			}
 		} else {
 			if (pinf->pri.pbs_mpug[i].notReq == 0) {
-				pbs_asprintf(&msgbuf, "Missing primary path %s", 
+				pbs_asprintf(&msgbuf, "Missing primary path %s",
 					origin_names[i]);
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msgbuf);
 				free(msgbuf);
@@ -2237,7 +2235,7 @@ get_realpath_values(struct infrastruct *pinf)
 
 			if ((pmpug = pinf->exec[i]) == NULL)
 				continue;
-			
+
 			for (j = 0; j < exec_sizes[i]; ++j) {
 				if (pmpug[j].path) {
 
@@ -2809,12 +2807,12 @@ check_paths(struct infrastruct *pinf)
 			check_owner_modes(realpath, &pinf->pri.pbs_mpug[i], 0);
 	}
 
-	for (i=0; i<PH_last; ++i) {    
+	for (i=0; i<PH_last; ++i) {
 		msg_table_set_defaults(pinf, SRC_home, MSG_po);
 
 		if ((pmpug = pinf->home[i]) == NULL)
 			continue;
-        
+
 		for (j=0; j<home_sizes[i]; ++j) {
 			if ((realpath = pmpug[j].realpath))
 				check_owner_modes(realpath, pmpug + j, 0);
@@ -2885,7 +2883,7 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 		/* replace demarc value and stat this component of real path */
 
 		*dp = DEMARC;
-		
+
 	}
 
 	/*
@@ -3474,4 +3472,3 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 			break;
 	}
 }
-

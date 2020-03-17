@@ -45,7 +45,7 @@
 #include "portability.h"
 #include "libpbs.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 
 /**
  * @brief Sends the Modify Reservation request

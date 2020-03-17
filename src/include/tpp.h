@@ -35,15 +35,13 @@
  * trademark licensing policies.
  *
  */
-
-#ifndef	__TPP_COMMON_H
-#define __TPP_COMMON_H
+#ifndef	__TPP_H
+#define __TPP_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 #include <pbs_config.h>
-
 #include <sys/time.h>
 #include <limits.h>
 #include <time.h>
@@ -51,7 +49,7 @@ extern "C" {
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
-
+#include "pbs_internal.h"
 #include "avltree.h"
 #include "log.h"
 #include "auth.h"
@@ -93,6 +91,115 @@ extern "C" {
 #include <fcntl.h>
 
 #endif
+
+#define	RPP_RETRY	10
+/*
+ **	Default allowed number of outstanding pkts.
+ */
+#define	RPP_HIGHWATER	1024
+
+/*
+ * Default number of RPP packets to check every server iteration
+ */
+#define RPP_MAX_PKT_CHECK_DEFAULT	64
+
+/* TPP specific definitions and structures */
+#define TPP_DEF_ROUTER_PORT 17001
+
+struct tpp_config {
+	int    node_type; /* leaf, proxy */
+	char   **routers; /* other proxy names (and backups) to connect to */
+	int    numthreads;
+	char   *node_name; /* list of comma separated node names */
+	int    compress;
+	int    tcp_keepalive; /* use keepalive? */
+	int    tcp_keep_idle;
+	int    tcp_keep_intvl;
+	int    tcp_keep_probes;
+	int    tcp_user_timeout;
+	int    buf_limit_per_conn; /* buffer limit per physical connection */
+	int    force_fault_tolerance; /* by default disabled */
+	pbs_auth_config_t *auth_config;
+};
+
+/* tpp node types, leaf and router */
+#define TPP_LEAF_NODE           1  /* leaf node that does not care about TPP_CTL_LEAVE messages from other leaves */
+#define TPP_LEAF_NODE_LISTEN    2  /* leaf node that wants to be notified of TPP_CTL_LEAVE messages from other leaves */
+#define TPP_ROUTER_NODE         3  /* router */
+#define TPP_AUTH_NODE           4  /* authenticated, but yet unknown node type till a join happens */
+
+/* TPP specific functions */
+extern int	tpp_init(struct tpp_config *conf);
+extern void tpp_set_app_net_handler(void (*app_net_down_handler)(void *data),
+void (*app_net_restore_handler)(void *data));
+extern void tpp_set_logmask(long logmask);
+extern int set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *, struct tpp_config *, char *, int, char *);
+
+extern char	*netaddr(struct sockaddr_in *);
+extern char *get_all_ips(char *, char *, size_t);
+
+extern	int	tpp_fd;
+extern	int	rpp_retry;
+extern	int	rpp_highwater;
+
+extern int tpp_get_thrd_index();
+
+/* special tpp only multicast function prototypes */
+extern int tpp_mcast_open(void);
+extern int tpp_mcast_add_strm(int mtfd, int tfd);
+extern int *tpp_mcast_members(int mtfd, int *count);
+extern int tpp_mcast_send(int mtfd, void *data, unsigned int len, unsigned int full_len, unsigned int compress);
+extern int tpp_mcast_close(int mtfd);
+
+#ifndef WIN32
+
+#define tpp_pipe_cr(a)               pipe(a)
+#define tpp_pipe_read(a, b, c)         read(a, b, c)
+#define tpp_pipe_write(a, b, c)        write(a, b, c)
+#define tpp_pipe_close(a)            close(a)
+
+#define tpp_sock_socket(a, b, c)       socket(a, b, c)
+#define tpp_sock_bind(a, b, c)         bind(a, b, c)
+#define tpp_sock_listen(a, b)         listen(a, b)
+#define tpp_sock_accept(a, b, c)       accept(a, b, c)
+#define tpp_sock_connect(a, b, c)      connect(a, b, c)
+#define tpp_sock_recv(a, b, c, d)       recv(a, b, c, d)
+#define tpp_sock_send(a, b, c, d)       send(a, b, c, d)
+#define tpp_sock_select(a, b, c, d, e)   select(a, b, c, d, e)
+#define tpp_sock_close(a)            close(a)
+#define tpp_sock_getsockopt(a, b, c, d, e)   getsockopt(a, b, c, d, e)
+#define tpp_sock_setsockopt(a, b, c, d, e)   setsockopt(a, b, c, d, e)
+
+#else
+#ifndef EINPROGRESS
+#define EINPROGRESS   EAGAIN
+#endif
+
+int tpp_pipe_cr(int fds[2]);
+int tpp_pipe_read(int s, char *buf, int len);
+int tpp_pipe_write(int s, char *buf, int len);
+int tpp_pipe_close(int s);
+
+int tpp_sock_socket(int af, int type, int protocol);
+int tpp_sock_listen(int s, int backlog);
+int tpp_sock_accept(int s, struct sockaddr *addr, int *addrlen);
+int tpp_sock_bind(int s, const struct sockaddr *name, int namelen);
+int tpp_sock_connect(int s, const struct sockaddr *name, int namelen);
+int tpp_sock_recv(int s, char *buf, int len, int flags);
+int tpp_sock_send(int s, const char *buf, int len, int flags);
+int tpp_sock_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval *timeout);
+int tpp_sock_close(int s);
+int tpp_sock_getsockopt(int s, int level, int optname, int *optval, int *optlen);
+int tpp_sock_setsockopt(int s, int level, int optname, const int *optval, int optlen);
+
+#endif
+
+int tpp_sock_layer_init();
+int tpp_get_nfiles();
+int set_pipe_disposition();
+int tpp_sock_attempt_connection(int fd, char *host, int port);
+void tpp_invalidate_thrd_handle(pthread_t *thrd);
+int tpp_is_valid_thrd(pthread_t thrd);
 
 #define MAX_SEQ_NUMBER          (UINT_MAX - 10)
 #define UNINITIALIZED_INT       (MAX_SEQ_NUMBER + 1)
@@ -704,4 +811,7 @@ void print_packet_hdr(const char *fnc, void *data, int len);
 
 #endif
 
+#ifdef	__cplusplus
+}
 #endif
+#endif	/* _TPP_H */

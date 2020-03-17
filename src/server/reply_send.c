@@ -74,7 +74,7 @@
 #include "work_task.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 /* External Globals */
@@ -89,11 +89,6 @@ extern pbs_list_head task_list_immed;
 char   *resc_in_err = NULL;
 #endif	/* PBS_MOM */
 
-extern struct pbs_err_to_txt pbs_err_to_txt[];
-extern int pbs_tcp_errno;
-extern int rpp_flush(int index);
-
-void reply_free(struct batch_reply *prep);
 #ifndef WIN32
 extern volatile int reply_timedout; /* global to notify DIS routines reply took too long */
 #endif
@@ -168,10 +163,10 @@ set_err_msg(int code, char *msgbuf, size_t msglen)
 /**
  * @brief
  * 		SIGALRM signal handler for dis_reply_write
- * 
+ *
  * Set the volatile global variable reply_timedout
  * Record about the timeout in TCP reply.
- * 
+ *
  * @param[in]	sig -  signal number
  *
  * @return	return void
@@ -204,8 +199,8 @@ dis_reply_write(int sfds, struct batch_request *preq)
 	time_t  old_tcp_timeout = pbs_tcp_timeout ;
 #endif
 
-	if (preq->isrpp) {
-		rc = encode_DIS_replyRPP(sfds, preq->rppcmd_msgid, preply);
+	if (preq->prot == PROT_TPP) {
+		rc = encode_DIS_replyTPP(sfds, preq->tppcmd_msgid, preply);
 	} else {
 #ifndef WIN32
 		reply_timedout = 0;
@@ -234,10 +229,10 @@ dis_reply_write(int sfds, struct batch_request *preq)
 
 #ifndef WIN32
 	reply_timedout = 0; /* Resetting the value for next tcp connection */
-	if (!(preq->isrpp)) {
-        alarm(0);
-        (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
-    }
+	if (preq->prot == PROT_TCP) {
+		alarm(0);
+		(void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
+	}
 	pbs_tcp_timeout = old_tcp_timeout;
 #endif
 	if (rc) {
@@ -367,7 +362,7 @@ reply_ack(struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
-	if (preq->isrpp && (preq->rpp_ack == 0)) {
+	if (preq->prot == PROT_TPP && preq->tpp_ack == 0) {
 		free_br(preq);
 		return;
 	}

@@ -650,7 +650,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	char		 *dest;
 	int		 rq_type = 0;
 
-		
+
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
 	prov_rc = check_and_provision_job(preq, pjob, &need_prov);
@@ -1363,7 +1363,7 @@ post_sendmom(struct work_task *pwt)
 	int 	wstat = pwt->wt_aux;
 	job 	*jobp = (job *) pwt->wt_parm2;
 	struct 	batch_request *preq = (struct batch_request *) pwt->wt_parm1;
-	int 	isrpp = pwt->wt_aux2;
+	int 	prot = pwt->wt_aux2;
 	struct	batch_reply *reply = (struct batch_reply *) pwt->wt_parm3;
 	char	dest_host[PBS_MAXROUTEDEST + 1];
 	char	hook_name[PBS_HOOK_NAME_SIZE + 1] = {'\0'};
@@ -1380,12 +1380,8 @@ post_sendmom(struct work_task *pwt)
 
 	if (jobp->ji_prunreq)
 		jobp->ji_prunreq = NULL;	/* set in svr_strtjob2() */
-	else {
-		if (pbs_conf.pbs_use_tcp == 0)
-			return; /* reply must have already been handled, see job_obit */
-	}
 
-	if (!isrpp) {
+	if (prot == PROT_TCP) {
 		if (WIFEXITED(wstat)) {
 			r = WEXITSTATUS(wstat);
 		} else if (WIFSIGNALED(wstat)) {
@@ -1437,7 +1433,7 @@ post_sendmom(struct work_task *pwt)
 		}
 
 	} else {
-		/* in case of rpp, the pbs_errno is set in wstat, based
+		/* in case of tpp, the pbs_errno is set in wstat, based
 		 * on which we determine value of r
 		 */
 		switch (wstat) {
@@ -1468,9 +1464,10 @@ post_sendmom(struct work_task *pwt)
 		if (reply && reply->brp_choice == BATCH_REPLY_CHOICE_Text)
 			reject_msg = reply->brp_un.brp_txt.brp_str;
 
-		/* the above reject_msg should never be freed within this function
-		 * since it will be freed by the caller process_DreplyRPP() in the
-		 * case of a RPP based job send
+		/*
+		 * the above reject_msg should never be freed within this function
+		 * since it will be freed by the caller process_DreplyTPP() in the
+		 * case of a TPP based job send
 		 */
 
 		if (r != SEND_JOB_OK) {
@@ -1525,7 +1522,7 @@ post_sendmom(struct work_task *pwt)
 		jobp->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING  ||
 		jobp->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
 		sprintf(log_buffer, "send_job returned with exit status = %d and job substate = %d",
-		        r, jobp->ji_qs.ji_substate);
+			r, jobp->ji_qs.ji_substate);
 
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobp->ji_qs.ji_jobid, log_buffer);
@@ -1676,8 +1673,8 @@ post_sendmom(struct work_task *pwt)
 			break;
 	}
 
-	if (!isrpp && reject_msg != NULL)
-		free(reject_msg); /* free this only in case of non-rpp since it was locally allocated */
+	if (prot == PROT_TCP && reject_msg != NULL)
+		free(reject_msg); /* free this only in case of non-tpp since it was locally allocated */
 
 	return;
 }

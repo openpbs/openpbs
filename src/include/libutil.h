@@ -44,6 +44,7 @@ extern "C" {
 
 #include <time.h>
 #include <stdio.h>
+#include <netinet/in.h>
 
 /* misc_utils specific */
 
@@ -318,6 +319,10 @@ void delay_query(void);
  */
 char *
 perf_stat_stop(char *instance);
+
+char * netaddr(struct sockaddr_in *);
+unsigned long crc_file(char *fname);
+extern int get_fullhostname(char *, char *, int);
 
 #ifdef  __cplusplus
 }

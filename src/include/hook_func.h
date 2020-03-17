@@ -73,7 +73,7 @@ struct mom_hook_action {
 	long long int	tid;	/* transaction id to group actions under */
 };
 
-/* Return values to sync_mom_hookfiles() function */
+/* Return values to sync_mom_hookfilesTPP() function */
 enum sync_hookfiles_result {
 	SYNC_HOOKFILES_NONE,
 	SYNC_HOOKFILES_SUCCESS_ALL,
@@ -104,7 +104,6 @@ extern void hook_track_save(void *, int);
 extern void hook_track_recov(void);
 extern int bg_sync_mom_hookfiles(void);
 extern int bg_delete_mom_hooks(void *);
-extern enum sync_hookfiles_result sync_mom_hookfiles(void *);
 extern int sync_mom_hookfiles_count(void *);
 extern void next_sync_mom_hookfiles(void);
 extern void send_rescdef(int);

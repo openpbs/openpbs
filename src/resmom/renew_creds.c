@@ -65,7 +65,7 @@
 #include "resource.h"
 #include "resmon.h"
 
-#include "rpp.h"
+#include "tpp.h"
 #include "pbs_error.h"
 
 #include "net_connect.h"
@@ -390,7 +390,7 @@ get_renewed_creds(struct krb_holder *ticket, char *errbuf, size_t errbufsz)
 /**
  * @brief
  * 	get_ticket_from_storage - Acquire a user ticket. The credentials are
- *	expected to be stored in the mom's memory (supplied by the pbs server). 
+ *	expected to be stored in the mom's memory (supplied by the pbs server).
  *
  * @param[in] ticket - ticket to be filled with credentials
  * @param[out] errbuf - buffer to be filled on error

@@ -533,7 +533,7 @@ enum bg_hook_request {
 
 struct job {
 
-	/* 
+	/*
 	 * Note: these members, upto ji_qs, are not saved to disk
 	 * IMPORTANT: if adding to this are, see create_subjob()
 	 * in array_func.c; add the copy of the required elements
@@ -545,7 +545,7 @@ struct job {
 	pbs_list_link	ji_unlicjobs;	/* links to unlicensed jobs */
 	int		ji_modified;	/* struct changed, needs to be saved */
 	int		ji_momhandle;	/* open connection handle to MOM */
-	int		ji_mom_prot;	/* rpp or tcp */
+	int		ji_mom_prot;	/* PROT_TCP or PROT_TPP */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
 #ifndef PBS_MOM
 	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */

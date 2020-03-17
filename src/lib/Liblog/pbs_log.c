@@ -76,7 +76,7 @@
 
 #include "log.h"
 #include "pbs_ifl.h"
-#include "pbs_internal.h"
+#include "libutil.h"
 #include "pbs_version.h"
 #if SYSLOG
 #include <syslog.h>
@@ -130,6 +130,34 @@ static char *class_names[] = {
 	"TPP"
 };
 
+static char pbs_leaf_name[PBS_MAXHOSTNAME + 1] = "N/A";
+static char pbs_mom_node_name[PBS_MAXHOSTNAME + 1] = "N/A";
+static unsigned int locallog = 0;
+static unsigned int syslogfac = 0;
+static unsigned int syslogsvr = 3;
+static unsigned int pbs_log_highres_timestamp = 0;
+
+void
+set_log_conf(char *leafname, char *nodename,
+		unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
+		unsigned int log_highres)
+{
+	if (leafname) {
+		strncpy(pbs_leaf_name, leafname, PBS_MAXHOSTNAME);
+		pbs_leaf_name[PBS_MAXHOSTNAME] = '\0';
+	}
+
+	if (nodename) {
+		strncpy(pbs_mom_node_name, nodename, PBS_MAXHOSTNAME);
+		pbs_mom_node_name[PBS_MAXHOSTNAME] = '\0';
+	}
+
+	locallog = islocallog;
+	syslogfac = sl_fac;
+	syslogsvr = sl_svr;
+	pbs_log_highres_timestamp = log_highres;
+}
+
 #ifdef WIN32
 /**
  * @brief
@@ -177,7 +205,7 @@ gettimeofday(struct timeval *tp, struct timezone *tzp)
  * @retval 0 - success
  */
 
-int 
+int
 set_msgdaemonname(char *ch)
 {
 	if(!(msg_daemonname = strdup(ch))) {
@@ -193,7 +221,7 @@ set_msgdaemonname(char *ch)
  * @return void
  */
 
-void 
+void
 set_logfile(FILE *fp)
 {
 	log_opened = 1;
@@ -280,7 +308,7 @@ log_mutex_lock()
 
 	if (pthread_mutex_lock(&log_mutex) != 0)
 		return -1;
-	
+
 	/* use &log_lock for non-null value */
 	log_lock = &log_lock;
 	pthread_setspecific(pbs_log_tls_key, log_lock);
@@ -308,13 +336,13 @@ log_mutex_unlock()
 	void *log_lock;
 	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == NULL)
 		return -1;
-	
+
 	if (pthread_mutex_unlock(&log_mutex) != 0)
 		return -1;
 
 	log_lock = NULL;
 	pthread_setspecific(pbs_log_tls_key, log_lock);
-	
+
 	return 0;
 }
 
@@ -402,8 +430,6 @@ log_add_debug_info()
 	char dest[LOG_BUF_SIZE] = {'\0'};
 	char temp[PBS_MAXHOSTNAME + 1] = {'\0'};
 	char host[PBS_MAXHOSTNAME + 1] = "N/A";
-	char leaf[PBS_MAXHOSTNAME + 1] = "N/A";
-	char node[PBS_MAXHOSTNAME + 1] = "N/A";
 
 	/* Set hostname */
 	if (!gethostname(temp, (sizeof(temp) - 1))) {
@@ -412,16 +438,10 @@ log_add_debug_info()
 			/* Overwrite if full hostname is available */
 			snprintf(host, sizeof(host), "%s", temp);
 	}
-	/* Set leaf node name */
-	if (pbs_conf.pbs_leaf_name)
-		snprintf(leaf, sizeof(leaf), "%s", pbs_conf.pbs_leaf_name);
-	/* Set mom node name */
-	if (pbs_conf.pbs_mom_node_name)
-		snprintf(node, sizeof(node), "%s", pbs_conf.pbs_mom_node_name);
 	/* Record to log */
 	snprintf(dest, sizeof(dest),
 		"hostname=%s;pbs_leaf_name=%s;pbs_mom_node_name=%s",
-		host, leaf, node);
+		host, pbs_leaf_name, pbs_mom_node_name);
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 		msg_daemonname, dest);
 	return;
@@ -539,7 +559,7 @@ log_open_main(char *filename, char *directory, int silent)
 	if (log_opened > 0)
 		return (-1);	/* already open */
 
-	if (pbs_conf.locallog != 0 || pbs_conf.syslogfac == 0) {
+	if (locallog != 0 || syslogfac == 0) {
 
 		/* open PBS local logging */
 
@@ -608,12 +628,12 @@ log_open_main(char *filename, char *directory, int silent)
 		}
 	}
 #if SYSLOG
-	if (syslogopen == 0 && pbs_conf.syslogfac > 0 && pbs_conf.syslogfac < 10) {
+	if (syslogopen == 0 && syslogfac > 0 && syslogfac < 10) {
 		/*
 		 * We do not assume that the log facilities are defined sequentially.
 		 * That is why we reference them each by name.
 		 */
-		switch (pbs_conf.syslogfac) {
+		switch (syslogfac) {
 			case 2:
 				syslogopen = LOG_LOCAL0;
 				break;
@@ -645,10 +665,10 @@ log_open_main(char *filename, char *directory, int silent)
 		}
 		openlog(msg_daemonname, LOG_NOWAIT, syslogopen);
 		DBPRT(("Syslog enabled, facility = %d\n", syslogopen))
-		if (pbs_conf.syslogsvr != 0) {
+		if (syslogsvr != 0) {
 			/* set min priority of what gets logged via syslog */
-			setlogmask(LOG_UPTO(pbs_conf.syslogsvr));
-			DBPRT(("Syslog mask set to 0x%x\n", pbs_conf.syslogsvr))
+			setlogmask(LOG_UPTO(syslogsvr));
+			DBPRT(("Syslog mask set to 0x%x\n", syslogsvr))
 		}
 	}
 #endif
@@ -889,7 +909,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	if (gettimeofday(&tp, NULL) != -1) {
 		now = tp.tv_sec;
 
-		if (pbs_conf.pbs_log_highres_timestamp)
+		if (pbs_log_highres_timestamp)
 			snprintf(microsec_buf, sizeof(microsec_buf), ".%06ld", (long)tp.tv_usec);
 	}
 
@@ -920,7 +940,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 		goto sigunblock;
 	}
 
-	if (pbs_conf.locallog != 0 || pbs_conf.syslogfac == 0) {
+	if (locallog != 0 || syslogfac == 0) {
 		rc = fprintf(logfile,
 			     "%02d/%02d/%04d %02d:%02d:%02d%s;%04x;%s;%s;%s;%s\n",
 			     ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,

@@ -48,11 +48,11 @@ extern "C" {
 
 /*
  * Definition of basic structures and functions used for Mom -> Server
- * RPP communication.
+ * TPP communication.
  *
  * Job Obituary/Resource Usage requests...
  *
- * These are from Mom to Server only and only via RPP
+ * These are from Mom to Server only and only via TPP
  */
 
 struct resc_used_update {

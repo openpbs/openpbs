@@ -59,11 +59,9 @@
 #include	"log.h"
 #include	"dis.h"
 #include	"rm.h"
-#if	RPP
-#include	"rpp.h"
+#include	"tpp.h"
 #if defined(FD_SET_IN_SYS_SELECT_H)
 #include 	<sys/select.h>
-#endif
 #endif
 
 /**
@@ -98,8 +96,7 @@ static	struct	out	*outs[HASHOUT];
  * @retval	0	success
  * @retval	-1	error
  */
-static
-int
+static int
 addrm(int stream)
 {
 	struct	out		*op, **head;
@@ -117,20 +114,6 @@ addrm(int stream)
 	return 0;
 }
 
-#if	RPP
-
-#define funcs_dis()	DIS_rpp_funcs()
-#define	close_dis(x)	rpp_close(x)
-#define	flush_dis(x)	rpp_flush(x)
-
-#else
-
-#define	funcs_dis()	DIS_tcp_funcs()
-#define	close_dis(x)	close(x)
-#define	flush_dis(x)	dis_flush(x)
-
-#endif
-
 /**
  * @brief
  *	Connects to a resource monitor and returns a file descriptor to
@@ -146,74 +129,20 @@ addrm(int stream)
 int
 openrm(char *host, unsigned int port)
 {
-	int			stream;
-	static	int		first = 1;
+	int stream;
 
 	DBPRT(("openrm: host %s port %u\n", host, port))
 	pbs_errno = 0;
 	if (port == 0)
 		port = pbs_conf.manager_service_port;
 	DBPRT(("using port %u\n", port))
-
-#if	RPP
-	if (first && pbs_conf.pbs_use_tcp == 0) {
-		int tryport = IPPORT_RESERVED;
-
-		first = 0;
-		while (--tryport > 0) {
-			if (rpp_bind(tryport) != -1)
-				break;
-			if ((errno != EADDRINUSE) && (errno != EADDRNOTAVAIL))
-				break;
-		}
-	}
-	stream = rpp_open(host, port);
-#else
-	if ((stream = socket(AF_INET, SOCK_STREAM, 0)) != -1) {
-		int	tryport = IPPORT_RESERVED;
-		struct	sockaddr_in	addr;
-		struct	hostent		*hp;
-		if ((!is_local_host(host))) {
-			if ((hp = gethostbyname(host)) == NULL) {
-				DBPRT(("host %s not found\n", host))
-				pbs_errno = ENOENT;
-				return -1;
-			}
-		}
-		memset(&addr, '\0', sizeof(addr));
-		addr.sin_family = AF_INET;
-		addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		while (--tryport > 0) {
-			addr.sin_port = htons((u_short)tryport);
-			if (bind(stream, (struct sockaddr *)&addr,
-				sizeof(addr)) != -1)
-				break;
-			if ((errno != EADDRINUSE) && (errno != EADDRNOTAVAIL))
-				break;
-		}
-		memset(&addr, '\0', sizeof(addr));
-		addr.sin_family = hp->h_addrtype;
-		addr.sin_port = htons((unsigned short)port);
-		memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
-
-		if (connect(stream, (struct sockaddr *)&addr,
-			sizeof(addr)) == -1) {
-			pbs_errno = errno;
-#ifdef WIN32
-			closesocket(stream);
-#else
-			close(stream);
-#endif
-			return -1;
-		}
-	}
-#endif
+	stream = tpp_open(host, port);
 	pbs_errno = errno;
 	if (stream < 0)
 		return -1;
 	if (addrm(stream) == -1) {
 		pbs_errno = errno;
-		close_dis(stream);
+		tpp_close(stream);
 		return -1;
 	}
 	return stream;
@@ -242,7 +171,7 @@ delrm(int stream)
 		prev = op;
 	}
 	if (op) {
-		close_dis(stream);
+		tpp_close(stream);
 
 		if (prev)
 			prev->next = op->next;
@@ -296,7 +225,7 @@ startcom(int stream, int com)
 {
 	int	ret;
 
-	funcs_dis();
+	DIS_tpp_funcs();
 	ret = diswsi(stream, RM_PROTOCOL);
 	if (ret == DIS_SUCCESS) {
 		ret = diswsi(stream, RM_PROTOCOL_VER);
@@ -325,9 +254,7 @@ startcom(int stream, int com)
  *
  */
 static int
-simplecom(stream, com)
-int	stream;
-int	com;
+simplecom(int stream, int com)
 {
 	struct	out	*op;
 
@@ -337,18 +264,16 @@ int	com;
 	op->len = -1;
 
 	if (startcom(stream, com) != DIS_SUCCESS) {
-		close_dis(stream);
+		tpp_close(stream);
 		return -1;
 	}
-	if (flush_dis(stream) == -1) {
+	if (dis_flush(stream) == -1) {
 		pbs_errno = errno;
 		DBPRT(("simplecom: flush error %d\n", pbs_errno))
-		close_dis(stream);
+		tpp_close(stream);
 		return -1;
 	}
-#if	RPP
-	(void)rpp_eom(stream);
-#endif
+	(void)tpp_eom(stream);
 	return 0;
 }
 
@@ -367,30 +292,27 @@ static int
 simpleget(int stream)
 {
 	int	ret, num;
-
-#if RPP
 	fd_set selset;
 
 	while(1) {
-		/* since tpp recvs are essentially allways non blocking
+		/* since tpp recvs are essentially always non blocking
 		 * we can call a dis function only if we are sure we have
-		 * data on that rpp fd
+		 * data on that tpp fd
 		 */
 		FD_ZERO(&selset);
-		FD_SET(rpp_fd, &selset);
+		FD_SET(tpp_fd, &selset);
 		if (select(FD_SETSIZE, &selset, NULL, NULL, NULL) > 0) {
-			if (rpp_poll() == stream)
+			if (tpp_poll() == stream)
 				break;
 		} else
 			break; /* let it flow down and fail in the DIS read */
 	}
-#endif
 
 	num = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS) {
 		DBPRT(("simpleget: %s\n", dis_emsg[ret]))
 		pbs_errno = errno ? errno : EIO;
-		close_dis(stream);
+		tpp_close(stream);
 		return -1;
 	}
 	if (num != RM_RSP_OK) {
@@ -498,7 +420,7 @@ configrm(int stream, char *file)
 		DBPRT(("configrm: diswcs %s\n", dis_emsg[ret]))
 		return -1;
 	}
-	if (flush_dis(stream) == -1) {
+	if (dis_flush(stream) == -1) {
 		pbs_errno = errno;
 		DBPRT(("configrm: flush error %d\n", pbs_errno))
 		return -1;
@@ -573,7 +495,7 @@ addreq(int stream, char *line)
 	pbs_errno = 0;
 	if ((op = findout(stream)) == NULL)
 		return -1;
-	funcs_dis();
+	DIS_tpp_funcs();
 	if (doreq(op, line) == -1) {
 		(void)delrm(stream);
 		return -1;
@@ -598,7 +520,7 @@ allreq(char *line)
 	struct	out	*op, *prev;
 	int		i, num;
 
-	funcs_dis();
+	DIS_tpp_funcs();
 	pbs_errno = 0;
 	num = 0;
 	for (i=0; i<HASHOUT; i++) {
@@ -608,7 +530,7 @@ allreq(char *line)
 			if (doreq(op, line) == -1) {
 				struct	out	*hold = op;
 
-				close_dis(op->stream);
+				tpp_close(op->stream);
 				if (prev)
 					prev->next = op->next;
 				else
@@ -647,18 +569,16 @@ getreq(int stream)
 	if ((op = findout(stream)) == NULL)
 		return NULL;
 	if (op->len >= 0) {	/* there is a message to send */
-		if (flush_dis(stream) == -1) {
+		if (dis_flush(stream) == -1) {
 			pbs_errno = errno;
 			DBPRT(("getreq: flush error %d\n", pbs_errno))
 			(void)delrm(stream);
 			return NULL;
 		}
 		op->len = -2;
-#if	RPP
-		(void)rpp_eom(stream);
-#endif
+		(void)tpp_eom(stream);
 	}
-	funcs_dis();
+	DIS_tpp_funcs();
 	if (op->len == -2) {
 		if (simpleget(stream) == -1)
 			return NULL;
@@ -718,17 +638,15 @@ flushreq()
 		for (op=outs[i]; op; op=op->next) {
 			if (op->len <= 0)	/* no message to send */
 				continue;
-			if (flush_dis(op->stream) == -1) {
+			if (dis_flush(op->stream) == -1) {
 				pbs_errno = errno;
 				DBPRT(("flushreq: flush error %d\n", pbs_errno))
-				close_dis(op->stream);
+				tpp_close(op->stream);
 				op->stream = -1;
 				continue;
 			}
 			op->len = -2;
-#if	RPP
-			(void)rpp_eom(op->stream);
-#endif
+			(void)tpp_eom(op->stream);
 			did++;
 		}
 
@@ -758,7 +676,7 @@ flushreq()
 /**
  * @brief
  *	Return the stream number of the next stream with something
- *	to read or a negative number (the return from rpp_poll)
+ *	to read or a negative number (the return from tpp_poll)
  *	if there is no stream to read.
  *
  * @return	int
@@ -778,9 +696,8 @@ activereq()
 	flushreq();
 	FD_ZERO(&fdset);
 
-#if	RPP
 	for (try=0; try<3;) {
-		if ((i = rpp_poll()) >= 0) {
+		if ((i = tpp_poll()) >= 0) {
 			if ((op = findout(i)) != NULL)
 				return i;
 
@@ -801,9 +718,9 @@ activereq()
 			return -1;
 		}
 		else {
-			extern	int	rpp_fd;
+			extern	int	tpp_fd;
 
-			FD_SET(rpp_fd, &fdset);
+			FD_SET(tpp_fd, &fdset);
 			tv.tv_sec = 5;
 			tv.tv_usec = 0;
 			num = select(FD_SETSIZE, &fdset, NULL, NULL, &tv);
@@ -819,40 +736,6 @@ activereq()
 		}
 	}
 	return i;
-#else
-	pbs_errno = 0;
-	for (i=0; i<HASHOUT; i++) {
-		struct	out	*op;
-
-		op=outs[i];
-		while (op) {
-			FD_SET(op->stream, &fdset);
-			op = op->next;
-		}
-	}
-	tv.tv_sec = 15;
-	tv.tv_usec = 0;
-	num = select(FD_SETSIZE, &fdset, NULL, NULL, &tv);
-	if (num == -1) {
-		pbs_errno = errno;
-		DBPRT(("%s: select %d\n", __func__, pbs_errno))
-		return -1;
-	}
-	else if (num == 0)
-		return -2;
-
-	for (i=0; i<HASHOUT; i++) {
-		struct	out	*op;
-
-		op=outs[i];
-		while (op) {
-			if (FD_ISSET(op->stream, &fdset))
-				return op->stream;
-			op = op->next;
-		}
-	}
-	return -2;
-#endif
 }
 
 /**
@@ -868,12 +751,6 @@ activereq()
 void
 fullresp(int flag)
 {
-#if	RPP
-	extern	int	rpp_dbprt;
-
-	if (flag)
-		rpp_dbprt = 1 - rpp_dbprt;	/* toggle RPP debug */
-#endif
 	pbs_errno = 0;
 	full = flag;
 	return;

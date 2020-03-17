@@ -304,15 +304,6 @@ int	   actmode;
 }
 
 int
-set_sched_throughput_mode(pattr, pobj, actmode)
-attribute *pattr;
-void      *pobj;
-int	   actmode;
-{
-	return PBSE_NONE;
-}
-
-int
 action_sched_port(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;

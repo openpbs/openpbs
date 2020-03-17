@@ -76,11 +76,8 @@
 #ifdef PBS_COMPRESSION_ENABLED
 #include <zlib.h>
 #endif
-
 #include "avltree.h"
-
-#include "rpp.h"
-#include "tpp_common.h"
+#include "tpp.h"
 #include "auth.h"
 
 #define RLIST_INC 100

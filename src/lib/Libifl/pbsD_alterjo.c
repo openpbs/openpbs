@@ -77,9 +77,9 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 	/* copy the attrl to an attropl */
 	while (attrib != NULL) {
 		if (ap == NULL) {
-			ap1 = ap = MH(struct attropl);
+			ap1 = ap = (struct attropl *)malloc(sizeof(struct attropl));
 		} else {
-			ap->next = MH(struct attropl);
+			ap->next = (struct attropl *)malloc(sizeof(struct attropl));
 			ap = ap->next;
 		}
 		if (ap == NULL) {

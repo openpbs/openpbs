@@ -148,29 +148,37 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  * @brief
  * enum conn_type is used to (1) indicate that a connection table entry is in
  * use or is free (Idle).  Additional meaning for the entries are:
+ *
  * @verbatim
- * Primary - the primary entry (port) on which the daemon is listening for
- *           connections from a client
- * Secondary - another connection on which the daemon is listening, a different
- *           service such as "resource monitor" part of Mom.
- *           If init_network() is called twice, the second port/entry is
- *           marked as the Secondary
- * FromClientDIS - a client initiated connection
- * RppComm - Used by the daemons who do RPP
- * ChildPipe - Used by Mom for a "unix" pipe between herself and a child;
- *           this is not a IP connection.
+ * 	Primary
+ * 		the primary entry (port) on which the daemon is listening for
+ *		connections from a client
+ * 	Secondary
+ * 		another connection on which the daemon is listening, a different
+ *		service such as "resource monitor" part of Mom.
+ *		If init_network() is called twice, the second port/entry is
+ *		marked as the Secondary
+ *	FromClientDIS
+ *		a client initiated connection
+ *	TppComm
+ *		TPP based connection
+ *	ChildPipe
+ *		Used by Mom for a "unix" pipe between herself and a child;
+ *		this is not a IP connection.
+ *
  * @endverbatim
- * The entries marked as Primary, Secondary, and RppComm do not require
- * additional authenication of the user making the request.
+ *
+ * @note
+ *	The entries marked as Primary, Secondary, and TppComm do not require
+ *	additional authenication of the user making the request.
  */
-
 typedef struct connection conn_t;
 enum conn_type {
 	Primary = 0,
 	Secondary,
 	FromClientDIS,
 	ToServerDIS,
-	RppComm,
+	TppComm,
 	ChildPipe,
 	Idle
 };
