@@ -853,20 +853,20 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 {
 	time_t now = 0;
 	struct tm *ptm;
-#ifndef WIN32
-	struct tm ltm;
-#endif
 	int    rc = 0;
 	FILE  *savlog;
 	char slogbuf[LOG_BUF_SIZE];
 	struct timeval tp;
 	char microsec_buf[8] = {0};
+#ifndef WIN32
+	struct tm ltm;
 	sigset_t block_mask;
 	sigset_t old_mask;
 
 	/* Block all signals to the process to make the function async-safe */
 	sigfillset(&block_mask);
 	sigprocmask(SIG_BLOCK, &block_mask, &old_mask);
+#endif
 
 #if SYSLOG
 	if (syslogopen != 0) {
@@ -958,7 +958,11 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	}
 
 sigunblock:
+#ifndef WIN32
 	sigprocmask(SIG_SETMASK, &old_mask, NULL);
+#else
+	return;
+#endif
 }
 
 /**
