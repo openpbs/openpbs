@@ -108,6 +108,32 @@ def get_hook_body_reject_with_text(hook_msg, bad_message="badmsg"):
     return hook_body
 
 
+def get_hook_body_traceback(hook_msg, bad_message="badmsg"):
+    hook_body = """
+    import pbs
+    e = pbs.event()
+    m = e.management
+    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    raise Exception('%s')
+    """ % (hook_msg, bad_message)
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
+
+
+def get_hook_body_sleep(hook_msg, sleeptime=0.0):
+    hook_body = """
+    import pbs
+    import time
+    e = pbs.event()
+    m = e.management
+    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    time.sleep(%s)
+    e.accept()
+    """ % (hook_msg, sleeptime)
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
+
+
 @tags('hooks', 'smoke')
 class TestHookManagement(TestFunctional):
 
@@ -407,7 +433,7 @@ class TestHookManagement(TestFunctional):
         self.logger.info("**************** HOOK START ****************")
         attrs = {'event': 'management', 'enabled': 'True'}
 
-        hook_name_00 = 'a1234'
+        hook_name_00 = 'd1234'
         hook_msg_00 = 'running management hook_reject_02 name:%s' % \
                       hook_name_00
         hook_bad_msg = "badmessagetext"
@@ -436,3 +462,84 @@ class TestHookManagement(TestFunctional):
                               starttime=start_time)
 
         self.logger.info("**************** HOOK END ****************")
+
+    def test_hook_traceback_00(self):
+        """
+        Tests a traceback in a hook.  The hook will fire and reject
+        with a message.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        attrs = {'event': 'management', 'enabled': 'True'}
+
+        hook_name_00 = 'e1234'
+        hook_msg_00 = 'running management hook_traceback_00 name:%s' % \
+                      hook_name_00
+        hook_bad_msg = "badmessagetext"
+        hook_body_00 = get_hook_body_traceback(hook_msg_00,
+                                               hook_bad_msg)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+
+        start_time = int(time.time())
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+
+        self.server.log_match("%s;created at request" % hook_name_00,
+                              starttime=start_time)
+
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
+
+        self.server.log_match(hook_msg_00, starttime=start_time)
+        self.server.log_match(hook_bad_msg, starttime=start_time)
+
+        ret = self.server.delete_hook(hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
+
+        self.server.log_match("%s;deleted at request of" % hook_name_00,
+                              starttime=start_time)
+
+        self.server.log_match("hook '%s' encountered an exception" % \
+                              hook_name_00, starttime=start_time)
+
+        self.logger.info("**************** HOOK END ****************")
+
+    def test_hook_alarm_00(self):
+        """
+        Tests a alarm with a hook.  The hook will fire and reject
+        with a message.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        attrs = {'event': 'management', 'enabled': 'True', 'alarm': 1}
+
+        hook_name_00 = 'f1234'
+        hook_msg_00 = 'running management hook_alarm_00 name:%s' % \
+                      hook_name_00
+        hook_body_00 = get_hook_body_sleep(hook_msg_00, sleeptime=2.0)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+
+        start_time = int(time.time())
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+
+        self.server.log_match("%s;created at request" % hook_name_00,
+                              starttime=start_time)
+
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name_00)
+
+        self.server.log_match("alarm call while running management hook '%s'"
+                              % hook_name_00, starttime=start_time)
+
+        self.server.log_match(hook_msg_00, starttime=start_time)
+
+        ret = self.server.delete_hook(hook_name_00)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name_00)
+
+        self.server.log_match("%s;deleted at request of" % hook_name_00,
+                              starttime=start_time)
+
+        self.logger.info("**************** HOOK END ****************")
+
+        self.logger.info("%s" % str(dir()))
