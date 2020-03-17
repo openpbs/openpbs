@@ -4254,8 +4254,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			rc = -1;
 			goto server_process_hooks_exit;
 		}
-	}	
-	
+	}
+
 	set_alarm(phook->alarm, pyinter_func);
 
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4736,7 +4736,7 @@ recreate_request(struct batch_request *preq)
 	hook_output_param_t req_params;
 	FILE *fp_debug = NULL;
 	char *hook_outfile = NULL;
-	char perf_label[MAXBUFLEN];		
+	char perf_label[MAXBUFLEN];
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,

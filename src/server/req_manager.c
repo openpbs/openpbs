@@ -1431,10 +1431,11 @@ mgr_queue_delete(struct batch_request *preq)
  *		Sets the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_set(struct batch_request *preq)
+mgr_server_set(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -1480,10 +1481,11 @@ mgr_server_set(struct batch_request *preq)
  *		Clears the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_unset(struct batch_request *preq)
+mgr_server_unset(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -4716,8 +4718,10 @@ mgr_resource_unset(struct batch_request *preq)
  *		the object and the operation to be performed on it.  Then the
  *		appropriate function is called to perform the operation.
  *
- * @param[in]	preq	- The request containing information about the resource to
- * 		     				perform the operation.
+ * @param[in]	preq	- The request containing information about the resource to perform the operation.
+ *
+ * @return void
+ *
  */
 void
 req_manager(struct batch_request *preq)
@@ -4736,7 +4740,7 @@ req_manager(struct batch_request *preq)
 			}
 		}
 	}
-	
+
 	obj_name_len = strlen(preq->rq_ind.rq_manager.rq_objname);
 
 	switch (preq->rq_ind.rq_manager.rq_cmd) {
@@ -4821,7 +4825,7 @@ req_manager(struct batch_request *preq)
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_set(preq);
+					mgr_server_set(preq, conn);
 					break;
 				case MGR_OBJ_SCHED:
 					if (obj_name_len == 0) {
@@ -4871,7 +4875,7 @@ req_manager(struct batch_request *preq)
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_unset(preq);
+					mgr_server_unset(preq, conn);
 					break;
 				case MGR_OBJ_QUEUE:
 					mgr_queue_unset(preq);

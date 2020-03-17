@@ -71,29 +71,26 @@
 int
 PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int rpp, char **msgid)
 {
-	int sock;
 	int rc = 0;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_SignalJob, pbs_current_user)) ||
-		(rc = encode_DIS_SignalJob(sock, jobid, signal)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_SignalJob, pbs_current_user)) ||
+		(rc = encode_DIS_SignalJob(c, jobid, signal)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
-	if (DIS_wflush(sock, rpp)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc = pbs_errno;
 	}

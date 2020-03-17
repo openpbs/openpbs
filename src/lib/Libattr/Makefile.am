@@ -38,7 +38,9 @@
 
 lib_LIBRARIES = libattr.a
 
-libattr_a_CPPFLAGS = -I$(top_srcdir)/src/include
+libattr_a_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@KRB5_CFLAGS@
 
 libattr_a_SOURCES = \
 	attr_atomic.c \
@@ -133,4 +135,3 @@ resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
 	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml \
 		-e /dev/null -s $@ -a resc
-

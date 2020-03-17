@@ -69,15 +69,11 @@ __pbs_locjob(int c, char *jobid, char *extend)
 	int	rc;
 	struct batch_reply *reply;
 	char       *ploc = NULL;
-	int sock;
-
 
 	if ((jobid == NULL) || (*jobid == '\0')) {
 		pbs_errno = PBSE_IVALREQ;
 		return (ploc);
 	}
-
-	sock = connection[c].ch_socket;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -90,13 +86,12 @@ __pbs_locjob(int c, char *jobid, char *extend)
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_LocateJob, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(sock, jobid))	   ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_LocateJob, pbs_current_user)) ||
+		(rc = encode_DIS_JobId(c, jobid))	   ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -107,7 +102,7 @@ __pbs_locjob(int c, char *jobid, char *extend)
 
 	/* write data over tcp stream */
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return NULL;
@@ -123,7 +118,7 @@ __pbs_locjob(int c, char *jobid, char *extend)
 		reply->brp_choice != BATCH_REPLY_CHOICE_Locate) {
 		advise("pbs_locjob", "Unexpected reply choice");
 		pbs_errno = PBSE_PROTOCOL;
-	} else if (connection[c].ch_errno == 0) {
+	} else if (get_conn_errno(c) == 0) {
 		if ((ploc = strdup(reply->brp_un.brp_locate)) == NULL) {
 			pbs_errno = PBSE_SYSTEM;
 		}

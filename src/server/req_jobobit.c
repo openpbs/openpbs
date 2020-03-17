@@ -118,7 +118,6 @@ extern char *msg_obitnodel;
 extern char *msg_bad_password;
 extern char *msg_hook_reject_deletejob;
 extern char *msg_hook_reject_rerunjob;
-extern struct connect_handle connection[];
 extern time_t time_now;
 
 /* External Functions called */
@@ -1037,7 +1036,7 @@ on_job_exit(struct work_task *ptask)
 				t = time_now + (t * t);
 				ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
 				append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
-				
+
 				free_br(preq);
 				preq = NULL;
 				return;
@@ -1076,7 +1075,7 @@ on_job_exit(struct work_task *ptask)
 
 				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 					issue_track(pjob);
-				
+
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
 				/*
@@ -1450,7 +1449,7 @@ on_job_rerun(struct work_task *ptask)
 
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_SISCOMM, PREEMPT_METHOD_DELETE, pjob);
-				
+
 				discard_job(pjob, "A sister Mom failed to delete job", 0);
 				return;
 			} else if ((preq->rq_reply.brp_code == DIS_EOF) ||

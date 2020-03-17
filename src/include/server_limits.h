@@ -98,9 +98,6 @@ extern "C" {
 #define PBS_SCHED_PRIVATE	"sched_priv"
 #define PBS_SVRLIVE		"svrlive"
 
-
-#define PBS_LOCAL_CONNECTION INT_MAX
-
 /*
  * Security, Authentication, Authorization Control:
  *

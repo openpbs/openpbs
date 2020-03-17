@@ -91,8 +91,6 @@ disrfst(int stream, size_t achars, char *value)
 	unsigned	count;
 
 	assert(value != NULL);
-	assert(dis_gets != NULL);
-	assert(disr_commit != NULL);
 
 	locret = disrsi_(stream, &negate, &count, 1, 0);
 	if (locret == DIS_SUCCESS) {
@@ -100,7 +98,7 @@ disrfst(int stream, size_t achars, char *value)
 			locret = DIS_BADSIGN;
 		else if (count > achars)
 			locret = DIS_OVERFLOW;
-		else if ((*dis_gets)(stream, value, (size_t)count) !=
+		else if (dis_gets(stream, value, (size_t)count) !=
 			(size_t)count)
 			locret = DIS_PROTO;
 #ifndef NDEBUG
@@ -110,7 +108,7 @@ disrfst(int stream, size_t achars, char *value)
 		else
 			value[count] = '\0';
 	}
-	locret = (*disr_commit)(stream, locret == DIS_SUCCESS) ?
+	locret = disr_commit(stream, locret == DIS_SUCCESS) ?
 		DIS_NOCOMMIT : locret;
 	if (locret != DIS_SUCCESS)
 		*value = '\0';

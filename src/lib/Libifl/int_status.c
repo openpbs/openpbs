@@ -116,7 +116,7 @@ struct batch_status *PBSD_status_get(int c)
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
 		pbs_errno = PBSE_PROTOCOL;
-	} else if (connection[c].ch_errno == 0) {
+	} else if (get_conn_errno(c) == 0) {
 		/* have zero or more attrl structs to decode here */
 		stp = reply->brp_un.brp_statc;
 		i = 0;

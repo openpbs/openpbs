@@ -956,9 +956,7 @@ __pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend)
 					return NULL;
 				}
 			} else {
-				if (connection[con].ch_errtxt != NULL)
-					free(connection[con].ch_errtxt);
-				if ((connection[con].ch_errtxt = strdup(pbse_to_txt(pbs_errno))) == NULL) {
+				if (set_conn_errtxt(con, pbse_to_txt(pbs_errno)) != 0) {
 					pbs_errno = PBSE_SYSTEM;
 					return NULL;
 				}

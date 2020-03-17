@@ -93,8 +93,6 @@ disrcs(int stream, size_t *nchars, int *retval)
 
 	assert(nchars != NULL);
 	assert(retval != NULL);
-	assert(dis_gets != NULL);
-	assert(disr_commit != NULL);
 
 	locret = disrsi_(stream, &negate, &count, 1, 0);
 	locret = negate ? DIS_BADSIGN : locret;
@@ -106,7 +104,7 @@ disrcs(int stream, size_t *nchars, int *retval)
 			if (value == NULL)
 				locret = DIS_NOMALLOC;
 			else {
-				if ((*dis_gets)(stream, value,
+				if (dis_gets(stream, value,
 					(size_t)count) != (size_t)count)
 					locret = DIS_PROTO;
 				else
@@ -114,7 +112,7 @@ disrcs(int stream, size_t *nchars, int *retval)
 			}
 		}
 	}
-	locret = ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0) ?
+	locret = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : locret;
 	if ((*retval = locret) != DIS_SUCCESS && value != NULL) {
 		count = 0;

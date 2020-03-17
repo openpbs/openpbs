@@ -176,20 +176,16 @@ PBSD_select_put(int c, int type, struct attropl *attrib,
 			struct attrl *rattrib, char *extend)
 {
 	int rc;
-	int sock;
-
-	sock = connection[c].ch_socket;
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc = encode_DIS_ReqHdr(sock, type, pbs_current_user)) ||
-		(rc = encode_DIS_attropl(sock, attrib)) ||
-		(rc = encode_DIS_attrl(sock, rattrib))  ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, type, pbs_current_user)) ||
+		(rc = encode_DIS_attropl(c, attrib)) ||
+		(rc = encode_DIS_attrl(c, rattrib))  ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -199,7 +195,7 @@ PBSD_select_put(int c, int type, struct attropl *attrib,
 
 	/* write data */
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
@@ -238,7 +234,7 @@ PBSD_select_get(int c)
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Select) {
 		pbs_errno = PBSE_PROTOCOL;
-	} else if (connection[c].ch_errno == 0) {
+	} else if (get_conn_errno(c) == 0) {
 		/* process the reply -- first, build a linked
 		 list of the strings we extract from the reply, keeping
 		 track of the amount of space used...

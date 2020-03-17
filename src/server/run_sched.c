@@ -141,7 +141,7 @@ put_sched_cmd(int sock, int cmd, char *jobid)
 {
 	int   ret;
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	if ((ret = diswsi(sock, cmd)) != DIS_SUCCESS)
 		goto err;
 
@@ -150,7 +150,7 @@ put_sched_cmd(int sock, int cmd, char *jobid)
 			goto err;
 	}
 
-	(void)DIS_tcp_wflush(sock);
+	(void)dis_flush(sock);
 	return 0;
 
 err:
@@ -287,7 +287,7 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 	alarm(SCHEDULER_ALARM_TIME);
 
 	/* This function does a timeout wait on the non-blocking socket */
-	sock = client_to_svr(pbs_scheduler_addr, pbs_scheduler_port, 1); /* scheduler connection still uses resv-ports */
+	sock = client_to_svr(pbs_scheduler_addr, pbs_scheduler_port, B_RESERVED); /* scheduler connection still uses resv-ports */
 	if (pbs_errno == PBSE_NOLOOPBACKIF)
 		log_err(PBSE_NOLOOPBACKIF, "client_to_svr" , msg_noloopbackif);
 
@@ -304,9 +304,20 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		log_err(errno, __func__, "could not find sock in connection table");
 		return (-1);
 	}
-	conn->cn_authen |=
-		PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
-
+	conn->cn_authen |= PBS_NET_CONN_TO_SCHED | PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
+	strcpy(conn->cn_username, PBS_SCHED_DAEMON_NAME);
+	conn->cn_credid = strdup(PBS_SCHED_DAEMON_NAME);
+	if (conn->cn_credid == NULL) {
+		log_err(errno, __func__, "Out of memory!");
+		return (-1);
+	}
+	conn->cn_auth_config = make_auth_config(AUTH_RESVPORT_NAME, "", 0, (void *)log_event);
+	if (conn->cn_auth_config == NULL) {
+		log_err(errno, __func__, "Out of memory!");
+		return -1;
+	}
+	DIS_tcp_funcs();
+	transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
 	net_add_close_func(sock, scheduler_close);
 
 	if (set_nodelay(sock) == -1) {
@@ -505,7 +516,7 @@ scheduler_close(int sock)
 	 *	dealing with the job.  Tell qrun it failed if the qrun connection
 	 *	is still there.
 	 *      If any qrun request is pending in the deffered list, set svr_unsent_qrun_req so
-	 * 	they are sent when the Scheduler completes this cycle 
+	 * 	they are sent when the Scheduler completes this cycle
 	 */
 	pdefr = (struct deferred_request *)GET_NEXT(svr_deferred_req);
 	while (pdefr) {

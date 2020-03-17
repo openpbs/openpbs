@@ -154,7 +154,7 @@ char_in_set(char c, const char *tokset)
  * @param[in/out]  ret_str - the char ptr where we left off after the tokens
  *		             ** ret_str is opaque to the caller
  *
- * @par	call: 
+ * @par	call:
  *	string_token( string, tokenset, &tokptr)
  *	2nd call: string_token( NULL, tokenset2, &tokptr)
  *
@@ -306,7 +306,7 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
 }
 
 /**
- * @brief 
+ * @brief
  *	get a line from a file of any length.  Extend string via realloc
  *	if necessary
  *
@@ -430,15 +430,15 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 /**
  * @brief
  * 	Internal helper function for pbs_asprintf() to determine the length of post-formatted string
- * 
+ *
  * @param[in] fmt - printf format string
  * @param[in] args - va_list arguments from pbs_asprintf()
- * 
+ *
  * @return int
  * @retval length of post-formatted string
  */
 int
-pbs_asprintf_len(const char *fmt, va_list args) 
+pbs_asprintf_len(const char *fmt, va_list args)
 {
 	int len;
 #ifdef WIN32
@@ -459,11 +459,11 @@ pbs_asprintf_len(const char *fmt, va_list args)
 /**
  * @brief
  * 	Internal helper function for pbs_asprintf() to allocate memory and format the string
- * 
+ *
  * @param[in] len - length of post-formatted string
  * @param[in] fmt - format for printed string
  * @param[in] args - va_list arguments from pbs_asprintf()
- * 
+ *
  * @return char *
  * @retval formatted string in allocated buffer
  */
@@ -675,7 +675,7 @@ lock_file(FILE *fp, int op, char *filename, int lock_retry,
 }
 
 /**
- * @brief 
+ * @brief
  *	calculate the number of digits to the right of the decimal point in
  *	a floating point number.  This can be used in conjunction with
  *	printf() to not print trailing zeros.
@@ -1087,80 +1087,6 @@ in_string_list(char *str, char sep, char *string_list)
 }
 
 /**
- * @brief
- *		Helper function to get the authentication data in case external (non-resv-port)
- *		authentication. This is a generic wrapper for all "external" authentication methods.
- *
- *		This function is used as a callback from other libraries (currently only TPP)
- *		to get the authentication data to be sent to a peer doing connection initiation.
- *
- * @param[in] auth_type - The auth_type configured
- * @param[out] data_len - Length of the encoded authentication data
- * @param[in/out] ebuf	- Error message is updated here
- * @param[in] ebufsz	- size of the error message buffer
- *
- * @return - Encoded authentication data
- * @retval - NULL - Failure
- * @retval - !NULL - Success
- *
- */
-void *
-get_ext_auth_data(int auth_type, int *data_len, char *ebuf, int ebufsz)
-{
-	char *adata = NULL;
-
-	*data_len = 0;
-
-#ifndef WIN32
-	/* right now, we only know about munge authentication */
-	adata = pbs_get_munge_auth_data(1, ebuf, ebufsz);
-	if (adata)
-		*data_len = strlen(adata);
-#else
-	snprintf(ebuf, ebufsz, "Authentication method not supported");
-#endif
-
-	return adata;
-}
-
-/**
- * @brief
- *		Helper function to validate authentication data in case external (non-resv-port)
- *		authentication. This is a generic wrapper for all "external" authentication methods.
- *
- *		This function is used as a callback from other libraries (currently only TPP)
- *		to validate the authentication	data received from a peer doing connection initiation.
- *
- * @param[in] auth_type - The auth_type configured
- * @param[in] data      - The received authentication data to be verified
- * @param[in] data_len  - Length of the encoded authentication data
- * @param[in/out] ebuf	- Error message is updated here
- * @param[in] ebufsz	- size of the error message buffer
- *
- * @return  Error code
- * @retval  -1 - Authentication failed
- * @retval   0 - Authentication succeeded
- *
- */
-int
-validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int ebufsz)
-{
-	int fromsvr = 0;
-	int rc = -1;
-
-#ifndef WIN32
-	/* right now, we only know about munge authentication */
-	rc = pbs_munge_validate(data, &fromsvr, ebuf, ebufsz);
-	if (rc == 0 && fromsvr == 1)
-		return 0;
-#else
-	snprintf(ebuf, ebufsz, "Authentication method not supported");
-#endif
-
-	return -1;
-}
-
-/**
  *
  *	@brief break apart a delimited string into an array of strings
  *
@@ -1321,6 +1247,40 @@ free_string_array(char **arr)
 
 		free(arr);
 	}
+}
+
+/**
+ * @brief
+ *	convert_string_to_lowercase - Convert string to lowercase
+ *
+ * @param[in]	str - string to be converted
+ *
+ * @return	char *
+ * @retval	!NULL - converted string
+ * @retval	NULL - failure
+ *
+ * @note
+ * 	Returned string will be malloced area, so free after use
+ *
+ */
+char *
+convert_string_to_lowercase(char *str)
+{
+	char *ret = NULL;
+	int i = 0;
+	int len = 0;
+
+	if (str == NULL || *str == '\0')
+		return NULL;
+
+	len = strlen(str);
+	if ((ret = calloc(1, len + 1)) == NULL)
+		return NULL;
+
+	for (i = 0; i < len; i++)
+		ret[i] = tolower(str[i]);
+
+	return ret;
 }
 
 /**
@@ -1486,7 +1446,7 @@ get_mem_info(void) {
  *	will get overwritten the next time the function is called.
  *      So best to use the result immediately or strdup() it.
  *
- *	This will return the original (non-translated) 'str' value if 
+ *	This will return the original (non-translated) 'str' value if
  *	an error was encounted, like a realloc() error.
  */
 char *
@@ -1582,7 +1542,7 @@ get_preemption_order(struct preempt_ordering *porder, int req, int used)
  *
  * @return double - number of seconds.
  */
-static double 
+static double
 get_walltime(void)
 {
 	LARGE_INTEGER time, freq;
@@ -1616,7 +1576,7 @@ get_cputime()
 
 	if (user_time.dwLowDateTime != 0)
 		return ((double)user_time.dwLowDateTime * 0.0000001);
-	
+
         return ((double)(((unsigned long long)user_time.dwHighDateTime << 32)) * 0.0000001);
 }
 
@@ -1811,7 +1771,7 @@ perf_stat_stop(char *instance)
 	p_stat = perf_stat_find(instance);
 	if (p_stat == NULL)
 		return (NULL);
-	
+
 	now_walltime = get_walltime();
 	now_cputime = get_cputime();
 
@@ -1855,9 +1815,9 @@ create_query_file(void)
 
 /**
  * @brief
- *	stats te information of the empty file created in /tmp/ to decide 
+ *	stats te information of the empty file created in /tmp/ to decide
  *  whether to add sleep for .2 seconds or not
- * 
+ *
  * @param[in] - void
  *
  * @return - void
@@ -1865,13 +1825,13 @@ create_query_file(void)
 void
 delay_query(void)
 {
-	char filename[MAXPATHLEN + 1];	
+	char filename[MAXPATHLEN + 1];
 #ifdef WIN32
 	struct _stat buf;
 #else
 	struct stat buf;
 #endif
-	
+
 	uid_t usid = getuid();
 #ifdef WIN32
 	LPSTR win_sid=NULL;

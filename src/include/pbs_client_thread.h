@@ -120,14 +120,11 @@ struct pbs_client_thread_context {
 /* corresponding function pointers for the externally used functions */
 extern int (*pfn_pbs_client_thread_lock_connection)(int connect);
 extern int (*pfn_pbs_client_thread_unlock_connection)(int connect);
-extern struct pbs_client_thread_context *
-(*pfn_pbs_client_thread_get_context_data)(void);
+extern struct pbs_client_thread_context * (*pfn_pbs_client_thread_get_context_data)(void);
 extern int (*pfn_pbs_client_thread_lock_conntable)(void);
 extern int (*pfn_pbs_client_thread_unlock_conntable)(void);
 extern int (*pfn_pbs_client_thread_lock_conf)(void);
 extern int (*pfn_pbs_client_thread_unlock_conf)(void);
-extern int (*pfn_pbs_client_thread_lock_tcp)(void);
-extern int (*pfn_pbs_client_thread_unlock_tcp)(void);
 extern int (*pfn_pbs_client_thread_init_thread_context)(void);
 extern int (*pfn_pbs_client_thread_init_connect_context)(int connect);
 extern int (*pfn_pbs_client_thread_destroy_connect_context)(int connect);
@@ -148,10 +145,6 @@ extern int (*pfn_pbs_client_thread_destroy_connect_context)(int connect);
 	(*pfn_pbs_client_thread_lock_conf)()
 #define pbs_client_thread_unlock_conf() \
 	(*pfn_pbs_client_thread_unlock_conf)()
-#define pbs_client_thread_lock_tcp() \
-	(*pfn_pbs_client_thread_lock_tcp)()
-#define pbs_client_thread_unlock_tcp() \
-	(*pfn_pbs_client_thread_unlock_tcp)()
 #define pbs_client_thread_init_thread_context() \
 	(*pfn_pbs_client_thread_init_thread_context)()
 #define pbs_client_thread_init_connect_context(connect) \
@@ -177,4 +170,3 @@ void pbs_client_thread_set_single_threaded_mode(void);
 #endif
 
 #endif	/* _PBS__CLIENT_THREAD_H */
-

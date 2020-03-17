@@ -42,7 +42,6 @@
 #include	<unistd.h>
 #include	<assert.h>
 #include	"dis.h"
-#include	"dis_init.h"
 #include	"placementsets.h"
 
 static vnl_t	*vn_decode_DIS_V3(int, int *);

@@ -56,7 +56,6 @@
 #include	<sddl.h>
 #endif
 #include	"dis.h"
-#include	"dis_init.h"
 #include	"tm.h"
 #include	"pbs_ifl.h"
 #include 	"pbs_client_thread.h"
@@ -118,8 +117,6 @@ static	int		tm_momport = 15003;
 static	int		local_conn = -1;
 static	int		init_done = 0;
 static	char		*localhost = LOCALHOST_SHORTNAME;
-
-void	DIS_tcp_funcs();
 
 /*
  **	Events are the central focus of this library.  They are tracked
@@ -255,7 +252,7 @@ del_event(event_info *ep)
  * @brief
  *	Create a new event number.
  *
- * @return	tm_event_t 
+ * @return	tm_event_t
  * @retval	eventinfo	success
  *		breaks out of loop if fails.
  */
@@ -335,10 +332,10 @@ static	task_info	*task_hash[TASK_HASH];
  *	-Find a task table entry for a given task number or return a NULL.
  *
  * @param[in] x - task id
- * 
+ *
  * @return 	structure handle
  * @retval	pointer to task info
- * 
+ *
  */
 static task_info *
 find_task(tm_task_id x)
@@ -358,7 +355,7 @@ find_task(tm_task_id x)
  *	table.
  *
  * @param[in] jobid - job identifier
- * @param[in] node - job-relative node id 
+ * @param[in] node - job-relative node id
  * @param[out] task - task id(0 or 1)
  *
  * @return	tm_task_id
@@ -532,7 +529,7 @@ localmom()
 		goto failed;
 	}
 
-	DIS_tcp_setup(local_conn);
+	DIS_tcp_funcs();
 	return (local_conn);
 
 failed:
@@ -673,7 +670,7 @@ tm_init(void *info, struct tm_roots *roots)
 
 	if (startcom(TM_INIT, nevent) != DIS_SUCCESS)
 		return TM_ESYSTEM;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(nevent, TM_ERROR_NODE, TM_INIT, (void *)roots);
 
 	if ((err = tm_poll(TM_NULL_EVENT, &revent, 1, &nerr)) != TM_SUCCESS)
@@ -761,7 +758,7 @@ tm_attach(char *jobid, char *cookie, pid_t pid, tm_task_id *tid, char *host, int
 	if (diswsi(local_conn, pid) != DIS_SUCCESS)	/* send pid */
 		return TM_ENOTCONNECTED;
 
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(nevent, TM_ERROR_NODE, TM_ATTACH, (void *)tid);
 
 	init_done = 1;		/* fake having called tm_init */
@@ -828,7 +825,7 @@ tm_nodeinfo(tm_node_id **list, int *nnodes)
  *
  */
 int
-tm_spawn(int argc, char **argv, char **envp, 
+tm_spawn(int argc, char **argv, char **envp,
 		tm_node_id where, tm_task_id *tid, tm_event_t *event)
 {
 	char		*cp;
@@ -871,7 +868,7 @@ tm_spawn(int argc, char **argv, char **envp,
 	}
 	if (diswcs(local_conn, "", 0) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(*event, where, TM_SPAWN, (void *)tid);
 	return TM_SUCCESS;
 }
@@ -908,7 +905,7 @@ tm_kill(tm_task_id tid, int sig, tm_event_t *event)
 		return TM_ENOTCONNECTED;
 	if (diswsi(local_conn, sig) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(*event, tp->t_node, TM_SIGNAL, NULL);
 	return TM_SUCCESS;
 }
@@ -943,7 +940,7 @@ tm_obit(tm_task_id tid, int *obitval, tm_event_t *event)
 		return TM_ESYSTEM;
 	if (diswui(local_conn, tid) != DIS_SUCCESS)
 		return TM_ESYSTEM;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(*event, tp->t_node, TM_OBIT, (void *)obitval);
 	return TM_SUCCESS;
 }
@@ -963,7 +960,7 @@ struct	taskhold {
  * @param[in] node - job relative node id
  * @param[out] tid_list - pointer to task list
  * @param[in] list_size - size of the task list
- * @param[out] ntasks - number of tasks 
+ * @param[out] ntasks - number of tasks
  * @param[out] event - pointer to event list
  *
  * @return	int
@@ -972,7 +969,7 @@ struct	taskhold {
  *
  */
 int
-tm_taskinfo(tm_node_id node, tm_task_id *tid_list, 
+tm_taskinfo(tm_node_id node, tm_task_id *tid_list,
 		int list_size, int *ntasks, tm_event_t *event)
 {
 	struct	taskhold	*thold;
@@ -986,7 +983,7 @@ tm_taskinfo(tm_node_id node, tm_task_id *tid_list,
 		return TM_ESYSTEM;
 	if (diswsi(local_conn, node) != DIS_SUCCESS)
 		return TM_ESYSTEM;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 
 	thold = (struct taskhold *)malloc(sizeof(struct taskhold));
 	assert(thold != NULL);
@@ -1059,7 +1056,7 @@ tm_rescinfo(tm_node_id node, char *resource, int len, tm_event_t *event)
 		return TM_ESYSTEM;
 	if (diswsi(local_conn, node) != DIS_SUCCESS)
 		return TM_ESYSTEM;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 
 	rhold = (struct reschold *)malloc(sizeof(struct reschold));
 	assert(rhold != NULL);
@@ -1077,7 +1074,7 @@ tm_rescinfo(tm_node_id node, char *resource, int len, tm_event_t *event)
  *	non-NULL, it returns the event that the effort to post *<info>
  *	is complete.  It returns ERROR_EVENT otherwise.
  *
- * @param[in] name - name of mom 
+ * @param[in] name - name of mom
  * @param[in] info - information (event)
  * @param[in] len - length of info
  * @param[out] event - pointer to event info
@@ -1101,7 +1098,7 @@ tm_publish(char *name, void *info, int len, tm_event_t *event)
 	if (diswcs(local_conn, info, len) != DIS_SUCCESS)
 		return TM_ESYSTEM;
 
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 	add_event(*event, TM_ERROR_NODE, TM_POSTINFO, NULL);
 	return TM_SUCCESS;
 }
@@ -1119,7 +1116,7 @@ struct	infohold {
  *	string specifying the info posted by <tid> is available.
  *
  * @param[in] tid - task id
- * @param[in] name - name of 
+ * @param[in] name - name of
  * @param[out] info - event info
  * @param[in] len -length of info
  * @param[out] info_len - info len to be output
@@ -1149,7 +1146,7 @@ tm_subscribe(tm_task_id tid, char *name, void *info, int len, int *info_len, tm_
 		return TM_ESYSTEM;
 	if (diswst(local_conn, name) != DIS_SUCCESS)
 		return TM_ESYSTEM;
-	DIS_tcp_wflush(local_conn);
+	dis_flush(local_conn);
 
 	ihold = (struct infohold *)malloc(sizeof(struct infohold));
 	assert(ihold != NULL);
@@ -1303,7 +1300,7 @@ tm_destroy_event(tm_event_t *event)
  *	from the task manager.
  *
  * @param[in] what - info about last event polled
- * @param[in] event - event handle 
+ * @param[in] event - event handle
  *
  * @return      int
  * @retval      TM_ENOTIMPLEMENTED	Success

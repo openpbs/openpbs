@@ -76,5 +76,5 @@ __pbs_geterrmsg(int connect)
 	if (con && thrd_ctxt && (thrd_ctxt->th_pbs_mode==0))
 		return (con->th_ch_errtxt);
 	else
-		return connection[connect].ch_errtxt;
+		return get_conn_errtxt(connect);
 }

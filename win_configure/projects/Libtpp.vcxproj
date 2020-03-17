@@ -109,7 +109,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\lib\Libtpp\tpp_client.c" />
-    <ClCompile Include="..\..\src\lib\Libtpp\tpp_dis.c" />
     <ClCompile Include="..\..\src\lib\Libtpp\tpp_em.c" />
     <ClCompile Include="..\..\src\lib\Libtpp\tpp_platform.c" />
     <ClCompile Include="..\..\src\lib\Libtpp\tpp_router.c" />

@@ -59,6 +59,7 @@
 #include "pbs_error.h"
 #include "libsec.h"
 #include "pbs_internal.h"
+#include "auth.h"
 #ifdef WIN32
 #include "win.h"
 #include <Winerror.h>
@@ -110,7 +111,6 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 	int	ret;
 	int mode;
 	char ebuf[128];
-	char errbuf[1024];
 #if !defined(WIN32)
 	char	dst[INET_ADDRSTRLEN+1]; /* for inet_ntop */
 #endif
@@ -120,29 +120,20 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 		return (-1);
 	}
 
-	if (pbs_conf.auth_method == AUTH_GSS)
-		authport_flags &= ~(B_EXTERNAL);
-
-	mode = (authport_flags & B_SVR) ? CS_MODE_SERVER:CS_MODE_CLIENT;
-	if (authport_flags & B_EXTERNAL) {
-		if ((ret = engage_external_authentication(sd, NULL, pbs_conf.auth_method, mode, errbuf, sizeof(errbuf))) != 0)
-			cs_logerr(-1, __func__,	errbuf);
-		return (ret);
-	} else {
-		if (mode == CS_MODE_SERVER) {
-			ret = CS_server_auth(sd);
-			if (ret == CS_SUCCESS || ret == CS_AUTH_CHECK_PORT)
-				return (0);
-		} else if (mode == CS_MODE_CLIENT) {
-			ret = CS_client_auth(sd);
-			if (ret == CS_SUCCESS || ret == CS_AUTH_USE_IFF) {
-				/*
-				 * For authentication via iff CS_client_auth
-				 * temporarily returning CS_AUTH_USE_IFF until such
-				 * time as iff becomes a part of CS_client_auth
-				 */
-				return (0);
-			}
+	mode = (authport_flags & B_SVR) ? CS_MODE_SERVER : CS_MODE_CLIENT;
+	if (mode == CS_MODE_SERVER) {
+		ret = CS_server_auth(sd);
+		if (ret == CS_SUCCESS || ret == CS_AUTH_CHECK_PORT)
+			return (0);
+	} else if (mode == CS_MODE_CLIENT) {
+		ret = CS_client_auth(sd);
+		if (ret == CS_SUCCESS || ret == CS_AUTH_USE_IFF) {
+			/*
+				* For authentication via iff CS_client_auth
+				* temporarily returning CS_AUTH_USE_IFF until such
+				* time as iff becomes a part of CS_client_auth
+				*/
+			return (0);
 		}
 	}
 
@@ -408,7 +399,7 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 				tv.tv_usec = 0;
 				ret = select(1, NULL, &writeset, NULL, &tv);
 				if (ret == SOCKET_ERROR) {
-					errno = WSAGetLastError(); 
+					errno = WSAGetLastError();
 					errn = errno;
 					pbs_errno = errn;
 					closesocket(sock);
@@ -517,4 +508,3 @@ set_nodelay(int fd)
 	opt = 1;
 	return setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 }
-

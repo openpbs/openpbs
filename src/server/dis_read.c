@@ -508,7 +508,7 @@ dis_request_read(int sfds, struct batch_request *request)
 	int	 rc; 	/* return code */
 
 	if (!request->isrpp)
-		DIS_tcp_setup(sfds);	/* setup for DIS over tcp */
+		DIS_tcp_funcs();	/* setup for DIS over tcp */
 
 	/* Decode the Request Header, that will tell the request type */
 
@@ -596,8 +596,8 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_PySpawn(sfds, request);
 			break;
 
-		case PBS_BATCH_AuthExternal:
-			rc = decode_DIS_AuthExternal(sfds, request);
+		case PBS_BATCH_Authenticate:
+			rc = decode_DIS_Authenticate(sfds, request);
 			break;
 
 #ifndef PBS_MOM
@@ -671,10 +671,6 @@ dis_request_read(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_RegistDep:
 			rc = decode_DIS_Register(sfds, request);
-			break;
-
-		case PBS_BATCH_AuthenResvPort:
-			rc = decode_DIS_AuthenResvPort(sfds, request);
 			break;
 
 		case PBS_BATCH_MomRestart:
@@ -770,6 +766,6 @@ DIS_reply_read(int sock, struct batch_reply *preply, int rpp)
 		return (decode_DIS_replySvrRPP(sock, preply));
 
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	return  (decode_DIS_replySvr(sock, preply));
 }

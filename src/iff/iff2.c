@@ -73,12 +73,9 @@
  */
 
 
-struct connect_handle	connection[NCONNECTS];
-
 int
 main(int argc, char *argv[], char *envp[])
 {
-	int		 auth_type = PBS_credentialtype_none;
 	int		 err = 0;
 	pbs_net_t	 hostaddr = 0;
 	int		 i;
@@ -93,12 +90,13 @@ main(int argc, char *argv[], char *envp[])
 	struct sockaddr_in sockname;
 	pbs_socklen_t	 socknamelen;
 	int		 testmode = 0;
-	struct batch_reply   *reply;
 	extern int	optind;
 	char *cln_hostaddr = NULL;
 
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
+
+	pbs_loadconf(0);
 
 	cln_hostaddr = getenv(PBS_IFF_CLIENT_ADDR);
 
@@ -157,7 +155,7 @@ main(int argc, char *argv[], char *envp[])
 	}
 
 #ifdef WIN32
-		if (winsock_init()) {
+	if (winsock_init()) {
 		return 1;
 	}
 #endif
@@ -171,7 +169,7 @@ main(int argc, char *argv[], char *envp[])
 	if ((servport = atoi(argv[++optind])) <= 0)
 		return (1);
 
-	for (i=0; i<PBS_IFF_MAX_CONN_RETRIES; i++) {
+	for (i = 0; i < PBS_IFF_MAX_CONN_RETRIES; i++) {
 		sock = client_to_svr_extend(hostaddr, (unsigned int)servport, 1, cln_hostaddr);
 		if (sock != PBS_NET_RC_RETRY)
 			break;
@@ -194,15 +192,10 @@ main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "pbs_iff: thread initialization failed\n");
 		return (1);
 	}
-
-	connection[1].ch_inuse = 1;
-	connection[1].ch_errno = 0;
-	connection[1].ch_socket = sock;
-	connection[1].ch_errtxt = NULL;
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	/* setup connection level thread context */
-	if (pbs_client_thread_init_connect_context(1) != 0) {
+	if (pbs_client_thread_init_connect_context(sock) != 0) {
 		fprintf(stderr, "pbs_iff: connect initialization failed\n");
 		return (1);
 	}
@@ -243,52 +236,35 @@ main(int argc, char *argv[], char *envp[])
 	else
 		parentport = ntohs(parentsock_port);
 
+	pbs_errno = 0;
+	err = tcp_send_auth_req(sock, parentport, pwent->pw_name);
+	if (err != 0 && pbs_errno != PBSE_BADCRED)
+		return 2;
 
-	for (i=0; i<4; i++) {
-		/* send authentication information */
-
-		if (encode_DIS_ReqHdr(sock, PBS_BATCH_AuthenResvPort, pwent->pw_name) ||
-			diswui(sock, parentport) ||
-			encode_DIS_ReqExtend(sock, NULL)) {
-			return (2);
-		}
-		if (DIS_tcp_wflush(sock)) {
-			return (2);
-		}
-
-		/* read back the response */
-
-		reply = PBSD_rdrpy(1);
-		if (reply == NULL) {
-			fprintf(stderr, "pbs_iff: error returned: %d\n", pbs_errno);
-			return (1);
-		}
-
-		if (reply->brp_code == PBSE_BADCRED) {
-			if (i>2)
-				sleep(1);
-		} else if (reply->brp_code == 0)
-			break;
-	}
-	(void)pbs_disconnect(1);
-
-	if (reply->brp_code != 0) {
-		fprintf(stderr, "pbs_iff: error returned: %d\n", reply->brp_code);
-		if (reply->brp_choice == BATCH_REPLY_CHOICE_Text)
-			fprintf(stderr, "pbs_iff: %s\n", reply->brp_un.brp_txt.brp_str);
-		PBSD_FreeReply(reply);
-		return (1);
-	}
-
-	/* free the batch_reply struct */
-	PBSD_FreeReply(reply);
-
-	/* send back "type none" credential */
-
-	while (write(fileno(stdout), &auth_type, sizeof(int)) == -1) {
+	err = pbs_errno;
+	while (write(fileno(stdout), &err, sizeof(int)) == -1) {
 		if (errno != EINTR)
 			break;
 	}
+	if (pbs_errno != 0) {
+		char *msg = get_conn_errtxt(sock);
+		int len = 0;
+		if (msg != NULL)
+			len = strlen(msg);
+		while (write(fileno(stdout), (char *)&len, sizeof(int)) == -1) {
+			if (errno != EINTR)
+				break;
+		}
+		if (len > 0) {
+			while (write(fileno(stdout), msg, strlen(msg)) == -1) {
+				if (errno != EINTR)
+					break;
+			}
+		}
+		return (1);
+	}
+
+	(void)pbs_disconnect(sock);
 	(void)fclose(stdout);
 	return (0);
 }

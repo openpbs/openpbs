@@ -77,7 +77,7 @@
  *  	u_Long
  *
  * @param[in] stream - pointer to data stream
- * @param[out] retval - return value 
+ * @param[out] retval - return value
  *
  * @return	u_Long
  * @retval	converted value		success
@@ -93,7 +93,6 @@ disrull(int stream, int *retval)
 	int		negate;
 	u_Long		value;
 
-	assert(disr_commit != NULL);
 	assert(retval != NULL);
 
 	locret = disrsll_(stream, &negate, &value, 1, 0);
@@ -103,7 +102,7 @@ disrull(int stream, int *retval)
 		value = 0;
 		locret = DIS_BADSIGN;
 	}
-	*retval = ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0) ?
+	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
 		DIS_NOCOMMIT : locret;
 	return (value);
 }

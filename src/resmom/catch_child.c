@@ -1034,7 +1034,7 @@ encode_used_exit:
  * @param[in]	cmd - command message to use to communicate status.
  * @param[in]	use_rtn_list_ext - set to 1 to use mom_rtn_list_ext[];
  *				   otherwise, use mom_rtn_list[]
- *				
+ *
  *
  * @return Void
  *
@@ -1048,13 +1048,13 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 	int			  index;
 	int			  nth = 0;
 	struct resc_used_update	  rused;
-	enum job_atr		*rtn_list;	
+	enum job_atr		*rtn_list;
 
 	if (use_rtn_list_ext)
 		rtn_list = mom_rtn_list_ext;
 	else
-		rtn_list = mom_rtn_list; 
-		
+		rtn_list = mom_rtn_list;
+
 
 	/* pass user-client privilege to encode_resc() */
 
@@ -1579,7 +1579,7 @@ scan_for_exiting(void)
 							pobit->oe_u.oe_tm.oe_event);
 						(void)diswsi(pobit->oe_u.oe_tm.oe_fd,
 							ptask->ti_qs.ti_exitstat);
-						(void)DIS_tcp_wflush(pobit->oe_u.oe_tm.oe_fd);
+						(void)dis_flush(pobit->oe_u.oe_tm.oe_fd);
 					}
 				}
 				else if (pnode->hn_stream != -1 &&
@@ -1984,23 +1984,18 @@ send_restart_tcp(char *svr, unsigned int port)
 	int rtn;
 	struct batch_reply *reply;
 	int sock;
-	int mode;
 
 	/* first, make sure we have a valid server (host), and ports */
 	if ((hostaddr = get_hostaddr(svr)) == (pbs_net_t)0) {
 		return (-1);
 	}
 
-	mode = B_RESERVED;
-	if (pbs_conf.auth_method == AUTH_MUNGE)
-		mode = B_EXTERNAL|B_SVR;
-
-	sock = client_to_svr(hostaddr, port, mode);
+	sock = client_to_svr(hostaddr, port, B_RESERVED);
 	if (sock < 0) {
 		return (-1);
 	}
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
 	/* send authentication information */
 
@@ -2010,7 +2005,7 @@ send_restart_tcp(char *svr, unsigned int port)
 		encode_DIS_ReqExtend(sock, NULL)) {
 		return (-1);
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(sock)) {
 		return (-1);
 	}
 
@@ -2020,13 +2015,11 @@ send_restart_tcp(char *svr, unsigned int port)
 	if (reply == NULL)
 		return (-1);
 	(void)memset(reply, 0, sizeof(struct batch_reply));
-	DIS_tcp_setup(sock);
 	if (decode_DIS_replyCmd(sock, reply) != 0) {
 		(void)free(reply);
 		return (-1);
 	}
-	DIS_tcp_reset(sock, 0);
-
+	dis_reset_buf(sock, DIS_READ_BUF);
 	CLOSESOCKET(sock);
 	rtn = reply->brp_code;
 	PBSD_FreeReply(reply);
@@ -2701,7 +2694,7 @@ mom_deljob_wait2(job *pjob)
 
 /**
  * @brief
- * send_sisters_deljob_wait	- 
+ * send_sisters_deljob_wait	-
  * 	Job entry is not deleted until the sisters have replied or are down
  *	This version DOES wait for the Sisters to reply, see processing of
  *	IM_DELETE_JOB_REPLY in mom_comm.c

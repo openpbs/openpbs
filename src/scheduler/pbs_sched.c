@@ -46,7 +46,6 @@
  *	sigfunc_pipe()
  *	die()
  *	server_disconnect()
- *	socket_to_conn()
  *	addclient()
  *	read_config()
  *	restart()
@@ -113,8 +112,8 @@
 #include	"globals.h"
 #include	"pbs_undolr.h"
 #include	"multi_threading.h"
+#include	"auth.h"
 
-struct		connect_handle connection[NCONNECTS];
 int		connector;
 int		server_sock;
 int		second_connection = -1;
@@ -148,7 +147,7 @@ extern int do_soft_cycle_interrupt;
 extern int do_hard_cycle_interrupt;
 #endif /* localmod 030 */
 
-static int	engage_authentication(struct connect_handle *);
+static int	engage_authentication(int);
 
 extern char *msg_startup1;
 
@@ -247,6 +246,7 @@ die(int sig)
 	}
 
 	log_close(1);
+	unload_auths();
 	exit(1);
 }
 
@@ -266,74 +266,26 @@ die(int sig)
 int
 server_disconnect(int connect)
 {
-	int	sd;
 	int	ret;
 
-	if ((connect < 0) || (connect > NCONNECTS))
+	if (connect < 0)
 		return 0;
 
 	if (pbs_client_thread_lock_connection(connect) != 0)
 		return 0;
 
-	if ((sd = connection [connect].ch_socket) >= 0) {
-
-		if ((ret = CS_close_socket(sd)) != CS_SUCCESS) {
-
-			sprintf(log_buffer,
-				"Problem closing connection security (%d)", ret);
-			log_err(-1, "close_conn", log_buffer);
-		}
-		close(sd);
+	if ((ret = CS_close_socket(connect)) != CS_SUCCESS) {
+		sprintf(log_buffer, "Problem closing connection security (%d)", ret);
+		log_err(-1, "close_conn", log_buffer);
 	}
-
-	if (connection[connect].ch_errtxt != NULL) {
-		free(connection[connect].ch_errtxt);
-		connection[connect].ch_errtxt = NULL;
-
-	}
-	connection[connect].ch_errno = 0;
-	connection[connect].ch_inuse = 0;
-
+	set_conn_errtxt(connect, NULL);
+	close(connect);
 	(void)pbs_client_thread_unlock_connection(connect);
 	pbs_client_thread_destroy_connect_context(connect);
 
 	return 1;
 }
-/**
- * @brief
- * 		assign socket to the connect handle and unlock the connectable thread.
- *
- * @param[in]	sock	-	opened socket
- *
- * @return	int
- * @return	index,i	: if thread is unlocked
- * @retval	-1	: error, not able to connect.
- */
-int
-socket_to_conn(int sock)
-{
-	int     i;
 
-	for (i=0; i<NCONNECTS; i++) {
-		if (connection[i].ch_inuse == 0) {
-
-			if (pbs_client_thread_lock_conntable() != 0)
-				return -1;
-
-			connection[i].ch_inuse = 1;
-			connection[i].ch_errno = 0;
-			connection[i].ch_socket= sock;
-			connection[i].ch_errtxt = NULL;
-
-			if (pbs_client_thread_unlock_conntable() != 0)
-				return -1;
-
-			return (i);
-		}
-	}
-	pbs_errno = PBSE_NOCONNECTS;
-	return (-1);
-}
 /**
  * @brief
  * 		add a new client to the list of clients.
@@ -613,13 +565,8 @@ server_command(char **jid)
 		return SCH_ERROR;
 	}
 
-	if ((connector = socket_to_conn(new_socket)) < 0) {
-		log_err(errno, __func__, "socket_to_conn");
-		close(new_socket);
-		return SCH_ERROR;
-	}
-
-	if (engage_authentication(&connection [connector]) == -1) {
+	connector = new_socket;
+	if (engage_authentication(new_socket) == -1) {
 		CS_close_socket(new_socket);
 		close(new_socket);
 		return SCH_ERROR;
@@ -705,7 +652,7 @@ server_command(char **jid)
  *  	engage_authentication - Use the security library interface to
  * 		engage the appropriate connection authentication.
  *
- * @param[in]	phandle	-	pointer to a "struct connect_handle"
+ * @param[in]	sd	-	socket no."
  *
  * @return	int
  * @retval	0	: successful
@@ -716,15 +663,12 @@ server_command(char **jid)
  *              information is closed out (freed).
  */
 static int
-engage_authentication(struct connect_handle *phandle)
+engage_authentication(int sd)
 {
 	int	ret;
-	int	sd;
 
-	if (phandle == NULL || (sd = phandle->ch_socket) <0) {
-
-		cs_logerr(0, "engage_authentication",
-			"Bad arguments, unable to authenticate.");
+	if (sd < 0) {
+		cs_logerr(0, "engage_authentication", "Bad arguments, unable to authenticate.");
 		return (-1);
 	}
 
@@ -740,10 +684,7 @@ engage_authentication(struct connect_handle *phandle)
 		return (0);
 	}
 
-	sprintf(log_buffer,
-		"Unable to authenticate connection (%d)",
-		ret);
-
+	sprintf(log_buffer, "Unable to authenticate connection (%d)", ret);
 	log_err(-1, "engage_authentication:", log_buffer);
 
 	return (-1);
@@ -1204,6 +1145,11 @@ main(int argc, char *argv[])
 	}
 
 	/*Initialize security library's internal data structures*/
+	if (load_auths(AUTH_SERVER)) {
+		log_err(-1, "pbs_sched", "Failed to load auth lib");
+		die(0);
+	}
+
 	{
 		int	csret;
 
@@ -1276,7 +1222,7 @@ main(int argc, char *argv[])
 	act.sa_handler = restart;       /* do a restart on SIGHUP */
 	sigaction(SIGHUP, &act, NULL);
 
-#ifdef PBS_UNDOLR_ENABLED	
+#ifdef PBS_UNDOLR_ENABLED
 	extern void catch_sigusr1(int);
 	act.sa_handler = catch_sigusr1;
 	sigaction(SIGUSR1, &act, NULL);
@@ -1397,18 +1343,7 @@ main(int argc, char *argv[])
 
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
-
-		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port,
-								pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-								TPP_AUTH_RESV_PORT, NULL, NULL);
-		} else {
-			/* for all non-resv-port based authentication use a callback from TPP */
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port,
-								pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-								TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
-		}
-
+		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port, pbs_conf.pbs_leaf_routers);
 		free(nodename);
 
 		if (rc == -1) {
@@ -1536,5 +1471,6 @@ main(int argc, char *argv[])
 	lock_out(lockfds, F_UNLCK);
 
 	(void)close(server_sock);
+	unload_auths();
 	exit(0);
 }

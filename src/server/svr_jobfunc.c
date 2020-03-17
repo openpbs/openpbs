@@ -1554,7 +1554,7 @@ check_block_wt(struct work_task *ptask)
 	**	All ready to talk... now send the info.
 	*/
 
-	DIS_tcp_setup(blockj->fd);
+	DIS_tcp_funcs();
 	ret = diswsi(blockj->fd, 1);		/* version */
 	if (ret != DIS_SUCCESS)
 		goto err;
@@ -1571,11 +1571,12 @@ check_block_wt(struct work_task *ptask)
 	ret = diswsi(blockj->fd, blockj->exitstat);
 	if (ret != DIS_SUCCESS)
 		goto err;
-	(void)DIS_tcp_wflush(blockj->fd);
+	(void)dis_flush(blockj->fd);
 
 	sprintf(log_buffer, "%s: Write successful to client %s for job %s ", __func__,
 	blockj->client, blockj->jobid);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_NOTICE, blockj->jobid, log_buffer);
+	dis_destroy_chan(blockj->fd);
 	CS_close_socket(blockj->fd);
 	goto end;
 
@@ -1588,6 +1589,8 @@ retry:
 		blockj->client, blockj->jobid);
 	}
 err:
+	DIS_tcp_funcs();
+	dis_destroy_chan(blockj->fd);
 	if (ret != DIS_SUCCESS) {
 		sprintf(log_buffer, "DIS error while replying to client %s for job %s",
 		blockj->client, blockj->jobid);

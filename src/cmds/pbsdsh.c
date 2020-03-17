@@ -87,7 +87,7 @@ bailout(int sig)
  *	a. have the spawn acknowledged, and
  *	b. the task to terminate and return the obit with the exit status
  *
- * @param[in] first - first event index to consider 
+ * @param[in] first - first event index to consider
  * @param[in] nspawned - number of tasks spawned
  *
  * @return - Void

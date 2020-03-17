@@ -201,6 +201,6 @@ foo\n
         qstat = self.server.status(JOB, ATTR_v, id=jid2)
         job_outfile = qstat[0]['Variable_List']
         var_list = job_outfile.split(",")
-        exp_string = "ENV_TEST=N:\\\\aa\\\\bb\\\\cc\\\\dd"
-        exp_string += "\\\\ee\\\\ff\\\\gg\\\\hh\\\\ii"
+        exp_string = 'ENV_TEST=N:\\\\\\\\aa\\\\\\\\bb\\\\\\\\cc\\\\\\\\dd'
+        exp_string += '\\\\\\\\ee\\\\\\\\ff\\\\\\\\gg\\\\\\\\hh\\\\\\\\ii'
         self.assertIn(exp_string, var_list)

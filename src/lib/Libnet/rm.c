@@ -58,7 +58,6 @@
 #include	"resmon.h"
 #include	"log.h"
 #include	"dis.h"
-#include	"dis_init.h"
 #include	"rm.h"
 #if	RPP
 #include	"rpp.h"
@@ -120,17 +119,15 @@ addrm(int stream)
 
 #if	RPP
 
-#define funcs_dis()	DIS_rpp_reset()
-#define	setup_dis(x)	DIS_rpp_setup(x)	/* RPP doesn't need reset */
+#define funcs_dis()	DIS_rpp_funcs()
 #define	close_dis(x)	rpp_close(x)
 #define	flush_dis(x)	rpp_flush(x)
 
 #else
 
 #define	funcs_dis()	DIS_tcp_funcs()
-#define	setup_dis(x)	DIS_tcp_setup(x)
 #define	close_dis(x)	close(x)
-#define	flush_dis(x)	DIS_tcp_wflush(x)
+#define	flush_dis(x)	dis_flush(x)
 
 #endif
 
@@ -299,7 +296,7 @@ startcom(int stream, int com)
 {
 	int	ret;
 
-	setup_dis(stream);
+	funcs_dis();
 	ret = diswsi(stream, RM_PROTOCOL);
 	if (ret == DIS_SUCCESS) {
 		ret = diswsi(stream, RM_PROTOCOL_VER);

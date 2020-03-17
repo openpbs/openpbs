@@ -70,13 +70,8 @@
 #include "libsec.h"
 #include "pbs_ecl.h"
 #include "pbs_internal.h"
-#include "pbs_gss.h"
-
-extern void DIS_tcp_release(int fd);
-
-extern struct connect_handle connection[NCONNECTS];
-
-#define ERR_BUF_SIZE 4096
+#include "log.h"
+#include "auth.h"
 
 /**
  * @brief
@@ -168,201 +163,6 @@ PBS_get_server(char *server, char *server_name,
 	return server_name;
 }
 
-/*
- * @brief
- *      PBS_authenticate - call pbs_iff(1) to authenticate use to the PBS server.
- *
- * @note
- * This function now accepts a argument sock_port and invoke pbs_iff
- * passing this port as a command line argument (both on unix and windows)
- * This change is done because getsockname() fails sometimes on Windows.
- *
- * Also, this would create an environment variable PBS_IFF_CLIENT_ADDR set to
- * the client's connecting address, which is made known to the pbs_iff process.
- *
- * If unable to authenticate, an attempt is made to run the old method
- * 'pbs_iff -i <pbs_client_addr>' also.
- *
- *
- * @param[in]  psock           Socket descriptor used by PBS client to connect PBS server.
- * @param[in]  server_name     Connecting PBS server host name.
- * @param[in]  server_port     Connecting PBS server port number.
- * @param[in]  paddr           Connecting PBS client sockaddr.
- *
- * @return int
- * @retval  0 on success.
- * @retval -1 on failure.
- */
-static int
-PBSD_authenticate(int psock, char * server_name, int server_port,
-	struct sockaddr_in *paddr)
-{
-	char   cmd[2][PBS_MAXSERVERNAME + 80];
-	int    cred_type;
-	int    i, k;
-	char*  pbs_client_addr = NULL;
-	u_short psock_port = 0;
-	int	rc;
-#ifdef WIN32
-	struct	pio_handles	pio;
-#else
-	FILE	*piff;
-#endif
-	if (paddr == NULL) {
-		return (-1);
-	}
-	pbs_client_addr = inet_ntoa(paddr->sin_addr);
-	if (pbs_client_addr == NULL) {
-		return (-1);
-	}
-	psock_port = paddr->sin_port;
-
-	/* for compatibility with 12.0 pbs_iff */
-	(void)snprintf(cmd[1], sizeof(cmd[1])-1, "%s -i %s %s %u %d %u",
-		pbs_conf.iff_path, pbs_client_addr,
-		server_name, server_port, psock, psock_port);
-#ifdef WIN32
-
-	(void)snprintf(cmd[0], sizeof(cmd[0])-1, "%s %s %u %d %u", pbs_conf.iff_path,
-		server_name, server_port, psock, psock_port);
-	for (k=0; k < 2; k++) {
-		rc = 0;
-		SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, pbs_client_addr);
-		if (!win_popen(cmd[k], "r", &pio, NULL)) {
-			printf("failed to execute %s\n", cmd[k]);
-			SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, NULL);
-			rc = -1;
-			break;
-		}
-		i=win_pread(&pio, (char *)&cred_type, (int)sizeof(int));
-		win_pclose(&pio);
-		SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, NULL);
-
-		if ((i != sizeof(int)) ||
-			(cred_type != PBS_credentialtype_none)) {
-			rc = -1;
-		} else {
-			break;
-		}
-	}
-
-#else	/* UNIX code here */
-	/* Use pbs_iff to authenticate me */
-	(void)snprintf(cmd[0], sizeof(cmd[0])-1, "%s=%s %s %s %u %d %u", PBS_IFF_CLIENT_ADDR,
-		pbs_client_addr, pbs_conf.iff_path,
-		server_name, server_port, psock, psock_port);
-
-	for (k=0; k < 2; k++) {
-		rc = 0;
-
-		piff = (FILE *)popen(cmd[k], "r");
-		if (piff == NULL) {
-			rc = -1;
-			break;
-		}
-
-		while ((i = read(fileno(piff), &cred_type, sizeof(int))) == -1) {
-			if (errno != EINTR)
-				break;
-		}
-
-		(void)pclose(piff);
-		if ((i != sizeof(int)) ||
-			(cred_type != PBS_credentialtype_none)) {
-			rc = -1;
-		} else {
-			break;
-		}
-	}
-#endif	/* end of UNIX code */
-
-	return rc;
-}
-
-/**
- * @breif
- *	-engage_authentication - Uses the "CS" security library interface to
- * 	do the authentication process that was specified at build time.
- *
- * @param[in]	sd              socket descriptor for this end of a connection
- * @param[in]	server_name     PBS server hostname.
- * @param[in]	server_port     PBS server port number to connect.
- * @param[in]	clnt_paddr      pointer to a client "struct sockaddr_in" variable
- *
- * @return	int
- * @retval	 0  successful
- * @retval	-1 unsuccessful
- *
- * @par	Remark:\n
- *	If the authentication fails, messages are logged to
- *      stderr (cs_logerr) and the mechanism for security context
- *      information is closed (freed).
- *
- */
-/* This function will now accept a argument sock_port and will pass it to
- * PBSD_authenticate, which will invoke pbs_iff passing this port as a command
- * line argument. (both on unix and windows)
- * This change is done because getsockname() fails sometimes on Windows.
- */
-static int
-engage_authentication(int sd,
-	char *server_name,
-	int  server_port,
-	struct sockaddr_in *clnt_paddr)
-{
-	int	ret;
-	char errbuf[ERR_BUF_SIZE];
-	char	ebuf[PBS_MAXHOSTNAME + PBS_MAXPORTNUM + 128] = {'\0'};
-	if ((sd < 0) || (clnt_paddr == NULL)) {
-		cs_logerr(-1, __func__, "Bad arguments, unable to authenticate.");
-		return (-1);
-	}
-
-	switch (pbs_conf.auth_method) {
-		case AUTH_MUNGE:
-			if ((ret = engage_external_authentication(sd, server_name, AUTH_MUNGE, 0, errbuf, sizeof(errbuf))) != 0)
-				cs_logerr(-1, __func__, errbuf);
-			return (ret);
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		case AUTH_GSS:
-			if (!getenv("PBSPRO_IGNORE_KERBEROS") && pbs_gss_can_get_creds()) {
-				if ((ret = engage_external_authentication(sd, server_name, AUTH_GSS, 0, errbuf, sizeof(errbuf))) != 0)
-					cs_logerr(-1, __func__, errbuf);
-				return (ret);
-			} /* else AUTH_RESV_PORT, no break here */
-#endif
-
-		case AUTH_RESV_PORT:
-			if ((ret = CS_client_auth(sd)) == CS_SUCCESS)
-				return (0);
-
-			if (ret == CS_AUTH_USE_IFF) {
-				/* CS_client_auth that got called was the one for STD security */
-				/*sock_port needs to be passed only for Windows.*/
-				if (PBSD_authenticate(sd, server_name, server_port, clnt_paddr) == 0)
-					return (0);
-			}
-			break;
-
-		default:
-			cs_logerr(-1, __func__, "Unrecognized authentication method");
-			return (-1);
-	}
-
-	sprintf(ebuf, "Unable to authenticate connection (%s:%d)", server_name, server_port);
-	cs_logerr(-1, __func__, ebuf);
-	/* Remove any associated per-connection security context
-	 * remark: when using pbs_iff security there is none
-	 */
-
-	if (CS_close_socket(sd) != CS_SUCCESS) {
-		sprintf(ebuf, "Problem closing context (%s:%d)", server_name, server_port);
-		cs_logerr(-1, __func__, ebuf);
-	}
-	return (-1);
-}
-
 /**
  * @brief
  *	-hostnmcmp - compare two hostnames, allowing a short name to match a longer
@@ -399,109 +199,6 @@ hostnmcmp(char *s1, char *s2)
 		return 0;
 
 	return 1;
-}
-
-/**
- * @brief
- *	Get the socket fd associated with the connection handle
- *
- * @param[in]   sd - The connection handle
- *
- * @return      Socket descriptor associated with the handle
- *
- */
-int
-pbs_connection_getsocket(int sd)
-{
-	return (connection[sd].ch_socket);
-}
-
-/**
- * @brief
- *      Generate munge key specific to the user and send PBS batch request
- *      (PBS_BATCH_AuthExternal)to PBS server to authenticate user.
- *
- * @param[in] sock - socket fd
- * @param[in] auth_type - Authentication type (Munge/AMS etc)
- * @param[in] fromsvr - connection initiated from server?
- *
- * @return  int
- * @retval   0 on success
- * @retval  -1 on failure
- * @retval  -2 on unsupported auth_type
- *
- */
-int
-engage_external_authentication(int sock, char *server_name, int auth_type, int fromsvr, char *ebuf, int ebufsz)
-{
-	int cred_len = 0, rc = 0, ret = 0;
-	char *cred = NULL;
-	struct batch_reply *reply = NULL;
-
-	switch (auth_type) {
-#ifndef WIN32
-		case AUTH_MUNGE:
-			ebuf[0] = '\0';
-			cred = pbs_get_munge_auth_data(fromsvr, ebuf, ebufsz);
-			if (!cred)
-				goto err;
-			break;
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		case AUTH_GSS:
-			ebuf[0] = '\0';
-			if (tcp_gss_client_authenticate(sock, server_name, ebuf, ebufsz) != PBS_GSS_OK)
-				ret = -1;
-			break;
-#endif
-
-#endif
-		default:
-			snprintf(ebuf, ebufsz, "Authentication type not supported");
-			ret = -2;
-	}
-
-	if (cred) {
-		ret = -1;
-		cred_len = strlen(cred);
-		DIS_tcp_setup(sock);
-		if (encode_DIS_ReqHdr(sock, PBS_BATCH_AuthExternal, pbs_current_user) ||
-				diswuc(sock, auth_type) || /* authentication_type */
-				diswsi(sock, cred_len) ||       /* credential length */
-				diswcs(sock, cred, cred_len) || /* credential data */
-				encode_DIS_ReqExtend(sock, NULL)) {
-			pbs_errno = PBSE_SYSTEM;
-			goto err;
-		}
-
-		if (DIS_tcp_wflush(sock)) {
-			pbs_errno = PBSE_SYSTEM;
-			goto err;
-		}
-
-		memset(cred, 0, cred_len);
-
-		reply = PBSD_rdrpy_sock(sock, &rc);
-		if ((reply != NULL) && (reply->brp_code != 0)) {
-			pbs_errno = PBSE_BADCRED;
-			PBSD_FreeReply(reply);
-			goto err;
-		}
-
-		PBSD_FreeReply(reply);
-		free(cred);
-		return 0;
-	}
-
-	/* else fall through */
-
-err:
-	if (ebuf[0] != '\0') {
-		fprintf(stderr, "%s\n", ebuf);
-		cs_logerr(-1, __func__, ebuf);
-	}
-	free(cred);
-	return ret;
 }
 
 /**
@@ -573,7 +270,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 {
 	struct sockaddr_in server_addr;
 	struct sockaddr_in my_sockaddr;
-	int out;
+	int sock;
 	int i;
 	int f;
 	char  *altservers[2];
@@ -581,8 +278,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	struct batch_reply	*reply;
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
-	struct sockaddr_in sockname;
-	pbs_socklen_t	 socknamelen;
+	char errbuf[LOG_BUF_SIZE] = {'\0'};
 #ifdef WIN32
 	struct sockaddr_in to_sock;
 	struct sockaddr_in from_sock;
@@ -647,29 +343,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 			return -1; /* pbs_errno was set */
 	}
 
-	/* Reserve a connection state record */
-	if (pbs_client_thread_lock_conntable() != 0)
-		return -1;
-
-	out = -1;
-	for (i=1;i<NCONNECTS;i++) {
-		if (connection[i].ch_inuse) continue;
-		out = i;
-		connection[out].ch_errno = 0;
-		connection[out].ch_socket= -1;
-		connection[out].ch_errtxt = NULL;
-		connection[out].ch_inuse = 1; /* reserve the socket */
-		break;
-	}
-
-	if (pbs_client_thread_unlock_conntable() != 0)
-		return -1; /* pbs_errno set by the function */
-
-	if (out < 0) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return -1;
-	}
-
 	/*
 	 * connect to server ...
 	 * If attempt to connect fails and if Failover configured and
@@ -684,24 +357,11 @@ __pbs_connect_extend(char *server, char *extend_data)
 		/* the following lousy hack is needed since the socket call needs */
 		/* SYSTEMROOT env variable properly set! */
 		if (getenv("SYSTEMROOT") == NULL) {
-			setenv("SYSTEMROOT", "C:\\WINNT", 1);
-			setenv("SystemRoot", "C:\\WINNT", 1);
-		}
-		connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
-		if (connection[out].ch_socket < 0) {
 			setenv("SYSTEMROOT", "C:\\WINDOWS", 1);
 			setenv("SystemRoot", "C:\\WINDOWS", 1);
-			connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
-
 		}
-#else
-		connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 #endif
-		if (connection[out].ch_socket < 0) {
-			connection[out].ch_inuse = 0;
-			pbs_errno = errno;
-			return -1;
-		}
+		sock = socket(AF_INET, SOCK_STREAM, 0);
 
 		/* and connect... */
 
@@ -715,7 +375,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		if (pbs_conf.pbs_public_host_name) {
 			/* my address will be in my_sockaddr,  bind the socket to it */
 			my_sockaddr.sin_port = 0;
-			if (bind(connection[out].ch_socket, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
+			if (bind(sock, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
 				return -1;
 			}
 		}
@@ -724,19 +384,15 @@ __pbs_connect_extend(char *server, char *extend_data)
 			return -1;
 
 		server_addr.sin_port = htons(server_port);
-		if (connect(connection[out].ch_socket,
-			(struct sockaddr *)&server_addr,
-			sizeof(struct sockaddr)) == 0) {
-
-				break;
+		if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == 0) {
+			break;
 		} else {
 			/* connect attempt failed */
-			CLOSESOCKET(connection[out].ch_socket);
+			CLOSESOCKET(sock);
 			pbs_errno = errno;
 		}
 	}
 	if (i >= (have_alt+1)) {
-		connection[out].ch_inuse = 0;
 		return -1; 		/* cannot connect */
 	}
 
@@ -756,10 +412,9 @@ __pbs_connect_extend(char *server, char *extend_data)
 #endif
 
 	/* setup connection level thread context */
-	if (pbs_client_thread_init_connect_context(out) != 0) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
-		/* pbs_errno set by the pbs_connect_init_context routine */
+	if (pbs_client_thread_init_connect_context(sock) != 0) {
+		CLOSESOCKET(sock);
+		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
@@ -769,6 +424,15 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * But we dont need to lock the connection handle, since this
 	 * connection handle is not yet been returned to the client
 	 */
+
+	if (load_auths(AUTH_CLIENT)) {
+		CLOSESOCKET(sock);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+
+	/* setup DIS support routines for following pbs_* calls */
+	DIS_tcp_funcs();
 
 	/* The following code was originally  put in for HPUX systems to deal
 	 * with the issue where returning from the connect() call doesn't
@@ -780,67 +444,43 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * no leading authentication message needing to be sent on the client
 	 * socket, so will send a "dummy" message and discard the replyback.
 	 */
-
-#if !defined(PBS_SECURITY ) || (PBS_SECURITY == STD) || (PBS_SECURITY == KRB5)
-
-	DIS_tcp_setup(connection[out].ch_socket);
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (getenv("PBSPRO_IGNORE_KERBEROS") || !pbs_gss_can_get_creds()) {
-#endif
-		if ((i = encode_DIS_ReqHdr(connection[out].ch_socket,
-			PBS_BATCH_Connect, pbs_current_user)) ||
-			(i = encode_DIS_ReqExtend(connection[out].ch_socket,
-			extend_data))) {
-			pbs_errno = PBSE_SYSTEM;
-			return -1;
-		}
-		if (DIS_tcp_wflush(connection[out].ch_socket)) {
-			pbs_errno = PBSE_SYSTEM;
-			return -1;
-		}
-
-		reply = PBSD_rdrpy(out);
-		PBSD_FreeReply(reply);
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	}
-#endif
-
-#endif	/* PBS_SECURITY ... */
-
-	/*do configured authentication (kerberos, pbs_iff, whatever)*/
-
-	/*Get the socket port for engage_authentication() */
-	socknamelen = sizeof(sockname);
-	if (getsockname(connection[out].ch_socket, (struct sockaddr *)&sockname, &socknamelen))
+	if ((i = encode_DIS_ReqHdr(sock, PBS_BATCH_Connect, pbs_current_user)) ||
+		(i = encode_DIS_ReqExtend(sock, extend_data))) {
+		CLOSESOCKET(sock);
+		pbs_errno = PBSE_SYSTEM;
 		return -1;
+	}
+	if (dis_flush(sock)) {
+		CLOSESOCKET(sock);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	reply = PBSD_rdrpy(sock);
+	PBSD_FreeReply(reply);
 
-	if (engage_authentication(connection[out].ch_socket,
-		server,
-		server_port,
-		&sockname) == -1) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
-		pbs_errno = PBSE_PERM;
+	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+		if (pbs_errno == 0)
+			pbs_errno = PBSE_PERM;
+		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
+		if (errbuf[0] != '\0')
+			fprintf(stderr, "auth: %s\n", errbuf);
+		CLOSESOCKET(sock);
 		return -1;
 	}
 
-	/* setup DIS support routines for following pbs_* calls */
-
-	DIS_tcp_setup(connection[out].ch_socket);
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
 
 	/*
 	 * Disable Nagle's algorithm on the TCP connection to server.
 	 * Nagle's algorithm is hurting cmd-server communication.
 	 */
-	if (pbs_connection_set_nodelay(out) == -1) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
+	if (pbs_connection_set_nodelay(sock) == -1) {
+		CLOSESOCKET(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
-	return out;
+	return sock;
 }
 
 /**
@@ -857,26 +497,20 @@ __pbs_connect_extend(char *server, char *extend_data)
 int
 pbs_connection_set_nodelay(int connect)
 {
-	int fd;
 	int opt;
 	pbs_socklen_t optlen;
 
-	if (connect < 0 || NCONNECTS <= connect)
+	if (connect < 0)
 		return -1;
-
-	if (!connection[connect].ch_inuse)
-		return -1;
-
 	optlen = sizeof(opt);
-	fd = connection[connect].ch_socket;
-	if (getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, &optlen) == -1)
+	if (getsockopt(connect, IPPROTO_TCP, TCP_NODELAY, &opt, &optlen) == -1)
 		return -1;
 
 	if (opt == 1)
 		return 0;
 
 	opt = 1;
-	return setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+	return setsockopt(connect, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 }
 
 /**
@@ -908,13 +542,9 @@ __pbs_connect(char *server)
 int
 __pbs_disconnect(int connect)
 {
-	int  sock;
 	char x;
 
-	if (connect < 0 || NCONNECTS <= connect)
-		return 0;
-
-	if (!connection[connect].ch_inuse)
+	if (connect < 0)
 		return 0;
 
 	/* initialize the thread context data, if not already initialized */
@@ -932,40 +562,27 @@ __pbs_disconnect(int connect)
 	 * check again to ensure that another racing thread
 	 * had not already closed the connection
 	 */
-	if (!connection[connect].ch_inuse) {
-		(void)pbs_client_thread_unlock_connection(connect);
+	if (get_conn_chan(connect) == NULL)
 		return 0;
-	}
 
 	/* send close-connection message */
 
-	sock = connection[connect].ch_socket;
-
-	DIS_tcp_setup(sock);
-	if ((encode_DIS_ReqHdr(sock, PBS_BATCH_Disconnect,
-		pbs_current_user) == 0) &&
-		(DIS_tcp_wflush(sock) == 0)) {
+	DIS_tcp_funcs();
+	if ((encode_DIS_ReqHdr(connect, PBS_BATCH_Disconnect, pbs_current_user) == 0) &&
+		(dis_flush(connect) == 0)) {
 		for (;;) {	/* wait for server to close connection */
 #ifdef WIN32
-			if (recv(sock, &x, 1, 0) < 1)
+			if (recv(connect, &x, 1, 0) < 1)
 #else
-			if (read(sock, &x, 1) < 1)
+			if (read(connect, &x, 1) < 1)
 #endif
 				break;
 		}
 	}
 
-	CS_close_socket(sock);
-	CLOSESOCKET(sock);
-
-	DIS_tcp_release(sock);
-
-	if (connection[connect].ch_errtxt != NULL) {
-		free(connection[connect].ch_errtxt);
-		connection[connect].ch_errtxt = NULL;
-	}
-	connection[connect].ch_errno = 0;
-	connection[connect].ch_inuse = 0;
+	CS_close_socket(connect);
+	CLOSESOCKET(connect);
+	dis_destroy_chan(connect);
 
 	/* unlock the connection level lock */
 	if (pbs_client_thread_unlock_connection(connect) != 0)
@@ -978,6 +595,8 @@ __pbs_disconnect(int connect)
 	 */
 	if (pbs_client_thread_destroy_connect_context(connect) != 0)
 		return -1;
+
+	(void)destroy_connection(connect);
 
 	return 0;
 }
@@ -1021,7 +640,7 @@ pbs_query_max_connections()
 int
 pbs_connect_noblk(char *server, int tout)
 {
-	int out;
+	int sock;
 	int i;
 	pbs_socklen_t l;
 	int n;
@@ -1034,9 +653,7 @@ pbs_connect_noblk(char *server, int tout)
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
 	short int connect_err = 0;
-
-	struct sockaddr_in sockname;
-	pbs_socklen_t	 socknamelen;
+	char errbuf[LOG_BUF_SIZE] = {'\0'};
 
 #ifdef WIN32
 	int     non_block = 1;
@@ -1064,62 +681,24 @@ pbs_connect_noblk(char *server, int tout)
 		return -1;
 	}
 
-	/* Reserve a connection state record */
-	if (pbs_client_thread_lock_conntable() != 0)
-		return -1;
-
-	out = -1;
-	for (i=1;i<NCONNECTS;i++) {
-		if (connection[i].ch_inuse) continue;
-		out = i;
-		connection[out].ch_inuse = 1;
-		connection[out].ch_errno = 0;
-		connection[out].ch_socket= -1;
-		connection[out].ch_errtxt = NULL;
-		break;
-	}
-
-	if (pbs_client_thread_unlock_conntable() != 0)
-		return -1; /* pbs_errno set by the function */
-
-	if (out < 0) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return -1;
-	}
-
-
 	/* get socket	*/
 
 #ifdef WIN32
 	/* the following lousy hack is needed since the socket call needs */
 	/* SYSTEMROOT env variable properly set! */
 	if (getenv("SYSTEMROOT") == NULL) {
-		setenv("SYSTEMROOT", "C:\\WINNT", 1);
-		setenv("SystemRoot", "C:\\WINNT", 1);
-	}
-	connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (connection[out].ch_socket < 0) {
 		setenv("SYSTEMROOT", "C:\\WINDOWS", 1);
 		setenv("SystemRoot", "C:\\WINDOWS", 1);
-		connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 	}
-#else
-	connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 #endif
-	if (connection[out].ch_socket < 0) {
-		connection[out].ch_inuse = 0;
-		pbs_errno = ERRORNO;
-		return -1;
-	}
-
+	sock = socket(AF_INET, SOCK_STREAM, 0);
 	/* set socket non-blocking */
-
 #ifdef WIN32
-	if (ioctlsocket(connection[out].ch_socket, FIONBIO, &non_block) == SOCKET_ERROR)
+	if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR)
 #else
-	oflg = fcntl(connection[out].ch_socket, F_GETFL) & ~O_ACCMODE;
+	oflg = fcntl(sock, F_GETFL) & ~O_ACCMODE;
 	nflg = oflg | O_NONBLOCK;
-	if (fcntl(connection[out].ch_socket, F_SETFL, nflg) == -1)
+	if (fcntl(sock, F_SETFL, nflg) == -1)
 #endif
 		goto err;
 
@@ -1140,8 +719,7 @@ pbs_connect_noblk(char *server, int tout)
 	hints.ai_protocol = IPPROTO_TCP;
 
 	if (getaddrinfo(server, NULL, &hints, &pai) != 0) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
+		CLOSESOCKET(sock);
 		pbs_errno = PBSE_BADHOST;
 		return -1;
 	}
@@ -1154,14 +732,13 @@ pbs_connect_noblk(char *server, int tout)
 	}
 	if (aip == NULL) {
 		/* treat no IPv4 addresses as getaddrinfo() failure */
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
+		CLOSESOCKET(sock);
 		pbs_errno = PBSE_BADHOST;
 		freeaddrinfo(pai);
 		return -1;
 	} else
 		inp->sin_port = htons(server_port);
-	if (connect(connection[out].ch_socket,
+	if (connect(sock,
 		aip->ai_addr,
 		aip->ai_addrlen) < 0) {
 		connect_err = 1;
@@ -1179,14 +756,14 @@ pbs_connect_noblk(char *server, int tout)
 #endif
 				while (1) {
 					FD_ZERO(&fdset);
-					FD_SET(connection[out].ch_socket, &fdset);
+					FD_SET(sock, &fdset);
 					tv.tv_sec = tout;
 					tv.tv_usec = 0;
-					n = select(connection[out].ch_socket+1, NULL, &fdset, NULL, &tv);
+					n = select(sock+1, NULL, &fdset, NULL, &tv);
 					if (n > 0) {
 						pbs_errno = 0;
 						l = sizeof(pbs_errno);
-						(void)getsockopt(connection[out].ch_socket,
+						(void)getsockopt(sock,
 							SOL_SOCKET, SO_ERROR,
 							&pbs_errno, &l);
 						if (pbs_errno == 0)
@@ -1209,8 +786,7 @@ pbs_connect_noblk(char *server, int tout)
 
 			default:
 err:
-				CLOSESOCKET(connection[out].ch_socket);
-				connection[out].ch_inuse = 0;
+				CLOSESOCKET(sock);
 				freeaddrinfo(pai);
 				return -1;	/* cannot connect */
 
@@ -1221,9 +797,9 @@ err:
 	/* reset socket blocking */
 #ifdef WIN32
 	non_block = 0;
-	if (ioctlsocket(connection[out].ch_socket, FIONBIO, &non_block) == SOCKET_ERROR)
+	if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR)
 #else
-	if (fcntl(connection[out].ch_socket, F_SETFL, oflg) < 0)
+	if (fcntl(sock, F_SETFL, oflg) < 0)
 #endif
 		goto err;
 
@@ -1232,9 +808,8 @@ err:
 	 * so no need to lock this piece of code
 	 */
 	/* setup connection level thread context */
-	if (pbs_client_thread_init_connect_context(out) != 0) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
+	if (pbs_client_thread_init_connect_context(sock) != 0) {
+		CLOSESOCKET(sock);
 		/* pbs_errno set by the pbs_connect_init_context routine */
 		return -1;
 	}
@@ -1245,41 +820,50 @@ err:
 	 * so others threads cannot use it
 	 */
 
-	/* send "dummy" connect message */
-	DIS_tcp_setup(connection[out].ch_socket);
-	if ((i = encode_DIS_ReqHdr(connection[out].ch_socket,
-		PBS_BATCH_Connect, pbs_current_user)) ||
-		(i = encode_DIS_ReqExtend(connection[out].ch_socket,
-		NULL))) {
+	if (load_auths(AUTH_CLIENT)) {
+		CLOSESOCKET(sock);
+		return -1;
+	}
+
+	/* setup DIS support routines for following pbs_* calls */
+	DIS_tcp_funcs();
+
+	/* The following code was originally  put in for HPUX systems to deal
+	 * with the issue where returning from the connect() call doesn't
+	 * mean the connection is complete.  However, this has also been
+	 * experienced in some Linux ppc64 systems like js-2. Decision was
+	 * made to enable this harmless code for all architectures.
+	 * FIX: Need to use the socket to send
+	 * a message to complete the process.  For IFF authentication there is
+	 * no leading authentication message needing to be sent on the client
+	 * socket, so will send a "dummy" message and discard the replyback.
+	 */
+	if ((i = encode_DIS_ReqHdr(sock, PBS_BATCH_Connect, pbs_current_user)) ||
+		(i = encode_DIS_ReqExtend(sock, NULL))) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-	if (DIS_tcp_wflush(connection[out].ch_socket)) {
+	if (dis_flush(sock)) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-	reply = PBSD_rdrpy(out);
+	reply = PBSD_rdrpy(sock);
 	PBSD_FreeReply(reply);
 
-	/*do configured authentication (kerberos, pbs_iff, whatever)*/
-
-	/*Get the socket port for engage_authentication()*/
-	socknamelen = sizeof(sockname);
-	if (getsockname(connection[out].ch_socket, (struct sockaddr *)&sockname, &socknamelen))
-		return -1;
-	if (engage_authentication(connection[out].ch_socket,
-		server,
-		server_port,
-		&sockname) == -1) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
+	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+		if (pbs_errno == 0)
+			pbs_errno = PBSE_PERM;
+		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
+		if (errbuf[0] != '\0')
+			fprintf(stderr, "auth: %s\n", errbuf);
+		CLOSESOCKET(sock);
 		pbs_errno = PBSE_PERM;
 		return -1;
 	}
 
 	/* setup DIS support routines for following pbs_* calls */
-	DIS_tcp_setup(connection[out].ch_socket);
+	DIS_tcp_funcs();
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
 
-	return out;
+	return sock;
 }

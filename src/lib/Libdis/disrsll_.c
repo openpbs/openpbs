@@ -73,7 +73,7 @@ init_ulmax()
  *	-Function to convert a string into numeric form of type u_Long
  *
  * @return	int
- * @retval	DIS_success/error 
+ * @retval	DIS_success/error
  *
  */
 
@@ -89,20 +89,18 @@ disrsll_(int stream, int *negate, u_Long *value, unsigned long count, int recurs
 	assert(value != NULL);
 	assert(count);
 	assert(stream >= 0);
-	assert(dis_getc != NULL);
-	assert(dis_gets != NULL);
 
 	if (++recursv > DIS_RECURSIVE_LIMIT)
 		return (DIS_PROTO);
 
 	/* ulmaxdigs  would be initialized from dis_init_tables */
-	switch (c = (*dis_getc)(stream)) {
+	switch (c = dis_getc(stream)) {
 		case '-':
 		case '+':
 			*negate = (c == '-');
 			if (count > ulmaxdigs)
 				goto overflow;
-			if ((*dis_gets)(stream, dis_buffer, count) != count)
+			if (dis_gets(stream, dis_buffer, count) != count)
 				return (DIS_EOD);
 			if (count == ulmaxdigs) {
 				if (memcmp(dis_buffer, ulmax, ulmaxdigs) > 0)
@@ -132,7 +130,7 @@ disrsll_(int stream, int *negate, u_Long *value, unsigned long count, int recurs
 			if (count > 1) {
 				if (count > ulmaxdigs)
 					break;
-				if ((*dis_gets)(stream, dis_buffer + 1, count - 1) !=
+				if (dis_gets(stream, dis_buffer + 1, count - 1) !=
 					count - 1)
 					return (DIS_EOD);
 				cp = dis_buffer;

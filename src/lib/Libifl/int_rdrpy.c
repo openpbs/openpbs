@@ -82,7 +82,7 @@ PBSD_rdrpy_sock(int sock, int *rc)
 	}
 	(void)memset(reply, 0, sizeof(struct batch_reply));
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	old_timeout = pbs_tcp_timeout;
 	if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
 		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
@@ -92,7 +92,7 @@ PBSD_rdrpy_sock(int sock, int *rc)
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
-	DIS_tcp_reset(sock, 0);		/* reset DIS read buffer */
+	dis_reset_buf(sock, DIS_READ_BUF);
 	pbs_tcp_timeout = old_timeout;
 
 	pbs_errno = reply->brp_code;
@@ -113,34 +113,34 @@ PBSD_rdrpy(int c)
 {
 	int rc;
 	struct batch_reply *reply;
-	int sock;
 
 	/* clear any prior error message */
 
-	if (connection[c].ch_errtxt != NULL) {
-		free(connection[c].ch_errtxt);
-		connection[c].ch_errtxt = NULL;
-	}
-
-	sock = connection[c].ch_socket;
-	reply = PBSD_rdrpy_sock(sock, &rc);
-	if (reply == NULL) {
-		connection[c].ch_errno = PBSE_PROTOCOL;
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL)
-			pbs_errno = PBSE_SYSTEM;
+	if (set_conn_errtxt(c, NULL) != 0) {
+		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
-
-	connection[c].ch_errno = reply->brp_code;
+	reply = PBSD_rdrpy_sock(c, &rc);
+	if (reply == NULL) {
+		if (set_conn_errno(c, PBSE_PROTOCOL) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+			return NULL;
+		}
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+			return NULL;
+		}
+		return NULL;
+	}
+	if (set_conn_errno(c, reply->brp_code) != 0) {
+		pbs_errno = reply->brp_code;
+		return NULL;
+	}
 	pbs_errno = reply->brp_code;
 
 	if (reply->brp_choice == BATCH_REPLY_CHOICE_Text) {
 		if (reply->brp_un.brp_txt.brp_str != NULL) {
-
-			/*No memory leak, see beginning of function*/
-			connection[c].ch_errtxt = strdup(reply->brp_un.brp_txt.brp_str);
-			if (connection[c].ch_errtxt == NULL) {
+			if (set_conn_errtxt(c, reply->brp_un.brp_txt.brp_str) != 0) {
 				pbs_errno = PBSE_SYSTEM;
 				return NULL;
 			}

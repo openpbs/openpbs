@@ -60,9 +60,6 @@ extern "C" {
 
 #define PBS_CREDNAME_AES	"aes"
 
-extern int pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen);
-extern int pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen);
-
 #ifdef	__cplusplus
 }
 #endif

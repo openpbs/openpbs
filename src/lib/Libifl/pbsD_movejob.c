@@ -68,15 +68,12 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 {
 	int		    rc;
 	struct batch_reply *reply;
-	int		    sock;
 
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 	if (destin == NULL)
 		destin = "";
-
-	sock = connection[c].ch_socket;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -89,13 +86,12 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc=encode_DIS_ReqHdr(sock, PBS_BATCH_MoveJob, pbs_current_user)) ||
-		(rc = encode_DIS_MoveJob(sock, jobid, destin))   ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_MoveJob, pbs_current_user)) ||
+		(rc = encode_DIS_MoveJob(c, jobid, destin))   ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
@@ -104,7 +100,7 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
@@ -116,7 +112,7 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

@@ -72,24 +72,20 @@ int
 PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int rpp, char **msgid)
 {
 	int rc = 0;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_MessJob,
-		pbs_current_user)) ||
-		(rc = encode_DIS_MessageJob(sock, jobid, fileopt, msg)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_MessJob, pbs_current_user)) ||
+		(rc = encode_DIS_MessageJob(c, jobid, fileopt, msg)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
-	if (DIS_wflush(sock, rpp)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc	  = pbs_errno;
 	}
@@ -117,25 +113,21 @@ int
 PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int rpp, char **msgid)
 {
 	int rc = 0;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_PySpawn,
-		pbs_current_user)) ||
-		(rc = encode_DIS_PySpawn(sock, jobid, argv, envp)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_PySpawn, pbs_current_user)) ||
+		(rc = encode_DIS_PySpawn(c, jobid, argv, envp)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
 			return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (DIS_wflush(sock, rpp)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc = pbs_errno;
 	}
@@ -159,24 +151,20 @@ int    rpp;
 char   **msgid;
 {
 	int rc = 0;
-	int sock;
 
 	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RelnodesJob,
-		pbs_current_user)) ||
-		(rc = encode_DIS_RelnodesJob(sock, jobid, node_list)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_RelnodesJob, pbs_current_user)) ||
+		(rc = encode_DIS_RelnodesJob(c, jobid, node_list)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
-	if (DIS_wflush(sock, rpp)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc	  = pbs_errno;
 	}

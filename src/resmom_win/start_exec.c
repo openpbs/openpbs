@@ -1455,7 +1455,7 @@ conn_qsub(char *hostname, long port)
 	 * a client
 	 */
 
-	return (client_to_svr(hostaddr, (unsigned int)port, 0x0 | B_SVR));
+	return (client_to_svr(hostaddr, (unsigned int)port, B_SVR));
 }
 #endif
 
@@ -4619,5 +4619,3 @@ set_credential(job *pjob, char **shell, char ***argarray)
 	}
 	return ret;
 }
-
-
