@@ -9639,7 +9639,7 @@ class Server(PBSService):
         """
         Helper function to delete a hook by name.
 
-        :param name: The name of the hook to create
+        :param name: The name of the hook to delete
         :type name: str
         :returns: False if hook does not exist
         :raises: PbsManagerError, otherwise return True.

@@ -1385,7 +1385,7 @@ class _server_attribute:
     #: m(__init__)
 
     def __str__(self):
-        return "%s:%s:%s:%s:%s" % self.tup()
+        return "name=%s:resource=%s:value=%s:op=%s:flags=%s:sisters=%s" % self.tup()
     #: m(__str__)
 
     def __setattr__(self, name, value):

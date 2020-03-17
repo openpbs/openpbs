@@ -4020,19 +4020,19 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pbs_list_head 		event_resv;
 	char			perf_label[MAXBUFLEN];
 
+	if (phook == NULL) {
+		log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_ERR,
+			__func__, "no associated hook");
+		return -1;
+	}
+
 	if (req_ptr == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"warning: empty hook input param!");
 		log_event(PBSEVENT_DEBUG3,
 			PBS_EVENTCLASS_HOOK, LOG_ERR,
 			phook->hook_name, log_buffer);
-		return -1;
-	}
-
-	if (phook == NULL) {
-		log_event(PBSEVENT_DEBUG3,
-			PBS_EVENTCLASS_HOOK, LOG_ERR,
-			phook->hook_name, "no associated hook");
 		return -1;
 	}
 
