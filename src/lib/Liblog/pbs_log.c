@@ -71,6 +71,9 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stddef.h>
+
 #include "log.h"
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
@@ -850,14 +853,20 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 {
 	time_t now = 0;
 	struct tm *ptm;
-#ifndef WIN32
-	struct tm ltm;
-#endif
 	int    rc = 0;
 	FILE  *savlog;
 	char slogbuf[LOG_BUF_SIZE];
 	struct timeval tp;
 	char microsec_buf[8] = {0};
+#ifndef WIN32
+	struct tm ltm;
+	sigset_t block_mask;
+	sigset_t old_mask;
+
+	/* Block all signals to the process to make the function async-safe */
+	sigfillset(&block_mask);
+	sigprocmask(SIG_BLOCK, &block_mask, &old_mask);
+#endif
 
 #if SYSLOG
 	if (syslogopen != 0) {
@@ -871,10 +880,10 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 #endif  /* SYSLOG */
 
 	if (log_opened <= 0)
-		return;
+		goto sigunblock;
 
 	if ((text == NULL) || (objname == NULL))
-		return;
+		goto sigunblock;
 
 	/* if gettimeofday() fails, log messages will be printed at the epoch */
 	if (gettimeofday(&tp, NULL) != -1) {
@@ -892,7 +901,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 
 	/* lock the log mutex */
 	if (log_mutex_lock() != 0)
-		return;
+		goto sigunblock;
 
 	/* Do we need to switch the log? */
 	if (log_auto_switch && (ptm->tm_yday != log_open_day)) {
@@ -908,7 +917,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 			log_err(rc, "log_record", "PBS cannot open its log");
 			fclose(logfile);
 		}
-		return;
+		goto sigunblock;
 	}
 
 	if (pbs_conf.locallog != 0 || pbs_conf.syslogfac == 0) {
@@ -947,6 +956,13 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 			fclose(logfile);
 		}
 	}
+
+sigunblock:
+#ifndef WIN32
+	sigprocmask(SIG_SETMASK, &old_mask, NULL);
+#else
+	return;
+#endif
 }
 
 /**
