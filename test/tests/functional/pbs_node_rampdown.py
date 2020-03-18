@@ -6040,10 +6040,11 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.start()
         self.assertTrue(self.server.isUp())
 
-        # make sure job is now running with assigned resources
+        # make sure job is now running after server restart
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        # make sure job is running with assigned resources
         # from the original request
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '5gb',
+        self.server.expect(JOB, {'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
                                  'Resource_List.nodect': 3,
                                  'Resource_List.select': self.job11x_select,
@@ -6406,10 +6407,12 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.start()
         self.assertTrue(self.server.isUp())
 
-        # make sure job is now running with assigned resources
+        # make sure job is now running after server restart
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # make sure job is running with assigned resources
         # from the original request
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '5gb',
+        self.server.expect(JOB, {'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
                                  'Resource_List.nodect': 3,
                                  'Resource_List.select': self.job11_select,
