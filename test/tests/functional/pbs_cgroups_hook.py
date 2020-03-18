@@ -76,14 +76,20 @@ def systemd_escape(buf):
     ret = ''
     for i, char in enumerate(buf):
         if i < 1 and char == '.':
-            ret += '\\x' + char.encode('utf-8').hex()
-            continue
-        if char.isalnum() or char in '_.':
+            if (sys.version_info[0] < 3):
+                ret += '\\x' + '.'.encode('hex')
+            else:
+                ret += '\\x' + b'.'.hex()
+        elif char.isalnum() or char in '_.':
             ret += char
         elif char == '/':
             ret += '-'
         else:
-            hexval = char.encode('utf-8').hex()
+            # Will turn non-ASCII into UTF-8 hex sequence on both Py2/3
+            if (sys.version_info[0] < 3):
+                hexval = char.encode('hex')
+            else:
+                hexval = char.encode('utf-8').hex()
             for j in range(0, len(hexval), 2):
                 ret += '\\x' + hexval[j:j + 2]
     return ret
@@ -1352,7 +1358,8 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
+        a = {'Resource_List.select':
+             '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0],
              ATTR_N: name, ATTR_k: 'oe'}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
@@ -1361,7 +1368,9 @@ if %s e.job.in_ms_mom():
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
         fna = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
+        self.assertFalse(fna is None, 'No job directory for cpuset subsystem')
         fnma = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
+        self.assertFalse(fnma is None, 'No job directory for memory subsystem')
         memscr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fna, fnma)],
                                  as_script=True)
         memscr_out = memscr['out']
@@ -1796,8 +1805,8 @@ if %s e.job.in_ms_mom():
         time.sleep(1)
         hostn = self.get_hostname(self.hosts_list[1])
         self.moms_list[1].log_match(
-            '%s is not in the approved host list: [%s]' %
-            (hostn, log), starttime=self.server.ctime)
+            'set enabled to False based on run_only_on_hosts',
+            starttime=self.server.ctime)
         cpath = self.get_cgroup_job_dir('memory', jid, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1858,7 +1867,7 @@ if %s e.job.in_ms_mom():
         """
         Test to verify that the mom reserve memory for OS
         when there is a reserve mem request in the config.
-        Install cfg3 and then cfg4 and measure diffenece
+        Install cfg3 and then cfg4 and measure difference
         between the amount of available memory and memsw.
         For example, on a system with 1GB of physical memory
         and 1GB of active swap. With cfg3 in place, we should
@@ -1899,17 +1908,34 @@ if %s e.job.in_ms_mom():
             vmem2 = PbsTypeSize(vmem[0]['resources_available.vmem'])
             self.logger.info('Vmem-2: %s' % vmem2.value)
             vmem_resv = vmem1 - vmem2
-            self.logger.info('Vmem resv: %s' % vmem_resv.value)
-            self.assertEqual(vmem_resv.value, 97280)
-            self.assertEqual(vmem_resv.unit, 'kb')
+            if (vmem_resv.unit == 'b'):
+                vmem_resv_bytes = vmem_resv.value
+            elif (vmem_resv.unit == 'kb'):
+                vmem_resv_bytes = vmem_resv.value * 1024
+            elif (vmem_resv.unit == 'mb'):
+                vmem_resv_bytes = vmem_resv.value * 1024 * 1024
+            self.logger.info('Vmem resv diff in bytes: %s' % vmem_resv_bytes)
+            # rounding differences may make diff slighly smaller than we expect
+            # accept 1MB deviation as irrelevant
+            # Note: since we don't know if there is swap, memsw reserved
+            # increase might not have been heeded. Change this to a higher
+            # value (cfr. above) only on test harnesses that have enough swap
+            self.assertGreaterEqual(vmem_resv_bytes, (51200 - 1024) * 1024)
         mem = self.server.status(NODE, 'resources_available.mem',
                                  id=self.nodes_list[0])
         mem2 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-2: %s' % mem2.value)
         mem_resv = mem1 - mem2
-        self.logger.info('Mem resv: %s' % mem_resv.value)
-        self.assertEqual(mem_resv.value, 51200)
-        self.assertEqual(mem_resv.unit, 'kb')
+        if (mem_resv.unit == 'b'):
+            mem_resv_bytes = mem_resv.value
+        elif (mem_resv.unit == 'kb'):
+            mem_resv_bytes = mem_resv.value * 1024
+        elif (mem_resv.unit == 'mb'):
+            mem_resv_bytes = mem_resv.value * 1024 * 1024
+        self.logger.info('Mem resv diff in bytes: %s' % mem_resv_bytes)
+        # rounding differences may make diff slighly smaller than we expect
+        # accept 1MB deviation as irrelevant
+        self.assertGreaterEqual(mem_resv_bytes, (51200 - 1024) * 1024)
 
     @requirements(num_moms=2)
     def test_cgroup_multi_node(self):
