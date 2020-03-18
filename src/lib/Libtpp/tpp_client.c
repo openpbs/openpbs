@@ -779,6 +779,41 @@ connect_router(tpp_router_t *r)
 
 /**
  * @brief
+ *	tpp leaf atfork prepare handler
+ *  It acquires all (currently only strmarray_lock) before fork
+ */
+void
+tpp_client_prefork()
+{
+	tpp_lock(&strmarray_lock);
+}
+
+/**
+ * @brief
+ *	tpp leaf postfork parent handler
+ *  It releases all (currently only strmarray_lock) after fork in the parent process
+ */
+void
+tpp_client_postfork_parent()
+{
+	tpp_unlock(&strmarray_lock);
+}
+
+/**
+ * @brief
+ *	tpp leaf postfork child handler
+ *  Initialize a new strmarray_lock for the child and
+ *  then call tpp_terminate()
+ */
+void
+tpp_client_postfork_child()
+{
+	tpp_init_lock(&strmarray_lock);
+	tpp_terminate();
+}
+
+/**
+ * @brief
  *	Initializes the client side of the TPP library
  *
  * @par Functionality:
@@ -926,7 +961,7 @@ tpp_init(struct tpp_config *cnf)
 
 #ifndef WIN32
 	/* for unix, set a pthread_atfork handler */
-	if (pthread_atfork(NULL, NULL, tpp_terminate) != 0) {
+	if (pthread_atfork(tpp_client_prefork, tpp_client_postfork_parent, tpp_client_postfork_child)) {
 		tpp_log_func(LOG_CRIT, __func__, "TPP atfork handler registration failed");
 		return -1;
 	}
