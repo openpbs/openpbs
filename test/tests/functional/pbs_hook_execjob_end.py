@@ -463,15 +463,27 @@ class TestPbsExecjobEnd(TestFunctional):
         Test to restart mom while execjob_end hook is running
         """
         hook_name = "end_hook"
-        attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '100'}
-        self.server.create_import_hook(hook_name, attr, self.hook_body)
+        attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '40'}
+        hook_body = ("import pbs\n"
+                     "import time\n"
+                     "e = pbs.event()\n"
+                     "pbs.logjobmsg(e.job.id, \
+                                    'execjob_end hook started')\n"
+                     "time.sleep(20)\n"
+                     "pbs.logjobmsg(e.job.id, \
+                                    'execjob_end hook ended')\n"
+                     "e.accept()\n")
+        self.server.create_import_hook(hook_name, attr, hook_body)
         j = Job(TEST_USER)
         j.set_sleep_time(5)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.mom.log_match("Job;%s;executed execjob_end hook" %
+        self.mom.log_match("Job;%s;execjob_end hook started" %
                            jid, n=100, max_attempts=10,
                            interval=2)
         self.mom.restart()
+        self.mom.log_match("Job;%s;execjob_end hook ended" %
+                           jid, n=100, max_attempts=20,
+                           interval=2)
         self.server.log_match(jid + ";Exit_status=0", interval=4,
                               max_attempts=10)
