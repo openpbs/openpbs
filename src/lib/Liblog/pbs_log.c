@@ -893,15 +893,15 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 			snprintf(microsec_buf, sizeof(microsec_buf), ".%06ld", (long)tp.tv_usec);
 	}
 
-	/* lock the log mutex */
-	if (log_mutex_lock() != 0)
-		goto sigunblock;
-
 #ifdef WIN32
 	ptm = localtime(&now);
 #else
 	ptm = localtime_r(&now, &ltm);
 #endif
+
+	/* lock the log mutex */
+	if (log_mutex_lock() != 0)
+		goto sigunblock;
 
 	/* Do we need to switch the log? */
 	if (log_auto_switch && (ptm->tm_yday != log_open_day)) {
