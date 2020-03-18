@@ -610,10 +610,10 @@ class TestHookManagement(TestFunctional):
         self.server.log_match("%s;deleted at request of" % hook_name_00,
                               starttime=start_time)
 
-        self.server.log_match("missing attributes in pbs", starttime=start_time,
-                              existence=False)
-        self.server.log_match("all attributes found in pbs", starttime=start_time,
-                              existence=True)
+        self.server.log_match("missing attributes in pbs",
+                              starttime=start_time, existence=False)
+        self.server.log_match("all attributes found in pbs",
+                              starttime=start_time, existence=True)
 
         self.logger.info(str(dir()))
         self.logger.info("**************** HOOK END ****************")
