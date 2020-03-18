@@ -499,8 +499,8 @@ class TestHookManagement(TestFunctional):
         self.server.log_match("%s;deleted at request of" % hook_name_00,
                               starttime=start_time)
 
-        self.server.log_match("hook '%s' encountered an exception" % \
-                              hook_name_00, starttime=start_time)
+        self.server.log_match("hook '%s' encountered an exception"
+                              % hook_name_00, starttime=start_time)
 
         self.logger.info("**************** HOOK END ****************")
 
@@ -541,5 +541,3 @@ class TestHookManagement(TestFunctional):
                               starttime=start_time)
 
         self.logger.info("**************** HOOK END ****************")
-
-        self.logger.info("%s" % str(dir()))
