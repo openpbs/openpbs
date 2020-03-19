@@ -20,7 +20,7 @@ from tests.functional import *
 import socket
 
 
-class TestWeanUdp(TestFunctional):
+class TestTPP(TestFunctional):
     """
     Test suite consists of tests to check the functionality of pbs_comm daemon
     """
@@ -59,17 +59,17 @@ class TestWeanUdp(TestFunctional):
         """
         Test the installation of communication daemon during PBS installation.
         """
-        msg = "Need 2 moms as input. use -pmoms=<m1>:<m2>"
-        if len(self.moms) != 2:
+        msg = "Need atleast 2 moms as input. use -pmoms=<m1>:<m2>"
+        if len(self.moms) < 2:
             self.skip_test(reason=msg)
         (self.momA, self.momB) = self.moms.values()
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        log_msg = ["TPP initialization done",
-                   "Single pbs_comm configured, " +
-                   "TPP Fault tolerant mode disabled",
-                   "Connected to pbs_comm %s.*:17001" % self.server.shortname]
-        for msg in log_msg:
+        log_msgs = ["TPP initialization done",
+                    "Single pbs_comm configured, " +
+                    "TPP Fault tolerant mode disabled",
+                    "Connected to pbs_comm %s.*:17001" % self.server.shortname]
+        for msg in log_msgs:
             self.server.log_match(msg, regexp=True)
             self.scheduler.log_match(msg, regexp=True)
             self.momA.log_match(msg, regexp=True)
@@ -79,11 +79,11 @@ class TestWeanUdp(TestFunctional):
         self.server.log_match(msg)
         msg = "Registering address %s:15004 to pbs_comm" % server_ip
         self.scheduler.log_match(msg)
-        for mom_name in self.moms.values():
-            ip = socket.gethostbyname(mom_name.shortname)
+        for mom in self.moms.values():
+            ip = socket.gethostbyname(mom.shortname)
             msg1 = "Registering address %s:15003 to pbs_comm" % ip
             msg2 = "Leaf registered address %s:15003" % ip
-            mom_name.log_match(msg1)
+            mom.log_match(msg1)
             self.comm.log_match(msg2)
         # Submit job
         jid = self.submit_job(exp_attrib={'job_state': 'R'})
@@ -112,13 +112,4 @@ class TestWeanUdp(TestFunctional):
         self.server.expect(RESV, a, rid, offset=5)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(rid)
-        # wait for sometime for the job in reservation queue to get delete
-        time.sleep(5)
-        try:
-            self.server.status(JOB, id=jid)
-        except PbsStatusError as e:
-            msg = "Unknown Job Id %s" % jid
-            self.assertTrue(msg in e.msg[0])
-        else:
-            msg = "Unexpectedly found job in qstat output"
-            self.fail(msg)
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET)
