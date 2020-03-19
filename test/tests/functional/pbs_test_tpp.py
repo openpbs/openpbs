@@ -62,9 +62,6 @@ class TestTPP(TestFunctional):
         msg = "Need atleast 2 moms as input. use -pmoms=<m1>:<m2>"
         if len(self.moms) < 2:
             self.skip_test(reason=msg)
-        (self.momA, self.momB) = self.moms.values()
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
         log_msgs = ["TPP initialization done",
                     "Single pbs_comm configured, " +
                     "TPP Fault tolerant mode disabled",
@@ -72,8 +69,8 @@ class TestTPP(TestFunctional):
         for msg in log_msgs:
             self.server.log_match(msg, regexp=True)
             self.scheduler.log_match(msg, regexp=True)
-            self.momA.log_match(msg, regexp=True)
-            self.momB.log_match(msg, regexp=True)
+        for mom in self.moms.values():
+            self.mom.log_match(msg, regexp=True)
         server_ip = socket.gethostbyname(self.server.hostname)
         msg = "Registering address %s:15001 to pbs_comm" % server_ip
         self.server.log_match(msg)
