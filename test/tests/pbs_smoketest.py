@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from ptl.utils.pbs_testsuite import *
+from ptl.utils.pbs_dshutils import TimeOut
 
 
 @tags('smoke')
@@ -750,13 +751,19 @@ class SmokeTest(PBSTestSuite):
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(JOB, {'job_state=R': 9})
-        cycle = self.scheduler.cycles(start=start_time, end=time.time())
+        end_time = int(time.time()) + 1
+        cycle = self.scheduler.cycles(start=start_time, end=end_time)
+        self.logger.info("len(cycle):%s, td:%s" % (len(cycle),
+                         end_time - start_time))
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
                 i -= 1
             if i < 0:
                 self.assertTrue(False, 'failed to found political order')
+            for j, _cycle in enumerate(cycle):
+                self.logger.info("cycle:%s:%s" % (i, _cycle.political_order))
+            self.logger.info("cycle i:%s" % i)
             cycle = cycle[i]
             jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7],
                     jids[2], jids[5], jids[8]]
@@ -1371,17 +1378,27 @@ class SmokeTest(PBSTestSuite):
                                 id=self.resc_name, logerr=False)
         except (PbsManagerError, PbsStatusError):
             pass
-        for k in self.objs:
-            if k not in self.obj_map:
-                self.logger.error('can not map object ' + k)
-                continue
-            v = self.obj_map[k]
-            for t in self.resc_types:
-                for f in self.resc_flags:
-                    for c in self.resc_flags_ctl:
-                        self.delete_resource_helper(
-                            self.resc_name, t, f, c, k, v)
-                        self.logger.info("")
+        count = 0
+        starttime = int(time.time())
+        try:
+            for k in self.objs:
+                if k not in self.obj_map:
+                    self.logger.error('can not map object ' + k)
+                    continue
+                v = self.obj_map[k]
+                for t in self.resc_types:
+                    for f in self.resc_flags:
+                        for c in self.resc_flags_ctl:
+                            self.delete_resource_helper(
+                                self.resc_name, t, f, c, k, v)
+                            self.logger.info("")
+                            count += 1
+        except TimeOut:
+            raise
+        finally:
+            endtime = int(time.time())
+            self.logger.info("test_resource_delete, took %s seconds, "
+                             "count:%s" % (endtime - starttime, count))
 
     def setup_fs(self, formula):
 

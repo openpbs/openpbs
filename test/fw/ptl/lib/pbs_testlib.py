@@ -9635,6 +9635,22 @@ class Server(PBSService):
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
+    def delete_hook(self, name):
+        """
+        Helper function to delete a hook by name.
+
+        :param name: The name of the hook to delete
+        :type name: str
+        :returns: False if hook does not exist
+        :raises: PbsManagerError, otherwise return True.
+        """
+        hooks = self.status(HOOK, level=logging.DEBUG)
+        for hook in hooks:
+            if hook['id'] == name:
+                self.logger.info("Removing hook:%s" % name)
+                self.manager(MGR_CMD_DELETE, HOOK, id=name)
+        return True
+
     def import_hook(self, name, body, level=logging.INFO):
         """
         Helper function to import hook body into hook by name.

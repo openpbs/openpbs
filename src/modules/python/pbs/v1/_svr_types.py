@@ -1365,3 +1365,136 @@ class pbs_iter():
                 return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
                                              self.filter1, self.filter2)
 #: C(pbs_iter)
+
+#:------------------------------------------------------------------------
+#                  SERVER ATTRIBUTE TYPE
+#:-------------------------------------------------------------------------
+class _server_attribute:
+    """
+    This represents a external form of attributes..
+    """
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+    _attributes_hook_set = {}
+    def __init__(self, name, resource, value, op, flags):
+        self.name = name
+        self.resource = resource
+        self.value = value
+        self.op = op
+        self.flags = flags
+        self.sisters = []
+    #: m(__init__)
+
+    def __str__(self):
+        return "name=%s:resource=%s:value=%s:op=%s:flags=%s:sisters=%s" % self.tup()
+    #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the server_attribute object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
+
+    def extract_flags_str(self):
+        """returns the string values from the attribute flags."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
+            if self.flags & mask:
+                lst.append(value)
+        return lst
+    #: m(extract_flags_str)
+
+    def extract_flags_int(self):
+        """returns the integer values from the attribute flags."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
+            if self.flags & mask:
+                lst.append(mask)
+        return lst
+    #: m(extract_flags_int)
+
+    def tup(self):
+        return self.name, self.resource, self.value, self.op, self.flags, self.sisters
+    #: m(tup)
+
+_server_attribute._connect_server = PbsAttributeDescriptor(
+    _server_attribute, '_connect_server', "", (str,))
+#: C(_server_attribute)
+
+# This exposes pbs.server_attribute() to be callable in a hook script
+server_attribute = _server_attribute
+
+#:------------------------------------------------------------------------
+#                  MANAGEMENT TYPE
+#:-------------------------------------------------------------------------
+class _management:
+    """
+    This represents a management operation.
+    """
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+    _attributes_hook_set = {}
+
+    def __init__(self, cmd, objtype, objname, request_time, reply_code,
+        reply_auxcode, reply_choice, reply_text,
+        attribs, connect_server=None):
+        """__init__"""
+        self.cmd = cmd
+        self.objtype = objtype
+        self.objname = objname
+        self.request_time = request_time
+        self.reply_code = reply_code
+        self.reply_auxcode = reply_auxcode
+        self.reply_choice = reply_choice
+        self.reply_text = reply_text
+        self.attribs = attribs
+        self._readonly = True
+        self._connect_server = connect_server
+    #: m(__init__)
+
+    def __str__(self):
+        """String representation of the object"""
+        return "%s:%s:%s" % (
+            _pbs_v1.REVERSE_MGR_CMDS.get(self.cmd, self.cmd),
+            _pbs_v1.REVERSE_MGR_OBJS.get(self.objtype, self.objtype),
+            self.objname
+            )
+    #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the management object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
+
+_management.cmd = PbsAttributeDescriptor(_management, 'cmd', None, (int,))
+_management.objtype = PbsAttributeDescriptor(_management, 'objtype', None, (int,))
+_management.objname = PbsAttributeDescriptor(_management, 'objname', "", (str,))
+_management._connect_server = PbsAttributeDescriptor(
+    _management, '_connect_server', "", (str,))
+#: C(_management)
+
+# This exposes pbs.management() to be callable in a hook script
+management = _management
+
+
+
+#:------------------------------------------------------------------------
+#                  Reverse Lookup for _pv1mod_insert_int_constants
+#:-------------------------------------------------------------------------
+_pbs_v1.REVERSE_MGR_CMDS = {}
+_pbs_v1.REVERSE_MGR_OBJS = {}
+_pbs_v1.REVERSE_BRP_CHOICES = {}
+_pbs_v1.REVERSE_BATCH_OPS = {}
+_pbs_v1.REVERSE_ATR_VFLAGS = {}
+for key, value in _pbs_v1.__dict__.items():
+    if key.startswith("MGR_CMD_"):
+        _pbs_v1.REVERSE_MGR_CMDS[value] = key
+    elif key.startswith("MGR_OBJ_"):
+        _pbs_v1.REVERSE_MGR_OBJS[value] = key
+    elif key.startswith("BRP_CHOICE_"):
+        _pbs_v1.REVERSE_BRP_CHOICES[value] = key
+    elif key.startswith("BATCH_OP_"):
+        _pbs_v1.REVERSE_BATCH_OPS[value] = key
+    elif key.startswith("ATR_VFLAG_"):
+        _pbs_v1.REVERSE_ATR_VFLAGS[value] = key

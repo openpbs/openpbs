@@ -95,6 +95,7 @@ extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -132,6 +133,7 @@ clear_hook_links(hook *phook)
 	delete_link(&phook->hi_periodic_hooks);
 	delete_link(&phook->hi_resv_end_hooks);
 	delete_link(&phook->hi_allhooks);
+	delete_link(&phook->hi_management_hooks);
 
 	/* mom hooks below */
 	delete_link(&phook->hi_execjob_begin_hooks);
@@ -201,6 +203,13 @@ hook_event_as_string(unsigned int event)
 		if (ev_ct > 0)
 			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
 		strncat(eventstr, HOOKSTR_RUNJOB, sizeof(eventstr) - strlen(eventstr) - 1);
+		ev_ct++;
+	}
+
+	if (event & HOOK_EVENT_MANAGEMENT) {
+		if (ev_ct > 0)
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_MANAGEMENT, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
@@ -343,6 +352,8 @@ hookstr_event_toint(char *eventstr)
 		return HOOK_EVENT_MOVEJOB;
 	if (strcmp(eventstr, HOOKSTR_RUNJOB) == 0)
 		return HOOK_EVENT_RUNJOB;
+	if (strcmp(eventstr, HOOKSTR_MANAGEMENT) == 0)
+		return HOOK_EVENT_MANAGEMENT;
 	if (strcmp(eventstr, HOOKSTR_PROVISION) == 0)
 		return HOOK_EVENT_PROVISION;
 	if (strcmp(eventstr, HOOKSTR_RESV_END) == 0)
@@ -876,6 +887,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_movejob_hooks;
 	} else if (event == HOOK_EVENT_RUNJOB) {
 		plink_elem = &phook->hi_runjob_hooks;
+	} else if (event == HOOK_EVENT_MANAGEMENT) {
+		plink_elem = &phook->hi_management_hooks;
 	} else if (event == HOOK_EVENT_PROVISION) {
 		plink_elem = &phook->hi_provision_hooks;
 	} else if (event == HOOK_EVENT_PERIODIC) {
@@ -932,6 +945,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_movejob_hooks;
 		} else if (event == HOOK_EVENT_RUNJOB) {
 			plink_cur = &phook_cur->hi_runjob_hooks;
+		} else if (event == HOOK_EVENT_MANAGEMENT) {
+			plink_cur = &phook_cur->hi_management_hooks;
 		} else if (event == HOOK_EVENT_PROVISION) {
 			plink_cur = &phook_cur->hi_provision_hooks;
 		} else if (event == HOOK_EVENT_PERIODIC) {
@@ -1404,6 +1419,13 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event 	|= HOOK_EVENT_RUNJOB;
 			insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 				&svr_runjob_hooks, phook);
+		} else if (strcmp(val, HOOKSTR_MANAGEMENT) == 0) {
+			if (phook->event & HOOK_EVENT_PROVISION)
+				goto err;
+			delete_link(&phook->hi_management_hooks);
+			phook->event 	|= HOOK_EVENT_MANAGEMENT;
+			insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
+				&svr_management_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
 			if (phook->event & ~HOOK_EVENT_PROVISION)
 				goto err;
@@ -1617,6 +1639,9 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_RUNJOB) == 0) {
 			delete_link(&phook->hi_runjob_hooks);
 			phook->event 	&= ~HOOK_EVENT_RUNJOB;
+		} else if (strcmp(val, HOOKSTR_MANAGEMENT) == 0) {
+			delete_link(&phook->hi_management_hooks);
+			phook->event 	&= ~HOOK_EVENT_MANAGEMENT;
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
 			delete_link(&phook->hi_provision_hooks);
 			phook->event 	&= ~HOOK_EVENT_PROVISION;
@@ -1786,6 +1811,12 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_runjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 			&svr_runjob_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_MANAGEMENT) {
+		delete_link(&phook->hi_management_hooks);
+		insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
+			&svr_management_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
@@ -2172,6 +2203,9 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 	if (phook->event & HOOK_EVENT_RUNJOB)
 		delete_link(&phook->hi_runjob_hooks);
 
+	if (phook->event & HOOK_EVENT_MANAGEMENT)
+		delete_link(&phook->hi_management_hooks);
+
 	if (phook->event & HOOK_EVENT_PROVISION)
 		delete_link(&phook->hi_provision_hooks);
 
@@ -2295,6 +2329,12 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 		delete_link(&phook->hi_runjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 			&svr_runjob_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_MANAGEMENT) {
+		delete_link(&phook->hi_management_hooks);
+		insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
+			&svr_management_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
@@ -3425,6 +3465,9 @@ print_hooks(unsigned int event)
 	} else if (event == HOOK_EVENT_RUNJOB) {
 		l_elem = svr_runjob_hooks;
 		strcpy(ev_str, HOOKSTR_RUNJOB);
+	} else if (event == HOOK_EVENT_MANAGEMENT) {
+		l_elem = svr_management_hooks;
+		strcpy(ev_str, HOOKSTR_MANAGEMENT);
 	} else if (event == HOOK_EVENT_PERIODIC) {
 		l_elem = svr_periodic_hooks;
 		strcpy(ev_str, HOOKSTR_PERIODIC);
@@ -3494,6 +3537,8 @@ print_hooks(unsigned int event)
 			phook = (hook *)GET_NEXT(phook->hi_movejob_hooks);
 		else if (event == HOOK_EVENT_RUNJOB)
 			phook = (hook *)GET_NEXT(phook->hi_runjob_hooks);
+		else if (event == HOOK_EVENT_MANAGEMENT)
+			phook = (hook *)GET_NEXT(phook->hi_management_hooks);
 		else if (event == HOOK_EVENT_PROVISION)
 			phook = (hook *)GET_NEXT(phook->hi_provision_hooks);
 		else if (event == HOOK_EVENT_PERIODIC)

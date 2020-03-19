@@ -210,6 +210,7 @@ extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -1467,6 +1468,9 @@ mgr_hook_import(struct batch_request *preq)
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 		}
 	}
+
+	add_to_svrattrl_list(&preq->rq_ind.rq_manager.rq_attr, OUTPUT_FILE_PARAM,
+		NULL, output_path, 0, NULL);
 	return;
 
 mgr_hook_import_error:
@@ -3881,6 +3885,14 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				"Did not find a job tied to runjob request!");
 			return (-1);
 		}
+	} else if (preq->rq_type == PBS_BATCH_Manager) {
+		hook_event = HOOK_EVENT_MANAGEMENT;
+		preq->rq_ind.rq_management.rq_reply = &preq->rq_reply;
+		preq->rq_ind.rq_management.rq_time = preq->rq_time;
+		/* Copying the pointer to rq_management below is safe since
+		req_manager() bumps the reference count on preq */
+		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_management;
+		head_ptr = &svr_management_hooks;
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
@@ -3910,6 +3922,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_movejob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
+		} else if (preq->rq_type == PBS_BATCH_Manager) {
+			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
@@ -4006,19 +4020,19 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pbs_list_head 		event_resv;
 	char			perf_label[MAXBUFLEN];
 
+	if (phook == NULL) {
+		log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_ERR,
+			__func__, "no associated hook");
+		return -1;
+	}
+
 	if (req_ptr == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"warning: empty hook input param!");
 		log_event(PBSEVENT_DEBUG3,
 			PBS_EVENTCLASS_HOOK, LOG_ERR,
 			phook->hook_name, log_buffer);
-		return -1;
-	}
-
-	if (phook == NULL) {
-		log_event(PBSEVENT_DEBUG3,
-			PBS_EVENTCLASS_HOOK, LOG_ERR,
-			phook->hook_name, "no associated hook");
 		return -1;
 	}
 

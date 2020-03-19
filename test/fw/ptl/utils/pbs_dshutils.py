@@ -61,6 +61,14 @@ logging.INFOCLI = logging.INFO - 1
 logging.INFOCLI2 = logging.INFOCLI - 1
 
 
+class TimeOut(Exception):
+
+    """
+    Raise this exception to mark a test as timed out.
+    """
+    pass
+
+
 class PbsConfigError(Exception):
     """
     Initialize PBS configuration error
@@ -1023,7 +1031,12 @@ class DshUtils(object):
                 e = p.stderr.readline()
                 ret['rc'] = 0
             else:
-                (o, e) = p.communicate(input)
+                try:
+                    (o, e) = p.communicate(input)
+                except TimeOut:
+                    self.logger.error("TimeOut Exception, cmd:%s" %
+                                      str(runcmd))
+                    raise
                 ret['rc'] = p.returncode
 
             if as_script:
@@ -1037,7 +1050,8 @@ class DshUtils(object):
 
             # handle the case where stdout is not a PIPE
             if o is not None:
-                ret['out'] = [i.decode("utf-8") for i in o.splitlines()]
+                ret['out'] = [i.decode("utf-8", 'backslashreplace')
+                              for i in o.splitlines()]
             else:
                 ret['out'] = []
             # Some output can be very verbose, for example listing many lines
@@ -1049,7 +1063,8 @@ class DshUtils(object):
             else:
                 self.logger.debug('out: ' + str(ret['out']))
             if e is not None:
-                ret['err'] = [i.decode("utf-8") for i in e.splitlines()]
+                ret['err'] = [i.decode("utf-8", 'backslashreplace')
+                              for i in e.splitlines()]
             else:
                 ret['err'] = []
             if ret['err'] and logerr:
