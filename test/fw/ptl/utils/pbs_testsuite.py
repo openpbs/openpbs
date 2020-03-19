@@ -1018,6 +1018,11 @@ class PBSTestSuite(unittest.TestCase):
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
                 restart_comm = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(comm.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
+                restart_comm = True
 
             if restart_comm:
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
@@ -1094,6 +1099,11 @@ class PBSTestSuite(unittest.TestCase):
             # Check if existing pbs.conf has more/less entries than the
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
+                restart_mom = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(mom.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
                 restart_mom = True
 
             if restart_mom:
@@ -1206,6 +1216,11 @@ class PBSTestSuite(unittest.TestCase):
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
                 restart_pbs = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(server.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
+                restart_pbs = True
 
             if restart_pbs or dmns_to_restart > 0:
                 # Write out the new pbs.conf file
@@ -1260,7 +1275,7 @@ class PBSTestSuite(unittest.TestCase):
 
     def revert_pbsconf(self):
         """
-        Revert contents of the pbs.conf file
+        Revert contents and ownership of the pbs.conf file
         Also start/stop the appropriate daemons
         """
         primary_server = self.server
