@@ -153,7 +153,10 @@ tcp_recv(int fd, void *data, int len)
 #else
 		i = CS_read(fd, pb, torecv);
 #endif
-		if (i <= 0) {
+		if (i == 0)
+			return -2;
+
+		if (i < 0) {
 #ifdef WIN32
 			/*
 			 * for WASCONNRESET, treat like no data for winsock
@@ -166,7 +169,7 @@ tcp_recv(int fd, void *data, int len)
 #else
 			if (errno != EINTR)
 #endif
-				return ((i == 0) ? -2 : i);
+				return i;
 		} else {
 			torecv -= i;
 			pb += i;
