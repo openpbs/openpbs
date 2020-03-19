@@ -19,40 +19,40 @@
 from tests.functional import *
 import socket
 
+
 class TestWeanUdp(TestFunctional):
     """
     Test suite consists of tests to check the functionality of pbs_comm daemon
     """
+
     def setUp(self):
         TestFunctional.setUp(self)
-        #msg = "Need 2 mom hosts which are not present on server host"
-        #if len(self.moms) != 2 and self.server.hostname == self.mom.hostname:
-         #   self.skip_test(reason=msg)
         self.pbs_conf = self.du.parse_pbs_config(self.server.shortname)
         self.exec_path = os.path.join(self.pbs_conf['PBS_EXEC'], "bin")
 
-    def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10, 
+    def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
                    interactive=False):
         j = Job(PBSROOT_USER)
         if set_attrib:
-           j.set_attributes(set_attrib)
+            j.set_attributes(set_attrib)
         if interactive:
             j.interactive_script = [('hostname', '.*'),
-                                    ('export PATH=$PATH:%s' % self.exec_path, '.*'),
-                                     ('qstat', '.*')]
+                                    ('export PATH=$PATH:%s' %
+                                     self.exec_path, '.*'),
+                                    ('qstat', '.*')]
         j.set_sleep_time(sleep)
         jid = self.server.submit(j)
         if exp_attrib:
-           self.server.expect(JOB, exp_attrib, id=jid)
+            self.server.expect(JOB, exp_attrib, id=jid)
         return jid
 
     def submit_resv(self, set_attrib=None, exp_attrib=None):
         r = Reservation(PBSROOT_USER)
         if set_attrib:
-           r.set_attributes(set_attrib)
+            r.set_attributes(set_attrib)
         rid = self.server.submit(r)
         if exp_attrib:
-           self.server.expect(RESV, exp_attrib, id=rid)
+            self.server.expect(RESV, exp_attrib, id=rid)
         return rid
 
     def test_comm_with_mom(self):
@@ -66,7 +66,8 @@ class TestWeanUdp(TestFunctional):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         log_msg = ["TPP initialization done",
-                   "Single pbs_comm configured, TPP Fault tolerant mode disabled",
+                   "Single pbs_comm configured, " +
+                   "TPP Fault tolerant mode disabled",
                    "Connected to pbs_comm %s.*:17001" % self.server.shortname]
         for msg in log_msg:
             self.server.log_match(msg, regexp=True)
@@ -79,7 +80,7 @@ class TestWeanUdp(TestFunctional):
         msg = "Registering address %s:15004 to pbs_comm" % server_ip
         self.scheduler.log_match(msg)
         for mom_name in self.moms.values():
-            ip = socket.gethostbyname(mom_name.shortname) 
+            ip = socket.gethostbyname(mom_name.shortname)
             msg1 = "Registering address %s:15003 to pbs_comm" % ip
             msg2 = "Leaf registered address %s:15003" % ip
             mom_name.log_match(msg1)
@@ -102,7 +103,7 @@ class TestWeanUdp(TestFunctional):
                       'reserve_end': int(time.time() + 120)}
         exp_attrib = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         rid = self.submit_resv(set_attrib, exp_attrib)
-        resv_que = rid.split('.')[0] 
+        resv_que = rid.split('.')[0]
         # Submit job into reservation
         set_attrib = {ATTR_q: resv_que}
         jid = self.submit_job(set_attrib, sleep=60)
@@ -116,7 +117,7 @@ class TestWeanUdp(TestFunctional):
         try:
             self.server.status(JOB, id=jid)
         except PbsStatusError as e:
-            msg = "Unknown Job Id %s" %jid            
+            msg = "Unknown Job Id %s" % jid
             self.assertTrue(msg in e.msg[0])
         else:
             msg = "Unexpectedly found job in qstat output"
