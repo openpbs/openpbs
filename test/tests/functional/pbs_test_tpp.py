@@ -69,8 +69,8 @@ class TestTPP(TestFunctional):
         for msg in log_msgs:
             self.server.log_match(msg, regexp=True)
             self.scheduler.log_match(msg, regexp=True)
-        for mom in self.moms.values():
-            self.mom.log_match(msg, regexp=True)
+            for mom in self.moms.values():
+                self.mom.log_match(msg, regexp=True)
         server_ip = socket.gethostbyname(self.server.hostname)
         msg = "Registering address %s:15001 to pbs_comm" % server_ip
         self.server.log_match(msg)
