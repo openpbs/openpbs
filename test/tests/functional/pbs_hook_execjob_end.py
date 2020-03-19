@@ -34,22 +34,32 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
+import textwrap
 from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
-hook_body = """
-import pbs
-import time
-e = pbs.event()
 
-if e.type == pbs.EXECJOB_EPILOGUE:
-    hook_type = "EXECJOB_EPILOGUE"
-elif e.type == pbs.EXECJOB_END:
-    hook_type = "EXECJOB_END"
-pbs.logjobmsg(e.job.id, "starting hook event %s" % (hook_type))
-time.sleep(5)
-pbs.logjobmsg(e.job.id, "ending hook event %s" % (hook_type))
-"""
+def get_hook_body(sleep_time):
+    """
+    method to return hook body
+    :param sleep_time: sleep time added in the hook
+    :type sleep_time: int
+    """
+    hook_body = """
+    import pbs
+    import time
+    e = pbs.event()
+
+    if e.type == pbs.EXECJOB_EPILOGUE:
+        hook_type = "EXECJOB_EPILOGUE"
+    elif e.type == pbs.EXECJOB_END:
+        hook_type = "EXECJOB_END"
+    pbs.logjobmsg(e.job.id, "starting hook event " + hook_type)
+    time.sleep(%s)
+    pbs.logjobmsg(e.job.id, "ending hook event " + hook_type)
+    """ % sleep_time
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
 
 
 class TestPbsExecjobEnd(TestFunctional):
@@ -357,8 +367,7 @@ class TestPbsExecjobEnd(TestFunctional):
         """
 
         hook_name = "epiend_hook"
-        global hook_body
-
+        hook_body = get_hook_body(5)
         attr = {'event': 'execjob_epilogue,execjob_end', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         j = Job(TEST_USER)
@@ -426,7 +435,7 @@ class TestPbsExecjobEnd(TestFunctional):
         """
 
         hook_name = "end_hook"
-        global hook_body
+        hook_body = get_hook_body(5)
         attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '50'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         attrib = {ATTR_nodefailrq: 30}
@@ -442,7 +451,7 @@ class TestPbsExecjobEnd(TestFunctional):
         """
 
         hook_name = "end_hook"
-        global hook_body
+        hook_body = get_hook_body(5)
         attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '50'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         attrib = {ATTR_nodefailrq: 30}
@@ -457,3 +466,25 @@ class TestPbsExecjobEnd(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         subjid_1 = j.create_subjob_id(jid, 1)
         self.common_steps(subjid_1, self.mom)
+
+    def test_mom_restart(self):
+        """
+        Test to restart mom while execjob_end hook is running
+        """
+        hook_name = "end_hook"
+        hook_body = get_hook_body(20)
+        attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '40'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+        j = Job(TEST_USER)
+        j.set_sleep_time(5)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.mom.log_match("Job;%s;starting hook event EXECJOB_END" %
+                           jid, n=100, max_attempts=10,
+                           interval=2)
+        self.mom.restart()
+        self.mom.log_match("Job;%s;ending hook event EXECJOB_END" %
+                           jid, n=100, max_attempts=20,
+                           interval=2)
+        self.server.log_match(jid + ";Exit_status=0", interval=4,
+                              max_attempts=10)
