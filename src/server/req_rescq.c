@@ -622,21 +622,6 @@ req_confirmresv(struct batch_request *preq)
 		reply_ack(preq);
 		return;
 	}
-	if (strncmp(preq->rq_extend, PBS_RESV_CONFIRM_SUCCESS, strlen(PBS_RESV_CONFIRM_SUCCESS)) == 0) {
-		char *p_tmp;
-		p_tmp = strstr(preq->rq_extend, ":partition=");
-		if (p_tmp) {
-			p_tmp += strlen(":partition=");
-			partition_name = strdup(p_tmp);
-		} else
-			partition_name = strdup(DEFAULT_PARTITION);
-
-		if (partition_name == NULL) {
-			req_reject(PBSE_SYSTEM, 0, preq);
-			return;
-		}
-
-	}
 
 #ifdef NAS /* localmod 122 */
 	/* If an advance reservation has already been confirmed there's no
@@ -831,6 +816,21 @@ req_confirmresv(struct batch_request *preq)
 	cmp_resvStateRelated_attrs((void *)presv,
 		presv->ri_qs.ri_type);
 	Update_Resvstate_if_resv(presv->ri_jbp);
+	if (strncmp(preq->rq_extend, PBS_RESV_CONFIRM_SUCCESS, strlen(PBS_RESV_CONFIRM_SUCCESS)) == 0) {
+		char *p_tmp;
+		p_tmp = strstr(preq->rq_extend, ":partition=");
+		if (p_tmp) {
+			p_tmp += strlen(":partition=");
+			partition_name = strdup(p_tmp);
+		} else
+			partition_name = strdup(DEFAULT_PARTITION);
+
+		if (partition_name == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+	}
 	if (state == RESV_CONFIRMED && partition_name != NULL) {
 		/* Set the name of the partition where the reservation is confirmed*/
 		pbs_queue *rque = NULL;
@@ -860,9 +860,9 @@ req_confirmresv(struct batch_request *preq)
 									NULL, NULL, partition_name);
 			que_save_db(rque, QUE_SAVE_FULL);
 		}
-		free(partition_name);
 		free(qname);
 	}
+	free(partition_name);
 	if (presv->ri_modified)
 		(void)job_or_resv_save((void *)presv, SAVERESV_FULL, RESC_RESV_OBJECT);
 
