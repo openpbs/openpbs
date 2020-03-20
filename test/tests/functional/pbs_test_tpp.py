@@ -20,6 +20,7 @@ from tests.functional import *
 import socket
 
 
+@tags('comm')
 class TestTPP(TestFunctional):
     """
     Test suite consists of tests to check the functionality of pbs_comm daemon
@@ -31,8 +32,8 @@ class TestTPP(TestFunctional):
         self.exec_path = os.path.join(self.pbs_conf['PBS_EXEC'], "bin")
 
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
-                   interactive=False):
-        j = Job(PBSROOT_USER)
+                   job_script=False, interactive=False):
+        j = Job(TEST_USER)
         if set_attrib:
             j.set_attributes(set_attrib)
         if interactive:
@@ -41,13 +42,20 @@ class TestTPP(TestFunctional):
                                      self.exec_path, '.*'),
                                     ('qstat', '.*')]
         j.set_sleep_time(sleep)
+        if job_script:
+            pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                       "bin", "pbsdsh")
+            script = "#!/bin/sh\n%s sleep 10" % pbsdsh_path
+            j.create_script(script)
+        else:
+            j.set_sleep_time(sleep)
         jid = self.server.submit(j)
         if exp_attrib:
             self.server.expect(JOB, exp_attrib, id=jid)
         return jid
 
     def submit_resv(self, set_attrib=None, exp_attrib=None):
-        r = Reservation(PBSROOT_USER)
+        r = Reservation(TEST_USER)
         if set_attrib:
             r.set_attributes(set_attrib)
         rid = self.server.submit(r)
@@ -55,9 +63,11 @@ class TestTPP(TestFunctional):
             self.server.expect(RESV, exp_attrib, id=rid)
         return rid
 
+    @requirements(num_moms=2)
     def test_comm_with_mom(self):
         """
-        Test the installation of communication daemon during PBS installation.
+        This test verifies communication between server-mom and
+        between moms through pbs_comm
         """
         msg = "Need atleast 2 moms as input. use -pmoms=<m1>:<m2>"
         if len(self.moms) < 2:
@@ -87,26 +97,32 @@ class TestTPP(TestFunctional):
         self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
         self.server.log_match("%s;Exit_status=0" % jid)
         # Submit multi-chunk job
-        set_attrib = {'Resource_List.select': '2:ncpus=1'}
-        jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'})
+        set_attrib = {'Resource_List.select': '2:ncpus=1',
+                      ATTR_l + '.place': 'scatter'}
+        jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
+                              job_script=True)
         self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
         self.server.log_match("%s;Exit_status=0" % jid)
         # Submit interactive job
-        set_attrib = {ATTR_inter: ''}
-        jid = self.submit_job(set_attrib, interactive=True)
+        set_attrib = {'Resource_List.select': '2:ncpus=1',
+                      ATTR_inter: '',
+                      ATTR_l + '.place': 'scatter'}
+        jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
+                              interactive=True, job_script=True)
         # Submit reservation
-        set_attrib = {'Resource_List.select': '1:ncpus=1',
-                      'reserve_start': int(time.time() + 5),
+        set_attrib = {'Resource_List.select': '2:ncpus=1',
+                      ATTR_l + '.place': 'scatter',
+                      'reserve_start': int(time.time() + 10),
                       'reserve_end': int(time.time() + 120)}
         exp_attrib = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         rid = self.submit_resv(set_attrib, exp_attrib)
         resv_que = rid.split('.')[0]
         # Submit job into reservation
-        set_attrib = {ATTR_q: resv_que}
-        jid = self.submit_job(set_attrib, sleep=60)
+        set_attrib = {'Resource_List.select': '2:ncpus=1',
+                      ATTR_q: resv_que,
+                      ATTR_l + '.place': 'scatter'}
+        jid = self.submit_job(set_attrib, job_script=True)
         # Wait for reservation to start
-        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|2')}
-        self.server.expect(RESV, a, rid, offset=5)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, rid, offset=10)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.delete(rid)
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET)
