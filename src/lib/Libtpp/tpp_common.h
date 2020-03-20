@@ -273,7 +273,7 @@ enum TPP_MSG_TYPES {
 #define TPP_STRM_TIMEOUT        600
 #define TPP_MIN_WAIT            2
 #define TPP_SEND_SIZE           8192
-#define TPP_COMPR_SIZE			8192
+#define TPP_COMPR_SIZE          8192
 
 /* tpp cmds used internally by the layer to notify messages between threads */
 #define TPP_CMD_SEND            1

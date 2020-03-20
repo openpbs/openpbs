@@ -1950,18 +1950,18 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			int i, k;
 			tpp_addr_t *src_host;
 			typedef struct {
-				char *router_name;
 				int target_fd; /* target comm fd */
+				int num_streams; /* actual number of destination streams */ 
+				char *router_name;
 				void *cmpr_ctx;
 				void *minfo_buf; /* allocate size for total members */
-				int num_streams; /* actual number of destination streams */ 
 			} target_comm_struct_t;
 
 			target_comm_struct_t *rlist = NULL;
 			int rsize = 0;
 			int csize = 0;
 			void *tmp;
-			tpp_chunk_t mchunks[3];
+			tpp_chunk_t mchunks[3]; /* mcast packet has 3 chunks */
 
 			/* find the fd to forward to via the associated router */
 			tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) data;
@@ -2072,7 +2072,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					memcpy(&shdr.dest_addr, &minfo->dest_addr, sizeof(tpp_addr_t));
 
 					TPP_DBPRT(("Send mcast indiv packet to %s", tpp_netaddr(&shdr.dest_addr)));
-					
+
 					if (tpp_transport_vsend(target_fd, chunks, 2) != 0) {
 						tpp_log_func(LOG_ERR, __func__, "Failed to send mcast indiv pkt");
 						tpp_transport_close(target_fd);
@@ -2087,8 +2087,8 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				} else if (orig_hop == 0) {
 					/* add this to list of routers to whom we need to send */
 					/**
-					 * now check list backwards if router already added to
-					 * rational for checking backwards is that the last router
+					 * now walk list backwards checking if router was already added.
+					 * Rationale for checking backwards is that the last router
 					 * that we added data to, is probably the one that the next
 					 * few nodes are attached to as well.
 					 * Might be able to use a hash here for faster search

@@ -3656,7 +3656,7 @@ add_part_packet(stream_t *strm, void *data, int sz)
 	pkt = strm->part_recv_pkt;
 	TPP_DBPRT(("*** pkt=%p, sd=%u, sz=%d, totlen=%d, cmprsd_len=%u", (void *) pkt, strm->sd, sz, totlen, cmprsd_len));
 	if (!pkt) {
-		/* some rare cases, compresses size can be larger than orig size, hence use the larger value */
+		/* some rare cases, compressed size can be larger than orig size, hence use the larger value */
 		pkt = tpp_cr_pkt(NULL, totlen > sz ? totlen : sz, 1);
 		if (!pkt)
 			return NULL;
