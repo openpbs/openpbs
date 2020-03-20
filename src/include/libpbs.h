@@ -320,7 +320,6 @@ extern int PBSD_jobfile(int, int, char *, char *, enum job_file, int, char **);
 extern int PBSD_status_put(int, int, char *, struct attrl *, char *, int, char **);
 extern struct batch_reply * PBSD_rdrpy(int);
 extern struct batch_reply * PBSD_rdrpy_sock(int, int *);
-struct batch_reply * PBSD_rdrpyRPP(int);
 extern void PBSD_FreeReply(struct batch_reply *);
 extern struct batch_status * PBSD_status(int, int, char *, struct attrl *, char *);
 extern preempt_job_info * PBSD_preempt_jobs(int, char **);
