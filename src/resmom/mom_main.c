@@ -8110,10 +8110,8 @@ net_down_handler(void *data)
 	if (tpp_log_func)
 		tpp_log_func(LOG_INFO, msg_daemonname, "net down handler called");
 	if (server_stream >= 0) {
-		sprintf(log_buffer, "Closing existing server stream %d",
-			server_stream);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+				"Closing existing server stream %d", server_stream);
 		dis_flush(server_stream);
 		tpp_close(server_stream);
 		server_stream = -1;
@@ -8971,7 +8969,7 @@ main(int argc, char *argv[])
 
 	/*Initialize security library's internal data structures*/
 	if (load_auths(AUTH_SERVER)) {
-		log_err(-1, "pbsd_main", "Failed to load auth lib");
+		log_err(-1, __func__, "Failed to load auth lib");
 		exit(3);
 	}
 
@@ -8984,7 +8982,7 @@ main(int argc, char *argv[])
 		if ((csret = CS_server_init()) != CS_SUCCESS) {
 			sprintf(log_buffer,
 				"Problem initializing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 			exit(3);
 		}
 	}
@@ -9266,7 +9264,7 @@ main(int argc, char *argv[])
 		nodename = get_all_ips(mom_host, log_buffer, sizeof(log_buffer) - 1);
 	}
 	if (!nodename) {
-		log_err(-1, "pbsd_main", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 		return (1);
 	}
@@ -10099,7 +10097,7 @@ main(int argc, char *argv[])
 			/*had some problem closing the security library*/
 
 			sprintf(log_buffer, "problem closing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 		}
 	}
 

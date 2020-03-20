@@ -470,7 +470,7 @@ post_hold(struct work_task *pwt)
 		return;
 	}
 
-	if (pwt->wt_aux2 != PROT_TPP) { /* not tpp */
+	if (pwt->wt_aux2 != PROT_TPP) {
 		conn = get_conn(preq->rq_conn);
 
 		if (!conn) {

@@ -1931,8 +1931,8 @@ send_restart(void)
 	int j;
 
 	if (server_stream >= 0) {
-		sprintf(log_buffer, "Closing existing server stream %d", server_stream);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+				"Closing existing server stream %d", server_stream);
 		dis_flush(server_stream);
 		tpp_close(server_stream);
 		server_stream = -1;
@@ -1957,11 +1957,9 @@ send_restart(void)
 
 	(void)diswui(j, pbs_mom_port);
 	dis_flush(j);
-	(void)sprintf(log_buffer, "Restart sent to server at %s:%d", svr, port);
-	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		msg_daemonname, log_buffer);
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+			"Restart sent to server at %s:%d", svr, port);
 	tpp_close(j);
-
 }
 
 /**

@@ -170,7 +170,7 @@ DIS_tpp_funcs()
 static void
 log_tppmsg(int level, const char *objname, char *mess)
 {
-	char id[2*PBS_MAXHOSTNAME];
+	char id[2 * PBS_MAXHOSTNAME];
 	int thrd_index;
 	int etype = log_level_2_etype(level);
 

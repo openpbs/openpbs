@@ -300,7 +300,7 @@ void
 release_req(struct work_task *pwt)
 {
 	free_br((struct batch_request *)pwt->wt_parm1);
-	if (pwt->wt_event != -1 && pwt->wt_aux2 != PROT_TPP) /* not tpp */
+	if (pwt->wt_event != -1 && pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);
 }
 

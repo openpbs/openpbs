@@ -442,7 +442,7 @@ post_signal_req(struct work_task *pwt)
 	int			suspend = 0;
 	int			resume = 0;
 
-	if (pwt->wt_aux2 != PROT_TPP) /* not PROT_TPP */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
 
 	preq = pwt->wt_parm1;

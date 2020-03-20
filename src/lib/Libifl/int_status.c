@@ -76,7 +76,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	if (objid == NULL)
 		objid = "";	/* set to null string for encoding */
 
-	rc = PBSD_status_put(c, function, objid, attrib, extend, 0, NULL);
+	rc = PBSD_status_put(c, function, objid, attrib, extend, PROT_TCP, NULL);
 	if (rc) {
 		return NULL;
 	}

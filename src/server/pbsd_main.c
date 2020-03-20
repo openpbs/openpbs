@@ -826,7 +826,7 @@ main(int argc, char **argv)
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
-		log_err(-1, "pbsd_main",
+		log_err(-1, __func__,
 			"Unable to initialize thread context");
 		return (1);
 	}
@@ -846,12 +846,12 @@ main(int argc, char **argv)
 		if (endp)
 			*endp = '\0';
 	} else if (gethostname(server_host, (sizeof(server_host) - 1)) == -1) {
-		log_err(-1, "pbsd_main", "Host name too large");
+		log_err(-1, __func__, "Host name too large");
 		return (-1);
 	}
 	if ((server_host[0] == '\0') ||
 	    (get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-		log_err(-1, "pbsd_main", "Unable to get my host name");
+		log_err(-1, __func__, "Unable to get my host name");
 		return (-1);
 	}
 
@@ -878,7 +878,7 @@ main(int argc, char **argv)
 
 	pbs_server_name = pbs_default();
 	if ((!pbs_server_name) || (*pbs_server_name == '\0')) {
-		log_err(-1, "pbsd_main", "Unable to get server host name");
+		log_err(-1, __func__, "Unable to get server host name");
 		return (-1);
 	}
 
@@ -1148,7 +1148,7 @@ main(int argc, char **argv)
 
 	/*Initialize security library's internal data structures*/
 	if (load_auths(AUTH_SERVER)) {
-		log_err(-1, "pbsd_main", "Failed to load auth lib");
+		log_err(-1, __func__, "Failed to load auth lib");
 		exit(3);
 	}
 
@@ -1161,7 +1161,7 @@ main(int argc, char **argv)
 		if ((csret = CS_server_init()) != CS_SUCCESS) {
 			sprintf(log_buffer,
 				"Problem initializing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 			exit(3);
 		}
 	}
@@ -1530,7 +1530,7 @@ try_db_again:
 	}
 
 	if (!nodename) {
-		log_err(-1, "pbsd_main", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 		stop_db();
 		return (1);
@@ -1920,7 +1920,7 @@ try_db_again:
 			/*had some problem closing the security library*/
 
 			sprintf(log_buffer, "problem closing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 		}
 	}
 

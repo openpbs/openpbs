@@ -1290,7 +1290,7 @@ main(int argc, char *argv[])
 		nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 	}
 	if (!nodename) {
-		log_err(-1, "pbsd_main", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 		return (1);
 	}

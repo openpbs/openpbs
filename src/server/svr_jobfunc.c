@@ -5797,7 +5797,7 @@ post_send_job_exec_update_req(struct work_task *pwt)
 	if (pwt == NULL)
 		return;
 
-	if (pwt->wt_aux2 != PROT_TPP) /* not PROT_TPP */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	mom_preq = pwt->wt_parm1;
 	mom_preq->rq_conn = mom_preq->rq_orgconn;  /* restore socket to client */
