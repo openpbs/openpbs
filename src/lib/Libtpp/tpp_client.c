@@ -1258,7 +1258,7 @@ tpp_send(int sd, void *data, int len)
 
 	TPP_DBPRT(("Sending: sd=%d, len=%d", sd, len));
 
-	if ((tpp_conf->compress == 1) && (len > TPP_SEND_SIZE)) {
+	if ((tpp_conf->compress == 1) && (len > TPP_COMPR_SIZE)) {
 		void *outbuf;
 
 		outbuf = tpp_deflate(data, len, &cmprsd_len);
@@ -2361,7 +2361,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int len, unsigned int full_len, un
 	chunks[0].len = sizeof(tpp_mcast_pkt_hdr_t);
 	totlen = chunks[0].len;
 
-	if (tpp_conf->compress == 1 && minfo_len > TPP_SEND_SIZE) {
+	if (tpp_conf->compress == 1 && minfo_len > TPP_COMPR_SIZE) {
 		def_ctx = tpp_multi_deflate_init(minfo_len);
 		if (def_ctx == NULL)
 			goto err;
@@ -3691,7 +3691,8 @@ add_part_packet(stream_t *strm, void *data, int sz)
 	pkt = strm->part_recv_pkt;
 	TPP_DBPRT(("*** pkt=%p, sd=%u, sz=%d, totlen=%d, cmprsd_len=%u", (void *) pkt, strm->sd, sz, totlen, cmprsd_len));
 	if (!pkt) {
-		pkt = tpp_cr_pkt(NULL, totlen, 1);
+		/* some rare cases, compressed size can be larger than orig size, hence use the larger value */
+		pkt = tpp_cr_pkt(NULL, totlen > sz ? totlen : sz, 1);
 		if (!pkt)
 			return NULL;
 		TPP_DBPRT(("Total length = %d, sz=%d", totlen, sz));

@@ -1949,10 +1949,19 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		case TPP_MCAST_DATA: {
 			int i, k;
 			tpp_addr_t *src_host;
-			int *rlist = NULL;
+			typedef struct {
+				int target_fd; /* target comm fd */
+				int num_streams; /* actual number of destination streams */ 
+				char *router_name;
+				void *cmpr_ctx;
+				void *minfo_buf; /* allocate size for total members */
+			} target_comm_struct_t;
+
+			target_comm_struct_t *rlist = NULL;
 			int rsize = 0;
 			int csize = 0;
 			void *tmp;
+			tpp_chunk_t mchunks[3]; /* mcast packet has 3 chunks */
 
 			/* find the fd to forward to via the associated router */
 			tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) data;
@@ -1966,8 +1975,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			unsigned int cmprsd_len = ntohl(mhdr->info_cmprsd_len);
 			unsigned int num_streams = ntohl(mhdr->num_streams);
 			unsigned int info_len = ntohl(mhdr->info_len);
-			tpp_chunk_t mchunks[1];
-			int already_sent;
 
 			if (cmprsd_len > 0) {
 				payload_len = len - sizeof(tpp_mcast_pkt_hdr_t) - cmprsd_len;
@@ -2011,8 +2018,9 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 #endif
 
 			mhdr->hop = 1; /* set hop=1 to forward, use orig_hop for checking */
-			mchunks[0].data = data;
-			mchunks[0].len = len;
+
+			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Total mcast member streams=%d", num_streams);
+			tpp_log_func(LOG_INFO, __func__, tpp_get_logbuf());
 
 			/*
 			 * go backwards in an attempt to distribute mcast packet
@@ -2077,74 +2085,131 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						return 0;
 					}
 				} else if (orig_hop == 0) {
-					/* this to list of routers to whom we need to send */
-					if (!rlist) {
-						/* first element */
-						rsize = RLIST_INC;
-						rlist = malloc(sizeof(int) * rsize);
-						if (!rlist) {
-							if (cmprsd_len > 0)
-								free(minfo_base);
-							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating pbs_comm list of %lu bytes",
-								(unsigned long)(sizeof(int) * rsize));
-							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-							if (data_out)
-								free(data_out);
-							return -1;
-						}
-						csize = 0;
-					}
-
+					/* add this to list of routers to whom we need to send */
 					/**
-					 * now check list backwards if router already sent to
-					 * rational for checking backwards is that the last router
-					 * that we sent data to, is probably the one that the next
+					 * now walk list backwards checking if router was already added.
+					 * Rationale for checking backwards is that the last router
+					 * that we added data to, is probably the one that the next
 					 * few nodes are attached to as well.
+					 * Might be able to use a hash here for faster search
 					 **/
-					already_sent = 0;
+					int found = -1;
 					for (i = csize - 1; i >= 0; i--) {
-						if (rlist[i] == target_fd) {
-							already_sent = 1;
+						if (rlist[i].target_fd == target_fd) {
+							found = i;
 							break;
 						}
 					}
-					if (already_sent == 1)
-						continue;
 
-					if (csize == rsize) {
-						/* got to add, but no space */
-						tmp = realloc(rlist, sizeof(int) * (rsize + RLIST_INC));
-						if (!tmp) {
-							free(rlist);
-							if (cmprsd_len > 0)
-								free(minfo_base);
-							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory resizing pbs_comm list to %lu bytes",
-								(unsigned long)(sizeof(int) * rsize));
-							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-							if (data_out)
-								free(data_out);
-							return -1;
+					if (found == -1) {
+						int c_minfo_len;
+						if (csize == rsize) {
+							/* got to add, but no space */
+							tmp = realloc(rlist, sizeof(target_comm_struct_t) * (rsize + RLIST_INC));
+							if (!tmp) {
+								snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, 
+									"Out of memory resizing pbs_comm list to %lu bytes", (unsigned long)(sizeof(int) * rsize));
+								tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+								goto mcast_err;
+							}
+							rsize += RLIST_INC;
+							rlist = tmp;
 						}
-						rsize += RLIST_INC;
-						rlist = tmp;
+						found = csize++; /* the last index, and increment post */
+						memset(&rlist[found], 0, sizeof(target_comm_struct_t));
+						rlist[found].target_fd = target_fd; /* add this fd to the list of fds to send to */
+						rlist[found].router_name = target_router->router_name; /* keep a pointer to the router name */
+
+						/* allocate minfo_buf for this target comm */
+						c_minfo_len = sizeof(tpp_mcast_pkt_info_t) * num_streams;
+						if (tpp_conf->compress == 1 && c_minfo_len > TPP_COMPR_SIZE) {
+							rlist[found].cmpr_ctx = tpp_multi_deflate_init(c_minfo_len);
+							if (rlist[found].cmpr_ctx == NULL)
+								goto mcast_err;
+						} else {
+							rlist[found].minfo_buf = malloc(c_minfo_len);
+							if (!rlist[found].minfo_buf) {
+								snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating mcast buffer of %d bytes", c_minfo_len);
+								tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+								goto mcast_err;
+							}
+						}
+					} /* if entry not found */
+
+					/* at this point to have the entry particular target comm */
+					/* copy (or compress) the minfo for the target leaf */
+					if (rlist[found].cmpr_ctx == NULL) { /* no compression */
+						tpp_mcast_pkt_info_t *c_minfo = 
+							(tpp_mcast_pkt_info_t *)((char *) rlist[found].minfo_buf + (rlist[found].num_streams * sizeof(tpp_mcast_pkt_info_t)));
+						memcpy(c_minfo, minfo, sizeof(tpp_mcast_pkt_info_t));
+					} else {
+						if (tpp_multi_deflate_do(rlist[found].cmpr_ctx, 0, minfo, sizeof(tpp_mcast_pkt_info_t)) != 0)
+							goto mcast_err;
 					}
-					TPP_DBPRT(("Forwarding MCAST to %s", target_router->router_name));
-					if (tpp_transport_vsend(target_fd, mchunks, 1) != 0) {
+
+					rlist[found].num_streams++;
+				}
+			} /* for k streams */
+
+			if (csize > 0) {
+				tpp_mcast_pkt_hdr_t t_mhdr;
+				/* header data */
+				memcpy(&t_mhdr, mhdr, sizeof(tpp_mcast_pkt_hdr_t)); /* only to satisfy valgrind */
+				t_mhdr.hop = 1;
+
+				/* set the header chunk and data chunk one time for all target comms */ 
+				mchunks[0].data = &t_mhdr;
+				mchunks[0].len = sizeof(tpp_mcast_pkt_hdr_t);
+
+				mchunks[2].data = payload;
+				mchunks[2].len = payload_len;
+
+				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Total target comms=%d", csize);
+				tpp_log_func(LOG_INFO, __func__, tpp_get_logbuf());
+
+				/* finish up the MCAST packets for each target comm and send */
+				for(k = 0; k < csize; k++) {
+					void *t_minfo_buf = NULL;
+					unsigned int t_minfo_len = 0;
+
+					t_mhdr.num_streams = htonl(rlist[k].num_streams);
+					t_minfo_len = rlist[k].num_streams * sizeof(tpp_mcast_pkt_info_t);
+					t_mhdr.info_len = htonl(t_minfo_len);
+
+					/* the router information has been collected in rlist[k] */
+					if (rlist[k].cmpr_ctx != NULL) {
+						if (tpp_multi_deflate_do(rlist[k].cmpr_ctx, 1, NULL, 0) != 0) /* finish the compression */
+							goto mcast_err;
+						t_minfo_buf = tpp_multi_deflate_done(rlist[k].cmpr_ctx, &t_minfo_len);
+						if (t_minfo_buf == NULL)
+							goto mcast_err;
+						t_mhdr.info_cmprsd_len = htonl(t_minfo_len);
+						rlist[k].cmpr_ctx = NULL; /* done with compression */
+					} else {
+						t_minfo_buf = rlist[k].minfo_buf;
+						t_mhdr.info_cmprsd_len = 0;
+					}
+
+					mchunks[1].data = t_minfo_buf;
+					mchunks[1].len = t_minfo_len;
+					
+					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Sending MCAST packet to %s, num_streams=%d", rlist[k].router_name, rlist[k].num_streams);
+					tpp_log_func(LOG_INFO, __func__, tpp_get_logbuf());
+					if (tpp_transport_vsend(rlist[k].target_fd, mchunks, 3) != 0) {
 						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "send failed: errno = %d", errno);
 						tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
-
-						tpp_log_func(LOG_ERR, __func__, "Failed to send TPP_MCAST_DATA");
-						tpp_transport_close(target_fd);
 					}
-					/* add this fd to the list of fds already sent to */
-					rlist[csize++] = target_fd;
 				}
 			}
+mcast_err:
 			if (cmprsd_len > 0)
 				free(minfo_base);
 
-			if (rlist)
+			if (rlist) {
+				for (k = 0; k < csize; k++)
+					free(rlist[k].minfo_buf);
 				free(rlist);
+			}
 
 			tpp_log_func(LOG_INFO, NULL, "mcast done");
 
