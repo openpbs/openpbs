@@ -47,7 +47,7 @@
 #include "libpbs.h"
 
 
-static struct batch_status * alloc_bs();
+static struct batch_status *alloc_bs();
 
 /**
  * @brief
