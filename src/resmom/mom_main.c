@@ -6259,7 +6259,7 @@ do_tpp(int stream)
 	switch (proto) {
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
-			if (rm_request(stream, version, PROT_TCP) == 0)
+			if (rm_request(stream, version, PROT_TPP) == 0)
 				tpp_eom(stream);
 			break;
 
@@ -6358,7 +6358,7 @@ do_tcp(int fd)
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
 			pbs_tcp_timeout = 0;
-			ret = rm_request(fd, version, PROT_TPP);
+			ret = rm_request(fd, version, PROT_TCP);
 			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
 			break;
 
