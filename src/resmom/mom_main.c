@@ -5940,7 +5940,7 @@ bad_restrict(u_long ipadd)
  *
  * @param[in] iochan - i/o channel to indicate stream or fd
  * @param[in] version - protocol version
- * @param[in] tcp - flag for tcp 0 or 1
+ * @param[in] prot - PROT_TCP or PROT_TPP
  *
  * @return int
  * @retval	0	Success
@@ -5949,7 +5949,7 @@ bad_restrict(u_long ipadd)
  */
 
 int
-rm_request(int iochan, int version, int tcp)
+rm_request(int iochan, int version, int prot)
 {
 	char			name[256];
 	static char		*output = NULL;
@@ -5974,7 +5974,7 @@ rm_request(int iochan, int version, int tcp)
 		output_size = BUFSIZ;
 	}
 	(void)memset(output, 0, output_size);
-	if (tcp) {
+	if (prot == PROT_TCP) {
 		conn_t *conn = get_conn(iochan);
 
 		if (!conn) {
@@ -5990,8 +5990,7 @@ rm_request(int iochan, int version, int tcp)
 		ipadd = conn->cn_addr;
 		port = conn->cn_port;
 		close_io = close_conn;
-	}
-	else {
+	} else {
 		addr = tpp_getaddr(iochan);
 		if (addr == NULL) {
 			sprintf(log_buffer, "Sender unknown");
@@ -6008,7 +6007,7 @@ rm_request(int iochan, int version, int tcp)
 	}
 
 	restrictrm = 0;
-	if ((tcp && port_care && (port >= IPPORT_RESERVED)) || !addrfind(ipadd)) {
+	if ((prot == PROT_TCP && port_care && (port >= IPPORT_RESERVED)) || !addrfind(ipadd)) {
 		if (bad_restrict(ipadd)) {
 			sprintf(log_buffer, "bad attempt to connect");
 			goto bad;
@@ -6218,9 +6217,8 @@ bad:
 	 ** buffer, then 'close_io' function pointer won't get a chance
 	 ** to be initialized. So, Initialize accordingly before use.
 	 */
-	if (close_io == NULL) {
-		close_io = (tcp) ?(close_conn):((void (*)(int))&tpp_close);
-	}
+	if (close_io == NULL)
+		close_io = (prot == PROT_TCP) ? close_conn : (void (*)(int))&tpp_close;
 
 	close_io(iochan);
 	return -1;
@@ -6261,7 +6259,7 @@ do_tpp(int stream)
 	switch (proto) {
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
-			if (rm_request(stream, version, 0) == 0)
+			if (rm_request(stream, version, PROT_TCP) == 0)
 				tpp_eom(stream);
 			break;
 
@@ -6360,7 +6358,7 @@ do_tcp(int fd)
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
 			pbs_tcp_timeout = 0;
-			ret = rm_request(fd, version, 1);
+			ret = rm_request(fd, version, PROT_TPP);
 			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
 			break;
 
