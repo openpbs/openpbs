@@ -869,6 +869,10 @@ main(int argc, char *argv[])
 	if (pbs_loadconf(0) == 0)
 		return (1);
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	nthreads = pbs_conf.pbs_sched_threads;
 
 	glob_argv = argv;

@@ -118,6 +118,10 @@ main(int argc, char *argv[])
 
 	pbs_loadconf(0);
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	pbs_client_thread_set_single_threaded_mode();
 	/* disable attribute verification */
 	set_no_attribute_verification();

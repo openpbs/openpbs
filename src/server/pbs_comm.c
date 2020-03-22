@@ -503,6 +503,10 @@ main(int argc, char **argv)
 		return (1);
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	umask(022);
 
 	/* The following is code to reduce security risks                */
@@ -748,6 +752,9 @@ main(int argc, char **argv)
 
 				log_event_mask = &pbs_conf.pbs_comm_log_events;
 				tpp_set_logmask(*log_event_mask);
+				set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+						pbs_conf.locallog, pbs_conf.syslogfac,
+						pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 			}
 		}
 #ifdef PBS_UNDOLR_ENABLED

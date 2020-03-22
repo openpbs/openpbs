@@ -59,8 +59,6 @@
 #define shorten_and_cleanup_path(p) strdup(p)
 #endif
 
-extern void set_log_conf(char *, char *, unsigned int, unsigned int, unsigned int, unsigned int);
-
 char *pbs_conf_env = "PBS_CONF_FILE";
 
 static char *pbs_loadconf_buf = NULL;
@@ -1026,10 +1024,6 @@ __pbs_loadconf(int reload)
 			}
 		}
 	}
-
-	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name, pbs_conf.locallog,
-			pbs_conf.syslogfac, pbs_conf.syslogsvr,
-			pbs_conf.pbs_log_highres_timestamp);
 
 	pbs_conf.loaded = 1;
 

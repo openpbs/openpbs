@@ -94,7 +94,7 @@
 
 #include "avltree.h"
 #include "libpbs.h"
-#include "tpp.h"
+#include "tpp_internal.h"
 #include "dis.h"
 #include "auth.h"
 

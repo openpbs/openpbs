@@ -67,7 +67,7 @@
 #endif
 #include "avltree.h"
 #include "pbs_error.h"
-#include "tpp.h"
+#include "tpp_internal.h"
 #include "dis.h"
 #ifdef PBS_COMPRESSION_ENABLED
 #include <zlib.h>
@@ -1722,7 +1722,7 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	z_stream strm;
 	void *outbuf = NULL;
 
-	/* 
+	/*
 	 * in some rare cases totlen < compressed_len (inlen)
 	 * so safer to malloc the larger of the two values
 	 */

@@ -61,7 +61,7 @@
 #include <sys/resource.h>
 #include <signal.h>
 #endif
-#include "tpp.h"
+#include "tpp_internal.h"
 
 #ifdef WIN32
 

@@ -1127,6 +1127,9 @@ initialize(void)
 	int	char_in_cname = 0;
 
 	(void)pbs_loadconf(0);
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	if (pbs_conf.pbs_core_limit) {
 		char *pc = pbs_conf.pbs_core_limit;
@@ -8275,6 +8278,10 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	if (!isAdminPrivilege(getlogin())) {
 		g_dwCurrentState = SERVICE_STOPPED;
 		ss.dwCurrentState = g_dwCurrentState;
@@ -8319,6 +8326,9 @@ main(int argc, char *argv[])
 	if (pbs_loadconf(0) == 0) {
 		return (1);
 	}
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 #endif
 	pbsgroup = getgid();
 

@@ -834,6 +834,10 @@ main(int argc, char **argv)
 	if (pbs_loadconf(0) == 0)
 		return (1);
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	/* find out who we are (hostname) */
 	server_host[0] = '\0';
 	if (pbs_conf.pbs_leaf_name) {

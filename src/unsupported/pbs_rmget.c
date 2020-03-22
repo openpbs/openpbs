@@ -108,6 +108,10 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	if (!pbs_conf.pbs_leaf_name) {
 		char my_hostname[PBS_MAXHOSTNAME+1];
 		if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {

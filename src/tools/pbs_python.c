@@ -2303,6 +2303,10 @@ main(int argc, char *argv[], char *envp[])
 		return 1;
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	/* by default, server_name is what is set in /etc/pbs.conf */
 	(void)strcpy(server_name, pbs_conf.pbs_server_name);
 

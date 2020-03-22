@@ -119,10 +119,13 @@ main(int argc, char *argv[])
 
 	pbs_loadconf(0);
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf(tbuf_env, "%s/tcltk/lib/tcl%s",
-                                pbs_conf.pbs_exec_path, TCL_VERSION);
+			sprintf(tbuf_env, "%s/tcltk/lib/tcl%s", pbs_conf.pbs_exec_path, TCL_VERSION);
 			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}

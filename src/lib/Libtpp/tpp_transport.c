@@ -70,7 +70,7 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <signal.h>
-#include "tpp.h"
+#include "tpp_internal.h"
 #include "auth.h"
 
 #define TPP_CONN_DISCONNECTED   1 /* Channel is disconnected */
