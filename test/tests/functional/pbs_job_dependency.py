@@ -57,27 +57,26 @@ e.accept()
         TestFunctional.setUp(self)
         attr = {ATTR_RESC_TYPE: 'string', ATTR_RESC_FLAG: 'h'}
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='NewRes')
-        rv = self.scheduler.add_resource('NewRes', apply=True)
-        self.assertTrue(rv)
-        a = {ATTR_rescavail + '.ncpus': 0}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        self.scheduler.add_resource('NewRes', apply=True)
+        self.create_vnodes()
+
+    def cust_attr(self, name, totnodes, numnode, attrib):
+        res_str = "ver" + str(numnode)
+        attr = {'resources_available.NewRes': res_str}
+        return {**attrib, **attr}
 
     def create_vnodes(self):
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 6, mom=self.mom)
-        for i in range(6):
-            res_str = "ver" + str(i)
-            attr = {'resources_available.NewRes': res_str}
-            vnode = 'vnode[' + str(i) + ']'
-            self.server.manager(MGR_CMD_SET, NODE, attr, vnode)
+        self.server.create_vnodes('vnode', attr, 6, mom=self.mom,
+                                  attrfunc=self.cust_attr)
 
     def assert_dependency(self, *jobs):
         dl = []
         num = len(jobs)
-        for ind, _ in enumerate(jobs):
-            temp = self.server.status(JOB, id=jobs[ind])[0][ATTR_depend]
+        for ind, job in enumerate(jobs):
+            temp = self.server.status(JOB, id=job)[0][ATTR_depend]
             dl.append([i.split('@')[0] for i in temp.split(':')[1:]])
-            self.assertEqual(num-1, len(dl[ind]))
+            self.assertEqual(num - 1, len(dl[ind]))
 
         for ind, job in enumerate(jobs):
             # make a list of dependency list that does not contain the
@@ -91,29 +90,30 @@ e.accept()
         Test basic runone dependency tests
         1 - Submit a job that runs and then submit a job having "runone"
         dependency on the first job. Check that second job is deleted as
-        soon as it is submitted.
+        soon as the first job ends.
         2 - Submit a can never run job and submit a second job having "runone"
         dependency on the first job. Check that first job is deleted when
-        second job runs.
+        second job ends.
         """
 
-        self.create_vnodes()
         job = Job(attrs={'Resource_List.select': '1:NewRes=ver3'})
-        job.set_sleep_time(2)
+        job.set_sleep_time(5)
         j1 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j1})
         j1_2 = self.server.submit(d_job)
         self.server.expect(JOB, {'job_state': 'R'}, id=j1)
+        self.server.expect(JOB, {'job_state': 'H'}, id=j1_2)
         self.server.accounting_match("Job deleted as result of dependency",
                                      id=j1_2)
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=4:NewRes=ver3'})
-        job.set_sleep_time(2)
+        job.set_sleep_time(5)
         j2 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j2})
         j2_2 = self.server.submit(d_job)
+        self.server.expect(JOB, {'job_state': 'H'}, id=j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2_2)
         self.server.accounting_match("Job deleted as result of dependency",
                                      id=j2)
@@ -122,55 +122,32 @@ e.accept()
         """
         Submit a job putting runone dependency on an already running job
         check to see that the second job is put on system hold as soon
-        as it is submitted.
-        """
-        self.create_vnodes()
-        job = Job()
-        j1 = self.server.submit(job)
-        a = {ATTR_state: 'R'}
-        self.server.expect(JOB, a, id=j1)
-
-        a = {ATTR_depend: 'runone:' + j1}
-        job2 = Job(attrs=a)
-        j2 = self.server.submit(job2)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j2)
-
-        self.assert_dependency(j1, j2)
-
-    def test_runone_dependency_on_already_held_job(self):
-        """
-        Submit a job putting runone dependency on an already running job
-        check to see that the second job is put on system hold as soon
         as it is submitted, then submit another job dependent on the
         second held job and see if that gets held as well.
         Also test that all jobs have dependency on other two jobs.
         """
-        self.create_vnodes()
-        job = Job(TEST_USER)
+
+        job = Job()
         j1 = self.server.submit(job)
-        a = {ATTR_state: 'R'}
-        self.server.expect(JOB, a, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
 
         a = {ATTR_depend: 'runone:' + j1}
-        job2 = Job(TEST_USER, attrs=a)
+        job2 = Job(attrs=a)
         j2 = self.server.submit(job2)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j2)
+        self.assert_dependency(j1, j2)
 
         a = {ATTR_depend: 'runone:' + j2}
-        job3 = Job(TEST_USER, attrs=a)
+        job3 = Job(attrs=a)
         j3 = self.server.submit(job3)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j3)
-
+        self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j3)
         self.assert_dependency(j1, j2, j3)
 
     def test_runone_depend_basic_on_job_array(self):
         """
         Test basic runone dependency tests on job arrays
         1 - Submit a job array that runs and then submit a job having "runone"
-        dependency on the parent job array. Check that second job is deleted as
+        dependency on the parent job array. Check that second job is held as
         soon as it is submitted.
         2 - Submit a can never run array job and submit a second job having
         "runone" dependency on the array parent. Check that first job is
@@ -179,9 +156,8 @@ e.accept()
         submission fails in this case.
         """
 
-        self.create_vnodes()
         job = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                         ATTR_J: '1-3'})
+                         ATTR_J: '1-2'})
         job.set_sleep_time(5)
         j1 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
@@ -193,8 +169,8 @@ e.accept()
                                      id=j1_2)
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=4:NewRes=ver3',
-                         ATTR_J: '1-3'})
-        job.set_sleep_time(2)
+                         ATTR_J: '1-2'})
+        job.set_sleep_time(5)
         j2 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j2})
@@ -205,10 +181,10 @@ e.accept()
                                      id=j2)
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=1',
-                         ATTR_J: '1-3'})
-        job.set_sleep_time(2)
+                         ATTR_J: '1-2'})
+        job.set_sleep_time(5)
         j3 = self.server.submit(job)
-        j3_1 = j3.split('[')[0] + '1' + j3.split('[')[1]
+        j3_1 = job.create_subjob_id(j3, 1)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j3_1})
         with self.assertRaises(PbsSubmitError) as e:
@@ -219,19 +195,16 @@ e.accept()
         Check to see that a queue job hook can set runone job
         dependency.
         """
-        self.create_vnodes()
         a = {'event': 'queuejob', 'enabled': 'True'}
         self.server.create_import_hook('h1', a, self.hook_body)
         job = Job()
         j1 = self.server.submit(job)
-        a = {ATTR_state: 'R'}
-        self.server.expect(JOB, a, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
 
         a = {ATTR_v: 'DEPENDENT_JOB=' + j1}
         job2 = Job(attrs=a)
         j2 = self.server.submit(job2)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j2)
 
         self.assert_dependency(j1, j2)
 
@@ -240,13 +213,11 @@ e.accept()
         Check to see that a run job hook cannot set runone job
         dependency.
         """
-        self.create_vnodes()
         a = {'event': 'runjob', 'enabled': 'True'}
         self.server.create_import_hook('h1', a, self.hook_body)
         job = Job()
         j1 = self.server.submit(job)
-        a = {ATTR_state: 'R'}
-        self.server.expect(JOB, a, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
 
         a = {ATTR_v: 'DEPENDENT_JOB=' + j1}
         job2 = Job(attrs=a)
@@ -263,23 +234,19 @@ e.accept()
         Then test that deleting second job updates dependencies on
         other two jobs.
         """
-        self.create_vnodes()
-        job = Job(TEST_USER)
+        job = Job()
         j1 = self.server.submit(job)
-        a = {ATTR_state: 'R'}
-        self.server.expect(JOB, a, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
 
         a = {ATTR_depend: 'runone:' + j1}
-        job2 = Job(TEST_USER, attrs=a)
+        job2 = Job(attrs=a)
         j2 = self.server.submit(job2)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j2)
 
         a = {ATTR_depend: 'runone:' + j2}
-        job3 = Job(TEST_USER, attrs=a)
+        job3 = Job(attrs=a)
         j3 = self.server.submit(job3)
-        a = {ATTR_state: 'H', ATTR_h: 's'}
-        self.server.expect(JOB, a, id=j3)
+        self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j3)
 
         self.assert_dependency(j1, j2, j3)
 

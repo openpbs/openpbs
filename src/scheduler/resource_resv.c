@@ -1647,7 +1647,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 		}
 		if (resresv->job->dependent_jobs != NULL) {
 			for (i = 0; resresv->job->dependent_jobs[i] != NULL; i++) {
-				/* Mark all run one dependent jobs as "can not run" */
+				/* Mark all runone jobs as "can not run" */
 				resresv->job->dependent_jobs[i]->can_not_run = 1;
 			}
 		}

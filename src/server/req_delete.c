@@ -701,9 +701,9 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		   ((pjob->ji_qs.ji_state == JOB_STATE_QUEUED) ||
 		    (pjob->ji_qs.ji_state == JOB_STATE_HELD))) {
 		struct depend *dp;
-		dp = find_depend(JOB_DEPEND_TYPE_RUN_ONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
 		if (dp != NULL)
-			depend_run_one_remove_dependency(pjob);
+			depend_runone_remove_dependency(pjob);
 	}
 
 	if (is_mgr && forcedel) {

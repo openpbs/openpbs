@@ -1130,9 +1130,9 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 			if (base_job != NULL &&
 			    base_job->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET) {
 				struct depend *pdep;
-				pdep = find_depend(JOB_DEPEND_TYPE_RUN_ONE, &base_job->ji_wattr[(int)JOB_ATR_depend]);
+				pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &base_job->ji_wattr[(int)JOB_ATR_depend]);
 				if (pdep != NULL)
-					depend_run_one_hold_all(base_job);
+					depend_runone_hold_all(base_job);
 			}
 		}
 		return (0);

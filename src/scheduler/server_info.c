@@ -2488,6 +2488,10 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	/* Now that all job information has been created, time to associate
+	 * jobs to each other if they have runone dependency
+	 */
+	associate_dependent_jobs(nsinfo);
 
 	return nsinfo;
 }

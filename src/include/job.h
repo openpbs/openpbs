@@ -106,7 +106,7 @@ struct depend_job {
 #define JOB_DEPEND_TYPE_BEFORENOTOK	 6
 #define JOB_DEPEND_TYPE_BEFOREANY	 7
 #define JOB_DEPEND_TYPE_ON		 8
-#define JOB_DEPEND_TYPE_RUN_ONE		 9
+#define JOB_DEPEND_TYPE_RUNONE		 9
 #define JOB_DEPEND_NUMBER_TYPES		11
 
 #define JOB_DEPEND_OP_REGISTER		1
@@ -1114,14 +1114,14 @@ task_find	(job		*pjob,
 extern void  add_dest(job *);
 extern int   depend_on_que(attribute *, void *, int);
 extern int   depend_on_exec(job *);
-extern int   depend_run_one_remove_dependency(job *);
-extern int   depend_run_one_hold_all(job *);
-extern int   depend_run_one_release_all(job *);
+extern int   depend_runone_remove_dependency(job *);
+extern int   depend_runone_hold_all(job *);
+extern int   depend_runone_release_all(job *);
 extern int   depend_on_term(job *);
 extern struct depend *find_depend(int type, attribute *pattr);
 extern struct depend_job *find_dependjob(struct depend *pdep, char *name);
 extern int send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int schedhint, void (*postfunc)(struct work_task *));
-extern void post_run_one(struct work_task *pwt);
+extern void post_runone(struct work_task *pwt);
 extern job  *find_job(char *);
 extern char *get_egroup(job *);
 extern char *get_variable(job *, char *);
