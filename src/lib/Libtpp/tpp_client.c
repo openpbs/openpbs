@@ -4480,7 +4480,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 		auth_def_t *authdef = NULL;
 		void *authctx = NULL;
-		char *method = NULL;
 
 		if (authdata == NULL) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, No auth data found", tfd);
@@ -4489,17 +4488,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		}
 
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
-		if (ahdr.for_encrypt == FOR_AUTH) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method mismatch in connection", tfd);
-			method = tpp_conf->auth_config->auth_method;
-		} else {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Encryption method mismatch in connection", tfd);
-			method = tpp_conf->auth_config->encrypt_method;
-		}
-		if (strcmp(ahdr.auth_type, method) != 0) {
-			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-			return -1;
-		}
 		len_in = (size_t)len - sizeof(tpp_auth_pkt_hdr_t);
 		data_in = calloc(1, len_in);
 		if (data_in == NULL) {
