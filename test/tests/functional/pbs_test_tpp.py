@@ -1,24 +1,42 @@
 # coding: utf-8
 
-# Copyright (C) 2003-2020 Altair Engineering, Inc. All rights reserved.
-# Copyright notice does not imply publication.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
 #
-# ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade Secret
-# Information. Not for use or disclosure outside of Licensee's organization.
-# The software and information contained herein may only be used internally and
-# is provided on a non-exclusive, non-transferable basis. License may not
-# sublicense, sell, lend, assign, rent, distribute, publicly display or
-# publicly perform the software or other information provided herein,
-# nor is Licensee permitted to decompile, reverse engineer, or
-# disassemble the software. Usage of the software and other information
-# provided by Altair(or its resellers) is only as explicitly stated in the
-# applicable end user license agreement between Altair and Licensee.
-# In the absence of such agreement, the Altair standard end user
-# license agreement terms shall govern.
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+# See the GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# For a copy of the commercial license terms and conditions,
+# go to: (http://www.pbspro.com/UserArea/agreement.html)
+# or contact the Altair Legal Department.
+#
+# Altair.s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair.s trademarks, including but not limited to "PBS.",
+# "PBS Professional®", and "PBS Pro." and Altair.s logos is subject to Altair's
+# trademark licensing policies.
 
 from tests.functional import *
 import socket
-
 
 @tags('comm')
 class TestTPP(TestFunctional):
@@ -41,11 +59,10 @@ class TestTPP(TestFunctional):
                                     ('export PATH=$PATH:%s' %
                                      self.exec_path, '.*'),
                                     ('qstat', '.*')]
-        j.set_sleep_time(sleep)
         if job_script:
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                        "bin", "pbsdsh")
-            script = "#!/bin/sh\n%s sleep 10" % pbsdsh_path
+            script = "#!/bin/sh\n%s sleep %s" % (pbsdsh_path, sleep)
             j.create_script(script)
         else:
             j.set_sleep_time(sleep)
@@ -53,7 +70,7 @@ class TestTPP(TestFunctional):
         if exp_attrib:
             self.server.expect(JOB, exp_attrib, id=jid)
         return jid
-
+                
     def submit_resv(self, set_attrib=None, exp_attrib=None):
         r = Reservation(TEST_USER)
         if set_attrib:
