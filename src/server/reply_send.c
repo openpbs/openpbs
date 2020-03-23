@@ -279,6 +279,10 @@ reply_send(struct batch_request *request)
 	int		    rc = 0;
 	int		    sfds = request->rq_conn;		/* socket */
 
+	/* No need to send reply for asynrunjob */
+	if (request->rq_type == PBS_BATCH_AsyrunJob)
+		return 0;
+
 	/* if this is a child request, just move the error to the parent */
 
 	if (request->rq_parentbr) {
@@ -362,6 +366,10 @@ reply_ack(struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
+	/* No need to send ack for asynrunjob */
+	if (preq->rq_type == PBS_BATCH_AsyrunJob)
+		return;
+
 	if (preq->prot == PROT_TPP && preq->tpp_ack == 0) {
 		free_br(preq);
 		return;
@@ -442,6 +450,10 @@ req_reject(int code, int aux, struct batch_request *preq)
 	char  msgbuf[ERR_MSG_SIZE];
 
 	if (preq == NULL)
+		return;
+
+	/* No need to send reject for asynrunjob */
+	if (preq->rq_type == PBS_BATCH_AsyrunJob)
 		return;
 
 	if (code != PBSE_NONE) {

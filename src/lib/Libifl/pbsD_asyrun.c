@@ -66,7 +66,6 @@ int
 __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
 {
 	int	rc;
-	struct batch_reply   *reply;
 	unsigned long resch = 0;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
@@ -107,13 +106,6 @@ __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
-
-	/* get reply */
-
-	reply = PBSD_rdrpy(c);
-	rc = get_conn_errno(c);
-
-	PBSD_FreeReply(reply);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
