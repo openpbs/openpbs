@@ -106,6 +106,11 @@
 
 #define MAX_INT_LEN 10
 
+/* Values of sched attribute 'job_run_wait' */
+#define RW_NONE "none"
+#define RW_RUNJOB_HOOK "runjob_hook"
+#define RW_EXECJOB_HOOK "execjob_hook"
+
 struct preempt_ordering
 {
 	unsigned high_range;            /* high end of the walltime range */

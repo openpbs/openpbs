@@ -919,7 +919,6 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 {
 	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
-	int flag = 0;
 
 	if (!psched)
 		return;
@@ -966,39 +965,43 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 	if ((psched->sch_attr[(int)SCHED_ATR_log_events].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[SCHED_ATR_log_events].at_val.at_long = SCHED_LOG_DFLT;
 		psched->sch_attr[SCHED_ATR_log_events].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 
 	if (!(psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_val.at_long = PBS_PREEMPT_QUEUE_PRIO_DEFAULT;
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 	if (!(psched->sch_attr[SCHED_ATR_preempt_prio].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_prio].at_val.at_str = strdup(PBS_PREEMPT_PRIO_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 	if (!(psched->sch_attr[SCHED_ATR_preempt_order].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_order].at_val.at_str = strdup(PBS_PREEMPT_ORDER_DEFAULT);
 		action_sched_preempt_order(&psched->sch_attr[SCHED_ATR_preempt_order], psched, ATR_ACTION_ALTER);
 		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 	if ( !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_val.at_str = strdup(PBS_PREEMPT_SORT_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 	if (!(psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_val.at_long = PBS_SERVER_DYN_RES_ALARM_DEFAULT;
 		psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
+	}
+	if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET)) {
+		set_attr_svr(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait],
+				RW_RUNJOB_HOOK);
+
+		psched->sch_attr[SCHED_ATR_job_run_wait].at_flags |= ATR_VFLAG_DEFLT;
+	}
+	if (!(psched->sch_attr[SCHED_ATR_throughput_mode].at_flags & ATR_VFLAG_SET) &&
+			strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RW_NONE)) {
+		set_attr_svr(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode],
+				ATR_TRUE);
+		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_VFLAG_DEFLT;
 	}
 
-
-	if (flag)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+	set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 }
 
 
@@ -1038,7 +1041,7 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 		if (psched == pobj)
 			continue;
 		part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-		if (part_attr->at_flags & ATR_VFLAG_SET && (!strcmp(pattr->at_val.at_str, part_attr->at_val.at_str)))
+		if ((part_attr->at_flags & ATR_VFLAG_SET) && (!strcmp(pattr->at_val.at_str, part_attr->at_val.at_str)))
 			return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
 	}
 	if (actmode != ATR_ACTION_RECOV)
@@ -1067,6 +1070,113 @@ action_sched_server_dyn_res_alarm(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode != ATR_ACTION_RECOV)
 		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+
+	return PBSE_NONE;
+}
+
+/**
+ * @brief	action function for 'opt_backfill_fuzzy' sched attribute
+ *
+ * @param[in]	pattr		attribute being set
+ * @param[in]	pobj		Object on which the attribute is being set
+ * @param[in]	actmode		the mode of setting
+ *
+ * @return error code
+ */
+int
+action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode)
+{
+	char *str = pattr->at_val.at_str;
+
+	if (str == NULL)
+		return PBSE_BADATVAL;
+
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		if (!strcasecmp(str, "off") ||
+		    !strcasecmp(str, "low")  ||
+		    !strcasecmp(str, "medium") || !strcasecmp(str, "med") ||
+		    !strcasecmp(str, "high"))
+			return PBSE_NONE;
+		else
+			return PBSE_BADATVAL;
+	}
+
+	return PBSE_NONE;
+}
+
+/**
+ * @brief action function for 'job_run_wait' sched attribute
+ *
+ * @param[in]	pattr		attribute being set
+ * @param[in]	pobj		Object on which the attribute is being set
+ * @param[in]	actmode		the mode of setting
+ *
+ * @return error code
+ */
+int
+action_job_run_wait(attribute *pattr, void *pobj, int actmode)
+{
+	char *str = pattr->at_val.at_str;
+
+	if (str == NULL)
+		return PBSE_BADATVAL;
+
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		pbs_sched *psched = NULL;
+		char *tp_val = NULL;
+
+		if (!strcasecmp(str, RW_EXECJOB_HOOK))
+			tp_val = ATR_FALSE;
+		else if (!strcasecmp(str, RW_RUNJOB_HOOK))
+			tp_val = ATR_TRUE;
+		else if (!strcasecmp(str, RW_NONE))
+			tp_val = NULL;
+		else
+			return PBSE_BADATVAL;
+
+		psched = (pbs_sched *) pobj;
+		if (tp_val == NULL)
+			/* No equivalent value of 'none' for throughput_mode, so unset it */
+			clear_attr(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode]);
+		else
+			set_attr_svr(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode],
+				tp_val);
+	}
+
+	return PBSE_NONE;
+}
+
+
+/**
+ * @brief action function for 'throughput_mode' sched attribute
+ *
+ * @param[in]	pattr		attribute being set
+ * @param[in]	pobj		Object on which the attribute is being set
+ * @param[in]	actmode		the mode of setting
+ *
+ * @return error code
+ */
+int
+action_throughput_mode(attribute *pattr, void *pobj, int actmode)
+{
+	long val = pattr->at_val.at_long;
+	pbs_sched *psched = NULL;
+
+	psched = (pbs_sched *) pobj;
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		char *jrw_val = NULL;
+
+		if (val)
+			jrw_val = RW_RUNJOB_HOOK;
+		else
+			jrw_val = RW_EXECJOB_HOOK;
+
+		set_attr_svr(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait], jrw_val);
+	}
+
+	/* Log a message letting user know that this attribute is deprecated */
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_REQUEST, LOG_WARNING, psched->sc_name,
+			"'throughput_mode' is being deprecated, it is recommended to use 'job_run_wait'");
 
 	return PBSE_NONE;
 }

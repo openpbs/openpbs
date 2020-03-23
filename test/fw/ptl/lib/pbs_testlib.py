@@ -6822,9 +6822,20 @@ class Server(PBSService):
                 rc = 0
             if rc == 0:
                 if cmd == MGR_CMD_LIST:
-                    bsl = self.utils.convert_to_dictlist(ret['out'], attrib,
+                    bsl = self.utils.convert_to_dictlist(ret['out'],
                                                          mergelines=True)
-                    self.update_attributes(obj_type, bsl)
+                    # Since we stat everything, overwrite the cache
+                    self.update_attributes(obj_type, bsl, overwrite=True)
+                    # Filter out the attributes requested
+                    if attrib:
+                        bsl_attr = []
+                        for obj in bsl:
+                            dnew = {}
+                            for k in obj.keys():
+                                if k in attrib:
+                                    dnew[k] = obj[k]
+                            bsl_attr.append(dnew)
+                        bsl = bsl_attr
             else:
                 # Need to rework setting error, this is not thread safe
                 self.last_error = ret['err']
@@ -8668,7 +8679,7 @@ class Server(PBSService):
         self.cleanup_reservations()
         return rv
 
-    def update_attributes(self, obj_type, bs):
+    def update_attributes(self, obj_type, bs, overwrite=False):
         """
         Populate objects from batch status data
         """
@@ -8686,7 +8697,10 @@ class Server(PBSService):
                 else:
                     user = None
                 if id in self.jobs:
-                    self.jobs[id].attributes.update(binfo)
+                    if overwrite:
+                        self.jobs[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.jobs[id].attributes.update(binfo)
                     if self.jobs[id].username != user:
                         self.jobs[id].username = user
                 else:
@@ -8694,41 +8708,62 @@ class Server(PBSService):
                 obj = self.jobs[id]
             elif obj_type in (VNODE, NODE):
                 if id in self.nodes:
-                    self.nodes[id].attributes.update(binfo)
+                    if overwrite:
+                        self.nodes[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.nodes[id].attributes.update(binfo)
                 else:
                     self.nodes[id] = MoM(id, binfo, snapmap={NODE: None},
                                          server=self)
                 obj = self.nodes[id]
             elif obj_type == SERVER:
-                self.attributes.update(binfo)
+                if overwrite:
+                    self.attributes = copy.deepcopy(binfo)
+                else:
+                    self.attributes.update(binfo)
                 obj = self
             elif obj_type == QUEUE:
                 if id in self.queues:
-                    self.queues[id].attributes.update(binfo)
+                    if overwrite:
+                        self.queues[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.queues[id].attributes.update(binfo)
                 else:
                     self.queues[id] = Queue(id, binfo, server=self)
                 obj = self.queues[id]
             elif obj_type == RESV:
                 if id in self.reservations:
-                    self.reservations[id].attributes.update(binfo)
+                    if overwrite:
+                        self.reservations[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.reservations[id].attributes.update(binfo)
                 else:
                     self.reservations[id] = Reservation(id, binfo)
                 obj = self.reservations[id]
             elif obj_type == HOOK:
                 if id in self.hooks:
-                    self.hooks[id].attributes.update(binfo)
+                    if overwrite:
+                        self.hooks[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.hooks[id].attributes.update(binfo)
                 else:
                     self.hooks[id] = Hook(id, binfo, server=self)
                 obj = self.hooks[id]
             elif obj_type == PBS_HOOK:
                 if id in self.pbshooks:
-                    self.pbshooks[id].attributes.update(binfo)
+                    if overwrite:
+                        self.pbshooks[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.pbshooks[id].attributes.update(binfo)
                 else:
                     self.pbshooks[id] = Hook(id, binfo, server=self)
                 obj = self.pbshooks[id]
             elif obj_type == SCHED:
                 if id in self.schedulers:
-                    self.schedulers[id].attributes.update(binfo)
+                    if overwrite:
+                        self.schedulers[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.schedulers[id].attributes.update(binfo)
                     if 'sched_priv' in binfo:
                         self.schedulers[id].setup_sched_priv(
                             binfo['sched_priv'])
@@ -8752,12 +8787,18 @@ class Server(PBSService):
                                                     snapmap=snapmap,
                                                     id=id,
                                                     sched_priv=spriv)
-                    self.schedulers[id].attributes.update(binfo)
+                    if overwrite:
+                        self.schedulers[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.schedulers[id].attributes.update(binfo)
                 obj = self.schedulers[id]
 
             elif obj_type == RSC:
                 if id in self.resources:
-                    self.resources[id].attributes.update(binfo)
+                    if overwrite:
+                        self.resources[id].attributes = copy.deepcopy(binfo)
+                    else:
+                        self.resources[id].attributes.update(binfo)
                 else:
                     rtype = None
                     rflag = None

@@ -3840,7 +3840,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		hook_event = HOOK_EVENT_MOVEJOB;
 		req_ptr.rq_move = (struct rq_move *)&preq->rq_ind.rq_move;
 		head_ptr = &svr_movejob_hooks;
-	} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
+	} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob ||
+			preq->rq_type == PBS_BATCH_AsyrunJob_ack) {
 		hook_event = HOOK_EVENT_RUNJOB;
 		req_ptr.rq_run = (struct rq_runjob *)&preq->rq_ind.rq_run;
 		head_ptr = &svr_runjob_hooks;
@@ -3894,7 +3895,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_modifyjob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_MoveJob) {
 			phook_next = (hook *)GET_NEXT(phook->hi_movejob_hooks);
-		} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
+		} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob ||
+				preq->rq_type == PBS_BATCH_AsyrunJob_ack) {
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_Manager) {
 			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
@@ -4280,7 +4282,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	/* Reset flag to restart scheduling cycle */
 	pbs_python_no_scheduler_restart_cycle();
 
-	if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+	if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob || rq_type == PBS_BATCH_AsyrunJob_ack) {
 		/* Clear dictionary that remembers previously */
 		/* set ATTR_l resources in a hook script */
 		/* Currently, only job ATTR_l resources can be */
@@ -4485,7 +4487,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	if (pbs_python_event_get_accept_flag() == FALSE) {
 		char *emsg = NULL;
 
-		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob || rq_type == PBS_BATCH_AsyrunJob_ack) {
 			char	*new_error_path_str = NULL;
 			char	*new_output_path_str = NULL;
 
@@ -4514,7 +4516,6 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					LOG_ERR, phook->hook_name, log_buffer);
 			}
 
-
 			if (do_runjob_reject_actions(pjob, phook->hook_name) != 0)
 				attribute_jobmap_restore(pjob, runjob_reject_attrlist);
 		}
@@ -4530,6 +4531,18 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			/* log also the custom reject message */
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 				LOG_ERR, phook->hook_name, hook_msg);
+
+			if (rq_type == PBS_BATCH_AsyrunJob) {
+				char *jcomment = NULL;
+
+				pbs_asprintf(&jcomment, "Not Running: PBS Error: %s", hook_msg);
+				/* For async run, sched won't update job's comment, so let's do that */
+				job_attr_def[(int)JOB_ATR_Comment].at_decode(
+					&pjob->ji_wattr[(int)JOB_ATR_Comment],
+					NULL,
+					NULL,
+					jcomment);
+			}
 		}
 
 		pbs_python_do_vnode_set();
@@ -4538,7 +4551,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		goto server_process_hooks_exit;
 	} else { 	/* hook request has been accepted */
 
-		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob || rq_type == PBS_BATCH_AsyrunJob_ack) {
 			char	*new_exec_time_str = NULL;
 			char	*new_hold_types_str = NULL;
 			char	*new_project_str = NULL;
