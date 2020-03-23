@@ -3187,7 +3187,7 @@ Time4resvFinish(struct work_task *ptask)
 		DBPRT(("reached end of occurrence %d/%d\n", ridx, rcount))
 
 		/* When recovering past the last occurrence the standing reservation is purged
-		 * in a manner similar to an advance reservation 
+		 * in a manner similar to an advance reservation
 		 */
 		if (ridx < rcount) {
 			/*
@@ -3333,8 +3333,8 @@ Time4occurrenceFinish(resc_resv *presv)
 	if (presv->ri_qs.ri_substate == RESV_RUNNING && next < now)
 		occurrence_ended_early = 1;
 	while (occurrence_ended_early || dtend <= now) {
-		/* We may loop and skip several occurrences for different reasons, 
-		 * if an occurrence ended early, it can only be the one we are in 
+		/* We may loop and skip several occurrences for different reasons,
+		 * if an occurrence ended early, it can only be the one we are in
 		 */
 		occurrence_ended_early = 0;
 		/* get occurrence that is "j" numbers away from dtstart. */
@@ -3406,7 +3406,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	rcount_adjusted = rcount - get_execvnodes_count(execvnodes);
 
 	/* The reservation index starts at 1 but the short_xc array at 0. Occurrence 1
-	 * is therefore given by array element 0. 
+	 * is therefore given by array element 0.
 	 */
 	newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
 
@@ -3428,7 +3428,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Reservation Nodes are freed and a -possibly- new set assigned */
 	free_resvNodes(presv);
-	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might 
+	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might
 	 * not exist in the following occurrence.  The new occurrence's ri_vnodes_down
 	 * will be set properly in set_nodes()
 	 */
@@ -3513,7 +3513,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		state = RESV_CONFIRMED;
 
 	/* If the reservation already has a retry time set then its substate is
-	 * marked degraded.  If all degraded occurrences are in the past, the 
+	 * marked degraded.  If all degraded occurrences are in the past, the
 	 * scheduler will fix this on the next retry attempt.
 	 */
 	if (presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) {
@@ -5797,7 +5797,7 @@ post_send_job_exec_update_req(struct work_task *pwt)
 	if (pwt == NULL)
 		return;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	mom_preq = pwt->wt_parm1;
 	mom_preq->rq_conn = mom_preq->rq_orgconn;  /* restore socket to client */

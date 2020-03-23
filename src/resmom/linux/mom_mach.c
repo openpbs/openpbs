@@ -80,7 +80,7 @@
 #include "mom_func.h"
 #include "resmon.h"
 #include "../rm_dep.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "pbs_license.h"
 #include "pbs_ifl.h"
 #include "placementsets.h"

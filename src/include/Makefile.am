@@ -101,7 +101,7 @@ noinst_HEADERS = \
 	resmon.h \
 	resource.h \
 	resv_node.h \
-	rpp.h \
+	tpp.h \
 	sched_cmds.h \
 	pbs_sched.h \
 	server.h \

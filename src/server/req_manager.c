@@ -4731,7 +4731,7 @@ req_manager(struct batch_request *preq)
 
 	++preq->rq_refct;
 
-	if (!preq->isrpp) {
+	if (preq->prot == PROT_TCP) {
 		if (preq->rq_conn != PBS_LOCAL_CONNECTION) {
 			conn = get_conn(preq->rq_conn);
 			if (!conn) {

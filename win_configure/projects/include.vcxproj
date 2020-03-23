@@ -111,7 +111,7 @@
     <ClInclude Include="..\..\src\include\resource.h" />
     <ClInclude Include="..\..\src\include\resv_node.h" />
     <ClInclude Include="..\..\src\include\rm.h" />
-    <ClInclude Include="..\..\src\include\rpp.h" />
+    <ClInclude Include="..\..\src\include\tpp.h" />
     <ClInclude Include="..\..\src\include\sched_cmds.h" />
     <ClInclude Include="..\..\src\include\server.h" />
     <ClInclude Include="..\..\src\include\server_limits.h" />
@@ -128,7 +128,6 @@
     <ClInclude Include="..\..\src\include\win.h" />
     <ClInclude Include="..\..\src\include\win_remote_shell.h" />
     <ClInclude Include="..\..\src\include\work_task.h" />
-    <ClInclude Include="..\..\src\lib\Libtpp\tpp_common.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\include\include.dsp" />

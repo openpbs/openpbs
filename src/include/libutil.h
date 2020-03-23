@@ -44,6 +44,7 @@ extern "C" {
 
 #include <time.h>
 #include <stdio.h>
+#include <netinet/in.h>
 
 /* misc_utils specific */
 
@@ -271,12 +272,12 @@ void free_string_array(char **arr);
 char *convert_string_to_lowercase(char *str);
 
 /*
- *      Escape every occurrence of 'delim' in 'str' with 'esc'
+ * Escape every occurrence of 'delim' in 'str' with 'esc'
  */
-char * escape_delimiter(char *str, char *delim, char esc);
+char *escape_delimiter(char *str, char *delim, char esc);
 
 #ifdef HAVE_MALLOC_INFO
-char * get_mem_info(void);
+char *get_mem_info(void);
 #endif
 
 /* Size of time buffer */
@@ -292,20 +293,17 @@ void convert_duration_to_str(time_t duration, char* buf, int bufsize);
 /**
  * deduce the preemption ordering to be used for a job
  */
-struct preempt_ordering *
-get_preemption_order(struct preempt_ordering *porder, int req, int used);
+struct preempt_ordering *get_preemption_order(struct preempt_ordering *porder, int req, int used);
 
 /**
  * Begin collecting performance stats (e.g. walltime)
  */
-void
-perf_stat_start(char *instance);
+void perf_stat_start(char *instance);
 
 /**
  * Remove a performance stats entry.
  */
-void
-perf_stat_remove(char *instance);
+void perf_stat_remove(char *instance);
 
 /**
  * check delay in client commands
@@ -316,8 +314,11 @@ void delay_query(void);
 /**
  * End collecting performance stats (e.g. walltime)
  */
-char *
-perf_stat_stop(char *instance);
+char *perf_stat_stop(char *instance);
+
+extern char *netaddr(struct sockaddr_in *);
+extern unsigned long crc_file(char *fname);
+extern int get_fullhostname(char *, char *, int);
 
 #ifdef  __cplusplus
 }

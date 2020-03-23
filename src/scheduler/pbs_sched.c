@@ -57,8 +57,6 @@
  *	update_svr_schedobj()
  *	lock_out()
  *	are_we_primary()
- *	log_rppfail()
- *	log_tppmsg()
  *	main()
  *
  */
@@ -103,7 +101,7 @@
 #include	"server_limits.h"
 #include	"net_connect.h"
 #include	"rm.h"
-#include	"rpp.h"
+#include	"tpp.h"
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_share.h"
@@ -797,52 +795,14 @@ are_we_primary()
 
 /**
  * @brief
- * 		log the rpp failure message
- *
- * @param[in]	mess	-	message to be logged.
- */
-void
-log_rppfail(char *mess)
-{
-	log_event(PBSEVENT_DEBUG, LOG_DEBUG,
-		PBS_EVENTCLASS_SERVER, "rpp", mess);
-}
-
-/*
- * @brief
- *		This is the log handler for tpp implemented in the daemon. The pointer to
- *		this function is used by the Libtpp layer when it needs to log something to
- *		the daemon logs
- *
- * @param[in]	level	-	Logging level
- * @param[in]	objname	-	Name of the object about which logging is being done
- * @param[in]	mess	-	The log message
- *
- */
-static void
-log_tppmsg(int level, const char *objname, char *mess)
-{
-	char id[2*PBS_MAXHOSTNAME];
-	int thrd_index;
-	int etype = log_level_2_etype(level);
-
-	thrd_index = tpp_get_thrd_index();
-	if (thrd_index == -1)
-		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL) ? objname : msg_daemonname);
-	else
-		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL) ? objname : msg_daemonname, thrd_index);
-
-	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
-	DBPRT((mess));
-	DBPRT(("\n"));
-}
-/**
- * @brief
  * 		the entry point of the pbs_sched.
  */
 int
 main(int argc, char *argv[])
 {
+	fd_set selset;
+	struct timeval tv;
+	char *nodename = NULL;
 	int		go, c, rc, errflg = 0;
 	int		lockfds;
 	int		t = 1;
@@ -856,7 +816,7 @@ main(int argc, char *argv[])
 	extern	char	*optarg;
 	extern	int	optind, opterr;
 	char	       *runjobid = NULL;
-	extern	int	rpp_fd;
+	extern	int	tpp_fd;
 	fd_set		fdset;
 	int		opt_no_restart = 0;
 #ifdef NAS /* localmod 031 */
@@ -868,7 +828,6 @@ main(int argc, char *argv[])
 #endif	/* _POSIX_MEMLOCK */
 	int		alarm_time = 0;
 	char 		logbuf[1024];
-	time_t		rpp_advise_timeout = 30;	/* rpp_read timeout */
 	extern char     *msg_corelimit;
 #ifdef  RLIMIT_CORE
 	int      	char_in_cname = 0;
@@ -909,6 +868,10 @@ main(int argc, char *argv[])
 
 	if (pbs_loadconf(0) == 0)
 		return (1);
+
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	nthreads = pbs_conf.pbs_sched_threads;
 
@@ -1314,67 +1277,51 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	rpp_fd = -1;
-	if (pbs_conf.pbs_use_tcp == 1) {
-		fd_set selset;
-		struct timeval tv;
-		char *nodename = NULL;
+	tpp_fd = -1;
+	sprintf(log_buffer, "Out of memory");
+	if (pbs_conf.pbs_leaf_name) {
+		char *p;
+		nodename = strdup(pbs_conf.pbs_leaf_name);
 
-		sprintf(log_buffer, "Out of memory");
-		if (pbs_conf.pbs_leaf_name) {
-			char *p;
-			nodename = strdup(pbs_conf.pbs_leaf_name);
-
-			/* reset pbs_leaf_name to only the first leaf name with port */
-			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
-			if (p)
-				*p = '\0';
-			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
-			if (p)
-				*p = '\0';
-		} else {
-			nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
-		}
-		if (!nodename) {
-			log_err(-1, "pbsd_main", log_buffer);
-			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
-			return (1);
-		}
-
-		/* set tpp function pointers */
-		set_tpp_funcs(log_tppmsg);
-		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port, pbs_conf.pbs_leaf_routers);
-		free(nodename);
-
-		if (rc == -1) {
-			fprintf(stderr, "Error setting TPP config\n");
-			return -1;
-		}
-
-		if ((rpp_fd = tpp_init(&tpp_conf)) == -1) {
-			fprintf(stderr, "rpp_init failed\n");
-			return -1;
-		}
-		/*
-		 * Wait for net to get restored, ie, app to connect to routers
-		 */
-		FD_ZERO(&selset);
-		FD_SET(rpp_fd, &selset);
-		tv.tv_sec = 5;
-		tv.tv_usec = 0;
-		select(FD_SETSIZE, &selset, NULL, NULL, &tv);
-
-		rpp_poll(); /* to clear off the read notification */
+		/* reset pbs_leaf_name to only the first leaf name with port */
+		p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+		if (p)
+			*p = '\0';
+		p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+		if (p)
+			*p = '\0';
 	} else {
-		/* set rpp function pointers */
-		set_rpp_funcs(log_rppfail);
-
-		/* set a timeout for rpp_read operations */
-		if (rpp_advise(RPP_ADVISE_TIMEOUT, &rpp_advise_timeout) != 0) {
-			log_err(errno, __func__, "rpp_advise");
-			die(0);
-		}
+		nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 	}
+	if (!nodename) {
+		log_err(-1, __func__, log_buffer);
+		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
+		return (1);
+	}
+
+	/* set tpp config */
+	rc = set_tpp_config(NULL, &pbs_conf, &tpp_conf, nodename, sched_port, pbs_conf.pbs_leaf_routers);
+	free(nodename);
+
+	if (rc == -1) {
+		fprintf(stderr, "Error setting TPP config\n");
+		return -1;
+	}
+
+	if ((tpp_fd = tpp_init(&tpp_conf)) == -1) {
+		fprintf(stderr, "tpp_init failed\n");
+		return -1;
+	}
+	/*
+	 * Wait for net to get restored, ie, app to connect to routers
+	 */
+	FD_ZERO(&selset);
+	FD_SET(tpp_fd, &selset);
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	select(FD_SETSIZE, &selset, NULL, NULL, &tv);
+
+	tpp_poll(); /* to clear off the read notification */
 
 	/* Initialize cleanup lock */
 	if (init_mutex_attr_recursive(&attr) == 0)
@@ -1385,13 +1332,6 @@ main(int argc, char *argv[])
 	FD_ZERO(&fdset);
 	for (go=1; go;) {
 		int	cmd;
-
-		/*
-		 * with TPP, we don't need to drive rpp_io(), so
-		 * no need to add it to be monitored
-		 */
-		if (pbs_conf.pbs_use_tcp == 0 && rpp_fd != -1)
-			FD_SET(rpp_fd, &fdset);
 
 		FD_SET(server_sock, &fdset);
 		if (select(FD_SETSIZE, &fdset, NULL, NULL, NULL) == -1) {
@@ -1406,11 +1346,6 @@ main(int argc, char *argv[])
 		if (sigusr1_flag)
 			undolr();
 #endif
-
-		if (pbs_conf.pbs_use_tcp == 0 && rpp_fd != -1 && FD_ISSET(rpp_fd, &fdset)) {
-			if (rpp_io() == -1)
-				log_err(errno, __func__, "rpp_io");
-		}
 		if (!FD_ISSET(server_sock, &fdset))
 			continue;
 

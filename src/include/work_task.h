@@ -85,7 +85,7 @@ struct work_task  {
 	void		*wt_parm2;	/* optional pointer for use by func */
 	void		*wt_parm3;	/* used to store reply for deferred cmds TPP */
 	int		 wt_aux;	/* optional info: e.g. child status */
-	int		 wt_aux2;	/* optional info 2: e.g. *real* child pid (windows), rpp msg etc */
+	int		 wt_aux2;	/* optional info 2: e.g. *real* child pid (windows), tpp msgid etc */
 };
 
 extern struct work_task *set_task(enum work_type, long event, void (*func)(), void *param);

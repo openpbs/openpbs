@@ -444,7 +444,6 @@ extern int action_entlim_ct  (attribute *attr, void *pobj, int mode);
 extern int action_entlim_res(attribute *attr, void *pobj, int mode);
 extern int at_non_zero_time(attribute *attr, void *pobj, int mode);
 extern int set_log_events(attribute *pattr, void *pobject, int actmode);
-extern int set_sched_throughput_mode(attribute *pattr, void *pobj, int actmode);
 
 extern void free_str  (attribute *attr);
 extern void free_arst(attribute *attr);

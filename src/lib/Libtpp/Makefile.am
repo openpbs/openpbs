@@ -43,11 +43,10 @@ libtpp_a_CPPFLAGS = \
 	@KRB5_CFLAGS@
 
 libtpp_a_SOURCES = \
+	tpp_internal.h \
 	tpp_client.c \
-	tpp_common.h \
 	tpp_em.c \
 	tpp_platform.c \
-	tpp_platform.h \
 	tpp_router.c \
 	tpp_transport.c \
 	tpp_util.c

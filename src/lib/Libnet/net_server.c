@@ -73,8 +73,7 @@
 #include "attribute.h"
 #include "job.h"
 #include "svrfunc.h"
-#include "rpp.h"
-#include "tpp_common.h"
+#include "tpp.h"
 
 /**
  * @file	net_server.c
@@ -495,7 +494,7 @@ process_socket(int sock)
 	}
 	svr_conn[idx]->cn_lasttime = time(NULL);
 	if ((svr_conn[idx]->cn_active != Primary) &&
-		(svr_conn[idx]->cn_active != RppComm) &&
+		(svr_conn[idx]->cn_active != TppComm) &&
 		(svr_conn[idx]->cn_active != Secondary)) {
 		if (!(svr_conn[idx]->cn_authen & PBS_NET_CONN_AUTHENTICATED)) {
 			if (engage_authentication(svr_conn[idx]) == -1) {

@@ -459,7 +459,7 @@ post_hold(struct work_task *pwt)
 	preq = pwt->wt_parm1;
 	code = preq->rq_reply.brp_code;
 	preq->rq_conn = preq->rq_orgconn;	/* restore client socket */
-	
+
 	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
 
 	if (pjob == NULL) {
@@ -470,7 +470,7 @@ post_hold(struct work_task *pwt)
 		return;
 	}
 
-	if (pwt->wt_aux2 != 1) { /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP) {
 		conn = get_conn(preq->rq_conn);
 
 		if (!conn) {
@@ -515,6 +515,6 @@ post_hold(struct work_task *pwt)
 	}
 	if (pjob->ji_pmt_preq != NULL)
 		reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_CHECKPOINT, pjob);
-	
+
 	reply_ack(preq);
 }

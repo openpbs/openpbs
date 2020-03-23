@@ -87,10 +87,9 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 		return pbs_errno;
 
 	/* setup DIS support routines for following DIS calls */
-
 	DIS_tcp_funcs();
 
-	if ((rc = PBSD_msg_put(c, jobid, fileopt, msg, extend, 0, NULL)) != 0) {
+	if ((rc = PBSD_msg_put(c, jobid, fileopt, msg, extend, PROT_TCP, NULL)) != 0) {
 		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
@@ -101,7 +100,6 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 	}
 
 	/* read reply */
-
 	reply = PBSD_rdrpy(c);
 	rc = get_conn_errno(c);
 

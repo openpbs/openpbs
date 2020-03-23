@@ -133,7 +133,7 @@ post_message_req(struct work_task *pwt)
 {
 	struct batch_request *preq;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* close connection to MOM */
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore socket to client */
@@ -160,7 +160,7 @@ post_py_spawn_req(struct work_task *pwt)
 	struct batch_request *preq;
 	char	tmp_buf[128] = "";
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* close connection to MOM */
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore socket to client */
@@ -278,7 +278,7 @@ req_relnodesjob(struct batch_request *preq)
 	char		msg[LOG_BUF_SIZE];
 	char		*keep_select = NULL;
 
- 
+
 	if (preq == NULL)
 		return;
 

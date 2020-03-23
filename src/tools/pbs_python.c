@@ -304,15 +304,6 @@ int	   actmode;
 }
 
 int
-set_sched_throughput_mode(pattr, pobj, actmode)
-attribute *pattr;
-void      *pobj;
-int	   actmode;
-{
-	return PBSE_NONE;
-}
-
-int
 action_sched_port(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;
@@ -2311,6 +2302,10 @@ main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "Failed to load pbs.conf!\n");
 		return 1;
 	}
+
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	/* by default, server_name is what is set in /etc/pbs.conf */
 	(void)strcpy(server_name, pbs_conf.pbs_server_name);

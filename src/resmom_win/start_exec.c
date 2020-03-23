@@ -86,7 +86,7 @@
 #include "resource.h"
 #include "job.h"
 #include "log.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "dis.h"
 #include "pbs_nodes.h"
 #include "mom_mach.h"
@@ -638,7 +638,7 @@ rmtmpdir(char *jobid)
 	if (pid > 0)		/* parent */
 		return;
 
-	rpp_terminate();
+	tpp_terminate();
 	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
 	exit(21);
@@ -2822,7 +2822,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		 ** We always have a stream open to MS at node 0.
 		 */
 		i = pjob->ji_hosts[0].hn_stream;
-		if ((ap = rpp_getaddr(i)) == NULL) {
+		if ((ap = tpp_getaddr(i)) == NULL) {
 			sprintf(log_buffer, "job %s has no stream to MS",
 				pjob->ji_qs.ji_jobid);
 			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
@@ -3863,7 +3863,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					 * yet another global variable to represent the hostname
 					 * of the local node.
 					 */
-					if ((pbs_conf.pbs_use_tcp == 1) && pbs_conf.pbs_leaf_name) {
+					if (pbs_conf.pbs_leaf_name) {
 						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
 							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
 							strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
@@ -4118,7 +4118,7 @@ start_exec(job *pjob)
 	int		        nodemux = 0;
 	int			mtfd = -1;
 
-	/* make sure we have an open rpp stream back to the server */
+	/* make sure we have an open tpp stream back to the server */
 
 	if (server_stream == -1)
 		send_restart();
@@ -4192,18 +4192,18 @@ start_exec(job *pjob)
 		for (i=1; i<nodenum; i++) {
 			np = &pjob->ji_hosts[i];
 
-			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+			np->hn_stream = tpp_open(np->hn_host, np->hn_port);
 			if (np->hn_stream < 0) {
-				sprintf(log_buffer, "rpp_open failed on %s:%d",
+				sprintf(log_buffer, "tpp_open failed on %s:%d",
 					np->hn_host, np->hn_port);
 				log_err(errno, __func__, log_buffer);
 				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 				return;
 			}
 			if (pbs_conf.pbs_use_mcast == 1) {
-				/* add each of the rpp streams to the tpp mcast channel */
-				if ((tpp_mcast_add_strm(mtfd, np->hn_stream)) == -1) {
-					rpp_close(np->hn_stream);
+				/* add each of the tpp streams to the tpp mcast channel */
+				if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+					tpp_close(np->hn_stream);
 					np->hn_stream = -1;
 					tpp_mcast_close(mtfd);
 					sprintf(log_buffer, "mcast add failed");

@@ -240,19 +240,19 @@ encode_DIS_reply(int sock, struct batch_reply *reply)
 }
 
 int
-encode_DIS_replyRPP(int sock, char *rppcmd_msgid, struct batch_reply *reply)
+encode_DIS_replyTPP(int sock, char *tppcmd_msgid, struct batch_reply *reply)
 {
 	int rc;
 	/* first encode "header" consisting of protocol type and version */
 
-	/* since it RPP, write a header */
+	/* since it TPP connection, write a header */
 	if ((rc = is_compose(sock, IS_CMD_REPLY)) != DIS_SUCCESS)
 		return rc;
 
-	/* for IS_CMD_REPLY, also send across the rppcmd_msgid, so that
+	/* for IS_CMD_REPLY, also send across the tppcmd_msgid, so that
 	 * server can match the reply with the request it had sent earlier
 	 */
-	if ((rc = diswst(sock, rppcmd_msgid)) != DIS_SUCCESS)
+	if ((rc = diswst(sock, tppcmd_msgid)) != DIS_SUCCESS)
 		return rc;
 
 	return (encode_DIS_reply_inner(sock, reply));

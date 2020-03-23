@@ -67,12 +67,8 @@
 #endif
 #include "avltree.h"
 #include "pbs_error.h"
-
-#include "rpp.h"
+#include "tpp_internal.h"
 #include "dis.h"
-#include "tpp_common.h"
-#include "tpp_platform.h"
-
 #ifdef PBS_COMPRESSION_ENABLED
 #include <zlib.h>
 #endif
@@ -162,6 +158,35 @@ DIS_tpp_funcs()
 
 /**
  * @brief
+ *		This is the log handler for tpp implemented in the daemon. The pointer to
+ *		this function is used by the Libtpp layer when it needs to log something to
+ *		the daemon logs
+ *
+ * @param[in]	level   - Logging level
+ * @param[in]	objname - Name of the object about which logging is being done
+ * @param[in]	mess    - The log message
+ *
+ */
+static void
+log_tppmsg(int level, const char *objname, char *mess)
+{
+	char id[2 * PBS_MAXHOSTNAME];
+	int thrd_index;
+	int etype = log_level_2_etype(level);
+
+	thrd_index = tpp_get_thrd_index();
+	if (thrd_index == -1)
+		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL) ? objname : msg_daemonname);
+	else
+		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL) ? objname : msg_daemonname, thrd_index);
+
+	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
+	DBPRT((mess));
+	DBPRT(("\n"));
+}
+
+/**
+ * @brief
  *	Helper function called by PBS daemons to set the tpp configuration to
  *	be later used during tpp_init() call.
  *
@@ -186,7 +211,7 @@ DIS_tpp_funcs()
  *
  */
 int
-set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *nodenames, int port, char *r)
+set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *nodenames, int port, char *r)
 {
 	int i;
 	int num_routers = 0;
@@ -196,6 +221,11 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	int len, hlen;
 	char *token, *saveptr, *tmp;
 	char *formatted_names = NULL;
+
+	if (log_fn)
+		tpp_log_func = log_fn;
+	else
+		tpp_log_func = log_tppmsg;
 
 	/* before doing anything else, initialize the key to the tls
 	 * its okay to call this function multiple times since it
@@ -461,44 +491,6 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 		free(routers);
 
 	return 0;
-}
-
-/**
- * @brief
- *	Setup tpp function pointers (used to dynamically interchange code to use
- *	either TPP or RPP
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-void
-set_tpp_funcs(void (*log_fn)(int, const char *, char *))
-{
-	pfn_rpp_open = tpp_open;
-	pfn_rpp_bind = tpp_bind;
-	pfn_rpp_poll = tpp_poll;
-	pfn_rpp_io = tpp_io;
-	pfn_rpp_read = tpp_recv;
-	pfn_rpp_write = tpp_send;
-	pfn_rpp_close = tpp_close;
-	pfn_rpp_destroy = (void (*)(int)) &tpp_close;
-	pfn_rpp_localaddr = tpp_localaddr;
-	pfn_rpp_getaddr = tpp_getaddr;
-	pfn_rpp_flush = dis_flush;
-	pfn_rpp_shutdown = tpp_shutdown;
-	pfn_rpp_terminate = tpp_terminate;
-	pfn_rpp_rcommit = disr_commit;
-	pfn_rpp_wcommit = disw_commit;
-	pfn_rpp_skip = disr_skip;
-	pfn_rpp_eom = tpp_eom;
-	pfn_rpp_getc = dis_getc;
-	pfn_rpp_putc = NULL;
-	pfn_DIS_rpp_funcs = DIS_tpp_funcs;
-	pfn_rpp_add_close_func = tpp_add_close_func;
-	tpp_log_func = log_fn;
 }
 
 /**
@@ -1730,7 +1722,7 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	z_stream strm;
 	void *outbuf = NULL;
 
-	/* 
+	/*
 	 * in some rare cases totlen < compressed_len (inlen)
 	 * so safer to malloc the larger of the two values
 	 */

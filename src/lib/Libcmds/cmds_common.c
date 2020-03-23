@@ -51,10 +51,10 @@
  *	Add an entry to an attribute list. First, create the entry and set
  * 	the fields. If the attribute list is empty, then just point it at the
  * 	new entry. Otherwise, append the new entry to the list.
- *  
+ *
  *  This function is a wrapper of set_attr function in libpbs. It exits when
  *  a non-zero error code is returned by set_attr.
- * 
+ *
  * @param[in/out] attrib - pointer to attribute list
  * @param[in]     attrib_name - attribute name
  * @param[in]     attrib_value - attribute value
@@ -84,3 +84,10 @@ set_attr_resc_error_exit(struct attrl **attrib, char *attrib_name, char *attrib_
     if (set_attr_resc(attrib, attrib_name, attrib_resc, attrib_value))
         exit(2);
 }
+
+/*
+ * Stub function of actual DIS_tpp_funcs for PBS clients commands
+ * which doesn't use TPP
+ */
+void
+DIS_tpp_funcs() { }

@@ -94,16 +94,14 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 		return pbs_errno;
 
 	/* send the manage request */
-	i = PBSD_mgr_put(c, function, command, objtype, objname, aoplp, extend, 0, NULL);
+	i = PBSD_mgr_put(c, function, command, objtype, objname, aoplp, extend, PROT_TCP, NULL);
 	if (i) {
 		(void)pbs_client_thread_unlock_connection(c);
 		return i;
 	}
 
 	/* read reply from stream into presentation element */
-
 	reply = PBSD_rdrpy(c);
-
 	PBSD_FreeReply(reply);
 
 	rc = get_conn_errno(c);

@@ -262,20 +262,17 @@ has_task_by_parm1(void *parm1)
 time_t
 default_next_task(void)
 {
-
 	time_t		   delay;
 	struct work_task  *nxt;
 	struct work_task  *ptask;
-
 	/*
 	 * tilwhen is the basic "idle" time if there is nothing pending sooner
 	 * for the Server (timed-events, call scheduler, IO)
-	 * It used to be 10, but that caused a delay of outgoing RPP packets
-	 * in some cases, and we don't burn too many extr cycles doing nothing
+	 * It used to be 10, but that caused a delay of outgoing TPP packets
+	 * in some cases, and we don't burn too many extra cycles doing nothing
 	 * if the delay is shorted to 2.
 	 */
-	time_t		   tilwhen = 2;  /* basic cycle time */
-
+	time_t tilwhen = 2;  /* basic cycle time */
 
 	time_now = time(NULL);
 

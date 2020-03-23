@@ -61,7 +61,6 @@
  * 	hup_me()
  * 	lock_out()
  * 	set_limits()
- * 	log_tppmsg()
  * 	pbs_close_stdfiles()
  * 	go_to_background()
  * 	main_thread()
@@ -84,8 +83,7 @@
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 #include "log.h"
-#include "rpp.h"
-#include "tpp_common.h"
+#include "tpp.h"
 #include "server_limits.h"
 #include "pbs_version.h"
 #include "pbs_undolr.h"
@@ -97,8 +95,6 @@ extern char	*msg_init_chdir;
 int lockfds;
 int already_forked = 0;
 #define PBS_COMM_LOGDIR "comm_logs"
-
-static void log_tppmsg(int level, const char *id, char *mess);
 
 char	        server_host[PBS_MAXHOSTNAME+1];   /* host_name of server */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
@@ -390,35 +386,6 @@ set_limits()
 #endif	/* !RLIM64_INFINITY */
 }
 
-/**
- * @brief
- *		This is the log handler for tpp implemented in the daemon. The pointer to
- *		this function is used by the Libtpp layer when it needs to log something to
- *		the daemon logs
- *
- * @param[in] level   - Logging level
- * @param[in] objname - Name of the object about which logging is being done
- * @param[in] messa   - The log message
- *
- * @return	void
- */
-static void
-log_tppmsg(int level, const char *objname, char *mess)
-{
-	char id[2*PBS_MAXHOSTNAME];
-	int thrd_index;
-	int etype = log_level_2_etype(level);
-
-	thrd_index = tpp_get_thrd_index();
-	if (thrd_index == -1)
-		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL)? objname : msg_daemonname);
-	else
-		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL)? objname : msg_daemonname, thrd_index);
-
-	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
-	DBPRT(("%s\n", mess));
-}
-
 #ifndef DEBUG
 /**
  * @brief
@@ -494,7 +461,7 @@ main(int argc, char **argv)
 {
 	char *name = NULL;
 	struct tpp_config conf;
-	int rpp_fd;
+	int tpp_fd;
 	char *pc;
 	int numthreads;
 	char lockfile[MAXPATHLEN + 1];
@@ -535,6 +502,10 @@ main(int argc, char **argv)
 		fprintf(stderr, "%s: Configuration error\n", argv[0]);
 		return (1);
 	}
+
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	umask(022);
 
@@ -630,9 +601,6 @@ main(int argc, char **argv)
 	/* set pbs_comm's process limits */
 	set_limits(); /* set_limits can call log_record, so call only after opening log file */
 
-	/* set tcp function pointers */
-	set_tpp_funcs(log_tppmsg);
-
 	(void) snprintf(svr_home, sizeof(svr_home), "%s/%s", pbs_conf.pbs_home_path, PBS_SVR_PRIVATE);
 	if (chdir(svr_home) != 0) {
 		(void) sprintf(log_buffer, msg_init_chdir, svr_home);
@@ -661,7 +629,8 @@ main(int argc, char **argv)
 		return (1);
 	}
 
-	rc = set_tpp_config(&pbs_conf, &conf, host, port, routers);
+	/* set tpp config */
+	rc = set_tpp_config(NULL, &pbs_conf, &conf, host, port, routers);
 	if (rc == -1) {
 		(void) sprintf(log_buffer, "Error setting TPP config");
 		log_err(-1, __func__, log_buffer);
@@ -751,7 +720,7 @@ main(int argc, char **argv)
 	conf.node_type = TPP_ROUTER_NODE;
 	conf.numthreads = numthreads;
 
-	if ((rpp_fd = tpp_init_router(&conf)) == -1) {
+	if ((tpp_fd = tpp_init_router(&conf)) == -1) {
 		log_err(-1, __func__, "tpp init failed\n");
 		return 1;
 	}
@@ -770,17 +739,22 @@ main(int argc, char **argv)
 			memcpy(&pbs_conf_bak, &pbs_conf, sizeof(struct pbs_config));
 
 			if (pbs_loadconf(1) == 0) {
-				log_tppmsg(LOG_CRIT, NULL, "Configuration error, ignoring");
+				if (tpp_log_func)
+					tpp_log_func(LOG_CRIT, NULL, "Configuration error, ignoring");
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 			} else {
 				/* restore old pbs.conf */
 				new_logevent = pbs_conf.pbs_comm_log_events;
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 				pbs_conf.pbs_comm_log_events = new_logevent;
-				log_tppmsg(LOG_INFO, NULL, "Processed SIGHUP");
+				if (tpp_log_func)
+					tpp_log_func(LOG_INFO, NULL, "Processed SIGHUP");
 
 				log_event_mask = &pbs_conf.pbs_comm_log_events;
 				tpp_set_logmask(*log_event_mask);
+				set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+						pbs_conf.locallog, pbs_conf.syslogfac,
+						pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 			}
 		}
 #ifdef PBS_UNDOLR_ENABLED

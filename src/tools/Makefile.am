@@ -63,6 +63,9 @@ common_cflags = \
 
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
 	@socket_lib@ \
 	@KRB5_LIBS@
@@ -77,18 +80,13 @@ chk_tree_SOURCES = chk_tree.c
 pbs_ds_monitor_CPPFLAGS = ${common_cflags}
 pbs_ds_monitor_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libdb.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto \
-	@KRB5_LIBS@
+	-lcrypto
 
-pbs_ds_monitor_SOURCES = pbs_ds_monitor.c
+pbs_ds_monitor_SOURCES = pbs_ds_monitor.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 pbs_idled_CPPFLAGS = ${X_CFLAGS} ${common_cflags}
 pbs_idled_LDADD = \
@@ -96,7 +94,7 @@ pbs_idled_LDADD = \
 	${X_PRE_LIBS} \
 	${X_LIBS} \
 	-lX11
-pbs_idled_SOURCES = pbs_idled.c
+pbs_idled_SOURCES = pbs_idled.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 pbs_hostn_CPPFLAGS = ${common_cflags}
 pbs_hostn_LDADD = ${common_libs}
@@ -120,14 +118,9 @@ pbs_python_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@PYTHON_LDFLAGS@ \
-	@PYTHON_LIBS@ \
-	@KRB5_LIBS@
+	@PYTHON_LIBS@
 
 pbs_python_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
@@ -141,24 +134,26 @@ pbs_python_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \
+	$(top_srcdir)/src/lib/Libcmds/cmds_common.c \
 	pbs_python.c
 
 pbs_tclsh_CPPFLAGS = \
 	${common_cflags} \
-	@tcl_inc@ \
-	@libz_inc@
+	@libz_inc@ \
+	@tcl_inc@
 
 pbs_tclsh_LDADD = \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
 	@socket_lib@ \
+	@KRB5_LIBS@ \
 	@libz_lib@ \
-	@tcl_lib@ \
-	@KRB5_LIBS@
+	@tcl_lib@
 
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \
@@ -171,16 +166,21 @@ pbs_upgrade_job_SOURCES = pbs_upgrade_job.c
 
 pbs_wish_CPPFLAGS = \
 	${common_cflags} \
+	@libz_inc@ \
 	@tk_inc@
 
 pbs_wish_LDADD = \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Liblog/liblog.a \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
 	@socket_lib@ \
-	@tk_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@libz_lib@ \
+	@tk_lib@
 
 pbs_wish_SOURCES = \
 	pbs_tclWrap.c \
@@ -189,7 +189,7 @@ pbs_wish_SOURCES = \
 
 printjob_bin_CPPFLAGS = ${common_cflags}
 printjob_bin_LDADD = ${common_libs}
-printjob_bin_SOURCES = printjob.c
+printjob_bin_SOURCES = printjob.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 printjob_svr_bin_CPPFLAGS = \
 	${common_cflags} \
@@ -199,17 +199,13 @@ printjob_svr_bin_CPPFLAGS = \
 
 printjob_svr_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libdb.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	-lpthread \
-	@socket_lib@ \
+	${common_libs} \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto \
-	@KRB5_LIBS@
+	-lcrypto
 
-printjob_svr_bin_SOURCES = printjob.c
+printjob_svr_bin_SOURCES = printjob.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 rstester_CPPFLAGS = ${common_cflags}
 rstester_LDADD = ${common_libs}
@@ -218,5 +214,6 @@ rstester_SOURCES = rstester.c
 tracejob_CPPFLAGS = ${common_cflags}
 tracejob_LDADD = ${common_libs}
 tracejob_SOURCES = \
+	$(top_srcdir)/src/lib/Libcmds/cmds_common.c \
 	tracejob.c \
 	tracejob.h

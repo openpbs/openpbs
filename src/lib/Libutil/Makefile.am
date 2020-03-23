@@ -40,12 +40,12 @@ noinst_LIBRARIES = libutil.a
 
 libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/lib/Libtpp \
 	@libical_inc@ \
 	@KRB5_CFLAGS@ \
 	@libundolr_inc@
 
 libutil_a_SOURCES = \
+	get_hostname.c \
 	execvnode_seq_util.c \
 	pbs_ical.c \
 	misc_utils.c \

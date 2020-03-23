@@ -48,7 +48,7 @@
 #include "libpbs.h"
 #include "dis.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 /**
@@ -60,20 +60,19 @@
  * @param[in] fileopt - file type
  * @param[in] msg - msg to be sent
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
  * @retval      0               Success
  * @retval      pbs_error(!0)   error
  */
-
 int
-PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int rpp, char **msgid)
+PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -85,6 +84,7 @@ PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int rpp, 
 		(rc = encode_DIS_ReqExtend(c, extend))) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
+
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc	  = pbs_errno;
@@ -101,20 +101,19 @@ PBSD_msg_put(int c, char *jobid, int fileopt, char *msg, char *extend, int rpp, 
  * @param[in] jobid - job identifier
  * @param[in] argv - pointer to arguments
  * @param[in] envp - pointer to environment vars
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return	int
  * @retval	0		Success
  * @retval	pbs_error(!0)	error
  */
-
 int
-PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int rpp, char **msgid)
+PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int prot, char **msgid)
 {
 	int rc = 0;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -140,19 +139,12 @@ PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int rpp, char **
  *
  *	Send the RelnodesJob request, does not read the reply.
  */
-
 int
-PBSD_relnodes_put(c, jobid, node_list, extend, rpp, msgid)
-int    c;
-char   *jobid;
-char   *node_list;
-char   *extend;
-int    rpp;
-char   **msgid;
+PBSD_relnodes_put(int c, char *jobid, char *node_list, char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -164,6 +156,7 @@ char   **msgid;
 		(rc = encode_DIS_ReqExtend(c, extend))) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
+
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc	  = pbs_errno;

@@ -113,7 +113,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_mail_host_name */
 	NULL,					/* pbs_output_host_name */
 	NULL,					/* pbs_smtp_server_name */
-	1,					/* use TCP by default */
 	1, 					/* use compression by default with TCP */
 	1,					/* use mcast by default with TCP */
 	0,					/* force fault tolerant comm disabled by default */
@@ -443,10 +442,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_data_service_host);
 				pbs_conf.pbs_data_service_host = strdup(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_USE_TCP)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.pbs_use_tcp = ((uvalue > 0) ? 1 : 0);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_USE_COMPRESSION)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_compression = ((uvalue > 0) ? 1 : 0);
@@ -749,10 +744,6 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
-	if ((gvalue = getenv(PBS_CONF_USE_TCP)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.pbs_use_tcp = ((uvalue > 0) ? 1 : 0);
-	}
 	if ((gvalue = getenv(PBS_CONF_USE_COMPRESSION)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_use_compression = ((uvalue > 0) ? 1 : 0);
@@ -1034,11 +1025,6 @@ __pbs_loadconf(int reload)
 		}
 	}
 
-	if (pbs_conf.pbs_use_tcp == 0) {
-		pbs_conf.pbs_use_compression = 0;
-		pbs_conf.pbs_use_mcast = 0;
-		pbs_conf.pbs_use_ft = 0;
-	}
 	pbs_conf.loaded = 1;
 
 	if (pbs_client_thread_unlock_conf() != 0)

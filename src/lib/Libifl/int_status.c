@@ -59,15 +59,12 @@ static struct batch_status *alloc_bs();
  * @param[in] id - object id
  * @param[in] attrib - pointer to attribute list
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
- * @param[in] msgid - message id
  *
  * @return	structure handle
  * @retval 	pointer to batch status on SUCCESS
  * @retval 	NULL on failure
  *
  */
-
 struct batch_status *
 PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend)
 {
@@ -79,13 +76,12 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	if (objid == NULL)
 		objid = "";	/* set to null string for encoding */
 
-	rc = PBSD_status_put(c, function, objid, attrib, extend, 0, NULL);
+	rc = PBSD_status_put(c, function, objid, attrib, extend, PROT_TCP, NULL);
 	if (rc) {
 		return NULL;
 	}
 
 	/* get the status reply */
-
 	return (PBSD_status_get(c));
 }
 
@@ -93,13 +89,14 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
  * @brief
  *	Returns pointer to status record
  *
- * @param[in]   c - index into connection table
+ * @param[in] c - index into connection table
  *
  * @return returns a pointer to a batch_status structure
  * @retval pointer to batch status on SUCCESS
  * @retval NULL on failure
  */
-struct batch_status *PBSD_status_get(int c)
+struct batch_status *
+PBSD_status_get(int c)
 {
 	struct brp_cmdstat  *stp; /* pointer to a returned status record */
 	struct batch_status *bsp  = NULL;
@@ -159,12 +156,12 @@ struct batch_status *PBSD_status_get(int c)
  * @brief
  *	Allocate a batch status reply structure
  */
-
-static struct batch_status *alloc_bs()
+static struct batch_status *
+alloc_bs()
 {
 	struct batch_status *bsp;
 
-	bsp = MH(struct batch_status);
+	bsp = (struct batch_status *)malloc(sizeof(struct batch_status));
 	if (bsp) {
 
 		bsp->next = NULL;

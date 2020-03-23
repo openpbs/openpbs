@@ -77,7 +77,7 @@
 #include "mom_server.h"
 #include "mom_vnode.h"
 #include "pbs_error.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "mom_hook_func.h"
 #include "placementsets.h"
 #include "hook.h"
@@ -1103,8 +1103,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 		encode_used(pjob, &rused.ru_attr);
 	}
 
-	/* now send info to server via rpp */
-
+	/* now send info to server via tpp */
 	send_resc_used(cmd, 1, &rused);
 
 	/* free svrattrl list */
@@ -1217,8 +1216,7 @@ update_jobs_status(void)
 		}
 	}
 
-	/* now send info to server via rpp */
-
+	/* now send info to server via tpp */
 	send_resc_used(IS_RESCUSED, count, prusedtop);
 
 	/* free each resc_used_update struct and associated svrattrl list  */
@@ -1240,7 +1238,7 @@ update_jobs_status(void)
 /**
  * @brief
  * 	send_obit - routine called following completion of epilogue process
- *	Job then moved into substate OBIT and Obit RPP message sent to server.
+ *	Job then moved into substate OBIT and Obit message sent to server over TPP stream
  *
  * @param[in] pjob - pointer to job structure
  * @param[in] exval - exit value
@@ -1369,7 +1367,7 @@ send_obit(job *pjob, int exval)
 			    pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str;
 		}
 #endif
-		/* now send info to server via rpp */
+		/* now send info to server via tpp */
 		send_resc_used(IS_JOBOBIT, 1, &rud);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			pjob->ji_qs.ji_jobid, "Obit sent");
@@ -1595,7 +1593,7 @@ scan_for_exiting(void)
 						pobit->oe_u.oe_tm.oe_taskid, IM_OLD_PROTOCOL_VER);
 					(void)diswsi(pnode->hn_stream,
 						ptask->ti_qs.ti_exitstat);
-					(void)rpp_flush(pnode->hn_stream);
+					(void)dis_flush(pnode->hn_stream);
 				}
 
 end_loop:
@@ -1719,7 +1717,7 @@ end_loop:
 					resc_used(pjob, "cpupercent", gettime));
 				(void)send_resc_used_to_ms(stream,
 							pjob->ji_qs.ji_jobid);
-				(void)rpp_flush(stream);
+				(void)dis_flush(stream);
 				pjob->ji_obit = TM_NULL_EVENT;
 			}
 			continue;
@@ -1915,30 +1913,37 @@ end_loop:
 }
 
 /**
- * @brief
- * 	send old style IS_RESTART message to Server.
- *	Used when Server is older & does not recognize the TCP Restart message.
+ * @brief	Send a restart message to the Server over IS protocol
  *
  * @par
- *	Open an RPP stream to the named server/port, compose the IS_RESTART,
- *	flush the stream and then close it.
+ *	Close any existing tpp streams to the server, it is unlikely that
+ *	there is one. Parse the server name from pbs.conf;
+ *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER,
+ *	open TPP stream and send restart on it
  *
- * @param[in]	svr  - name of Server to which to send the restart
- * @param[in]	port - port Server would be expecting to receive IM messages
- *
- * @return	void
- *
+ * @return void
  */
-
-static void
-send_restart_rpp(char *svr, unsigned int port)
+void
+send_restart(void)
 {
-	int		j;
+	unsigned int port = default_server_port;
+	char *svr;
+	int j;
 
-	j = rpp_open(svr, port);
+	if (server_stream >= 0) {
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+				"Closing existing server stream %d", server_stream);
+		dis_flush(server_stream);
+		tpp_close(server_stream);
+		server_stream = -1;
+	}
+
+
+	svr = get_servername(&port);
+	j = tpp_open(svr, port);
 
 	if (j < 0) {
-		(void)sprintf(log_buffer, "rpp_open(%s, %d) failed", svr, port);
+		(void)sprintf(log_buffer, "tpp_open(%s, %d) failed", svr, port);
 		log_err(errno, msg_daemonname, log_buffer);
 		return;
 	}
@@ -1946,134 +1951,15 @@ send_restart_rpp(char *svr, unsigned int port)
 	if (is_compose(j, IS_RESTART) != DIS_SUCCESS) {
 		(void)sprintf(log_buffer, "Failed to compose restart message");
 		log_err(errno, msg_daemonname, log_buffer);
-		rpp_close(j);
+		tpp_close(j);
 		return;
 	}
 
 	(void)diswui(j, pbs_mom_port);
-	rpp_flush(j);
-	(void)sprintf(log_buffer, "Restart sent to server at %s:%d", svr, port);
-	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		msg_daemonname, log_buffer);
-	rpp_close(j);
-}
-
-/**
- * @brief
- * 	send PBS_BATCH_MomRestart message to Server via tcp.
- * @par
- *	Open an TCP connection to the Server/port specified.
- *	Build the batch request and send to the Server.
- *	Wait to read the reply back from the Server.
- *	If accepted, return 0, if explicitly rejected with PBSE_UNKREQ, then
- *	return 1, else return -1 on other errors.
- *
- * @param[in]	svr  - name of Server to which to send the restart
- * @param[in]	port - port Server would be expecting to receive IM messages
- *
- * @return	int
- * @rtnval  0 - Restart was sent to Server and acknowledged
- * @rtnval  1 - Restart was sent to Server but rejected, fall back to RPP
- * @rtnval -1 - Error in looking up host, connecting, or sending message
- *
- */
-int
-send_restart_tcp(char *svr, unsigned int port)
-{
-	pbs_net_t hostaddr;
-	int rtn;
-	struct batch_reply *reply;
-	int sock;
-
-	/* first, make sure we have a valid server (host), and ports */
-	if ((hostaddr = get_hostaddr(svr)) == (pbs_net_t)0) {
-		return (-1);
-	}
-
-	sock = client_to_svr(hostaddr, port, B_RESERVED);
-	if (sock < 0) {
-		return (-1);
-	}
-
-	DIS_tcp_funcs();
-
-	/* send authentication information */
-
-	if (encode_DIS_ReqHdr(sock, PBS_BATCH_MomRestart, "root") ||
-		diswst(sock, mom_host)      ||
-		diswui(sock, pbs_mom_port)  ||
-		encode_DIS_ReqExtend(sock, NULL)) {
-		return (-1);
-	}
-	if (dis_flush(sock)) {
-		return (-1);
-	}
-
-	/* read back the response */
-
-	reply = (struct batch_reply *)malloc(sizeof(struct batch_reply));
-	if (reply == NULL)
-		return (-1);
-	(void)memset(reply, 0, sizeof(struct batch_reply));
-	if (decode_DIS_replyCmd(sock, reply) != 0) {
-		(void)free(reply);
-		return (-1);
-	}
-	dis_reset_buf(sock, DIS_READ_BUF);
-	CLOSESOCKET(sock);
-	rtn = reply->brp_code;
-	PBSD_FreeReply(reply);
-
-	if (rtn == PBSE_NONE) {
-		return (0);	/* restart sent via tcp */
-	} else if (rtn == PBSE_UNKREQ) {
-		return (1);	/* need to fall back to RPP IS_RESTART */
-	}
-	return (-1);
-}
-
-/**
- * @brief	Send a restart message to the Server.
- *
- * @par
- *	Close any existing rpp streams to the server, it is unlikely that
- *	there is one.  Parse the server name from pbs.conf;
- *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER.
- *	Try sending message via TCP first
- *
- * @see send_restart_tcp()
- *	If that returns 1 or -1, fall back to useing rpp
- * @see send_restart()
- *
- * @return void
- */
-void
-send_restart(void)
-{
-	unsigned int	port = default_server_port;
-	char	       *svr;
-
-	if (server_stream >= 0) {
-		sprintf(log_buffer, "Closing existing server stream %d",
-			server_stream);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			msg_daemonname, log_buffer);
-		rpp_flush(server_stream);
-		rpp_close(server_stream);
-		server_stream = -1;
-	}
-
-
-	svr = get_servername(&port);
-	if (pbs_conf.pbs_use_tcp==0 && send_restart_tcp(svr, port) == 0) {
-		(void)sprintf(log_buffer, "Restart sent to server at %s:%d", svr, port);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			msg_daemonname, log_buffer);
-	} else {
-		/* since sending via TCP didn't work, fall back to old rpp */
-		send_restart_rpp(svr, port);
-	}
-
+	dis_flush(j);
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+			"Restart sent to server at %s:%d", svr, port);
+	tpp_close(j);
 }
 
 /**
@@ -2316,8 +2202,8 @@ init_abort_jobs(int recover)
  * 	for alps cancel reservation child of mom
  *
  * 	The forked child process cannot send a req_reject or reply_ack since
- * 	transmission of data via rpp is not supported from child processes
- * 	(rpp streams are automatically closed when proccess forks).
+ * 	transmission of data via tpp is not supported from child processes
+ * 	(tpp streams are automatically closed when proccess forks).
  * 	Thus this child exit handler is added to send the reply from the
  * 	parent process after reaping the exit status from child
  *

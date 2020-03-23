@@ -54,7 +54,7 @@
 #include "dis.h"
 #include "ticket.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 
 /**
  * @brief
@@ -64,7 +64,7 @@
  * @param[in] type - credential type
  * @param[in] buf - credentials
  * @param[in] len - credential length
- * @param[in] rpp - indication for whether to use rpp
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - msg id
  *
  * @return	int
@@ -73,12 +73,12 @@
  *
  */
 int
-PBSD_jcred(int c, int type, char *buf, int len, int rpp, char **msgid)
+PBSD_jcred(int c, int type, char *buf, int len, int prot, char **msgid)
 {
 	int			rc;
 	struct batch_reply	*reply = NULL;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -88,16 +88,16 @@ PBSD_jcred(int c, int type, char *buf, int len, int rpp, char **msgid)
 	if ((rc =encode_DIS_ReqHdr(c, PBS_BATCH_JobCred, pbs_current_user)) ||
 		(rc = encode_DIS_JobCred(c, type, buf, len)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 				return (pbs_errno = PBSE_SYSTEM);
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 
 		return (pbs_errno);

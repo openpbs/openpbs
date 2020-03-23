@@ -429,7 +429,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from hook_recov 
+   From PBSPro (server) - Suppress intentional unfreed memory from hook_recov
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -438,7 +438,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov 
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:pbs_python_ext_alloc_python_script
@@ -447,7 +447,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov 
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -457,7 +457,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at hook_recov 
+   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:hook_alloc
@@ -482,8 +482,8 @@
    ...
    fun:req_copy_hookfile
    fun:is_request
-   fun:do_rpp
-   fun:rpp_request
+   fun:do_tpp
+   fun:tpp_request
    fun:wait_request
    fun:main
 }
@@ -495,8 +495,8 @@
    fun:hook_recov
    fun:req_copy_hookfile
    fun:is_request
-   fun:do_rpp
-   fun:rpp_request
+   fun:do_tpp
+   fun:tpp_request
    fun:wait_request
    fun:main
 }
@@ -552,7 +552,7 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import 
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -565,7 +565,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import 
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
    Memcheck:Leak
    fun:malloc
    fun:pbs_python_ext_alloc_python_script
@@ -577,7 +577,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at mgr_hook_create 
+   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at mgr_hook_create
    Memcheck:Leak
    fun:malloc
    fun:hook_alloc
@@ -589,7 +589,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook name at mgr_hook_create 
+   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook name at mgr_hook_create
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -601,4 +601,3 @@
    fun:wait_request
    fun:main
 }
-

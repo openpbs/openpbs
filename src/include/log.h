@@ -96,6 +96,9 @@ extern long *log_event_mask;
 
 extern void set_logfile(FILE *fp);
 extern int set_msgdaemonname(char *ch);
+void set_log_conf(char *leafname, char *nodename,
+		  unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
+		  unsigned int log_highres);
 extern void *log_get_tls_data(void);
 
 extern struct log_net_info *get_if_info(char *msg);

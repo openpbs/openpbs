@@ -61,10 +61,7 @@
 #include <sys/resource.h>
 #include <signal.h>
 #endif
-
-#include "rpp.h"
-#include "tpp_common.h"
-#include "tpp_platform.h"
+#include "tpp_internal.h"
 
 #ifdef WIN32
 
@@ -250,16 +247,16 @@ tpp_sock_socket(int af, int type, int protocol)
 	 * the support for Layered Service Providers. If Firewall/antivirus
 	 * are installed, the socket handle could get inherited despite
 	 * the fact that we are setting this as un-inheritable via a call
-	 * post the socket creation time. 
-	 * 
+	 * post the socket creation time.
+	 *
 	 * Use WSA_FLAG_NO_HANDLE_INHERIT available in newer windows
 	 * versions (7SP1 onwards) in the call to WSASocket().
-	 * 
+	 *
 	 * Also use the SetHandleInformation for older windows. (This may
 	 * not work with LSP's installed.
 	 *
 	 */
-#ifdef WSA_FLAG_NO_HANDLE_INHERIT 
+#ifdef WSA_FLAG_NO_HANDLE_INHERIT
 	dwFlags = WSA_FLAG_NO_HANDLE_INHERIT;
 #endif
 	if ((fd = WSASocket(af, type, protocol, NULL, 0, dwFlags)) == INVALID_SOCKET) {
