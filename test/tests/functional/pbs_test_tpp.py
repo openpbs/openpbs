@@ -38,6 +38,7 @@
 from tests.functional import *
 import socket
 
+
 @tags('comm')
 class TestTPP(TestFunctional):
     """
@@ -70,7 +71,7 @@ class TestTPP(TestFunctional):
         if exp_attrib:
             self.server.expect(JOB, exp_attrib, id=jid)
         return jid
-                
+
     def submit_resv(self, set_attrib=None, exp_attrib=None):
         r = Reservation(TEST_USER)
         if set_attrib:
