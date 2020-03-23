@@ -340,9 +340,10 @@ class TestPbsResvAlter(TestFunctional):
             else:
                 msg = "pbs_ralter: " + r + " ALTER REQUESTED"
 
-            print(str(attrs))
             self.server.alterresv(r, attrs)
 
+            print(str(msg))
+            print(str(self.server.last_out))
             self.assertEqual(msg, self.server.last_out[0])
             self.logger.info(msg + " displayed")
 
@@ -1549,6 +1550,7 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid1, start1, end1, shift=300,
                                  alter_e=True, whichMessage=3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
     def test_adv_resv_duration_before_start(self):
         """
         Test duration of reservation can be changed. In this case end
