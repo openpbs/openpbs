@@ -3598,9 +3598,9 @@ class CgroupUtils(object):
                 # Find cores that are fully available
                 empty_cores = set()
                 for corenum in sorted(cores):
-                    if (set(node.cpuinfo['cpu'][corenum]['threads'])
-                            .issubset(set(available['cpus']))
-                            and corenum not in node.cpuinfo['hyperthreads']):
+                    if (corenum not in node.cpuinfo['hyperthreads']
+                            and set(node.cpuinfo['cpu'][corenum]['threads'])
+                            .issubset(set(available['cpus']))):
                         # All hyperthreads available for this core
                         empty_cores.add(corenum)
                 # Assign threads from the empty cores
