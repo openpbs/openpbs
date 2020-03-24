@@ -817,7 +817,6 @@ mom_set_use(job	*pjob)
 
 	assert(pjob != NULL);
 	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
-	assert(at->at_type == ATR_TYPE_RESC);
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0)
 		return (PBSE_NONE);	/* job suspended, don't track it */
@@ -838,7 +837,6 @@ mom_set_use(job	*pjob)
 		 * so the ncpus used can be set to ncpus requested
 		*/
 		at_req = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		assert(at->at_type == ATR_TYPE_RESC);
 
 		pres_req = find_resc_entry(at_req,rd);
 		if ((pres_req != NULL) &&

@@ -99,6 +99,8 @@
 
 #include "renew_creds.h"
 
+#include "mock_run.h"
+
 #define	PIPE_READ_TIMEOUT	5
 #define EXTRA_ENV_PTRS	       32
 
@@ -6132,6 +6134,16 @@ start_exec(job *pjob)
 
 	if (do_tolerate_node_failures(pjob))
 		reliable_job_node_add(&pjob->ji_node_list, mom_host);
+
+	if (mock_run) {
+		   pjob->ji_ports[0] = -1;
+		   pjob->ji_ports[1] = -1;
+		   pjob->ji_stdout = -1;
+		   pjob->ji_stderr = -1;
+
+		   mock_run_finish_exec(pjob);
+		   return;
+	}
 
 	if (nodenum > 1) {
 		attribute *pattr;

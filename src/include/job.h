@@ -1233,6 +1233,13 @@ extern int   set_cpu_licenses_need(job *, char *);
 extern void  allocate_cpu_licenses(job *);
 extern void  deallocate_cpu_licenses(job *);
 extern void  deallocate_cpu_licenses2(job *, int);
+
+extern void del_job_related_file(job *pjob, char *fsuffix);
+#ifdef PBS_MOM
+extern void del_job_dirs(job *pjob);
+extern void del_chkpt_files(job *pjob);
+#endif
+
 #ifdef	__cplusplus
 }
 #endif
