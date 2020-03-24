@@ -824,9 +824,9 @@ del_chkpt_files(job *pjob)
 void
 job_purge(job *pjob)
 {
-	char		namebuf[MAXPATHLEN + 1] = {'\0'};
 	extern	char	*msg_err_purgejob;
 #ifdef	PBS_MOM
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
 	attribute *jrpattr = NULL;
 
