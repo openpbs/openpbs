@@ -126,7 +126,7 @@ class TestTPP(TestFunctional):
                       ATTR_inter: '',
                       ATTR_l + '.place': 'scatter'}
         jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
-                              interactive=True, job_script=True)
+                              interactive=True)
         # Submit reservation
         set_attrib = {'Resource_List.select': '2:ncpus=1',
                       ATTR_l + '.place': 'scatter',
