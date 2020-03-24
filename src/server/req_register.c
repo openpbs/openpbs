@@ -179,7 +179,7 @@ static void update_runone_depend(job *pjob, char *d_jobid, char *d_svr, int op)
 		if (dp == NULL) {
 			dp = make_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
 			if (dp == NULL)
-			        return;
+				return;
 		}
 		dpj = find_dependjob(dp, d_jobid);
 		if (dpj)
@@ -888,7 +888,7 @@ int depend_runone_remove_dependency(job *pjob)
 				temp_pdj = find_dependjob(find_depend(JOB_DEPEND_TYPE_RUNONE, &d_pjob->ji_wattr[(int)JOB_ATR_depend]),
 					                  pjob->ji_qs.ji_jobid);
 				if (temp_pdj) {
-				        del_depend_job(temp_pdj);
+					del_depend_job(temp_pdj);
 					d_pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
 				}
 			}
@@ -925,7 +925,7 @@ int depend_runone_hold_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-		                d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 				(void)svr_setjobstate(d_pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 			}
 		}
@@ -964,7 +964,7 @@ int depend_runone_release_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
-		                d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		                d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODCACHE;
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
 				(void)svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
 			}

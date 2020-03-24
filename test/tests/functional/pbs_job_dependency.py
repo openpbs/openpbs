@@ -58,17 +58,14 @@ e.accept()
         attr = {ATTR_RESC_TYPE: 'string', ATTR_RESC_FLAG: 'h'}
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='NewRes')
         self.scheduler.add_resource('NewRes', apply=True)
-        self.create_vnodes()
+        attr = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vnode', attr, 6, mom=self.mom,
+                                  attrfunc=self.cust_attr, usenatvnode=False)
 
     def cust_attr(self, name, totnodes, numnode, attrib):
         res_str = "ver" + str(numnode)
         attr = {'resources_available.NewRes': res_str}
         return {**attrib, **attr}
-
-    def create_vnodes(self):
-        attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 6, mom=self.mom,
-                                  attrfunc=self.cust_attr)
 
     def assert_dependency(self, *jobs):
         dl = []
@@ -187,7 +184,7 @@ e.accept()
         j3_1 = job.create_subjob_id(j3, 1)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j3_1})
-        with self.assertRaises(PbsSubmitError) as e:
+        with self.assertRaises(PbsSubmitError):
             self.server.submit(d_job)
 
     def test_runone_queuejob_hook(self):

@@ -129,8 +129,10 @@
 #include "site_queue.h"
 #endif
 
-
 extern char *pbse_to_txt(int err);
+
+/* assuming that in most cases there won't be more than 10 dependent runone jobs */
+#define DEFAULT_RUNONE_JOBS 10
 
 /**
  *	This table contains job comment and information messages that correspond
@@ -5382,7 +5384,8 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 static char **parse_runone_job_list(char *depend_val) {
 	char *start;
 	const char *depend_type = "runone";
-	int i, len = 10;
+	int i;
+	int len = DEFAULT_RUNONE_JOBS;
 	char *p, q;
 	char *r;
 	char *tok;
@@ -5411,16 +5414,16 @@ static char **parse_runone_job_list(char *depend_val) {
 		return NULL;
 	}
 	for (tok = strtok_r(r, ":", &p1); tok != NULL; tok = strtok_r(NULL, ":", &p1), i++) {
-		if (i == len-1) {
+		if (i == len - 1) {
 			char **tmp;
-			tmp = realloc(ret, (len + 10)*sizeof(char *));
+			tmp = realloc(ret, (len + DEFAULT_RUNONE_JOBS) * sizeof(char *));
 			if (tmp == NULL) {
 				free_ptr_array((void **)ret);
 				free(depend_str);
 				return NULL;
 			}
 			ret = tmp;
-			len += 10;
+			len += DEFAULT_RUNONE_JOBS;
 		}
 		tok = strtok_r(tok, "@", &p2);
 		ret[i] = string_dup(tok);
