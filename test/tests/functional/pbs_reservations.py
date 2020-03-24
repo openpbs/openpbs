@@ -155,7 +155,7 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
-        now = int(time.time())
+        now = time.time()
 
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                       rrule=rrule, start=start, end=end)
@@ -311,7 +311,7 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                        start=now + 3600, end=now + 7200)
 
@@ -1210,7 +1210,7 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R1) and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        now = time.time()
         a = {'reserve_start': now + 20,
              'reserve_end': now + 120}
         r = Reservation(TEST_USER, attrs=a)
@@ -1251,7 +1251,7 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R2) and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        now = time.time()
         a = {'Resource_List.select': '1:ncpus=4',
              'reserve_start': now + 20,
              'reserve_end': now + 180}
@@ -1396,7 +1396,7 @@ class TestReservations(TestFunctional):
         self.common_steps()
         # Submit an advance reservation and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        now = time.time()
         a = {'reserve_start': now + 10,
              'reserve_end': now + 40}
         r = Reservation(TEST_USER, attrs=a)
@@ -1457,7 +1457,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'},
                            extend='x', id=jid, interval=1)
         # Convert job-array j2 into an ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
@@ -1530,7 +1530,7 @@ class TestReservations(TestFunctional):
                            id=jid2, extend='t')
 
         # Convert j2 into an ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
@@ -1552,7 +1552,7 @@ class TestReservations(TestFunctional):
                            id=jid3, extend='t')
 
         # Convert j3 into an ASAP reservation
-        now2 = int(time.time())
+        now2 = time.time()
         rid2 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid3)
         rid2_q = rid2.split('.')[0]
@@ -1612,7 +1612,7 @@ class TestReservations(TestFunctional):
             tzone = 'America/Los_Angeles'
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 10
+        start = time.time() + 10
         end = start + 25
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=4',
                                       rrule='FREQ=MINUTELY;INTERVAL=2;COUNT=2',
@@ -1729,7 +1729,7 @@ class TestReservations(TestFunctional):
 
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 10
+        start = time.time() + 10
         end = start + 30
         a = {'Resource_List.select': '1:ncpus=4',
              ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
@@ -2035,7 +2035,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state=Q': 6}, count=True,
                            extend='t', id=jid2)
         # Convert 2 job array's into ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(PBSROOT_USER, jid)
         rid1_q = rid1.split('.')[0]
         rid2 = self.submit_asap_reservation(PBSROOT_USER, jid2)

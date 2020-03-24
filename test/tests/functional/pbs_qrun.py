@@ -120,7 +120,7 @@ class TestQrun(TestFunctional):
                             {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         time.sleep(1)
-        now = int(time.time())
+        now = time.time()
         pid = os.fork()
         if pid == 0:
             try:

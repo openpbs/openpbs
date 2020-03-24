@@ -382,7 +382,7 @@ class TestSTF(TestFunctional):
 
         self.server.delete(j2id)
 
-        t = int(time.time())
+        t = time.time()
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,

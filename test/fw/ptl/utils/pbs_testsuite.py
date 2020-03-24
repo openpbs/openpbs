@@ -1473,7 +1473,7 @@ class PBSTestSuite(unittest.TestCase):
                                              momlog=self.mom.logfile,
                                              acctlog=self.server.acctlogfile,
                                              start=self.server.ctime,
-                                             end=int(time.time()))
+                                             end=time.time())
 
     def set_test_measurements(self, mdic=None):
         """

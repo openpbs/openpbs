@@ -441,7 +441,7 @@ e.accept()
                                'Resource_List.select': '%d:eoe=%s'
                                % (self.npp, 'low')})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        t = int(time.time())
+        t = time.time()
         jid_hp = self.submit_job(10, {ATTR_queue: 'workq2',
                                       'Resource_List.place': 'scatter',
                                       'Resource_List.select': '%d:eoe=%s' %
@@ -544,7 +544,7 @@ e.accept()
         a = {'enabled': 'True'}
         self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id='PBS_power',
                             sudo=True)
-        t = int(time.time())
+        t = time.time()
         self.logger.info("Waiting for 4 mins to power off all the nodes")
         time.sleep(240)
         self.server.log_match(
@@ -622,7 +622,7 @@ e.accept()
         a = {'enabled': 'True'}
         self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id='PBS_power',
                             sudo=True)
-        t = int(time.time())
+        t = time.time()
         self.logger.info("Waiting for 1 min to poweroff 1st node")
         time.sleep(60)
         self.server.log_match(
@@ -630,12 +630,12 @@ e.accept()
         self.server.expect(NODE, {'state': 'sleep'}, id=self.names[0])
         a = {"node_idle_limit": "1800", 'min_node_down_delay': '30'}
         self.modify_hook_config(attrs=a, hook_id='PBS_power')
-        t = int(time.time())
+        t = time.time()
         jid = self.submit_job(1000, {'Resource_List.vnode': self.names[0]})
         self.scheduler.log_match(
             jid + ';Job is a top job and will run at',
             max_attempts=10, starttime=t)
-        t = int(time.time())
+        t = time.time()
         self.logger.info("Waiting for 10 min to poweron 1st node")
         time.sleep(600)
         self.server.log_match(
@@ -662,7 +662,7 @@ e.accept()
         a = {'enabled': 'True'}
         self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id='PBS_power',
                             sudo=True)
-        t = int(time.time())
+        t = time.time()
         self.logger.info("Waiting for 1 min to poweroff 1st node")
         time.sleep(60)
         self.server.log_match(
@@ -673,12 +673,12 @@ e.accept()
         self.server.expect(NODE, {'state': 'sleep'}, id=self.names[0])
         a = {"node_idle_limit": "1800", 'min_node_down_delay': '30'}
         self.modify_hook_config(attrs=a, hook_id='PBS_power')
-        t = int(time.time())
+        t = time.time()
         jid = self.submit_job(1000, {'Resource_List.vnode': self.names[0]})
         self.scheduler.log_match(
             jid + ';Job is a top job and will run at',
             max_attempts=10, starttime=t)
-        t = int(time.time())
+        t = time.time()
         self.logger.info("Waiting for 10 min to poweron 1st node")
         time.sleep(600)
         self.server.log_match(
@@ -707,7 +707,7 @@ e.accept()
         time.sleep(60)
         self.server.expect(NODE, {'state': 'sleep'}, id=self.names[0])
         jid = self.submit_job(1000, {'Resource_List.vnode': self.names[0]})
-        t = int(time.time())
+        t = time.time()
         self.scheduler.log_match(
             jid + ';Job is a top job and will run at',
             max_attempts=10, starttime=t)
@@ -870,7 +870,7 @@ e.accept()
         self.server.expect(NODE, {'state': 'sleep'}, id=self.names[0])
         a = {"node_idle_limit": "1800", 'min_node_down_delay': '30'}
         self.modify_hook_config(attrs=a, hook_id='PBS_power')
-        t = int(time.time())
+        t = time.time()
         jid = self.submit_job(1000, {'Resource_List.vnode': self.names[0]})
         self.scheduler.log_match(
             jid + ';Job is a top job and will run at',
@@ -949,7 +949,7 @@ e.accept()
         self.server.expect(NODE, {'state': 'sleep'}, id=self.names[0])
         a = {"node_idle_limit": "1800", 'min_node_down_delay': '30'}
         self.modify_hook_config(attrs=a, hook_id='PBS_power')
-        t = int(time.time())
+        t = time.time()
         jid = self.submit_job(1000, {'Resource_List.vnode': self.names[0]})
         self.scheduler.log_match(
             jid + ';Job is a top job and will run at',

@@ -1629,7 +1629,7 @@ pbs_tmrsh %s hostname
                            id=jid, attrop=PTL_AND)
 
         # Set time to start scanning logs
-        stime = int(time.time())
+        stime = time.time()
 
         a = {'scheduling': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -1989,7 +1989,7 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
                            id=jid, attrop=PTL_AND)
 
         # Set time to start scanning logs
-        stime = int(time.time())
+        stime = time.time()
 
         a = {'scheduling': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, a)

@@ -1000,7 +1000,7 @@ if %s e.job.in_ms_mom():
                                         'pbs_hooks',
                                         'pbs_cgroups.CF')
 
-        now = int(time.time())
+        now = time.time()
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': self.config_file}
@@ -1295,7 +1295,7 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match(err_msg, max_attempts=3,
                                     interval=1, n=100, existence=False)
         # Allow some time to pass for values to be updated
-        begin = int(time.time())
+        begin = time.time()
         self.logger.info('Waiting for periodic hook to update usage data.')
         # loop to check if cput, mem, vmem are expected values
         cput_usage = 0.0
@@ -2390,7 +2390,7 @@ if %s e.job.in_ms_mom():
         Test that memory.use_hierarchy is enabled by default
         when PBS cgroups hook is instantiated
         """
-        now = int(time.time())
+        now = time.time()
         # Remove PBS directories from memory subsystem
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
@@ -2517,7 +2517,7 @@ event.accept()
         # Submit a second job and verify that the following message
         # does NOT appear in the mom log:
         # _exechost_periodic_handler: Failed to update jid1
-        presubmit = int(time.time())
+        presubmit = time.time()
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
@@ -2673,7 +2673,7 @@ event.accept()
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -2748,7 +2748,7 @@ event.accept()
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -2817,7 +2817,7 @@ event.accept()
         # Submit a job that requires two vnodes on one host
         j = Job(TEST_USER)
         j.create_script(self.job_scr3)
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(j)
         # Check the exec_vnode while in substate 41
         self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
@@ -2878,7 +2878,7 @@ event.accept()
         self.server.expect(JOB, a, jid)
 
         self.logger.info("Killing mom on host %s" % self.hosts_list[1])
-        now = int(time.time())
+        now = time.time()
         self.moms_list[1].signal('-9')
 
         self.server.expect(NODE, {'state': "down"}, id=self.hosts_list[1])

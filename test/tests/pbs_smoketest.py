@@ -511,7 +511,7 @@ class SmokeTest(PBSTestSuite):
         self.server.create_import_hook(hook_name, a, hook_body)
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         j = Job(TEST_USER)
-        now = int(time.time())
+        now = time.time()
         try:
             self.server.submit(j)
         except PbsSubmitError:

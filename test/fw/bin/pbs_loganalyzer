@@ -60,6 +60,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
@@ -151,7 +153,7 @@ if __name__ == '__main__':
                    "re-conditional=", "estimated-info-only", "silent",
                    "db-type=", "db-access="]
         opts, args = getopt.getopt(sys.argv[1:], shortopt, longopt)
-    except:
+    except BaseException:
         usage()
         sys.exit(1)
 
@@ -161,14 +163,14 @@ if __name__ == '__main__':
         elif o == '-b':
             try:
                 begin = logutils.convert_date_time(val)
-            except:
+            except BaseException:
                 print('Error converting time, expected format '
                       '%m/%d/%Y %H:%M:%S')
                 sys.exit(1)
         elif o == '-e':
             try:
                 end = logutils.convert_date_time(val)
-            except:
+            except BaseException:
                 print('Error converting time, expected format '
                       '%m/%d/%Y %H:%M:%S')
                 print(traceback.print_exc())
@@ -209,14 +211,14 @@ if __name__ == '__main__':
             json_on = True
         elif o == '--last-week':
             s = time.localtime(time.time() - (7 * 24 * 3600))
-            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
-                                                  "%m/%d/%Y")))
-            end = int(time.time())
+            begin = time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                              "%m/%d/%Y"))
+            end = time.time()
         elif o == '--last-month':
             s = time.localtime(time.time() - (30 * 24 * 3600))
-            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
-                                                  "%m/%d/%Y")))
-            end = int(time.time())
+            begin = time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                              "%m/%d/%Y"))
+            end = time.time()
         elif o == '--log-conf':
             logconf = CliUtils.expand_abs_path(val)
         elif o == '--nodes-file':

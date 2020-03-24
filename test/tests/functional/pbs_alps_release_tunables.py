@@ -70,7 +70,7 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
         self.mom.add_config({'$alps_release_wait_time': arwt})
 
         # submit a job and then delete it after it starts running
-        start_time = int(time.time())
+        start_time = time.time()
         j1 = Job(TEST_USER)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -124,7 +124,7 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
         n = retry = 5
         for _ in range(n):
             # submit a job and then delete it after it starts running
-            start_time = int(time.time())
+            start_time = time.time()
             j1 = Job(TEST_USER)
             jid1 = self.server.submit(j1)
             self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)

@@ -74,7 +74,7 @@ class TestMomDynRes(TestFunctional):
         # correct log message and avoid false positives from previous
         # logs
         time.sleep(1)
-        match_from = int(time.time())
+        match_from = time.time()
         self.mom.signal('-HUP')
         self.mom.log_match(fp + ' file has a non-secure file access',
                            starttime=match_from, existence=exist,

@@ -388,7 +388,7 @@ def NodesetDelete( nodeset_name ):
                                'Resource_List.select': '%d:eoe=%s'
                                % (self.power_nodes, '150W')})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        t = int(time.time())
+        t = time.time()
         jid_workq2 = self.submit_job(10, {ATTR_queue: 'workq2',
                                           'Resource_List.place': 'scatter',
                                           'Resource_List.select': '%d:eoe=%s' %

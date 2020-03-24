@@ -85,7 +85,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         asks for exclusivity.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        now = time.time()
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 30,
              'reserve_end': now + 60}
@@ -124,7 +124,7 @@ class TestCheckNodeExclusivity(TestFunctional):
             tzone = 'America/Los_Angeles'
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 20
+        start = time.time() + 20
         end = start + 20
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl',
@@ -175,7 +175,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         to run if reservation has place=excl.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        now = time.time()
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 30}
@@ -215,7 +215,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         requesting the same vnode in Reservation1.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        now = time.time()
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 60}
@@ -396,7 +396,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.script2 += ['/bin/sleep 10']
 
         # Submit a reservation with place=excl
-        now = int(time.time())
+        now = time.time()
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}

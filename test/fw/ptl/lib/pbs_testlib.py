@@ -9716,7 +9716,7 @@ class Server(PBSService):
         """
         # Check for log messages 20 seconds earlier, to account for
         # server and mom system time differences
-        t = int(time.time()) - 20
+        t = time.time() - 20
 
         if 'event' not in attrs:
             self.logger.error('attrs must specify at least an event and key')

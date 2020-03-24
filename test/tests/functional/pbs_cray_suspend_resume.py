@@ -80,7 +80,7 @@ at least resid .* is exclusive"
         # Submit a job
         j = Job(TEST_USER, {ATTR_l + '.select': '1:ncpus=1',
                             ATTR_l + '.place': 'excl'})
-        check_after = int(time.time())
+        check_after = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 

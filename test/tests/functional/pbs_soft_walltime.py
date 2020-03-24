@@ -593,7 +593,7 @@ e.accept()
         jid4 = self.server.submit(J)
         self.server.alterjob(jid4, {'Resource_List.soft_walltime': 150})
 
-        now = int(time.time())
+        now = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=now,
@@ -638,7 +638,7 @@ e.accept()
         J = Job(TEST_USER, {'Resource_List.walltime': 300})
         jid5 = self.server.submit(J)
 
-        now = int(time.time())
+        now = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=now)
