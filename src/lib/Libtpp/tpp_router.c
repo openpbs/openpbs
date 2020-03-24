@@ -1321,23 +1321,13 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 		auth_def_t *authdef = NULL;
 		void *authctx = NULL;
-		char *method = NULL;
 
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
 
-		if (ahdr.for_encrypt == FOR_AUTH)
-			method = tpp_conf->auth_config->auth_method;
-		else
-			method = tpp_conf->auth_config->encrypt_method;
-		if (strcmp(ahdr.auth_type, method) != 0) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method mismatch in connection %s", tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption", tpp_netaddr(&connected_host));
-			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-			tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
-			return 0; /* let connection be alive, so we can send error */
-		}
-
 		if ((authdef = get_auth(ahdr.auth_type)) == NULL) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method not supported in connection %s", tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption", tpp_netaddr(&connected_host));
+			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method not supported in connection %s",
+				tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption",
+				tpp_netaddr(&connected_host));
 			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 			tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
 			return 0; /* let connection be alive, so we can send error */
