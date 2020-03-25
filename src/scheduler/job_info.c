@@ -1774,7 +1774,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 	if (pattr->next == NULL)
 		one_attr = 1;
 
-	if (pbs_alterjob(pbs_sd, job_name, pattr, "0") == 0)
+	if (pbs_alterjob(pbs_sd, job_name, pattr, "async") == 0)
 		return 1;
 
 	if (is_finished_job(pbs_errno) == 1) {

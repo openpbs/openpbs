@@ -100,7 +100,7 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 		return i;
 	}
 
-	if (extend == NULL || extend[0] != '0') {
+	if (extend == NULL || strcmp(extend, "async") == 0) {
 		/* read reply from stream into presentation element */
 		reply = PBSD_rdrpy(c);
 		PBSD_FreeReply(reply);
