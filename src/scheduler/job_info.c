@@ -5383,10 +5383,9 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
  */
 static char **parse_runone_job_list(char *depend_val) {
 	char *start;
-	const char *depend_type = "runone";
+	const char *depend_type = "runone:";
 	int i;
 	int len = DEFAULT_RUNONE_JOBS;
-	char *p, q;
 	char *r;
 	char *tok;
 	char **ret = NULL;
@@ -5401,18 +5400,15 @@ static char **parse_runone_job_list(char *depend_val) {
 	start = strstr(depend_str, depend_type);
 	if (start == NULL)
 		return NULL;
-	for (i = 0; start[i] != ',' &&  start[i] != '\0'; i++)
-		;
-	q = start[i];
-	p  = &start[i];
-	*p = '\0';
+
 	r = start + strlen(depend_type);
 	i = 0;
 	ret = calloc(len, sizeof(char *));
 	if (ret == NULL) {
-		*p = q;
+		free(depend_str);
 		return NULL;
 	}
+
 	for (tok = strtok_r(r, ":", &p1); tok != NULL; tok = strtok_r(NULL, ":", &p1), i++) {
 		if (i == len - 1) {
 			char **tmp;
