@@ -131,9 +131,6 @@
 
 extern char *pbse_to_txt(int err);
 
-/* assuming that in most cases there won't be more than 10 dependent runone jobs */
-#define DEFAULT_RUNONE_JOBS 10
-
 /**
  *	This table contains job comment and information messages that correspond
  *	to the sched_error enums in "constant.h".  The order of the strings in
@@ -5385,12 +5382,12 @@ static char **parse_runone_job_list(char *depend_val) {
 	char *start;
 	const char *depend_type = "runone:";
 	int i;
-	int len = DEFAULT_RUNONE_JOBS;
+	int len = 1;
 	char *r;
-	char *tok;
 	char **ret = NULL;
 	char *depend_str = NULL;
-	char *p1,*p2;
+	int  job_delim = 0;
+	int  svr_delim = 0;
 
 	if (depend_val == NULL)
 		return NULL;
@@ -5402,35 +5399,29 @@ static char **parse_runone_job_list(char *depend_val) {
 		return NULL;
 
 	r = start + strlen(depend_type);
-	i = 0;
-	ret = calloc(len, sizeof(char *));
+	for (i = 0; r[i] != '\0'; i++) {
+		if (r[i] == ':')
+			len++;
+	}
+
+	ret = calloc(len + 1, sizeof(char *));
 	if (ret == NULL) {
 		free(depend_str);
 		return NULL;
 	}
-
-	for (tok = strtok_r(r, ":", &p1); tok != NULL; tok = strtok_r(NULL, ":", &p1), i++) {
-		if (i == len - 1) {
-			char **tmp;
-			tmp = realloc(ret, (len + DEFAULT_RUNONE_JOBS) * sizeof(char *));
-			if (tmp == NULL) {
-				free_ptr_array((void **)ret);
-				free(depend_str);
-				return NULL;
-			}
-			ret = tmp;
-			len += DEFAULT_RUNONE_JOBS;
-		}
-		tok = strtok_r(tok, "@", &p2);
-		ret[i] = string_dup(tok);
+	for (i = 0;  i < len; i++) {
+		job_delim = strcspn(r, ":");
+		r[job_delim] = '\0';
+		svr_delim = strcspn(r, "@");
+		r[svr_delim] = '\0';
+		ret[i] = string_dup(r);
 		if (ret[i] == NULL) {
-			free_ptr_array((void **)ret);
+			free_ptr_array(ret);
 			free(depend_str);
 			return NULL;
 		}
+		r = r + job_delim + 1;
 	}
-	if (i > 0)
-		ret[i] = NULL;
 	free(depend_str);
 	return ret;
 }

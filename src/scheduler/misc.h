@@ -280,7 +280,7 @@ add_str_to_unique_array(char ***str_arr, char *str);
 /*
  * helper function to free an array of pointers
  */
-void free_ptr_array (void **arr);
+void free_ptr_array (void *inp);
 
 #ifdef	__cplusplus
 }
