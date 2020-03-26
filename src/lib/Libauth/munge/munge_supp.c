@@ -71,8 +71,8 @@ static void (*logger)(int type, int objclass, int severity, const char *objname,
 #define MUNGE_LOG_DBG(m) __MUNGE_LOGGER(PBSEVENT_DEBUG|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, m)
 
 static void init_munge(void);
-static char * munge_get_auth_data();
-static int munge_validate_auth_data(void *auth_data);
+static char *munge_get_auth_data(char *, size_t);
+static int munge_validate_auth_data(void *, char *, size_t);
 
 /**
  * @brief
@@ -146,7 +146,7 @@ err:
  *
  */
 static char *
-munge_get_auth_data(void)
+munge_get_auth_data(char *ebuf, size_t ebufsz)
 {
 	char *cred = NULL;
 	uid_t myrealuid;
@@ -154,12 +154,14 @@ munge_get_auth_data(void)
 	struct group *grp;
 	char payload[PBS_MAXUSER + PBS_MAXGRPN + 1] = { '\0' };
 	int munge_err = 0;
-	char ebuf[LOG_BUF_SIZE];
+
+	ebuf[0] = '\0';
 
 	if (munge_dlhandle == NULL) {
 		pthread_once(&munge_init_once, init_munge);
 		if (munge_encode == NULL) {
-			MUNGE_LOG_ERR("Munge lib not loaded");
+			snprintf(ebuf, ebufsz, "Failed to load munge lib");
+			MUNGE_LOG_ERR(ebuf);
 			goto err;
 		}
 	}
@@ -167,14 +169,14 @@ munge_get_auth_data(void)
 	myrealuid = getuid();
 	pwent = getpwuid(myrealuid);
 	if (pwent == NULL) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "Failed to obtain user-info for uid = %d", myrealuid);
+		snprintf(ebuf, ebufsz, "Failed to obtain user-info for uid = %d", myrealuid);
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
 
 	grp = getgrgid(pwent->pw_gid);
 	if (grp == NULL) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "Failed to obtain group-info for gid=%d", pwent->pw_gid);
+		snprintf(ebuf, ebufsz, "Failed to obtain group-info for gid=%d", pwent->pw_gid);
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
@@ -183,7 +185,7 @@ munge_get_auth_data(void)
 
 	munge_err = munge_encode(&cred, NULL, payload, strlen(payload));
 	if (munge_err != 0) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "MUNGE user-authentication on encode failed with `%s`", munge_strerror(munge_err));
+		snprintf(ebuf, ebufsz, "MUNGE user-authentication on encode failed with `%s`", munge_strerror(munge_err));
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
@@ -207,7 +209,7 @@ err:
  *
  */
 static int
-munge_validate_auth_data(void *auth_data)
+munge_validate_auth_data(void *auth_data, char *ebuf, size_t ebufsz)
 {
 	uid_t uid;
 	gid_t gid;
@@ -218,31 +220,33 @@ munge_validate_auth_data(void *auth_data)
 	int munge_err = 0;
 	char *p;
 	int rc = -1;
-	char ebuf[LOG_BUF_SIZE];
+
+	ebuf[0] = '\0';
 
 	if (munge_dlhandle == NULL) {
 		pthread_once(&munge_init_once, init_munge);
 		if (munge_decode == NULL) {
-			MUNGE_LOG_ERR("Munge lib not loaded");
+			snprintf(ebuf, ebufsz, "Failed to load munge lib");
+			MUNGE_LOG_ERR(ebuf);
 			goto err;
 		}
 	}
 
 	munge_err = munge_decode(auth_data, NULL, &recv_payload, &recv_len, &uid, &gid);
 	if (munge_err != 0) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "MUNGE user-authentication on decode failed with `%s`", munge_strerror(munge_err));
+		snprintf(ebuf, ebufsz, "MUNGE user-authentication on decode failed with `%s`", munge_strerror(munge_err));
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
 
 	if ((pwent = getpwuid(uid)) == NULL) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "Failed to obtain user-info for uid = %d", uid);
+		snprintf(ebuf, ebufsz, "Failed to obtain user-info for uid = %d", uid);
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
 
 	if ((grp = getgrgid(pwent->pw_gid)) == NULL) {
-		snprintf(ebuf, sizeof(ebuf) - 1, "Failed to obtain group-info for gid=%d", gid);
+		snprintf(ebuf, ebufsz, "Failed to obtain group-info for gid=%d", gid);
 		MUNGE_LOG_ERR(ebuf);
 		goto err;
 	}
@@ -251,8 +255,10 @@ munge_validate_auth_data(void *auth_data)
 
 	if (p && (strncmp(pwent->pw_name, p, PBS_MAXUSER) == 0)) /* inline with current pbs_iff we compare with username only */
 		rc = 0;
-	else
-		MUNGE_LOG_ERR("User credentials do not match");
+	else {
+		snprintf(ebuf, ebufsz, "User credentials do not match");
+		MUNGE_LOG_ERR(ebuf);
+	}
 
 err:
 	if (recv_payload)
@@ -356,6 +362,7 @@ int
 pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)
 {
 	int rc = -1;
+	char ebuf[LOG_BUF_SIZE] = {'\0'};
 
 	*len_out = 0;
 	*data_out = NULL;
@@ -364,6 +371,9 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	pthread_once(&munge_init_once, init_munge);
 
 	if (munge_dlhandle == NULL) {
+		*data_out = strdup("Munge lib is not loaded");
+		if (*data_out != NULL)
+			*len_out = strlen(*data_out);
 		return 1;
 	}
 
@@ -371,17 +381,25 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 		char *data = (char *)data_in;
 		/* enforce null char at given length of data */
 		data[len_in] = '\0';
-		rc = munge_validate_auth_data(data);
+		rc = munge_validate_auth_data(data, ebuf, sizeof(ebuf) - 1);
 		if (rc == 0) {
 			*is_handshake_done = 1;
 			return 0;
+		} else if (ebuf[0] != '\0') {
+			*data_out = strdup(ebuf);
+			if (*data_out != NULL)
+				*len_out = strlen(ebuf);
 		}
 	} else {
-		*data_out = (void *)munge_get_auth_data();
+		*data_out = (void *)munge_get_auth_data(ebuf, sizeof(ebuf) - 1);
 		if (*data_out) {
 			*len_out = strlen((char *)*data_out);
 			*is_handshake_done = 1;
 			return 0;
+		} else if (ebuf[0] != '\0') {
+			*data_out = strdup(ebuf);
+			if (*data_out != NULL)
+				*len_out = strlen(ebuf);
 		}
 	}
 
