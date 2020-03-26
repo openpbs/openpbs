@@ -180,17 +180,10 @@ j.create_resv_from_job=1
         array job.
         """
 
-        # Let us not assume the number of ncpus
-        nodes = self.server.status(NODE)
-        ncpus = nodes[0]['resources_available.ncpus']
-        j_range = '1-' + ncpus
-
         j = Job(TEST_USER)
-        j.set_attributes({ATTR_J: j_range})
+        j.set_attributes({ATTR_J: '1-3'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
-        self.server.expect(JOB, {'job_state=R': ncpus}, count=True,
-                           id=jid, extend='t')
 
         subjobs = self.server.status(JOB, id=jid, extend='t')
         jids1 = subjobs[1]['id']
