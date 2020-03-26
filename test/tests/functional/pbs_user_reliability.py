@@ -179,11 +179,17 @@ j.create_resv_from_job=1
         This test confirms that a reservation cannot be created out of an
         array job.
         """
+
+        # Let us not assume the number of ncpus
+        nodes = self.server.status(NODE)
+        ncpus = nodes[0]['resources_available.ncpus']
+        j_range = '1-' + ncpus
+
         j = Job(TEST_USER)
-        j.set_attributes({ATTR_J: '1-3'})
+        j.set_attributes({ATTR_J: j_range})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'B'}, jid)
-        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+        self.server.expect(JOB, {'job_state=R': ncpus}, count=True,
                            id=jid, extend='t')
 
         subjobs = self.server.status(JOB, id=jid, extend='t')
