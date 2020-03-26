@@ -333,11 +333,11 @@ svr_save_db(struct server *ps, int mode)
 	else
 		savetype = PBS_INSERT_DB;
 
-	if (svr_to_db_svr(ps, &dbsvr, savetype) != 0)
-		goto db_err;
-
 	obj.pbs_db_obj_type = PBS_DB_SVR;
 	obj.pbs_db_un.pbs_db_svr = &dbsvr;
+
+	if (svr_to_db_svr(ps, &dbsvr, savetype) != 0)
+		goto db_err;
 
 	rc = pbs_db_save_obj(conn, &obj, savetype);
 	if (rc != 0) {
@@ -353,6 +353,7 @@ svr_save_db(struct server *ps, int mode)
 	return (0);
 
 db_err:
+	pbs_db_reset_obj(&obj);
 	strcpy(log_buffer, msg_svdbnosv);
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
@@ -457,11 +458,11 @@ sched_save_db(pbs_sched *ps, int mode)
 	else
 		savetype = PBS_INSERT_DB;
 
-	if (svr_to_db_sched(ps, &dbsched, savetype) != 0)
-		goto db_err;
-
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
 	obj.pbs_db_un.pbs_db_sched = &dbsched;
+
+	if (svr_to_db_sched(ps, &dbsched, savetype) != 0)
+		goto db_err;
 
 
 	rc = pbs_db_save_obj(conn, &obj, savetype);
@@ -479,6 +480,7 @@ sched_save_db(pbs_sched *ps, int mode)
 	return (0);
 
 db_err:
+	pbs_db_reset_obj(&obj);
 	strcpy(log_buffer, schedemsg);
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
