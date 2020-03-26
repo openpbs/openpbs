@@ -61,6 +61,10 @@ extern "C" {
 #include "pbs_sched.h"
 #include "server_limits.h"
 
+#define SYNC_SCHED_HINT_NULL	0
+#define SYNC_SCHED_HINT_FIRST	1
+#define SYNC_SCHED_HINT_OTHER	2
+
 enum srv_atr {
 	SRV_ATR_State,
 	SRV_ATR_SvrHost,

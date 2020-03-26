@@ -349,6 +349,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 #endif /* localmod 050 */
+	associate_dependent_jobs(sinfo);
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
@@ -2487,6 +2488,10 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	/* Now that all job information has been created, time to associate
+	 * jobs to each other if they have runone dependency
+	 */
+	associate_dependent_jobs(nsinfo);
 
 	return nsinfo;
 }

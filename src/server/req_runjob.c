@@ -1117,8 +1117,23 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 		 * in
 		 */
 		if (preq == NULL || (preq->rq_type == PBS_BATCH_AsyrunJob)) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)
+			job *base_job = NULL;
+			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN){
 				set_resc_assigned((void *)pjob, 0, INCR);
+				/* Just update dependencies for the first subjob that runs */
+				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+				    pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_state].at_val.at_long != JOB_STATE_BEGUN)
+					base_job = pjob->ji_parentaj;
+				else
+					base_job = pjob;
+			}
+			if (base_job != NULL &&
+			    base_job->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET) {
+				struct depend *pdep;
+				pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &base_job->ji_wattr[(int)JOB_ATR_depend]);
+				if (pdep != NULL)
+					depend_runone_hold_all(base_job);
+			}
 		}
 		return (0);
 	} else {

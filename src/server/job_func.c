@@ -260,6 +260,8 @@ job_abt(job *pjob, char *text)
 	int	old_substate;
 	int	rc = 0;
 
+	if (pjob == NULL)
+		return 0; /* nothing to do */
 	/* save old state and update state to Exiting */
 
 	old_state = pjob->ji_qs.ji_state;
