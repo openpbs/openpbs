@@ -72,7 +72,7 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 {
 	int i;
 	struct batch_reply *reply;
-	int rc = 0;
+	int rc;
 
 	/* initialize the thread context data, if not initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -100,12 +100,11 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 		return i;
 	}
 
-	if (extend == NULL || strcmp(extend, "async") != 0) {
-		/* read reply from stream into presentation element */
-		reply = PBSD_rdrpy(c);
-		PBSD_FreeReply(reply);
-		rc = get_conn_errno(c);
-	}
+	/* read reply from stream into presentation element */
+	reply = PBSD_rdrpy(c);
+	PBSD_FreeReply(reply);
+
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

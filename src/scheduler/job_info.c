@@ -130,6 +130,7 @@
 #endif
 
 
+extern int pbs_alterjob_async(int c, char *jobid, struct attrl *attrib, char *extend);
 extern char *pbse_to_txt(int err);
 
 /**
@@ -1774,7 +1775,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 	if (pattr->next == NULL)
 		one_attr = 1;
 
-	if (pbs_alterjob(pbs_sd, job_name, pattr, "async") == 0)
+	if (pbs_alterjob_async(pbs_sd, job_name, pattr, NULL) == 0)
 		return 1;
 
 	if (is_finished_job(pbs_errno) == 1) {
