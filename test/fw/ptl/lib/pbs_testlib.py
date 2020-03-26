@@ -5244,6 +5244,21 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
+    def create_node(self, name):
+        try:
+            self.manager(MGR_CMD_CREATE, VNODE, name)
+        except PbsManagerError as err:
+            raise
+
+    def delete_node(self, name):
+        """
+        Remove a node from PBS
+        """
+        try:
+            self.manager(MGR_CMD_DELETE, VNODE, name)
+        except PbsManagerError as err:
+            raise
+
     def delete_nodes(self):
         """
         Remove all the nodes from PBS
