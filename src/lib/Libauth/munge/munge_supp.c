@@ -140,6 +140,9 @@ err:
  * @brief
  *	munge_get_auth_data - Call Munge encode API's to get the authentication data for the current user
  *
+ * @param[in] ebuf - buffer to hold error msg if any
+ * @param[in] ebufsz - size of ebuf
+ *
  * @return char *
  * @retval !NULL - success
  * @retval  NULL - failure
@@ -155,7 +158,14 @@ munge_get_auth_data(char *ebuf, size_t ebufsz)
 	char payload[PBS_MAXUSER + PBS_MAXGRPN + 1] = { '\0' };
 	int munge_err = 0;
 
-	ebuf[0] = '\0';
+	/*
+	 * ebuf passed to this function is initialized with nulls all through
+	 * and ebufsz value passed is sizeof(ebuf) - 1
+	 * So, we don't need to null terminate the last byte in the below
+	 * all snprintf
+	 *
+	 * see pbs_auth_process_handshake_data()
+	 */
 
 	if (munge_dlhandle == NULL) {
 		pthread_once(&munge_init_once, init_munge);
@@ -202,6 +212,8 @@ err:
  *	munge_validate_auth_data - validate given munge authentication data
  *
  * @param[in] auth_data - auth data to be verified
+ * @param[in] ebuf - buffer to hold error msg if any
+ * @param[in] ebufsz - size of ebuf
  *
  * @return int
  * @retval 0 - Success
@@ -221,7 +233,14 @@ munge_validate_auth_data(void *auth_data, char *ebuf, size_t ebufsz)
 	char *p;
 	int rc = -1;
 
-	ebuf[0] = '\0';
+	/*
+	 * ebuf passed to this function is initialized with nulls all through
+	 * and ebufsz value passed is sizeof(ebuf) - 1
+	 * So, we don't need to null terminate the last byte in the below
+	 * all snprintf
+	 *
+	 * see pbs_auth_process_handshake_data()
+	 */
 
 	if (munge_dlhandle == NULL) {
 		pthread_once(&munge_init_once, init_munge);
