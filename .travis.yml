@@ -14,7 +14,7 @@ env:
   - OS_TYPE=ubuntu:18.04
   - OS_TYPE=debian:9
   - OS_TYPE=centos:7 BUILD_MODE=sanitize
-  # - OS_TYPE=centos:7 BUILD_MODE=kerberos
+  - OS_TYPE=centos:7 BUILD_MODE=kerberos
 before_install:
   - .github/runchecks
   - docker pull ${OS_TYPE}
