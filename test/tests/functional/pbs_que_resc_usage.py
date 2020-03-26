@@ -50,6 +50,19 @@ class TestQueRescUsage(TestFunctional):
                             'resources_available.ncpus': 10},
                             self.mom.shortname)
 
+    def create_custom_resc(self):
+        """
+        function to create the resource named as "foo"
+        """
+        self.server.manager(MGR_CMD_CREATE, RSC, {
+                            'type': 'long', 'flag': 'q'}, id='foo')
+        self.scheduler.add_resource('foo')
+        self.server.manager(MGR_CMD_SET, QUEUE, {
+                            'resources_available.foo': 6}, id='workq')
+        q_status = self.server.status(QUEUE, id='workq')
+        self.assertEqual(
+            int(q_status[0]['resources_available.foo']), 6, self.err_msg)
+
     @skipOnCpuSet
     def test_resc_assigned_set_unset(self):
         """
@@ -127,15 +140,8 @@ class TestQueRescUsage(TestFunctional):
         in the system or else unset it.
         """
 
-        # create a custom resource
-        self.server.manager(MGR_CMD_CREATE, RSC, {
-                            'type': 'long', 'flag': 'q'}, id='foo')
-        self.scheduler.add_resource('foo')
-        self.server.manager(MGR_CMD_SET, QUEUE, {
-                            'resources_available.foo': 6}, id='workq')
-        q_status = self.server.status(QUEUE, id='workq')
-        self.assertEqual(
-            int(q_status[0]['resources_available.foo']), 6, self.err_msg)
+        # create a resource
+        self.create_custom_resc()
 
         # resources_assigned is zero but still jobs are in the system
         j1_attr = {ATTR_queue: 'workq',
@@ -166,4 +172,37 @@ class TestQueRescUsage(TestFunctional):
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_assigned.foo',
+                         q_status[0].keys(), self.err_msg)
+
+    @skipOnCpuSet
+    def test_resources_assigned_deletion(self):
+        """
+        Test resources_assigned.<resc_name> deletion from the system
+        """
+        # create a resource
+        self.create_custom_resc()
+        # submit jobs
+        j_attr = {ATTR_queue: 'workq',
+                  'Resource_List.select': '1', 'Resource_List.foo': '3'}
+        j1 = Job(TEST_USER, j_attr)
+        j1.set_sleep_time(30)
+        jid_1 = self.server.submit(j1)
+        j2 = Job(TEST_USER, j_attr)
+        j2.set_sleep_time(30)
+        jid_2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, jid_1)
+        self.server.expect(JOB, {'job_state': 'R'}, jid_2)
+        # try to delete the resource when it's busy on job
+        try:
+            self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
+        except PbsManagerError as e:
+            self.assertTrue("Resource busy on job" in e.msg[0])
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_2)
+        # now jobs has been finished, try to delete the resource again
+        self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
+        q_status = self.server.status(QUEUE, id='workq')
+        self.assertNotIn('resources_assigned.foo',
+                         q_status[0].keys(), self.err_msg)
+        self.assertNotIn('resources_available.foo',
                          q_status[0].keys(), self.err_msg)
