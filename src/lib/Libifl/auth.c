@@ -635,30 +635,36 @@ _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, 
 			len_out = 0;
 		}
 
-		if (is_handshake_done == 0) {
-			/* recieve ctx token */
-			if (transport_recv_pkt(fd, &type, &data_in, &len_in) <= 0) {
-				snprintf(ebuf, ebufsz, "Failed to receive auth token");
-				return -1;
-			}
+		/* recieve ctx token */
+		if (transport_recv_pkt(fd, &type, &data_in, &len_in) <= 0) {
+			snprintf(ebuf, ebufsz, "Failed to receive auth token");
+			return -1;
+		}
 
-			if (type == AUTH_ERR_DATA) {
-				if (len_in > ebufsz)
-					len_in = ebufsz;
-				strncpy(ebuf, (char *)data_in, len_in);
-				ebuf[len_in] = '\0';
-				free(data_in);
-				pbs_errno = PBSE_BADCRED;
-				return -1;
-			}
+		if (type == AUTH_ERR_DATA) {
+			if (len_in > ebufsz)
+				len_in = ebufsz;
+			strncpy(ebuf, (char *)data_in, len_in);
+			ebuf[len_in] = '\0';
+			free(data_in);
+			pbs_errno = PBSE_BADCRED;
+			return -1;
+		}
 
-			if (type != AUTH_CTX_DATA) {
-				free(data_in);
-				snprintf(ebuf, ebufsz, "incorrect auth token type");
-				pbs_errno = PBSE_SYSTEM;
-				return -1;
-			}
-		} else {
+		if ((is_handshake_done == 0 && type != AUTH_CTX_DATA) || (is_handshake_done == 1 && type != AUTH_CTX_OK)) {
+			free(data_in);
+			snprintf(ebuf, ebufsz, "incorrect auth token type");
+			pbs_errno = PBSE_SYSTEM;
+			return -1;
+		}
+
+		if (type == AUTH_CTX_OK) {
+			free(data_in);
+			data_in = NULL;
+			len_in = 0;
+		}
+
+		if (is_handshake_done == 1) {
 			transport_chan_set_ctx_status(fd, AUTH_STATUS_CTX_READY, for_encrypt);
 			transport_chan_set_authctx(fd, authctx, for_encrypt);
 		}
@@ -889,6 +895,7 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 			free(data_out);
 		} else {
 			snprintf(ebuf, ebufsz, "auth_process_handshake_data failure");
+			(void)transport_send_pkt(fd, AUTH_ERR_DATA, "Unknown auth error", strlen("Unknown auth error"));
 		}
 		pbs_errno = PBSE_SYSTEM;
 		free(data_in);
@@ -908,6 +915,10 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 	free(data_out);
 
 	if (is_handshake_done == 1) {
+		if (transport_send_pkt(fd, AUTH_CTX_OK, "", 1) <= 0) {
+			snprintf(ebuf, ebufsz, "Failed to send auth context ok token");
+			return -1;
+		}
 		transport_chan_set_ctx_status(fd, AUTH_STATUS_CTX_READY, for_encrypt);
 		transport_chan_set_authctx(fd, authctx, for_encrypt);
 	}
