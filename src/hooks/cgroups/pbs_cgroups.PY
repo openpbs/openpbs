@@ -116,10 +116,19 @@ else:
     import operator
     import fnmatch
     import math
+    import types
     try:
         import json
     except Exception:
         import simplejson as json
+    multiprocessing = None
+    try:
+        # will fail in Python 2.5
+        import multiprocessing
+    except Exception:
+        # but we can use isinstance(multiprocessing, types.ModuleType) later
+        # to find out if it worked
+        pass
     import fcntl
     import pwd
 
@@ -597,6 +606,114 @@ def job_is_running(jobid):
     if 'substate' in jobinfo:
         return jobinfo['substate'] == 42
     return False
+
+
+def fetch_vnode_comments_nomp(vnode_list, timeout=10):
+    comment_dict = {}
+    failure = False
+    pbs.logmsg(pbs.EVENT_DEBUG4,
+               "vnode list in fetch_vnode_comment is %s"
+               % vnode_list)
+    try:
+        with Timeout(timeout, 'Timed out contacting server'):
+            for vn in vnode_list:
+                comment_dict[vn] = pbs.server().vnode(vn).comment
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           "comment for vnode %s fetched from server is %s"
+                           % (str(vn), comment_dict[vn]))
+    except TimeoutError:
+        # pbs.server().vnode(xx).comment got stuck, or the timeout
+        # was too short for the number of nodes supplied
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Timed out while fetching comments from server, '
+                   'timeout was %s' % str(timeout))
+        failure = True
+    except Exception as exc:
+        # other exception, like e.g. wrong vnode name
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Unexpected error in fetch_vnode_comments: %s'
+                   % repr(exc))
+        failure = True
+    # only return a full dictionary if you got the comment for all vnodes
+    if not failure:
+        return (comment_dict, failure)
+    else:
+        return ({}, failure)
+
+
+def fetch_vnode_comments_queue(vnode_list, commq):
+    comment_dict = {}
+    failure = False
+    pbs.logmsg(pbs.EVENT_DEBUG4,
+               "vnode list in fetch_vnode_comment is %s"
+               % vnode_list)
+    try:
+        for vn in vnode_list:
+            comment_dict[vn] = pbs.server().vnode(vn).comment
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       "comment for vnode %s fetched from server is %s"
+                       % (str(vn), comment_dict[vn]))
+
+    except Exception as exc:
+        # other exception, like e.g. wrong vnode name
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Unexpected error in fetch_vnode_comments: %s'
+                   % repr(exc))
+        failure = True
+    # only return a full dictionary if you got the comment for all vnodes
+    if not failure:
+        commq.put(comment_dict)
+    else:
+        commq.put({})
+    return True
+
+
+def fetch_vnode_comments_mp(vnode_list, timeout=10):
+    worker_comment_dict = {}
+    commq = multiprocessing.Queue()
+    worker = multiprocessing.Process(target=fetch_vnode_comments_queue,
+                                     args=(vnode_list, commq))
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   "comment fetcher for %s timed out after %s seconds"
+                   % (str(vnode_list), timeout))
+        # will mess up the commq Queue but we don't care
+        # will send SIGTERM, but it's possible that is masked
+        # while in a SWIG function
+        # we don't really care since unline in threading,
+        # in multiprocessing we can exit and orphan the worker
+        worker.terminate()
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Timed out while fetching comments from server,'
+                   'timeout was %s' % str(timeout))
+        return ({}, True)
+    else:
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   "comments fetched from server without timeout")
+        comment_dict = {}
+        try:
+            comment_dict = commq.get()
+        except Exception:
+            # Treat failure to get comments dictionary from queue
+            # as a timeout
+            return ({}, True)
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   "worker comment_dict is %r" % comment_dict)
+
+        return (comment_dict, False)
+
+
+def fetch_vnode_comments(vnode_list, timeout=10):
+    if not isinstance(multiprocessing, types.ModuleType):
+        pbs.logmsg(pbs.EVENT_DEBUG4, "multiprocessing not available, "
+                   "fetch_vnode_comment will use SIGALRM timeout")
+        return fetch_vnode_comments_nomp(vnode_list, timeout)
+    else:
+        pbs.logmsg(pbs.EVENT_DEBUG4, "multiprocessing available, "
+                   "fetch_vnode_comment will use mp for timeout")
+        return fetch_vnode_comments_mp(vnode_list, timeout)
 
 
 # ============================================================================
@@ -2185,27 +2302,22 @@ class NodeUtils(object):
                        '%s: Too soon since node was offlined' % caller_name())
             return
         # Get comments for vnodes associated with this event
-        vnode_comments = dict()
-        try:
-            with Timeout(self.cfg['server_timeout'],
-                         'Timed out contacting server'):
-                for vnode_name in pbs.event().vnode_list:
-                    vnode_comments[vnode_name] = \
-                        pbs.server().vnode(vnode_name).comment
-        except TimeoutError:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Timed out contacting server' %
-                       caller_name())
-            return
-        except Exception as exc:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Error contacting server: %s' %
-                       (caller_name(), exc))
+        vnl = pbs.event().vnode_list.keys()
+        (vnode_comments, failure) = \
+            fetch_vnode_comments(vnl, timeout=self.cfg['server_timeout'])
+        if failure:
+            pbs.logmsg(pbs.EVENT_ERROR,
+                       '%s: Failed contacting server for vnode comments'
+                       % caller_name())
+            pbs.logmsg(pbs.EVENT_ERROR, '%s: Not bringing vnodes online'
+                       % caller_name())
             return
         # Bring vnodes online that this hook has taken offline
         for vnode_name in vnode_comments:
             if vnode_comments[vnode_name] != self.offline_msg:
-                pbs.logmsg(pbs.EVENT_DEBUG, '%s: Comment for vnode %s '
-                           'was not set by this hook' %
-                           (caller_name(), vnode_name))
+                pbs.logmsg(pbs.EVENT_DEBUG, ('%s: Comment for vnode %s '
+                           + 'was not set by this hook')
+                           % (caller_name(), vnode_name))
                 continue
             vnode = pbs.event().vnode_list[vnode_name]
             vnode.state = pbs.ND_FREE
