@@ -2259,3 +2259,86 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	if (entire_record[0] != '\0')
 		account_record(PBS_ACCT_ALTER, pjob, entire_record);
 }
+
+
+/**
+ * @brief
+ * Common function to log a suspend/resume record 
+ * for suspend/resume job events respectively.
+ * 
+ * @param[in] pjob - job to log records for.
+ * @param[in] user - User who requested the signal suspend/resume 
+ * @param[in] host - Hostname where the signal was triggered
+ * @param[in] signal_type - flag indicating the type of event suspend/resume
+ * 
+ * @returns void 
+ */
+void
+log_suspend_resume_record(job *pjob, char *user, char *host, char *signal_type)
+{
+	char *log_record = NULL;
+	char *tmp;
+	struct svrattrl *patlist = NULL;
+	char *resc_used;
+	int resc_used_size = 0;
+	pbs_list_head temp_head;
+	int acct_type = PBS_ACCT_RESUME;
+	int rc;
+
+	rc = pbs_asprintf(&log_record, "requestor=%s@%s", user, host);
+
+	if (strcmp(signal_type, SIG_SUSPEND)==0 || strcmp(signal_type, SIG_ADMIN_SUSPEND) == 0) {
+		acct_type = PBS_ACCT_SUSPEND;
+		
+		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
+			tmp = log_record;
+			rc = pbs_asprintf(&log_record, "%s resources_released=%s", tmp, 
+			pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str);
+			free(tmp);
+		}	
+
+		CLEAR_HEAD(temp_head);
+
+		if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded != NULL)
+			patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded;
+		else if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded != NULL)
+			patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded;
+		else
+			encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
+			&temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
+			NULL, ATR_ENCODE_CLIENT, &patlist);
+
+		/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
+		resc_used = malloc(RESC_USED_BUF_SIZE);
+		if (resc_used == NULL)
+			goto writeit;
+		resc_used_size = RESC_USED_BUF_SIZE;
+
+		resc_used[0] = '\0';
+
+		while(patlist) {
+			/* log to accounting_logs only if there's a value */
+			if (strlen(patlist->al_value) > 0) {
+				if (concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ", NULL) != 0) {
+					free(resc_used);
+					goto writeit;
+				}
+			}	
+			patlist = patlist->al_sister;
+		}
+
+		free_attrlist(&temp_head);
+		if (resc_used != NULL) {
+			tmp = log_record;
+			rc = pbs_asprintf(&log_record, "%s%s", tmp, resc_used);
+			free(resc_used);
+			free(tmp);
+		}
+	}
+
+writeit:
+	if (rc > 0) {
+		write_account_record(acct_type, pjob->ji_qs.ji_jobid, log_record);
+		free(log_record);
+	}
+}
