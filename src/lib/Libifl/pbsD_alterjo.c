@@ -166,7 +166,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
  *
  */
 int
-pbs_alterjob_async(int c, char *jobid, struct attrl *attrib, char *extend)
+pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 {
 	struct attropl *attrib_opl = NULL;
 	int i;
