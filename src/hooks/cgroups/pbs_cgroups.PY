@@ -4510,6 +4510,8 @@ class CgroupUtils(object):
                 # This only sets the cpu controller limits/shares,
                 # since the cpuset stuff is done through
                 # cpuset.cpus and cpuset.mems
+                # Note the set_limit in the final 'else' should be
+                # skipped -- its replacement is at the end here
                 htpc = 1
                 if (self.cfg['cgroup']['cpu']['enabled']
                         and self.cfg['use_hyperthreads']
@@ -4520,8 +4522,10 @@ class CgroupUtils(object):
             elif ((resc == "cpuset.cpus")
                   and not hostresc['cpuset.cpus']
                   and self.cfg['cgroup']['cpuset']['allow_zero_cpus']):
-                # zero cpus jobs -- delete the cpuset made for the job,
-                # allowing the job processes to be in the root cpuset
+                # zero cpus jobs -- delete the cpuset made for the job;
+                # later allows job processes to be placed in the root cpuset.
+                # Note the set_limit in the final else should likewise
+                # be skipped.
                 path = self._cgroup_path('cpuset', '', jobid)
                 success = self._remove_cgroup(path)
                 if not success:
@@ -4534,8 +4538,8 @@ class CgroupUtils(object):
                     # Hopefully the orphan cleaner will eventually
                     # get rid of it
             else:
-                # For everything else just pass it down
-            self.set_limit(resc, hostresc[resc], jobid)
+                # For all the rest just pass hostresc[resc] down to set_limit
+                self.set_limit(resc, hostresc[resc], jobid)
         # Set additional parameters
         # Note some kernels will surprisingly not let you set things
         # to the value that is already there in some corner cases
