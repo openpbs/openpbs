@@ -261,7 +261,7 @@ class TestPbsResvAlter(TestFunctional):
         :type  start: int.
 
         :param end: End time of the reservation.
-        :type  end: int.
+        :type  end: int
 
         :param shift: Time in seconds the reservation times will be moved.
         :type  shift: int.
@@ -342,8 +342,6 @@ class TestPbsResvAlter(TestFunctional):
 
             self.server.alterresv(r, attrs)
 
-            print(str(msg))
-            print(str(self.server.last_out))
             self.assertEqual(msg, self.server.last_out[0])
             self.logger.info(msg + " displayed")
 
@@ -1559,17 +1557,18 @@ class TestPbsResvAlter(TestFunctional):
 
         offset = 20
         duration = 20
+        new_duration = 30
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
-        self.alter_a_reservation(rid, start, end, a_duration=30,
+        self.alter_a_reservation(rid, start, end, a_duration=new_duration,
                                  check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
         self.assertEqual(t_end, end+10)
         self.assertEqual(t_start, start)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
 
         # Submit a job to the reservation and change its duration.
         self.submit_job_to_resv(rid)
@@ -1578,12 +1577,12 @@ class TestPbsResvAlter(TestFunctional):
         temp_start = t_start
 
         self.alter_a_reservation(rid, temp_start, temp_end, sequence=2,
-                                 a_duration=40, check_log=False)
+                                 a_duration=new_duration+10, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_end, temp_end+10)
         self.assertEqual(t_start, temp_start)
-        self.assertEqual(t_duration, 40)
+        self.assertEqual(t_duration, new_duration+10)
 
     def test_adv_resv_dur_and_endtime_before_start(self):
         """
@@ -1593,17 +1592,19 @@ class TestPbsResvAlter(TestFunctional):
 
         offset = 20
         duration = 20
+        new_duration = 40
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         self.alter_a_reservation(rid, start, end, shift=shift,
-                                 alter_e=True, a_duration=40, check_log=False)
+                                 alter_e=True, a_duration=new_duration,
+                                 check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
         self.assertEqual(t_end, end+10)
         self.assertEqual(t_start, start-10)
-        self.assertEqual(t_duration, 40)
+        self.assertEqual(t_duration, new_duration)
 
         # Submit a job to the reservation and change its start time.
         self.submit_job_to_resv(rid)
@@ -1612,11 +1613,11 @@ class TestPbsResvAlter(TestFunctional):
 
         self.alter_a_reservation(rid, temp_start, temp_end, shift=shift,
                                  alter_e=True, sequence=2,
-                                 a_duration=50, check_log=False)
+                                 a_duration=new_duration+10, check_log=False)
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_end, temp_end+10)
         self.assertEqual(t_start, temp_start)
-        self.assertEqual(t_duration, 50)
+        self.assertEqual(t_duration, new_duration+10)
 
     def test_adv_resv_dur_and_starttime_before_start(self):
         """
@@ -1626,17 +1627,19 @@ class TestPbsResvAlter(TestFunctional):
 
         offset = 60
         duration = 20
+        new_duration = 30
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         self.alter_a_reservation(rid, start, end, shift=shift,
-                                 alter_s=True, a_duration=30, check_log=False)
+                                 alter_s=True, a_duration=new_duration,
+                                 check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
         self.assertEqual(t_end, end+20)
         self.assertEqual(t_start, start+10)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
 
         # Submit a job to the reservation and change its start time.
         self.submit_job_to_resv(rid)
@@ -1645,11 +1648,11 @@ class TestPbsResvAlter(TestFunctional):
 
         self.alter_a_reservation(rid, temp_start, temp_end, shift=shift,
                                  alter_s=True, sequence=2,
-                                 a_duration=40, check_log=False)
+                                 a_duration=new_duration+10, check_log=False)
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_end, temp_end+20)
         self.assertEqual(t_start, temp_start+10)
-        self.assertEqual(t_duration, 40)
+        self.assertEqual(t_duration, new_duration+10)
 
     def test_adv_res_dur_after_start(self):
         """
@@ -1659,16 +1662,17 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 10
         duration = 20
+        new_duration = 30
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         self.check_resv_running(rid, offset)
 
-        self.alter_a_reservation(rid, start, end, a_duration=30,
+        self.alter_a_reservation(rid, start, end, a_duration=new_duration,
                                  confirm=False, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
 
         time.sleep(5)
         attr = {'reserve_duration': 5}
@@ -1681,23 +1685,22 @@ class TestPbsResvAlter(TestFunctional):
 
     def test_adv_resv_endtime_starttime_dur_together(self):
         """
-        Test that all three end, start and duration can be changed together
+        Test that all three end, start and duration cannot be changed together
         """
         offset = 20
         duration = 20
+        new_duration = 30
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
         new_start = self.bu.convert_seconds_to_datetime(start + shift)
         new_end = self.bu.convert_seconds_to_datetime(end + shift)
-        new_duration = self.bu.convert_seconds_to_datetime(duration + 10)
+        new_duration = self.bu.convert_seconds_to_datetime(new_duration)
 
-        try:
+        with self.assertRaises(PbsResvAlterError) as e:
             attr = {'reserve_start': new_start, 'reserve_end': new_end,
                     'reserve_duration': new_duration}
             self.server.alterresv(rid, attr)
-        except PbsResvAlterError as e:
-            self.assertTrue("pbs_ralter: Bad time specification(s)" in
-                            e.msg[0])
+            self.assertIn('pbs_ralter: Bad time specification(s)', e.msg[0])
 
     def test_standing_resv_duration(self):
         """
@@ -1711,16 +1714,17 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 20
         duration = 20
+        new_duration = 30
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
                                                               duration,
                                                               standing=True)
 
         self.alter_a_reservation(rid, start, end, shift=shift,
-                                 a_duration=30, check_log=False)
+                                 a_duration=new_duration, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
 
         # Wait for the reservation to start running.
         self.check_resv_running(rid, offset - shift)
@@ -1744,16 +1748,17 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 20
         duration = 20
+        new_duration = 30
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
                                                               duration,
                                                               standing=True)
 
         self.alter_a_reservation(rid, start, end, shift=shift, alter_e=True,
-                                 a_duration=30, check_log=False)
+                                 a_duration=new_duration, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
         self.assertEqual(t_end, end+15)
         self.assertEqual(t_start, start+5)
 
@@ -1779,16 +1784,17 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 20
         duration = 20
+        new_duration = 30
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
                                                               duration,
                                                               standing=True)
 
         self.alter_a_reservation(rid, start, end, shift=shift, alter_s=True,
-                                 a_duration=30, check_log=False)
+                                 a_duration=new_duration, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_duration, 30)
+        self.assertEqual(t_duration, new_duration)
         self.assertEqual(t_end, end+25)
         self.assertEqual(t_start, start+15)
 

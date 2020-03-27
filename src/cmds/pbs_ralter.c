@@ -73,7 +73,6 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char	*endptr = NULL;
 	long	temp = 0;
 	char dur_buf[800];
-	int i = 0;
 
 	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:")) != EOF) {
 		switch (c) {
@@ -141,12 +140,8 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'D':
-				sprintf(dur_buf, "%s", optarg);
-				i = set_attr(&attrib, ATTR_resv_duration, dur_buf);
-				if (i != 0) {
-					fprintf(stderr, "pbs_ralter: illegal -D time value\n");
-					errflg++;
-				}
+				snprintf(dur_buf, sizeof(dur_buf), "%s", optarg);
+				set_attr_error_exit(&attrib, ATTR_resv_duration, dur_buf);
 				break;				
 			default:
 				/* pbs_ralter option not recognized */
@@ -172,7 +167,8 @@ print_usage()
 	"                [-N reservation_name] [-R start_time] [-E end_time]\n"
 	"                [-U (+/-)username[,(+/-)username]...]\n"
 	"                [-G [(+/-)group[,(+/-)group]...]]\n"
-	"                [-D durationn] resv_id\n";
+	"                [-D duration]\n"
+	"                resv_id\n";
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
 }
@@ -196,7 +192,9 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 
 	for (i = 0; i < err_list->ecl_numerrors; i++) {
 		attribute = err_list->ecl_attrerr[i].ecl_attribute;
-		if (strcmp(attribute->name, ATTR_resv_end) == 0)
+		if (strcmp(attribute->name, ATTR_resv_duration) == 0)
+			opt = "D";
+		else if (strcmp(attribute->name, ATTR_resv_end) == 0)
 			opt = "E";
 		else if (strcmp(attribute->name, ATTR_auth_g) == 0)
 			opt = "G";
@@ -212,8 +210,6 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 			opt = "R";
 		else if (strcmp(attribute->name, ATTR_auth_u) == 0)
 			opt = "U";
-		else if (strcmp(attribute->name, ATTR_resv_duration) == 0)
-			opt = "D";
 		else
 			return ;
 

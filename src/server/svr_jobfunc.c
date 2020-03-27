@@ -4596,10 +4596,8 @@ start_end_dur_wall(void *pobj, int objtype)
 		swcode += 2;			/*have end  */
 	if (pduration->at_flags & ATR_VFLAG_SET)
 		swcode += 4;			/*have duration*/
-	if (prsc)
+	if (prsc && pstate != RESV_BEING_ALTERED)
 		swcode += 8;			/*have walltime*/
-	if(pstate == RESV_BEING_ALTERED)
-		swcode -= 8;			/*remove walltime in case of altering reservation*/
 	else if (!(prsc = add_resource_entry(pattr, rscdef)))
 		return (-1);
 
@@ -4607,7 +4605,7 @@ start_end_dur_wall(void *pobj, int objtype)
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
 		case  3:	/*start, end*/
-			if ((((check_start) && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
+			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
@@ -4621,7 +4619,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  5:	/*start, duration*/
-			if ((((check_start) && pstime->at_val.at_long < time_now) && ((pstate != RESV_BEING_ALTERED) && (!presv->ri_qp->qu_numjobs))) ||
+			if (((check_start && pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
@@ -4638,8 +4636,8 @@ start_end_dur_wall(void *pobj, int objtype)
 			else {
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
-				(void)pddef->at_set(pduration, &atemp, SET);
-				(void)rscdef->rs_set(&prsc->rs_value, &atemp, SET);
+				pddef->at_set(pduration, &atemp, SET);
+				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 
 		case  7:	/*start, end, duration*/
