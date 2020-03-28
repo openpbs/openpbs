@@ -829,8 +829,6 @@ req_modifyReservation(struct batch_request *preq)
 							send_to_scheduler = RESV_START_TIME_MODIFIED;
 							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
-							pdef->at_decode(&presv->ri_wattr[RESV_ATR_start], 
-							psatl->al_name, psatl->al_resc, psatl->al_value);
 							r = 1;
 						} else {
 							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
@@ -851,7 +849,7 @@ req_modifyReservation(struct batch_request *preq)
 					return;
 				}
 				
-				if (d==1) {
+				if (d == 1) {
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
 				}
@@ -871,17 +869,17 @@ req_modifyReservation(struct batch_request *preq)
 					return;
 				}
 				e = 1;
-				if (d==1) {
+				if (d == 1) {
 					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
 				}
 
 				break;
 			case RESV_ATR_duration:
-				if (r==1) {
+				if (r == 1) {
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
-				} else if (e==1) {
+				} else if (e == 1) {
 					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
 				}
@@ -897,11 +895,10 @@ req_modifyReservation(struct batch_request *preq)
 				break;
 		}
 
-		if (d == 0) {
+		if (d == 0) 
 			presv->ri_wattr[RESV_ATR_duration].at_flags &= ~ATR_VFLAG_SET;
-		}
 
-		if (d==1 && r==1 && e==1) {
+		if (d == 1 && r == 1 && e == 1) {
 			req_reject(PBSE_BADTSPEC, 0, preq);
 			resv_revert_alter_times(presv);
 			return;
