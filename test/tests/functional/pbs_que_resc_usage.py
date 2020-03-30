@@ -59,9 +59,6 @@ class TestQueRescUsage(TestFunctional):
         self.scheduler.add_resource('foo')
         self.server.manager(MGR_CMD_SET, QUEUE, {
                             'resources_available.foo': 6}, id='workq')
-        q_status = self.server.status(QUEUE, id='workq')
-        self.assertEqual(
-            int(q_status[0]['resources_available.foo']), 6, self.err_msg)
 
     @skipOnCpuSet
     def test_resc_assigned_set_unset(self):
@@ -71,31 +68,30 @@ class TestQueRescUsage(TestFunctional):
         """
 
         # set a resource and unset it without using
-        a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        self.server.manager(MGR_CMD_SET, QUEUE, {
+                            'resources_available.ncpus': 4}, id='workq')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertEqual(
             int(q_status[0]['resources_available.ncpus']), 4, self.err_msg)
         self.assertNotIn('resources_assigned.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
         self.server.manager(MGR_CMD_UNSET, QUEUE,
                             'resources_available.ncpus', id='workq')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
 
         # set the resource and unset it after using
-        a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        self.server.manager(MGR_CMD_SET, QUEUE, {
+                            'resources_available.ncpus': 8}, id='workq')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertEqual(
             int(q_status[0]['resources_available.ncpus']), 8, self.err_msg)
         # job submission
-        j_attr = {ATTR_queue: 'workq', 'Resource_List.select': '1:ncpus=3'}
-        j1 = Job(TEST_USER, j_attr)
+        j1 = Job(attrs={'Resource_List.ncpus': '3'})
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
-        j2 = Job(TEST_USER, j_attr)
+        j2 = Job(attrs={'Resource_List.ncpus': '3'})
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
@@ -108,9 +104,9 @@ class TestQueRescUsage(TestFunctional):
                             'resources_available.ncpus', id='workq')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
         self.assertIn('resources_assigned.ncpus',
-                      q_status[0].keys(), self.err_msg)
+                      q_status[0], self.err_msg)
 
         # Restart the server() and check "resources_assigned" value when
         # resource is not set but still some jobs are running in the system
@@ -118,7 +114,7 @@ class TestQueRescUsage(TestFunctional):
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
         self.assertEqual(
             int(q_status[0]['resources_assigned.ncpus']), 6, self.err_msg)
         # If no jobs are running at the time of restart the server
@@ -127,9 +123,9 @@ class TestQueRescUsage(TestFunctional):
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_available.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
         self.assertNotIn('resources_assigned.ncpus',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
 
     @skipOnCpuSet
     def test_resources_assigned_with_zero_val(self):
@@ -144,15 +140,11 @@ class TestQueRescUsage(TestFunctional):
         self.create_custom_resc()
 
         # resources_assigned is zero but still jobs are in the system
-        j1_attr = {ATTR_queue: 'workq',
-                   'Resource_List.select': '1', 'Resource_List.foo': '3'}
-        j1 = Job(TEST_USER, j1_attr)
+        j1 = Job(attrs={'Resource_List.foo': '3'})
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
         # requesting negative resource here
-        j2_attr = {ATTR_queue: 'workq',
-                   'Resource_List.select': '1', 'Resource_List.foo': '-3'}
-        j2 = Job(TEST_USER, j2_attr)
+        j2 = Job(attrs={'Resource_List.foo': '-3'})
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
@@ -172,7 +164,7 @@ class TestQueRescUsage(TestFunctional):
         self.server.restart()
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_assigned.foo',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
 
     @skipOnCpuSet
     def test_resources_assigned_deletion(self):
@@ -182,12 +174,10 @@ class TestQueRescUsage(TestFunctional):
         # create a resource
         self.create_custom_resc()
         # submit jobs
-        j_attr = {ATTR_queue: 'workq',
-                  'Resource_List.select': '1', 'Resource_List.foo': '3'}
-        j1 = Job(TEST_USER, j_attr)
+        j1 = Job(attrs={'Resource_List.foo': '3'})
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
-        j2 = Job(TEST_USER, j_attr)
+        j2 = Job(attrs={'Resource_List.foo': '3'})
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
@@ -196,13 +186,13 @@ class TestQueRescUsage(TestFunctional):
         try:
             self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
         except PbsManagerError as e:
-            self.assertTrue("Resource busy on job" in e.msg[0])
+            self.assertIn("Resource busy on job", e.msg[0])
         self.server.expect(JOB, 'queue', op=UNSET, id=jid_1)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid_2)
         # now jobs has been finished, try to delete the resource again
         self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertNotIn('resources_assigned.foo',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
         self.assertNotIn('resources_available.foo',
-                         q_status[0].keys(), self.err_msg)
+                         q_status[0], self.err_msg)
