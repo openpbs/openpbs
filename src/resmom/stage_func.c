@@ -65,6 +65,7 @@
 #include "batch_request.h"
 #include "pbs_nodes.h"
 #include "mom_func.h"
+
 /**
  * @file	stage_func.c
  */
@@ -96,6 +97,31 @@ static int sys_copy(int, int, char *, char *, struct rqfpair *, int, char *);
 #define	PATHCMP	strncasecmp
 #else
 #define	PATHCMP	strncmp
+#endif
+
+#ifdef WIN32
+/**
+ * @brief
+ * check_err - Report the error in log file, if the length of actual data
+ *             buffer and length of the total data written is different.
+ *
+ * @param[in]		func_name		-	Name of the caller function
+ * @param[in]		buffer			-	Actual data buffer
+ * @param[in]		written_len		-	Total length of the written data
+ *
+ * @return void
+ */
+void
+check_err(const char* func_name, char *buffer, int written_len)
+{
+	if (written_len != strlen(buffer)) {
+		DWORD ecode = GetLastError();
+		snprintf(log_buffer, sizeof(log_buffer),
+		         "Failed to write or written partial data to the pipe: data=[%s], total_len=%d, written_len=%d, ecode=%d",
+		         buffer, strlen(buffer), written_len, ecode);
+		log_err(-1, func_name, log_buffer);
+	}
+}
 #endif
 
 /**
@@ -2056,6 +2082,7 @@ recv_pcphosts(void)
 	int nh = 0;
 
 	if (fgets(buf, sizeof(int), stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read cphosts_num");
 		return 0;
 	} else {
 		buf[strlen(buf)-1] = '\0';
@@ -2066,6 +2093,7 @@ recv_pcphosts(void)
 		return 1;
 	} else {
 		if ((pcphosts = malloc(cphosts_num * sizeof(struct cphosts))) == NULL) {
+			log_err(-1, __func__, "malloc failed");
 			return 0;
 		} else {
 			memset(pcphosts, 0, (cphosts_num * sizeof(struct cphosts)));
@@ -2076,10 +2104,12 @@ recv_pcphosts(void)
 
 		if (fgets(buf, sizeof(buf), stdin) == NULL) {
 			free_pcphosts();
+			log_err(-1, __func__, "Failed to read cph_hosts");
 			return 0;
 		} else {
 			buf[strlen(buf)-1] = '\0';
 			if (((pcphosts+nh)->cph_hosts = strdup(buf)) == NULL) {
+				log_err(-1, __func__, "Failed to allocate data to cph_hosts");
 				free_pcphosts();
 				return 0;
 			} else
@@ -2088,10 +2118,12 @@ recv_pcphosts(void)
 
 		if (fgets(buf, sizeof(buf), stdin) == NULL) {
 			free_pcphosts();
+			log_err(-1, __func__, "Failed to read cph_from");
 			return 0;
 		} else {
 			buf[strlen(buf)-1] = '\0';
 			if (((pcphosts+nh)->cph_from = strdup(buf)) == NULL) {
+				log_err(-1, __func__, "Failed to allocate data to cph_from");
 				free_pcphosts();
 				return 0;
 			} else
@@ -2099,18 +2131,19 @@ recv_pcphosts(void)
 		}
 
 		if (fgets(buf, sizeof(buf), stdin) == NULL) {
+			log_err(-1, __func__, "Failed to read cph_to");
 			free_pcphosts();
 			return 0;
 		} else {
 			buf[strlen(buf)-1] = '\0';
 			if (((pcphosts+nh)->cph_to = strdup(buf)) == NULL) {
+				log_err(-1, __func__, "Failed to allocate data to cph_to");
 				free_pcphosts();
 				return 0;
 			} else
 				memset(buf, 0, sizeof(buf));
 		}
 	}
-
 	return 1;
 }
 
@@ -2171,30 +2204,35 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 	CLEAR_HEAD(pcf->rq_pair);
 
 	if (fgets(pcf->rq_jobid, PBS_MAXJOBNAME, stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read rq_jobid");
 		return 0;
 	} else {
 		pcf->rq_jobid[strlen(pcf->rq_jobid)-1] = '\0';
 	}
 
 	if (fgets(pcf->rq_owner, PBS_MAXUSER, stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read rq_owner");
 		return 0;
 	} else {
 		pcf->rq_owner[strlen(pcf->rq_owner)-1] = '\0';
 	}
 
 	if (fgets(pcf->rq_user, PBS_MAXUSER, stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read rq_user");
 		return 0;
 	} else {
 		pcf->rq_user[strlen(pcf->rq_user)-1] = '\0';
 	}
 
 	if (fgets(pcf->rq_group, PBS_MAXGRPN, stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read rq_group");
 		return 0;
 	} else {
 		pcf->rq_group[strlen(pcf->rq_group)-1] = '\0';
 	}
 
 	if (fgets(buf, sizeof(int), stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read rq_dir");
 		return 0;
 	} else {
 		buf[strlen(buf)-1] = '\0';
@@ -2202,6 +2240,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 	}
 
 	if (fgets(buf, sizeof(int), stdin) == NULL) {
+		log_err(-1, __func__, "Failed to read pair_ct");
 		return 0;
 	} else {
 		buf[strlen(buf)-1] = '\0';
@@ -2212,6 +2251,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 
 		ppair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
 		if (ppair == NULL) {
+			log_err(-1, __func__, "rqfpair: malloc failed");
 			free_rq_cpyfile_cred(pcf);
 			return 0;
 		}
@@ -2224,6 +2264,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			free(ppair);
 			ppair = NULL;
 			free_rq_cpyfile_cred(pcf);
+			log_err(-1, __func__, "Failed to read fp_flag");
 			return 0;
 		} else {
 			buf[strlen(buf)-1] = '\0';
@@ -2234,6 +2275,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			free(ppair);
 			ppair = NULL;
 			free_rq_cpyfile_cred(pcf);
+			log_err(-1, __func__, "Failed to read fp_local");
 			return 0;
 		} else {
 			memset(ppair->fp_local, 0, MAXPATHLEN+1);
@@ -2255,6 +2297,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			free(ppair);
 			ppair = NULL;
 			free_rq_cpyfile_cred(pcf);
+			log_err(-1, __func__, "fp_rmt: malloc failed");
 			return 0;
 		} else {
 			memset(ppair->fp_rmt, 0, MAXPATHLEN+1);
@@ -2266,6 +2309,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 				free(ppair);
 				ppair = NULL;
 				free_rq_cpyfile_cred(pcf);
+				log_err(-1, __func__, "Failed to read fp_rmt");
 				return 0;
 			} else {
 				ppair->fp_rmt[strlen(ppair->fp_rmt)-1] = '\0';
@@ -2276,6 +2320,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 
 	if (fgets(buf, sizeof(buf), stdin) == NULL) {
 		free_rq_cpyfile_cred(pcf);
+		log_err(-1, __func__, "Failed to read pcf");
 		return 0;
 	} else {
 		buf[strlen(buf)-1] = '\0';
@@ -2284,22 +2329,32 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 
 			if (fgets(buf, sizeof(buf), stdin) == NULL) {
 				free_rq_cpyfile_cred(pcf);
+				log_err(-1, __func__, "Failed to read cred_length");
 				return 0;
 			} else {
 				buf[strlen(buf)-1] = '\0';
 				cred_len = atoi(buf);
 			}
 
-			cred_buf = (char *)malloc(cred_len+1);
-			if (cred_buf == NULL) {
+			if (fgets(buf, sizeof(buf), stdin) == NULL) {
 				free_rq_cpyfile_cred(pcf);
+				log_err(-1, __func__, "Failed to read cred_buf");
 				return 0;
+			} else {
+				buf[strlen(buf)-1] = '\0';
+				cred_buf = NULL;
+				if (decode_from_base64(buf, &cred_buf, &a_cnt)) {
+					sprintf(log_buffer, "Failed to decode buf: %s, len: %d", buf, strlen(buf));
+					log_err(-1, __func__, log_buffer);
+					return 0;
+				}
 			}
 
-			a_cnt = fread(cred_buf, sizeof(char), cred_len+1, stdin);
-			cred_buf[cred_len+1] = '\0';
-			if (cred_len+1 != a_cnt) {
+			if (cred_len != a_cnt) {
+				sprintf(log_buffer, "Mismatch: cred_len = %d, a_cnt=%d", cred_len, a_cnt);
+				log_err(-1, __func__, log_buffer);
 				free_rq_cpyfile_cred(pcf);
+				free(cred_buf);
 				return 0;
 			}
 		} else if (strcmp(buf, "no_cred_info") == 0) {
@@ -2307,7 +2362,6 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			cred_len = 0;
 		}
 	}
-
 	return 1;
 }
 
@@ -2327,7 +2381,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 void
 send_pcphosts(pio_handles *pio, struct cphosts *pcphosts)
 {
-	char buf[CPY_PIPE_BUFSIZE+1] = {'\0'};
+	char buf[CPY_PIPE_BUFSIZE + 1] = {'\0'};
 	int nh = 0;
 
 	if ((cphosts_num <= 0) || (pcphosts == NULL))
@@ -2335,20 +2389,20 @@ send_pcphosts(pio_handles *pio, struct cphosts *pcphosts)
 		return;
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", "pcphosts=");
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%d\n", cphosts_num);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	for (nh = 0; nh < cphosts_num; nh++) {
 		snprintf(buf, sizeof(buf)-1, "%s\n", (pcphosts+nh)->cph_hosts);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		snprintf(buf, sizeof(buf)-1, "%s\n", (pcphosts+nh)->cph_from);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		snprintf(buf, sizeof(buf)-1, "%s\n", (pcphosts+nh)->cph_to);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 	}
 }
 
@@ -2371,7 +2425,7 @@ send_pcphosts(pio_handles *pio, struct cphosts *pcphosts)
 int
 send_rq_cpyfile_cred(pio_handles *pio, struct rq_cpyfile *pcf)
 {
-	char buf[CPY_PIPE_BUFSIZE+1] = {'\0'};
+	char buf[CPY_PIPE_BUFSIZE + 1] = {'\0'};
 	int   pair_ct = 0;
 	struct rqfpair *ppair = NULL;
 
@@ -2386,52 +2440,60 @@ send_rq_cpyfile_cred(pio_handles *pio, struct rq_cpyfile *pcf)
 	}
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", "rq_cpyfile=");
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", pcf->rq_jobid);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", pcf->rq_owner);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", pcf->rq_user);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%s\n", pcf->rq_group);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%d\n", pcf->rq_dir);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "%d\n", pair_ct);
-	win_pwrite(pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 	ppair = (struct rqfpair *)GET_NEXT(pcf->rq_pair);
 	while (ppair) {
 		snprintf(buf, sizeof(buf)-1, "%d\n", ppair->fp_flag);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		snprintf(buf, sizeof(buf)-1, "%s\n", ppair->fp_local);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		snprintf(buf, sizeof(buf)-1, "%s\n", ppair->fp_rmt);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		ppair = (struct rqfpair *)GET_NEXT(ppair->fp_link);
 	}
 
 	if (cred_buf != NULL && cred_len != 0) {
+		char *str = NULL;
 		snprintf(buf, sizeof(buf)-1, "cred_info\n");
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
 		snprintf(buf, sizeof(buf)-1, "%d\n", cred_len);
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 
-		win_pwrite(pio, cred_buf, cred_len);
+		if (encode_to_base64(cred_buf, cred_len, &str)) {
+			sprintf(log_buffer, "Failed to encode cred_buf: %s, len: %d", cred_buf, cred_len);
+			log_err(-1, __func__, log_buffer);
+			return 0;
+		}
+		snprintf(buf, sizeof(buf)-1, "%s\n", str);
+		free(str);
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 	} else {
 		snprintf(buf, sizeof(buf)-1, "no_cred_info\n");
-		win_pwrite(pio, buf, strlen(buf));
+		check_err(__func__, buf, win_pwrite(pio, buf, strlen(buf)));
 	}
-	return 0;
+	return 1;
 }
 #endif

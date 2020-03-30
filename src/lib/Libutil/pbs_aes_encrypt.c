@@ -7,6 +7,8 @@
 
 #include <openssl/evp.h>
 #include <openssl/aes.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 #include "ticket.h"
 /**
  * @file	pbs_aes_encrypt.c
@@ -149,4 +151,102 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
         (*uncrypted)[plen + len2] = '\0';
 
         return 0;
+}
+
+/**
+ * @brief
+ *	encode_to_base64 - Encode data into bas64 format
+ *
+ * @param[in]		buffer			-	Data buffer for encoding
+ * @param[in]		buffer_len		-	Length of the data buffer
+ * @param[in/out]	ret_encoded_data	-	Return the encoded data
+ *
+ * @return int
+ * @retval 0 - for success
+ * @retval 1 - for failure
+ */
+int
+encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data)
+{
+	BUF_MEM *b_mem;
+	BIO *mem_obj1, *mem_obj2;
+	int buf_len = 0;
+
+	mem_obj1 = BIO_new(BIO_s_mem());
+	mem_obj2 = BIO_new(BIO_f_base64());
+
+	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
+	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(mem_obj1, buffer, buffer_len);
+	(void)BIO_flush(mem_obj1);
+	BIO_get_mem_ptr(mem_obj1, &b_mem);
+
+	*ret_encoded_data = (*b_mem).data;
+	buf_len = (*b_mem).length;
+
+	*ret_encoded_data = malloc(buf_len + 1);
+	if (*ret_encoded_data == NULL) {
+		BIO_free_all(mem_obj1);
+		return (1);
+	}
+	memcpy(*ret_encoded_data, (*b_mem).data, buf_len);
+	(*ret_encoded_data)[buf_len] = '\0';
+
+	BIO_free_all(mem_obj1);
+	return (0);
+}
+
+/**
+ * @brief
+ *	decode_from_base64 - Decode data from bas64 format
+ *
+ * @param[in]		buffer			-	Data buffer for decoding
+ * @param[in/out]	ret_decoded_data	-	Return the decoded data
+ * @param[in/out]	ret_decoded_len		-	Return length of the decoded data
+ *
+ * @return int
+ * @retval 0 - for success
+ * @retval 1 - for failure
+ */
+int
+decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_decoded_len)
+{
+	BIO *mem_obj1, *mem_obj2;
+	size_t decode_length = 0;
+	size_t input_len = 0;
+	size_t char_padding = 0;
+	int padding_enabled = 1;
+
+	input_len = strlen(buffer);
+	if (input_len == 0) {
+		return (1);
+	}
+	if ((buffer[input_len-1] == '=') && (buffer[input_len-2] == '=')) {
+		char_padding = 2;
+		padding_enabled = 0;
+	}
+	if (padding_enabled) {
+		if (buffer[input_len-1] == '=')
+			char_padding = 1;
+	}
+	decode_length = ((input_len*3)/4 - char_padding);
+	*ret_decoded_data = (unsigned char*)malloc(decode_length + 1);
+	if (*ret_decoded_data == NULL) {
+		return (1);
+	}
+	(*ret_decoded_data)[decode_length] = '\0';
+
+	mem_obj1 = BIO_new_mem_buf(buffer, -1);
+	mem_obj2 = BIO_new(BIO_f_base64());
+
+	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
+	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
+	*ret_decoded_len = BIO_read(mem_obj1, *ret_decoded_data, strlen(buffer));
+
+	if (*ret_decoded_len != decode_length) {
+		BIO_free_all(mem_obj1);
+		return (1);
+	}
+	BIO_free_all(mem_obj1);
+	return (0);
 }

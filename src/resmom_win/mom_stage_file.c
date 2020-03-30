@@ -108,6 +108,8 @@ main(int argc, char *argv[])
 	char *actual_homedir = NULL;
 	cpy_files stage_inout = {0};
 	char *prmt = NULL;
+	char mom_log_path[MAXPATHLEN + 1] = {'\0'};
+	int is_file_open = 0;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
@@ -122,13 +124,20 @@ main(int argc, char *argv[])
 			pbs_conf.locallog, pbs_conf.syslogfac,
 			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
+	if (pbs_conf.pbs_home_path != NULL) {
+		snprintf(mom_log_path, sizeof(mom_log_path), "%s\\mom_logs", pbs_conf.pbs_home_path);
+		(void)log_open_main(NULL, mom_log_path, 1); /* silent open */
+		is_file_open = 1;
+	}
+
+
 	pbs_client_thread_set_single_threaded_mode();
 	/* disable attribute verification */
 	set_no_attribute_verification();
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
-		printf("Unable to initialize thread context\n");
+		log_err(-1, id, "Unable to initialize thread context");
 		exit(STAGEFILE_FATAL);
 	}
 
@@ -172,7 +181,7 @@ main(int argc, char *argv[])
 			stage_inout.direct_write = atoi(param_val);
 		} else if (strcmp(param_name, "pcphosts") == 0) {
 			if (!recv_pcphosts()) {
-				printf("error while receiving pcphosts\n");
+				log_err(-1, id, "error while receiving pcphosts");
 				if (actual_homedir)
 					unmap_unc_path(actual_homedir);
 				net_close(-1);
@@ -180,27 +189,22 @@ main(int argc, char *argv[])
 			}
 		} else if (strcmp(param_name, "rq_cpyfile") == 0) {
 			if (!recv_rq_cpyfile_cred(rqcpf)) {
-				printf("error while receiving rq_cpyfile info and cred\n");
+				log_err(-1, id, "error while receiving rq_cpyfile info and cred");
 				if (actual_homedir)
 					unmap_unc_path(actual_homedir);
 				net_close(-1);
 				exit(STAGEFILE_FATAL);
 			}
 		} else {
-			printf("unrecognized parameter\n");
+			log_err(-1, id, "unrecognized parameter");
 			exit(STAGEFILE_FATAL);
 		}
 	}
 
-	if ((path_log == NULL) ||
-		(path_spool == NULL) ||
-		(path_undeliv == NULL) ||
-		(path_checkpoint == NULL) ||
-		(pbs_jobdir == NULL) ||
-		(actual_homedir == NULL) ||
-		(*mom_host == '\0') ||
-		(log_file == NULL)) {
-		printf("error in one or more the parameters\n");
+	if ((path_log == NULL) || (path_spool == NULL) || (path_undeliv == NULL) ||
+		(path_checkpoint == NULL) || (pbs_jobdir == NULL) || (actual_homedir == NULL) ||
+		(*mom_host == '\0') || (log_file == NULL)) {
+		log_err(-1, id, "error in one or more the parameters");
 		if (actual_homedir)
 			unmap_unc_path(actual_homedir);
 		net_close(-1);
@@ -209,8 +213,9 @@ main(int argc, char *argv[])
 
 	time(&time_now);
 
-	(void)log_open_main(log_file, path_log, 1); /* silent open */
-
+	if(!is_file_open)
+		(void)log_open_main(log_file, path_log, 1); /* silent open */
+	
 	if ((cred_len > 0) && (cred_buf != NULL)) {
 		pw = logon_pw(rqcpf->rq_user, cred_buf, cred_len, pbs_decrypt_pwd, 0, log_buffer);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, rqcpf->rq_jobid, log_buffer);
@@ -295,7 +300,6 @@ main(int argc, char *argv[])
 		copy_stop/3600, (copy_stop%3600)/60, copy_stop%60);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		rqcpf->rq_jobid, log_buffer);
-
 	if ((stage_inout.bad_files) || (stage_inout.sandbox_private && stage_inout.stageout_failed)) {
 		if (stage_inout.bad_files) {
 			printf("%s\n", stage_inout.bad_list);
