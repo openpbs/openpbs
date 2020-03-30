@@ -129,7 +129,7 @@
 #include "site_queue.h"
 #endif
 
-extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
+
 extern char *pbse_to_txt(int err);
 
 /**
