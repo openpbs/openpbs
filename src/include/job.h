@@ -57,7 +57,7 @@ extern "C" {
 #ifndef	_SERVER_LIMITS_H
 #include "server_limits.h"
 #endif
-
+#include "work_task.h"
 /*
  * Dependent Job Structures
  *
@@ -76,6 +76,7 @@ struct depend {
 	short	  dp_numexp;	/* num jobs expected (on or syncct only) */
 	short	  dp_numreg;	/* num jobs registered (syncct only)     */
 	short	  dp_released;	/* This job released to run (syncwith)   */
+	short	  dp_numrun;    /* num jobs supposed to run		 */
 	pbs_list_head dp_jobs;	/* list of related jobs  (all)           */
 };
 
@@ -105,6 +106,7 @@ struct depend_job {
 #define JOB_DEPEND_TYPE_BEFORENOTOK	 6
 #define JOB_DEPEND_TYPE_BEFOREANY	 7
 #define JOB_DEPEND_TYPE_ON		 8
+#define JOB_DEPEND_TYPE_RUNONE		 9
 #define JOB_DEPEND_NUMBER_TYPES		11
 
 #define JOB_DEPEND_OP_REGISTER		1
@@ -1112,7 +1114,14 @@ task_find	(job		*pjob,
 extern void  add_dest(job *);
 extern int   depend_on_que(attribute *, void *, int);
 extern int   depend_on_exec(job *);
+extern int   depend_runone_remove_dependency(job *);
+extern int   depend_runone_hold_all(job *);
+extern int   depend_runone_release_all(job *);
 extern int   depend_on_term(job *);
+extern struct depend *find_depend(int type, attribute *pattr);
+extern struct depend_job *find_dependjob(struct depend *pdep, char *name);
+extern int send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int schedhint, void (*postfunc)(struct work_task *));
+extern void post_runone(struct work_task *pwt);
 extern job  *find_job(char *);
 extern char *get_egroup(job *);
 extern char *get_variable(job *, char *);
@@ -1233,6 +1242,13 @@ extern int   set_cpu_licenses_need(job *, char *);
 extern void  allocate_cpu_licenses(job *);
 extern void  deallocate_cpu_licenses(job *);
 extern void  deallocate_cpu_licenses2(job *, int);
+
+extern void del_job_related_file(job *pjob, char *fsuffix);
+#ifdef PBS_MOM
+extern void del_job_dirs(job *pjob);
+extern void del_chkpt_files(job *pjob);
+#endif
+
 #ifdef	__cplusplus
 }
 #endif

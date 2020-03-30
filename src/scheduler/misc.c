@@ -1609,3 +1609,24 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	return *buf;
 }
 
+/*
+ * @brief   helper function to free an array of pointers
+ *
+ * @param[in] inp - array of pointers
+ * @return void
+ */
+void
+free_ptr_array(void *inp)
+{
+	int i;
+	void **arr;
+
+	if (inp == NULL)
+		return;
+
+	arr = (void **)inp;
+
+	for (i = 0; arr[i] != NULL; i++)
+		free(arr[i]);
+	free(arr);
+}

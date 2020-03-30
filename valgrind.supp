@@ -601,3 +601,20 @@
    fun:wait_request
    fun:main
 }
+{
+   From PBSPro - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:calloc
+   fun:make_auth_config
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBSPro - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:make_auth_config
+   fun:set_tpp_config
+   fun:main
+}

@@ -172,6 +172,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 	pbs_db_attr_info_t *attrs = NULL;
 
 	attr_list->attr_count = 0;
+	attr_list->attributes = NULL;
 
 	/* encode each attribute which has a value (not non-set) */
 	CLEAR_HEAD(lhead);

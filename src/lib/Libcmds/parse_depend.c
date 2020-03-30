@@ -56,6 +56,7 @@ static char *deptypes[] = {
 	"beforenotok",
 	"beforeany",
 	"syncwith",
+	"runone",
 	NULL
 };
 

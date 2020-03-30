@@ -404,6 +404,8 @@ long extend_soft_walltime(resource_resv *resresv, time_t server_time);
 /* Returns a list of preemptable candidates */
 resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job, schd_error *err);
 
+void associate_dependent_jobs(server_info *sinfo);
+
 #ifdef	__cplusplus
 }
 #endif

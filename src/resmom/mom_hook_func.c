@@ -3440,7 +3440,7 @@ void reply_hook_bg(job *pjob)
 
 		del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
 		pjob->ji_hook_running_bg_on = BG_NONE;
-		job_purge(pjob);
+		job_purge_mom(pjob);
 		dorestrict_user();
 
 		if ((ret = is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS)
@@ -3483,7 +3483,7 @@ void reply_hook_bg(job *pjob)
 							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
 					pjob->ji_hook_running_bg_on = BG_NONE;
-					job_purge(pjob);
+					job_purge_mom(pjob);
 				}
 				/*
 				* otherwise, job_purge() and dorestrict_user() are called in

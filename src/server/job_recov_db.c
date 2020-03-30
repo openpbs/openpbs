@@ -410,11 +410,12 @@ job_save_db(job *pjob, int updatetype)
 	else
 		savetype = PBS_UPDATE_DB_FULL;
 
+	obj.pbs_db_obj_type = PBS_DB_JOB;
+	obj.pbs_db_un.pbs_db_job = &dbjob;
+
 	if (svr_to_db_job(pjob, &dbjob, savetype) != 0)
 		goto db_err;
 
-	obj.pbs_db_obj_type = PBS_DB_JOB;
-	obj.pbs_db_un.pbs_db_job = &dbjob;
 
 	if (updatetype == SAVEJOB_QUICK) {
 
@@ -532,12 +533,13 @@ job_recov_db(char *jid)
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
+	obj.pbs_db_obj_type = PBS_DB_JOB;
+	obj.pbs_db_un.pbs_db_job = &dbjob;
+
 	if (pbs_db_begin_trx(conn, 0, 0) !=0)
 		goto db_err;
 
 	strcpy(dbjob.ji_jobid, jid);
-	obj.pbs_db_obj_type = PBS_DB_JOB;
-	obj.pbs_db_un.pbs_db_job = &dbjob;
 
 	/* read in job fixed sub-structure */
 	if (pbs_db_load_obj(conn, &obj) != 0)
@@ -597,11 +599,12 @@ resv_save_db(resc_resv *presv, int updatetype)
 		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_VFLAG_MODCACHE;
 	}
 
+	obj.pbs_db_obj_type = PBS_DB_RESV;
+	obj.pbs_db_un.pbs_db_resv = &dbresv;
+
 	if (svr_to_db_resv(presv, &dbresv, savetype) != 0)
 		goto db_err;
 
-	obj.pbs_db_obj_type = PBS_DB_RESV;
-	obj.pbs_db_un.pbs_db_resv = &dbresv;
 	if (pbs_db_begin_trx(conn, 0, conn->conn_trx_async) !=0)
 		goto db_err;
 	if (updatetype == SAVERESV_QUICK) {
@@ -644,6 +647,7 @@ resv_save_db(resc_resv *presv, int updatetype)
 
 	return (0);
 db_err:
+	pbs_db_reset_obj(&obj);
 	sprintf(log_buffer, "Failed to save resv %s ", presv->ri_qs.ri_resvID);
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);

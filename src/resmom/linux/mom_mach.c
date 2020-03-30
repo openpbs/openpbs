@@ -5554,6 +5554,10 @@ mom_get_sample(void)
 	extern time_t		time_last_sample;
 	char			*stat_str = NULL;
 
+	/* There are no job tasks created in mock run mode, so no need to walk the proc table */
+	if (mock_run)
+		return PBSE_NONE;
+
 	DBPRT(("%s: entered\n", __func__))
 	if (pdir == NULL)
 		return PBSE_INTERNAL;

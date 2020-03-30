@@ -589,6 +589,8 @@ struct job_info
 	float formula_value;		/* evaluated job sort formula value */
 	nspec **resreleased;		/* list of resources released by the job on each node */
 	resource_req *resreq_rel;	/* list of resources released */
+	char *depend_job_str;		/* dependent jobs in a ':' separated string */
+	resource_resv **dependent_jobs; /* dependent jobs with runone depenency */
 
 #ifdef NAS
 	/* localmod 045 */

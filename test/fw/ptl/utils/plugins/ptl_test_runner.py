@@ -60,7 +60,6 @@ from nose.util import isclass
 
 import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
-from ptl.lib.pbs_testlib import PbsHardwareMonitorError
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_dshutils import TimeOut
@@ -838,19 +837,17 @@ class PTLTestRunner(Plugin):
             if used_disk_percent is None:
                 _msg = hostname
                 _msg += ": unable to get disk info"
-                self.logger.error(_msg)
                 self.hardware_report_timer.cancel()
-                raise PbsHardwareMonitorError(msg=_msg)
+                raise SkipTest(_msg)
             elif 70 <= used_disk_percent < 95:
                 _msg = hostname + ": disk usage is at "
                 _msg += str(used_disk_percent) + "%"
                 _msg += ", disk cleanup is recommended."
                 self.logger.warning(_msg)
             elif used_disk_percent >= 95:
-                _msg = hostname + ":disk usage > 95%, stopping the test(s)"
-                self.logger.error(_msg)
+                _msg = hostname + ":disk usage > 95%, skipping the test(s)"
                 self.hardware_report_timer.cancel()
-                raise PbsHardwareMonitorError(msg=_msg)
+                raise SkipTest(_msg)
             # checks for core files
             pbs_conf = du.parse_pbs_config(hostname)
             mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")

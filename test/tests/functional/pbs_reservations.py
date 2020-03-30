@@ -413,17 +413,23 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
 
+        now = int(time.time())
+        start1 = now + 15
+        end1 = now + 25
+        start2 = now + 600
+        end2 = now + 7200
+
         r1 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': int(
-            time.time() + 5), 'reserve_end': int(time.time() + 15)}
+        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': start1,
+             'reserve_end': end1}
         r1.set_attributes(a)
         r1id = self.server.submit(r1)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, r1id)
 
         r2 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': int(
-            time.time() + 600), 'reserve_end': int(time.time() + 7800)}
+        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': start2,
+             'reserve_end': end2}
         r2.set_attributes(a)
         r2id = self.server.submit(r2)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -449,8 +455,10 @@ class TestReservations(TestFunctional):
         j2.set_attributes(a)
         j2id = self.server.submit(j2)
 
+        self.logger.info('Sleeping till Resv 1 ends')
         a = {'reserve_state': (MATCH_RE, "RESV_BEING_DELETED|7")}
-        self.server.expect(RESV, a, id=r1id, interval=1)
+        off = end1 - int(time.time())
+        self.server.expect(RESV, a, id=r1id, interval=1, offset=off)
 
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)

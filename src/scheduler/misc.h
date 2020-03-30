@@ -277,6 +277,11 @@ add_str_to_array(char ***str_arr, char *str);
 int
 add_str_to_unique_array(char ***str_arr, char *str);
 
+/*
+ * helper function to free an array of pointers
+ */
+void free_ptr_array (void *inp);
+
 #ifdef	__cplusplus
 }
 #endif
