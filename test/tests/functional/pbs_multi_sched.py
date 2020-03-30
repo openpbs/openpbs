@@ -1853,7 +1853,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.common_setup()
         # Submit 4 reservations and check they get confirmed
         for _ in range(4):
-            t = time.time()
+            t = int(time.time())
             a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 25,
                  'reserve_end': t + 55}
             r = Reservation(TEST_USER, attrs=a)
@@ -1862,7 +1862,7 @@ class TestMultipleSchedulers(TestFunctional):
             self.server.expect(RESV, a, rid)
 
         # Submit 5th reservation and check that it is denied
-        t = time.time()
+        t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 25,
              'reserve_end': t + 55}
         r = Reservation(TEST_USER, a)
@@ -1925,7 +1925,7 @@ class TestMultipleSchedulers(TestFunctional):
 
         # Submit an advance reservation which is going to occupy full
         # partition in future
-        t = time.time()
+        t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 200,
              'reserve_end': t + 4000}
         r = Reservation(TEST_USER, a)
@@ -1976,7 +1976,7 @@ e.accept()
                             id="sc2")
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
                             id="default")
-        t = time.time()
+        t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
              'reserve_end': t + 15}
         r = Reservation(TEST_USER, a)
@@ -2004,7 +2004,7 @@ e.accept()
         self.server.create_import_hook("h1", a, hook_body)
         # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
         self.common_setup()
-        t = time.time()
+        t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
              'reserve_end': t + 15}
         r = Reservation(TEST_USER, a)
