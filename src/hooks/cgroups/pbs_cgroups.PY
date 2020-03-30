@@ -1338,25 +1338,22 @@ class JobUtils(object):
                        (caller_name(), hostname, repr(resources)))
             # Return assigned resources for specified host
             return resources
-        # Workaround for systems where node is short hostname
-        pbs.logmsg(pbs.EVENT_DEBUG2,
-                   '%s: No resources assigned to host %s' %
-                   (caller_name(), hostname))
-        try:
-            cmd = ['hostname', '-s']
-            process = subprocess.Popen(cmd, shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
-        except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
-                       " ".join(cmd))
-            return resources
-        shorthostname = out.strip()
-        if shorthostname and shorthostname != hostname:
-            return self._get_assigned_job_resources(hostname=shorthostname)
-        # Return assigned resources for specified host
-        return resources
+        else:
+            pbs.logmsg(pbs.EVENT_JOB_USAGE, "WARNING: job seems "
+                       + "to have no resources assigned to this host.")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Server and MoM vnode names may not be consistent.")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Pattern for expected vnode name(s) is %s"
+                       % vnhost_pattern)
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Job exec_vnode is %s" % str(self.job.exec_vnode))
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "You may have forgotten to set PBS_MOM_NODE_NAME to "
+                       "the desired matching entry in the exec_vnode string")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Job will fail or be configured with default ncpus/mem")
+            return {}
 
 
 #
@@ -2035,15 +2032,23 @@ class NodeUtils(object):
                    (caller_name(), self.numa_nodes))
         vnode_name = self.hostname
         # In some cases the hostname and vnode name do not match
+        # admin should fix this!
+        # Give hints
         if vnode_name not in vnode_list:
-            pbs.logmsg(pbs.EVENT_DEBUG,
+            pbs.logmsg(pbs.EVENT_ERROR,
                        "Could not find hostname %s in vnode_list %s"
-                       % (vnode_name, repr(vnode_list)))
-            vnkeys = list(vnode_list.keys())
-            if len(vnkeys) == 1:
-                vnode_name = vnkeys[0]
-            else:
-                raise ProcessingError('Could not identify local vnode')
+                       % (vnode_name, str(vnode_list.keys())))
+            pbs.logmsg(pbs.EVENT_ERROR,
+                       "This error is FATAL. Possible causes:")
+            pbs.logmsg(pbs.EVENT_ERROR, "a) the server's name for "
+                       "the natural node created on the server "
+                       "does not match the output of 'hostname' on the host.")
+            pbs.logmsg(pbs.EVENT_ERROR, "   Please use PBS_MOM_NODE_NAME "
+                       "in /etc/pbs.conf to tell MoM the correct vnode name.")
+            pbs.logmsg(pbs.EVENT_ERROR, "b) v2 config files are used "
+                       "but none mention the natural vnode. Add a line for "
+                       "the natural vnode in one of the v2 config files.")
+            raise ProcessingError('Could not identify local vnode')
         vnode_list[vnode_name] = pbs.vnode(vnode_name)
         host_resc_avail = vnode_list[vnode_name].resources_available
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
@@ -4526,7 +4531,7 @@ class CgroupUtils(object):
         # Initialize cpuset variables
         cpuset_enabled = 'cpuset' in self.subsystems
         if cpuset_enabled:
-            cpu_limit = 1
+            cpu_limit = 0
             if 'ncpus' in hostresc:
                 cpu_limit = hostresc['ncpus']
             # support weightless jobs in root cpuset
