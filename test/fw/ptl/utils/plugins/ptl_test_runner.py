@@ -845,7 +845,7 @@ class PTLTestRunner(Plugin):
                 _msg += ", disk cleanup is recommended."
                 self.logger.warning(_msg)
             elif used_disk_percent >= 95:
-                _msg = hostname + ":disk usage > 95%, skiping the test(s)"
+                _msg = hostname + ":disk usage > 95%, skipping the test(s)"
                 self.hardware_report_timer.cancel()
                 raise SkipTest(_msg)
             # checks for core files
