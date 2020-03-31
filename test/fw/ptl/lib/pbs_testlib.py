@@ -4243,7 +4243,6 @@ class PBSService(PBSObject):
                     return False
             conf = sconf[str(objtype)]
             if objtype == MGR_OBJ_SERVER:
-                conf = sconf[str(objtype)]
                 qmgr = os.path.join(self.client_conf['PBS_EXEC'],
                                     'bin', 'qmgr')
                 for k, v in conf.items():
@@ -4293,11 +4292,14 @@ class PBSService(PBSObject):
                             return False
                 return True
             elif objtype == MGR_OBJ_SCHED:
-                conf = sconf[str(objtype)]
                 for k, v in conf.items():
-                    try:
-                        fn = self.du.create_temp_file()
-                        self.du.chmod(path=fn, mode=0o644)
+                    fn = self.du.create_temp_file()
+                    if os.path.isfile(fn):
+                        rv = self.du.chmod(path=fn, mode=0o644)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
                         rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
@@ -4311,18 +4313,22 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
                             return False
-                    finally:
-                        if os.path.isfile(fn):
-                            self.du.rm(path=fn, force=True, sudo=True)
+                        self.du.rm(path=fn, force=True, sudo=True)
+                    else:
+                        self.logger.error("Failed to restore "
+                                          + "configuration: %s" % k)
+                        return False
                 return True
             elif objtype == MGR_OBJ_NODE:
-                conf = sconf[str(objtype)]
-                nconf = {}
                 nconf = conf[str(self.hostname)]
                 for k, v in nconf.items():
-                    try:
-                        fn = self.du.create_temp_file()
-                        self.du.chmod(path=fn, mode=0o644)
+                    fn = self.du.create_temp_file()
+                    if os.path.isfile(fn):
+                        rv = self.du.chmod(path=fn, mode=0o644)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
                         rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
@@ -4336,9 +4342,11 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
                             return False
-                    finally:
-                        if os.path.isfile(fn):
-                            self.du.rm(path=fn, force=True, sudo=True)
+                        self.du.rm(path=fn, force=True, sudo=True)
+                    else:
+                        self.logger.error("Failed to restore "
+                                          + "configuration: %s" % k)
+                        return False
                 return True
 
     def create_pbsnode(self, node_name, attrs):
