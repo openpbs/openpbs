@@ -35,11 +35,12 @@ REM trademark licensing policies.
 setlocal enabledelayedexpansion
 @echo on
 
-cd "%~dp0..\..\..\..\"
+cd "%~dp0..\..\..\"
+set PBS_SPEC_FILE=%CD%\pbspro.spec
+cd ..\
 set PBS_RESOURCES=%~dp0resources
 set PBS_DIR=%CD%\PBS
 set PBS_EXECDIR=%CD%\PBS\exec
-set PBS_SPEC_FILE=%CD%\pbspro\pbspro.spec
 set PBS_VERSION=""
 set PBS_SHORT_VERSION=""
 set PBS_PRODUCT_NAME=PBS Pro

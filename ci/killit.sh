@@ -2,25 +2,25 @@
 
 
 killit(){
-    if [ -z "$1" ]	
-	then	
-		return 0	
-	fi	
-	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')	
-	if [ ! -z "${pid}" ]	
-	then	
-		echo "kill -TERM ${pid}"	
-		kill -TERM ${pid} 2>/dev/null	
-	else	
-		return 0	
-	fi	
-	sleep 10	
-	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')	
-	if [ ! -z "${pid}" ]	
-	then	
-		echo "kill -KILL ${pid}"	
-		kill -KILL ${pid} 2>/dev/null	
-	fi	
+    if [ -z "$1" ]
+	then
+		return 0
+	fi
+	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
+	if [ ! -z "${pid}" ]
+	then
+		echo "kill -TERM ${pid}"
+		kill -TERM ${pid} 2>/dev/null
+	else
+		return 0
+	fi
+	sleep 10
+	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
+	if [ ! -z "${pid}" ]
+	then
+		echo "kill -KILL ${pid}"
+		kill -KILL ${pid} 2>/dev/null
+	fi
 }
 
 kill_pbs_process(){
@@ -33,12 +33,12 @@ kill_pbs_process(){
         killit pbs_ds_monitor
 		killit /opt/pbs/pgsql/bin/postgres
         killit pbs_benchpress
-        ps_count=$(ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l ) 
+        ps_count=$(ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l )
 		if [ ${ps_count} -eq 0 ]; then
 			return 0
 		else
 			return 1
-		fi 
+		fi
     fi
 }
 
@@ -62,7 +62,7 @@ else
 fi
 
 if [ "XX${clean}" == "XXclean" ];then
-    cd /pbspro/target-${ID} && make uninstall
+    cd /pbssrc/target-${ID} && make uninstall
 	rm -rf /etc/init.d/pbs
     rm -rf /etc/pbs.conf
     rm -rf /var/spool/pbs
