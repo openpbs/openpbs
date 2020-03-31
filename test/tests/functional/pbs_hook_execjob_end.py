@@ -488,3 +488,8 @@ class TestPbsExecjobEnd(TestFunctional):
                            interval=2)
         self.server.log_match(jid + ";Exit_status=0", interval=4,
                               max_attempts=10)
+
+    def tearDown(self):
+        for mom_val in self.moms.values():
+            if mom_val.is_cpuset_mom():
+                mom_val.restart()
