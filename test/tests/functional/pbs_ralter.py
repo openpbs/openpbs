@@ -224,7 +224,8 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'reserve_start': next_start_conv,
                  'reserve_end': next_end_conv,
                  'reserve_duration': duration}
-        self.server.expect(RESV, attrs, id=rid)
+        self.server.expect(RESV, attrs, id=rid, max_attempts=10,
+                           interval=5)
 
     def submit_job_to_resv(self, rid, sleep=10, user=None):
         """
@@ -1702,8 +1703,15 @@ class TestPbsResvAlter(TestFunctional):
         with self.assertRaises(PbsResvAlterError) as e:
             attr = {'reserve_start': new_start, 'reserve_end': new_end,
                     'reserve_duration': new_duration}
-            self.server.alterresv(rid, attr)
-            self.assertIn('pbs_ralter: Bad time specification(s)', e.msg[0])
+            m = self.server.alterresv(rid, attr)
+        self.assertIn('pbs_ralter: Bad time specification(s)',
+                      e.exception.msg[0])
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        print(str(self.server.status(RESV, id=rid)))
+        self.assertEqual(int(t_start), start)
+        self.assertEqual(int(t_duration), duration)
+        self.assertEqual(int(t_end), end)
 
     def test_standing_resv_duration(self):
         """
@@ -1716,8 +1724,8 @@ class TestPbsResvAlter(TestFunctional):
         All the above operations are expected to be successful.
         """
         offset = 20
-        duration = 20
-        new_duration = 30
+        duration = 60
+        new_duration = 90
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
                                                               duration,
@@ -1728,6 +1736,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_duration, new_duration)
+        print("new Start is " + str(t_start))
+        print("new End is " + str(t_end))
 
         # Wait for the reservation to start running.
         self.check_resv_running(rid, offset - shift)

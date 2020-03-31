@@ -789,6 +789,7 @@ req_modifyReservation(struct batch_request *preq)
 	int r = 0;
 	int e = 0;
 
+
 	while (psatl) {
 		long temp = 0;
 		char *end = NULL;
@@ -850,7 +851,6 @@ req_modifyReservation(struct batch_request *preq)
 				}
 				
 				if (d == 1) {
-					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
 				}
 
@@ -870,21 +870,25 @@ req_modifyReservation(struct batch_request *preq)
 				}
 				e = 1;
 				if (d == 1) {
-					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
 				}
 
 				break;
 			case RESV_ATR_duration:
 				if (r == 1) {
-					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					if (presv->ri_alter_etime == 0)
+						presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+						
 					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
 				} else if (e == 1) {
-					presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+					if(presv->ri_alter_stime == 0)
+						presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+
 					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
 				}
 				else {
-					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					if (presv->ri_alter_etime == 0)
+						presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
 				}
 				d = 1;
@@ -895,10 +899,12 @@ req_modifyReservation(struct batch_request *preq)
 				break;
 		}
 
-		if (d == 0) 
+		if (d == 0)
 			presv->ri_wattr[RESV_ATR_duration].at_flags &= ~ATR_VFLAG_SET;
 
-		if (d == 1 && r == 1 && e == 1) {
+		if (d == 1 && e == 1 && r == 1) {
+			presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+			resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
 			req_reject(PBSE_BADTSPEC, 0, preq);
 			resv_revert_alter_times(presv);
 			return;
