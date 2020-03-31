@@ -109,10 +109,15 @@ j.create_resv_from_job=1
             s_nodect_before = '0'
             s_ncpus_before = '0'
 
+        now = time.time()
+
         a = {ATTR_W: 'create_resv_from_job=1'}
         job = Job(TEST_USER, a)
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+
+        self.server.log_match("Reject reply code=15095", starttime=now,
+                              interval=2, max_attempts=20, existence=False)
 
         a = {ATTR_job: jid}
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]
@@ -225,3 +230,11 @@ j.create_resv_from_job=1
             self.assertTrue(msg in e.msg[0])
         else:
             self.fail("Error message not as expected")
+
+    def test_flatuid_false(self):
+        """
+        This test confirms that a reservation can be created out of a job
+        even when flatuid is set to False.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': False})
+        self.test_create_resv_from_job_using_qsub()

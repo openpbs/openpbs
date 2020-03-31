@@ -3460,7 +3460,10 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 		(pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str == NULL))
 		return PBSE_BADSTATE;
 
-	snprintf(buf, 255, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+	if (strchr(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, '@')) {
+		strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, 255);
+	} else
+		snprintf(buf, 255, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
 			pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str);
 
 	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_owner], &resv_attr_def[(int)RESV_ATR_resv_owner], buf);
