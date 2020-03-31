@@ -4294,7 +4294,7 @@ class PBSService(PBSObject):
             elif objtype == MGR_OBJ_SCHED:
                 for k, v in conf.items():
                     fn = self.du.create_temp_file()
-                    if os.path.isfile(fn):
+                    try:
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
                             self.logger.error("Failed to restore "
@@ -4314,16 +4314,19 @@ class PBSService(PBSObject):
                                               + "configuration: %s" % k)
                             return False
                         self.du.rm(path=fn, force=True, sudo=True)
-                    else:
+                    except:
                         self.logger.error("Failed to restore "
                                           + "configuration: %s" % k)
                         return False
+                    finally:
+                        if os.path.isfile(fn):
+                            self.du.rm(path=fn, force=True, sudo=True)
                 return True
             elif objtype == MGR_OBJ_NODE:
                 nconf = conf[str(self.hostname)]
                 for k, v in nconf.items():
-                    fn = self.du.create_temp_file()
-                    if os.path.isfile(fn):
+                    try:
+                        fn = self.du.create_temp_file()
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
                             self.logger.error("Failed to restore "
@@ -4342,11 +4345,13 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
                             return False
-                        self.du.rm(path=fn, force=True, sudo=True)
-                    else:
+                    except:
                         self.logger.error("Failed to restore "
                                           + "configuration: %s" % k)
                         return False
+                    finally:
+                        if os.path.isfile(fn):
+                            self.du.rm(path=fn, force=True, sudo=True)
                 return True
 
     def create_pbsnode(self, node_name, attrs):
