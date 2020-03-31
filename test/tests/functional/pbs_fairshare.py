@@ -363,8 +363,8 @@ class TestFairshare(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        t = int(time.time())
-        time.sleep(2)
+        t = time.time()
+        time.sleep(3)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.scheduler.log_match("Decaying Fairshare Tree", starttime=t)
