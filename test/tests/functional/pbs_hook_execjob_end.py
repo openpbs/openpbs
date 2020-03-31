@@ -166,9 +166,14 @@ class TestPbsExecjobEnd(TestFunctional):
         Test to make sure that mom is unblocked with
         execjob_end hook with mutiple jobs
         """
-        status = self.server.status(NODE, id=self.mom.shortname)
-        if status[0]["resources_available.ncpus"] < "2":
-            self.skip_test(reason="need 2 or more available ncpus")
+        if self.mom.is_cpuset_mom():
+            status = self.server.status(NODE,
+                                        id=self.server.status(NODE)[1]['id'])
+            if status[0]["resources_available.ncpus"] < "2":
+                self.skip_test(reason="need 2 or more available ncpus")
+        else:
+            a = {'resources_available.ncpus': 2}
+            self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         hook_name = "execjob_end_logmsg4"
         self.server.create_import_hook(hook_name, self.attr, self.hook_body)
         # jobs need to land on the same host even in a multi-node setup
