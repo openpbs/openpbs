@@ -1630,8 +1630,9 @@ if %s e.job.in_ms_mom():
 
     def cgroup_offline_node(self, name, vnpernuma):
         """
-        Test to verify that the node is offlined when it can't clean up
-        the cgroup and brought back online once the cgroup is cleaned up
+        Per vnode_per_numa_node config setting, return True if able to
+        verify that the node is offlined when it can't clean up the cgroup
+        and brought back online once the cgroup is cleaned up.
         """
         if 'freezer' not in self.paths:
             self.skipTest('Freezer cgroup is not mounted')
@@ -1739,7 +1740,7 @@ if %s e.job.in_ms_mom():
     def test_cgroup_offline_node(self):
         """
         Test to verify that the node is offlined when it can't clean up
-        the cgroup and brought back online once the cgroup is cleaned up
+        the cgroup and brought back online once the cgroup is cleaned up.
         vnode_per_numa_node = false
         """
         name = 'CGROUP7.1'
@@ -1750,7 +1751,7 @@ if %s e.job.in_ms_mom():
     def test_cgroup_offline_node_vnpernuma(self):
         """
         Test to verify that the node is offlined when it can't clean up
-        the cgroup and brought back online once the cgroup is cleaned up
+        the cgroup and brought back online once the cgroup is cleaned up.
         vnode_per_numa_node = true
         """
         name = 'CGROUP7.2'
