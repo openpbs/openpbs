@@ -113,7 +113,7 @@ static void   del_depend_job(struct depend_job *pdj);
 static int    build_depend(attribute *, char *);
 static void   clear_depend(struct depend *, int type, int exists);
 static void   del_depend(struct depend *);
-static void update_runone_depend(job *, char *, char *, int);
+static void update_depend(job *, char *, char *, int, int);
 
 /* External Global Data Items */
 
@@ -130,6 +130,8 @@ extern char *msg_regrej;
 extern char *msg_job_moved;
 extern char *msg_depend_runone;
 extern char  log_buffer[];
+extern char *msg_histdepend;
+extern char *msg_historyjobid;
 
 
 #define DEPEND_ADD	1
@@ -161,10 +163,11 @@ post_run_depend(struct work_task *pwt)
  * @param[in]	d_jobid - The job id which needs to be added/removed
  * @param[in]	d_svr
  * @param[in]	op -	operation to perform - DEPEND_ADD/DEPEND_REMOVE
+ * @param[in]	type - Dependency type
  *
  * @return	void
  */
-static void update_runone_depend(job *pjob, char *d_jobid, char *d_svr, int op)
+static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int type)
 {
 	job *d_job;
 	struct depend *dp;
@@ -174,7 +177,7 @@ static void update_runone_depend(job *pjob, char *d_jobid, char *d_svr, int op)
 	if (d_job == NULL)
 		return;
 
-	dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+	dp = find_depend(type, &pjob->ji_wattr[(int)JOB_ATR_depend]);
 	if (op == DEPEND_ADD) {
 		if (dp == NULL) {
 			dp = make_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
@@ -188,7 +191,9 @@ static void update_runone_depend(job *pjob, char *d_jobid, char *d_svr, int op)
 			dpj = make_dependjob(dp, d_jobid, d_svr);
 			pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY|ATR_VFLAG_SET;
 			job_save(pjob, SAVEJOB_FULLFORCE);
-			update_runone_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op);
+			/* runone dependencies are circular */
+			if (type == JOB_DEPEND_TYPE_RUNONE)
+				update_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op, type);
 		}
 		return;
 	} else if (op == DEPEND_REMOVE) {
@@ -199,7 +204,9 @@ static void update_runone_depend(job *pjob, char *d_jobid, char *d_svr, int op)
 			return;
 		del_depend_job(dpj);
 		pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-		update_runone_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op);
+		/* runone dependencies are circular */
+		if (type == JOB_DEPEND_TYPE_RUNONE)
+			update_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op, type);
 		return;
 	}
 	return;
@@ -229,6 +236,7 @@ req_register(struct batch_request *preq)
 	int		   revtype;
 	int		   type;
 	int		   savetype = SAVEJOB_FULL;
+	int		   is_finished = FALSE;
 
 	/*  make sure request is from a server */
 
@@ -262,6 +270,9 @@ req_register(struct batch_request *preq)
 		return;
 	}
 
+	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED)
+		is_finished = TRUE;
+
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
 	type = preq->rq_ind.rq_register.rq_dependtype;
 	pjob->ji_modified = 1;
@@ -294,64 +305,79 @@ req_register(struct batch_request *preq)
 			switch (type) {
 
 				case JOB_DEPEND_TYPE_AFTERSTART:
-					if (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_RUNNING) {
-						/* job already running, setup task to send	*/
-						/* release back to child and continue with	*/
-						/* registration process 			*/
-						ptask = set_task(WORK_Immed, 0, post_run_depend,
-							(void *)pjob);
-						if (ptask)
-							append_link(&pjob->ji_svrtask,
-								&ptask->wt_linkobj, ptask);
-					}
+					if (is_finished == FALSE) {
+						if (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_RUNNING) {
+							/* job already running, setup task to send	*/
+							/* release back to child and continue with	*/
+							/* registration process 			*/
+							ptask = set_task(WORK_Immed, 0, post_run_depend,
+								(void *)pjob);
+							if (ptask)
+								append_link(&pjob->ji_svrtask,
+									&ptask->wt_linkobj, ptask);
+						}
+					} else
+						rc = PBSE_HISTJOBID;
 					/* fall through to complete registration */
 				case JOB_DEPEND_TYPE_AFTERANY:
 				case JOB_DEPEND_TYPE_AFTEROK:
 				case JOB_DEPEND_TYPE_AFTERNOTOK:
-					rc = register_dep(pattr, preq, type, &made);
+					/* If the job has already finished, no need to add after dependency */
+					if (is_finished == FALSE)
+						rc = register_dep(pattr, preq, type, &made);
+					else {
+						if (((type == JOB_DEPEND_TYPE_AFTERNOTOK) && (pjob->ji_qs.ji_un.ji_exect.ji_exitstat == 0)) ||
+						    ((type == JOB_DEPEND_TYPE_AFTEROK) && (pjob->ji_qs.ji_un.ji_exect.ji_exitstat != 0)))
+							rc = PBSE_HISTDEPEND;
+						else
+							rc = PBSE_HISTJOBID;
+					}
 					break;
-
 				case JOB_DEPEND_TYPE_BEFORESTART:
 				case JOB_DEPEND_TYPE_BEFOREANY:
 				case JOB_DEPEND_TYPE_BEFOREOK:
 				case JOB_DEPEND_TYPE_BEFORENOTOK:
 
-					/*
-					 * Check job owner for permission, use the real
-					 * job owner, not the sending server's name.
-					 */
+					/* There is no need to put before dependency on a finished job */
+					if (is_finished == FALSE) {
+						/*
+						 * Check job owner for permission, use the real
+						 * job owner, not the sending server's name.
+						 */
 
-					(void)strcpy(preq->rq_user,
-						preq->rq_ind.rq_register.rq_owner);
-					if (svr_chk_owner(preq, pjob)) {
-						rc = PBSE_PERM;		/* not same user */
-					} else {
-						/* ok owner, see if job has "on" */
-						pdep = find_depend(JOB_DEPEND_TYPE_ON, pattr);
-						if (pdep == 0) {
-							/* on "on", see if child already registered */
-							revtype = type ^ (JOB_DEPEND_TYPE_BEFORESTART -
-								JOB_DEPEND_TYPE_AFTERSTART);
-							pdep = find_depend(revtype, pattr);
+						(void)strcpy(preq->rq_user,
+							preq->rq_ind.rq_register.rq_owner);
+						if (svr_chk_owner(preq, pjob)) {
+							rc = PBSE_PERM;		/* not same user */
+						} else {
+							/* ok owner, see if job has "on" */
+							pdep = find_depend(JOB_DEPEND_TYPE_ON, pattr);
 							if (pdep == 0) {
-								/* no "on" and no prior - return error */
+								/* on "on", see if child already registered */
+								revtype = type ^ (JOB_DEPEND_TYPE_BEFORESTART -
+									JOB_DEPEND_TYPE_AFTERSTART);
+								pdep = find_depend(revtype, pattr);
+								if (pdep == 0) {
+									/* no "on" and no prior - return error */
 								rc = PBSE_BADDEPEND;
-							} else {
-								pdj = find_dependjob(pdep,
-									preq->rq_ind.rq_register.rq_child);
-								if (pdj) {
-									/* has prior register, update it */
-									(void)strcpy(pdj->dc_svr,
-										preq->rq_ind.rq_register.rq_svr);
+								} else {
+									pdj = find_dependjob(pdep,
+										preq->rq_ind.rq_register.rq_child);
+									if (pdj) {
+										/* has prior register, update it */
+										(void)strcpy(pdj->dc_svr,
+											preq->rq_ind.rq_register.rq_svr);
+									}
+								}
+							} else if ((rc=register_dep(pattr, preq, type, &made)) == 0) {
+								if (made) {	/* first time registered */
+									if (--pdep->dp_numexp <= 0)
+										del_depend(pdep);
 								}
 							}
-						} else if ((rc=register_dep(pattr, preq, type, &made)) == 0) {
-							if (made) {	/* first time registered */
-								if (--pdep->dp_numexp <= 0)
-									del_depend(pdep);
-							}
 						}
-					}
+					} else
+						rc = PBSE_HISTDEPEND;
 					break;
 				case JOB_DEPEND_TYPE_RUNONE:
 					/*
@@ -370,9 +396,9 @@ req_register(struct batch_request *preq)
 							pr_job = find_job(preq->rq_ind.rq_register.rq_child);
 							for (dj_iter = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 							     dj_iter != NULL; dj_iter = (struct depend_job *)GET_NEXT(dj_iter->dc_link))
-								update_runone_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_ADD);
+								update_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_ADD, JOB_DEPEND_TYPE_RUNONE);
 						}
-						update_runone_depend(pjob, preq->rq_ind.rq_register.rq_child, preq->rq_ind.rq_register.rq_svr, DEPEND_ADD);
+						update_depend(pjob, preq->rq_ind.rq_register.rq_child, preq->rq_ind.rq_register.rq_svr, DEPEND_ADD, JOB_DEPEND_TYPE_RUNONE);
 					}
 				        break;
 
@@ -402,7 +428,6 @@ req_register(struct batch_request *preq)
 
 					/* predecessor sent release-reduce "on", */
 					/* see if this job can now run 		 */
-
 					type ^= (JOB_DEPEND_TYPE_BEFORESTART -
 						JOB_DEPEND_TYPE_AFTERSTART);
 					if ((pdep = find_depend(type, pattr)) != NULL) {
@@ -445,12 +470,12 @@ req_register(struct batch_request *preq)
 						pr_job = find_job(preq->rq_ind.rq_register.rq_child);
 						for (dj_iter = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 						     dj_iter != NULL; dj_iter = (struct depend_job *)GET_NEXT(dj_iter->dc_link)) {
-							update_runone_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_REMOVE);
+							update_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
 							log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 								LOG_INFO, pr_job->ji_qs.ji_jobid, msg_registerrel, dj_iter->dc_child);
 						}
 					}
-					update_runone_depend(pjob, preq->rq_ind.rq_register.rq_parent, preq->rq_ind.rq_register.rq_svr, DEPEND_REMOVE);
+					update_depend(pjob, preq->rq_ind.rq_register.rq_parent, preq->rq_ind.rq_register.rq_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
 					savetype = SAVEJOB_FULLFORCE;
 					log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 						pjob->ji_qs.ji_jobid, msg_registerrel, preq->rq_ind.rq_register.rq_parent);
@@ -531,9 +556,16 @@ post_doq(struct work_task *pwt)
 
 	if (preq->rq_reply.brp_code) {
 		/* request was rejected */
-
-		(void)strcpy(log_buffer, msg_regrej);
-		(void)strcat(log_buffer, preq->rq_ind.rq_register.rq_parent);
+		if (preq->rq_reply.brp_code == PBSE_HISTJOBID)
+			sprintf(log_buffer, "%s %s, dependency satisfied",
+				 preq->rq_ind.rq_register.rq_parent, msg_historyjobid);
+		else if (preq->rq_reply.brp_code == PBSE_HISTDEPEND)
+			sprintf(log_buffer, "%s %s",
+				 preq->rq_ind.rq_register.rq_parent, msg_histdepend);
+		else {
+			(void)strcpy(log_buffer, msg_regrej);
+			(void)strcat(log_buffer, preq->rq_ind.rq_register.rq_parent);
+		}
 
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobid, log_buffer);
@@ -543,6 +575,7 @@ post_doq(struct work_task *pwt)
 			(void)strcat(log_buffer, msg);
 		}
 		if (pjob) {
+			ppjob = find_job(preq->rq_ind.rq_register.rq_parent);
 			if (preq->rq_reply.brp_code == PBSE_JOB_MOVED) {
 				/* Creating a separate log buffer because if we end up aborting the submitted job
 				 * we don't want to change what goes into accounting log via job_abt
@@ -551,7 +584,6 @@ post_doq(struct work_task *pwt)
 				snprintf(log_msg, sizeof(log_msg), "%s, %s", msg_job_moved,
 					"sending dependency request to remote server");
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_msg);
-				ppjob = find_job(preq->rq_ind.rq_register.rq_parent);
 				if(ppjob && (ppjob->ji_qs.ji_state == JOB_STATE_MOVED) && (ppjob->ji_qs.ji_substate == JOB_SUBSTATE_MOVED)) {
 					char *destin;
 					/* job destination should be <remote queue>@<remote server> */
@@ -582,8 +614,14 @@ post_doq(struct work_task *pwt)
 					check_block(pjob, log_buffer);
 					job_abt(pjob, log_buffer);
 				}
-			}
-			else {
+			} else if (preq->rq_reply.brp_code == PBSE_HISTJOBID) {
+				if (ppjob) {
+					update_depend(pjob, ppjob->ji_qs.ji_jobid, preq->rq_host, DEPEND_REMOVE, preq->rq_ind.rq_register.rq_dependtype);
+					/* check and remove system hold if needed*/
+					set_depend_hold(pjob, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+				}
+
+			} else {
 				check_block(pjob, log_buffer);
 				job_abt(pjob, log_buffer);
 			}
@@ -673,7 +711,6 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 	}
 
 	/* First set a System hold if required */
-
 	set_depend_hold(pjob, pattr);
 
 	/* Check if there are dependencies that require registering */
@@ -727,6 +764,7 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 		}
 		pdep = (struct depend *)GET_NEXT(pdep->dp_link);
 	}
+
 	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, pattr);
 	if (pdep != NULL) {
 		/* go through all dependent jobs */
