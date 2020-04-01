@@ -36,11 +36,12 @@
 # trademark licensing policies.
 
 from tests.selftest import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
-class TestLogMatch(TestSelf):
+class TestLogUtils(TestSelf):
     """
-    Test log_match() functionality in PTL
+    Test PBSLogUtils functionality in PTL
     """
 
     def switch_microsecondlogging(self, hostname=None, highrestimestamp=1):
@@ -81,3 +82,29 @@ class TestLogMatch(TestSelf):
         et = int(time.time())
         msg_str = "Job;" + jid2 + ";Job Run at request of Scheduler"
         self.server.log_match(msg_str, starttime=st, endtime=et)
+
+    def test_get_timestamps(self):
+        """
+        test that LogUtils.get_timestamps() works correctly
+        """
+        # Submit a 1 cpu job, this will create some accounting records
+        a = {'Resource_List.ncpus': 1}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        acctpath = os.path.join(self.server.pbs_conf["PBS_HOME"],
+                                "server_priv", "accounting")
+        self.assertTrue(self.du.isdir(self.server.hostname, acctpath,
+                                      sudo=True))
+        logs = self.du.listdir(self.server.hostname, acctpath, sudo=True)
+        log_today = sorted(logs, reverse=True)[0]
+        self.assertTrue(self.du.isfile(self.server.hostname, acctpath,
+                                       sudo=True))
+
+        # Call LogUtils.get_timestamps() for today's accounting log file
+        lu = PBSLogUtils()
+        tm = lu.get_timestamps(log_today, self.server.hostname, num=1,
+                               sudo=True)
+        self.assertIsNotNone(tm)
+        self.assertEqual(len(tm), 1)
