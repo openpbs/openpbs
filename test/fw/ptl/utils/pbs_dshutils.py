@@ -300,7 +300,7 @@ class DshUtils(object):
                 if l.find('=') != -1 and l[0] != '#':
                     c = l.split('=')
                     props[c[0]] = c[1].strip()
-        except:
+        except BaseException:
             self.logger.error('error parsing file ' + str(file))
             self.logger.error(traceback.print_exc())
             return {}
@@ -354,7 +354,7 @@ class DshUtils(object):
                                level=logging.DEBUG2, sudo=sudo)
             if rv['rc'] != 0:
                 raise PbsConfigError
-        except:
+        except BaseException:
             raise PbsConfigError(rc=1, rv=None,
                                  msg='error writing to file ' + str(fout))
         finally:
@@ -605,7 +605,7 @@ class DshUtils(object):
                             self.props[k] = [self.props[k], v]
                     else:
                         self.props[k] = v
-        except:
+        except BaseException:
             self.logger.error('error parsing .rhost')
             self.logger.error(traceback.print_exc())
             return {}
@@ -762,7 +762,7 @@ class DshUtils(object):
                     _u = pwd.getpwuid(uid)
                     if _u.pwname in _g.gr_mem:
                         return True
-            except:
+            except BaseException:
                 self.logger.error('Unknown user')
         return False
 
@@ -1309,7 +1309,7 @@ class DshUtils(object):
 
         try:
             (hostname, aliaslist, iplist) = socket.gethostbyname_ex(host)
-        except:
+        except BaseException:
             self.logger.error('error getting host by name: ' + host)
             print((traceback.print_stack()))
             return None
@@ -1319,7 +1319,7 @@ class DshUtils(object):
             self._h2l[host] = True
         try:
             ipaddr = socket.gethostbyname(localhost)
-        except:
+        except BaseException:
             self.logger.error('could not resolve local host name')
             return False
         if ipaddr in iplist:
@@ -1565,17 +1565,6 @@ class DshUtils(object):
                 _u = str(uid)
         if _u == '':
             return False
-        if gid is not None:
-            _g = ''
-            if isinstance(gid, int) and gid != -1:
-                _g = grp.getgrgid(gid).gr_name
-            elif (isinstance(gid, str) and (gid != '-1')):
-                _g = gid
-            else:
-                # must be as PbsGroup object
-                if str(gid) != '-1':
-                    _g = str(gid)
-            _u = _u + ':' + _g
         cmd = [self.which(hostname, 'chown', level=level)]
         if recursive:
             cmd += ['-R']
@@ -1583,6 +1572,12 @@ class DshUtils(object):
         ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
                            runas=runas, level=level)
         if ret['rc'] == 0:
+            if gid is not None:
+                rv = self.chgrp(hostname, path, gid=gid, sudo=sudo,
+                                level=level, recursive=recursive, runas=runas,
+                                logerr=logerr)
+                if not rv:
+                    return False
             return True
         return False
 
