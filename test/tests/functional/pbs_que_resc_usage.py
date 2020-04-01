@@ -82,16 +82,17 @@ class TestQueRescUsage(TestFunctional):
                          q_status[0], self.err_msg)
 
         # set the resource and unset it after using
-        self.server.manager(MGR_CMD_SET, QUEUE, {
-                            'resources_available.ncpus': 8}, id='workq')
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
         q_status = self.server.status(QUEUE, id='workq')
         self.assertEqual(
             int(q_status[0]['resources_available.ncpus']), 8, self.err_msg)
         # job submission
-        j1 = Job(attrs={'Resource_List.ncpus': '3'})
+        j_attr = {'Resource_List.ncpus': '3'}
+        j1 = Job(attrs=j_attr)
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
-        j2 = Job(attrs={'Resource_List.ncpus': '3'})
+        j2 = Job(attrs=j_attr)
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
@@ -140,11 +141,13 @@ class TestQueRescUsage(TestFunctional):
         self.create_custom_resc()
 
         # resources_assigned is zero but still jobs are in the system
-        j1 = Job(attrs={'Resource_List.foo': '3'})
+        j1_attr = {'Resource_List.foo': '3'}
+        j1 = Job(attrs=j1_attr)
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
         # requesting negative resource here
-        j2 = Job(attrs={'Resource_List.foo': '-3'})
+        j2_attr = {'Resource_List.foo': '-3'}
+        j2 = Job(attrs=j2_attr)
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
@@ -174,10 +177,11 @@ class TestQueRescUsage(TestFunctional):
         # create a resource
         self.create_custom_resc()
         # submit jobs
-        j1 = Job(attrs={'Resource_List.foo': '3'})
+        j_attr = {'Resource_List.foo': '3'}
+        j1 = Job(attrs=j_attr)
         j1.set_sleep_time(30)
         jid_1 = self.server.submit(j1)
-        j2 = Job(attrs={'Resource_List.foo': '3'})
+        j2 = Job(attrs=j_attr)
         j2.set_sleep_time(30)
         jid_2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, jid_1)
