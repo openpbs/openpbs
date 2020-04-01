@@ -501,7 +501,7 @@ sleep 300
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
     "periodic_resc_update"  : true,
-    "vnode_per_numa_node"   : false,
+    "vnode_per_numa_node"   : %s,
     "online_offlined_nodes" : true,
     "use_hyperthreads"      : true,
     "cgroup":
@@ -1219,7 +1219,8 @@ if %s e.job.in_ms_mom():
             self.logger.info('Adding vntype %s to mom %s' %
                              (self.vntypename[0], self.moms_list[0]))
             self.set_vntype(typestring='no_cgroups', host=self.hosts_list[0])
-        self.load_config(self.cfg3 % ('', '', '"' + self.vntypename[0] + '"',
+        self.load_config(self.cfg3 % ('', 'false', '',
+                                      '"' + self.vntypename[0] + '"',
                                       self.swapctl,
                                       '"' + self.vntypename[0] + '"'))
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
@@ -1263,7 +1264,7 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP13'
         conf = {'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1355,7 +1356,7 @@ if %s e.job.in_ms_mom():
         memory.limit_in_bytes = 314572800
         """
         name = 'CGROUP1'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select':
@@ -1392,7 +1393,7 @@ if %s e.job.in_ms_mom():
         memory.memsw.limit_in_bytes = 100663296
         """
         name = 'CGROUP2'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1460,7 +1461,7 @@ if %s e.job.in_ms_mom():
         if pcpus < 2:
             self.skipTest('Test requires at least two physical CPUs')
         name = 'CGROUP4'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
@@ -1570,7 +1571,7 @@ if %s e.job.in_ms_mom():
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1605,7 +1606,7 @@ if %s e.job.in_ms_mom():
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
         name = 'CGROUP6'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {
@@ -1627,12 +1628,12 @@ if %s e.job.in_ms_mom():
         self.assertTrue('MemoryError' in tmp_out,
                         'MemoryError not present in output')
 
-    def test_cgroup_offline_node(self):
+    def cgroup_offline_node(self, name, vnpernuma):
         """
-        Test to verify that the node is offlined when it can't clean up
-        the cgroup and brought back online once the cgroup is cleaned up
+        Per vnode_per_numa_node config setting, return True if able to
+        verify that the node is offlined when it can't clean up the cgroup
+        and brought back online once the cgroup is cleaned up.
         """
-        name = 'CGROUP7'
         if 'freezer' not in self.paths:
             self.skipTest('Freezer cgroup is not mounted')
         # Get the grandparent directory
@@ -1640,7 +1641,7 @@ if %s e.job.in_ms_mom():
         if not self.is_dir(fdir, self.hosts_list[0]):
             self.skipTest('Freezer cgroup is not found')
         # Configure the hook
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', vnpernuma, '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1722,7 +1723,7 @@ if %s e.job.in_ms_mom():
         if ret['rc'] != 0:
             self.skipTest('pbs_cgroups_hook: Failed to copy '
                           'freezer state THAWED')
-        time.sleep(1)
+        time.sleep(3)
         cmd = ["rmdir", fdir_pbs]
         self.logger.info("Removing %s" % fdir_pbs)
         self.du.run_cmd(cmd=cmd, sudo=True)
@@ -1734,7 +1735,29 @@ if %s e.job.in_ms_mom():
             self.server.manager(MGR_CMD_CREATE, NODE, id=host)
             self.server.expect(NODE, {'state': 'free'},
                                id=host, interval=3)
-        self.assertTrue(passed)
+        return passed
+
+    def test_cgroup_offline_node(self):
+        """
+        Test to verify that the node is offlined when it can't clean up
+        the cgroup and brought back online once the cgroup is cleaned up.
+        vnode_per_numa_node = false
+        """
+        name = 'CGROUP7.1'
+        vn_per_numa = 'false'
+        rv = self.cgroup_offline_node(name, vn_per_numa)
+        self.assertTrue(rv)
+
+    def test_cgroup_offline_node_vnpernuma(self):
+        """
+        Test to verify that the node is offlined when it can't clean up
+        the cgroup and brought back online once the cgroup is cleaned up.
+        vnode_per_numa_node = true
+        """
+        name = 'CGROUP7.2'
+        vn_per_numa = 'true'
+        rv = self.cgroup_offline_node(name, vn_per_numa)
+        self.assertTrue(rv)
 
     @requirements(num_moms=2)
     def test_cgroup_cpuset_host_excluded(self):
@@ -1828,7 +1851,7 @@ if %s e.job.in_ms_mom():
         mem, and vmem in qstat
         """
         name = 'CGROUP14'
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job2)
@@ -1882,7 +1905,7 @@ if %s e.job.in_ms_mom():
         """
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2429,7 +2452,7 @@ if %s e.job.in_ms_mom():
         """
         conf = {'freq': 5, 'order': 100}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Submit a short job and let it run to completion
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
