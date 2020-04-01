@@ -45,7 +45,7 @@
 #include "libpbs.h"
 #include "dis.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 
 /**
  * @file	int_hook.c
@@ -62,7 +62,7 @@
  * @param[in] 	buf - a block of data
  * @param[in] 	len - size of buf
  * @param[in]	hook_filename - hook filename
- * @param[in]   rpp - indication for rpp
+ * @param[in]   prot - PROT_TCP or PROT_TPP
  * @param[in]   msgid - msg
  *
  * @return 	int
@@ -70,13 +70,12 @@
  * @retval	non-zero otherwise.
  */
 static int
-PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
-	char *hook_filename, int rpp, char **msgid)
+PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len, char *hook_filename, int prot, char **msgid)
 {
 	struct batch_reply   *reply;
 	int	rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -91,16 +90,16 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
 		hook_filename)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
 
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 				return (pbs_errno = PBSE_SYSTEM);
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
@@ -110,9 +109,7 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
 	}
 
 	/* read reply */
-
 	reply = PBSD_rdrpy(c);
-
 	PBSD_FreeReply(reply);
 
 	return get_conn_errno(c);
@@ -126,7 +123,7 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
  *
  * @param[in]	c - connection channel
  * @param[in]	hook_filepath - local full file pathname
- * @param[in]   rpp - indication for rpp
+ * @param[in]   prot - PROT_TCP or PROT_TPP
  * @param[in]   msgid - msg
  *
  * @return int
@@ -135,7 +132,7 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
  * @retval	non-zero otherwise.
  */
 int
-PBSD_copyhookfile(int c, char *hook_filepath, int rpp, char **msgid)
+PBSD_copyhookfile(int c, char *hook_filepath, int prot, char **msgid)
 {
 	int i;
 	int fd;
@@ -146,7 +143,7 @@ PBSD_copyhookfile(int c, char *hook_filepath, int rpp, char **msgid)
 	char	hook_file[MAXPATHLEN+1];
 
 	if ((fd = open(hook_filepath, O_RDONLY, 0)) < 0) {
-		if (rpp)
+		if (prot == PROT_TPP)
 			return (-2);  /* ok, if nothing to copy */
 		else
 			return 0;
@@ -162,7 +159,7 @@ PBSD_copyhookfile(int c, char *hook_filepath, int rpp, char **msgid)
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 
 	while ((cc > 0) &&
-		((rc = PBSD_hookbuf(c, PBS_BATCH_CopyHookFile, i, s_buf, cc, hook_file, rpp, msgid)) == 0)) {
+		((rc = PBSD_hookbuf(c, PBS_BATCH_CopyHookFile, i, s_buf, cc, hook_file, prot, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -182,21 +179,20 @@ PBSD_copyhookfile(int c, char *hook_filepath, int rpp, char **msgid)
  *
  * @param[in]	c - connection channel
  * @param[in]	hook_filename - hook filename
- * @param[in] 	rpp - indication for rpp
+ * @param[in] 	prot - PROT_TCP or PROT_TPP
  * @param[in] 	msgid - msg
  *
  * @return 	int
  * @retval	0 for success
  * @retval	non-zero otherwise.
  */
-
 int
-PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
+PBSD_delhookfile(int c, char *hook_filename, int prot, char **msgid)
 {
 	struct batch_reply   *reply;
 	int	rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -209,16 +205,16 @@ PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_DelHookFile, pbs_current_user)) ||
 		(rc = encode_DIS_DelHookFile(c, hook_filename)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 				return (pbs_errno = PBSE_SYSTEM);
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
@@ -228,9 +224,7 @@ PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
 	}
 
 	/* read reply */
-
 	reply = PBSD_rdrpy(c);
-
 	PBSD_FreeReply(reply);
 
 	return get_conn_errno(c);

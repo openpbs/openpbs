@@ -327,7 +327,11 @@ class PBSLogUtils(object):
             num_rec += 1
             if num is not None and num_rec > num:
                 break
-            m = tm_tag.match(str(record))
+
+            if type(record) == bytes:
+                record = record.decode("utf-8")
+
+            m = tm_tag.match(record)
             if m:
                 rec_times.append(
                     self.convert_date_time(m.group('datetime')))

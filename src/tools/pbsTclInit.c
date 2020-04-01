@@ -58,7 +58,7 @@
 #include	"pbs_ifl.h"
 #include	"pbs_internal.h"
 #include	"log.h"
-#include	"rpp.h"
+#include	"tpp.h"
 
 
 
@@ -73,16 +73,10 @@ extern	void	add_cmds(Tcl_Interp *interp);
 int log_mask;
 
 void
-log_rppfail(char *mess)
-{
-	fprintf(stderr, "rpp error: %s\n", mess);
-}
-
-void
 log_tppmsg(int level, const char *objname, char *mess)
 {
 	if ((level | log_mask) <= LOG_ERR)
-		fprintf(stderr, "rpp error: %s\n", mess);
+		fprintf(stderr, "tpp error: %s\n", mess);
 }
 
 /**
@@ -124,8 +118,11 @@ pbsTcl_Init(Tcl_Interp *interp)
 int
 main(int argc, char *argv[])
 {
-	char	tbuf_env[256];
+	char tbuf_env[256];
 	int rc;
+	struct tpp_config tpp_conf;
+	fd_set selset;
+	struct timeval tv;
 
 	/*the real deal or just pbs_version and exit?*/
 
@@ -142,68 +139,61 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
 			sprintf(tbuf_env, "%s/tcltk/lib/tcl%s", pbs_conf.pbs_exec_path, TCL_VERSION);
 			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}
-	if (pbs_conf.pbs_use_tcp == 1) {
-		struct			tpp_config tpp_conf;
-		fd_set 			selset;
-		struct 			timeval tv;
 
+	if (!pbs_conf.pbs_leaf_name) {
+		char my_hostname[PBS_MAXHOSTNAME+1];
+		if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
+			fprintf(stderr, "Failed to get hostname\n");
+			return -1;
+		}
+		pbs_conf.pbs_leaf_name = get_all_ips(my_hostname, log_buffer, sizeof(log_buffer) - 1);
 		if (!pbs_conf.pbs_leaf_name) {
-			char my_hostname[PBS_MAXHOSTNAME+1];
-			if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
-				fprintf(stderr, "Failed to get hostname\n");
-				return -1;
-			}
-			pbs_conf.pbs_leaf_name = get_all_ips(my_hostname, log_buffer, sizeof(log_buffer) - 1);
-			if (!pbs_conf.pbs_leaf_name) {
-				fprintf(stderr, "%s\n", log_buffer);
-				fprintf(stderr, "%s\n", "Unable to determine TPP node name");
-				return -1;
-			}
-		}
-
-		/* We don't want to show logs related to connecting pbs_comm on console
-		 * this set this flag to ignore it
-		 */
-		log_mask = SHOW_NONE;
-
-		/* set tpp function pointers */
-		set_tpp_funcs(log_tppmsg);
-
-		/* call tpp_init */
-		rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
-		if (rc == -1) {
-			fprintf(stderr, "Error setting TPP config\n");
+			fprintf(stderr, "%s\n", log_buffer);
+			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 			return -1;
 		}
-
-		if ((rpp_fd = tpp_init(&tpp_conf)) == -1) {
-			fprintf(stderr, "rpp_init failed\n");
-			return -1;
-		}
-
-		/*
-		 * Wait for net to get restored, ie, app to connect to routers
-		 */
-		FD_ZERO(&selset);
-		FD_SET(rpp_fd, &selset);
-		tv.tv_sec = 5;
-		tv.tv_usec = 0;
-		select(FD_SETSIZE, &selset, NULL, NULL, &tv);
-
-		rpp_poll(); /* to clear off the read notification */
-
-		/* Once the connection is established we can unset log_mask */
-		log_mask &= ~SHOW_NONE;
-	} else {
-		/* set rpp function pointers */
-		set_rpp_funcs(log_rppfail);
 	}
+
+	/* We don't want to show logs related to connecting pbs_comm on console
+		* this set this flag to ignore it
+		*/
+	log_mask = SHOW_NONE;
+
+	/* call tpp_init */
+	rc = set_tpp_config(log_tppmsg, &pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
+	if (rc == -1) {
+		fprintf(stderr, "Error setting TPP config\n");
+		return -1;
+	}
+
+	if ((tpp_fd = tpp_init(&tpp_conf)) == -1) {
+		fprintf(stderr, "tpp_init failed\n");
+		return -1;
+	}
+
+	/*
+	 * Wait for net to get restored, ie, app to connect to routers
+	 */
+	FD_ZERO(&selset);
+	FD_SET(tpp_fd, &selset);
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	select(FD_SETSIZE, &selset, NULL, NULL, &tv);
+
+	tpp_poll(); /* to clear off the read notification */
+
+	/* Once the connection is established we can unset log_mask */
+	log_mask &= ~SHOW_NONE;
 	Tcl_Main(argc, argv, pbsTcl_Init);
 	return 0;
 }

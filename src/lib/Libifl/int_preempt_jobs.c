@@ -45,7 +45,7 @@
 #include "portability.h"
 #include "libpbs.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "net_connect.h"
 #include "pbs_share.h"
 

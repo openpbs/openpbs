@@ -93,7 +93,7 @@
 #include "sched_cmds.h"
 #include "mom_server.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "libutil.h"
 #include "pbs_sched.h"
 
@@ -545,10 +545,7 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 	long t;
 	attribute *peh;
 	struct work_task *pwt;
-	int prot = PROT_TCP;
-
-	if (pbs_conf.pbs_use_tcp == 1)
-		prot = PROT_RPP;
+	int prot = PROT_TPP;
 
 	if (pjob->ji_momhandle < 0) {
 
@@ -690,7 +687,7 @@ conn_to_mom_failed(job *pjob, void(*func)(struct work_task *))
 	if (pjob->ji_mom_prot == PROT_TCP) {
 		svr_disconnect(pjob->ji_momhandle);
 	} else {
-		rpp_close(pjob->ji_momhandle);
+		tpp_close(pjob->ji_momhandle);
 		tdelete2((u_long)pjob->ji_momhandle, 0, &streams);
 	}
 	pjob->ji_momhandle = -1;
@@ -754,7 +751,7 @@ on_job_exit(struct work_task *ptask)
 	if ((handle = mom_comm(pjob, on_job_exit)) < 0)
 		return;
 
-	if (pjob->ji_mom_prot == PROT_RPP) {
+	if (pjob->ji_mom_prot == PROT_TPP) {
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
@@ -802,9 +799,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -893,9 +890,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -984,9 +981,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1197,7 +1194,7 @@ on_job_rerun(struct work_task *ptask)
 	if ((handle = mom_comm(pjob, on_job_rerun)) < 0)
 		return;
 
-	if (pjob->ji_mom_prot == PROT_RPP) {
+	if (pjob->ji_mom_prot == PROT_TPP) {
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
@@ -1238,9 +1235,9 @@ on_job_rerun(struct work_task *ptask)
 				if (rc == 0) {
 					/* request ok, will come back when its done */
 					append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-					if (pjob->ji_mom_prot == PROT_RPP)
+					if (pjob->ji_mom_prot == PROT_TPP)
 						if (mom_tasklist_ptr)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 					return;
 				} else {
 					/* set up as if mom returned error */
@@ -1291,9 +1288,9 @@ on_job_rerun(struct work_task *ptask)
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else
 						/* set up as if mom returned error */
@@ -1364,9 +1361,9 @@ on_job_rerun(struct work_task *ptask)
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;
 					} else {	/* error on sending request */
 						preq->rq_reply.brp_code = rc;
@@ -1416,9 +1413,9 @@ on_job_rerun(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when Mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1692,7 +1689,7 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
  *		or on_job_rerun().
  *
  * param[in] - pruu - the structure containing the resource usage info
- * param[in] - stream - the RPP stream connecting to the Mom
+ * param[in] - stream - the TPP stream connecting to the Mom
  *		The Server will send back either a rejection or an acceptance
  *		of  the Obit.
  */

@@ -40,7 +40,6 @@ lib_LTLIBRARIES = libpbs.la
 
 libpbs_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/lib/Libtpp \
 	@KRB5_CFLAGS@
 
 #
@@ -202,7 +201,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_PreemptJobs.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
-	../Libifl/get_hostname.c \
 	../Libifl/get_svrport.c \
 	../Libifl/grunt_parse.c \
 	../Libifl/int_hook.c \
@@ -267,7 +265,7 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_Preempt_Jobs.c \
 	../Libifl/ifl_impl.c \
 	../Libifl/ifl_pointers.c \
-	../Libifl/rpp.c \
+	../Libifl/rm.c \
 	../Libifl/strsep.c \
 	../Libifl/tcp_dis.c \
 	../Libifl/tm.c \

@@ -50,19 +50,16 @@
 #include "portability.h"
 #include "libpbs.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "net_connect.h"
 
 #define	IS_PROTOCOL	4
 #define	IS_PROTOCOL_VER	3
 
-
-
-
 /**
  * @brief - Start a standard inter-server message.
  *
- * @param[in] stream  - The RPP stream on which to send message
+ * @param[in] stream  - The TPP stream on which to send message
  * @param[in] command - The message type (cmd) to encode
  *
  * @return error code
@@ -76,7 +73,7 @@ is_compose(int stream, int command)
 
 	if (stream < 0)
 		return DIS_EOF;
-	DIS_rpp_funcs();
+	DIS_tpp_funcs();
 
 	ret = diswsi(stream, IS_PROTOCOL);
 	if (ret != DIS_SUCCESS)
@@ -135,13 +132,13 @@ get_msgid(char **id)
 }
 
 /**
- * @brief - Compose a RPP command
+ * @brief - Compose a command to be sent over TPP stream
  *
  * @par Functionality:
  *	calls im_compose to create the message header, get_msgid to
  * 	add a msg id to the header (unless one is passed)
  *
- * @param[in] stream - rpp stream to write to
+ * @param[in] stream - Tpp stream to write to
  * @param[in] command - The command to encode
  * @param[in,out] ret_msgid - The msgid, if passed to this function, is
  *                            the msgid to be used for this message.
@@ -178,7 +175,7 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  *
  * @param[in] c - socket fd
  * @param[in] jobid - job identifier
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return	int
@@ -186,14 +183,13 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  * @retval	!0(pbs_errno)	failure
  *
  */
-
 int
-PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
+PBSD_rdytocmt(int c, char *jobid, int prot, char **msgid)
 {
 	int     rc;
 	struct batch_reply *reply;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -203,7 +199,7 @@ PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
 	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
 		(rc = encode_DIS_JobId(c, jobid))  ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
 			}
@@ -211,9 +207,9 @@ PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
@@ -237,7 +233,7 @@ PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
  *
  * @param[in] c - socket fd
  * @param[in] jobid - job identifier
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -245,14 +241,13 @@ PBSD_rdytocmt(int c, char *jobid, int rpp, char **msgid)
  * @retval      !0(pbs_errno)   failure
  *
  */
-
 int
-PBSD_commit(int c, char *jobid, int rpp, char **msgid)
+PBSD_commit(int c, char *jobid, int prot, char **msgid)
 {
 	struct batch_reply *reply;
 	int rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -262,7 +257,7 @@ PBSD_commit(int c, char *jobid, int rpp, char **msgid)
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Commit, pbs_current_user)) ||
 		(rc = encode_DIS_JobId(c, jobid)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
 			}
@@ -270,9 +265,9 @@ PBSD_commit(int c, char *jobid, int rpp, char **msgid)
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
@@ -301,7 +296,7 @@ PBSD_commit(int c, char *jobid, int rpp, char **msgid)
  * @param[in] len - length of chunk
  * @param[in] jobid - ob id (for types 1 and 2 only)
  * @param[in] which - standard file type (enum)
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -309,15 +304,13 @@ PBSD_commit(int c, char *jobid, int rpp, char **msgid)
  * @retval      !0(pbs_errno)   failure
  *
  */
-
 static int
-PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
-		enum job_file which, int rpp, char **msgid)
+PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid, enum job_file which, int prot, char **msgid)
 {
 	struct batch_reply   *reply;
 	int	rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -330,7 +323,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
 		(rc = encode_DIS_JobFile(c, seq, buf, len, jobid, which)) ||
 		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
 			}
@@ -338,9 +331,9 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
@@ -367,7 +360,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
  *
  * @param[in] c - connection handle
  * @param[in] script_file - job file
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return	int
@@ -377,7 +370,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
  */
 
 int
-PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
+PBSD_jscript(int c, char *script_file, int prot, char **msgid)
 {
 	int i;
 	int fd;
@@ -391,7 +384,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	i = 0;
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	while ((cc > 0) &&
-		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, NULL, JScript, rpp, msgid)) == 0)) {
+		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, NULL, JScript, prot, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -400,7 +393,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	if (cc < 0)	/* read failed */
 		return (-1);
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return (rc);
 
 	return get_conn_errno(c);
@@ -412,7 +405,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
  *
  * @param[in] c - connection handle
  * @param[in] script_file - job file
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -420,9 +413,8 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
  * @retval      -1      failure
  *
  */
-
 int
-PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
+PBSD_jscript_direct(int c, char *script, int prot, char **msgid)
 {
 	int rc;
 	int tosend;
@@ -438,13 +430,13 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 	len = strlen(script);
 	do {
 		tosend = (len > SCRIPT_CHUNK_Z) ? SCRIPT_CHUNK_Z : len;
-		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, NULL, JScript, rpp, msgid);
+		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, NULL, JScript, prot, msgid);
 		i++;
 		p += tosend;
 		len -= tosend;
 	} while ((rc == 0) && (len > 0));
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return (rc);
 
 	return get_conn_errno(c);
@@ -464,7 +456,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  * @param[in] path - file path
  * @param[in] jobid - job id
  * @param[in] which - standard file type (enum)
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -472,10 +464,8 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  * @retval      -1      failure
  *
  */
-
 int
-PBSD_jobfile(int c, int req_type, char *path, char *jobid,
-		enum job_file which, int rpp, char **msgid)
+PBSD_jobfile(int c, int req_type, char *path, char *jobid, enum job_file which, int prot, char **msgid)
 {
 	int   i;
 	int   cc;
@@ -489,7 +479,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 	i = 0;
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	while ((cc > 0) &&
-		((rc = PBSD_scbuf(c, req_type, i, s_buf, cc, jobid, which, rpp, msgid)) == 0)) {
+		((rc = PBSD_scbuf(c, req_type, i, s_buf, cc, jobid, which, prot, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -498,7 +488,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 	if (cc < 0)	/* read failed */
 		return (-1);
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return rc;
 
 	return get_conn_errno(c);
@@ -514,22 +504,21 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
  * @param[in] destin - destination name
  * @param[in] attrib - pointer to attribute list
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
  * @retval      0               Success
  * @retval      pbs_error(!0)   error
  */
-
 char *
-PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *extend, int rpp, char **msgid)
+PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *extend, int prot, char **msgid)
 {
 	struct batch_reply *reply;
-	char  *return_jobid = NULL;
-	int    rc;
+	char *return_jobid = NULL;
+	int rc;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS) {
@@ -543,7 +532,7 @@ PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *ex
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_QueueJob, pbs_current_user)) ||
 		(rc = encode_DIS_QueueJob(c, jobid, destin, attrib)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;
 				return NULL;
@@ -553,12 +542,12 @@ PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *ex
 		return return_jobid;
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(c))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 
-		return (""); /* return something NON-NULL for rpp */
+		return (""); /* return something NON-NULL for tpp */
 	}
 
 	if (dis_flush(c)) {

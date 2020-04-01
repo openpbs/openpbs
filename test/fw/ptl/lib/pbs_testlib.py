@@ -503,10 +503,6 @@ class PbsResvAlterError(PtlException):
     pass
 
 
-class PbsHardwareMonitorError(PtlException):
-    pass
-
-
 class PbsTypeSize(str):
 
     """

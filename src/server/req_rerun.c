@@ -100,6 +100,7 @@ post_rerun(struct work_task *pwt)
 {
 	job	*pjob;
 	struct batch_request *preq;
+	struct depend *pdep;
 
 	preq = (struct batch_request *)pwt->wt_parm1;
 
@@ -114,6 +115,12 @@ post_rerun(struct work_task *pwt)
 
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(preq->rq_reply.brp_code, PREEMPT_METHOD_REQUEUE, pjob);
+		}
+		else {
+			/* mom acknowledged to rerun the job, release depend hold on run-one dependency */
+			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+			if (pdep != NULL)
+				depend_runone_release_all(pjob);
 		}
 	}
 
@@ -409,6 +416,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	struct  work_task *ptask;
 	time_t  rerun_to;
 	conn_t	*conn;
+	struct depend *pdep;
 	int rc;
 
 	if (preq->rq_extend && (strcmp(preq->rq_extend, "force") == 0))
@@ -457,7 +465,6 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	 * then deleted from mom as well.
 	 */
 	if (force == 1) {
-
 		/* Mom is down and issue signal failed or
 		 * request is from a manager and "force" is on,
 		 * force the requeue */
@@ -471,6 +478,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		 * force_reque will be called in post_discard_job,
 		 * after receiving IS_DISCARD_DONE from the MOM.
 		 */
+		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		if (pdep != NULL)
+			depend_runone_release_all(pjob);
 		reply_ack(preq);
 		return;
 

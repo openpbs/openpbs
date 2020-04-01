@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -34,21 +34,39 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-AC_DEFUN([PBS_AC_DISABLE_RPP],
-[
-  AC_MSG_CHECKING([for PBS resource query method])
-  AC_ARG_ENABLE([rpp],
-    AS_HELP_STRING([--disable-rpp],
-      [Use TCP rather than RPP/UDP for resource queries to mom.]
-    )
-  )
-  AS_IF([test "x$enable_rpp" != "xno"],
-    AC_MSG_RESULT([RPP/UDP])
-    AC_DEFINE([RPP], [1], [Define to 0 for TCP or 1 for RPP/UDP]),
-    AC_MSG_RESULT([TCP])
-    AC_DEFINE([RPP], [0], [Define to 0 for TCP or 1 for RPP/UDP])
-  )
-])
+from tests.functional import *
 
+
+class TestMomMockRun(TestFunctional):
+    @skipOnCpuSet
+    def test_rsc_used(self):
+        """
+        Test that resources_used are set correctly by mom under mock run
+        """
+        # Kill the existing mom process
+        self.mom.stop()
+
+        # Start mom in mock run mode
+        mompath = os.path.join(self.server.pbs_conf["PBS_EXEC"], "sbin",
+                               "pbs_mom")
+        cmd = [mompath, "-m"]
+        self.du.run_cmd(cmd=cmd, sudo=True)
+
+        # Submit a job requesting ncpus, mem and walltime
+        attr = {ATTR_l + ".select": "1:ncpus=1:mem=5mb",
+                ATTR_l + ".walltime": "00:00:05"}
+        j = Job(attrs=attr)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # This job should end in 5 seconds, let's sleep
+        time.sleep(7)
+
+        # Check accounting record for this job
+        used_ncpus = "resources_used.ncpus=1"
+        self.server.accounting_match(msg=used_ncpus, id=jid)
+        used_mem = "resources_used.mem=5mb"
+        self.server.accounting_match(msg=used_mem, id=jid)
+        used_walltime = "resources_used.walltime=00:00:05"
+        self.server.accounting_match(msg=used_walltime, id=jid)

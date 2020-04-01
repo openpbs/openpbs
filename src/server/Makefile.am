@@ -139,7 +139,6 @@ pbs_server_bin_SOURCES = \
 
 pbs_comm_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/lib/Libtpp \
 	@libz_inc@ \
 	@KRB5_CFLAGS@
 

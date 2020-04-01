@@ -40,7 +40,6 @@ lib_LIBRARIES = libnet.a
 
 libnet_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/lib/Libtpp \
 	@KRB5_CFLAGS@
 
 libnet_a_SOURCES = \
@@ -49,5 +48,4 @@ libnet_a_SOURCES = \
 	net_server.c \
 	net_set_clse.c \
 	port_forwarding.c \
-	rm.c \
 	hnls.c

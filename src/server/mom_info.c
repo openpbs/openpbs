@@ -76,7 +76,7 @@
 #include "pbs_error.h"
 #include "log.h"
 #include "svrfunc.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "pbs_internal.h"
 #include "work_task.h"
 #include "hook_func.h"
@@ -180,20 +180,16 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_action = NULL;
 		pmom->mi_num_action = 0;
 #ifndef PBS_MOM
-		if ((msg_daemonname == NULL) ||
-			(strcmp(msg_daemonname, "PBS_send_hooks") != 0)) {
-			/* No need to do this if executed by pbs_send_hooks */
-			if (mom_hooks_seen_count() > 0) {
-				struct stat sbuf;
-				/* there should be at least one hook to */
-				/* add mom actions below, which are in */
-				/* behalf of existing hooks. */
-				add_pending_mom_allhooks_action(pmom,
-					MOM_HOOK_ACTION_SEND_ATTRS|MOM_HOOK_ACTION_SEND_CONFIG|MOM_HOOK_ACTION_SEND_SCRIPT);
-				if (stat(path_hooks_rescdef, &sbuf) == 0)
-					add_pending_mom_hook_action(pmom, PBS_RESCDEF,
-						MOM_HOOK_ACTION_SEND_RESCDEF);
-			}
+		if (mom_hooks_seen_count() > 0) {
+			struct stat sbuf;
+			/*
+			 * there should be at least one hook to
+			 * add mom actions below, which are in
+			 * behalf of existing hooks.
+			 */
+			add_pending_mom_allhooks_action(pmom, MOM_HOOK_ACTION_SEND_ATTRS|MOM_HOOK_ACTION_SEND_CONFIG|MOM_HOOK_ACTION_SEND_SCRIPT);
+			if (stat(path_hooks_rescdef, &sbuf) == 0)
+				add_pending_mom_hook_action(pmom, PBS_RESCDEF, MOM_HOOK_ACTION_SEND_RESCDEF);
 		}
 #endif
 
@@ -462,7 +458,7 @@ delete_svrmom_entry(mominfo_t *pmom)
 		}
 
 		/* take stream out of tree */
-		(void)rpp_close(psvrmom->msr_stream);
+		(void)tpp_close(psvrmom->msr_stream);
 		tdelete2((unsigned long)psvrmom->msr_stream , 0, &streams);
 
 		if (remove_mom_ipaddresses_list(pmom) != 0) {

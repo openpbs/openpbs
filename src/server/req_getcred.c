@@ -152,7 +152,7 @@ req_authenResvPort(struct batch_request *preq)
 				/* time stamp just for the record */
 				cp->cn_timestamp = time_now;
 				cp->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
-				if (preq->isrpp)
+				if (preq->prot == PROT_TPP)
 					DIS_tpp_funcs();
 				else
 					DIS_tcp_funcs();

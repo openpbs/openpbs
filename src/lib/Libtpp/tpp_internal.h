@@ -35,14 +35,11 @@
  * trademark licensing policies.
  *
  */
-
-#ifndef	__TPP_COMMON_H
-#define __TPP_COMMON_H
+#ifndef	__TPP_INTERNAL_H
+#define __TPP_INTERNAL_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-#include <pbs_config.h>
 
 #include <sys/time.h>
 #include <limits.h>
@@ -50,50 +47,63 @@ extern "C" {
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <errno.h>
-
 #include "avltree.h"
 #include "log.h"
-#include "auth.h"
 
-#if defined (PBS_HAVE_DEVPOLL)
-#define PBS_USE_DEVPOLL
-#elif defined (PBS_HAVE_EPOLL)
-#define PBS_USE_EPOLL
-#elif defined (PBS_HAVE_POLLSET)
-#define  PBS_USE_POLLSET
-#elif defined (HAVE_POLL)
-#define PBS_USE_POLL
-#elif defined (HAVE_SELECT)
-#define PBS_USE_SELECT
+#include "tpp.h"
+
+
+#ifndef WIN32
+
+#define tpp_pipe_cr(a)               pipe(a)
+#define tpp_pipe_read(a, b, c)         read(a, b, c)
+#define tpp_pipe_write(a, b, c)        write(a, b, c)
+#define tpp_pipe_close(a)            close(a)
+
+#define tpp_sock_socket(a, b, c)       socket(a, b, c)
+#define tpp_sock_bind(a, b, c)         bind(a, b, c)
+#define tpp_sock_listen(a, b)         listen(a, b)
+#define tpp_sock_accept(a, b, c)       accept(a, b, c)
+#define tpp_sock_connect(a, b, c)      connect(a, b, c)
+#define tpp_sock_recv(a, b, c, d)       recv(a, b, c, d)
+#define tpp_sock_send(a, b, c, d)       send(a, b, c, d)
+#define tpp_sock_select(a, b, c, d, e)   select(a, b, c, d, e)
+#define tpp_sock_close(a)            close(a)
+#define tpp_sock_getsockopt(a, b, c, d, e)   getsockopt(a, b, c, d, e)
+#define tpp_sock_setsockopt(a, b, c, d, e)   setsockopt(a, b, c, d, e)
+
+#else
+#ifndef EINPROGRESS
+#define EINPROGRESS   EAGAIN
 #endif
 
-#if defined (PBS_USE_EPOLL)
+int tpp_pipe_cr(int fds[2]);
+int tpp_pipe_read(int, char *, int);
+int tpp_pipe_write(int, char *, int);
+int tpp_pipe_close(int);
 
-#include <sys/epoll.h>
-
-#elif defined (PBS_USE_POLL)
-
-#include <poll.h>
-
-#elif defined (PBS_USE_SELECT)
-
-#if defined(FD_SET_IN_SYS_SELECT_H)
-#include <sys/select.h>
-#endif
-
-#elif defined (PBS_USE_DEVPOLL)
-
-#include <sys/devpoll.h>
-
-#elif defined (PBS_USE_POLLSET)
-
-#include <sys/poll.h>
-#include <sys/pollset.h>
-#include <fcntl.h>
+int tpp_sock_socket(int, int, int);
+int tpp_sock_listen(int, int);
+int tpp_sock_accept(int, struct sockaddr *, int *);
+int tpp_sock_bind(int, const struct sockaddr *, int);
+int tpp_sock_connect(int, const struct sockaddr *, int);
+int tpp_sock_recv(int, char *, int, int);
+int tpp_sock_send(int, const char *, int, int);
+int tpp_sock_select(int, fd_set *, fd_set *, fd_set *, const struct timeval *);
+int tpp_sock_close(int);
+int tpp_sock_getsockopt(int, int, int, int *, int *);
+int tpp_sock_setsockopt(int, int, int, const int *, int);
 
 #endif
 
+int tpp_sock_layer_init();
+int tpp_get_nfiles();
+int set_pipe_disposition();
+int tpp_sock_attempt_connection(int, char *, int);
+void tpp_invalidate_thrd_handle(pthread_t *);
+int tpp_is_valid_thrd(pthread_t);
+
+#define MAX_CON TPP_MAXOPENFD /* default max connections */
 #define MAX_SEQ_NUMBER          (UINT_MAX - 10)
 #define UNINITIALIZED_INT       (MAX_SEQ_NUMBER + 1)
 #define TPP_LOGBUF_SZ        	1024
@@ -405,73 +415,58 @@ typedef struct {
 	auth_def_t *encryptdef;
 } conn_auth_t;
 
-tpp_que_elem_t* tpp_enque(tpp_que_t *l, void *data);
-void *tpp_deque(tpp_que_t *l);
-tpp_que_elem_t* tpp_que_del_elem(tpp_que_t *l, tpp_que_elem_t *n);
-tpp_que_elem_t* tpp_que_ins_elem(tpp_que_t *l, tpp_que_elem_t *n,
-	void *data, int before);
+tpp_que_elem_t* tpp_enque(tpp_que_t *, void *);
+void *tpp_deque(tpp_que_t *);
+tpp_que_elem_t* tpp_que_del_elem(tpp_que_t *, tpp_que_elem_t *);
+tpp_que_elem_t* tpp_que_ins_elem(tpp_que_t *, tpp_que_elem_t *, void *, int);
 /* End - routines and headers to manage FIFO queues */
 
-void tpp_log_err(int errnum, char *routine, char *text);
-void DIS_tpp_funcs();
-int tpp_send(int sd, void *data, int len);
-int tpp_recv(int sd, void *data, int len);
-int tpp_ready_fds(int *sds, int len);
-void *tpp_get_user_data(int sd);
-int tpp_set_user_data(int sd, void *user_data);
-char* convert_to_ip_port(char *host_port, int port);
+int tpp_send(int, void *, int);
+int tpp_recv(int, void *, int);
+int tpp_ready_fds(int *, int);
+void *tpp_get_user_data(int);
+int tpp_set_user_data(int, void *);
+char* convert_to_ip_port(char *, int);
 
 int tpp_init_tls_key(void);
 tpp_tls_t *tpp_get_tls(void);
 char *tpp_get_logbuf(void);
-char *mk_hostname(char *host, int port);
-int tpp_eom(int fd);
-int tpp_open(char *dest_host, unsigned int port);
-int tpp_bind(unsigned int port);
-int tpp_io(void);
-int tpp_close(int sd);
-struct sockaddr_in* tpp_localaddr(int fd);
-struct sockaddr_in* tpp_getaddr(int tfd);
-void tpp_shutdown(void);
-void tpp_terminate(void);
-int tpp_poll(void);
-char *tpp_parse_hostname(char *full, int *port);
-tpp_packet_t *tpp_cr_pkt(void *data, int len, int mk_data);
+char *mk_hostname(char *, int);
+struct sockaddr_in* tpp_localaddr(int);
+tpp_packet_t *tpp_cr_pkt(void *, int, int);
 
-void tpp_router_shutdown(void);
 void tpp_router_terminate(void);
 void tpp_free_tls(void);
 
-int tpp_transport_connect(char *hostname, int delay, void *ctx, int *ret_tfd);
-int tpp_transport_vsend(int tfd, tpp_chunk_t *chunk, int count);
-int tpp_transport_isresvport(int tfd);
-int tpp_transport_vsend_extra(int tfd, tpp_chunk_t *chunk, int count, void *extra);
-int tpp_transport_init(struct tpp_config *conf);
+int tpp_transport_connect(char *, int, void *, int *);
+int tpp_transport_vsend(int, tpp_chunk_t *, int);
+int tpp_transport_isresvport(int);
+int tpp_transport_vsend_extra(int, tpp_chunk_t *, int, void *);
+int tpp_transport_init(struct tpp_config *);
 void tpp_transport_set_handlers(
-	int (*pkt_presend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
-	int (*pkt_postsend_handler)(int phy_con, tpp_packet_t *pkt, void *extra),
-	int (*pkt_handler)(int, void *data, int len, void *, void *extra),
-	int (*close_handler)(int, int, void *, void *extra),
-	int (*post_connect_handler)(int sd, void *data, void *ctx, void *extra),
-	int (*timer_handler)(time_t now)
+	int (*pkt_presend_handler)(int, tpp_packet_t *, void *),
+	int (*pkt_postsend_handler)(int, tpp_packet_t *, void *),
+	int (*pkt_handler)(int, void *, int, void *, void *),
+	int (*close_handler)(int, int, void *, void *),
+	int (*post_connect_handler)(int, void *, void *, void *),
+	int (*timer_handler)(time_t)
 	);
-void tpp_set_logmask(long logmask);
+void tpp_set_logmask(long);
 int tpp_transport_shutdown(void);
 int tpp_transport_terminate(void);
-int tpp_transport_send(int tfd, void *data, int len);
-int tpp_transport_send_raw(int tfd, tpp_packet_t *pkt);
-int tpp_init_router(struct tpp_config *cnf);
-void tpp_transport_set_conn_ctx(int tfd, void *ctx);
-void *tpp_transport_get_conn_ctx(int tfd);
-void *tpp_transport_get_thrd_context(int tfd);
-int tpp_transport_wakeup_thrd(int tfd);
-int tpp_transport_connect_spl(char *hostname, int delay, void *ctx, int *ret_tfd, void *tctx);
-int tpp_transport_close(int tfd);
+int tpp_transport_send(int, void *, int);
+int tpp_transport_send_raw(int, tpp_packet_t *);
+void tpp_transport_set_conn_ctx(int, void *);
+void *tpp_transport_get_conn_ctx(int);
+void *tpp_transport_get_thrd_context(int);
+int tpp_transport_wakeup_thrd(int);
+int tpp_transport_connect_spl(char *, int, void *, int *, void *);
+int tpp_transport_close(int);
 
-int tpp_init_lock(pthread_mutex_t *lock);
-int tpp_lock(pthread_mutex_t *lock);
-int tpp_unlock(pthread_mutex_t *lock);
-int tpp_destroy_lock(pthread_mutex_t *lock);
+int tpp_init_lock(pthread_mutex_t *);
+int tpp_lock(pthread_mutex_t *);
+int tpp_unlock(pthread_mutex_t *);
+int tpp_destroy_lock(pthread_mutex_t *);
 
 /* rwlock is not supported by posix, so dont
  * refer to this in the header file, instead
@@ -479,68 +474,57 @@ int tpp_destroy_lock(pthread_mutex_t *lock);
  * implement this will defined _XOPEN_SOURCE
  * if necessary
  */
-int tpp_init_rwlock(void *lock);
-int tpp_rdlock_rwlock(void *lock);
-int tpp_wrlock_rwlock(void *lock);
-int tpp_unlock_rwlock(void *lock);
-int tpp_destroy_rwlock(void *lock);
+int tpp_init_rwlock(void *);
+int tpp_rdlock_rwlock(void *);
+int tpp_wrlock_rwlock(void *);
+int tpp_unlock_rwlock(void *);
+int tpp_destroy_rwlock(void *);
 
-int tpp_set_non_blocking(int fd);
-int tpp_set_close_on_exec(int fd);
-void tpp_free_pkt(tpp_packet_t *pkt);
-int tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned int src_sd, char err_num, char *msg);
-int tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data);
-void tpp_add_close_func(int sd, void (*func)(int));
-int tpp_set_keep_alive(int fd, struct tpp_config *cnf);
+int tpp_set_non_blocking(int);
+int tpp_set_close_on_exec(int);
+void tpp_free_pkt(tpp_packet_t *);
+int tpp_send_ctl_msg(int, int, tpp_addr_t *, tpp_addr_t *, unsigned int, char, char *);
+int tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *, void *);
+int tpp_set_keep_alive(int, struct tpp_config *);
 
-void *tpp_deflate(void *inbuf, unsigned int inlen, unsigned int *outlen);
-void *tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen);
-void *tpp_multi_deflate_init(int len);
-int tpp_multi_deflate_do(void *ctx, int fini, void *inbuf, unsigned int inlen);
-void *tpp_multi_deflate_done(void *c, unsigned int *cmpr_len);
+void *tpp_deflate(void *, unsigned int, unsigned int *);
+void *tpp_inflate(void *, unsigned int, unsigned int);
+void *tpp_multi_deflate_init(int);
+int tpp_multi_deflate_do(void *, int, void *, unsigned int);
+void *tpp_multi_deflate_done(void *, unsigned int *);
 
-int tpp_add_fd(int ctl_fd, int fd, int event);
-int tpp_del_fd(int ctl_fd, int fd);
-int tpp_mod_fd(int ctl_fd, int fd, int event);
+int tpp_add_fd(int, int, int);
+int tpp_del_fd(int, int);
+int tpp_mod_fd(int, int, int);
 
-int tpp_validate_hdr(int tfd, char *pkt_start);
-tpp_addr_t *tpp_get_addresses(char *node_names, int *leaf_addr_count);
-tpp_addr_t *tpp_get_local_host(int sock);
-tpp_addr_t *tpp_get_connected_host(int sock);
-int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);
-tpp_addr_t *tpp_sock_resolve_host(char *host, int *count);
+int tpp_validate_hdr(int, char *);
+tpp_addr_t *tpp_get_addresses(char *, int *);
+tpp_addr_t *tpp_get_local_host(int);
+tpp_addr_t *tpp_get_connected_host(int);
+int tpp_sock_resolve_ip(tpp_addr_t *, char *, int);
+tpp_addr_t *tpp_sock_resolve_host(char *, int *);
 
-const char * tpp_transport_get_conn_hostname(int tfd);
-void tpp_transport_set_conn_extra(int tfd, void *extra);
-
+const char * tpp_transport_get_conn_hostname(int);
+void tpp_transport_set_conn_extra(int, void *);
+extern int tpp_get_thrd_index();
 char *tpp_netaddr(tpp_addr_t *);
 char *tpp_netaddr_sa(struct sockaddr *);
-
-extern void (*tpp_log_func)(int level, const char *id, char *mess); /* log function */
  /* auth logger function - just a wrapper of tpp_log_func to match signature with log_event() from Liblog */
-extern void tpp_auth_logger(int type, int objclass, int severity, const char *objname, const char *text);
+extern void tpp_auth_logger(int, int, int, const char *, const char *);
 
 extern int tpp_dbprt;
 
-void free_router(tpp_router_t *r);
-void free_leaf(tpp_leaf_t *l);
+void free_router(tpp_router_t *);
+void free_leaf(tpp_leaf_t *);
 
 #ifdef WIN32
-int tr_2_errno(int win_errno);
+int tr_2_errno(int);
 #endif
 
 /**********************************************************************/
-/* em related definitions */
+/* em related definitions (internal version) */
 /**********************************************************************/
-#define TPP_MAXOPENFD 8192 /*limit for pbs_comm max open files*/
-#define MAX_CON		TPP_MAXOPENFD /* default max connections */
-
 #if defined (PBS_USE_POLL)
-
-typedef struct {
-	int fd;
-	int events;
-} em_event_t;
 
 typedef struct {
 	struct pollfd *fds;
@@ -549,17 +533,7 @@ typedef struct {
 	int max_nfds;
 } poll_context_t;
 
-#define EM_GET_FD(ev, i) ev[i].fd
-#define EM_GET_EVENT(ev, i) ev[i].events
-
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
-
 #elif defined (PBS_USE_EPOLL)
-
-typedef struct epoll_event em_event_t;
 
 typedef struct {
 	int epoll_fd;
@@ -568,17 +542,7 @@ typedef struct {
 	em_event_t *events;
 } epoll_context_t;
 
-#define EM_GET_FD(ev, i) ev[i].data.fd
-#define EM_GET_EVENT(ev, i) ev[i].events
-
-#define EM_IN	EPOLLIN
-#define EM_OUT	EPOLLOUT
-#define EM_HUP	EPOLLHUP
-#define EM_ERR	EPOLLERR
-
 #elif defined (PBS_USE_POLLSET)
-
-typedef struct pollfd em_event_t;
 
 typedef struct {
 	pollset_t ps;
@@ -586,20 +550,7 @@ typedef struct {
 	em_event_t *events;
 } pollset_context_t;
 
-#define EM_GET_FD(ev, i) ev[i].fd
-#define EM_GET_EVENT(ev, i) ev[i].revents
-
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
-
 #elif defined (PBS_USE_SELECT)
-
-typedef struct {
-	int fd;
-	int events;
-} em_event_t;
 
 typedef struct {
 	fd_set master_read_fds;
@@ -613,17 +564,7 @@ typedef struct {
 	em_event_t *events;
 } sel_context_t;
 
-#define EM_GET_FD(ev, i) ev[i].fd
-#define EM_GET_EVENT(ev, i) ev[i].events
-
-#define EM_IN	0x001
-#define EM_OUT	0x002
-#define EM_HUP	0x004
-#define EM_ERR	0x008
-
 #elif defined (PBS_USE_DEVPOLL)
-
-typedef struct pollfd em_event_t;
 
 typedef struct {
 	int devpoll_fd;
@@ -631,42 +572,20 @@ typedef struct {
 	int max_nfds;
 } devpoll_context_t;
 
-#define EM_GET_FD(ev, i) ev[i].fd
-#define EM_GET_EVENT(ev, i) ev[i].revents
-
-#define EM_IN	POLLIN
-#define EM_OUT	POLLOUT
-#define EM_HUP	POLLHUP
-#define EM_ERR	POLLERR
-
 #endif
 
-/* platform independent functions that handle the underlying platform specific event
- * handling mechanism. Internally it could use epoll, poll, select etc, depending on the
- * platform.
- */
-void *tpp_em_init(int max_events);
-void tpp_em_destroy(void *em_ctx);
-int tpp_em_add_fd(void *em_ctx, int fd, int event_mask);
-int tpp_em_mod_fd(void *em_ctx, int fd, int event_mask);
-int tpp_em_del_fd(void *em_ctx, int fd);
-int tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout);
-#ifndef WIN32
-int tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask);
-#else
-int tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout);
-#endif
+
 /* platform independent functions that manipulate a mbox of a thread
  * Internally these functions may use a eventfd, signalfd, signals,
  * plain pipes etc.
  */
-int tpp_mbox_init(tpp_mbox_t *mbox);
-void tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock);
-int tpp_mbox_monitor(void *em_ctx, tpp_mbox_t *mbox);
-int tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data);
-int tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdval, void **data);
-int tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data);
-int tpp_mbox_getfd(tpp_mbox_t *mbox);
+int tpp_mbox_init(tpp_mbox_t *);
+void tpp_mbox_destroy(tpp_mbox_t *, int);
+int tpp_mbox_monitor(void *, tpp_mbox_t *);
+int tpp_mbox_read(tpp_mbox_t *, unsigned int *, int *, void **);
+int tpp_mbox_clear(tpp_mbox_t *, tpp_que_elem_t **, unsigned int, int *, void **);
+int tpp_mbox_post(tpp_mbox_t *, unsigned int, int, void *);
+int tpp_mbox_getfd(tpp_mbox_t *);
 
 extern int tpp_going_down;
 /**********************************************************************/
@@ -676,7 +595,7 @@ extern int tpp_going_down;
  */
 #ifdef  DEBUG
 
-#define		TPP_DBPRT(x) \
+#define TPP_DBPRT(x) \
 	if (tpp_dbprt) { \
 		int	err = errno; \
 		time_t now; \
@@ -693,15 +612,17 @@ extern int tpp_going_down;
 		fflush(stdout); \
 		errno = err; \
 	}
-void print_packet_hdr(const char *fnc, void *data, int len);
-#define PRTPKTHDR(id, data, len)  \
-		print_packet_hdr(id, data, len);
+void print_packet_hdr(const char *, void *, int);
+#define PRTPKTHDR(id, data, len) print_packet_hdr(id, data, len);
 
 #else
 
-#define		TPP_DBPRT(x)
-#define		PRTPKTHDR(id, data, len)
+#define TPP_DBPRT(x)
+#define PRTPKTHDR(id, data, len)
 
 #endif
 
+#ifdef	__cplusplus
+}
 #endif
+#endif	/* _TPP_INTERNAL_H */

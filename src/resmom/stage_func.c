@@ -54,7 +54,7 @@
 #else
 #include <sys/wait.h>
 #include <dirent.h>
-#include "rpp.h"
+#include "tpp.h"
 #endif
 #include "pbs_ifl.h"
 #include "list_link.h"
@@ -1253,7 +1253,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 		return;
 	}
 
-	rpp_terminate();
+	tpp_terminate();
 	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
 	exit(21);

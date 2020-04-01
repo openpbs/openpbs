@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -91,22 +91,12 @@ typedef	unsigned char	u_char;
 typedef int		pbs_socklen_t;
 typedef int		ssize_t;
 
-#if 0
-typedef	int		uid_t;
-typedef	int		gid_t;
-typedef	int		pid_t;
-#endif
-
-
 /*
  **	Config stuff.
  */
 /* PBS specific: Define to the path of the global configuration file */
 #define PBS_CONF_FILE "C:\\Program Files\\PBS Pro\\pbs.conf"
 #define NGROUPS_MAX		10
-
-/* PBS specific: Define if PBS should use RPP/UDP for resource queries */
-#define RPP 1
 
 /* The number of bytes in a double.  */
 #define SIZEOF_DOUBLE 8

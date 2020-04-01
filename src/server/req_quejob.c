@@ -104,7 +104,7 @@
 #include "sched_cmds.h"
 #include "log.h"
 #include "acct.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "user.h"
 #include "hook.h"
 #include "pbs_internal.h"
@@ -144,12 +144,10 @@ extern struct connection *svr_conn;
 #ifndef PBS_MOM
 extern int    remtree(char *);
 #ifdef NAS /* localmod 005 */
-extern int apply_aoe_inchunk_rules(resource *presc, attribute *pattr,
-	void *pobj,
-	int type);
+extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);
 #endif /* localmod 005 */
 void post_sendmom(struct work_task *);
-void post_sendmom_inner(job *jobp, struct batch_request *preq, int wstat, int isrpp, char *err_msg);
+void post_sendmom_inner(job *, struct batch_request *, int, int, char *);
 #endif	/* PBS_MOM */
 
 /* Global Data Items: */
@@ -322,7 +320,6 @@ req_quejob(struct batch_request *preq)
 	mom_hook_output_t hook_output;
 	int hook_errcode = 0;
 	int hook_rc = 0;
-	int isrpp;
 	char hook_buf[HOOK_MSG_SIZE];
 	hook *last_phook = NULL;
 	unsigned int hook_fail_action = 0;
@@ -557,17 +554,17 @@ req_quejob(struct batch_request *preq)
 
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
-			isrpp = preq->isrpp;
+			int prot = preq->prot;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
 				BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
-				if (!isrpp) {
+				if (prot == PROT_TCP) {
 					pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
 				} else {
-					struct sockaddr_in* addr = rpp_getaddr(sock);
+					struct sockaddr_in* addr = tpp_getaddr(sock);
 					if (addr)
 						pj->ji_qs.ji_un.ji_newt.ji_fromaddr = (pbs_net_t)ntohl(addr->sin_addr.s_addr);
 				}
@@ -1248,7 +1245,7 @@ req_quejob(struct batch_request *preq)
 #endif
 
 	/* acknowledge the request with the job id */
-	if (!preq->isrpp) {
+	if (preq->prot == PROT_TCP) {
 		pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
 		/* acknowledge the request with the job id */
 		if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) != 0) {
@@ -1259,11 +1256,11 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 	} else {
-		struct sockaddr_in* addr = rpp_getaddr(sock);
+		struct sockaddr_in* addr = tpp_getaddr(sock);
 		if (addr)
 			pj->ji_qs.ji_un.ji_newt.ji_fromaddr = (pbs_net_t) ntohl(addr->sin_addr.s_addr);
 		free_br(preq);
-		/* No need of acknowledge for RPP */
+		/* No need of acknowledge for TPP */
 	}
 
 #ifndef PBS_MOM
@@ -1860,8 +1857,8 @@ req_commit(struct batch_request *preq)
 	pj->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
 	pj->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODIFY;
 	pj->ji_qs.ji_un_type = JOB_UNION_TYPE_MOM;
-	if (preq->isrpp) {
-		struct sockaddr_in* addr = rpp_getaddr(preq->rq_conn);
+	if (preq->prot) {
+		struct sockaddr_in* addr = tpp_getaddr(preq->rq_conn);
 		if (addr)
 			pj->ji_qs.ji_un.ji_momt.ji_svraddr = (pbs_net_t) ntohl(addr->sin_addr.s_addr);
 	} else
@@ -2074,10 +2071,10 @@ locate_new_job(struct batch_request *preq, char *jobid)
 
 	sock = preq->rq_conn;
 
-	if (!preq->isrpp) { /* Connection from TCP stream */
+	if (!preq->prot) { /* Connection from TCP stream */
 		conn_addr = get_connectaddr(sock);
 	} else {
-		struct sockaddr_in* addr = rpp_getaddr(sock);
+		struct sockaddr_in* addr = tpp_getaddr(sock);
 		if (addr)
 			conn_addr = (pbs_net_t) ntohl(addr->sin_addr.s_addr);
 	}

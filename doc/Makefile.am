@@ -101,7 +101,6 @@ notrans_dist_man3_MANS = \
 	man3/pbs_tclapi.3B \
 	man3/pbs_terminate.3B \
 	man3/rm.3B \
-	man3/rpp.3 \
 	man3/tm.3
 
 noinst_man3_MANS = \
@@ -166,4 +165,3 @@ notrans_dist_man8_MANS = \
 	man8/qterm.8B \
 	man8/tracejob.8B \
 	man8/win_postinstall.py.8B
-

@@ -117,11 +117,11 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#include <pbs_ifl.h>
-#include <pbs_error.h>
-#include <log.h>
-#include <rpp.h>
-#include <pbs_share.h>
+#include "pbs_ifl.h"
+#include "pbs_error.h"
+#include "log.h"
+#include "tpp.h"
+#include "pbs_share.h"
 #include "server_info.h"
 #include "constant.h"
 #include "queue_info.h"
@@ -349,6 +349,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 #endif /* localmod 050 */
+	associate_dependent_jobs(sinfo);
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
@@ -865,10 +866,8 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 
 	attrp = sched->attribs;
 
-	if (pbs_conf.pbs_use_tcp == 1) {
-		/* set throughput mode to 1 by default */
-		sinfo->throughput_mode = 1;
-	}
+	/* set throughput mode to 1 by default */
+	sinfo->throughput_mode = 1;
 
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
@@ -2489,6 +2488,10 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	/* Now that all job information has been created, time to associate
+	 * jobs to each other if they have runone dependency
+	 */
+	associate_dependent_jobs(nsinfo);
 
 	return nsinfo;
 }

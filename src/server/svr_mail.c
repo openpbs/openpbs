@@ -71,7 +71,7 @@
 #include "job.h"
 #include "reservation.h"
 #include "server.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 /* External Functions Called */
@@ -176,8 +176,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	 * Fix up file descriptors and signal handlers.
 	 */
 	net_close(-1);
-	if (pfn_rpp_terminate)
-		rpp_terminate();
+	tpp_terminate();
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
@@ -429,7 +428,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	 */
 
 	net_close(-1);
-	rpp_terminate();
+	tpp_terminate();
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);

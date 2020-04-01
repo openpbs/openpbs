@@ -442,7 +442,7 @@ post_signal_req(struct work_task *pwt)
 	int			suspend = 0;
 	int			resume = 0;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
 
 	preq = pwt->wt_parm1;
@@ -527,7 +527,7 @@ post_signal_req(struct work_task *pwt)
 			pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
 		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_SUSPEND, pjob);
-		
+
 		reply_ack(preq);
 	}
 }

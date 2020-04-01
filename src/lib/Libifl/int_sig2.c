@@ -47,7 +47,7 @@
 #include "libpbs.h"
 #include "dis.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 
@@ -60,20 +60,19 @@
  * @param[in] signal - signal
  * @param[in] msg - msg to be sent
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
  * @retval      0               Success
  * @retval      pbs_error(!0)   error
  */
-
 int
-PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int rpp, char **msgid)
+PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int prot, char **msgid)
 {
 	int rc = 0;
 
-	if (!rpp) {
+	if (prot == PROT_TCP) {
 		DIS_tcp_funcs();
 	} else {
 		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
@@ -83,13 +82,14 @@ PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int rpp, char **msg
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_SignalJob, pbs_current_user)) ||
 		(rc = encode_DIS_SignalJob(c, jobid, signal)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
-		if (!rpp) {
+		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
 			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
+
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc = pbs_errno;

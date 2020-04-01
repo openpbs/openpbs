@@ -76,11 +76,8 @@
 #ifdef PBS_COMPRESSION_ENABLED
 #include <zlib.h>
 #endif
-
 #include "avltree.h"
-
-#include "rpp.h"
-#include "tpp_common.h"
+#include "tpp_internal.h"
 #include "auth.h"
 
 #define RLIST_INC 100
@@ -1324,23 +1321,13 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 		auth_def_t *authdef = NULL;
 		void *authctx = NULL;
-		char *method = NULL;
 
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
 
-		if (ahdr.for_encrypt == FOR_AUTH)
-			method = tpp_conf->auth_config->auth_method;
-		else
-			method = tpp_conf->auth_config->encrypt_method;
-		if (strcmp(ahdr.auth_type, method) != 0) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method mismatch in connection %s", tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption", tpp_netaddr(&connected_host));
-			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-			tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
-			return 0; /* let connection be alive, so we can send error */
-		}
-
 		if ((authdef = get_auth(ahdr.auth_type)) == NULL) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method not supported in connection %s", tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption", tpp_netaddr(&connected_host));
+			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, %s method not supported in connection %s",
+				tfd, ahdr.for_encrypt == FOR_AUTH ? "Authentication" : "Encryption",
+				tpp_netaddr(&connected_host));
 			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 			tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
 			return 0; /* let connection be alive, so we can send error */
@@ -1951,7 +1938,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			tpp_addr_t *src_host;
 			typedef struct {
 				int target_fd; /* target comm fd */
-				int num_streams; /* actual number of destination streams */ 
+				int num_streams; /* actual number of destination streams */
 				char *router_name;
 				void *cmpr_ctx;
 				void *minfo_buf; /* allocate size for total members */
@@ -2107,7 +2094,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 							/* got to add, but no space */
 							tmp = realloc(rlist, sizeof(target_comm_struct_t) * (rsize + RLIST_INC));
 							if (!tmp) {
-								snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, 
+								snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 									"Out of memory resizing pbs_comm list to %lu bytes", (unsigned long)(sizeof(int) * rsize));
 								tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 								goto mcast_err;
@@ -2139,7 +2126,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					/* at this point to have the entry particular target comm */
 					/* copy (or compress) the minfo for the target leaf */
 					if (rlist[found].cmpr_ctx == NULL) { /* no compression */
-						tpp_mcast_pkt_info_t *c_minfo = 
+						tpp_mcast_pkt_info_t *c_minfo =
 							(tpp_mcast_pkt_info_t *)((char *) rlist[found].minfo_buf + (rlist[found].num_streams * sizeof(tpp_mcast_pkt_info_t)));
 						memcpy(c_minfo, minfo, sizeof(tpp_mcast_pkt_info_t));
 					} else {
@@ -2157,7 +2144,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				memcpy(&t_mhdr, mhdr, sizeof(tpp_mcast_pkt_hdr_t)); /* only to satisfy valgrind */
 				t_mhdr.hop = 1;
 
-				/* set the header chunk and data chunk one time for all target comms */ 
+				/* set the header chunk and data chunk one time for all target comms */
 				mchunks[0].data = &t_mhdr;
 				mchunks[0].len = sizeof(tpp_mcast_pkt_hdr_t);
 
@@ -2192,7 +2179,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 					mchunks[1].data = t_minfo_buf;
 					mchunks[1].len = t_minfo_len;
-					
+
 					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Sending MCAST packet to %s, num_streams=%d", rlist[k].router_name, rlist[k].num_streams);
 					tpp_log_func(LOG_INFO, __func__, tpp_get_logbuf());
 					if (tpp_transport_vsend(rlist[k].target_fd, mchunks, 3) != 0) {

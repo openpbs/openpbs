@@ -81,16 +81,13 @@ __pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 		return pbs_errno;
 
 	/* send request */
-
-	if ((rc = PBSD_sig_put(c, jobid, signal, extend, 0, NULL)) != 0) {
+	if ((rc = PBSD_sig_put(c, jobid, signal, extend, PROT_TCP, NULL)) != 0) {
 		(void)pbs_client_thread_unlock_connection(c);
 		return (rc);
 	}
 
 	/* read reply */
-
 	reply = PBSD_rdrpy(c);
-
 	PBSD_FreeReply(reply);
 
 	rc = get_conn_errno(c);

@@ -167,11 +167,11 @@ que_save_db(pbs_queue *pque, int mode)
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 	int savetype = PBS_UPDATE_DB_FULL;
 
-	if (svr_to_db_que(pque, &dbque, savetype) != 0)
-		goto db_err;
-
 	obj.pbs_db_obj_type = PBS_DB_QUEUE;
 	obj.pbs_db_un.pbs_db_que = &dbque;
+
+	if (svr_to_db_que(pque, &dbque, savetype) != 0)
+		goto db_err;
 
 	if (mode == QUE_SAVE_NEW)
 		savetype = PBS_INSERT_DB;
@@ -185,7 +185,7 @@ que_save_db(pbs_queue *pque, int mode)
 
 db_err:
 	/* free the attribute list allocated by encode_attrs */
-	free(dbque.attr_list.attributes);
+	pbs_db_reset_obj(&obj);
 
 	strcpy(log_buffer, "que_save failed ");
 	if (conn->conn_db_err != NULL)

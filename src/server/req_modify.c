@@ -111,7 +111,7 @@ post_modify_req(struct work_task *pwt)
 {
 	struct batch_request *preq;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore socket to client */
@@ -1050,4 +1050,3 @@ modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad)
 
 	return (0);
 }
-

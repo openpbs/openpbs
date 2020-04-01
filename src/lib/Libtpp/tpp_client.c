@@ -52,11 +52,11 @@
  *		This is the client side (referred to as leaf) in the tpp network
  *		topology. This compiles into the overall tpp library, and is
  *		linked to the PBS daemons. This code file implements the
- *		rpp_ interface functions that the daemons use to communicate
+ *		tpp_ interface functions that the daemons use to communicate
  *		with other daemons.
  *
  *		The code is driven by 2 threads. The Application thread (from
- *		the daemons) calls the main interfaces (rpp/tpp_xxx functions).
+ *		the daemons) calls the main interfaces (tpp_ functions).
  *		When a piece of data is to be transmitted, its queued to a
  *		stream, and another independent thread drives the actual IO of
  *		the data. We refer to these two threads in the comments as
@@ -94,10 +94,28 @@
 
 #include "avltree.h"
 #include "libpbs.h"
-#include "rpp.h"
+#include "tpp_internal.h"
 #include "dis.h"
-#include "tpp_common.h"
 #include "auth.h"
+
+/*
+ *	Global Variables
+ */
+
+/**
+ *	file descriptor returned by tpp_init()
+ */
+int		tpp_fd = -1;
+
+/**
+ *	Number of retrys to for each packet.
+ */
+int		rpp_retry = RPP_RETRY;
+
+/**
+ *	Number of packets to send before gettin an ACK.
+ */
+int		rpp_highwater = RPP_HIGHWATER;
 
 /*
  * app_mbox is the "monitoring mechanism" for the application
@@ -1410,7 +1428,7 @@ tpp_poll(void)
  *	It advances the "current position" in the data packet, so subsequent
  *	reads on this stream reads the next bytes from the data packet.
  *	It never advances the "current position" past the end of the data
- *	packet. To move to the next packet, the APP must call "rpp_eom/tpp_eom".
+ *	packet. To move to the next packet, the APP must call "tpp_eom".
  *
  * @param[in]  sd   - The stream descriptor to which to read data
  * @param[out] data - Pointer to the buffer to read data into
@@ -1783,20 +1801,6 @@ tpp_terminate()
 	tpp_transport_terminate();
 
 	tpp_mbox_destroy(&app_mbox, 0);
-}
-
-/* NULL definitions for some unimplemented functions */
-int
-tpp_bind(unsigned int port)
-{
-	return 0;
-}
-
-/* NULL definitions for some unimplemented functions */
-int
-tpp_io(void)
-{
-	return 0;
 }
 
 /**
@@ -4476,7 +4480,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		conn_auth_t *authdata = (conn_auth_t *)extra;
 		auth_def_t *authdef = NULL;
 		void *authctx = NULL;
-		char *method = NULL;
 
 		if (authdata == NULL) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, No auth data found", tfd);
@@ -4485,17 +4488,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		}
 
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
-		if (ahdr.for_encrypt == FOR_AUTH) {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method mismatch in connection", tfd);
-			method = tpp_conf->auth_config->auth_method;
-		} else {
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Encryption method mismatch in connection", tfd);
-			method = tpp_conf->auth_config->encrypt_method;
-		}
-		if (strcmp(ahdr.auth_type, method) != 0) {
-			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-			return -1;
-		}
 		len_in = (size_t)len - sizeof(tpp_auth_pkt_hdr_t);
 		data_in = calloc(1, len_in);
 		if (data_in == NULL) {
