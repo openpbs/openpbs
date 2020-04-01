@@ -88,12 +88,13 @@ class TestSchedBadstate(TestFunctional):
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
         ncpus = self.server.status(NODE)[0]['resources_available.ncpus']
-        a = {'Resource_List.select': '1:ncpus=' + ncpus}
         if self.mom.is_cpuset_mom():
             vnode_id = self.server.status(NODE)[1]['id']
             vnode_val = 'vnode=' + vnode_id
             ncpus = self.server.status(NODE)[1]['resources_available.ncpus']
-            a['Resource_List.select'] = vnode_val + ":ncpus=" + ncpus
+            a = {'Resource_List.select': vnode_val + ':ncpus=' + ncpus}
+        else:
+            a = {'Resource_List.select': '1:ncpus=' + ncpus}
         b = a.copy()
         J = Job(attrs=a)
         jid1 = self.server.submit(J)
