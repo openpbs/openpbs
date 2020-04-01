@@ -93,6 +93,7 @@ class Test_systemd(TestFunctional):
             return False
         return True
 
+    @skipOnShasta
     def test_systemd(self):
         """
         Test whether you are able to control pbs using systemd
