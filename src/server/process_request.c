@@ -813,6 +813,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_ModifyJob:
+		case PBS_BATCH_ModifyJob_Async:
 			req_modifyjob(request);
 			break;
 
@@ -1390,6 +1391,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_ModifyJob:
 		case PBS_BATCH_ModifyResv:
+		case PBS_BATCH_ModifyJob_Async:
 			freebr_manage(&preq->rq_ind.rq_modify);
 			break;
 

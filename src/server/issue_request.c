@@ -512,6 +512,21 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 				&msgid);
 			break;
 
+		case PBS_BATCH_ModifyJob_Async:
+			attrl_fixlink(&request->rq_ind.rq_modify.rq_attr);
+			patrl = (struct attropl *)&((struct svrattrl *)GET_NEXT(
+				request->rq_ind.rq_modify.rq_attr))->al_atopl;
+			rc = PBSD_mgr_put(conn,
+				PBS_BATCH_ModifyJob_Async,
+				MGR_CMD_SET,
+				MGR_OBJ_JOB,
+				request->rq_ind.rq_modify.rq_objname,
+				patrl,
+				NULL,
+				prot,
+				&msgid);
+			break;
+
 		case PBS_BATCH_Rerun:
 			if (prot == PROT_TPP) {
 				rc = is_compose_cmd(sock, IS_CMD, &msgid);

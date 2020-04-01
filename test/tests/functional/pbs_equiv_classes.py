@@ -50,7 +50,7 @@ class TestEquivClass(TestFunctional):
         self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         # capture the start time of the test for log matching
-        self.t = int(time.time())
+        self.t = time.time()
 
     def submit_jobs(self, num_jobs=1,
                     attrs={'Resource_List.select': '1:ncpus=1'},

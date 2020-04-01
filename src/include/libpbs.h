@@ -275,6 +275,7 @@ struct batch_reply
 #define PBS_BATCH_PreemptJobs		93
 #define PBS_BATCH_Cred			94
 #define PBS_BATCH_Authenticate		95
+#define PBS_BATCH_ModifyJob_Async	96
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
