@@ -198,7 +198,8 @@ class TestSuspendResumeAccounting(TestFunctional):
 
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
-        self.server.expect(NODE, {'state': 'maintenance'}, id=self.mom.shortname)
+        self.server.expect(NODE, {'state': 'maintenance'},
+                           id=self.mom.shortname)
 
         record = 'z;%s;requestor=%s@%s .*resources_used.' % \
                  (jid, ROOT_USER, self.server.hostname)
@@ -285,8 +286,8 @@ class TestSuspendResumeAccounting(TestFunctional):
         # Submit a low priority job
         j1 = Job(TEST_USER)
         j1.create_script(self.script)
-        j1.set_attributes({ATTR_l + '.select':
-                               '1:ncpus=8:mem=512mb+1:ncpus=6:mem=256mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=8:mem=512mb+1'
+                                               ':ncpus=6:mem=256mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
