@@ -1565,17 +1565,6 @@ class DshUtils(object):
                 _u = str(uid)
         if _u == '':
             return False
-        if gid is not None:
-            _g = ''
-            if isinstance(gid, int) and gid != -1:
-                _g = grp.getgrgid(gid).gr_name
-            elif (isinstance(gid, str) and (gid != '-1')):
-                _g = gid
-            else:
-                # must be as PbsGroup object
-                if str(gid) != '-1':
-                    _g = str(gid)
-            _u = _u + ':' + _g
         cmd = [self.which(hostname, 'chown', level=level)]
         if recursive:
             cmd += ['-R']
@@ -1583,6 +1572,12 @@ class DshUtils(object):
         ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
                            runas=runas, level=level)
         if ret['rc'] == 0:
+            if gid is not None:	
+                rv = self.chgrp(hostname, path, gid=gid, sudo=sudo,	
+                                level=level, recursive=recursive, runas=runas,	
+                                logerr=logerr)	
+                if not rv:	
+                    return False
             return True
         return False
 
