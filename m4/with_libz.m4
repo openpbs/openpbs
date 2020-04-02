@@ -51,7 +51,7 @@ AC_DEFUN([PBS_AC_WITH_LIBZ],
   AS_IF([test "$libz_dir" = "/lib64"],
     # Using system installed libz
 	libz_inc=""
-	AS_IF([test -r "/lib64/libz.so" -o -r "/usr/lib64/libz.so" -o -r "/usr/lib/x86_64-linux-gnu/libz.so"],
+	AS_IF([test -r "/lib64/libz.so" -o -r "/usr/lib64/libz.so" -o -r "/usr/lib/x86_64-linux-gnu/libz.so" -o -r "/usr/lib/aarch64-linux-gnu/libz.so"],
     	[libz_lib="-lz"],
       AC_MSG_ERROR([libz shared object library not found.])
 	),
