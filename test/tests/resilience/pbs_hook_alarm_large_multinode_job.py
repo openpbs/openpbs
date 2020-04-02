@@ -153,7 +153,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
         search_after = int(time.time())
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '20'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
