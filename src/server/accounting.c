@@ -340,6 +340,16 @@ get_resc_used(job *pjob, char *resc_used, int resc_used_size) {
 		&temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
 		NULL, ATR_ENCODE_CLIENT, &patlist);
 
+	/*
+	 * NOTE:
+	 * Following code for constructing resources used information is same as job_obit()
+	 * with minor different that to traverse patlist in this code
+	 * we have to use patlist->al_sister since it is encoded information in job struct
+	 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
+	 * request.
+	 * ji_acctrec is lost on server restart.  Recreate it here if needed.
+	 */
+
 	while(patlist) {
 		/* log to accounting_logs only if there's a value */
 		if (strlen(patlist->al_value) > 0) {
