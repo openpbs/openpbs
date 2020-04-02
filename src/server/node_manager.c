@@ -542,6 +542,23 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
+		{ /* TODO: FIXME: */
+			if (pmom) {
+				snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state: do_set=%d bits=0x%lx txt=%s mi_modtime=%ld", do_set, bits, txt, pmom->mi_modtime);
+			} else {
+				snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state: do_set=%d bits=0x%lx txt=%s", do_set, bits, txt);
+			}
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+				pvnd->nd_name, log_buffer);
+
+			/*
+			process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+			rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
+				hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func,
+				&num_run, &event_initialized);
+			*/
+		}
+
 		if (do_set) {
 			set_vnode_state(pvnd, bits, Nd_State_Or);
 		} else {

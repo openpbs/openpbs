@@ -3424,17 +3424,6 @@ struct batch_request *preq;
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 		nodename, log_buffer);
 
-	{ /* TODO: FIXME: Looking for the hook event type */
-		char *logmsg	= "HOOK:Node delete at request of %s@%s type:%d";
-		(void)sprintf(log_buffer, logmsg,
-			preq->rq_user, preq->rq_host, preq->rq_type);
-
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-			nodename, log_buffer);
-		/*
-		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-		*/
-	}
 
 	/*if doing many and problem arises with some, record them for report*/
 	/*the array of "problem nodes" sees no use now and may never see use*/
@@ -3790,18 +3779,6 @@ struct batch_request *preq;
 	}
 	else
 		svr_chngNodesfile = 0;
-
-	{ /* TODO: FIXME: Looking for the hook event type */
-		char *logmsg	= "HOOK:Node create at request of %s@%s type:%d";
-		(void)sprintf(log_buffer, logmsg,
-			preq->rq_user, preq->rq_host, preq->rq_type);
-
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-			nodename, log_buffer);
-		/*
-		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-		*/
-	}
 
 	reply_ack(preq);	    /*create completely successful*/
 

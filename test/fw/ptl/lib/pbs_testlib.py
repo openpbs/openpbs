@@ -61,7 +61,7 @@ from operator import itemgetter
 
 from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
-from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
+from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError, get_method_name
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import ROOT_USER, TEST_USER, PbsUser
 
@@ -5244,20 +5244,27 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
-    def create_node(self, name):
+    def create_node(self, name, level="INFO", logerr=False):
+        """
+        Add a node to PBS
+        """
         try:
-            self.manager(MGR_CMD_CREATE, VNODE, name)
+            ret = self.manager(MGR_CMD_CREATE, VNODE, name,
+                               level=level, logerr=logerr)
         except PbsManagerError as err:
             raise
+        return ret
 
-    def delete_node(self, name):
+    def delete_node(self, name, level="INFO", logerr=False):
         """
         Remove a node from PBS
         """
         try:
-            self.manager(MGR_CMD_DELETE, VNODE, name)
+            ret = self.manager(MGR_CMD_DELETE, VNODE, name,
+                               level=level, logerr=logerr)
         except PbsManagerError as err:
             raise
+        return ret
 
     def delete_nodes(self):
         """
@@ -8110,7 +8117,7 @@ class Server(PBSService):
                         if not self._is_local:
                             self.du.rm(self.hostname, fn)
                     raise eval(str(ret['err'][0]))
-            self.logger.debug('err: ' + str(ret['err']))
+            self.logger.debug("<" + get_method_name(self) + '>err: ' + str(ret['err']))
 
         if fn is not None:
             os.remove(fn)
