@@ -1689,16 +1689,31 @@ class TestPbsResvAlter(TestFunctional):
 
     def test_adv_resv_endtime_starttime_dur_together(self):
         """
-        Test that all three end, start and duration can be changed together
+        Test that all three end, start and duration can be changed together.
+        If the values of start, end, duration are not reolves properly, this
+        test should fail
         """
         offset = 20
         duration = 20
         new_duration = 25
+        wrong_duration = 45
         shift_start = 10
         shift_end = 15
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
         new_start = self.bu.convert_seconds_to_datetime(start + shift_start)
         new_end = self.bu.convert_seconds_to_datetime(end + shift_end)
+
+        with self.assertRaises(PbsResvAlterError) as e:
+            attr = {'reserve_start': new_start, 'reserve_end': new_end,
+                    'reserve_duration': wrong_duration}
+            self.server.alterresv(rid, attr)
+        self.assertIn('pbs_ralter: Bad time specification(s)',
+                      e.exception.msg[0])
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), start)
+        self.assertEqual(int(t_duration), duration)
+        self.assertEqual(int(t_end), end)
 
         attr = {'reserve_start': new_start, 'reserve_end': new_end,
                 'reserve_duration': new_duration}
@@ -1814,3 +1829,28 @@ class TestPbsResvAlter(TestFunctional):
 
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
+
+    @skipOnCpuSet
+    def test_conflict_standing_resv_occurrence_duration(self):
+        """
+        This test confirms that if the requested duration while altering an
+        occurrence of a standing reservation will conflict with a later
+        occurrence of the same standing reservation, the alter request
+        will be denied.
+        """
+        duration = 60
+        new_duration = 70
+        shift = 10
+        offset = 10
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="1:ncpus=4", standing=True,
+            rrule="FREQ=MINUTELY;COUNT=2")
+
+        self.alter_a_reservation(rid, start, end, a_duration=new_duration,
+                                 check_log=False, whichMessage=0)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), start)
+        self.assertEqual(int(t_duration), duration)
+        self.assertEqual(int(t_end), end)
