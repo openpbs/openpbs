@@ -56,7 +56,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         and resume records when the events are
         triggered by client for one job.
         """
-        j = Job(TEST_USER)
+        j = Job()
         j.create_script(self.script)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -82,14 +82,13 @@ class TestSuspendResumeAccounting(TestFunctional):
         a = {ATTR_rescavail + '.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
-        j = Job(TEST_USER)
+        j = Job()
         j.create_script(self.script)
         j.set_attributes({ATTR_J: '1-2'})
         jid = self.server.submit(j)
 
-        subjobs = self.server.status(JOB, id=jid, extend='t')
-        sub_jid1 = subjobs[1]['id']
-        sub_jid2 = subjobs[2]['id']
+        sub_jid1 = j.create_subjob_id(jid, 1)
+        sub_jid2 = j.create_subjob_id(jid, 2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sub_jid1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sub_jid2)
 
@@ -123,7 +122,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         """
 
         cmd = 'sleep 10'
-        j = Job(TEST_USER, attrs={ATTR_inter: ''})
+        j = Job(attrs={ATTR_inter: ''})
         j.interactive_script = [('hostname', '.*'),
                                 (cmd, '.*')]
 
@@ -160,13 +159,13 @@ class TestSuspendResumeAccounting(TestFunctional):
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,mem'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        j1 = Job(TEST_USER)
+        j1 = Job()
         j1.create_script(self.script)
         j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
-        j2 = Job(TEST_USER)
+        j2 = Job()
         j2.create_script(self.script)
         j2.set_attributes(
             {ATTR_l + '.select': '1:ncpus=2:mem=512mb',
@@ -176,9 +175,11 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
-        record = 'z;%s;requestor=Scheduler@%s .*resources_used.' % \
-                 (jid1, self.server.hostname)
-        self.server.accounting_match(msg=record, id=jid1, regexp=True)
+        record = 'z;%s;requestor=Scheduler@%s ' \
+                 'resources_released=(%s:ncpus=4:mem=524288kb) ' \
+                 'resources_used.' % \
+                 (jid1, self.server.hostname, self.server.shortname)
+        self.server.accounting_match(msg=record, id=jid1)
 
         self.server.delete(jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -191,7 +192,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         Test case to verify accounting of admin-suspend
         and admin-resume records.
         """
-        j = Job(TEST_USER)
+        j = Job()
         j.create_script(self.script)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
@@ -223,7 +224,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,mem'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        j = Job(TEST_USER)
+        j = Job()
         j.create_script(self.script)
         j.set_attributes({ATTR_l + '.select': '1:ncpus=1:mem=512mb'})
         jid = self.server.submit(j)
@@ -284,7 +285,7 @@ class TestSuspendResumeAccounting(TestFunctional):
                                   self.mom, additive=True, fname="vnodedef2")
 
         # Submit a low priority job
-        j1 = Job(TEST_USER)
+        j1 = Job()
         j1.create_script(self.script)
         j1.set_attributes({ATTR_l + '.select': '1:ncpus=8:mem=512mb+1'
                                                ':ncpus=6:mem=256mb'})
@@ -292,7 +293,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
-        j2 = Job(TEST_USER)
+        j2 = Job()
         j2.create_script(self.script)
         j2.set_attributes(
             {ATTR_l + '.select': '1:ncpus=8:mem=256mb',
@@ -329,7 +330,7 @@ import pbs
 e = pbs.event()
 e.reject()
 """
-        j1 = Job(TEST_USER)
+        j1 = Job()
         j1.create_script(self.script)
         j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
@@ -338,7 +339,7 @@ e.reject()
         a = {'event': 'runjob', 'enabled': 'True'}
         self.server.create_import_hook("sr_hook", a, hook)
 
-        j2 = Job(TEST_USER)
+        j2 = Job()
         j2.create_script(self.script)
         j2.set_attributes(
             {ATTR_l + '.select': '1:ncpus=2:mem=512mb',
