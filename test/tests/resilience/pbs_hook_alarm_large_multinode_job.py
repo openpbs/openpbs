@@ -59,7 +59,8 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
             self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
                                       expect=False)
             # Make sure all the nodes are in state free.  We can't let
-            # create_vnodes() do this because it does a pbsnodes -v on each vnode.
+            # create_vnodes() do this because it does
+            # a pbsnodes -v on each vnode.
             # This takes a long time.
             self.server.expect(NODE, {'state=free': (GE, 5000)})
             # Restart mom explicitly due to PP-993
@@ -73,13 +74,15 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
             vnode_id = vnode_val[0]['id']
             ncpus = vnode_val[0]['resources_available.ncpus']
             del vnode_val[0]
-            a = {'Resource_List.select': '1:ncpus=' + ncpus + ':vnode=' + vnode_id }
+            a = {'Resource_List.select': '1:ncpus=' +
+                 ncpus + ':vnode=' + vnode_id}
             for _vnode in vnode_val:
                 vnode_id = _vnode['id']
                 ncpus = _vnode['resources_available.ncpus']
-                a['Resource_List.select'] += '+1:ncpus=' + ncpus + ':vnode=' + vnode_id
+                a['Resource_List.select'] += '+1:ncpus=' + \
+                    ncpus + ':vnode=' + vnode_id
         else:
-           a['Resource_List.select'] = '5000:ncpus=1:mem=1gb'
+            a['Resource_List.select'] = '5000:ncpus=1:mem=1gb'
         j = Job(TEST_USER)
 
         j.set_attributes(a)
@@ -202,7 +205,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
         a = {'event': hook_event, 'enabled': 'True',
              'alarm': '20'}
         self.server.create_import_hook(hook_name, a, hook_body)
-
 
         jid = self.submit_job()
         self.server.expect(JOB, {'job_state': 'R'},
