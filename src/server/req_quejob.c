@@ -3441,13 +3441,14 @@ int
 copy_params_from_job(char *jobid, resc_resv *presv)
 {
 	job *pjob;
-	char buf[256];
+	int bufsize;
 	attribute temp;
 	resource *presc;
 	resource_def *prdefsl;
 	resource_def *resc_def;
 	resource *job_resc_entry;
 	resource *resv_resc_entry;
+	char buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 64] = {0};
 
 	int walltime_copied = 0;
 
@@ -3460,7 +3461,12 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 		(pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str == NULL))
 		return PBSE_BADSTATE;
 
-	snprintf(buf, 255, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+	bufsize = PBS_MAXUSER + PBS_MAXHOSTNAME + 64 - 1;
+
+	if (strchr(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, '@')) {
+		strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, bufsize);
+	} else
+		snprintf(buf, bufsize, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
 			pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str);
 
 	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_owner], &resv_attr_def[(int)RESV_ATR_resv_owner], buf);
