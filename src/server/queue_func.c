@@ -342,8 +342,11 @@ resc_resv *
 find_resv_by_quename(char *quename)
 {
 	char *pc;
-	resc_resv *presv;
+	resc_resv *presv = NULL;
 	char qname[PBS_MAXQUEUENAME + 1];
+
+	if (quename == NULL || *quename == '\0')
+		return NULL;
 
 	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
 	qname[PBS_MAXQUEUENAME] = '\0';
