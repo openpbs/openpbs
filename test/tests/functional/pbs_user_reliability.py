@@ -117,7 +117,7 @@ j.create_resv_from_job=1
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
 
         self.server.log_match("Reject reply code=15095", starttime=now,
-                              interval=2, max_attempts=20, existence=False)
+                              interval=2, max_attempts=10, existence=False)
 
         a = {ATTR_job: jid}
         rid = self.server.status(RESV, a)[0]['id'].split(".")[0]

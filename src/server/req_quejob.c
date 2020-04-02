@@ -314,7 +314,6 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefplc;
 	resource *presc;
 	conn_t *conn;
-	resc_resv *presv = NULL;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -673,6 +672,7 @@ req_quejob(struct batch_request *preq)
 #ifndef PBS_MOM
 		if (index == JOB_ATR_create_resv_from_job) {
 			if (qname != NULL && *qname != '\0') {
+				resc_resv *presv;
 				presv = find_resv_by_quename(qname);
 
 				if (presv) {
