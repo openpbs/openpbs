@@ -1628,7 +1628,7 @@ class TestPbsResvAlter(TestFunctional):
         In this case the endtime will change accordingly
         """
 
-        offset = 60
+        offset = 20
         duration = 20
         new_duration = 30
         shift = 10
@@ -1689,27 +1689,25 @@ class TestPbsResvAlter(TestFunctional):
 
     def test_adv_resv_endtime_starttime_dur_together(self):
         """
-        Test that all three end, start and duration cannot be changed together
+        Test that all three end, start and duration can be changed together
         """
         offset = 20
         duration = 20
-        new_duration = 30
-        shift = 10
+        new_duration = 25
+        shift_start = 10
+        shift_end = 15
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
-        new_start = self.bu.convert_seconds_to_datetime(start + shift)
-        new_end = self.bu.convert_seconds_to_datetime(end + shift)
+        new_start = self.bu.convert_seconds_to_datetime(start + shift_start)
+        new_end = self.bu.convert_seconds_to_datetime(end + shift_end)
 
-        with self.assertRaises(PbsResvAlterError) as e:
-            attr = {'reserve_start': new_start, 'reserve_end': new_end,
-                    'reserve_duration': new_duration}
-            self.server.alterresv(rid, attr)
-        self.assertIn('pbs_ralter: Bad time specification(s)',
-                      e.exception.msg[0])
+        attr = {'reserve_start': new_start, 'reserve_end': new_end,
+                'reserve_duration': new_duration}
+        self.server.alterresv(rid, attr)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(int(t_start), start)
-        self.assertEqual(int(t_duration), duration)
-        self.assertEqual(int(t_end), end)
+        self.assertEqual(int(t_start), start + shift_start)
+        self.assertEqual(int(t_duration), new_duration)
+        self.assertEqual(int(t_end), end + shift_end)
 
     def test_standing_resv_duration(self):
         """
@@ -1722,7 +1720,7 @@ class TestPbsResvAlter(TestFunctional):
         All the above operations are expected to be successful.
         """
         offset = 20
-        duration = 60
+        duration = 30
         new_duration = 90
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,

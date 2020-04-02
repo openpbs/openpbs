@@ -4603,22 +4603,19 @@ start_end_dur_wall(void *pobj, int objtype)
 			return (-1);
 	}
 	else {
-		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
-			if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
-				swcode += 6; /*calcualte start time*/
-			if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
-				swcode += 5; /*calculate end time*/;
-			if (swcode == 11)
-				return (-1);
-		}
-		else {
-			swcode = 3; /*start, end*/
-		}
+		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) 
+				swcode += 4;
+		if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
+				swcode += 2; /*calcualte start time*/
+		if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
+				swcode += 1; /*calculate end time*/;
 	}
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
+		case  1:
+		case  2:
 		case  3:	/*start, end*/
 			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
@@ -4631,6 +4628,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			}
 			break;
 
+		case  4:
 		case  5:	/*start, duration*/
 			if (((check_start && pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
 				(pduration->at_val.at_long <= 0))
