@@ -4289,9 +4289,13 @@ class PBSService(PBSObject):
                 return True
             elif objtype == MGR_OBJ_SCHED:
                 for k, v in conf.items():
+                    fn = self.du.create_temp_file()
                     try:
-                        fn = self.du.create_temp_file()
-                        self.du.chmod(path=fn, mode=0o644)
+                        rv = self.du.chmod(path=fn, mode=0o644)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
                         rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
@@ -4299,11 +4303,51 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
                             return False
+                        rv = self.du.chown(path=k, runas=ROOT_USER,
+                                           uid=0, gid=0, sudo=True)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
+                    except:
+                        self.logger.error("Failed to restore "
+                                          + "configuration: %s" % k)
+                        return False
                     finally:
                         if os.path.isfile(fn):
-                            self.du.rm(path=fn)
+                            self.du.rm(path=fn, force=True, sudo=True)
                 return True
-        return False
+            elif objtype == MGR_OBJ_NODE:
+                nconf = conf[str(self.hostname)]
+                for k, v in nconf.items():
+                    try:
+                        fn = self.du.create_temp_file()
+                        rv = self.du.chmod(path=fn, mode=0o644)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
+                        with open(fn, 'w') as fd:
+                            fd.write("\n".join(v))
+                        rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
+                        if rv['rc'] != 0:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
+                        rv = self.du.chown(path=k, runas=ROOT_USER,
+                                           uid=0, gid=0, sudo=True)
+                        if not rv:
+                            self.logger.error("Failed to restore "
+                                              + "configuration: %s" % k)
+                            return False
+                    except:
+                        self.logger.error("Failed to restore "
+                                          + "configuration: %s" % k)
+                        return False
+                    finally:
+                        if os.path.isfile(fn):
+                            self.du.rm(path=fn, force=True, sudo=True)
+                return True
 
     def create_pbsnode(self, node_name, attrs):
         """
@@ -13321,12 +13365,13 @@ class MoM(PBSService):
             return self.isUp()
         return True
 
-    def save_configuration(self, outfile, mode='a'):
+    def save_configuration(self, outfile=None, mode='w'):
         """
         Save a MoM ``mom_priv/config``
 
-        :param outfile: the output file to which onfiguration is
-                        saved
+        :param outfile: Optional Path to a file to which configuration
+                        is saved, when not provided, data is saved in
+                        class variable saved_config
         :type outfile: str
         :param mode: the mode in which to open outfile to save
                      configuration.
@@ -13338,7 +13383,6 @@ class MoM(PBSService):
                   should save with mode 'a' or 'a+'. Defaults to a+
         """
         conf = {}
-        mconf = {MGR_OBJ_NODE: conf}
         mpriv = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv')
         cf = os.path.join(mpriv, 'config')
         self._save_config_file(conf, cf)
@@ -13347,20 +13391,26 @@ class MoM(PBSService):
             for f in os.listdir(os.path.join(mpriv, 'config.d')):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
-        try:
-            with open(outfile, mode) as f:
-                cPickle.dump(mconf, f)
-        except:
-            self.logger.error('error saving configuration to ' + outfile)
-            return False
-
+        mconf = {self.hostname: conf}
+        if MGR_OBJ_NODE not in self.server.saved_config:
+            self.server.saved_config[MGR_OBJ_NODE] = {}
+        self.server.saved_config[MGR_OBJ_NODE].update(mconf)
+        if outfile is not None:
+            try:
+                with open(outfile, mode) as f:
+                    json.dump(self.server.saved_config, f)
+            except:
+                self.logger.error('error saving configuration to ' + outfile)
+                return False
         return True
 
     def load_configuration(self, infile):
         """
-        load configuration from saved file infile
+        load mom configuration from saved file infile
         """
-        self._load_configuration(infile, MGR_OBJ_NODE)
+        rv = self._load_configuration(infile, MGR_OBJ_NODE)
+        self.signal('-HUP')
+        return rv
 
     def is_cray(self):
         """
