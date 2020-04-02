@@ -69,6 +69,7 @@ class TestPbsExecjobEnd(TestFunctional):
     pbs_mom is not blocked upon execution.
     """
     logutils = PBSLogUtils()
+    job_list = []
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -102,6 +103,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j.set_sleep_time(1)
         self.server.create_import_hook(hook_name, attr, hook_body)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         # need to verify hook messages in the below mentioned order to
         # confirm mom is not blocked on execjob_end hook execution.
         # The order is verified with the use of starttime and endtime
@@ -154,6 +156,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER)
         j.set_sleep_time(1)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         self.mom.log_match("Job;%s;executed %s hook" % (jid, hook_name1),
                            n=100, max_attempts=10, interval=2)
         self.mom.log_match("Job;%s;Job is rejected" % jid,
@@ -181,12 +184,14 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1)
         jid1 = self.server.submit(j)
+        self.job_list.append(jid1)
         # jid1 should be in E state, in sleep of execjob_end hook for
         # jid2 submmision.
         self.server.expect(JOB, {'job_state': 'E'}, id=jid1)
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1)
         jid2 = self.server.submit(j)
+        self.job_list.append(jid2)
         # hook message of jid2 should be logged after the message of jid1 and
         # before completion of sleep in hook for jid1 inorder to prove mom
         # is not in blocked state.
@@ -233,6 +238,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j.set_sleep_time(1)
         self.server.create_import_hook(hook_name, attr, hook_body)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         for host, mom in self.moms.items():
             (_, str1) = mom.log_match("Job;%s;executed execjob_end hook" %
                                       jid, n=100, max_attempts=10,
@@ -277,6 +283,7 @@ class TestPbsExecjobEnd(TestFunctional):
             j = Job(TEST_USER)
         j.set_sleep_time(10)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.deljob(id=jid, wait=True, attr_W="force")
         for host, mom in self.moms.items():
@@ -312,6 +319,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(30)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
 
         # Verify job spawn on sisterm mom
         self.momB.log_match("Job;%s;JOIN_JOB as node" % jid, n=100,
@@ -378,6 +386,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER)
         j.set_sleep_time(1)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         self.mom.log_match("starting hook event EXECJOB_EPILOGUE")
         # Force rerun job
         self.server.rerunjob(jid, extend='force')
@@ -448,6 +457,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER)
         j.set_sleep_time(10)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         self.common_steps(jid, self.mom)
 
     def test_qrun_arrayjob_on_mom_breakdown(self):
@@ -467,6 +477,7 @@ class TestPbsExecjobEnd(TestFunctional):
         })
         j.set_sleep_time(10)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         # check job array has begun
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         subjid_1 = j.create_subjob_id(jid, 1)
@@ -483,6 +494,7 @@ class TestPbsExecjobEnd(TestFunctional):
         j = Job(TEST_USER)
         j.set_sleep_time(5)
         jid = self.server.submit(j)
+        self.job_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.mom.log_match("Job;%s;starting hook event EXECJOB_END" %
                            jid, n=100, max_attempts=10,
@@ -498,3 +510,8 @@ class TestPbsExecjobEnd(TestFunctional):
         for mom_val in self.moms.values():
             if mom_val.is_cpuset_mom():
                 mom_val.restart()
+                for jobid in self.job_list:
+                    path = os.path.join('/sys/fs/cgroup/cpuset/PBSPro', jobid)
+                    self.assertFalse(self.du.isdir(hostname=mom_val.shortname,
+                                                   path=path))
+        self.job_list.clear()
