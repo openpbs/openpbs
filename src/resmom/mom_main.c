@@ -10868,15 +10868,29 @@ mom_topology(void)
 
 		close(fd[0]);
 
-		if (hwloc_topology_init(&topology) == -1)
+		ret = hwloc_topology_init(&topology);
+		if (ret == 0)
+#if HWLOC_API_VERSION < 0x00020000
+			ret = hwloc_topology_set_flags(topology,
+					HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM |
+					HWLOC_TOPOLOGY_FLAG_IO_DEVICES);
+#else
+			ret = hwloc_topology_set_io_types_filter(topology,
+					HWLOC_TYPE_FILTER_KEEP_ALL);
+#endif
+		if (ret == 0)
+			ret = hwloc_topology_load(topology);
+		if (ret == 0)
+#if HWLOC_API_VERSION < 0x00020000
+			ret = hwloc_topology_export_xmlbuffer(topology,
+					&xmlbuf, &xmllen);
+#else
+			ret = hwloc_topology_export_xmlbuffer(topology,
+					&xmlbuf, &xmllen,
+					HWLOC_TOPOLOGY_EXPORT_XML_FLAG_V1);
+#endif
+		if (ret != 0)
 			ret = -1;
-		else if ((hwloc_topology_set_flags(topology,
-				HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
-				== -1) || (hwloc_topology_load(topology) == -1)
-				|| (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen)
-						== -1)) {
-			ret = -1;
-		}
 
 		write(fd[1], &ret, (sizeof(ret)));
 		write(fd[1], &xmllen, (sizeof(xmllen)));
