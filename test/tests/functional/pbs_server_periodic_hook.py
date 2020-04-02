@@ -84,7 +84,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         """
         occurance = 0
         # time after which we want to start matching log
-        search_after = int(time.time())
+        search_after = time.time()
         intr = freq
         while (occurance < count):
             msg_expected = self.start_msg
@@ -332,7 +332,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         scr = self.create_hook(accept=True, sleep_time=25)
         attrs = {'event': "periodic", 'alarm': "28"}
         self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
-        start_time = int(time.time())
+        start_time = time.time()
         attrs = {'freq': 30, 'enabled': 'True'}
         self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         expected_msg = "periodic hook started at "
@@ -347,7 +347,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         attrs = {'event': "exechost_periodic", 'alarm': "7", 'freq': "8",
                  'enabled': 'True'}
         self.server.create_import_hook(hook_name, attrs, scr)
-        start_time = int(time.time())
+        start_time = time.time()
         expected_msg = "periodic hook started at "
         self.mom.log_match(expected_msg, interval=(freq + 1),
                            starttime=start_time)

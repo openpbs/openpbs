@@ -280,7 +280,7 @@ pbs.event().accept()
         self.server.manager(MGR_CMD_SET, SERVER, {"log_events": 2047})
         # Set time to start scanning logs
         time.sleep(1)
-        stime = int(time.time())
+        stime = time.time()
         # Set max_hooks to low to hit max_hooks only
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'python_restart_max_hooks': 1},
@@ -357,7 +357,7 @@ pbs.event().accept()
         self.server.manager(MGR_CMD_SET, SERVER, {"log_events": 2047})
         # Set time to start scanning logs
         time.sleep(1)
-        stime = int(time.time())
+        stime = time.time()
         # Set max_objects only
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'python_restart_max_objects': 1},

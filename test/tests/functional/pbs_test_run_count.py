@@ -48,7 +48,7 @@ class Test_run_count(TestFunctional):
                  "e.reject()\n")
 
     def create_reject_begin_hook(self):
-        start_time = int(time.time())
+        start_time = time.time()
         attr = {'event': 'execjob_begin'}
         self.server.create_import_hook(self.hook_name, attr, self.hook_body)
 
@@ -57,7 +57,7 @@ class Test_run_count(TestFunctional):
                            existence=True, starttime=start_time)
 
     def disable_reject_begin_hook(self):
-        start_time = int(time.time())
+        start_time = time.time()
         attr = {'enabled': 'false'}
         self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
 

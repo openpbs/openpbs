@@ -325,7 +325,7 @@ class TestPbsExecjobEnd(TestFunctional):
 
         # Wait for job to be in E state
         time.sleep(15)
-        hook_execution_time = int(time.time())
+        hook_execution_time = time.time()
         self.server.expect(JOB, {'job_state': "E"}, id=jid, offset=10)
 
         # Following message should be logged on momA after job delete request
@@ -415,13 +415,13 @@ class TestPbsExecjobEnd(TestFunctional):
             self.assertTrue(
                 'qrun: Request invalid for state of job'
                 in e.msg[0])
-            now = int(time.time())
+            now = time.time()
             self.mom.log_match("ending hook event EXECJOB_END",
                                starttime=now, interval=2)
             time.sleep(5)
             self.server.runjob(jid)
             self.server.expect(JOB, {'job_state': 'R'}, jid)
-            now = int(time.time())
+            now = time.time()
             self.mom.log_match(
                 "starting hook event EXECJOB_END",
                 starttime=now, interval=2)

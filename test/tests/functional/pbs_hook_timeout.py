@@ -85,7 +85,7 @@ class TestHookTimeout(TestFunctional):
         self.logger.info("Stopping MomB")
         self.momB.signal("-STOP")
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         hook_body = "import pbs\n"
         a = {'event': 'execjob_epilogue', 'enabled': 'True'}

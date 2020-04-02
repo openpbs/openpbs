@@ -410,7 +410,7 @@ print_attribs(e)
 
 j = e.job
 print_attribs(j)"""
-        now = int(time.time())
+        now = time.time()
         attrs = {'event': 'runjob', 'enabled': 'True'}
         rv = self.server.create_import_hook(self.hook_name, attrs, hook_body)
         self.assertTrue(rv)

@@ -151,7 +151,7 @@ import pbs
 e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
-        search_after = int(time.time())
+        search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
              'alarm': '15'}
         self.server.create_import_hook(hook_name, a, hook_body)
@@ -195,7 +195,7 @@ import pbs
 e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 """
-        search_after = int(time.time())
+        search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
              'alarm': '15'}
         self.server.create_import_hook(hook_name, a, hook_body)
