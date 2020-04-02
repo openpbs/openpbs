@@ -785,10 +785,6 @@ req_modifyReservation(struct batch_request *preq)
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	presv->ri_alter_flags = 0;
-	int d = 0;
-	int r = 0;
-	int e = 0;
-
 
 	while (psatl) {
 		long temp = 0;
@@ -830,7 +826,6 @@ req_modifyReservation(struct batch_request *preq)
 							send_to_scheduler = RESV_START_TIME_MODIFIED;
 							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
-							r = 1;
 						} else {
 							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
@@ -849,10 +844,6 @@ req_modifyReservation(struct batch_request *preq)
 						req_reject(PBSE_BADTSPEC, 0, preq);
 					return;
 				}
-				
-				if (d == 1) {
-					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
-				}
 
 				break;
 			case RESV_ATR_end:
@@ -868,46 +859,20 @@ req_modifyReservation(struct batch_request *preq)
 					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 					return;
 				}
-				e = 1;
-				if (d == 1) {
-					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
-				}
 
 				break;
 			case RESV_ATR_duration:
-				if (r == 1) {
-					if (presv->ri_alter_etime == 0)
-						presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
-						
-					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
-				} else if (e == 1) {
-					if(presv->ri_alter_stime == 0)
+				if (presv->ri_alter_etime == 0)
+					presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
+					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					if (presv->ri_alter_stime == 0)
 						presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 
-					presv->ri_wattr[RESV_ATR_start].at_flags &= ~ATR_VFLAG_SET;
-				}
-				else {
-					if (presv->ri_alter_etime == 0)
-						presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
-					presv->ri_wattr[RESV_ATR_end].at_flags &= ~ATR_VFLAG_SET;
-				}
-				d = 1;
 				send_to_scheduler = RESV_DURATION_MODIFIED;
 				presv->ri_alter_flags |= RESV_DURATION_MODIFIED;
 				break;
 			default:
 				break;
-		}
-
-		if (d == 0)
-			presv->ri_wattr[RESV_ATR_duration].at_flags &= ~ATR_VFLAG_SET;
-
-		if (d == 1 && e == 1 && r == 1) {
-			presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
-			resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
-			req_reject(PBSE_BADTSPEC, 0, preq);
-			resv_revert_alter_times(presv);
-			return;
 		}
 
 		/* decode attribute */

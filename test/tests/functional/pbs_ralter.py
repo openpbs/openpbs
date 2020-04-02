@@ -1698,17 +1698,15 @@ class TestPbsResvAlter(TestFunctional):
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
         new_start = self.bu.convert_seconds_to_datetime(start + shift)
         new_end = self.bu.convert_seconds_to_datetime(end + shift)
-        new_duration = self.bu.convert_seconds_to_datetime(new_duration)
 
         with self.assertRaises(PbsResvAlterError) as e:
             attr = {'reserve_start': new_start, 'reserve_end': new_end,
                     'reserve_duration': new_duration}
-            m = self.server.alterresv(rid, attr)
+            self.server.alterresv(rid, attr)
         self.assertIn('pbs_ralter: Bad time specification(s)',
                       e.exception.msg[0])
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        print(str(self.server.status(RESV, id=rid)))
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), duration)
         self.assertEqual(int(t_end), end)
@@ -1736,8 +1734,6 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_duration, new_duration)
-        print("new Start is " + str(t_start))
-        print("new End is " + str(t_end))
 
         # Wait for the reservation to start running.
         self.check_resv_running(rid, offset - shift)

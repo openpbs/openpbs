@@ -4590,16 +4590,31 @@ start_end_dur_wall(void *pobj, int objtype)
 	} else
 		return (-1);
 
-	if (pstime->at_flags & ATR_VFLAG_SET)
-		swcode += 1;			/*have start*/
-	if (petime->at_flags & ATR_VFLAG_SET)
-		swcode += 2;			/*have end  */
-	if (pduration->at_flags & ATR_VFLAG_SET)
-		swcode += 4;			/*have duration*/
-	if (prsc && pstate != RESV_BEING_ALTERED)
-		swcode += 8;			/*have walltime*/
-	else if (!(prsc = add_resource_entry(pattr, rscdef)))
-		return (-1);
+	if (pstate != RESV_BEING_ALTERED) {
+		if (pstime->at_flags & ATR_VFLAG_SET)
+			swcode += 1;			/*have start*/
+		if (petime->at_flags & ATR_VFLAG_SET)
+			swcode += 2;			/*have end  */
+		if (pduration->at_flags & ATR_VFLAG_SET)
+			swcode += 4;			/*have duration*/
+		if (prsc)
+			swcode += 8;			/*have walltime*/
+		else if (!(prsc = add_resource_entry(pattr, rscdef)))
+			return (-1);
+	}
+	else {
+		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
+			if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
+				swcode += 6; /*calcualte start time*/
+			if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
+				swcode += 5; /*calculate end time*/;
+			if (swcode == 11)
+				return (-1);
+		}
+		else {
+			swcode = 3; /*start, end*/
+		}
+	}
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
@@ -4609,10 +4624,8 @@ start_end_dur_wall(void *pobj, int objtype)
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
-
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
-
 				(void)pddef->at_set(pduration, &atemp, SET);
 				(void)rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
@@ -4629,16 +4642,6 @@ start_end_dur_wall(void *pobj, int objtype)
 					pduration->at_val.at_long;
 			}
 			break;
-		
-		case 4: /*duration*/
-			if (pduration->at_val.at_long <= 0)
-				rc = -1;
-			else {
-				atemp.at_val.at_long = (petime->at_val.at_long -
-					pstime->at_val.at_long);
-				pddef->at_set(pduration, &atemp, SET);
-				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
-			}
 
 		case  7:	/*start, end, duration*/
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
