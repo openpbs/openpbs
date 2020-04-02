@@ -64,7 +64,7 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
         # Restart mom explicitly due to PP-993
         self.mom.restart()
 
-    @timeout(400)
+    @skipOnCpuSet
     def test_begin_hook(self):
         """
         Create an execjob_begin hook, import a hook content with a small
@@ -78,7 +78,7 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '20'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
@@ -102,7 +102,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Started, pid" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(400)
+    @skipOnCpuSet
     def test_prolo_hook(self):
         """
         Create an execjob_prologue hook, import a hook content with a
@@ -116,7 +116,7 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '20'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
@@ -138,7 +138,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
             "Job;%s;alarm call while running %s hook" % (jid, hook_event),
             n=100, max_attempts=5, interval=5, regexp=True, existence=False)
 
-    @timeout(400)
+    @skipOnCpuSet
     def test_epi_hook(self):
         """
         Create an execjob_epilogue hook, import a hook content with a small
@@ -164,7 +164,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=10, interval=2)
+                           jid, max_attempts=20, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
@@ -182,7 +182,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Obit sent" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(400)
+    @skipOnCpuSet
     def test_end_hook(self):
         """
         Create an execjob_end hook, import a hook content with a small
@@ -197,7 +197,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 """
         search_after = int(time.time())
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '15'}
+             'alarm': '20'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
@@ -208,7 +208,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=15, interval=2)
+                           jid, max_attempts=20, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
