@@ -4313,7 +4313,6 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
                             return False
-                        self.du.rm(path=fn, force=True, sudo=True)
                     except:
                         self.logger.error("Failed to restore "
                                           + "configuration: %s" % k)
@@ -13397,7 +13396,7 @@ class MoM(PBSService):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
         mconf = {self.hostname: conf}
-        if MGR_OBJ_NODE not in self.server.saved_config.keys():
+        if MGR_OBJ_NODE not in self.server.saved_config:
             self.server.saved_config[MGR_OBJ_NODE] = {}
         self.server.saved_config[MGR_OBJ_NODE].update(mconf)
         if outfile is not None:
