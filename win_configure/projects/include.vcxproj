@@ -128,6 +128,7 @@
     <ClInclude Include="..\..\src\include\win.h" />
     <ClInclude Include="..\..\src\include\win_remote_shell.h" />
     <ClInclude Include="..\..\src\include\work_task.h" />
+    <ClInclude Include="..\..\src\resmom\mock_run.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\include\include.dsp" />

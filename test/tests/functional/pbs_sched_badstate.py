@@ -35,6 +35,7 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
+import copy
 from tests.functional import *
 
 
@@ -76,49 +77,60 @@ class TestSchedBadstate(TestFunctional):
                                  interval=1)
         self.server.delete(j1id)
 
-    @skipOnCpuSet
     def test_sched_unknown_node_state(self):
         """
         Test to see if the scheduler reports node states as 'Unknown'
         """
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
-        a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         # free is when all ncpus are free
         self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
-
-        # job-busy is when all ncpus are assigned
-        J = Job()
+        ncpus = self.server.status(NODE)[0]['resources_available.ncpus']
+        if self.mom.is_cpuset_mom():
+            vnode_id = self.server.status(NODE)[1]['id']
+            vnode_val = 'vnode=' + vnode_id
+            ncpus = self.server.status(NODE)[1]['resources_available.ncpus']
+            a = {'Resource_List.select': vnode_val + ':ncpus=' + ncpus}
+        else:
+            a = {'Resource_List.select': '1:ncpus=' + ncpus}
+        b = a.copy()
+        J = Job(attrs=a)
         jid1 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-
-        self.server.expect(NODE, {'state': 'job-busy'}, id=self.mom.shortname)
+        if self.mom.is_cpuset_mom():
+            self.server.expect(VNODE, {'state': 'job-exclusive'}, id=vnode_id)
+        else:
+            self.server.expect(NODE, {'state': 'job-busy'},
+                               id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
 
         # maintenance is when a job is has been admin-suspended
         self.server.sigjob(jid1, 'admin-suspend')
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-
-        self.server.expect(NODE, {'state': 'maintenance'},
-                           id=self.mom.shortname)
+        if self.mom.is_cpuset_mom():
+            self.server.expect(VNODE, {'state': 'maintenance'}, id=vnode_id)
+        else:
+            self.server.expect(NODE, {'state': 'maintenance'},
+                               id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
 
         self.server.delete(jid1, wait=True)
 
         # job-exclusive is when a job requests place=excl
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl'}
-        J = Job(attrs=a)
+        b['Resource_List.place'] = 'excl'
+        J = Job(attrs=b)
         jid2 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
-        self.server.expect(NODE, {'state': 'job-exclusive'},
-                           id=self.mom.shortname)
+        if self.mom.is_cpuset_mom():
+            self.server.expect(VNODE, {'state': 'job-exclusive'}, id=vnode_id)
+        else:
+            self.server.expect(NODE, {'state': 'job-exclusive'},
+                               id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
 
@@ -127,28 +139,36 @@ class TestSchedBadstate(TestFunctional):
         # resv-exclusive is when a reservation requersts -lplace=excl
         st = time.time() + 30
         et = st + 30
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': st, 'reserve_end': et}
-        R = Reservation(attrs=a)
+        b['reserve_start'] = st
+        b['reserve_end'] = et
+        R = Reservation(attrs=b)
         rid = self.server.submit(R)
         self.server.expect(RESV, {'reserve_state':
                                   (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
 
         self.server.expect(RESV, {'reserve_state':
-                                  (MATCH_RE, 'RESV_RUNNING|5')}, id=rid)
+                                  (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, offset=30)
 
-        self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.mom.shortname)
+        if self.mom.is_cpuset_mom():
+            self.server.expect(VNODE, {'state': 'resv-exclusive'}, id=vnode_id)
+        else:
+            self.server.expect(NODE, {'state': 'resv-exclusive'},
+                               id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)
         self.server.delete(rid)
 
         # Multiple node states eg: down + job-busy
-        J = Job()
+        J = Job(attrs=a)
         jid3 = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.mom.signal('-KILL')
-        self.server.expect(NODE, {'state': 'down,job-busy'},
-                           id=self.mom.shortname)
+        if self.mom.is_cpuset_mom():
+            self.server.expect(VNODE, {'state': 'down,job-exclusive'},
+                               id=vnode_id)
+        else:
+            self.server.expect(NODE, {'state': 'down,job-busy'},
+                               id=self.mom.shortname)
         self.scheduler.log_match("Unknown Node State",
                                  existence=False, max_attempts=2)

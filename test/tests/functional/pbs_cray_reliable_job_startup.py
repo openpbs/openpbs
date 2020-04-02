@@ -158,7 +158,7 @@ if e.job.in_ms_mom():
                             'cray_compute+1:ncpus=3:mem=2gb:vntype=' +
                             'cray_compute',
                             ATTR_l + '.place': 'scatter'})
-        start_time = int(time.time())
+        start_time = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 

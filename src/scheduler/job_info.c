@@ -970,6 +970,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_estimated,
 			ATTR_c,
 			ATTR_r,
+			ATTR_depend,
 			NULL
 	};
 
@@ -1399,6 +1400,9 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			if (strcmp(attrp->value, ATR_FALSE) == 0)
 				resresv->job->can_requeue = 0;
 		}
+		else if (!strcmp(attrp->name, ATTR_depend)) {
+			resresv->job->depend_job_str = string_dup(attrp->value);
+		}
 
 		attrp = attrp->next;
 	}
@@ -1475,6 +1479,8 @@ new_job_info()
 	jinfo->attr_updates = NULL;
 	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
+	jinfo->depend_job_str = NULL;
+	jinfo->dependent_jobs = NULL;
 
 
 	jinfo->formula_value = 0.0;
@@ -1532,6 +1538,12 @@ free_job_info(job_info *jinfo)
 	if (jinfo->queued_subjobs != NULL)
 		free_range_list(jinfo->queued_subjobs);
 
+	if (jinfo->depend_job_str != NULL)
+		free (jinfo->depend_job_str);
+
+	if (jinfo->dependent_jobs != NULL)
+		free(jinfo->dependent_jobs);
+
 	free_resource_req_list(jinfo->resused);
 
 	free_attrl_list(jinfo->attr_updates);
@@ -1552,7 +1564,6 @@ free_job_info(job_info *jinfo)
 	if (jinfo->schedsel)
 		free(jinfo->schedsel);
 #endif
-
 	free(jinfo);
 }
 
@@ -1774,7 +1785,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 	if (pattr->next == NULL)
 		one_attr = 1;
 
-	if (pbs_alterjob(pbs_sd, job_name, pattr, NULL) == 0)
+	if (pbs_asyalterjob(pbs_sd, job_name, pattr, NULL) == 0)
 		return 1;
 
 	if (is_finished_job(pbs_errno) == 1) {
@@ -2778,6 +2789,8 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	}
 	else
 		njinfo->ginfo = NULL;
+
+	njinfo->depend_job_str = string_dup(njinfo->depend_job_str);
 
 #ifdef RESC_SPEC
 	njinfo->rspec = dup_rescspec(ojinfo->rspec);
@@ -5355,4 +5368,99 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 			return temp;
 	}
 	return NULL;
+}
+
+/**
+ * @brief   This function looks at the job's depend attribute string and creates
+ *	    an array of job ids having runone dependency.
+ * @param[in] depend_val - job's dependency string
+ *
+ * @return - char **
+ * @retval - a newly allocated list of jobs with runone dependeny
+ * @retval - NULL in case of error
+ */
+static char **parse_runone_job_list(char *depend_val) {
+	char *start;
+	const char *depend_type = "runone:";
+	int i;
+	int len = 1;
+	char *r;
+	char **ret = NULL;
+	char *depend_str = NULL;
+	int  job_delim = 0;
+	int  svr_delim = 0;
+
+	if (depend_val == NULL)
+		return NULL;
+	else
+	    depend_str = string_dup(depend_val);
+
+	start = strstr(depend_str, depend_type);
+	if (start == NULL)
+		return NULL;
+
+	r = start + strlen(depend_type);
+	for (i = 0; r[i] != '\0'; i++) {
+		if (r[i] == ':')
+			len++;
+	}
+
+	ret = calloc(len + 1, sizeof(char *));
+	if (ret == NULL) {
+		free(depend_str);
+		return NULL;
+	}
+	for (i = 0;  i < len; i++) {
+		job_delim = strcspn(r, ":");
+		r[job_delim] = '\0';
+		svr_delim = strcspn(r, "@");
+		r[svr_delim] = '\0';
+		ret[i] = string_dup(r);
+		if (ret[i] == NULL) {
+			free_ptr_array(ret);
+			free(depend_str);
+			return NULL;
+		}
+		r = r + job_delim + 1;
+	}
+	free(depend_str);
+	return ret;
+}
+
+/**
+ * @brief   This function processes every job's depend attribute and
+ *	    associate the jobs with runone dependency to its dependent_jobs list.
+ * @param[in] sinfo - server info structure
+ *
+ * @return - void
+ */
+void associate_dependent_jobs(server_info *sinfo) {
+	int i;
+	char **job_arr = NULL;
+
+	if (sinfo == NULL)
+		return;
+	for (i = 0; sinfo->jobs[i] != NULL; i++) {
+		if (sinfo->jobs[i]->job->depend_job_str != NULL) {
+			job_arr = parse_runone_job_list(sinfo->jobs[i]->job->depend_job_str);
+			if (job_arr != NULL) {
+				int j;
+				int len = count_array((void **)job_arr);
+				sinfo->jobs[i]->job->dependent_jobs = calloc((len + 1), sizeof(resource_resv *));
+				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
+				for (j = 0; job_arr[j] != NULL; j++) {
+					resource_resv *jptr = NULL;
+					jptr = find_resource_resv(sinfo->jobs, job_arr[j]);
+					if (jptr != NULL)
+						sinfo->jobs[i]->job->dependent_jobs[j] = jptr;
+					free(job_arr[j]);
+				}
+			}
+		}
+		if (job_arr != NULL) {
+			free(job_arr);
+			job_arr = NULL;
+		}
+	}
+	return;
 }

@@ -314,7 +314,7 @@ class TestMultipleSchedulers(TestFunctional):
         setting or deleting a resource
         """
         self.common_setup()
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_CREATE, RSC, id='foo')
         for name in self.scheds:
             self.scheds[name].log_match(
@@ -323,7 +323,7 @@ class TestMultipleSchedulers(TestFunctional):
         # sleeping to make sure we are not checking for the
         # same scheduler reconfiguring message again
         time.sleep(1)
-        t = int(time.time())
+        t = time.time()
         attr = {ATTR_RESC_TYPE: 'long'}
         self.server.manager(MGR_CMD_SET, RSC, attr, id='foo')
         for name in self.scheds:
@@ -333,7 +333,7 @@ class TestMultipleSchedulers(TestFunctional):
         # sleeping to make sure we are not checking for the
         # same scheduler reconfiguring message again
         time.sleep(1)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
         for name in self.scheds:
             self.scheds[name].log_match(
@@ -511,7 +511,7 @@ class TestMultipleSchedulers(TestFunctional):
         Test backfilling is applicable only per scheduler
         """
         self.common_setup()
-        t = int(time.time())
+        t = time.time()
         self.scheds['sc2'].set_sched_config(
             {'strict_ordering': 'True ALL'})
         a = {ATTR_queue: 'wq2',
@@ -1072,7 +1072,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_sc2()
         self.setup_queues_nodes()
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047}, id='sc2')
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc1")
         self.server.manager(MGR_CMD_SET, SCHED,
@@ -1108,7 +1108,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_queues_nodes()
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq3')
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc1")
         self.server.manager(MGR_CMD_SET, QUEUE,
@@ -1780,7 +1780,7 @@ class TestMultipleSchedulers(TestFunctional):
              'Resource_List.walltime': 60}
         j = Job(TEST_USER1, attrs=a)
         self.server.submit(j)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc1')
         self.server.log_match("processing priority socket", starttime=t)
@@ -1789,7 +1789,7 @@ class TestMultipleSchedulers(TestFunctional):
              'Resource_List.walltime': 60}
         j = Job(TEST_USER1, attrs=a)
         self.server.submit(j)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)

@@ -48,6 +48,68 @@
 #include <stdlib.h>
 #include "libpbs.h"
 
+/**
+ * @brief	Convenience function to create attropl list from attrl (shallow copy)
+ *
+ * @param[in]	attrib - the list to copy
+ *
+ * @return struct attropl
+ * @retval newly allocated attropl list
+ * @retval NULL for malloc error
+ */
+static struct attropl *
+attrl_to_attropl(struct attrl *attrib)
+{
+	struct attropl *ap = NULL;
+	struct attropl *ap1 = NULL;
+
+	/* copy the attrl to an attropl */
+	while (attrib != NULL) {
+		if (ap == NULL) {
+			ap1 = ap = (struct attropl *)malloc(sizeof(struct attropl));
+		} else {
+			ap->next = (struct attropl *)malloc(sizeof(struct attropl));
+			ap = ap->next;
+		}
+		if (ap == NULL) {
+			while (ap1 != NULL) {
+				ap = ap1->next;
+				free(ap1);
+				ap1 = ap;
+			}
+			pbs_errno = PBSE_SYSTEM;
+			return NULL;
+		}
+		ap->name = attrib->name;
+		ap->resource = attrib->resource;
+		ap->value = attrib->value;
+		ap->op = SET;
+		ap->next = NULL;
+		attrib = attrib->next;
+	}
+
+	return ap1;
+}
+
+
+/**
+ * @brief	Convenience function to shallow-free oplist
+ *
+ * @param[out]	oplist - the list to free
+ *
+ * @return void
+ */
+static void
+__free_attropl(struct attropl *oplist)
+{
+	struct attropl *ap = NULL;
+
+	while (oplist != NULL) {
+		ap = oplist->next;
+		free(oplist);
+		oplist = ap;
+	}
+}
 
 /**
  * @brief
@@ -67,52 +129,75 @@
 int
 __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 {
-	struct attropl *ap = NULL;
-	struct attropl *ap1 = NULL;
+	struct attropl *attrib_opl = NULL;
 	int i;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
-	/* copy the attrl to an attropl */
-	while (attrib != NULL) {
-		if (ap == NULL) {
-			ap1 = ap = (struct attropl *)malloc(sizeof(struct attropl));
-		} else {
-			ap->next = (struct attropl *)malloc(sizeof(struct attropl));
-			ap = ap->next;
-		}
-		if (ap == NULL) {
-			while (ap1 != NULL) {
-				ap = ap1->next;
-				free(ap1);
-				ap1 = ap;
-			}
-			pbs_errno = PBSE_SYSTEM;
-			return -1;
-		}
-		ap->name = attrib->name;
-		ap->resource = attrib->resource;
-		ap->value = attrib->value;
-		ap->op = SET;
-		ap->next = NULL;
-		attrib = attrib->next;
-	}
+	attrib_opl = attrl_to_attropl(attrib);
 
 	i = PBSD_manager(c,
 		PBS_BATCH_ModifyJob,
 		MGR_CMD_SET,
 		MGR_OBJ_JOB,
 		jobid,
-		ap1,
+		attrib_opl,
 		extend);
 
 	/* free up the attropl we just created */
-	while (ap1 != NULL) {
-		ap = ap1->next;
-		free(ap1);
-		ap1 = ap;
-	}
+	__free_attropl(attrib_opl);
 
 	return i;
+}
+
+
+/**
+ * @brief	Send Alter Job request to the server, Asynchronously
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+int
+pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
+{
+	struct attropl *attrib_opl = NULL;
+	int i;
+
+	if ((jobid == NULL) || (*jobid == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	attrib_opl = attrl_to_attropl(attrib);
+
+	/* initialize the thread context data, if not initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return pbs_errno;
+
+	/* send the manage request with modifyjob async */
+	i = PBSD_mgr_put(c, PBS_BATCH_ModifyJob_Async, MGR_CMD_SET, MGR_OBJ_JOB, jobid, attrib_opl, extend, PROT_TCP, NULL);
+	if (i) {
+		(void)pbs_client_thread_unlock_connection(c);
+		return i;
+	}
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return pbs_errno;
+
+	__free_attropl(attrib_opl);
+
+	return i;
+
 }

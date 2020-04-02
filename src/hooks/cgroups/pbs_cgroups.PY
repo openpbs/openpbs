@@ -116,10 +116,19 @@ else:
     import operator
     import fnmatch
     import math
+    import types
     try:
         import json
     except Exception:
         import simplejson as json
+    multiprocessing = None
+    try:
+        # will fail in Python 2.5
+        import multiprocessing
+    except Exception:
+        # but we can use isinstance(multiprocessing, types.ModuleType) later
+        # to find out if it worked
+        pass
     import fcntl
     import pwd
 
@@ -597,6 +606,114 @@ def job_is_running(jobid):
     if 'substate' in jobinfo:
         return jobinfo['substate'] == 42
     return False
+
+
+def fetch_vnode_comments_nomp(vnode_list, timeout=10):
+    comment_dict = {}
+    failure = False
+    pbs.logmsg(pbs.EVENT_DEBUG4,
+               "vnode list in fetch_vnode_comment is %s"
+               % vnode_list)
+    try:
+        with Timeout(timeout, 'Timed out contacting server'):
+            for vn in vnode_list:
+                comment_dict[vn] = pbs.server().vnode(vn).comment
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           "comment for vnode %s fetched from server is %s"
+                           % (str(vn), comment_dict[vn]))
+    except TimeoutError:
+        # pbs.server().vnode(xx).comment got stuck, or the timeout
+        # was too short for the number of nodes supplied
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Timed out while fetching comments from server, '
+                   'timeout was %s' % str(timeout))
+        failure = True
+    except Exception as exc:
+        # other exception, like e.g. wrong vnode name
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Unexpected error in fetch_vnode_comments: %s'
+                   % repr(exc))
+        failure = True
+    # only return a full dictionary if you got the comment for all vnodes
+    if not failure:
+        return (comment_dict, failure)
+    else:
+        return ({}, failure)
+
+
+def fetch_vnode_comments_queue(vnode_list, commq):
+    comment_dict = {}
+    failure = False
+    pbs.logmsg(pbs.EVENT_DEBUG4,
+               "vnode list in fetch_vnode_comment is %s"
+               % vnode_list)
+    try:
+        for vn in vnode_list:
+            comment_dict[vn] = pbs.server().vnode(vn).comment
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       "comment for vnode %s fetched from server is %s"
+                       % (str(vn), comment_dict[vn]))
+
+    except Exception as exc:
+        # other exception, like e.g. wrong vnode name
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Unexpected error in fetch_vnode_comments: %s'
+                   % repr(exc))
+        failure = True
+    # only return a full dictionary if you got the comment for all vnodes
+    if not failure:
+        commq.put(comment_dict)
+    else:
+        commq.put({})
+    return True
+
+
+def fetch_vnode_comments_mp(vnode_list, timeout=10):
+    worker_comment_dict = {}
+    commq = multiprocessing.Queue()
+    worker = multiprocessing.Process(target=fetch_vnode_comments_queue,
+                                     args=(vnode_list, commq))
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   "comment fetcher for %s timed out after %s seconds"
+                   % (str(vnode_list), timeout))
+        # will mess up the commq Queue but we don't care
+        # will send SIGTERM, but it's possible that is masked
+        # while in a SWIG function
+        # we don't really care since unline in threading,
+        # in multiprocessing we can exit and orphan the worker
+        worker.terminate()
+        pbs.logmsg(pbs.EVENT_ERROR,
+                   'Timed out while fetching comments from server,'
+                   'timeout was %s' % str(timeout))
+        return ({}, True)
+    else:
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   "comments fetched from server without timeout")
+        comment_dict = {}
+        try:
+            comment_dict = commq.get()
+        except Exception:
+            # Treat failure to get comments dictionary from queue
+            # as a timeout
+            return ({}, True)
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   "worker comment_dict is %r" % comment_dict)
+
+        return (comment_dict, False)
+
+
+def fetch_vnode_comments(vnode_list, timeout=10):
+    if not isinstance(multiprocessing, types.ModuleType):
+        pbs.logmsg(pbs.EVENT_DEBUG4, "multiprocessing not available, "
+                   "fetch_vnode_comment will use SIGALRM timeout")
+        return fetch_vnode_comments_nomp(vnode_list, timeout)
+    else:
+        pbs.logmsg(pbs.EVENT_DEBUG4, "multiprocessing available, "
+                   "fetch_vnode_comment will use mp for timeout")
+        return fetch_vnode_comments_mp(vnode_list, timeout)
 
 
 # ============================================================================
@@ -1221,25 +1338,22 @@ class JobUtils(object):
                        (caller_name(), hostname, repr(resources)))
             # Return assigned resources for specified host
             return resources
-        # Workaround for systems where node is short hostname
-        pbs.logmsg(pbs.EVENT_DEBUG2,
-                   '%s: No resources assigned to host %s' %
-                   (caller_name(), hostname))
-        try:
-            cmd = ['hostname', '-s']
-            process = subprocess.Popen(cmd, shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
-        except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
-                       " ".join(cmd))
-            return resources
-        shorthostname = out.strip()
-        if shorthostname and shorthostname != hostname:
-            return self._get_assigned_job_resources(hostname=shorthostname)
-        # Return assigned resources for specified host
-        return resources
+        else:
+            pbs.logmsg(pbs.EVENT_JOB_USAGE, "WARNING: job seems "
+                       + "to have no resources assigned to this host.")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Server and MoM vnode names may not be consistent.")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Pattern for expected vnode name(s) is %s"
+                       % vnhost_pattern)
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Job exec_vnode is %s" % str(self.job.exec_vnode))
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "You may have forgotten to set PBS_MOM_NODE_NAME to "
+                       "the desired matching entry in the exec_vnode string")
+            pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                       "Job will fail or be configured with default ncpus/mem")
+            return {}
 
 
 #
@@ -1918,15 +2032,23 @@ class NodeUtils(object):
                    (caller_name(), self.numa_nodes))
         vnode_name = self.hostname
         # In some cases the hostname and vnode name do not match
+        # admin should fix this!
+        # Give hints
         if vnode_name not in vnode_list:
-            pbs.logmsg(pbs.EVENT_DEBUG,
+            pbs.logmsg(pbs.EVENT_ERROR,
                        "Could not find hostname %s in vnode_list %s"
-                       % (vnode_name, repr(vnode_list)))
-            vnkeys = list(vnode_list.keys())
-            if len(vnkeys) == 1:
-                vnode_name = vnkeys[0]
-            else:
-                raise ProcessingError('Could not identify local vnode')
+                       % (vnode_name, str(vnode_list.keys())))
+            pbs.logmsg(pbs.EVENT_ERROR,
+                       "This error is FATAL. Possible causes:")
+            pbs.logmsg(pbs.EVENT_ERROR, "a) the server's name for "
+                       "the natural node created on the server "
+                       "does not match the output of 'hostname' on the host.")
+            pbs.logmsg(pbs.EVENT_ERROR, "   Please use PBS_MOM_NODE_NAME "
+                       "in /etc/pbs.conf to tell MoM the correct vnode name.")
+            pbs.logmsg(pbs.EVENT_ERROR, "b) v2 config files are used "
+                       "but none mention the natural vnode. Add a line for "
+                       "the natural vnode in one of the v2 config files.")
+            raise ProcessingError('Could not identify local vnode')
         vnode_list[vnode_name] = pbs.vnode(vnode_name)
         host_resc_avail = vnode_list[vnode_name].resources_available
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
@@ -2185,27 +2307,22 @@ class NodeUtils(object):
                        '%s: Too soon since node was offlined' % caller_name())
             return
         # Get comments for vnodes associated with this event
-        vnode_comments = dict()
-        try:
-            with Timeout(self.cfg['server_timeout'],
-                         'Timed out contacting server'):
-                for vnode_name in pbs.event().vnode_list:
-                    vnode_comments[vnode_name] = \
-                        pbs.server().vnode(vnode_name).comment
-        except TimeoutError:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Timed out contacting server' %
-                       caller_name())
-            return
-        except Exception as exc:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Error contacting server: %s' %
-                       (caller_name(), exc))
+        vnl = pbs.event().vnode_list.keys()
+        (vnode_comments, failure) = \
+            fetch_vnode_comments(vnl, timeout=self.cfg['server_timeout'])
+        if failure:
+            pbs.logmsg(pbs.EVENT_ERROR,
+                       '%s: Failed contacting server for vnode comments'
+                       % caller_name())
+            pbs.logmsg(pbs.EVENT_ERROR, '%s: Not bringing vnodes online'
+                       % caller_name())
             return
         # Bring vnodes online that this hook has taken offline
         for vnode_name in vnode_comments:
             if vnode_comments[vnode_name] != self.offline_msg:
-                pbs.logmsg(pbs.EVENT_DEBUG, '%s: Comment for vnode %s '
-                           'was not set by this hook' %
-                           (caller_name(), vnode_name))
+                pbs.logmsg(pbs.EVENT_DEBUG, ('%s: Comment for vnode %s '
+                           + 'was not set by this hook')
+                           % (caller_name(), vnode_name))
                 continue
             vnode = pbs.event().vnode_list[vnode_name]
             vnode.state = pbs.ND_FREE
@@ -2691,6 +2808,15 @@ class CgroupUtils(object):
         defaults['placement_type'] = 'load_balanced'
         defaults['propagate_vntype_to_server'] = True
         defaults['cgroup'] = {}
+        defaults['cgroup']['cpu'] = {}
+        defaults['cgroup']['cpu']['enabled'] = False
+        defaults['cgroup']['cpu']['exclude_hosts'] = []
+        defaults['cgroup']['cpu']['exclude_vntypes'] = []
+        defaults['cgroup']['cpu']['cfs_period_us'] = 100000
+        defaults['cgroup']['cpu']['cfs_quota_fudge_factor'] = 1.03
+        defaults['cgroup']['cpu']['enforce_per_period_quota'] = False
+        defaults['cgroup']['cpu']['zero_cpus_shares_fraction'] = 0
+        defaults['cgroup']['cpu']['zero_cpus_quota_fraction'] = 0.2
         defaults['cgroup']['blkio'] = {}
         defaults['cgroup']['blkio']['enabled'] = False
         defaults['cgroup']['cpuacct'] = {}
@@ -3314,6 +3440,10 @@ class CgroupUtils(object):
             if subsys == 'memsw' and 'memory' in self.subsystems:
                 continue
             tasks_file = self._cgroup_path(subsys, 'tasks', jobid)
+            if ((not os.path.exists(tasks_file))
+                    and (subsys == 'cpuset')):
+                # zero CPU  job: should be attached to root pbspro cpuset
+                tasks_file = self._cgroup_path(subsys, 'tasks')
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: tasks file = %s' %
                        (caller_name(), tasks_file))
             try:
@@ -4016,16 +4146,51 @@ class CgroupUtils(object):
                 path = self._cgroup_path('hugetlb', 'limit_in_bytes', jobid)
                 self.write_value(path, size_as_int(value))
         elif resource == 'ncpus':
-            if 'cpuset' in self.subsystems:
-                path = self._cgroup_path('cpuset', 'cpus', jobid)
-                cpus = self.select_cpus(path, value)
-                if not cpus:
-                    raise CgroupLimitError('Failed to configure cpuset')
-                cpus = ",".join(list(map(str, cpus)))
-                self.write_value(path, cpus)
-                if jobid:
-                    path = self._cgroup_path('cpuset', 'mems', jobid)
-                    self._copy_from_parent(path)
+            if 'cpu' in self.subsystems:
+                # Note the value is already multiplied by threads/core
+                # if ncpus_are_cores and use_hyperthreads are True
+                path = self._cgroup_path('cpu', 'shares', jobid)
+                weightless = False
+                # 'zero' cpu jobs have the minimum shares, but value for
+                # clamping to quota needs to be realistic
+                if (value <= 0):
+                    weightless = True
+                    weightless_shares = (self.cfg['cgroup']
+                                                 ['cpu']
+                                                 ['zero_cpus_shares_fraction'])
+                    # Note that the minimum in the kernel is 2
+                    self.write_value(path, int(min(2, weightless_shares*1000)))
+                    value = (self.cfg['cgroup']
+                                     ['cpu']
+                                     ['zero_cpus_quota_fraction'])
+                else:
+                    self.write_value(path, int(value * 1000))
+                if (self.cfg['cgroup']['cpu']['enforce_per_period_quota']
+                        or weightless):
+                    # zero cpu jobs ALWAYS get a quota -- keep them honest
+                    cfs_period_us = self.cfg['cgroup']['cpu']['cfs_period_us']
+                    path = self._cgroup_path('cpu', 'cfs_period_us', jobid)
+                    self.write_value(path, cfs_period_us)
+
+                    cfs_quota_fudge_factor = \
+                        self.cfg['cgroup']['cpu']['cfs_quota_fudge_factor']
+                    path = self._cgroup_path('cpu', 'cfs_quota_us', jobid)
+                    # zero cpu jobs are clamped to use less than one cpu
+                    # during each period
+                    cfs_quota_us_calculated = (cfs_period_us
+                                               * value
+                                               * cfs_quota_fudge_factor)
+
+                    # Get the parent cgroup's maximum cfs_quota_us
+                    # we cannot set the child cgroup value to anything more
+                    # Note that some kernels display "unlimited" as signed -1
+                    # So we should ignore non-positive values
+                    max_cfs_quota_us = self._get_cfs_quota_us()
+                    if ((max_cfs_quota_us is not None)
+                            and (max_cfs_quota_us > 0)
+                            and (cfs_quota_us_calculated > max_cfs_quota_us)):
+                        cfs_quota_us_calculated = max_cfs_quota_us
+                    self.write_value(path, int(cfs_quota_us_calculated))
         elif resource == 'cpuset.cpus':
             if 'cpuset' in self.subsystems:
                 path = self._cgroup_path('cpuset', 'cpus', jobid)
@@ -4037,6 +4202,9 @@ class CgroupUtils(object):
         elif resource == 'cpuset.mems':
             if 'cpuset' in self.subsystems:
                 path = self._cgroup_path('cpuset', 'mems', jobid)
+                if not os.path.exists(path):
+                    # probably zero cpu job now in root cpuset -- do nothing
+                    return
                 if self.cfg['cgroup']['cpuset']['mem_fences']:
                     mems = value
                     if not mems:
@@ -4363,11 +4531,11 @@ class CgroupUtils(object):
         # Initialize cpuset variables
         cpuset_enabled = 'cpuset' in self.subsystems
         if cpuset_enabled:
-            cpu_limit = 1
+            cpu_limit = 0
             if 'ncpus' in hostresc:
                 cpu_limit = hostresc['ncpus']
-            if cpu_limit < 1:
-                cpu_limit = 1
+            # support weightless jobs in root cpuset
+            # do not clamp cpu_limit to min 1
             hostresc['ncpus'] = pbs.pbs_int(cpu_limit)
         # Find the available resources and assign the right ones to the job
         assigned = dict()
@@ -4430,9 +4598,8 @@ class CgroupUtils(object):
                    'Assigned resources: %s' % (assigned))
         self.assigned_resources = assigned
         if cpuset_enabled:
-            # Remove the ncpus key if it exists. Ignore any KeyError.
-            if 'ncpus' in hostresc:
-                del hostresc['ncpus']
+            # Do not remove the ncpus key if it exists:
+            # used by the "cpu" controller now.
             for key in ['cpuset.cpus', 'cpuset.mems']:
                 if key in assigned:
                     hostresc[key] = assigned[key]
@@ -4451,8 +4618,45 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Setting cgroup limits for: %s' %
                    (caller_name(), hostresc))
         # The vmem limit must be set after the mem limit, so sort the keys
+        # also ensures we get to cpuset.cpus before cpuset.mem
+        # important for zero cpu jobs migrated to root cpuset
         for resc in sorted(hostresc):
-            self.set_limit(resc, hostresc[resc], jobid)
+            if resc == 'ncpus':
+                # In case of HT, may need to multiply the ncpus;
+                # done here since "node" is not passed down to set_limit
+                # This only sets the cpu controller limits/shares,
+                # since the cpuset stuff is done through
+                # cpuset.cpus and cpuset.mems
+                # Note the set_limit in the final 'else' should be
+                # skipped -- its replacement is at the end here
+                htpc = 1
+                if (self.cfg['cgroup']['cpu']['enabled']
+                        and self.cfg['use_hyperthreads']
+                        and self.cfg['ncpus_are_cores']):
+                    if 'hyperthreads_per_core' in node.cpuinfo:
+                        htpc = node.cpuinfo['hyperthreads_per_core']
+                self.set_limit(resc, hostresc[resc] * htpc, jobid)
+            elif ((resc == "cpuset.cpus")
+                  and not hostresc['cpuset.cpus']
+                  and self.cfg['cgroup']['cpuset']['allow_zero_cpus']):
+                # zero cpus jobs -- delete the cpuset made for the job;
+                # later allows job processes to be placed in the root cpuset.
+                # Note the set_limit in the final else should likewise
+                # be skipped.
+                path = self._cgroup_path('cpuset', '', jobid)
+                success = self._remove_cgroup(path)
+                if not success:
+                    pbs.logmsg(pbs.EVENT_DEBUG,
+                               '%s: Failed to delete cpuset %s'
+                               ' for zero cpus job %s'
+                               % (caller_name(), path, jobid))
+                    pbs.event().reject('Failed to delete cpuset'
+                                       ' for zero cpus job')
+                    # Hopefully the orphan cleaner will eventually
+                    # get rid of it
+            else:
+                # For all the rest just pass hostresc[resc] down to set_limit
+                self.set_limit(resc, hostresc[resc], jobid)
         # Set additional parameters
         # Note some kernels will surprisingly not let you set things
         # to the value that is already there in some corner cases
@@ -4828,6 +5032,16 @@ class CgroupUtils(object):
                 raise
         except Exception:
             raise
+
+    def _get_cfs_quota_us(self, jobid=''):
+        pbs.logmsg(pbs.EVENT_DEBUG3, "%s: Method called" % (caller_name()))
+        # default for _cgroup_path for parent is empty string
+        try:
+            with open(self._cgroup_path('cpu', 'cfs_quota_us',
+                      jobid), 'r') as fd:
+                return int(fd.readline().strip())
+        except Exception:
+            return None
 
     def _get_mem_failcnt(self, jobid):
         """

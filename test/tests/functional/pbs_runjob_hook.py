@@ -176,7 +176,7 @@ else:
                            id=jid, extend='t')
         # bring back mom
         self.mom.start()
-        start_time = int(time.time())
+        start_time = time.time()
         self.mom.isUp()
         # let subjobs get rerun from sched Q->R
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -224,7 +224,7 @@ else:
         for i in range(lower, upper + 1):
             sid[i] = j1.create_subjob_id(jid, i)
             self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
-        start_time = int(time.time())
+        start_time = time.time()
         # rerun the array job
         self.server.rerunjob(jobid=jid, runas=ROOT_USER)
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
@@ -233,7 +233,7 @@ else:
         m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
         for i in range(lower, upper + 1):
             self.server.log_match(m % (sid[i]), start_time)
-        start_time = int(time.time())
+        start_time = time.time()
         # rerun a single subjob
         self.server.rerunjob(jobid=sid[2], runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=sid[2])

@@ -59,7 +59,8 @@ double			wallfactor = 1.00;
  * @par MT-safe: No
  */
 void
-start_walltime(job *pjob) {
+start_walltime(job *pjob)
+{
     if (NULL == pjob)
         return;
     /* 
@@ -86,7 +87,8 @@ start_walltime(job *pjob) {
  * @par MT-safe: No
  */
 void
-update_walltime(job *pjob) {
+update_walltime(job *pjob)
+{
     attribute       *resources_used;
     resource_def    *walltime_def;
     resource        *used_walltime;
@@ -129,7 +131,8 @@ update_walltime(job *pjob) {
  * @par MT-safe: No
  */
 void
-stop_walltime(job *pjob) {
+stop_walltime(job *pjob)
+{
     if (NULL == pjob)
         return;
     /* 
@@ -156,7 +159,8 @@ stop_walltime(job *pjob) {
  * @par MT-safe: No
  */
 void
-recover_walltime(job *pjob) {
+recover_walltime(job *pjob)
+{
     attribute       *resources_used;
     resource_def    *walltime_def;
     resource        *used_walltime;

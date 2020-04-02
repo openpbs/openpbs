@@ -130,10 +130,6 @@ static char	procfs[] = "/proc";
 static DIR	*pdir = NULL;
 static int	pagesize;
 static long	hz;
-#if	MOM_CPUSET
-static char 	cpusetfs[] = PBS_CPUSETDIR;
-static DIR	*cpusetdir = NULL;
-#endif	/* MOM_CPUSET */
 
 /* convert between jiffies and seconds */
 #define	JTOS(x)	(((x) + (hz/2)) / hz)
@@ -224,21 +220,6 @@ static int	myproc_max = 0;		/* entries in Proc_lnks  */
 pbs_plinks	*Proc_lnks = NULL;	/* process links table head */
 static time_t	sampletime_ceil;
 static time_t	sampletime_floor;
-
-#if	MOM_CPUSET
-typedef int		pidcachetype_t;		/* type of allocatable unit */
-static pidcachetype_t	*pidcache_arena;	/* cache storage area */
-static unsigned int 	pidcache_bitsper = sizeof(pidcachetype_t) * NBBY;
-static int		pidcache_check(pid_t, pidcachetype_t *);
-static pidcachetype_t	*pidcache_create(void);
-static int		pidcache_reset(pidcachetype_t *);
-static void		pidcache_destroy(void);
-static pidcachetype_t *	pidcache_getarena(void);
-static int		pidcache_insert(pid_t p, pidcachetype_t *set);
-static int		pidcache_needed(void);
-static pid_t		pidcache_pidmax;	/* zero value implies no limit */
-static int		pidcache_test = 0;	/* say PID cache always needed */
-#endif	/* MOM_CPUSET */
 
 /*
  ** local resource array
@@ -5539,12 +5520,10 @@ mom_get_sample(void)
 	struct dirent		*dent = NULL;
 	FILE			*fd = NULL;
 	static char		path[MAXPATHLEN + 1];
-	char			procname[384]; /* space for dent->d_name plus extra */
+	char			procname[MAXPATHLEN + 1]; /* space for dent->d_name plus extra */
+	char			procid[MAXPATHLEN + 1];
 	struct stat		sb;
 	proc_stat_t		*ps = NULL;
-#if MOM_CPUSET
-	pidcachetype_t		*pidcache = NULL;
-#endif	/* MOM_CPUSET */
 	int			nprocs = 0;
 	int			ncached = 0;
 	int			ncantstat = 0;
@@ -5554,20 +5533,14 @@ mom_get_sample(void)
 	extern time_t		time_last_sample;
 	char			*stat_str = NULL;
 
+	/* There are no job tasks created in mock run mode, so no need to walk the proc table */
+	if (mock_run)
+		return PBSE_NONE;
+
 	DBPRT(("%s: entered\n", __func__))
 	if (pdir == NULL)
 		return PBSE_INTERNAL;
 
-#if MOM_CPUSET
-	if (((pidcache = pidcache_getarena()) == NULL) && pidcache_needed()) {
-		if ((pidcache = pidcache_create()) == NULL)
-			log_err(errno, __func__, "PID cache create");
-		if ((pidcache != NULL) && (ncached = pidcache_reset(pidcache)) == -1) {
-			ncached = 0;
-			log_err(errno, __func__, "PID cache reset");
-		}
-	}
-#endif /* MOM_CPUSET */
 	rewinddir(pdir);
 	nproc = 0;
 	fd = NULL;
@@ -5577,6 +5550,7 @@ mom_get_sample(void)
 	sampletime_floor = time_last_sample;
 	while (errno = 0, (dent = readdir(pdir)) != NULL) {
 		int	nomem = 0;
+		struct	stat	sbuf;
 
 		nprocs++;
 
@@ -5590,17 +5564,13 @@ mom_get_sample(void)
 			} else
 				continue;
 		}
-#if MOM_CPUSET
-		{
-			pid_t	p;
-			p = strtol(dent->d_name, NULL, 10);
-			if ((pidcache != NULL) && pidcache_check(p, pidcache) == 0) {
-				nskipped++;
-				continue;
-			}
+		snprintf(procid, sizeof(procid), "/proc/%s", dent->d_name);
+		if ((stat(procid, &sbuf) == -1) || (sbuf.st_uid == 0)) {
+			/* ignore root-owned processes */
+			nskipped++;
+			continue;
 		}
-#endif	/* MOM_CPUSET */
-		sprintf(procname, "/proc/%s/stat", dent->d_name);
+		snprintf(procname, sizeof(procname), "/proc/%s/stat", dent->d_name);
 
 		if ((fd = fopen(procname, "r")) == NULL) {
 			ncantstat++;
@@ -5687,10 +5657,6 @@ mom_get_sample(void)
 		nprocs - 2, ncantstat, nnomem, nskipped,
 		ncached);
 	log_event(PBSEVENT_DEBUG4, 0, LOG_DEBUG, __func__, log_buffer);
-#if MOM_CPUSET
-	if (pidcache != NULL)
-		pidcache_destroy();
-#endif	/* MOM_CPUSET */
 	return (PBSE_NONE);
 }
 
@@ -7811,235 +7777,6 @@ cpuset_free_job_CPUs(job *pjob)
 		}
 #endif	/* DEBUG */
 	}
-}
-
-
-/** @fn pidcache_create
- * @brief	create space to hold a set of PIDs
- *
- * @return	pidcachetype_t *
- * @retval	pointer to an array of pidcachetype_t elements long enough to
- *		hold a range of values, each of which is sizeof(pidcachetype_t)
- *		bytes in size.  Value N is in the set if the Nth bit of the
- *		array is nonzero.
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- * @par Note	To represent all possible PIDs using pidcachetype_t:  each
- *		pidcachetype_t can hold sizeof(pidcachetype_t) * NBBY bits of
- *		information.  A pid_t can take on 1 << (sizeof(pid_t) * NBBY)
- *		possible values, so the pidcachetype_t array's size must be
- *		(1 << (sizeof(pid_t) * NBBY)) / (sizeof(pidcachetype_t) * NBBY)
- *		bytes.
- */
-static pidcachetype_t *
-pidcache_create(void)
-{
-	unsigned long long	numerator, denominator;
-	unsigned long		setsize;
-
-	numerator = ((unsigned long long) 1 << (sizeof(pid_t) * NBBY));
-	denominator = (unsigned long long)(sizeof(pidcachetype_t) * NBBY);
-	setsize = (unsigned long)((unsigned long long) numerator/denominator);
-	assert(setsize <=
-		((unsigned long long) 1 << (sizeof(pidcachetype_t) * NBBY)));
-	assert(pidcache_arena == NULL);
-	pidcache_arena = calloc(1, (size_t) setsize);
-	return (pidcache_arena);
-}
-
-/** @fn pidcache_reset
- * @brief	reset pidcache with new set of PIDs from /dev/cpuset/PBSPro
- *
- * @return	int
- * @retval	nprocs	- number of processes cached
- *		-1	- when stat fails to open a cpuset tasks file
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- */
-static int
-pidcache_reset(pidcachetype_t *pidcache)
-{
-	struct dirent		*dent = NULL;
-	pid_t			pid = 0;
-	int			ncantstat = 0;
-	FILE			*fd = NULL;
-	char			line[25] = {0};
-	char			*p = NULL;
-	int			i = 0;
-	int			nprocs = 0;
-
-	if (cpusetdir == NULL) {
-		if ((cpusetdir = opendir(cpusetfs)) == NULL) {
-			log_err(errno, __func__, "opendir");
-			return -1;
-		}
-	} else
-		rewinddir(cpusetdir);
-
-	while (errno = 0, (dent = readdir(cpusetdir)) != NULL) {
-		char *taskname = NULL;
-		if (!isdigit(dent->d_name[0]))
-			continue;
-		pbs_asprintf(&taskname, "%s/%s/tasks", cpusetfs, dent->d_name);
-
-		if ((fd = fopen(taskname, "r")) == NULL) {
-			ncantstat++;
-			free(taskname);
-			continue;
-		}
-
-		for (i=0; (p = fgets(line, sizeof(line), fd)) != NULL; i++) {
-			pid = strtol(p, NULL, 10);
-			if (pidcache_insert(pid, pidcache))
-				nprocs++;
-		}
-		free(taskname);
-		fclose(fd);
-	}
-
-	if (!nprocs && ncantstat)
-		return -1;
-	else
-		return nprocs;
-}
-
-/** @fn pidcache_destroy
- * @brief	free space allocated by pidcache_create()
- *
- * @return	void
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- *
- * @par See:	pidcache_create
- *
- */
-static void
-pidcache_destroy(void)
-{
-	if (pidcache_arena != NULL) {
-		free(pidcache_arena);
-		pidcache_pidmax = 0;
-		pidcache_arena = NULL;
-	}
-}
-
-/** @fn pidcache_getarena()
- * @brief	return a pointer to the arena allocated by pidcache_create()
- *
- * @return	pointer to the current storage arena
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- */
-static pidcachetype_t *
-pidcache_getarena(void)
-{
-	return (pidcache_arena);
-}
-
-/**
- * @brief	add value to PID set
- *
- * @param[in]	p	PID to add
- * @param[in]	set	cache arena
- *
- * @return	int
- * @retval	0	p was not inserted into cache
- * @retval	1	p was inserted into cache
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- *
- * @par Note:	as an example, for an integer allocation type and value 12345
- *		on an ILP32 or LP64 machine, the value is stored in the 25th
- *		bit of the 385th integer.
- */
-static int
-pidcache_insert(pid_t p, pidcachetype_t *set)
-{
-	unsigned int	word;
-	unsigned int	bitinword;
-
-	if ((pidcache_pidmax != 0) && (p > pidcache_pidmax))
-		return (0);
-	else {
-		word = p / pidcache_bitsper;
-		bitinword = p - (word * pidcache_bitsper);
-		set[word] |= 1 << bitinword;
-		return (1);
-	}
-}
-
-/** @fn pidcache_check
- * @brief	check for PID in set
- *
- * @param[in]	p	PID to look for
- * @param[in]	set	cache arena
- *
- * @return	int
- * @retval	0	PID not found in set
- * @retval	1	PID found in set
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- */
-static int
-pidcache_check(pid_t p, pidcachetype_t *set)
-{
-	unsigned int	word;
-	unsigned int	bitinword;
-
-	if ((pidcache_pidmax > 0) && (p > pidcache_pidmax))
-		return (0);
-	else {
-		word  = p / pidcache_bitsper;
-		bitinword = p - (word * pidcache_bitsper);
-		if (set[word] & (1 << bitinword))
-			return (1);
-		else
-			return (0);
-	}
-}
-
-/** @fn pidcache_needed
- * @brief	is a PID cache needed on this platform?
- *
- * @return	int
- * @retval	0	no
- * @retval	1	yes
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- *
- * @par Note:	the PID cache implemented here is O(1) in both insertion and
- *		lookup, but is expensive in the amount of memory allocated to
- *		hold its data.  Since some platforms where the MoMs run have
- *		no allocated swap space, we may not want to pay the memory
- *		cost on such a platform.  On the other hand, a Linux system
- *		with lots of kernel threads (because there are lots of CPUs)
- *		will benefit substantially.  SGI's Ultraviolet is one such
- *		class of systems.  SGI suggested the "/proc/sgi_uv" test below
- *		as the way to tell we're running on a UV.
- */
-static int
-pidcache_needed(void)
-{
-	struct stat	sb;
-
-	if ((stat("/proc/sgi_uv", &sb) == 0) || (pidcache_test == 1))
-		return (1);
-	else
-		return (0);
 }
 #endif	/* MOM_CPUSET */
 #endif	/* PBSMOM_HTUNIT */

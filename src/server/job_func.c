@@ -170,13 +170,16 @@ extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_alljobs;
 extern int is_called_by_job_purge;
+extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
 #include "mom_func.h"
 
-extern void  rmtmpdir(char *);
+extern void rmtmpdir(char *);
 void nodes_free(job *);
-extern char* std_file_name(job *pjob, enum job_file which, int *keeping);
+extern char *std_file_name(job *pjob, enum job_file which, int *keeping);
+extern char *path_checkpoint;
+
 /**
  * @brief
  * 		free up the tasks from the list of tasks associated with particular job, delete links and close connection.
@@ -257,6 +260,8 @@ job_abt(job *pjob, char *text)
 	int	old_substate;
 	int	rc = 0;
 
+	if (pjob == NULL)
+		return 0; /* nothing to do */
 	/* save old state and update state to Exiting */
 
 	old_state = pjob->ji_qs.ji_state;
@@ -655,7 +660,8 @@ job_init_wattr(job *pj)
  * @return  void
  */
 void
-spool_filename(job *pjob, char *namebuf, char *suffix) {
+spool_filename(job *pjob, char *namebuf, char *suffix)
+{
     if (*pjob->ji_qs.ji_fileprefix != '\0')
         (void) strcat(namebuf, pjob->ji_qs.ji_fileprefix);
     else
@@ -673,9 +679,9 @@ spool_filename(job *pjob, char *namebuf, char *suffix) {
  * @return	void
  */
 void
-remove_stdouterr_files(job *pjob, char *suffix) {
+remove_stdouterr_files(job *pjob, char *suffix)
+{
 	char namebuf[MAXPATHLEN + 1];
-	extern char *msg_err_purgejob;
 
 	(void) strcpy(namebuf, path_spool);
 	spool_filename(pjob, namebuf, suffix);
@@ -695,7 +701,8 @@ remove_stdouterr_files(job *pjob, char *suffix) {
  * @retval 1 : direct write is requested by the job.
  * @retval 0 : direct write is not requested by the job.
  */
-int direct_write_requested(job *pjob) {
+int direct_write_requested(job *pjob)
+{
 	char *pj_attrk = NULL;
 	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
 		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
@@ -705,6 +712,102 @@ int direct_write_requested(job *pjob) {
 	return 0;
 }
 
+/**
+ * @brief	Convenience function to delete job related files for a job being purged
+ *
+ * @param[in]	pjob - the job being purged
+ * @param[in]	fsuffix - suffix of the file to delete
+ *
+ * @return	void
+ */
+void
+del_job_related_file(job *pjob, char *fsuffix)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	strcpy(namebuf, path_jobs);
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+	else
+		strcat(namebuf, pjob->ji_qs.ji_jobid);
+	strcat(namebuf, fsuffix);
+	if (unlink(namebuf) < 0) {
+		if (errno != ENOENT) {
+			log_joberr(errno, __func__, msg_err_purgejob,
+				pjob->ji_qs.ji_jobid);
+		}
+	}
+}
+
+#ifdef PBS_MOM
+
+/**
+ * @brief	Convenience function to delete directories associated with a job being purged
+ *
+ * @param[in]	pjob - the job being purged
+ *
+ * @return	void
+ */
+void
+del_job_dirs(job *pjob)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	strcpy(namebuf, path_jobs);      /* job directory path */
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+	else
+		strcat(namebuf, pjob->ji_qs.ji_jobid);
+	strcat(namebuf, JOB_TASKDIR_SUFFIX);
+	remtree(namebuf);
+
+	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
+
+	/* remove the staging and execution directory when sandbox=PRIVATE
+	 ** and there are no stage-out errors
+	 */
+	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
+		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
+			if (pjob->ji_grpcache != NULL)
+				rmjobdir(pjob->ji_qs.ji_jobid,
+					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
+					pjob->ji_grpcache->gc_uid,
+					pjob->ji_grpcache->gc_gid);
+			else
+				rmjobdir(pjob->ji_qs.ji_jobid,
+					jobdirname(pjob->ji_qs.ji_jobid, NULL),
+					0,
+					0);
+		}
+	}
+}
+
+/**
+ * @brief	Convenience function to delete checkpoint files for a job being purged
+ *
+ * @param[in]	pjob - job being purged
+ *
+ * @return void
+ */
+void
+del_chkpt_files(job *pjob)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	if (path_checkpoint != NULL) {	/* delete checkpoint files */
+		(void)strcpy(namebuf, path_checkpoint);
+		if (*pjob->ji_qs.ji_fileprefix != '\0')
+			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+		else
+			(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
+		(void)strcat(namebuf, JOB_CKPT_SUFFIX);
+		(void)remtree(namebuf);
+		(void)strcat(namebuf, ".old");
+		(void)remtree(namebuf);
+	}
+}
+#endif
 
 /**
  * @brief
@@ -723,10 +826,9 @@ int direct_write_requested(job *pjob) {
 void
 job_purge(job *pjob)
 {
-	char		namebuf[MAXPATHLEN + 1] = {'\0'};
 	extern	char	*msg_err_purgejob;
 #ifdef	PBS_MOM
-	extern	char	*path_checkpoint;
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
 	attribute *jrpattr = NULL;
 
@@ -767,6 +869,7 @@ job_purge(job *pjob)
 		pjob->ji_preq = NULL;
 	}
 #ifndef WIN32
+
 	if (pjob->ji_momsubt != 0) {	/* child running */
 		(void)kill(pjob->ji_momsubt, SIGKILL);
 		pjob->ji_momsubt = 0;
@@ -858,63 +961,17 @@ job_purge(job *pjob)
 	}
 	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
 #endif
-	(void)strcpy(namebuf, path_jobs);	/* delete script file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_SCRIPT_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	/* delete script file */
+	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
 	if (pjob->ji_preq != NULL) {
 		req_reject(PBSE_MOMREJECT, 0, pjob->ji_preq);
 		pjob->ji_preq = NULL;
 	}
-	(void)strcpy(namebuf, path_jobs);      /* job directory path */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_TASKDIR_SUFFIX);
-	(void)remtree(namebuf);
 
-	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
+	del_job_dirs(pjob);
 
-	/* remove the staging and execution directory when sandbox=PRIVATE
-	 ** and there are no stage-out errors
-	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
-			if (pjob->ji_grpcache != NULL)
-				rmjobdir(pjob->ji_qs.ji_jobid,
-					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
-					pjob->ji_grpcache->gc_uid,
-					pjob->ji_grpcache->gc_gid);
-			else
-				rmjobdir(pjob->ji_qs.ji_jobid,
-					jobdirname(pjob->ji_qs.ji_jobid, NULL),
-					0,
-					0);
-		}
-	}
-
-	if (path_checkpoint != NULL) {	/* delete checkpoint files */
-		(void)strcpy(namebuf, path_checkpoint);
-		if (*pjob->ji_qs.ji_fileprefix != '\0')
-			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-		else
-			(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-		(void)strcat(namebuf, JOB_CKPT_SUFFIX);
-		(void)remtree(namebuf);
-		(void)strcat(namebuf, ".old");
-		(void)remtree(namebuf);
-	}
+	del_chkpt_files(pjob);
 
 	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
 	/* remove stdout/err files if remove_files is set. */
@@ -958,18 +1015,8 @@ job_purge(job *pjob)
 #endif	/* PBS_MOM */
 
 #ifdef PBS_MOM
-	(void)strcpy(namebuf, path_jobs);	/* delete job file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_FILE_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	/* delete job file */
+	del_job_related_file(pjob, JOB_FILE_SUFFIX);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	delete_cred(pjob->ji_qs.ji_jobid);
@@ -1015,18 +1062,7 @@ job_purge(job *pjob)
 	}
 #endif
 
-	(void)strcpy(namebuf, path_jobs);	/* delete cred file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_CRED_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	del_job_related_file(pjob, JOB_CRED_SUFFIX);
 
 	/* Clearing purge job info from svr_newjobs list */
 	if (pjob == (job *) GET_NEXT(svr_newjobs))

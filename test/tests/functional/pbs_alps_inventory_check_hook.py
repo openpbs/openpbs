@@ -74,7 +74,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test the log when apstat is not present in the
         expected/default location, it indicates a Cray system issue.
         """
-        now = int(time.time())
+        now = time.time()
         if self.platform == "craysim":
             if os.path.exists("/opt/cray/alps/default/bin/stat"):
                 # The file to be renamed is conflicting with existing file
@@ -101,7 +101,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test when hook attempts to read the /etc/xthostname file to
         determine Cray hostname, but the hostname file is missing.
         """
-        now = int(time.time())
+        now = time.time()
         if self.platform == "craysim":
             if os.path.exists("/etc/xt"):
                 # The file to be renamed is conflicting with existing file
@@ -122,7 +122,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
         Test log at the start of hook processing.
         """
-        now = int(time.time())
+        now = time.time()
         self.mom.log_match(
             "Processing ALPS inventory for crayhost %s" % self.crayhostname,
             starttime=now,
@@ -133,7 +133,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
         Test log when no nodes with vntype 'cray_login' are present.
         """
-        now = int(time.time())
+        now = time.time()
         mc = self.mom.parse_config()
         save = mc["$alps_client"]
         del mc["$alps_client"]
@@ -158,7 +158,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         location (PBS_HOME), indicating a PBS installation issue.
         """
         if self.platform == "craysim":
-            now = int(time.time())
+            now = time.time()
             pbs_conf = self.du.parse_pbs_config(self.server.shortname)
             save = pbs_conf['PBS_HOME']
             self.du.set_pbs_config(
@@ -184,7 +184,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test log when both PBS and ALPS are in sync i.e. they report the
         same number of compute nodes in the Cray cluster.
         """
-        now = int(time.time())
+        now = time.time()
         self.mom.log_match(
             "ALPS Inventory Check: PBS and ALPS are in sync",
             starttime=now,
@@ -195,7 +195,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
          Test the log when PBS and ALPS are out of sync
         """
-        now = int(time.time())
+        now = time.time()
         self.delete_cray_compute_node()
         self.mom.log_match(
             "ALPS Inventory Check: Compute " +
@@ -210,7 +210,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         refresh nodes.
         """
         if self.platform == "craysim":
-            now = int(time.time())
+            now = time.time()
             pbs_conf = self.du.parse_pbs_config(self.server.shortname)
             save = pbs_conf['PBS_HOME']
             self.du.set_pbs_config(

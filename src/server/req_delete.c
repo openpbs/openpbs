@@ -616,6 +616,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	struct batch_request *temp_preq = NULL;
 	int rc;
 	int is_mgr = 0;
+	int jt;
 
 	/* + 2 is for the '@' in user@host and for the null termination byte. */
 	char by_user[PBS_MAXUSER + PBS_MAXHOSTNAME + 2] = {'\0'};
@@ -632,6 +633,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	/* See if the request is coming from a manager */
 	if (preq->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR))
 		is_mgr = 1;
+
+	jt = is_job_array(pjob->ji_qs.ji_jobid);
 
 	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
 
@@ -694,6 +697,13 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		}
 
 		return;
+	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
+		   ((pjob->ji_qs.ji_state == JOB_STATE_QUEUED) ||
+		    (pjob->ji_qs.ji_state == JOB_STATE_HELD))) {
+		struct depend *dp;
+		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		if (dp != NULL)
+			depend_runone_remove_dependency(pjob);
 	}
 
 	if (is_mgr && forcedel) {

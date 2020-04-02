@@ -80,7 +80,7 @@ class TestHolidays(TestFunctional):
             if i != today_idx:
                 self.scheduler.holidays_set_day(self.days[i], "none", "all")
 
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
 
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
@@ -116,7 +116,7 @@ class TestHolidays(TestFunctional):
         self.scheduler.holidays_set_day(today, "all", "all")
 
         # Verify that it's prime-time until tomorrow
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.dayprime_msg, regexp=True,
@@ -126,7 +126,7 @@ class TestHolidays(TestFunctional):
         self.scheduler.holidays_set_day(today, "none", "none")
 
         # Verify that it's prime-time until tomorrow
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.dayprime_msg, regexp=True,
@@ -147,7 +147,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(h_content[0], "YEAR\t%d" % self.cur_year)
 
         # Verify that it's 24x7 prime-time
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -158,7 +158,7 @@ class TestHolidays(TestFunctional):
         Test that the scheduler assumes all prime-time if the holidays
         file is completely empty
         """
-        ctime = int(time.time())
+        ctime = time.time()
         self.scheduler.holidays_delete_entry('a')
 
         # Verify that the holidays file is empty
@@ -166,7 +166,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(len(h_content), 0)
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -182,7 +182,7 @@ class TestHolidays(TestFunctional):
         Test that the scheduler logs out-of-date log message and assumed
         all prime-time for a holidays file with just a stale year line
         """
-        ctime = int(time.time())
+        ctime = time.time()
         self.scheduler.holidays_delete_entry('a')
 
         self.scheduler.holidays_set_year(self.cur_year - 1)
@@ -193,7 +193,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(h_content[0], "YEAR\t%d" % (self.cur_year - 1))
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -208,7 +208,7 @@ class TestHolidays(TestFunctional):
         Test that the scheduler assumes all prime-time if the holidays
         file is completely commented out
         """
-        ctime = int(time.time())
+        ctime = time.time()
         self.scheduler.holidays_delete_entry('a')
 
         content = """# YEAR 1970
@@ -224,7 +224,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(len(h_content), 4)
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -254,7 +254,7 @@ class TestHolidays(TestFunctional):
         self.scheduler.holidays_set_day(today, "none", "all")
 
         # Verify that it's non-prime time until tomorrow
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.daynp_msg, regexp=True,
@@ -265,7 +265,7 @@ class TestHolidays(TestFunctional):
         Test that scheduler assumes all prime time if the year entry is
         missing from holidays file
         """
-        ctime = int(time.time())
+        ctime = time.time()
         self.scheduler.holidays_delete_entry('a')
 
         # Create a holidays file with no year entry and all days set to
@@ -282,7 +282,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(len(h_content), 3)
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -312,10 +312,10 @@ class TestHolidays(TestFunctional):
         self.scheduler.holidays_write_file(content=content)
 
         time.sleep(1)
-        ctime = int(time.time())
+        ctime = time.time()
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,
@@ -358,7 +358,7 @@ class TestHolidays(TestFunctional):
         self.scheduler.holidays_set_day(today, "none", "all")
 
         # Verify that it's non-prime time until tomorrow
-        ctime = int(time.time())
+        ctime = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.daynp_msg, regexp=True,
@@ -369,7 +369,7 @@ class TestHolidays(TestFunctional):
         Test that setting holidays file's year entry to 0 causes 24x7
         prime-time
         """
-        ctime = int(time.time())
+        ctime = time.time()
         self.scheduler.holidays_delete_entry('a')
 
         self.scheduler.holidays_set_year('0')
@@ -380,7 +380,7 @@ class TestHolidays(TestFunctional):
         self.assertEqual(h_content[0], "YEAR\t0")
 
         # Verify that it's 24x7 prime-time
-        ctime2 = int(time.time())
+        ctime2 = time.time()
         time.sleep(1)
         self.server.manager(MGR_CMD_SET, SERVER, {ATTR_scheduling: True})
         self.scheduler.log_match(msg=self.allprime_msg, regexp=True,

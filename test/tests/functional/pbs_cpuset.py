@@ -87,7 +87,7 @@ time.sleep(20)
         hook_event = "execjob_launch"
         hook_name = "launch"
         a = {'event': hook_event, 'enabled': 'true'}
-        stime = int(time.time())
+        stime = time.time()
         self.server.create_import_hook(hook_name, a, self.launch_hook_body)
 
         # Check mom logs that the launch hook got propagated
@@ -99,7 +99,7 @@ time.sleep(20)
             ATTR_l + '.select': '2:ncpus=1:mem=2gb',
             ATTR_l + '.place': 'vscatter',
             ATTR_W: 'tolerate_node_failures=job_start'})
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(j)
 
         # Check the exec_vnode while in substate 41
@@ -138,7 +138,7 @@ time.sleep(20)
         # Submit job2 requesting the released vnode, job runs
         j2 = Job(TEST_USER, {
             ATTR_l + '.select': '1:ncpus=1:mem=2gb:vnode=%s' % vnodeB})
-        stime = int(time.time())
+        stime = time.time()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, offset=20, id=jid2)
 

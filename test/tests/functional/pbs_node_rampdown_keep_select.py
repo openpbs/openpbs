@@ -190,7 +190,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         for (mom, conf) in zip(self.momArr, node_conf):
             if mom.has_vnode_defs():
                 mom.delete_vnode_defs()
-            start_time = int(time.time())
+            start_time = time.time()
             self.server.create_vnodes(mom.shortname, conf.a, conf.vnode_ct,
                                       mom, delall=False,
                                       usenatvnode=conf.usenatvnode)

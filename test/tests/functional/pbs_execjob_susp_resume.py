@@ -189,7 +189,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -234,7 +234,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend, then resume job
         self.server.sigjob(jobid=jid, signal="suspend")
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -280,7 +280,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -315,7 +315,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -352,7 +352,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -388,7 +388,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -424,7 +424,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend, then resume job
         self.server.sigjob(jobid=jid, signal="suspend")
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -457,7 +457,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend, then resume job
         self.server.sigjob(jobid=jid, signal="suspend")
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -496,7 +496,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend, then resume job
         self.server.sigjob(jobid=jid, signal="suspend")
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -530,7 +530,7 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = int(time.time())
+        stime = time.time()
         # Suspend, then resume job
         self.server.sigjob(jobid=jid, signal="suspend")
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)

@@ -55,7 +55,7 @@ class TestServerDynRes(TestFunctional):
         # correct log message and avoid false positives from previous
         # logs
         time.sleep(1)
-        match_from = int(time.time())
+        match_from = time.time()
         self.scheduler.apply_config(validate=False)
         self.scheduler.get_pid()
         self.scheduler.signal('-HUP')

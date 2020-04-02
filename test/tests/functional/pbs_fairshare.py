@@ -163,7 +163,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1)
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -200,7 +200,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1)
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -239,7 +239,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1, {'Resource_List.cput': 40})
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -281,7 +281,7 @@ class TestFairshare(TestFunctional):
         J4 = Job(TEST_USER1, {'Resource_List.ncpus': 4,
                               'Resource_List.walltime': "00:02:00"})
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '60.3816')
@@ -363,8 +363,8 @@ class TestFairshare(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        t = int(time.time())
-        time.sleep(2)
+        t = time.time()
+        time.sleep(3)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.scheduler.log_match("Decaying Fairshare Tree", starttime=t)

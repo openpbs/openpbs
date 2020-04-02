@@ -117,7 +117,7 @@ class TestVnodePool(TestFunctional):
 
         attr = {'vnode_pool': '1'}
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA, attrib=attr)
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr)
@@ -152,7 +152,7 @@ class TestVnodePool(TestFunctional):
         self.logger.info("Non-inventory mom is %s." %
                          noninv_mom.shortname)
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         # Kill inventory mom
         inv_mom.signal('-KILL')
@@ -210,7 +210,7 @@ class TestVnodePool(TestFunctional):
         attr_A = {'vnode_pool': '1'}
         attr_B = {'vnode_pool': '2'}
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA, attrib=attr_A)
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr_B)
@@ -242,7 +242,7 @@ class TestVnodePool(TestFunctional):
         self.hostA = self.momA.shortname
         self.logger.info("hostA is %s." % self.hostA)
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
@@ -262,7 +262,7 @@ class TestVnodePool(TestFunctional):
 
         attr_1 = {'vnode_pool': '1'}
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr_1)
 

@@ -148,7 +148,7 @@ class TestMomHookSync(TestFunctional):
         self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
-        now = int(time.time())
+        now = time.time()
         self.momB.signal('-CONT')
 
         # Put another sleep delay so log_match() can see all the matches
@@ -208,7 +208,7 @@ class TestMomHookSync(TestFunctional):
         self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
-        now = int(time.time())
+        now = time.time()
         self.momB.signal('-CONT')
 
         # Put another sleep delay so log_match() can see all the matches
@@ -262,7 +262,7 @@ class TestMomHookSync(TestFunctional):
         self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
-        now = int(time.time())
+        now = time.time()
         self.momB.signal('-KILL')
         self.momB.restart()
 
@@ -332,7 +332,7 @@ class TestMomHookSync(TestFunctional):
         # delete mom hook action as that hook is now seen as a
         # server hook. Since it's now a server hook, no further
         # mom hook sends are done.
-        now = int(time.time())
+        now = time.time()
         self.momB.signal('-KILL')
         self.momB.restart()
 

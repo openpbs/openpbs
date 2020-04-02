@@ -329,9 +329,10 @@ node_save_db(struct pbsnode *pnode)
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 
-	svr_to_db_node(pnode, &dbnode);
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
+
+	svr_to_db_node(pnode, &dbnode);
 
 	if (pbs_db_save_obj(conn, &obj, PBS_UPDATE_DB_FULL) != 0) {
 		if (pbs_db_save_obj(conn, &obj, PBS_INSERT_DB) != 0) {
@@ -343,6 +344,7 @@ node_save_db(struct pbsnode *pnode)
 
 	return (0);
 db_err:
+	pbs_db_reset_obj(&obj);
 	strcpy(log_buffer, "node_save failed ");
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);

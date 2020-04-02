@@ -50,11 +50,14 @@ import json as JSON
 import urllib
 import site
 site.main()
-import requests
-import requests_unixsocket
-import pbs
-import pwd
-import copy
+
+# to be PEP-8 compliant, the imports must be indented
+if True:
+    import requests
+    import requests_unixsocket
+    import pbs
+    import pwd
+    import copy
 
 requests_unixsocket.monkeypatch()
 
@@ -67,7 +70,9 @@ class OfflineError(Exception):
     """
     Exception that will offline the node and reject the event
     """
-    pass
+
+    def __init__(self, msg):
+        super().__init__(pbs.event().job.id + ': ' + msg)
 
 
 class RejectError(Exception):
@@ -401,11 +406,7 @@ if __name__ == 'builtins':
     try:
         main()
     except OfflineError as e:
-        for v in pbs.event().vnode_list.keys():
-            vnode = pbs.event().vnode_list[v]
-            vnode.state = pbs.ND_OFFLINE
-            vnode.comment = '%s: vnode set to offline: %s' % (
-                pbs.event().hook_name, e.message)
-        pbs.event().reject()
+        # the fail_action will offline the vnodes
+        raise
     except RejectError:
         pbs.event().reject()

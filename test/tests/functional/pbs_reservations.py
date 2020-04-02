@@ -155,7 +155,7 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
-        now = int(time.time())
+        now = time.time()
 
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                       rrule=rrule, start=start, end=end)
@@ -311,7 +311,8 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
 
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         rid1 = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                        start=now + 3600, end=now + 7200)
 
@@ -344,10 +345,10 @@ class TestReservations(TestFunctional):
         # Can't reconfirm rid1 because rid2's second occurrence should be
         # on node 2 at that time.
         self.scheduler.log_match(rid1 + ';Reservation is in degraded mode',
-                                 starttime=now, interval=1)
+                                 starttime=start_time, interval=1)
         # Can't reconfirm rid2 because the job is running on node 2.
         self.scheduler.log_match(rid2 + ';Reservation is in degraded mode',
-                                 starttime=now, interval=1)
+                                 starttime=start_time, interval=1)
 
         self.logger.info('Sleeping until standing reservation runs')
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
@@ -413,17 +414,23 @@ class TestReservations(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
 
+        now = int(time.time())
+        start1 = now + 15
+        end1 = now + 25
+        start2 = now + 600
+        end2 = now + 7200
+
         r1 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': int(
-            time.time() + 5), 'reserve_end': int(time.time() + 15)}
+        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': start1,
+             'reserve_end': end1}
         r1.set_attributes(a)
         r1id = self.server.submit(r1)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, r1id)
 
         r2 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': int(
-            time.time() + 600), 'reserve_end': int(time.time() + 7800)}
+        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': start2,
+             'reserve_end': end2}
         r2.set_attributes(a)
         r2id = self.server.submit(r2)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -449,8 +456,10 @@ class TestReservations(TestFunctional):
         j2.set_attributes(a)
         j2id = self.server.submit(j2)
 
+        self.logger.info('Sleeping till Resv 1 ends')
         a = {'reserve_state': (MATCH_RE, "RESV_BEING_DELETED|7")}
-        self.server.expect(RESV, a, id=r1id, interval=1)
+        off = end1 - int(time.time())
+        self.server.expect(RESV, a, id=r1id, interval=1, offset=off)
 
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -1210,7 +1219,8 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R1) and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'reserve_start': now + 20,
              'reserve_end': now + 120}
         r = Reservation(TEST_USER, attrs=a)
@@ -1242,7 +1252,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=subjid[1])
         # Wait for reservation to delete from server
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=10)
+        self.server.log_match(msg, starttime=start_time, interval=10)
         # Check status of the sub-job using qstat -fx once job completes
         self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '271'},
                            extend='x', attrop=PTL_AND, id=subjid[0])
@@ -1251,7 +1261,8 @@ class TestReservations(TestFunctional):
 
         # Submit a advance reservation (R2) and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'Resource_List.select': '1:ncpus=4',
              'reserve_start': now + 20,
              'reserve_end': now + 180}
@@ -1292,7 +1303,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state=R': 4}, count=True,
                            id=jid3, extend='t')
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=10)
+        self.server.log_match(msg, starttime=start_time, interval=10)
         # Check status of the job-array using qstat -fx at the end of
         # reservation
         self.server.expect(JOB, {'job_state': 'F', 'Exit_status': '0'},
@@ -1396,7 +1407,8 @@ class TestReservations(TestFunctional):
         self.common_steps()
         # Submit an advance reservation and an array job to the reservation
         # once reservation confirmed
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'reserve_start': now + 10,
              'reserve_end': now + 40}
         r = Reservation(TEST_USER, attrs=a)
@@ -1418,7 +1430,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, jid)
         # Wait for reservation to delete from server
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=10)
+        self.server.log_match(msg, starttime=start_time, interval=10)
         # Check status of the parent-job using qstat -fx once reservation ends
         self.server.expect(JOB, {'job_state': 'F', 'substate': '91'},
                            extend='x', id=jid)
@@ -1457,7 +1469,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'},
                            extend='x', id=jid, interval=1)
         # Convert job-array j2 into an ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
@@ -1530,7 +1542,7 @@ class TestReservations(TestFunctional):
                            id=jid2, extend='t')
 
         # Convert j2 into an ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
@@ -1552,7 +1564,7 @@ class TestReservations(TestFunctional):
                            id=jid3, extend='t')
 
         # Convert j3 into an ASAP reservation
-        now2 = int(time.time())
+        now2 = time.time()
         rid2 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid3)
         rid2_q = rid2.split('.')[0]
@@ -1612,8 +1624,10 @@ class TestReservations(TestFunctional):
             tzone = 'America/Los_Angeles'
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 10
-        end = start + 25
+        start = time.time() + 10
+        now = start + 25
+        start = int(start)
+        end = int(now)
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=4',
                                       rrule='FREQ=MINUTELY;INTERVAL=2;COUNT=2',
                                       start=start, end=end)
@@ -1652,7 +1666,7 @@ class TestReservations(TestFunctional):
         self.server.expect(RESV, {'reserve_index': 2}, id=rid)
         # Wait for reservations to be finished
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=end, interval=2)
+        self.server.log_match(msg, starttime=now, interval=2)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
 
         # Check for subjob status for job-array
@@ -1729,8 +1743,10 @@ class TestReservations(TestFunctional):
 
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 10
-        end = start + 30
+        start = time.time() + 10
+        now = start + 30
+        start = int(start)
+        end = int(now)
         a = {'Resource_List.select': '1:ncpus=4',
              ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
              ATTR_resv_timezone: tzone,
@@ -1797,7 +1813,7 @@ class TestReservations(TestFunctional):
 
         # Wait for reservation to be finished
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=end, interval=2)
+        self.server.log_match(msg, starttime=now, interval=2)
         for job in jids:
             self.server.expect(JOB, 'queue', op=UNSET, id=job)
 
@@ -2035,7 +2051,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state=Q': 6}, count=True,
                            extend='t', id=jid2)
         # Convert 2 job array's into ASAP reservation
-        now = int(time.time())
+        now = time.time()
         rid1 = self.submit_asap_reservation(PBSROOT_USER, jid)
         rid1_q = rid1.split('.')[0]
         rid2 = self.submit_asap_reservation(PBSROOT_USER, jid2)

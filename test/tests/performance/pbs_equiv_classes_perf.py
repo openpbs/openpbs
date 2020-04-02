@@ -61,7 +61,7 @@ class TestJobEquivClassPerf(TestPerformance):
         Run a scheduling cycle and calculate its duration
         """
 
-        t = int(time.time())
+        t = time.time()
 
         # Run only one cycle
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,

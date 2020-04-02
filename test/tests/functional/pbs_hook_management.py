@@ -146,7 +146,7 @@ class TestHookManagement(TestFunctional):
         hook_msg = 'running management hook_00'
         hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
         ret = self.server.import_hook(hook_name, hook_body)
@@ -166,7 +166,7 @@ class TestHookManagement(TestFunctional):
         hook_msg = 'running management hook_01'
         hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
-        start_time = int(time.time())
+        start_time = time.time()
         for hook_name in ['a1234', 'b1234', 'c1234']:
             self.logger.info("hook_name:%s" % hook_name)
             ret = self.server.create_hook(hook_name, attrs)
@@ -196,7 +196,7 @@ class TestHookManagement(TestFunctional):
         hook_msg_02 = 'running management hook_02 name:%s' % hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
@@ -234,7 +234,7 @@ class TestHookManagement(TestFunctional):
         hook_msg = 'running management hook_str_00'
         hook_body = get_hook_body_str(hook_msg)
         attrs = {'event': 'management', 'enabled': 'True'}
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
         ret = self.server.import_hook(hook_name, hook_body)
@@ -265,7 +265,7 @@ class TestHookManagement(TestFunctional):
                       hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
@@ -315,7 +315,7 @@ class TestHookManagement(TestFunctional):
                       hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
@@ -380,7 +380,7 @@ class TestHookManagement(TestFunctional):
                       hook_name_02
         hook_body_02 = get_hook_body(hook_msg_02)
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.create_hook(hook_name_01, attrs)
@@ -442,7 +442,7 @@ class TestHookManagement(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
 
@@ -480,7 +480,7 @@ class TestHookManagement(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
 
@@ -519,7 +519,7 @@ class TestHookManagement(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
 
@@ -592,7 +592,7 @@ class TestHookManagement(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-        start_time = int(time.time())
+        start_time = time.time()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
 

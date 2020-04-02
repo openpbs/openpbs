@@ -146,6 +146,7 @@ typedef struct auth_def {
 enum AUTH_MSG_TYPES {
 	AUTH_CTX_DATA = 1, /* starts from 1, zero means EOF */
 	AUTH_ERR_DATA,
+	AUTH_CTX_OK,
 	AUTH_ENCRYPTED_DATA,
 	AUTH_LAST_MSG
 };

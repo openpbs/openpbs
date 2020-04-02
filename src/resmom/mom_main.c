@@ -159,7 +159,7 @@ volatile pbs_mutex      *pbs_commit_ptr = &pbs_commit_mtx;
 #endif
 
 /* Global Data Items */
-
+int mock_run = 0;
 enum hup_action	call_hup = HUP_CLEAR;
 static int      update_state_flag = 0;
 double		cputfactor = 1.00;
@@ -8373,11 +8373,22 @@ main(int argc, char *argv[])
 	}
 
 	errflg = 0;
-	getopt_str = "d:c:M:NS:R:lL:a:xC:prs:n:Q:-:";
+	getopt_str = "d:c:M:mNS:R:lL:a:xC:prs:n:Q:-:";
 	while ((c = getopt(argc, argv, getopt_str)) != -1) {
 		switch (c) {
 			case 'N':	/* stand alone (win), no fork (others) */
 				stalone = 1;
+				break;
+			case 'm':
+#ifdef WIN32
+				fprintf(stderr, "-m option not supported for Windows\n");
+				g_dwCurrentState = SERVICE_STOPPED;
+				ss.dwCurrentState = g_dwCurrentState;
+				ss.dwWin32ExitCode = ERROR_INVALID_PARAMETER;
+				if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+				return 1;
+#endif
+				mock_run = 1;
 				break;
 			case 'd':	/* directory */
 				if (pbs_conf.pbs_home_path != NULL)
@@ -9362,7 +9373,8 @@ main(int argc, char *argv[])
 	}
 
 #ifndef	WIN32
-	mom_nice();
+	if (!mock_run)
+		mom_nice();
 #endif
 	/*
 	 * Recover the hooks.
@@ -9763,7 +9775,7 @@ main(int argc, char *argv[])
 			 * no harm anyway.
 			 */
 			(void)kill_job(pjob, SIGKILL);
-			job_purge(pjob);
+			job_purge_mom(pjob);
 			++i;
 		}
 		if (i > 0)
@@ -9869,7 +9881,7 @@ main(int argc, char *argv[])
 					req_reject(PBSE_SISCOMM, 0, pjob->ji_preq);
 					pjob->ji_preq = NULL;
 				}
-				job_purge(pjob);
+				job_purge_mom(pjob);
 				dorestrict_user();
 				continue;
 			}
@@ -10096,7 +10108,7 @@ main(int argc, char *argv[])
 	/* Have we any jobs that can be purged before we go away? */
 
 	while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL) {
-		job_purge(pjob);
+		job_purge_mom(pjob);
 	}
 
 	{
@@ -10856,15 +10868,29 @@ mom_topology(void)
 
 		close(fd[0]);
 
-		if (hwloc_topology_init(&topology) == -1)
+		ret = hwloc_topology_init(&topology);
+		if (ret == 0)
+#if HWLOC_API_VERSION < 0x00020000
+			ret = hwloc_topology_set_flags(topology,
+					HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM |
+					HWLOC_TOPOLOGY_FLAG_IO_DEVICES);
+#else
+			ret = hwloc_topology_set_io_types_filter(topology,
+					HWLOC_TYPE_FILTER_KEEP_ALL);
+#endif
+		if (ret == 0)
+			ret = hwloc_topology_load(topology);
+		if (ret == 0)
+#if HWLOC_API_VERSION < 0x00020000
+			ret = hwloc_topology_export_xmlbuffer(topology,
+					&xmlbuf, &xmllen);
+#else
+			ret = hwloc_topology_export_xmlbuffer(topology,
+					&xmlbuf, &xmllen,
+					HWLOC_TOPOLOGY_EXPORT_XML_FLAG_V1);
+#endif
+		if (ret != 0)
 			ret = -1;
-		else if ((hwloc_topology_set_flags(topology,
-				HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
-				== -1) || (hwloc_topology_load(topology) == -1)
-				|| (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen)
-						== -1)) {
-			ret = -1;
-		}
 
 		write(fd[1], &ret, (sizeof(ret)));
 		write(fd[1], &xmllen, (sizeof(xmllen)));

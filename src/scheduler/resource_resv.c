@@ -1645,6 +1645,12 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 				free(selectspec);
 			}
 		}
+		if (resresv->job->dependent_jobs != NULL) {
+			for (i = 0; resresv->job->dependent_jobs[i] != NULL; i++) {
+				/* Mark all runone jobs as "can not run" */
+				resresv->job->dependent_jobs[i]->can_not_run = 1;
+			}
+		}
 	}
 	else if (resresv->is_resv && resresv->resv !=NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;

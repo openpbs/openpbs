@@ -37,9 +37,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-        echo -e "[storage-sig]\nname=CentOS Storage SIG \$releasever - \$basearch\nbaseurl=https://cbs.centos.org/repos/storage7-testing/\$basearch/os\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/storage-sig.repo
         yum -y update
-        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel openafs-authlibs openafs-authlibs-devel
+        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     _PRETTY_NAME=$(echo ${PRETTY_NAME} | awk -F[=\"] '{print $1}')

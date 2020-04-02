@@ -148,7 +148,7 @@ class TestOfflineVnode(TestFunctional):
         and check if the job runs on one of the vnodes.
         """
         single_mom = self.moms.values()[0]
-        start_time = int(time.time())
+        start_time = time.time()
         self.create_multi_vnodes(1)
         self.create_mom_hook()
 
@@ -224,7 +224,7 @@ class TestOfflineVnode(TestFunctional):
         if self.moms.values()[1].has_vnode_defs():
             self.moms.values()[1].delete_vnode_defs()
 
-        start_time = int(time.time())
+        start_time = time.time()
         self.create_multi_vnodes(2)
         self.create_mom_hook()
 
@@ -290,7 +290,7 @@ class TestOfflineVnode(TestFunctional):
         if self.moms.values()[1].has_vnode_defs():
             self.moms.values()[1].delete_vnode_defs()
 
-        start_time = int(time.time())
+        start_time = time.time()
         self.create_multi_vnodes(num_moms=2, num_vnode=1)
 
         self.create_bad_begin_hook()
@@ -340,7 +340,7 @@ class TestOfflineVnode(TestFunctional):
         if mom.has_vnode_defs():
             mom.delete_vnode_defs()
 
-        start_time = int(time.time())
+        start_time = time.time()
         self.create_multi_vnodes(1)
         self.create_bad_startup_hook()
 

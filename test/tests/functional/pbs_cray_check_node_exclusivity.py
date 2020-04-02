@@ -85,7 +85,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         asks for exclusivity.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 30,
              'reserve_end': now + 60}
@@ -106,7 +107,7 @@ class TestCheckNodeExclusivity(TestFunctional):
                            id=resv_node)
         # Wait for reservation to delete from server
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=10)
+        self.server.log_match(msg, starttime=start_time, interval=10)
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
 
@@ -124,8 +125,10 @@ class TestCheckNodeExclusivity(TestFunctional):
             tzone = 'America/Los_Angeles'
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
-        start = int(time.time()) + 20
-        end = start + 20
+        start = time.time() + 20
+        now = start + 20
+        start = int(start)
+        end = int(now)
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl',
              ATTR_resv_rrule: 'FREQ=MINUTELY;COUNT=2',
@@ -165,7 +168,7 @@ class TestCheckNodeExclusivity(TestFunctional):
                            id=resv_node)
         # Wait for reservations to be finished
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=end, interval=2)
+        self.server.log_match(msg, starttime=now, interval=2)
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
 
@@ -175,7 +178,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         to run if reservation has place=excl.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 30}
@@ -202,7 +206,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         # Wait for reservation to end and verify node state
         # changed as job-exclusive
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=2)
+        self.server.log_match(msg, starttime=start_time, interval=2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(NODE, {'state': 'job-exclusive'},
                            id=resv_node)
@@ -215,7 +219,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         requesting the same vnode in Reservation1.
         """
         # Submit a reservation with place=excl
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_compute',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 60}
@@ -234,7 +239,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         r = Reservation(TEST_USER, attrs=a)
         rid2 = self.server.submit(r)
         msg = "Resv;" + rid2 + ";Reservation denied"
-        self.server.log_match(msg, starttime=now, interval=2)
+        self.server.log_match(msg, starttime=start_time, interval=2)
         msg2 = "Resv;" + rid2 + ";reservation deleted"
         self.server.log_match(msg2, starttime=now, interval=2)
         msg3 = "Resv;" + rid2 + ";PBS Failed to confirm resv: Insufficient "
@@ -396,7 +401,8 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.script2 += ['/bin/sleep 10']
 
         # Submit a reservation with place=excl
-        now = int(time.time())
+        start_time = time.time()
+        now = int(start_time)
         a = {'Resource_List.select': '1:ncpus=1:vntype=cray_login',
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
@@ -428,7 +434,7 @@ class TestCheckNodeExclusivity(TestFunctional):
         # Wait for reservation to end and verify node state
         # changed as free
         msg = "Que;" + rid_q + ";deleted at request of pbs_server@"
-        self.server.log_match(msg, starttime=now, interval=2)
+        self.server.log_match(msg, starttime=start_time, interval=2)
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
 

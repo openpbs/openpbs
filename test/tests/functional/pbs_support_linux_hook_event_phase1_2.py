@@ -94,7 +94,7 @@ else:
         # Submit a job
         j = Job(TEST_USER)
         j.create_script(body=test)
-        check_after1 = int(time.time())
+        check_after1 = time.time()
         check_after2 = check_after1 + 2
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
@@ -181,7 +181,7 @@ e.accept()
         # Submit a job
         j = Job(TEST_USER)
         j.create_script(body=test)
-        check_after = int(time.time())
+        check_after = time.time()
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 

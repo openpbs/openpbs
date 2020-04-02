@@ -84,6 +84,7 @@ class TestVerifyLogOutput(TestFunctional):
         Test for hostname presence in log files
         """
         log_val = socket.gethostname()
+        momname = self.mom.shortname
         self.scheduler.log_match(
             log_val,
             regexp=False,
@@ -97,7 +98,7 @@ class TestVerifyLogOutput(TestFunctional):
             max_attempts=5,
             interval=2)
         self.mom.log_match(
-            log_val,
+            momname,
             regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,

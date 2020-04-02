@@ -1139,6 +1139,8 @@ main(int argc, char *argv[])
 	}
 	addclient("localhost");   /* who has permission to call MOM */
 	addclient(host);
+	if (pbs_conf.pbs_server_name)
+		addclient(pbs_conf.pbs_server_name);
 	if (pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
 		/* Failover is configured when both primary and secondary are set. */
 		addclient(pbs_conf.pbs_primary);
@@ -1147,6 +1149,8 @@ main(int argc, char *argv[])
 		/* Failover is not configured, but PBS_SERVER_HOST_NAME is. */
 		addclient(pbs_conf.pbs_server_host_name);
 	}
+	if (pbs_conf.pbs_leaf_name)
+		addclient(pbs_conf.pbs_leaf_name);
 
 	if (configfile) {
 		if (read_config(configfile) != 0)

@@ -60,6 +60,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
@@ -209,14 +211,14 @@ if __name__ == '__main__':
             json_on = True
         elif o == '--last-week':
             s = time.localtime(time.time() - (7 * 24 * 3600))
-            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
-                                                  "%m/%d/%Y")))
-            end = int(time.time())
+            begin = time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                              "%m/%d/%Y"))
+            end = time.time()
         elif o == '--last-month':
             s = time.localtime(time.time() - (30 * 24 * 3600))
-            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
-                                                  "%m/%d/%Y")))
-            end = int(time.time())
+            begin = time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                              "%m/%d/%Y"))
+            end = time.time()
         elif o == '--log-conf':
             logconf = CliUtils.expand_abs_path(val)
         elif o == '--nodes-file':

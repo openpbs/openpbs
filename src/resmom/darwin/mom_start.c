@@ -189,13 +189,7 @@ void scan_for_terminated()
 
 	termin_child = 0;
 
-	if (mom_get_sample() == PBSE_NONE) {
-		pjob = (job *)GET_NEXT(svr_alljobs);
-		while (pjob) {
-			mom_set_use(pjob);
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs);
-		}
-	}
+	mom_set_use_all();
 
 	/* Now figure out which task(s) have terminated (are zombies) */
 

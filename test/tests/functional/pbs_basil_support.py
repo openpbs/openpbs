@@ -545,7 +545,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
             self.logger.info("KNL vnode list: %s" % (knl_vnodes))
 
         # Check for PBS ALPS Inventory Hook message.
-        now = int(time.time())
+        now = time.time()
         rv = self.mom.log_match("ALPS Inventory Check: PBS and ALPS"
                                 " are in sync",
                                 starttime=now, interval=5)

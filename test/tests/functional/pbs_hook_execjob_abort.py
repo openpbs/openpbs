@@ -129,7 +129,7 @@ time.sleep(2)
         self.server.create_import_hook(
             hook_name, a, self.prolo_hook_body % (''))
         # Submit a job that eventually goes in H state
-        start_time = int(time.time())
+        start_time = time.time()
         jid = self.server.submit(self.j)
         msg = "Job;%s;Job requeued, execution node  down" % jid
         self.server.log_match(msg, starttime=start_time)
@@ -153,7 +153,7 @@ time.sleep(2)
         self.server.create_import_hook(
             hook_name, a, self.launch_hook_body)
         # Submit a job
-        start_time = int(time.time())
+        start_time = time.time()
         jid = self.server.submit(self.j)
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
@@ -204,7 +204,7 @@ time.sleep(2)
         # Simulate a sister failure to join job
         # kill -STOP momC, submit a multi-node job, kill -9 momC
         self.momC.signal("-STOP")
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(self.j)
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
@@ -250,7 +250,7 @@ time.sleep(2)
         # Simulate a sister failure to join job
         # kill -STOP momC, submit a multi-node job, kill -9 momC
         self.momC.signal("-STOP")
-        stime = int(time.time())
+        stime = time.time()
         jid = self.server.submit(self.j)
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)

@@ -535,6 +535,7 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_ResvOccurEnd:
 		case PBS_BATCH_HoldJob:
 		case PBS_BATCH_ModifyJob:
+		case PBS_BATCH_ModifyJob_Async:
 			rc = decode_DIS_Manage(sfds, request);
 			break;
 

@@ -50,7 +50,7 @@ class TestEquivClass(TestFunctional):
         self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         # capture the start time of the test for log matching
-        self.t = int(time.time())
+        self.t = time.time()
 
     def submit_jobs(self, num_jobs=1,
                     attrs={'Resource_List.select': '1:ncpus=1'},
@@ -1310,7 +1310,7 @@ class TestEquivClass(TestFunctional):
         time.sleep(20)
 
         # Submit another job
-        self.t = int(time.time())
+        self.t = time.time()
         jid3 = self.submit_jobs(1, user=TEST_USER3)
 
         # Look at the job equivalence classes again
@@ -1375,7 +1375,7 @@ e.job.Resource_List["cput"] = 20
                                  starttime=self.t)
 
         # Alter a queued job
-        self.t = int(time.time())
+        self.t = time.time()
         self.server.alterjob(jid3[2], {ATTR_N: "test"})
 
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -1462,7 +1462,7 @@ else:
                                  starttime=self.t)
 
         # Submit another job
-        self.t = int(time.time())
+        self.t = time.time()
         j = Job(TEST_USER,
                 attrs={'Resource_List.select': '1:ncpus=8',
                        'Resource_List.walltime': '30'})
@@ -1473,7 +1473,7 @@ else:
                                  starttime=self.t)
 
         # Submit another job
-        self.t = int(time.time())
+        self.t = time.time()
         j = Job(TEST_USER,
                 attrs={'Resource_List.select': '1:ncpus=8',
                        'Resource_List.walltime': '40'})
@@ -1487,7 +1487,7 @@ else:
         self.server.delete(jid1, wait='True')
 
         # Rerun scheduling cycle
-        self.t = int(time.time())
+        self.t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
 
@@ -1499,7 +1499,7 @@ else:
         self.server.delete(jid2, wait='true')
 
         # Rerun scheduling cycle
-        self.t = int(time.time())
+        self.t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
 
@@ -1512,7 +1512,7 @@ else:
 
         time.sleep(1)  # adding delay to avoid race condition
         # Rerun scheduling cycle
-        self.t = int(time.time())
+        self.t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
 
@@ -1611,7 +1611,7 @@ else:
              'group_list': TSTGRP3, ATTR_q: 'workq'}
         jid8 = self.submit_jobs(10, a, TEST_USER2)
 
-        self.t = int(time.time())
+        self.t = time.time()
 
         # Run only one cycle
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
@@ -1794,7 +1794,7 @@ else:
 
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  starttime=self.t)
-        self.t = int(time.time())
+        self.t = time.time()
 
         # Preempt jid2, check no new equivalence class is created
         Je2 = Job(TEST_USER, attrs=a)
@@ -1929,7 +1929,7 @@ else:
 
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
-        self.t = int(time.time())
+        self.t = time.time()
 
         # Resume the jobs suspended by qsig
         # 1 second delay is added so that time of next logging moves ahead.
@@ -1941,7 +1941,7 @@ else:
         # On resume check that there are same number of equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
-        self.t = int(time.time())
+        self.t = time.time()
 
         # delete the expressq jobs and check that the suspended jobs
         # go back to running state. equivalence classes=2 again
