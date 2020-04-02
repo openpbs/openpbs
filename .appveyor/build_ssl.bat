@@ -65,7 +65,6 @@ if not exist "%BINARIESDIR%\OpenSSL_%OPENSSL_VERSION%.zip" (
 
 2>nul rd /S /Q "%BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
 
-REM Use the ENV_7Z_BIN environment variable
 "%ENV_7Z_BIN%" x -y "%BINARIESDIR%\OpenSSL_%OPENSSL_VERSION%.zip" -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\openssl-OpenSSL_%OPENSSL_VERSION%"
