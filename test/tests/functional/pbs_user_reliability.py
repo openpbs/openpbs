@@ -248,11 +248,10 @@ j.create_resv_from_job=1
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
-        try:
+        msg = "attribute allowed to be modified"
+        with self.assertRaises(PbsAlterError, msg=msg) as c:
             self.server.alterjob(jid, {ATTR_W: 'create_resv_from_job=1'})
-        except PbsAlterError as e:
-            msg = "qalter: Cannot modify attribute while job running  "
-            msg += "create_resv_from_job"
-            self.assertTrue(msg in e.msg[0])
-        else:
-            self.fail("attribute allowed to be modified")
+
+        msg = "qalter: Cannot modify attribute while job running  "
+        msg += "create_resv_from_job"
+        self.assertIn(msg, c.exception.msg[0])
