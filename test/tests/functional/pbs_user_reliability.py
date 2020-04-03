@@ -241,7 +241,7 @@ j.create_resv_from_job=1
 
     def test_set_attr_when_job_running(self):
         """
-        This test confirms that create_resv_from_job=1 is not allowed to be
+        This test confirms that create_resv_from_job is not allowed to be
         altered when the job is already running.
         """
         j = Job(TEST_USER)
