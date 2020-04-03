@@ -317,7 +317,8 @@ cpy_quote_value(char *pb, char *value)
  * Get the resources_used job attribute
  *
  * @param[in]	pjob	- pointer to job structure
- * @param[in]	res	- resource entity index (e.g. JOB_ATR_resource)
+ * @param[in]	resc_used - pointer to resources used string
+ * @param[in]	resc_used_size - size of resources used string
  *
  * @return	int
  * @retval	0 upon success
@@ -2297,21 +2298,32 @@ void
 log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 {
 	char *buf = NULL;
-	char *tmp;
 	char *resc_used;
+	char *resc_released;
+	int buf_size = 1024;
 	int resc_used_size = 0;
-	int rc;
 
-	rc = pbs_asprintf(&buf, "requestor=%s@%s", user, host);
+	buf = malloc(buf_size * sizeof(char));
+	if (buf == NULL)
+		return;
+
+	buf[0] = '\0';
+
+	snprintf(buf, buf_size, "requestor=%s@%s", user, host);
 
 	if (acct_type == PBS_ACCT_SUSPEND) {
 		
 		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
-			tmp = buf;
-			rc = pbs_asprintf(&buf, "%s resources_released=%s", tmp,
-			pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str);
-			free(tmp);
-		}	
+			if (pbs_asprintf(&resc_released, " resources_released=%s",
+			pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) > 0) {
+				if (pbs_strcat(&buf, &buf_size, resc_released) == NULL) {
+					free(buf);
+					free(resc_released);
+					return;
+				}
+				free(resc_released);
+			}
+		}
 
 		/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
 		resc_used = malloc(RESC_USED_BUF_SIZE);
@@ -2327,16 +2339,16 @@ log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 		}
 
 		if (resc_used != NULL) {
-			tmp = buf;
-			rc = pbs_asprintf(&buf, "%s%s", tmp, resc_used);
+			if (pbs_strcat(&buf, &buf_size, resc_used) == NULL) {
+				free(buf);
+				free(resc_used);
+				return;
+			}
 			free(resc_used);
-			free(tmp);
 		}
 	}
 
 writeit:
-	if (rc > 0) {
-		write_account_record(acct_type, pjob->ji_qs.ji_jobid, buf);
-		free(buf);
-	}
+	write_account_record(acct_type, pjob->ji_qs.ji_jobid, buf);
+	free(buf);
 }
