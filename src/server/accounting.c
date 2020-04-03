@@ -2298,7 +2298,6 @@ log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 {
 	if (acct_type == PBS_ACCT_SUSPEND) {
 		char *resc_buf;
-		char *resc_released;
 		int resc_buf_size = RESC_USED_BUF_SIZE;
 
 		/* Allocating initial space as required by resc_used. Future space will be allocated by pbs_strcat(). */
