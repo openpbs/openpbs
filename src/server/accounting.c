@@ -2309,19 +2309,18 @@ log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 
 		if (get_resc_used(pjob, resc_buf, resc_buf_size) < 0) {
 			write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
-			goto writeit;
+			goto end;
 		}
 
 		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
-			if (pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=") == NULL) {
-				goto writeit;
-			}
-			if (pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) == NULL) {
-				goto writeit;
-			}
+			if (pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=") == NULL)
+				goto end;
+
+			if (pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) == NULL)
+				goto end;
 		}
 		write_account_record(acct_type, pjob->ji_qs.ji_jobid, resc_buf + 1);
-writeit:
+end:
 	free(resc_buf);
 	return;
 	}
