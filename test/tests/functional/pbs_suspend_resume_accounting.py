@@ -63,13 +63,11 @@ class TestSuspendResumeAccounting(TestFunctional):
 
         self.server.sigjob(jobid=jid, signal="suspend")
 
-        record = 'z;%s;requestor=%s@%s .*resources_used.' % \
-                 (jid, self.server.current_user, self.server.hostname)
+        record = 'z;%s;.*resources_used.' % jid
         self.server.accounting_match(msg=record, id=jid, regexp=True)
 
         self.server.sigjob(jobid=jid, signal="resume")
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (jid, self.server.hostname)
+        record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
     @skipOnCpuSet
@@ -97,21 +95,17 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S'}, id=sub_jid1)
         self.server.expect(JOB, {ATTR_state: 'S'}, id=sub_jid2)
 
-        record = 'z;%s;requestor=%s@%s resources_used.' % \
-                 (sub_jid1, self.server.current_user, self.server.hostname)
+        record = 'z;%s;resources_used.' % sub_jid1
         self.server.accounting_match(msg=record, id=sub_jid1)
 
-        record = 'z;%s;requestor=%s@%s resources_used.' % \
-                 (sub_jid2, self.server.current_user, self.server.hostname)
+        record = 'z;%s;resources_used.' % sub_jid2
         self.server.accounting_match(msg=record, id=sub_jid2)
 
         self.server.sigjob(jobid=jid, signal="resume")
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (sub_jid1, self.server.hostname)
+        record = 'r;%s;' % sub_jid1
         self.server.accounting_match(msg=record, id=sub_jid1)
 
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (sub_jid2, self.server.hostname)
+        record = 'r;%s;' % sub_jid2
         self.server.accounting_match(msg=record, id=sub_jid2)
 
     def test_interactive_job_suspend_resume(self):
@@ -131,13 +125,11 @@ class TestSuspendResumeAccounting(TestFunctional):
 
         self.server.sigjob(jobid=jid, signal="suspend")
 
-        record = 'z;%s;requestor=%s@%s .*resources_used.' % \
-                 (jid, self.server.current_user, self.server.hostname)
+        record = 'z;%s;.*resources_used.' % jid
         self.server.accounting_match(msg=record, id=jid, regexp=True)
 
         self.server.sigjob(jobid=jid, signal="resume")
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (jid, self.server.hostname)
+        record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
     @skipOnCpuSet
@@ -175,16 +167,15 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
-        record = 'z;%s;requestor=Scheduler@%s ' \
-                 'resources_released=(%s:ncpus=4:mem=524288kb) ' \
-                 'resources_used.' % \
-                 (jid1, self.server.hostname, self.server.shortname)
-        self.server.accounting_match(msg=record, id=jid1)
+        resc_released = "resources_released=(%s:ncpus=4:mem=524288kb)" \
+                        % self.server.shortname
+        record = 'z;%s;resources_used.' % jid1
+        line = self.server.accounting_match(msg=record, id=jid1)[1]
+        self.assertIn(resc_released, line)
 
         self.server.delete(jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (jid1, self.server.hostname)
+        record = 'r;%s;' % jid1
         self.server.accounting_match(msg=record, id=jid1)
 
     def test_admin_suspend_resume_signal(self):
@@ -202,16 +193,14 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(NODE, {'state': 'maintenance'},
                            id=self.mom.shortname)
 
-        record = 'z;%s;requestor=%s@%s .*resources_used.' % \
-                 (jid, ROOT_USER, self.server.hostname)
+        record = 'z;%s;.*resources_used.' % jid
         self.server.accounting_match(msg=record, id=jid, regexp=True)
 
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
 
-        record = 'r;%s;requestor=%s@%s' % \
-                 (jid, ROOT_USER, self.server.hostname)
+        record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
     def test_resc_released_susp_resume(self):
@@ -232,31 +221,14 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.sigjob(jobid=jid, signal="suspend")
 
         # check for both ncpus and mem are released
-        record = 'z;%s;requestor=%s@%s ' \
-                 'resources_released=(%s:ncpus=1:mem=524288kb) ' \
-                 'resources_used.' % \
-                 (jid, self.server.current_user,
-                  self.server.hostname, self.server.shortname)
-
-        self.server.accounting_match(msg=record, id=jid)
+        resc_released = 'resources_released=(%s:ncpus=1:mem=524288kb)' % \
+                        self.server.shortname
+        record = 'z;%s;resources_used.' % jid
+        line = self.server.accounting_match(msg=record, id=jid)[1]
+        self.assertIn(resc_released, line)
 
         self.server.sigjob(jobid=jid, signal="resume")
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (jid, self.server.hostname)
-        self.server.accounting_match(msg=record, id=jid)
-
-        # Set resources to be released to just ncpus
-        a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-
-        # check if only ncpus is released
-        self.server.sigjob(jobid=jid, signal="suspend")
-        record = 'z;%s;requestor=%s@%s ' \
-                 'resources_released=(%s:ncpus=1) ' \
-                 'resources_used.' % \
-                 (jid, self.server.current_user,
-                  self.server.hostname, self.server.shortname)
-
+        record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
     @skipOnCpuSet
@@ -302,12 +274,11 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
-        record = 'z;%s;requestor=Scheduler@%s ' \
-                 'resources_released=(vnode1[0]:ncpus=8)+' \
-                 '(vnode2[0]:ncpus=6) resources_used.' % \
-                 (jid1, self.server.hostname)
-
-        self.server.accounting_match(msg=record, id=jid1)
+        resc_released = 'resources_released=(vnode1[0]:ncpus=8)+' \
+                        '(vnode2[0]:ncpus=6)'
+        record = 'z;%s;resources_used.' % jid1
+        line = self.server.accounting_match(msg=record, id=jid1)[1]
+        self.assertIn(resc_released, line)
 
     @skipOnCpuSet
     def test_higher_priority_job_hook_reject(self):
@@ -348,10 +319,8 @@ e.reject()
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
-        record = 'z;%s;requestor=Scheduler@%s .*resources_used.' % \
-                 (jid1, self.server.hostname)
+        record = 'z;%s;.*resources_used.' % jid1
         self.server.accounting_match(msg=record, id=jid1, regexp=True)
 
-        record = 'r;%s;requestor=Scheduler@%s' % \
-                 (jid1, self.server.hostname)
+        record = 'r;%s;' % jid1
         self.server.accounting_match(msg=record, id=jid1)

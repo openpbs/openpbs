@@ -340,7 +340,6 @@ get_resc_used(job *pjob, char *resc_used, int resc_used_size) {
 		encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
 		&temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
 		NULL, ATR_ENCODE_CLIENT, &patlist);
-
 	/*
 	 * NOTE:
 	 * Following code for constructing resources used information is same as job_obit()
@@ -2290,65 +2289,43 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
  * @param[in] pjob - job to log records for.
  * @param[in] user - User who requested the signal suspend/resume 
  * @param[in] host - Hostname where the signal was triggered
- * @param[in] signal_type - flag indicating the type of event suspend/resume
+ * @param[in] acct_type - Accounting type flag
  * 
  * @returns void 
  */
 void
 log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 {
-	char *buf = NULL;
-	char *resc_used;
-	char *resc_released;
-	int buf_size = 1024;
-	int resc_used_size = 0;
-
-	buf = malloc(buf_size * sizeof(char));
-	if (buf == NULL)
-		return;
-
-	buf[0] = '\0';
-
-	snprintf(buf, buf_size, "requestor=%s@%s", user, host);
-
 	if (acct_type == PBS_ACCT_SUSPEND) {
-		
+		char *resc_buf;
+		char *resc_released;
+		int resc_buf_size = RESC_USED_BUF_SIZE;
+
+		/* Allocating initial space as required by resc_used. Future space will be allocated by pbs_strcat(). */
+		resc_buf = malloc(RESC_USED_BUF_SIZE);
+		if (resc_buf == NULL)
+			return;
+
+		resc_buf[0] = '\0';
+
+		if (get_resc_used(pjob, resc_buf, resc_buf_size) < 0) {
+			write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
+			goto writeit;
+		}
+
 		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
-			if (pbs_asprintf(&resc_released, " resources_released=%s",
-			pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) > 0) {
-				if (pbs_strcat(&buf, &buf_size, resc_released) == NULL) {
-					free(buf);
-					free(resc_released);
-					return;
-				}
-				free(resc_released);
+			if (pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=") == NULL) {
+				goto writeit;
+			}
+			if (pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) == NULL) {
+				goto writeit;
 			}
 		}
-
-		/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
-		resc_used = malloc(RESC_USED_BUF_SIZE);
-		if (resc_used == NULL)
-			goto writeit;
-		resc_used_size = RESC_USED_BUF_SIZE;
-
-		resc_used[0] = '\0';
-
-		if (get_resc_used(pjob, resc_used, resc_used_size) < 0) {
-			free(resc_used);
-			goto writeit;
-		}
-
-		if (resc_used != NULL) {
-			if (pbs_strcat(&buf, &buf_size, resc_used) == NULL) {
-				free(buf);
-				free(resc_used);
-				return;
-			}
-			free(resc_used);
-		}
+		write_account_record(acct_type, pjob->ji_qs.ji_jobid, resc_buf + 1);
+writeit:
+	free(resc_buf);
+	return;
 	}
 
-writeit:
-	write_account_record(acct_type, pjob->ji_qs.ji_jobid, buf);
-	free(buf);
+	write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
 }
