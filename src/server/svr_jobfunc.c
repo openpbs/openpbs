@@ -4601,21 +4601,20 @@ start_end_dur_wall(void *pobj, int objtype)
 			swcode += 8;			/*have walltime*/
 		else if (!(prsc = add_resource_entry(pattr, rscdef)))
 			return (-1);
-	}
-	else {
-		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) 
-				swcode += 4;
-		if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
-				swcode += 2; /*calcualte start time*/
-		if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
-				swcode += 1; /*calculate end time*/;
+	} else {
+		swcode = 3;
+		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
+			swcode +=1;
+			if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
+					swcode += 2; /*calcualte start time*/
+			if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
+					swcode += 1; /*calculate end time*/;
+		}
 	}
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
-		case  1:
-		case  2:
 		case  3:	/*start, end*/
 			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
