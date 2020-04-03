@@ -238,3 +238,21 @@ j.create_resv_from_job=1
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': False})
         self.test_create_resv_from_job_using_qsub()
+
+    def test_set_attr_when_job_running(self):
+        """
+        This test confirms that create_resv_from_job=1 is not allowed to be
+        altered when the job is already running.
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+
+        try:
+            self.server.alterjob(jid, {ATTR_W: 'create_resv_from_job=1'})
+        except PbsAlterError as e:
+            msg = "qalter: Cannot modify attribute while job running  "
+            msg += "create_resv_from_job"
+            self.assertTrue(msg in e.msg[0])
+        else:
+            self.fail("attribute allowed to be modified")
