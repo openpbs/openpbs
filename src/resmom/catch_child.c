@@ -1517,26 +1517,13 @@ scan_for_exiting(void)
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO,
 					pjob->ji_qs.ji_jobid, "Terminated");
-#if IRIX6_CPUSET == 1
-				/* KLUDGE - we need this fix when a job */
-				/* was restarted from a restart (checkpoint) */
-				/* MOM won't own the recreated processes */
-				/* so it cannot be tracked by */
-				/* scan_for_terminated() which calls */
-				/* clear_cpuset(), but only here */
-
-				/* THIS IS NO LONGER SUPPORTED and should */
-				/* be removed */
-
-				clear_cpuset(pjob);
-#endif
 #if	MOM_BGL
 				(void)job_bgl_delete(pjob);
 #endif	/* MOM_BGL */
 
 				/*
-				 ** Other places where clear_cpuset or
-				 ** job_bgl_delete are called, the
+				 ** Other places where
+				 ** job_bgl_delete is called, the
 				 ** function job_clean_extra would
 				 ** also be called.  That is not done
 				 ** here because the cleanup would
@@ -2266,7 +2253,7 @@ post_alps_cancel_resv(struct work_task *ptask)
 
 /**
  * @brief
- * 	del_job_hw	delete job/hardware related resources such as cpusets, ...
+ * 	del_job_hw	delete job/hardware related resources such as ALPS reservations, ...
  *
  *	Used by del_job_resc() and exec_bail()
  *	Most items here are platform dependent.
@@ -2292,10 +2279,6 @@ del_job_hw(job *pjob)
 	int	sconn = -1;
 	struct work_task *wtask = NULL;
 #endif
-
-#if	MOM_CPUSET
-	clear_cpuset(pjob);
-#endif	/* MOM_CPUSET */
 
 #if	MOM_BGL
 	(void)job_bgl_delete(pjob);
@@ -2470,7 +2453,7 @@ void
 mom_deljob(job *pjob)
 {
 
-	del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+	del_job_resc(pjob);	/* rm tmpdir etc */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)	/* MS */
 		(void)send_sisters(pjob, IM_DELETE_JOB, NULL);
@@ -2502,7 +2485,7 @@ mom_deljob_wait(job *pjob)
 {
 	int	i;
 
-	del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+	del_job_resc(pjob);	/* rm tmpdir etc */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {	/* MS */
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_DELJOB;

@@ -411,7 +411,7 @@ static char exsbin[][80] = {
 	/* 02 */ "sbin/pbs_idled",
 	/* 03 */ "sbin/pbs_iff",
 	/* 04 */ "sbin/pbs_mom",
-	/* 05 */ "sbin/pbs_mom.cpuset",
+	/* 05 */ "XXX",				/* slot available for use */
 	/* 06 */ "sbin/pbs_mom.standard",
 	/* 07 */ "sbin/pbs_rcp",
 	/* 08 */ "sbin/pbs_sched",
@@ -797,7 +797,7 @@ static MPUG	sbin_mpugs[] = {
 	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[ 2], NULL }, /* pbs_idled */
 	{1, 0, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 3], NULL }, /* pbs_iff */
 	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 4], NULL }, /* pbs_mom */
-	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* pbs_mom.cpuset, notReq reset to 2 if SGI Linux */
+	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* slot available for use */
 	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 6], NULL }, /* pbs_mom.standard, notReq reset to 2 if SGI Linux */
 	{1, 2, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 7], NULL }, /* pbs_rcp */
 	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_sched */
@@ -1527,7 +1527,7 @@ adjust_for_os(struct infrastruct *pinf)
 		/* Linux + /etc/sgi-compute-node_release => SGI ICE	*/
 		if (access("/etc/sgi-compute-node-release", R_OK) == 0) {
 			lib_mpugs[ofs_lib + 23].notReq = 0;    /* sgiMPI.awk       */
-			sbin_mpugs[ofs_sbin + 5].notReq = 0x2; /* pbs_mom.cpuset   */
+			sbin_mpugs[ofs_sbin + 5].notReq = 0x1; /* pbs_mom.cpuset   */
 			sbin_mpugs[ofs_sbin + 6].notReq = 0x2; /* pbs_mom.standard */
 		}
 

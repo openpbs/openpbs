@@ -119,43 +119,7 @@ sub redist_resources {
     my $anyfail=0;
     foreach my $key (keys %allnodes) {
         dprint("\nProcessing Host: $key\n");
-        if($allnodes{$key}->{'ARCH'} eq "linux_cpuset"){
-            dprint("\tHost $key appears to be an Altix\n");
-            if(defined($allnodes{$key}->{'customs'})){
-                print "\nProposed changes to ".$key.":\n\n" if($mode eq "test");
-                my $pbspath = get_pbs_path();
-                my @vnodes = `$pbspath/bin/pbsnodes -av | grep resources_available.vnode | grep -i $key | awk \'{ print \$3 }\'`;
-                foreach my $newkey (keys %{$allnodes{$key}->{'customs'}}){
-                    my $command = sprintf("%s/bin/qmgr -c \"set node %s %s=%s\"\n",$pbspath,$key,$newkey,$allnodes{$key}->{'customs'}->{$newkey});
-                    if($mode eq "test"){
-                        print $command;
-                    } else {
-                        print "running: $command";
-                        my $result = system($command);
-                        dprint("result=$result\n");
-                        if($result ne 0){
-                            $anyfail=$result;
-                        }
-                    }
-                    foreach my $vnode_key (@vnodes){
-                        chomp $vnode_key;
-                        if($vnode_key ne $key){
-                            my $command = sprintf("%s/bin/qmgr -c \"set node %s %s=@%s\"\n",$pbspath,$vnode_key,$newkey,$key);
-                            if($mode eq "test") {
-                                print $command;
-                            } else {
-                                print "running: $command";
-                                my $result = system($command);
-                                dprint("result=$result\n");
-                                if($result ne 0) {
-                                    $anyfail=$result;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else { dprint("\tHost $key does NOT appear to be an Altix\n"); }
+        dprint("\tHost $key does NOT appear to be an Altix\n");
 
     }
     return $anyfail;

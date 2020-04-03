@@ -65,10 +65,6 @@
 #include <stropts.h>
 #endif
 
-#ifdef        sgi
-#include <sys/syssgi.h>
-#endif        /* sgi */
-
 #include "libpbs.h"
 #include "portability.h"
 #include "list_link.h"
@@ -2810,26 +2806,11 @@ receive_job_update_request(int sd)
 		hook			*last_phook;
 		unsigned int		hook_fail_action = 0;
 
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		/* preserve job's current cpuset and processes, but mark the
-		 * resources internally as free, so that a subset of them can be
-		 * re-assigned back to the job via modify_cpuset().
-		 */
-		 suspend_job(pjob);
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-
 		if (get_new_exec_vnode_host_schedselect(pjob, msg, LOG_BUF_SIZE) != 0) {
 			close_update_pipes(pjob);
 			exec_bail(pjob, JOB_EXEC_RETRY, msg);
 			return;
 		}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		if (modify_cpuset(pjob) < 0) {
-			exec_bail(pjob, JOB_EXEC_RETRY, "failed to modify job's current cpuset");
-			return;
-		}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 		mom_hook_input_init(&hook_input);
 		hook_input.pjob = pjob;
@@ -3866,18 +3847,6 @@ finish_exec(job *pjob)
 		}
 
 		act.sa_handler = SIG_IGN;	/* setup to ignore SIGTERM */
-
-#ifdef IRIX6_CPUSET
-#ifdef  sgi
-#ifdef  SGI_SETPSARGS
-		/* Set args listed by ps to include job id and role */
-		(void)sprintf(log_buffer,
-			"%s nanny (write)", pjob->ji_qs.ji_jobid);
-		(void)syssgi(SGI_SETPSARGS,
-			log_buffer, strlen(log_buffer));
-#endif  /* SGI_SETPSARGS */
-#endif  /* sgi */
-#endif  /* IRIX6_CPUSET */
 
 		writerpid = fork();
 		if (writerpid == 0) {
@@ -6375,11 +6344,6 @@ start_exec(job *pjob)
 		 * All the JOIN messages have come in.
 		 */
 		switch (pre_finish_exec(pjob, 0)) {
-		  case PRE_FINISH_FAIL_NEW_CPUSET:
-			log_joberr(-1, __func__, "new_cpuset failed",
-				pjob->ji_qs.ji_jobid);
-			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
-			return;
 		  case PRE_FINISH_SUCCESS:
 		  	finish_exec(pjob);
 		  	break;
