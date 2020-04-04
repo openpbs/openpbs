@@ -63,6 +63,8 @@ extern "C" {
 
 #define RESV_START_TIME_MODIFIED	0x1
 #define RESV_END_TIME_MODIFIED		0x2
+#define RESV_DURATION_MODIFIED		0x4
+
 
 /*
  * The following resv_atr enum provide an index into the array of
