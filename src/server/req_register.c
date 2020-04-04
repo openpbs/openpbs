@@ -356,7 +356,7 @@ req_register(struct batch_request *preq)
 						rc = PBSE_PERM;		/* not same user */
 					} else {
 						/* ok owner, see if job has "on" */
-							pdep = find_depend(JOB_DEPEND_TYPE_ON, pattr);
+						pdep = find_depend(JOB_DEPEND_TYPE_ON, pattr);
 						if (pdep == 0) {
 							/* on "on", see if child already registered */
 							revtype = type ^ (JOB_DEPEND_TYPE_BEFORESTART -
@@ -364,7 +364,7 @@ req_register(struct batch_request *preq)
 							pdep = find_depend(revtype, pattr);
 							if (pdep == 0) {
 								/* no "on" and no prior - return error */
-							rc = PBSE_BADDEPEND;
+								rc = PBSE_BADDEPEND;
 							} else {
 								pdj = find_dependjob(pdep,
 									preq->rq_ind.rq_register.rq_child);
@@ -372,7 +372,7 @@ req_register(struct batch_request *preq)
 									/* has prior register, update it */
 									(void)strcpy(pdj->dc_svr,
 										preq->rq_ind.rq_register.rq_svr);
-									}
+								}
 							}
 						} else if ((rc=register_dep(pattr, preq, type, &made)) == 0) {
 							if (made) {	/* first time registered */
@@ -565,10 +565,9 @@ post_doq(struct work_task *pwt)
 		else if (preq->rq_reply.brp_code == PBSE_HISTDEPEND)
 			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid,
 				   "%s %s", preq->rq_ind.rq_register.rq_parent, msg_histdepend);
-		else {
+		else
 			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid,
 				   "%s%s", msg_regrej, preq->rq_ind.rq_register.rq_parent);
-		}
 
 		pjob = find_job(jobid);
 		if ((msg = pbse_to_txt(preq->rq_reply.brp_code)) != NULL) {
