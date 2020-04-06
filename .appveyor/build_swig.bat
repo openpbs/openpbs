@@ -59,7 +59,8 @@ if not exist "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" (
 )
 
 2>nul rd /S /Q "%BINARIESDIR%\swigwin-%SWIG_VERSION%"
-7z x -y "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" -o"%BINARIESDIR%"
+
+"%ENV_7Z_BIN%" x -y "%BINARIESDIR%\swigwin-%SWIG_VERSION%.zip" -o"%BINARIESDIR%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to extract %BINARIESDIR%\swigwin-%SWIG_VERSION%.zip"
     exit /b 1

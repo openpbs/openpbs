@@ -115,6 +115,7 @@ class TestPbsExecutePrologue(TestFunctional):
 
         self.server.expect(NODE, {'state': 'free'}, id=self.hostA, offset=1)
 
+    @skipOnCpuSet
     def test_prologue_internal_error_offline_vnodes(self):
         """
         Test a prologue hook with an internal error and
@@ -122,9 +123,8 @@ class TestPbsExecutePrologue(TestFunctional):
         """
         attr = {'resources_available.mem': '2gb',
                 'resources_available.ncpus': '1'}
-        self.server.create_vnodes(self.hostC, attr, 3, self.momC, delall=True,
-                                  usenatvnode=True)
-
+        self.server.create_vnodes(self.hostC, attr, 3, self.momC,
+                                  delall=True, usenatvnode=True)
         hook_name = "prologue_exception"
         hook_body = ("import pbs\n"
                      "e = pbs.event()\n"

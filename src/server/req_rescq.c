@@ -1001,6 +1001,23 @@ resv_revert_alter_times(resc_resv *presv)
 		|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		presv->ri_alter_etime = 0;
 	}
+	if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
+		if (presv->ri_alter_etime != 0) {
+			presv->ri_qs.ri_etime = presv->ri_alter_etime;
+			presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter_etime;
+			presv->ri_wattr[RESV_ATR_end].at_flags
+			|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_alter_etime = 0;
+		}
+		if (presv->ri_alter_stime != 0) {
+			presv->ri_qs.ri_stime = presv->ri_alter_stime;
+			presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter_stime;
+			presv->ri_wattr[RESV_ATR_start].at_flags
+			|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_alter_stime = 0;
+		}
+	}
+	
 	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
 	presv->ri_wattr[RESV_ATR_duration].at_flags

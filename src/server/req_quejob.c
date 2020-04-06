@@ -314,7 +314,6 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefplc;
 	resource *presc;
 	conn_t *conn;
-	resc_resv *presv;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -671,12 +670,17 @@ req_quejob(struct batch_request *preq)
 
 		/* decode attribute */
 #ifndef PBS_MOM
-		presv = find_resv_by_quename(qname);
+		if (index == JOB_ATR_create_resv_from_job) {
+			if (qname != NULL && *qname != '\0') {
+				resc_resv *presv;
+				presv = find_resv_by_quename(qname);
 
-		if (index == JOB_ATR_create_resv_from_job && presv) {
-			job_purge(pj);
-			req_reject(PBSE_RESV_FROM_RESVJOB, 0, preq);
-			return;
+				if (presv) {
+					job_purge(pj);
+					req_reject(PBSE_RESV_FROM_RESVJOB, 0, preq);
+					return;
+				}
+			}
 		}
 #endif
 		if ((index == JOB_ATR_resource) && (psatl->al_resc != NULL) &&
@@ -3441,13 +3445,14 @@ int
 copy_params_from_job(char *jobid, resc_resv *presv)
 {
 	job *pjob;
-	char buf[256];
+	int bufsize;
 	attribute temp;
 	resource *presc;
 	resource_def *prdefsl;
 	resource_def *resc_def;
 	resource *job_resc_entry;
 	resource *resv_resc_entry;
+	char buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 64] = {0};
 
 	int walltime_copied = 0;
 
@@ -3460,7 +3465,12 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 		(pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str == NULL))
 		return PBSE_BADSTATE;
 
-	snprintf(buf, 255, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+	bufsize = PBS_MAXUSER + PBS_MAXHOSTNAME + 64 - 1;
+
+	if (strchr(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, '@')) {
+		strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, bufsize);
+	} else
+		snprintf(buf, bufsize, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
 			pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str);
 
 	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_owner], &resv_attr_def[(int)RESV_ATR_resv_owner], buf);

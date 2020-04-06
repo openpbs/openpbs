@@ -161,7 +161,7 @@ class TestCgroupsHook(TestFunctional):
             self.paths = self.get_paths(host)
             if not self.paths['cpuset']:
                 self.skipTest('cpuset subsystem not mounted')
-            self.logger.info("%s: cgroup cpuset and memory are mounted" % host)
+            self.logger.info("%s: cgroup cpuset is mounted" % host)
             if self.iscray:
                 node = self.get_hostname(host)
             else:
@@ -2974,29 +2974,22 @@ event.accept()
             if v_rncpus < cpus_per_vnode:
                 cpus_per_vnode = v_rncpus
 
-        # Submit two jobs
+        # Submit a job
         select_spec = "%d:ncpus=%d" % (vnodes_count, cpus_per_vnode)
         a = {'Resource_List.select': select_spec, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.sleep15_job)
         jid1 = self.server.submit(j1)
         a = {'job_state': 'R'}
-        # Make sure they are both running
+        # Make sure job is running
         self.server.expect(JOB, a, jid1)
-        # Status the jobs for their output files
-        attrib = [ATTR_o]
-        self.server.status(JOB, attrib, jid1)
-        filename1 = j1.attributes[ATTR_o]
-        self.logger.info('Job1 .o file: %s' % filename1)
-        self.tempfile.append(filename1)
-        # Read the output files
-        tmp_file1 = filename1.split(':')[1]
-        hostA = self.moms_list[0].shortname
-        tmp_out1 = self.wait_and_read_file(filename=tmp_file1, host=hostA)
+        # cpuset path for job
+        fn1 = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        # Capture the output of cpuset_mem_script for job
+        scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
+                               as_script=True)
+        tmp_out1 = scr1['out']
         self.logger.info("test output for job1: %s" % (tmp_out1))
-        self.assertTrue(
-            jid1 in tmp_out1, '%s not found in output on host %s'
-            % (jid1, hostA))
-        self.logger.info('job dir check passed')
         # Ensure the number of cpus assigned matches request
         cpuids = None
         for kv in tmp_out1:
@@ -3006,9 +2999,8 @@ event.accept()
         cpus_assn = count_items(cpuids)
         cpus_req = vnodes_count * cpus_per_vnode
         self.logger.info("CpuIDs assn=%d req=%d" % (cpus_assn, cpus_req))
-        self.assertEqual(count_items(cpuids),
-                         vnodes_count * cpus_per_vnode,
-                         'CpIDs assigned not match requested')
+        self.assertEqual(cpus_assn, cpus_req,
+                         'CpuIDs assigned did not match requested')
         self.logger.info('CpuIDs check passed')
 
         # Ensure the number of sockets assigned matches request

@@ -238,7 +238,7 @@
    <attributes>
    /*RESV_ATR_duration*/
 	<member_name><both>ATTR_resv_duration</both></member_name>	<!--  "reserve_duration" -->
-	<member_at_decode>decode_l</member_at_decode>
+	<member_at_decode>decode_time</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
@@ -248,7 +248,7 @@
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
 	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
+	<ECL>verify_datatype_time</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>

@@ -249,3 +249,105 @@ e.accept()
 
         self.server.delete(j2)
         self.assert_dependency(j1, j3)
+
+    def check_job(self, attr, msg, state):
+        """
+        helper function to submit a dependent job and check the job
+        to see if the dependency is met or rejected
+        """
+        j = Job(attrs=attr)
+        jid = self.server.submit(j)
+        msg_to_check = jid + ';' + msg
+        self.server.expect(JOB, {ATTR_state: state}, id=jid, extend='x')
+        self.server.log_match(msg_to_check)
+        if state == 'R':
+            self.server.delete(jid)
+
+    def test_dependency_on_finished_job(self):
+        """
+        Submit a short job and when it ends submit jobs dependent on the
+        finished job and check that after, afterok, afterany dependencies
+        do not hold the dependent job. Also check that the job is not
+        accepted for any other afternotok, before, beforeok, beforenotok
+        dependency types.
+        """
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        job.set_sleep_time(5)
+        j1 = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
+        accept_msg = j1 + " Job has finished, dependency satisfied"
+        reject_msg = j1 + " Finished job did not satisfy dependency"
+
+        a = {ATTR_depend: 'after:' + j1}
+        self.check_job(a, accept_msg, 'R')
+
+        a = {ATTR_depend: 'afterok:' + j1}
+        self.check_job(a, accept_msg, 'R')
+
+        a = {ATTR_depend: 'afterany:' + j1}
+        self.check_job(a, accept_msg, 'R')
+
+        a = {ATTR_depend: 'afternotok:' + j1}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'before:' + j1}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforeany:' + j1}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforeok:' + j1}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforenotok:' + j1}
+        self.check_job(a, reject_msg, 'F')
+
+    def test_dependency_on_multiple_finished_job(self):
+        """
+        Submit a short job and and a long job, when the short job ends
+        submit dependent jobs on finished job and running job,
+        check that after dependecy runs, afterok, afterany dependencies
+        hold the dependent job, because there is a running job in the
+        system. Also check that the job is not accepted for any other
+        afternotok, before, beforeok, beforenotok dependency types.
+        """
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        job.set_sleep_time(5)
+        j1 = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
+        job = Job()
+        job.set_sleep_time(500)
+        j2 = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j2)
+        accept_msg = j1 + " Job has finished, dependency satisfied"
+        reject_msg = j1 + " Finished job did not satisfy dependency"
+
+        a = {ATTR_depend: 'after:' + j1 + ":" + j2}
+        self.check_job(a, accept_msg, 'R')
+
+        a = {ATTR_depend: 'afterok:' + j1 + ":" + j2}
+        self.check_job(a, accept_msg, 'H')
+
+        a = {ATTR_depend: 'afterany:' + j1 + ":" + j2}
+        self.check_job(a, accept_msg, 'H')
+
+        a = {ATTR_depend: 'afternotok:' + j1 + ":" + j2}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'before:' + j1 + ":" + j2}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforeany:' + j1 + ":" + j2}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforeok:' + j1 + ":" + j2}
+        self.check_job(a, reject_msg, 'F')
+
+        a = {ATTR_depend: 'beforenotok:' + j1 + ":" + j2}
+        self.check_job(a, reject_msg, 'F')

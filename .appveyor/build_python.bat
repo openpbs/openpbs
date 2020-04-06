@@ -56,7 +56,7 @@ if exist C:\Python36 (
         exit /b 1
     )
 ) else if exist "%BINARIESDIR%\python.zip" (
-    7z x -y "%BINARIESDIR%\python.zip" -o"%BINARIESDIR%"
+    "%ENV_7Z_BIN%" x -y "%BINARIESDIR%\python.zip" -o"%BINARIESDIR%"
     if not %ERRORLEVEL% == 0 (
         echo "Failed to extract %BINARIESDIR%\python.zip"
         exit /b 1
@@ -118,7 +118,7 @@ if exist C:\Python36-x64 (
         exit /b 1
     )
 ) else if exist "%BINARIESDIR%\python_x64.zip" (
-    7z x -y "%BINARIESDIR%\python_x64.zip" -o"%BINARIESDIR%"
+    "%ENV_7Z_BIN%" x -y "%BINARIESDIR%\python_x64.zip" -o"%BINARIESDIR%"
     if not %ERRORLEVEL% == 0 (
         echo "Failed to extract %BINARIESDIR%\python_x64.zip"
         exit /b 1
@@ -180,7 +180,8 @@ if not exist "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" (
     )
 )
 2>nul rd /S /Q "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
-7z x -y "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" -o"%BINARIESDIR%"
+
+"%ENV_7Z_BIN%" x -y "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" -o"%BINARIESDIR%"
 cd "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
 
 REM dirty hack to make python build faster as we only want pythoncore project's output
