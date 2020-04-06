@@ -66,6 +66,8 @@ extern "C" {
 #define PBS_ACCT_NEXT	(int)'c'	/* phased job next record */
 #define PBS_ACCT_LAST	(int)'e'	/* phased job last usage record */
 #define PBS_ACCT_ALTER  (int)'a'	/* Job attribute is being altered */
+#define PBS_ACCT_SUSPEND (int)'z'   /* Job is suspended */
+#define PBS_ACCT_RESUME (int)'r'   /* Suspended Job is resumed */
 
 /* for RESERVATION accounting */
 
@@ -95,6 +97,7 @@ extern void account_jobstr2(job *pjob, int type);
 extern void account_job_update(job *pjob, int type);
 extern void account_jobend(job *pjob, char * used, int type);
 extern void log_alter_records_for_attrs(job *pjob, svrattrl *plist);
+extern void log_suspend_resume_record(job *pjob, int acct_type);
 extern void set_job_ProvAcctRcd(job *pjob, long time_se, int type);
 
 extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob);

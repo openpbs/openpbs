@@ -71,6 +71,7 @@
 #include "svrfunc.h"
 #include "sched_cmds.h"
 #include "pbs_sched.h"
+#include "acct.h"
 
 
 /* Private Function local to this file */
@@ -497,6 +498,7 @@ post_signal_req(struct work_task *pwt)
 				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
+				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
 				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
 				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().
 				 * Otherwise, set_admin_suspend will move the node to maintenance state and
@@ -518,6 +520,7 @@ post_signal_req(struct work_task *pwt)
 			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
 
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
+			log_suspend_resume_record(pjob, PBS_ACCT_RESUME);
 
 			set_attr_svr(&(pjob->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment],
 				form_attr_comment("Job run at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
