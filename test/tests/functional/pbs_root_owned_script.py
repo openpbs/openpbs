@@ -48,7 +48,7 @@ class Test_RootOwnedScript(TestFunctional):
         """
         Set up the parameters required for Test_RootOwnedScript
         """
-        if os.getuid() != 0:
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
             self.skipTest("Test need to run as root")
         TestFunctional.setUp(self)
         mom_conf_attr = {'$reject_root_scripts': 'true'}
