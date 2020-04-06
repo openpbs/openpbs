@@ -37,6 +37,7 @@
 
 from tests.functional import *
 
+
 class Test_RootOwnedScript(TestFunctional):
     """
     Test suite to test whether the root owned script is getting rejected
