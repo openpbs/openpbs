@@ -380,7 +380,7 @@ e.accept()
         """
 
         now = int(time.time())
-        self.scheduler.add_dedicated_time(start=now + 60, end=now + 2500)
+        self.scheduler.add_dedicated_time(start=now + 80, end=now + 2500)
 
         J = Job(TEST_USER)
         jid = self.server.submit(J)
