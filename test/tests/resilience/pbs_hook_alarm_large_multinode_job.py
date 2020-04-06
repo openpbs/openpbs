@@ -53,18 +53,44 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
         self.server.manager(MGR_CMD_SET, SERVER, {"log_events": '2047'})
         self.mom.add_config({"$logevent": "0xfffffff"})
 
-        a = {'resources_available.mem': '1gb',
-             'resources_available.ncpus': '1'}
-        self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
-                                  expect=False)
-        # Make sure all the nodes are in state free.  We can't let
-        # create_vnodes() do this because it does a pbsnodes -v on each vnode.
-        # This takes a long time.
-        self.server.expect(NODE, {'state=free': (GE, 5000)})
-        # Restart mom explicitly due to PP-993
-        self.mom.restart()
+        if not self.mom.is_cpuset_mom():
+            a = {'resources_available.mem': '1gb',
+                 'resources_available.ncpus': '1'}
+            self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
+                                      expect=False)
+            # Make sure all the nodes are in state free.  We can't let
+            # create_vnodes() do this because it does
+            # a pbsnodes -v on each vnode.
+            # This takes a long time.
+            self.server.expect(NODE, {'state=free': (GE, 5000)})
+            # Restart mom explicitly due to PP-993
+            self.mom.restart()
 
-    @timeout(400)
+    def submit_job(self):
+        a = {'Resource_List.walltime': 10}
+        if self.mom.is_cpuset_mom():
+            vnode_val = self.server.status(NODE)
+            del vnode_val[0]
+            vnode_id = vnode_val[0]['id']
+            ncpus = vnode_val[0]['resources_available.ncpus']
+            del vnode_val[0]
+            a = {'Resource_List.select': '1:ncpus=' +
+                 ncpus + ':vnode=' + vnode_id}
+            for _vnode in vnode_val:
+                vnode_id = _vnode['id']
+                ncpus = _vnode['resources_available.ncpus']
+                a['Resource_List.select'] += '+1:ncpus=' + \
+                    ncpus + ':vnode=' + vnode_id
+        else:
+            a['Resource_List.select'] = '5000:ncpus=1:mem=1gb'
+        j = Job(TEST_USER)
+
+        j.set_attributes(a)
+        j.set_sleep_time(10)
+
+        jid = self.server.submit(j)
+        return jid
+
     def test_begin_hook(self):
         """
         Create an execjob_begin hook, import a hook content with a small
@@ -78,19 +104,13 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '15'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb',
-             'Resource_List.walltime': 10}
-
-        j.set_attributes(a)
-
-        jid = self.server.submit(j)
+        jid = self.submit_job()
 
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=15, interval=2)
+                           jid, max_attempts=20, interval=2)
         self.mom.log_match(
             "pbs_python;executing begin hook %s" % (hook_name,), n=100,
             max_attempts=5, interval=5, regexp=True)
@@ -102,7 +122,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Started, pid" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(400)
     def test_prolo_hook(self):
         """
         Create an execjob_prologue hook, import a hook content with a
@@ -116,19 +135,13 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '15'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb',
-             'Resource_List.walltime': 10}
-
-        j.set_attributes(a)
-
-        jid = self.server.submit(j)
+        jid = self.submit_job()
 
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=15, interval=2)
+                           jid, max_attempts=20, interval=2)
 
         self.mom.log_match(
             "pbs_python;executing prologue hook %s" % (hook_name,), n=100,
@@ -138,7 +151,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
             "Job;%s;alarm call while running %s hook" % (jid, hook_event),
             n=100, max_attempts=5, interval=5, regexp=True, existence=False)
 
-    @timeout(400)
     def test_epi_hook(self):
         """
         Create an execjob_epilogue hook, import a hook content with a small
@@ -153,18 +165,13 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
         search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '15'}
+             'alarm': '30'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb'}
+        jid = self.submit_job()
 
-        j.set_attributes(a)
-        j.set_sleep_time(10)
-
-        jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=15, interval=2)
+                           jid, max_attempts=20, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
@@ -182,7 +189,6 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Obit sent" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
-    @timeout(400)
     def test_end_hook(self):
         """
         Create an execjob_end hook, import a hook content with a small
@@ -197,18 +203,12 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 """
         search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '15'}
+             'alarm': '20'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb'}
-
-        j.set_attributes(a)
-        j.set_sleep_time(10)
-
-        jid = self.server.submit(j)
+        jid = self.submit_job()
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=15, interval=2)
+                           jid, max_attempts=20, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
