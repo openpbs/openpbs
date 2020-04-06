@@ -326,8 +326,8 @@ cpy_quote_value(char *pb, char *value)
  *
  */
 static int
-get_resc_used(job *pjob, char *resc_used, int resc_used_size) {
-
+get_resc_used(job *pjob, char **resc_used, int *resc_used_size)
+{
 	struct svrattrl *patlist = NULL;
 	pbs_list_head temp_head;
 	CLEAR_HEAD(temp_head);
@@ -349,11 +349,10 @@ get_resc_used(job *pjob, char *resc_used, int resc_used_size) {
 	 * request.
 	 * ji_acctrec is lost on server restart.  Recreate it here if needed.
 	 */
-
-	while(patlist) {
+	while (patlist) {
 		/* log to accounting_logs only if there's a value */
 		if (strlen(patlist->al_value) > 0) {
-			if (concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ", NULL) != 0) {
+			if (concat_rescused_to_buffer(resc_used, resc_used_size, patlist, " ", NULL) != 0) {
 				return -1;
 			}
 		}
@@ -1323,7 +1322,7 @@ account_jobend(job *pjob, char *used, int type)
 			(void) snprintf(resc_used, resc_used_size, msg_job_end_stat,
 					pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 
-			if (get_resc_used(pjob, resc_used, resc_used_size) < 0) {
+			if (get_resc_used(pjob, &resc_used, &resc_used_size) == -1) {
 				free(resc_used);
 				goto writeit;
 			}
@@ -2287,19 +2286,17 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
  * for suspend/resume job events respectively.
  * 
  * @param[in] pjob - job to log records for.
- * @param[in] user - User who requested the signal suspend/resume 
- * @param[in] host - Hostname where the signal was triggered
  * @param[in] acct_type - Accounting type flag
  * 
  * @returns void 
  */
 void
-log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
+log_suspend_resume_record(job *pjob, int acct_type)
 {
 	if (acct_type == PBS_ACCT_SUSPEND) {
 		char *resc_buf;
 		int resc_buf_size = RESC_USED_BUF_SIZE;
-
+	
 		/* Allocating initial space as required by resc_used. Future space will be allocated by pbs_strcat(). */
 		resc_buf = malloc(RESC_USED_BUF_SIZE);
 		if (resc_buf == NULL)
@@ -2307,22 +2304,29 @@ log_suspend_resume_record(job *pjob, char *user, char *host, int acct_type)
 
 		resc_buf[0] = '\0';
 
-		if (get_resc_used(pjob, resc_buf, resc_buf_size) < 0) {
+		if (get_resc_used(pjob, &resc_buf, &resc_buf_size) == -1) {
 			write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
-			goto end;
+			free(resc_buf);
+			return;
 		}
 
 		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
-			if (pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=") == NULL)
-				goto end;
+			char *ret;
+			ret = pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=");
+			if (ret == NULL) {
+				free(resc_buf);
+				return;
+			}
 
-			if (pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str) == NULL)
-				goto end;
+			ret = pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str);
+			if (ret == NULL) {
+				free(resc_buf);
+				return;
+			}
 		}
 		write_account_record(acct_type, pjob->ji_qs.ji_jobid, resc_buf + 1);
-end:
-	free(resc_buf);
-	return;
+		free(resc_buf);
+		return;
 	}
 
 	write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
