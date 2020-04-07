@@ -1754,7 +1754,8 @@ if %s e.job.in_ms_mom():
         the cgroup and brought back online once the cgroup is cleaned up.
         vnode_per_numa_node = true
         """
-        meminfo = open(os.path.join(os.sep, 'proc', 'meminfo'), 'r').read()
+        with open(os.path.join(os.sep, 'proc', 'meminfo'), 'r') as fd:
+            meminfo = fd.read()
         if 'Hugepagesize' not in meminfo:
                 self.skipTest('Hugepagesize not in meminfo')
         name = 'CGROUP7.2'
