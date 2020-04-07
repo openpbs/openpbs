@@ -189,15 +189,20 @@ e.accept()
         time.sleep(31)
 
         # Check log msgs on sister mom
-        log_msgB = ["Hook;pbs_python;printing pbs.event() values " +
-                    "---------------------->",
-                    "Hook;pbs_python;Event is: EXECJOB_ATTACH",
-                    "Hook;pbs_python;Requestor is: pbs_mom",
-                    "Hook;pbs_python;Requestor_host is: %s" % self.momB.shortname,
-                    "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostA,
-                    "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostB,
-                    "pbs_python;Job;%s;PID =" % jid,
-                    "Hook;pbs_python;job is NOT in_ms_mom"]
+        log_msgB = [
+            "Hook;pbs_python;printing pbs.event() values " +
+            "---------------------->",
+            "Hook;pbs_python;Event is: EXECJOB_ATTACH",
+            "Hook;pbs_python;Requestor is: pbs_mom",
+            "Hook;pbs_python;Requestor_host is: %s" %
+            self.momB.shortname,
+            "Hook;pbs_python;Vnode: [%s]-------------->" %
+            self.hostA,
+            "Hook;pbs_python;Vnode: [%s]-------------->" %
+            self.hostB,
+            "pbs_python;Job;%s;PID =" %
+            jid,
+            "Hook;pbs_python;job is NOT in_ms_mom"]
 
         for msg in log_msgB:
             rc = self.momB.log_match(msg, starttime=check_after,
