@@ -89,7 +89,7 @@ else:
                  (self.hostA, self.hostB)]
         test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
         test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (self.pbs_tmrsh, self.hostB, self.pbs_attach)]
+                 (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)
@@ -176,7 +176,7 @@ e.accept()
                  (self.hostA, self.hostB)]
         test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
         test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (self.pbs_tmrsh, self.hostB, self.pbs_attach)]
+                 (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)
@@ -193,7 +193,7 @@ e.accept()
                     "---------------------->",
                     "Hook;pbs_python;Event is: EXECJOB_ATTACH",
                     "Hook;pbs_python;Requestor is: pbs_mom",
-                    "Hook;pbs_python;Requestor_host is: %s" % self.hostB,
+                    "Hook;pbs_python;Requestor_host is: %s" % self.momB.shortname,
                     "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostA,
                     "Hook;pbs_python;Vnode: [%s]-------------->" % self.hostB,
                     "pbs_python;Job;%s;PID =" % jid,
