@@ -2143,7 +2143,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200)
+        self.degraded_resv_reconfirm(start=now + 30, end=now + 200)
 
     def test_advance_running_resv_reconfirm(self):
         """
@@ -2151,7 +2151,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True)
+        self.degraded_resv_reconfirm(start=now + 30, end=now + 200, run=True)
 
     def test_standing_confimred_resv_reconfirm(self):
         """
@@ -2159,7 +2159,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200,
+        self.degraded_resv_reconfirm(start=now + 30, end=now + 200,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_standing_running_resv_reconfirm(self):
@@ -2168,7 +2168,7 @@ e.accept()
         node of the same partition in multi-sched environment
         """
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
+        self.degraded_resv_reconfirm(start=now + 30, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_resv_from_job_in_multi_sched_using_qsub(self):
