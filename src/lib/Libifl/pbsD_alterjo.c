@@ -174,8 +174,6 @@ pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
-	attrib_opl = attrl_to_attropl(attrib);
-
 	/* initialize the thread context data, if not initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return pbs_errno;
@@ -185,8 +183,12 @@ pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return pbs_errno;
 
+
 	/* send the manage request with modifyjob async */
+	attrib_opl = attrl_to_attropl(attrib);
 	i = PBSD_mgr_put(c, PBS_BATCH_ModifyJob_Async, MGR_CMD_SET, MGR_OBJ_JOB, jobid, attrib_opl, extend, PROT_TCP, NULL);
+	__free_attropl(attrib_opl);
+
 	if (i) {
 		(void)pbs_client_thread_unlock_connection(c);
 		return i;
@@ -195,8 +197,6 @@ pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
 		return pbs_errno;
-
-	__free_attropl(attrib_opl);
 
 	return i;
 
