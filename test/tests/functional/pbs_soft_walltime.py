@@ -383,6 +383,7 @@ e.accept()
         self.scheduler.add_dedicated_time(start=now + 120, end=now + 2500)
 
         J = Job(TEST_USER)
+        J.set_sleep_time(200)
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 180})
         comment = 'Not Running: Job would cross dedicated time boundary'
