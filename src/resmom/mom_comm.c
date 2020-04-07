@@ -5898,8 +5898,24 @@ tm_request(int fd, int version)
 #else
 		i = dep_procinfo(pid, &sid, &proc_uid, comm, sizeof(comm));
 #endif
-		if (i != TM_OKAY)
+		if (i != TM_OKAY) {
+#ifdef linux
+			char	procid[MAXPATHLEN + 1];
+			struct	stat sbuf;
+
+			snprintf(procid, sizeof(procid), "/proc/%d", pid);
+			if (stat(procid, &sbuf) == -1)
+				goto aterr;
+
+			sid = getsid(pid);
+			if (sid == -1)
+				goto aterr;
+
+			proc_uid = sbuf.st_uid;
+#else
 			goto aterr;
+#endif
+		}
 		if (sid <= 1) {
 			i = TM_ENOPROC;
 			goto aterr;
