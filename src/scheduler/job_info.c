@@ -5396,8 +5396,10 @@ static char **parse_runone_job_list(char *depend_val) {
 	    depend_str = string_dup(depend_val);
 
 	start = strstr(depend_str, depend_type);
-	if (start == NULL)
+	if (start == NULL) {
+		free(depend_str);
 		return NULL;
+	}
 
 	r = start + strlen(depend_type);
 	for (i = 0; r[i] != '\0'; i++) {

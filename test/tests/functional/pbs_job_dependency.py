@@ -82,6 +82,7 @@ e.accept()
             for job_list in check_dl:
                     self.assertIn(job, job_list)
 
+    @skipOnCpuSet
     def test_runone_depend_basic(self):
         """
         Test basic runone dependency tests
@@ -94,7 +95,7 @@ e.accept()
         """
 
         job = Job(attrs={'Resource_List.select': '1:NewRes=ver3'})
-        job.set_sleep_time(5)
+        job.set_sleep_time(10)
         j1 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j1})
@@ -105,7 +106,7 @@ e.accept()
                                      id=j1_2)
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=4:NewRes=ver3'})
-        job.set_sleep_time(5)
+        job.set_sleep_time(10)
         j2 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j2})
@@ -140,6 +141,7 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j3)
         self.assert_dependency(j1, j2, j3)
 
+    @skipOnCpuSet
     def test_runone_depend_basic_on_job_array(self):
         """
         Test basic runone dependency tests on job arrays
@@ -155,7 +157,7 @@ e.accept()
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=1',
                          ATTR_J: '1-2'})
-        job.set_sleep_time(5)
+        job.set_sleep_time(10)
         j1 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j1})
@@ -167,7 +169,7 @@ e.accept()
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=4:NewRes=ver3',
                          ATTR_J: '1-2'})
-        job.set_sleep_time(5)
+        job.set_sleep_time(10)
         j2 = self.server.submit(job)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
                            ATTR_depend: 'runone:' + j2})
@@ -179,7 +181,7 @@ e.accept()
 
         job = Job(attrs={'Resource_List.select': '1:ncpus=1',
                          ATTR_J: '1-2'})
-        job.set_sleep_time(5)
+        job.set_sleep_time(10)
         j3 = self.server.submit(job)
         j3_1 = job.create_subjob_id(j3, 1)
         d_job = Job(attrs={'Resource_List.select': '2:ncpus=1',
