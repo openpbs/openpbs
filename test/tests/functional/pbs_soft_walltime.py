@@ -387,7 +387,7 @@ e.accept()
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 180})
         comment = 'Not Running: Job would cross dedicated time boundary'
-        self.server.expect(JOB, {'comment': comment})
+        self.server.expect(JOB, {'comment': comment}, id=jid)
 
     def test_soft_extend_dedicated(self):
         """
