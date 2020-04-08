@@ -62,6 +62,8 @@ class TestPbsNode(TestFunctional):
         attrib = ['operators', 'managers']
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
 
+
+    @requirements(num_moms=2)
     def test_create_and_delete(self):
         """
         Test:

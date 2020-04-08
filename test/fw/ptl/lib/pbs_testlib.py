@@ -5303,7 +5303,10 @@ class Server(PBSService):
             ret = self.manager(MGR_CMD_DELETE, VNODE, name,
                                level=level, logerr=logerr)
         except PbsManagerError as err:
-            raise
+            if "Unknown node" not in err.msg[0]:
+                raise
+            else:
+                ret = 15062
         return ret
 
     def delete_nodes(self):
@@ -5312,8 +5315,8 @@ class Server(PBSService):
         """
         try:
             self.manager(MGR_CMD_DELETE, VNODE, id="@default")
-        except PbsManagerError as e:
-            if "Unknown node" not in e.msg[0]:
+        except PbsManagerError as err:
+            if "Unknown node" not in err.msg[0]:
                 raise
 
     def save_configuration(self, outfile=None, mode='w'):
