@@ -114,6 +114,7 @@
 #include "hook_func.h"
 #include "pbs_share.h"
 #include "pbs_undolr.h"
+#include "liclib.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -148,7 +149,6 @@ extern char	*msg_unkresc;
 extern char	*msg_corelimit;
 
 extern char	*acct_file;
-extern int	 ext_license_server;
 extern char	*log_file;
 extern char	*path_acct;
 extern char     *path_usedlicenses;
@@ -182,8 +182,7 @@ extern time_t	 time_now;
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
 extern int      pbs_mom_port;
-struct license_block licenses;
-struct license_used  usedlicenses;
+struct license_used usedlicenses;
 extern struct resc_sum *svr_resc_sum;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
@@ -220,11 +219,13 @@ static void  call_log_license(struct work_task *);
 extern int create_resreleased(job *pjob);
 
 extern pbs_sched *sched_alloc(char *sched_name);
+extern license_info lic_info;
 /* private data */
 
 #define CHANGE_STATE 1
 #define KEEP_STATE   0
 static char badlicense[] = "One or more PBS license keys are invalid, jobs may not run";
+char *pbs_licensing_license_location  = NULL;
 
 /**
  * @brief
@@ -257,7 +258,7 @@ init_server_attrs()
 	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
-	server.sv_attr[(int)SRV_ATR_SvrHost].at_val.at_str =strdup(server_host);
+	server.sv_attr[(int)SRV_ATR_SvrHost].at_val.at_str = strdup(server_host);
 	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
@@ -269,23 +270,20 @@ init_server_attrs()
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long =
-		PBS_MIN_LICENSING_LICENSES;
+	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
 	server.sv_attr[(int)SRV_ATR_license_min].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	lic_info.licenses_min = PBS_MIN_LICENSING_LICENSES;
 
-	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long =
-		PBS_MAX_LICENSING_LICENSES;
+	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
 	server.sv_attr[(int)SRV_ATR_license_max].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	lic_info.licenses_min = PBS_MAX_LICENSING_LICENSES;
 
 	server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
 	server.sv_attr[(int)SRV_ATR_license_linger].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	lic_info.license_linger_time = PBS_LIC_LINGER_TIME;
 
 	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long = 0;
 	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags =
@@ -313,9 +311,6 @@ init_server_attrs()
 	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_query_others]), &svr_attr_def[(int) SRV_ATR_query_others], ATR_TRUE);
 
 	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduling]), &svr_attr_def[(int) SRV_ATR_scheduling], ATR_TRUE);
-
-	/* an update_to FLicenses()  and pbs_float_lic must already exist */
-	pbs_float_lic = &server.sv_attr[(int)SVR_ATR_FLicenses];
 
 	prdef = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
 	if (prdef) {
@@ -550,7 +545,7 @@ pbsd_init(int type)
 
 	/* 5. If not a "create" initialization, recover server db */
 	/*    and sched db					  */
-	rc =svr_recov_db();
+	rc = svr_recov_db();
 	if ((rc != 0) && (type != RECOV_CREATE)) {
 		need_y_response(type, "no server database exists");
 		type = RECOV_CREATE;
@@ -664,7 +659,8 @@ pbsd_init(int type)
 
 	/* 4. Check License information */
 
-	init_fl_license_attrs(&licenses);
+	/* TODO - do we need this?
+	init_lic_info(&lic_info);*/
 
 	fd = open(path_usedlicenses, O_RDONLY, 0400);
 
@@ -686,35 +682,32 @@ pbsd_init(int type)
 		&server.sv_attr[(int)SRV_ATR_version], 0, 0,
 		PBS_VERSION);
 	
-	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
+	if ((pbs_licensing_license_location == NULL) && (lic_info.licenses_local == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
 	}
 
-	if (ext_license_server) {
+	if (pbs_licensing_license_location) {
 		sprintf(log_buffer, "Using license server at %s",
-			PBS_LICENSE_LOCATION);
+			pbs_licensing_license_location);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
 	} 
-	if (licenses.lb_aval_floating > 0) {
+	if (lic_info.licenses_local > 0) {
 		sprintf(log_buffer,
 			"Licenses valid for %d Floating hosts",
-			licenses.lb_aval_floating);
+			lic_info.licenses_local);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
 	}
 
-	/* start a timed-event every hour to long the number of floating used */
-	if ((licenses.lb_aval_floating > 0) || ext_license_server)
-		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
+	/* start a timed-event every hour to log the number of floating used */
+	if (lic_info.licenses_local > 0)
+		(void)set_task(WORK_Timed, (long)(((time_now + 3600) / 3600) * 3600),
 			call_log_license, 0);
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 
 	/* 6. open accounting file */
 
@@ -2063,7 +2056,6 @@ attach_queue_to_reservation(resc_resv *presv)
 	else
 		return (-1);
 }
-
 
 /**
  * @brief

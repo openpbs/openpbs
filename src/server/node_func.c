@@ -139,12 +139,16 @@
 #include "cmds.h"
 #include "pbs_license.h"
 #include "avltree.h"
+#include "expat.h"
+#include "basil.h"
+#include "liclib.h"
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
 extern int h_errno;
 #endif
 
-
 /* Global Data */
+extern license_info lic_info;
+extern struct license_used usedlicenses;
 
 extern int	 svr_quehasnodes;
 extern int	 svr_totnodes;
@@ -169,9 +173,10 @@ extern int node_delete_db(struct pbsnode *pnode);
 extern int write_single_node_state(struct pbsnode *np);
 #endif /* localmod 005 */
 
-
-static void	remove_node_topology(char *);
-
+static void remove_node_topology(char *);
+int validate_sign(char *, struct pbsnode *);
+void get_more_licenses(struct work_task *ptask);
+struct work_task *get_more_licenses_task;
 /**
  * @brief
  * 		find_nodebyname() - find a node host by its name
@@ -476,8 +481,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->nd_modified = 0;
-	pnode->node_lic_reqd = 0;
-	pnode->socket_lic_reqd = 0;
+	pnode->nd_lic_info = NULL;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
@@ -699,12 +703,15 @@ free_pnode(struct pbsnode *pnode)
 void
 effective_node_delete(struct pbsnode *pnode)
 {
-	int		 i, j;
-	struct pbssubn  *psubn;
-	struct pbssubn  *pnxt;
-	mom_svrinfo_t	*psvrmom;
-	int		 iht;
-	int		 lic_released = 0;
+	int i;
+	int j;
+	int iht;
+	int lic_released = 0;
+
+	struct pbssubn *psubn;
+	struct pbssubn *pnxt;
+
+	mom_svrinfo_t *psvrmom;
 
 	psubn = pnode->nd_psn;
 	while (psubn) {
@@ -717,7 +724,7 @@ effective_node_delete(struct pbsnode *pnode)
 
         /* free attributes */
 
-	for (i=0; i<ND_ATR_LAST; i++) {
+	for (i = 0; i < ND_ATR_LAST; i++) {
 		node_attr_def[i].at_free(&pnode->nd_attr[i]);
 	}
 
@@ -766,15 +773,17 @@ effective_node_delete(struct pbsnode *pnode)
 		tree_add_del(node_tree, pnode->nd_name, NULL, TREE_OP_DEL);
 	}
 
-	for (iht=pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {
+	for (iht = pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {
 		pbsndlist[iht - 1] = pbsndlist[iht];
 		/* adjust the arr_index since we are coalescing elements */
 		pbsndlist[iht - 1]->nd_arr_index--;
 	}
 	svr_totnodes--;
 	free_pnode(pnode);
-	if (lic_released)
-		license_more_nodes();
+	/* TODO license nodes as some licenses have been released */
+	if (lic_released) {
+		/*license_more_nodes();*/
+	}
 }
 
 /**
@@ -1693,6 +1702,121 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 }
 
 /**
+ * @brief	check the sign is valid for given node
+ *
+ * @param[in]	sign	hash input
+ * @param[out]	pnode	pointer to node structure
+ *
+ * @return	int
+ * @retval	PBSE_NONE	: Hash is valid
+ * @retval	PBSE_BADNDATVAL	: Bad attribute value
+ * @retval	PBSE_LICENSEINV	: License is invalid
+ */
+int
+validate_sign(char *sign, struct pbsnode *pnode)
+{
+	int ret;
+	time_t expiry = 0;
+	char **cred_list = break_delimited_str(sign, '_');
+	attribute *ppnl = &pnode->nd_attr[(int) ND_ATR_License];
+	attribute *ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
+	attribute_def *pnadl = &node_attr_def[(int) ND_ATR_License];
+	attribute_def *pnadli = &node_attr_def[(int) ND_ATR_LicenseInfo];
+
+	ret = checkkey(cred_list, pnode->nd_name, expiry);
+	free_string_array(cred_list);
+	switch (ret) {
+		case -3:
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
+				LOG_NOTICE, pnode->nd_name, "Invalid signature");
+			return PBSE_LICENSEINV;
+			break;
+		case -2:
+			return PBSE_BADTSPEC;
+			break;
+		case -1:
+			return PBSE_BADNDATVAL;
+			break;
+		case 0:
+			return PBSE_NONE;
+			snprintf(log_buffer, sizeof(log_buffer),
+					"Signature is valid till:%ld", expiry);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+						LOG_DEBUG, pnode->nd_name, log_buffer);
+			if ((ppnl->at_flags & ATR_VFLAG_SET) &&
+				(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
+				release_licenses(ppnli->at_val.at_long);
+				clear_attr(ppnl, pnadl);
+				clear_attr(ppnli, pnadli);
+			}
+			set_attr_svr(ppnl, pnadl, ND_LIC_cloud_str);
+			pnode->nd_modified |= NODE_UPDATE_OTHERS;
+			break;
+		case 1:
+			snprintf(log_buffer, sizeof(log_buffer),
+			"Signature is valid, but it has expired at:%ld", expiry);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
+						LOG_DEBUG, pnode->nd_name, log_buffer);
+			return PBSE_NONE;
+			break;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief	If changing lic_signature, check sign
+ *
+ * @param[out]	pnode	pointer to node structure
+ * @param[in]	new	- new attribute
+ *
+ * @return	int
+ * @retval	PBSE_NONE	: Hash is valid
+ * @retval	PBSE_BADNDATVAL	: Bad attribute value
+ * @retval	PBSE_LICENSEINV	: License is invalid
+ */
+int
+check_sign(void *pobj, void *new)
+{
+	resource_def *prdef;
+	resource *presc;
+	int err = PBSE_NONE;
+	struct pbsnode *pnode = pobj;
+
+	prdef = find_resc_def(svr_resc_def, ND_RESC_LicSignature, svr_resc_size);
+	presc = find_resc_entry((attribute *)new, prdef);
+	if (presc && (presc->rs_value.at_flags & ATR_VFLAG_MODIFY)) {
+		if ((err = validate_sign(presc->rs_value.at_val.at_str, pnode)) != PBSE_NONE)
+			return (err);
+		presc->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief	clear license on unset action of lic_signature
+ *
+ * @param[in,out]	pnode	-	pointer to node structure
+ * @param[in]		rs_name	-	resource name
+ *
+ * @return	void
+ */
+void unset_signature(void *pobj, char * rs_name)
+{
+	attribute *ppnl;
+	struct pbsnode *pnode = pobj;
+
+	if (!pnode || !rs_name)
+		return;
+
+	if (!strcmp(rs_name, ND_RESC_LicSignature)) {
+		ppnl = &pnode->nd_attr[(int) ND_ATR_License];
+		if ((ppnl->at_flags & ATR_VFLAG_SET) && (ppnl->at_val.at_char == ND_LIC_TYPE_cloud))
+			clear_attr(ppnl, &node_attr_def[(int) ND_ATR_License]);
+	}
+}
+
+
+/**
  * @brief
  * 		node_np_action - action routine for a node's resources_available attribute
  *		Does several things:
@@ -2285,6 +2409,509 @@ set_node_topology(attribute *new, void *pobj, int op)
 }
 
 /**
+ * @brief
+ * 		have_socket_licensed_nodes - count the number of socket licenses needed to relicense nodes
+ *		currently consuming licenses of type ND_LIC_TYPE_locked
+ *
+ * @return	int	: number of socket licenses needed
+ * @retval	0	: no socket-licensed nodes
+ * @retval	> 0	: there are socket-licensed nodes
+ *
+ * @par MT-Safe:	no
+ * @par Side Effects:
+ *		None
+ */
+int
+have_socket_licensed_nodes(void)
+{
+	int	i;
+	int	nslneed = 0;	/* number of socket licenses needed */
+
+	for (i = 0; i < svr_totnodes; i++)
+		if ((pbsndlist[i]->nd_attr[(int) ND_ATR_License].at_val.at_char ==
+			ND_LIC_TYPE_locked) &&
+			(pbsndlist[i]->nd_attr[(int) ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET))
+			nslneed += pbsndlist[i]->nd_attr[(int) ND_ATR_LicenseInfo].at_val.at_long;
+
+	return (nslneed);
+}
+
+/**
+ * @brief
+ *		unlicense_nodes	-	reset the ND_ATR_License value
+ *		of a socket-licensed node. if we don't have enough licenses.
+ *
+ * @return	void
+ *
+ * @par MT-Safe:	no
+ * @par Side Effects:
+ *		None
+ */
+void
+unlicense_nodes(void)
+{
+	int		i;
+	pbsnode		*np;
+	int		first = 1;
+	static char	msg_node_unlicensed[] = "%s attribute reset on one or "
+		"more nodes";
+
+	for (i = 0; i < svr_totnodes; i++) {
+		np = pbsndlist[i];
+		if (np->nd_attr[(int) ND_ATR_License].at_val.at_char ==
+			ND_LIC_TYPE_locked) {
+			clear_attr(&np->nd_attr[(int) ND_ATR_License],
+				&node_attr_def[(int) ND_ATR_License]);
+			np->nd_modified |= NODE_UPDATE_OTHERS;
+			if (first) {
+				first = 0;
+				sprintf(log_buffer, msg_node_unlicensed,
+					ATTR_NODE_License);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
+					LOG_ERR, msg_daemonname, log_buffer);
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ * 		clear_license_info	-	reset the ND_ATR_LicenseInfo value
+ * 	    of a socket-licensed node. when switching between licenses.
+ *
+ * @return	void
+ *
+ * @par MT-Safe:	no
+ * @par Side Effects:
+ *		None
+ */
+void
+clear_license_info(void)
+{
+	int		i;
+	pbsnode		*np;
+	int		first = 1;
+	static char	msg_node_unlicensed[] = "%s attribute reset on one or "
+		"more nodes";
+
+	for (i = 0; i < svr_totnodes; i++) {
+		np = pbsndlist[i];
+		if (np->nd_attr[(int) ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
+			clear_attr(&np->nd_attr[(int) ND_ATR_LicenseInfo],
+				&node_attr_def[(int) ND_ATR_LicenseInfo]);
+			np->nd_modified |= NODE_UPDATE_OTHERS;
+			if (first) {
+				first = 0;
+				sprintf(log_buffer, msg_node_unlicensed,
+					ATTR_NODE_LicenseInfo);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
+					LOG_ERR, msg_daemonname, log_buffer);
+			}
+		}
+	}
+}
+
+void
+release_licenses(int num)
+{
+	lic_info.licenses_used -= num;
+	lic_info.licenses_local += num;
+}
+
+int
+consume_licenses(int num)
+{
+	if (lic_info.licenses_local >= num) {
+		lic_info.licenses_local -= num;
+		lic_info.licenses_used += num;
+		return 0;
+	} else
+		return -1;
+}
+
+/**
+ * @brief
+ * 		for cray all the inventory is reported by the first vnode.
+ *		so it has to be distributed to subsidiary vnodes.
+ *		The distribution may not be even but we are trying our best.
+ *
+ * @param[in]	pointer to mom_svrinfo_t
+ * @param[in]	total license count needed to be distributed.
+ *
+ * @return	void
+ *
+ * @par MT-Safe:	no
+ * @par Side Effects:
+ * 		socket license attribute modifications.
+ */
+void
+distribute_licenseinfo(mominfo_t *pmom, int lic_count)
+{
+	int i;
+	char str_val[TEMP_BUF_LEN];
+	pbsnode *pnode = NULL;
+	int numvnds = ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds;
+	int lic_rem = lic_count % (numvnds - 1);
+
+	if (lic_count <= 0)
+		return;
+
+	for (i = 1; i < numvnds; i++) {
+		pnode = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
+		if (lic_rem) {
+			snprintf(str_val, sizeof(str_val), "%d", ((lic_count / (numvnds - 1)) + 1));
+			set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
+						 &node_attr_def[(int) ND_ATR_LicenseInfo],
+						 str_val);
+			lic_rem -= 1;
+		} else {
+			snprintf(str_val, sizeof(str_val), "%d", (lic_count / (numvnds - 1)));
+			set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
+						 &node_attr_def[(int) ND_ATR_LicenseInfo],
+						 str_val);
+		}
+	}
+}
+
+
+/**
+ * @brief
+ * 		propagate the ND_ATR_License == ND_LIC_TYPE_locked value to
+ *		subsidiary vnodes
+ *
+ * @param[in]	pointer to mom_svrinfo_t
+ * @param[in]	tells whether the license needs to be distributed
+ * 				between compute nodes or not.
+ *
+ * @return	void
+ *
+ * @par MT-Safe:	no
+ * @par Side Effects:
+ * 		socket license attribute modifications
+ *
+ * @par Note:
+ * 		Normally, a natural vnode's socket licensing state propagates
+ *		to the subsidary vnodes.  However, this is not the case when
+ *		the natural vnode is representing a Cray login node:  Cray login
+ *		and compute nodes are licensed separately;  the socket licensing
+ *		state propagates freely among a MoM's compute nodes but not from
+ *		a login node to any compute node.
+ */
+void
+propagate_socket_licensing(mominfo_t *pmom, int distribute)
+{
+	struct pbsnode	*ptmp =	/* pointer to natural vnode */
+		((mom_svrinfo_t *) pmom->mi_data)->msr_children[0];
+	resource_def *prdefvntype;
+	resource *prc;		/* vntype resource pointer */
+	struct array_strings *as;
+	pbsnode *pfrom_Lic; /* source License pointer */
+	attribute *pfrom_RA;	/* source ResourceAvail pointer */
+	int node_index_start;	/* where we begin looking for socket licenses */
+	int i;
+	int lic_count;
+
+	/* Any other vnodes? If not, no work to do */
+	if (((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds < 2)
+		return;
+
+	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+
+	/*
+	 * Determine where to begin looking for socket licensed nodes:  if
+	 * the natural vnode is for a Cray login node, the important nodes
+	 * are those for Cray compute nodes, which begin after the
+	 * login node (which is always the natural vnode and therefore
+	 * always first);  otherwise, we start looking at the beginning.
+	 */
+	pfrom_RA = &ptmp->nd_attr[(int) ND_ATR_ResourceAvail];
+	if (((pfrom_RA->at_flags & ATR_VFLAG_SET) != 0) &&
+		((prc = find_resc_entry(pfrom_RA, prdefvntype)) != NULL) &&
+		((prc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+		/*
+		 * Node has a ResourceAvail vntype entry;  see whether it
+		 * contains CRAY_LOGIN.
+		 */
+		as = prc->rs_value.at_val.at_arst;
+		for (i = 0; i < as->as_usedptr; i++)
+			if (strcmp(as->as_string[i], CRAY_LOGIN) == 0) {
+				node_index_start = 1;
+				break;
+			} else
+				node_index_start = 0;
+	} else
+		node_index_start = 0;
+
+	/*
+	 * Make a pass over the subsidiary vnodes to see whether any have socket
+	 * licenses;  if not, no work to do.
+	 */
+	for (i = node_index_start, pfrom_Lic = NULL, lic_count = 0;
+		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
+		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
+
+		if (n->nd_attr[(int) ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET)
+			lic_count = n->nd_attr[(int) ND_ATR_LicenseInfo].at_val.at_long;
+
+		if ((n->nd_attr[(int) ND_ATR_License].at_flags & ATR_VFLAG_SET) &&
+			(n->nd_attr[(int) ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked)) {
+			pfrom_Lic = n;
+			break;
+		}
+	}
+
+	if (distribute && node_index_start)
+		distribute_licenseinfo(pmom, lic_count);
+
+	if (pfrom_Lic == NULL || (!distribute && node_index_start))
+		return;
+
+	/*
+	 * Now make another pass, this time updating the other vnodes'
+	 * ND_ATR_License attribute.
+	 */
+	for (i = node_index_start;
+		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
+		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
+
+		set_attr_svr(&(n->nd_attr[(int) ND_ATR_License]),
+					 &node_attr_def[(int)ND_ATR_License],
+					 ND_LIC_locked_str);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"nd_attr[ND_ATR_License] copied from %s to %s",
+			pfrom_Lic->nd_name, n->nd_name);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
+			LOG_DEBUG, pmom->mi_host, log_buffer);
+	}
+}
+
+int
+release_node_lic(void *pobj)
+{
+	if (pobj) {
+		struct pbsnode *pnode = pobj;
+		attribute *ppnl = &pnode->nd_attr[(int) ND_ATR_License];
+		attribute *ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
+
+		unset_node_lic_info(&lic_info, pnode->nd_lic_info);
+
+		/* release license if node is locked */
+		if ((ppnl->at_val.at_char == ND_LIC_TYPE_locked) &&
+			(ppnli->at_flags & ATR_VFLAG_SET)) {
+			release_licenses(pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long);
+			clear_attr(ppnl, &node_attr_def[(int) ND_ATR_License]);
+			clear_attr(ppnli, &node_attr_def[(int) ND_ATR_LicenseInfo]);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief	On Cray, we need to release all licenses distributed across
+ * 		the vnodes before consuming the bulk count of licenses
+ * 		for the first vnode. Distribution will be done at a later stage.
+ *
+ * @param[in,out]	pnode	- pointer to node structure
+ * @param[in]		type	- type of topology info
+ *
+ * @return	void
+ */
+void
+release_lic_for_cray(struct pbsnode *pnode)
+{
+	int i;
+	attribute *ppnl;
+	attribute *ppnli;
+
+	for (i = 0; i < pnode->nd_nummoms; i++) {
+		if (((mom_svrinfo_t *) pnode->nd_moms[i]->mi_data)->msr_numvnds > 1) {
+			mom_svrinfo_t *mi_data = (mom_svrinfo_t *) pnode->nd_moms[i]->mi_data;
+			for (i = 1; i < mi_data->msr_numvnds; i++) {
+				pnode = mi_data->msr_children[i];
+				ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
+				ppnl = &pnode->nd_attr[(int) ND_ATR_License];
+
+				if ((ppnl->at_flags & ATR_VFLAG_SET) &&
+						(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
+					clear_attr(&(pnode->nd_attr[(int) ND_ATR_License]),
+							&node_attr_def[(int) ND_ATR_License]);
+					release_licenses(ppnli->at_val.at_long);
+				}
+			}
+			break;
+		}
+	}
+}
+
+void
+get_more_licenses(struct work_task *ptask)
+{
+	if (get_more_licenses_task && (get_more_licenses_task != ptask)) {
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_INFO, msg_daemonname,
+			"skipping get_more_licenses task");
+		return;
+	}
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_INFO, msg_daemonname,
+		"calling get_licenses()");
+	get_licenses(&lic_info);
+	license_nodes();
+}
+
+/**
+ * @brief	Process topology info and consume
+ * 			required licenses
+ *
+ * @param[in,out]	pnode			-	pointer to node structure
+ * @param[in]		topology_str		-	ATTR_NODE_TopologyInfo attribute value
+ * @param[in]		type			-	node topology type indicator
+ *
+ * @return	void
+ */
+void
+process_topology_info(void *pobj, char *topology_str, ntt_t type)
+{
+	int lic_needed = -1;
+	char *license_type;
+	char str_val[TEMP_BUF_LEN * 2];
+
+	struct pbsnode *pnode = pobj;
+
+	attribute *ppnl = &pnode->nd_attr[(int) ND_ATR_License];
+	attribute *ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
+
+	attribute_def *pnadl = &node_attr_def[(int) ND_ATR_License];
+	attribute_def *pnadli = &node_attr_def[(int) ND_ATR_LicenseInfo];
+
+	char msg_licenses_assigned[] = "node %s already assigned %d %s licenses, nd_attr[ND_ATR_License] set to %c";
+	char msg_licensed_now[] = "node %s assigned %d " "%s license%s, nd_attr[ND_ATR_License] set to %c";
+	char msg_count_mismatch[] = "node %s: node reporting %d " "%s licenses, had licenses for %d";
+	char msg_not_enough_lic[] = "node: %s has requested for %d %s "
+						"licenses. Which cannot be satisfied "
+						"with available licenses";
+
+	if (parse_topology(&(pnode->nd_lic_info), topology_str, type, &lic_needed)) {
+		snprintf(log_buffer, sizeof(log_buffer), "xml_handler for %s failed",
+				 pnode->nd_name);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
+				LOG_DEBUG, __func__, log_buffer);
+	}
+
+	if (type == tt_Cray)
+		release_lic_for_cray(pnode);
+
+	if (lic_needed == -1)
+		return;
+
+	license_type = get_lic_type_str();
+
+	if ((ppnl->at_flags & ATR_VFLAG_SET) &&
+			(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
+		/* node licenses previously initialized */
+		if (ppnli->at_val.at_long != lic_needed) {
+		       /*
+			* This node's licensing information
+			* has already been initialized; the node
+			* is now reporting different count than have
+			* previously been licensed. Try to license the node
+			* if enough licenses are available else we reset the
+			* node's License and LicenseInfo attributes.
+			*/
+			clear_attr(ppnl, pnadl);
+			pnode->nd_modified |= NODE_UPDATE_OTHERS;
+			release_licenses(ppnli->at_val.at_long);
+			if (consume_licenses(lic_needed) == 0) {
+				set_attr_svr(ppnl, pnadl, ND_LIC_locked_str);
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer), msg_not_enough_lic,
+					 pnode->nd_name, lic_needed, license_type);
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
+					  LOG_WARNING, pnode->nd_name, log_buffer);
+			}
+			snprintf(log_buffer, sizeof(log_buffer), msg_count_mismatch,
+				 pnode->nd_name, lic_needed, license_type, ppnli->at_val.at_long);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+				  LOG_DEBUG, __func__, log_buffer);
+			snprintf(str_val, sizeof(str_val), "%d", lic_needed);
+			set_attr_svr(ppnli, pnadli, str_val);
+
+		} else {
+		       /*
+			* The node claims no more sockets than
+			* licensed before.
+			*
+			* Note that in contrast to the "else"
+			* case below, no socket licenses need be
+			* consumed here - since the node was
+			* already licensed, that accounting was
+			* done in pbsd_init(), q.v.
+			*/
+			snprintf(log_buffer, sizeof(log_buffer),
+				msg_licenses_assigned, pnode->nd_name,
+				lic_needed, license_type,
+				lic_needed == 1 ? "" : "s", ND_LIC_TYPE_locked);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+				  LOG_DEBUG, __func__, log_buffer);
+		}
+	} else if (lic_needed >= 0) {
+		if (consume_licenses(lic_needed) == 0) {
+			/*
+			*	Not previously initialized and sufficient
+			*	licenses - mark node as using node-locked
+			*	licenses ...
+			*/
+			set_attr_svr(ppnl, pnadl, ND_LIC_locked_str);
+			snprintf(log_buffer, sizeof(log_buffer), msg_licensed_now,
+					pnode->nd_name, lic_needed, license_type,
+					lic_needed == 1 ? "" : "s", ND_LIC_TYPE_locked);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+					LOG_DEBUG, __func__, log_buffer);
+
+			pnode->nd_modified |= NODE_UPDATE_OTHERS;
+			update_license_highuse();
+		} else {
+			snprintf(log_buffer, sizeof(log_buffer), msg_not_enough_lic,
+					pnode->nd_name, lic_needed, license_type);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
+					LOG_WARNING, pnode->nd_name, log_buffer);
+			clear_attr(ppnl, pnadl);
+			get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 10, get_more_licenses, NULL);
+		}
+
+		/*
+		 *	... and remember the number of
+		 *	licenses required/consumed.
+		 */
+		snprintf(str_val, sizeof(str_val), "%d", lic_needed);
+		set_attr_svr(ppnli, pnadli, str_val);
+	}
+}
+
+void
+update_license_highuse()
+{
+	int u;
+
+	if (lic_info.licenses_used > lic_info.licenses_high_used)
+		lic_info.licenses_high_used = lic_info.licenses_used;
+
+	/* record max number of lic used over time 		   	 */
+	/* This information is logged into the accounting license file.  */
+
+	u = lic_info.licenses_local;
+	if (u > usedlicenses.lu_max_hr)
+		usedlicenses.lu_max_hr = u;
+	if (u > usedlicenses.lu_max_day)
+		usedlicenses.lu_max_day = u;
+	if (u > usedlicenses.lu_max_month)
+		usedlicenses.lu_max_month = u;
+	if (u > usedlicenses.lu_max_forever)
+		usedlicenses.lu_max_forever = u;
+}
+
+/**
  * @brief chk_vnode_pool - action routine for a node's vnode_pool attribute
  *      Does several things:
  *      1. Verifies that there is only one Mom being pointed to
@@ -2299,7 +2926,7 @@ set_node_topology(attribute *new, void *pobj, int op)
  * @retval PBSE_*  (non zero) - on error
  */
 int
-chk_vnode_pool (attribute *new, void *pobj, int actmode)
+chk_vnode_pool(attribute *new, void *pobj, int actmode)
 {
 	static char     id[] = "chk_vnode_pool";
 	int		pool = -1;

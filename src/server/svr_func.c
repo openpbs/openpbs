@@ -191,6 +191,7 @@
 #include "libutil.h"
 #include "pbs_ecl.h"
 #include "pbs_sched.h"
+#include "liclib.h"
 
 extern struct python_interpreter_data  svr_interp_data;
 
@@ -282,6 +283,16 @@ static char *svr_state_names[] = {
 	"Terminating",		/* SV_STATE_SHUTIMM */
 	"Terminating"		/* SV_STATE_SHUTSIG */
 };
+
+void set_fl_lic_svr_attrs_defaults();
+void unset_fl_lic_svr_attrs();
+extern license_info *lic_info;
+struct work_task *init_licensing_task;
+struct work_task *return_lingering_licenses_task;
+void set_licensing(struct work_task *ptask);
+extern struct work_task *get_more_licenses_task;
+extern void get_more_licenses(struct work_task *ptask);
+void return_lingering_licenses(struct work_task *ptask);
 
 /**
  * @brief
@@ -1086,6 +1097,7 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 int
 set_license_location(attribute *pattr, void *pobject, int actmode)
 {
+	int rc;
 
 	if (actmode == ATR_ACTION_FREE)
 		return (PBSE_NONE);
@@ -1093,41 +1105,22 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 	if ((actmode == ATR_ACTION_ALTER) ||
 		(actmode == ATR_ACTION_RECOV)) {
 
-		if( (server.sv_attr[SRV_ATR_pbs_license_info].at_flags & \
-							    ATR_VFLAG_SET) &&
-		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
-							!= '\0') ) {
-			close_licensing();	/* checkin, close connection */
-		} else /* from no license server */
-			init_fl_license_attrs(&licenses);
-
 		if (pbs_licensing_license_location)
 			free(pbs_licensing_license_location);
 
-		pbs_licensing_license_location = \
-			strdup(pattr->at_val.at_str?pattr->at_val.at_str:"");
+		pbs_licensing_license_location = strdup(pattr->at_val.at_str?pattr->at_val.at_str:"");
 		if (pbs_licensing_license_location == NULL) {
 			log_err(errno, __func__, "warning: strdup failed!");
+			return PBSE_SYSTEM;
 		}
 
-		if (pbs_licensing_license_location &&
-			(pbs_licensing_license_location[0] != '\0')) {
-			init_licensing();
-			if (license_sanity_check())
-				license_more_nodes();
-		} else {
-			if (licenses.lb_aval_floating == 0) {	
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
-					LOG_ALERT, msg_daemonname,	
-					"One or more PBS license keys are invalid, jobs may not run");	
-			} else {	
-				sprintf(log_buffer,	
-					"Licenses valid for %d floating hosts",	
-					licenses.lb_aval_floating);	
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
-					LOG_NOTICE, msg_daemonname, log_buffer);	
-			}
+		rc = init_licensing(pbs_licensing_license_location, &lic_info);
+
+		if (rc) {
+			/* TODO - Log error */
 		}
+
+		init_licensing_task = set_task(WORK_Timed, time_now + 5, set_licensing, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1142,21 +1135,16 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_location(void)
 {
-
 	if (pbs_licensing_license_location) {
 
 		if (pbs_licensing_license_location[0] != '\0') {
-
 			close_licensing();
-			sockets_reset();
-			unlicense_socket_licensed_nodes();
-		} else /* from no license server */
-			init_fl_license_attrs(&licenses);
+			unlicense_nodes();
+		} else /* no license server */
+			init_lic_info(&lic_info);
 
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
-		licstate_unconfigured(LIC_NODES);
-		licstate_unconfigured(LIC_SOCKETS);
 	}
 
 }
@@ -1250,12 +1238,14 @@ set_license_min(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < 0) ||
-			(pattr->at_val.at_long > pbs_max_licenses)) {
+			(pattr->at_val.at_long > lic_info.licenses_max)) {
 			return (PBSE_LICENSE_MIN_BADVAL);
 		}
-		pbs_min_licenses = pattr->at_val.at_long;
-
+		lic_info.licenses_min = pattr->at_val.at_long;
 	}
+
+	if (lic_info.licenses_min > (lic_info.licenses_local + lic_info.licenses_used))
+		get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 5, get_more_licenses, NULL);
 
 	return (PBSE_NONE);
 }
@@ -1268,11 +1258,11 @@ set_license_min(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_min(void)
 {
-	pbs_min_licenses = PBS_MIN_LICENSING_LICENSES;
+	lic_info.licenses_min = PBS_MIN_LICENSING_LICENSES;
 
 	sprintf(log_buffer,
-		"pbs_license_min reverting back to default val %ld",
-		pbs_min_licenses);
+		"pbs_license_min reverting back to default val %d",
+		lic_info.licenses_min);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }
@@ -1300,11 +1290,22 @@ set_license_max(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < 0) ||
-			(pattr->at_val.at_long < pbs_min_licenses)) {
+			(pattr->at_val.at_long < lic_info.licenses_min)) {
 			return (PBSE_LICENSE_MAX_BADVAL);
 		}
-		pbs_max_licenses = pattr->at_val.at_long;
 
+		lic_info.licenses_max = pattr->at_val.at_long;
+		sprintf(log_buffer,
+			"pbs_license_max set to %d from %lu",
+			lic_info.licenses_max, pattr->at_val.at_long);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname, log_buffer);
+
+	}
+	if ((lic_info.licenses_max < lic_info.total_checked_out) ||
+		((lic_info.total_checked_out < lic_info.total_needed) && (lic_info.licenses_max > lic_info.total_checked_out))) {
+		lic_info.relicense_allnodes = 1;
+		get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 5, get_more_licenses, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1318,13 +1319,17 @@ set_license_max(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_max(void)
 {
-	pbs_max_licenses = PBS_MAX_LICENSING_LICENSES;
+	lic_info.licenses_max = PBS_MAX_LICENSING_LICENSES;
 
 	sprintf(log_buffer,
-		"pbs_license_max reverting back to default val %ld",
-		pbs_max_licenses);
+		"pbs_license_max reverting back to default val %d",
+		lic_info.licenses_max);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
+
+	if ((lic_info.licenses_max < lic_info.total_checked_out) ||
+		((lic_info.total_checked_out < lic_info.total_needed) && (lic_info.licenses_max > lic_info.total_checked_out)))
+		get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 5, get_more_licenses, NULL);
 }
 
 /**
@@ -1343,10 +1348,8 @@ unset_license_max(void)
 int
 set_license_linger(attribute *pattr, void *pobject, int actmode)
 {
-
 	if (actmode == ATR_ACTION_FREE)
 		return (PBSE_NONE);
-
 
 	if ((actmode == ATR_ACTION_ALTER) ||
 		(actmode == ATR_ACTION_RECOV)) {
@@ -1354,8 +1357,12 @@ set_license_linger(attribute *pattr, void *pobject, int actmode)
 		if ((pattr->at_val.at_long <= 0)) {
 			return (PBSE_LICENSE_LINGER_BADVAL);
 		}
-		pbs_licensing_linger = pattr->at_val.at_long;
-
+		lic_info.license_linger_time = pattr->at_val.at_long;
+	}
+	if (lic_info.checkout_time + lic_info.license_linger_time < time(NULL)) {
+		return_lingering_licenses_task = set_task(WORK_Timed, time(NULL) + 5, return_lingering_licenses, NULL);
+	} else {
+		return_lingering_licenses_task = set_task(WORK_Timed, lic_info.checkout_time + lic_info.license_linger_time, return_lingering_licenses, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1369,13 +1376,22 @@ set_license_linger(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_linger(void)
 {
-	pbs_licensing_linger = PBS_LIC_LINGER_TIME;
+	lic_info.license_linger_time = PBS_LIC_LINGER_TIME;
 
 	sprintf(log_buffer,
 		"pbs_license_linger_time reverting back to default val %d",
-		pbs_licensing_linger);
+		lic_info.license_linger_time);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+void
+return_lingering_licenses(struct work_task *ptask)
+{
+	if ((lic_info.licenses_local > 0) && ((lic_info.licenses_used + lic_info.licenses_local ) > lic_info.licenses_min))
+		get_licenses(&lic_info);
+
+	return_lingering_licenses_task = set_task(WORK_Timed, time(NULL) + lic_info.license_linger_time, return_lingering_licenses, NULL);
 }
 
 /**
@@ -7225,6 +7241,137 @@ set_attr_svr(attribute *pattr, attribute_def *pdef, char *value)
 	pdef->at_free(&tempat);
 }
 
+/**
+ * @brief	set floating licensing related server attributes.
+ * Attributes are set only if they were unset before.
+ */
+void
+set_fl_lic_svr_attrs_defaults()
+{
+	sprintf(log_buffer, "setting floating license server attributes");
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
+	if (!(server.sv_attr[(int)SRV_ATR_license_min].at_flags & ATR_VFLAG_SET)) {
+		server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long =
+			PBS_MIN_LICENSING_LICENSES;
+		server.sv_attr[(int)SRV_ATR_license_min].at_flags =
+			ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+
+		lic_info.licenses_min = PBS_MIN_LICENSING_LICENSES;
+	}
+	if (!(server.sv_attr[(int)SRV_ATR_license_max].at_flags & ATR_VFLAG_SET)) {
+		server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long =
+			PBS_MAX_LICENSING_LICENSES;
+		server.sv_attr[(int)SRV_ATR_license_max].at_flags =
+			ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+
+		lic_info.licenses_max = PBS_MAX_LICENSING_LICENSES;
+	}
+	if (!(server.sv_attr[(int)SRV_ATR_license_linger].at_flags & ATR_VFLAG_SET)) {
+		server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long =
+			PBS_LIC_LINGER_TIME;
+		server.sv_attr[(int)SRV_ATR_license_linger].at_flags =
+			ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+
+		lic_info.license_linger_time = PBS_LIC_LINGER_TIME;
+	}
+}
+
+/**
+ * @brief	unset floating licensing related server attributes
+ * if they have default values.
+ */
+void
+unset_fl_lic_svr_attrs()
+{
+	sprintf(log_buffer, "unsetting floating license server attributes");
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
+	if ((server.sv_attr[(int)SRV_ATR_license_min].at_flags & ATR_VFLAG_SET) &&
+			server.sv_attr[(int)SRV_ATR_license_min].at_flags & ATR_VFLAG_DEFLT)
+		clear_attr(&server.sv_attr[SRV_ATR_license_min], &svr_attr_def[SRV_ATR_license_min]);
+	if ((server.sv_attr[(int)SRV_ATR_license_max].at_flags & ATR_VFLAG_SET) &&
+			server.sv_attr[(int)SRV_ATR_license_max].at_flags & ATR_VFLAG_DEFLT)
+		clear_attr(&server.sv_attr[SRV_ATR_license_max], &svr_attr_def[SRV_ATR_license_max]);
+	if ((server.sv_attr[(int)SRV_ATR_license_linger].at_flags & ATR_VFLAG_SET) &&
+			server.sv_attr[(int)SRV_ATR_license_linger].at_flags & ATR_VFLAG_DEFLT)
+		clear_attr(&server.sv_attr[SRV_ATR_license_linger], &svr_attr_def[SRV_ATR_license_linger]);
+}
+
+void
+license_nodes()
+{
+	int i;
+	int status;
+	char str_val[20];
+
+	for (i = 0; i < unlicensed_node_count; i++) {
+		long lics;
+		pbsnode *np;
+		attribute *ppnli;
+		attribute_def *pnadli = &node_attr_def[(int) ND_ATR_LicenseInfo];
+
+		np = pbsndlist[unlicensed_nodes_indices[i]];
+
+		if (np->nd_lic_info) {
+			lics = get_lic_needed_for_node(np->nd_lic_info);
+			if (lics) {
+				ppnli = &np->nd_attr[(int) ND_ATR_LicenseInfo];
+				snprintf(str_val, sizeof(str_val), "%ld", lics);
+				set_attr_svr(ppnli, pnadli, str_val);
+			}
+
+			if (np->nd_attr[(int)ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
+				status = consume_licenses(lics);
+				if (status != 0) {
+					snprintf(log_buffer, LOG_BUF_SIZE,
+						"Unable to license %s, licenses needed = %ld, licenses available %d",
+						np->nd_name, lics, lic_info.licenses_local);
+					log_event(PBSEVENT_ADMIN|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+						LOG_CRIT, msg_daemonname, log_buffer);
+
+				} else {
+					set_attr_svr(&(np->nd_attr[(int)ND_ATR_License]),
+						&node_attr_def[(int)ND_ATR_License], ND_LIC_locked_str);
+					np->nd_modified |= NODE_UPDATE_OTHERS;
+					update_license_highuse();
+				}
+			}
+		} else if (strcmp(np->nd_name, np->nd_hostname)) { // could be a vnode
+			int j;
+			for (j = 0; j < np->nd_nummoms; j++)
+				propagate_socket_licensing(np->nd_moms[j], 0);
+		}
+	}
+}
+
+void
+set_licensing(struct work_task *ptask)
+{
+	int status;
+
+	if (init_licensing_task && (init_licensing_task != ptask)) {
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_INFO, msg_daemonname,
+			"skipped a license server task");
+		return;
+	}
+
+	status = license_sanity_check();
+	/* TODO - test if changing lic type affects the update of licenses */
+	if (status != 0) {/* error occurred */
+		log_event(PBSEVENT_ADMIN|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+			LOG_CRIT, msg_daemonname, get_lic_error());
+		return;
+	}
+
+	status = get_licenses(&lic_info);
+	if (status == -1) {/* error occurred */
+		log_event(PBSEVENT_ADMIN|PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+			LOG_CRIT, msg_daemonname, get_lic_error());
+		return;
+	}
+
+	license_nodes();
+}
 
 /**
  * @brief

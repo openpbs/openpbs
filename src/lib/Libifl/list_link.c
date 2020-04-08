@@ -140,7 +140,7 @@ append_link(pbs_list_head *head, pbs_list_head *newp, void *pobj)
 		(head->ll_next  == NULL)   ||
 		(newp->ll_prior  != (pbs_list_link *)newp) ||
 		(newp->ll_next   != (pbs_list_link *)newp)) {
-		(void)fprintf(stderr, "Assertion failed, bad pointer in insert_link\n");
+		(void)fprintf(stderr, "Assertion failed, bad pointer in append_link\n");
 		abort();
 	}
 #endif

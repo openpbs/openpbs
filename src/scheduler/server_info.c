@@ -550,12 +550,6 @@ query_server_info(status *pol, struct batch_status *server)
 			if(strstr(limname, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
-		} else if (!strcmp(attrp->name, ATTR_FLicenses)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = -1;
-
-			sinfo->flt_lic = count;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->node_group_enable = 1;

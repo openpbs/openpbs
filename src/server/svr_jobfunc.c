@@ -175,7 +175,7 @@ extern int    comp_resc_gt;
 extern time_t time_now;
 extern char  *resc_in_err;
 
-extern struct   license_used  usedlicenses;
+extern struct license_used usedlicenses;
 
 /* For history jobs only */
 extern long 	svr_history_enable;

@@ -201,7 +201,6 @@ char 	       *path_track;
 char	       *path_svrlive;
 extern char    *path_prov_track;
 char	       *path_secondaryact;
-attribute      *pbs_float_lic;
 char	       *pbs_o_host = "PBS_O_HOST";
 pbs_net_t	pbs_mom_addr;
 unsigned int	pbs_mom_port;
@@ -1084,6 +1083,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_execjob_preresume_hooks);
 	CLEAR_HEAD(svr_allscheds);
 	CLEAR_HEAD(svr_creds_cache);
+	CLEAR_HEAD(unlicensed_nodes_indices);
 
 	/* initialize paths that we will need */
 	path_priv       = build_path(pbs_conf.pbs_home_path, PBS_SVR_PRIVATE,

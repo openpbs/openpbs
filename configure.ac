@@ -382,6 +382,7 @@ AC_CONFIG_FILES([
 	src/include/pbs_version.h
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
+	src/lib/Liblicense/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile

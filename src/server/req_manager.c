@@ -117,6 +117,7 @@
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include "pbs_license.h"
+#include "liclib.h"
 #include <arpa/inet.h>
 
 
@@ -165,6 +166,8 @@ extern char *msg_cannot_set_route_que;
 extern int check_req_aoe_available(struct pbsnode *, char *);
 int resize_prov_table(int);
 vnpool_mom_t    *vnode_pool_mom_list = NULL;
+
+extern license_info lic_info;
 
 /* private data */
 
@@ -1165,8 +1168,8 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 			(pdef+index)->at_free(pattr+index);
 			(pattr+index)->at_flags |= ATR_VFLAG_MODIFY;
 			if (index == SRV_ATR_pbs_license_info) {
-				unlicense_socket_licensed_nodes();
-				clear_license_info();
+				unlicense_nodes();
+				close_licensing();
 			}
 		}
 		plist = (svrattrl *)GET_NEXT(plist->al_link);
@@ -1602,28 +1605,31 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 			else if (strcasecmp(plist->al_name, ATTR_schediteration) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduler_iteration]),
 					    &svr_attr_def[(int)SRV_ATR_scheduler_iteration], TOSTR(PBS_SCHEDULE_CYCLE));
-			else if(strcasecmp(plist->al_name, ATTR_ResvEnable) == 0)
+			else if (strcasecmp(plist->al_name, ATTR_ResvEnable) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_ResvEnable]),
 					    &svr_attr_def[(int)SRV_ATR_ResvEnable], "TRUE");
-			else if(strcasecmp(plist->al_name, ATTR_maxarraysize) == 0)
+			else if (strcasecmp(plist->al_name, ATTR_maxarraysize) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SVR_ATR_maxarraysize]),
 					    &svr_attr_def[(int)SVR_ATR_maxarraysize], TOSTR(PBS_MAX_ARRAY_JOB_DFL));
-			else if(strcasecmp(plist->al_name, ATTR_max_concurrent_prov) == 0)
+			else if (strcasecmp(plist->al_name, ATTR_max_concurrent_prov) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_max_concurrent_prov]),
 					    &svr_attr_def[(int)SRV_ATR_max_concurrent_prov], TOSTR(PBS_MAX_CONCURRENT_PROV));
-			else if(strcasecmp(plist->al_name, ATTR_EligibleTimeEnable) == 0)
+			else if (strcasecmp(plist->al_name, ATTR_EligibleTimeEnable) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_EligibleTimeEnable]),
 					    &svr_attr_def[(int)SRV_ATR_EligibleTimeEnable], "FALSE");
-			else if(strcasecmp(plist->al_name, ATTR_license_linger) == 0)
+			else if (strcasecmp(plist->al_name, ATTR_license_linger) == 0) {
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_license_linger]),
 					    &svr_attr_def[(int)SRV_ATR_license_linger], TOSTR(PBS_LIC_LINGER_TIME));
-			else if(strcasecmp(plist->al_name, ATTR_license_max) == 0)
+				lic_info.license_linger_time = PBS_LIC_LINGER_TIME;
+			} else if (strcasecmp(plist->al_name, ATTR_license_max) == 0) {
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_license_max]),
 					    &svr_attr_def[(int)SRV_ATR_license_max], TOSTR(PBS_MAX_LICENSING_LICENSES));
-			else if(strcasecmp(plist->al_name, ATTR_license_min) == 0)
+				lic_info.licenses_max = PBS_MAX_LICENSING_LICENSES;
+			} else if (strcasecmp(plist->al_name, ATTR_license_min) == 0) {
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_license_min]),
 					    &svr_attr_def[(int)SRV_ATR_license_min], TOSTR(PBS_MIN_LICENSING_LICENSES));
-			else if (strcasecmp(plist->al_name, ATTR_rescdflt) == 0) {
+				lic_info.licenses_min = PBS_MIN_LICENSING_LICENSES;
+			} else if (strcasecmp(plist->al_name, ATTR_rescdflt) == 0) {
 				if (plist->al_resc != NULL && strcasecmp(plist->al_resc, "ncpus") == 0) {
 					svrattrl *tm_list;
 					tm_list = attrlist_create(plist->al_name, "ncpus", 8);
@@ -2957,12 +2963,11 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	if (rc)
 		return (rc);
 
-
-	if ((pnode=find_nodebyname(pname)) == NULL) {
+	if ((pnode = find_nodebyname(pname)) == NULL) {
 
 		/* need to create the pbs_node entry */
 
-		pnode =(struct pbsnode *)malloc(sizeof(struct pbsnode));
+		pnode = (struct pbsnode *)malloc(sizeof(struct pbsnode));
 		if (pnode == NULL) {
 			free(pname);
 			return (PBSE_SYSTEM);

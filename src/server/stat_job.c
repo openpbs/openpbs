@@ -207,8 +207,8 @@ status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, 
 				*bad = nth;
 				return (-1);
 			}
-			if ((padef+index)->at_flags & priv) {
-				svrcached(pattr+index, phead, padef+index);
+			if ((padef + index)->at_flags & priv) {
+				svrcached(pattr + index, phead, padef + index);
 			}
 			pal = (svrattrl *)GET_NEXT(pal->al_link);
 		}
@@ -216,8 +216,8 @@ status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, 
 	} else {	/* non specified, return all readable attributes */
 
 		for (index = 0; index < limit; index++) {
-			if ((padef+index)->at_flags & priv) {
-				svrcached(pattr+index, phead, padef+index);
+			if ((padef + index)->at_flags & priv) {
+				svrcached(pattr + index, phead, padef + index);
 			}
 		}
 	}

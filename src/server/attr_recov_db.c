@@ -400,7 +400,7 @@ decode_attr_db(
 				attribute tmpa;
 				memset(&tmpa, 0, sizeof(attribute));
 				/* for INCR case of entity limit, decode locally */
-				if ((padef+index)->at_decode) {
+				if ((padef + index)->at_decode) {
 					(void)(padef+index)->at_decode(&tmpa,
 						pal->al_name,
 						pal->al_resc,
@@ -408,23 +408,23 @@ decode_attr_db(
 					(void)(padef+index)->at_set(pattr+index,
 						&tmpa,
 						INCR);
-					(void)(padef+index)->at_free(&tmpa);
+					(void)(padef + index)->at_free(&tmpa);
 				}
 			} else {
-				if ((padef+index)->at_decode) {
+				if ((padef + index)->at_decode) {
 					int act_rc = 0;
 					(void)(padef+index)->at_decode(pattr+index,
 						pal->al_name,
 						pal->al_resc,
 						pal->al_value);
-					if ((padef+index)->at_action)
-						if ((act_rc = (padef+index)->at_action(
-							pattr+index, parent,
+					if ((padef + index)->at_action)
+						if ((act_rc = (padef + index)->at_action(
+							pattr + index, parent,
 							ATR_ACTION_RECOV))) {
-							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
-									(padef+index)->at_name, act_rc);
+							snprintf(log_buffer, LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
+									(padef + index)->at_name, act_rc);
 							log_err(act_rc, __func__, log_buffer);
-							for ( index++; index <= limit; index++) {
+							for (index++; index <= limit; index++) {
 								while (pal) {
 									tmp_pal = pal->al_sister;
 									free(pal);
@@ -441,7 +441,7 @@ decode_attr_db(
 						}
 				}
 			}
-			(pattr+index)->at_flags = pal->al_flags & ~ATR_VFLAG_MODIFY;
+			(pattr + index)->at_flags = pal->al_flags & ~ATR_VFLAG_MODIFY;
 
 			tmp_pal = pal->al_sister;
 			(void)free(pal);

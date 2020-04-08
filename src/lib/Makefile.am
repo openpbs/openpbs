@@ -47,4 +47,5 @@ SUBDIRS = \
 	Libsec \
 	Libtpp \
 	Libutil \
-	Libauth
+	Libauth \
+	Liblicense

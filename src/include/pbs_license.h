@@ -46,32 +46,17 @@ extern "C" {
 /* Node license types */
 
 #define ND_LIC_TYPE_locked	'l'
-#define ND_LIC_TYPE_float 	'f'
-#define ND_LIC_TYPE_unlic	'u'
 #define ND_LIC_TYPE_cloud	'c'
 #define ND_LIC_locked_str	"l"
 #define ND_LIC_cloud_str	"c"
 
-struct license_block {
-	int  lb_glob_floating;	/* number of floating licenses avail globally */
-	int  lb_aval_floating;	/* number of floating licenses avail locally  */
-	int  lb_used_floating;	/* number of floating licenses used           */
-	int  lb_high_used_floating; /*  highest number of floating licenses used at any given time */
-	int  lb_do_task;	/* set to 1 if doing return_licenses() tasks  */
-};
-
 struct license_used {
-	int  lu_max_hr;		/* max number of floating used in the hour  */
-	int  lu_max_day;	/* max number of floating used in the day   */
-	int  lu_max_month;	/* max number of floating used in the month */
-	int  lu_max_forever;	/* running max number for ever 		    */
-	int  lu_day;		/* which day of month recording		    */
-	int  lu_month;		/* which month recording		    */
-};
-
-enum  fl_feature_type {
-	FL_FEATURE_float,
-	FL_FEATURE_LAST		/* must be last one, used to define array sz */
+	int lu_max_hr;		/* max number of licenses used in the hour  */
+	int lu_max_day;		/* max number of licenses used in the day   */
+	int lu_max_month;	/* max number of licenses used in the month */
+	int lu_max_forever;	/* running max number for ever 		    */
+	int lu_day;		/* which day of month recording		    */
+	int lu_month;		/* which month recording		    */
 };
 
 enum node_topology_type {
@@ -81,65 +66,34 @@ enum node_topology_type {
 };
 typedef enum node_topology_type ntt_t;
 
-#define  PBS_MIN_LICENSING_LICENSES  0
-#define  PBS_MAX_LICENSING_LICENSES  INT_MAX
-#define  PBS_LIC_LINGER_TIME 	31536000 /* keep extra licenses 1 year by default */
-#define  PBS_LICENSE_LOCATION				\
+#define PBS_MIN_LICENSING_LICENSES  0
+#define PBS_MAX_LICENSING_LICENSES  INT_MAX
+#define PBS_LIC_LINGER_TIME 	31536000 /* keep extra licenses 1 year by default */
+#define PBS_LICENSE_LOCATION				\
 	 (pbs_licensing_license_location ?		\
 	  pbs_licensing_license_location : "null" )
 
-enum licensing_backend {
-	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
-	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
-	LIC_UNKNOWN  /* used to hold the value of previous lb */
-};
-struct	pbs_lic_counts {
-	long socket_lic_needed;
-	long node_lic_needed;
-	long nsockets;
-	long node_count;
-};
-extern struct license_block licenses;
-extern struct attribute *pbs_float_lic;
-extern void   init_fl_license_attrs(struct license_block *);
-extern void   log_licenses(struct license_used *pu);
-extern void   init_licensing(void);
-extern int    status_licensing(void);
-extern int    checkin_licensing(void);
-extern void   close_licensing(void);
-extern int    count_needed_flic(int);
-extern void   relicense_nodes_floating(int);
-extern void   update_FLic_attr(void);
-extern char   *pbs_license_location(void);
-extern void   init_socket_licenses(char *);
-extern int    sockets_available(void);
-extern int    sockets_total(void);
-extern int    sockets_consume(int);
-extern void   sockets_release(int);
-extern void   sockets_reset(void);
-extern void   inspect_license_path(void);
-extern int    licstate_is_up(enum licensing_backend);
-extern void   licstate_down(void);
-extern void   licstate_unconfigured(enum licensing_backend);
-extern int	nsockets_from_topology(char *, ntt_t);
-extern int	check_sign(void *, void *);
-extern void	process_topology_info(void *, char *, ntt_t );
-extern void	unset_signature(void *, char *);
-extern	int	release_node_lic(void *);
-extern	int	validate_sign(char *, void *);
-extern void	clear_license_info();
+extern void log_licenses(struct license_used *pu);
+extern int  checkin_licensing(void);
+extern void close_licensing(void);
+extern char *pbs_license_location(void);
+extern void licstate_down(void);
+extern int check_sign(void *, void *);
+extern void process_topology_info(void *, char *, ntt_t );
+extern void unset_signature(void *, char *);
+extern int release_node_lic(void *);
+extern void update_license_highuse();
+extern int consume_licenses(int);
+extern void release_licenses(int num);
 
+extern void license_nodes();
 /* Licensing-related variables */
-extern int    ext_license_server;
-extern char   *pbs_licensing_license_location;
-extern long   pbs_min_licenses;
-extern long   pbs_max_licenses;
-extern int    pbs_licensing_linger;
-extern int    ping_license_server;	/* returns 0 if last manual  */
+extern char *pbs_licensing_license_location;
+extern long pbs_min_licenses;
+extern long pbs_max_licenses;
+extern int  pbs_licensing_linger;
+extern int  ping_license_server;	/* returns 0 if last manual  */
 /* ping to license server is ok; otherwise, returns 1 for not ok. */
-extern int    node_lic_flag;
-extern enum   licensing_backend prev_lb;
-extern enum   licensing_backend last_valid_attempt;
 #ifdef	__cplusplus
 }
 #endif

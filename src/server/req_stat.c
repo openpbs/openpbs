@@ -87,7 +87,7 @@
 #include "pbs_license.h"
 #include "resource.h"
 #include "pbs_sched.h"
-
+#include "liclib.h"
 
 /* Global Data Items: */
 
@@ -102,6 +102,7 @@ extern time_t	     time_now;
 extern char	    *msg_init_norerun;
 extern int resc_access_perm;
 extern long svr_history_enable;
+extern license_info lic_info;
 
 /* Extern Functions */
 
@@ -876,31 +877,7 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf)
 
 /**
  * @brief
- * 		print_license_ct - update the # of licenses (counters) in buffer
- *		corresponding to the licensing backend.
- *
- * @param[in]	lb	-	licensing backend
- * @param[out]	buf	-	string buffer
- */
-
-void
-print_license_ct(enum licensing_backend lb, char *buf)
-{
-	switch(lb) {
-		case LIC_NODES:
-		case LIC_SOCKETS:
-			sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-				licenses.lb_glob_floating, licenses.lb_aval_floating,
-				licenses.lb_used_floating, licenses.lb_high_used_floating);
-			break;
-		default:
-			sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d", 0, 0, 0, 0);
-	}
-}
-
-/**
- * @brief
- * 		update_license_ct - update the # of licenses (counters) in 'license_count'
+ * 	update_license_ct - update the # of licenses (counters) in 'license_count'
  *			server attribute.
  *
  * @param[out]	pattr	-	server attribute.
@@ -911,12 +888,10 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	if (licstate_is_up(LIC_NODES))
-		print_license_ct(LIC_NODES, buf);
-	else if (licstate_is_up(LIC_SOCKETS))
-		print_license_ct(LIC_SOCKETS, buf);
-	else
-		print_license_ct(last_valid_attempt, buf);
+
+	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
+		lic_info.licenses_global, lic_info.licenses_local,
+		lic_info.licenses_used, lic_info.licenses_high_used);
 
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
