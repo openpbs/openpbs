@@ -1743,7 +1743,6 @@ tpp_shutdown()
 			dis_destroy_chan(sd);
 			free_stream_resources(strmarray[i].strm);
 			free_stream(sd);
-			destroy_connection(sd);
 		}
 	}
 	tpp_unlock(&strmarray_lock);
