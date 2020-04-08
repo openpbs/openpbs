@@ -380,13 +380,14 @@ e.accept()
         """
 
         now = int(time.time())
-        self.scheduler.add_dedicated_time(start=now + 60, end=now + 2500)
+        self.scheduler.add_dedicated_time(start=now + 120, end=now + 2500)
 
         J = Job(TEST_USER)
+        J.set_sleep_time(200)
         jid = self.server.submit(J)
-        self.server.alterjob(jid, {'Resource_List.soft_walltime': 90})
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 180})
         comment = 'Not Running: Job would cross dedicated time boundary'
-        self.server.expect(JOB, {'comment': comment})
+        self.server.expect(JOB, {'comment': comment}, id=jid)
 
     def test_soft_extend_dedicated(self):
         """
