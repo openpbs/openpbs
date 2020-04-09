@@ -2078,7 +2078,6 @@ e.accept()
         # Add two nodes to partition P1 and turn off scheduling for all other
         # schedulers serving partition P2 and P3. Make scheduler sc1 serve
         # only partition P1 (vnode[0], vnode[1]).
-        self.common_setup()
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, NODE, p1, id="vnode[1]")
         self.server.expect(SCHED, p1, id="sc1")
@@ -2142,24 +2141,27 @@ e.accept()
         Test degraded reservation gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 30, end=now + 200)
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200)
 
     def test_advance_running_resv_reconfirm(self):
         """
         Test degraded running reservation gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 30, end=now + 200, run=True)
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True)
 
     def test_standing_confimred_resv_reconfirm(self):
         """
         Test degraded standing resv gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 30, end=now + 200,
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_standing_running_resv_reconfirm(self):
@@ -2167,8 +2169,9 @@ e.accept()
         Test degraded running standing resv gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 30, end=now + 200, run=True,
+        self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_resv_from_job_in_multi_sched_using_qsub(self):
