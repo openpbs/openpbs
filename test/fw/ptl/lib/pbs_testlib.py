@@ -13572,10 +13572,25 @@ class MoM(PBSService):
         self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
         self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER,
                       uid=0, gid=0)
-        c = {'$action': 'checkpoint_abort ' +
+        c = {'$action checkpoint_abort':
              str(abort_time) + ' !' + chk_file + ' %sid'}
         self.add_config(c)
         return chk_file
+    
+    def add_restart_script(self, dirname=None, body=None,
+                           abort_time=30):
+        """
+        Add restart script in the mom config.
+        returns: a temp file for restart script
+        """
+        rst_file = self.du.create_temp_file(hostname=self.hostname, body=body,
+                                            dirname=dirname)
+        self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
+        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER,
+                      uid=0, gid=0)
+        c = {'$action restart': str(abort_time) + ' !' + chk_file + ' %sid'}
+        self.add_config(c)
+        return rst_file
 
     def parse_config(self):
         """
@@ -13596,7 +13611,11 @@ class MoM(PBSService):
             self.config = {}
             lines = ret['out']
             for line in lines:
-                (k, v) = line.split(' ', 1)
+                if line.startswith('$action'):
+                    (ac, k, v) = line.split(' ', 2)
+                    k = ac + ' ' + k
+                else:
+                    (k, v) = line.split(' ', 1)
                 if k in self.config:
                     if isinstance(self.config[k], list):
                         self.config[k].append(v)
