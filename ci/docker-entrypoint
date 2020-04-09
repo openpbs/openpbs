@@ -2,11 +2,11 @@
 
 workdir=/src
 logdir=/logs
-cd /pbspro
+cd /pbssrc
 ${workdir}/do.sh 1 | tee ${logdir}/build
-commit_id=$( cd /pbspro && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
+commit_id=$( cd /pbssrc && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
 while true; do
-    new_commit=$( cd /pbspro && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
+    new_commit=$( cd /pbssrc && /usr/bin/git log --oneline -1 | awk -F' ' '{print $1}' )
     if [ "xx${commit_id}" != "xx${new_commit}" ]; then
         time_stamp=$( date +"%s" )
         [ ! -d ${logdir}/prev_LOGS ] && mkdir -p ${logdir}/prev_LOGS

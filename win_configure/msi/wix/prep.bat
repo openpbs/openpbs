@@ -40,10 +40,11 @@ if "%~1" == "" (
     exit /b 1
 )
 
-cd "%~dp0..\..\..\..\"
+cd "%~dp0..\..\..\"
+set PBS_SRCDIR=%CD%
+cd ..\
 set WINBUILDDIR=%CD%\win_build
 set PBS_EXECDIR=%CD%\PBS\exec
-set PBS_SRCDIR=%CD%\pbspro
 set BINARIESDIR=%~1
 set BUILD_TYPE=Release
 set BINARIESDIR_TYPE=

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
+import argparse
+import fileinput
 import os
 import platform
-import argparse
-import subprocess
-import fileinput
 import shlex
+import subprocess
+import sys
 import time
 
 pbs_dirname = ''
@@ -55,7 +55,7 @@ def run_docker_cmd(cmd):
             log_error(
                 "docker cmd returned with non zero exit code, redirecting you to container terminal")
             docker_cmd = shlex.split(
-                "docker-compose exec pbs-build bash -c \'cd /pbspro && /bin/bash\'")
+                "docker-compose exec pbs-build bash -c \'cd /pbssrc && /bin/bash\'")
             subprocess.run(docker_cmd)
     except Exception as e:
         log_error("Failed\n:")
@@ -126,7 +126,7 @@ def delete_older_image(bad_images):
 
 def find_ci():
     '''
-    Finds absolute path of pbs and ci 
+    Finds absolute path of pbs and ci
     '''
     cur_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(cur_dir)
