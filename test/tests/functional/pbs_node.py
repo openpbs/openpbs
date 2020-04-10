@@ -37,6 +37,7 @@
 
 import os
 import time
+import socket
 import logging
 from pprint import pformat
 from tests.functional import *
@@ -70,9 +71,12 @@ class TestPbsNode(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
         name = "pbsdev-mgmt-ptl-centos7"
+        self.logger.error("socket.gethostname():%s", socket.gethostname())
         start_time = int(time.time())
         ret = self.server.delete_node(name, level="DEBUG", logerr=True)
         # self.assertEqual(ret, 0, "Could not delete node %s" % name)
+        # ret = self.server.create_node(name, level="DEBUG", logerr=True)
+        # self.logger.error("type:%s val:%s" % (type(ret), ret))
         ret = self.server.create_node(name, level="DEBUG", logerr=True)
         self.logger.error("type:%s val:%s" % (type(ret), ret))
         self.assertEqual(ret, 0, "Could not create node %s" % name)
