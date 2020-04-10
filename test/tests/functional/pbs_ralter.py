@@ -1861,7 +1861,7 @@ class TestPbsResvAlter(TestFunctional):
         This test confirms that if a requested ralter fails due to the
         reservation having running jobs, the attributes are kept the same
         """
-        offset = 5
+        offset = 20
         dur = 20
         shift = 120
 
