@@ -1868,7 +1868,7 @@ class TestPbsResvAlter(TestFunctional):
         rid, start, end = self.submit_and_confirm_reservation(offset, dur)
 
         jid = self.submit_job_to_resv(rid, user=TEST_USER)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid, offset=offset)
 
         now = int(time.time())
         new_start = self.bu.convert_seconds_to_datetime(now + shift)
