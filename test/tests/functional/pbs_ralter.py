@@ -1567,7 +1567,7 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
-        self.assertEqual(t_end, end+shift)
+        self.assertEqual(t_end, end + shift)
         self.assertEqual(t_start, start)
         self.assertEqual(t_duration, new_duration)
 
@@ -1582,7 +1582,7 @@ class TestPbsResvAlter(TestFunctional):
                                  a_duration=new_duration2, check_log=False)
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_end, temp_end+shift)
+        self.assertEqual(t_end, temp_end + shift)
         self.assertEqual(t_start, temp_start)
         self.assertEqual(t_duration, new_duration2)
 
@@ -1604,8 +1604,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
-        self.assertEqual(t_end, end+shift)
-        self.assertEqual(t_start, t_end-t_duration)
+        self.assertEqual(t_end, end + shift)
+        self.assertEqual(t_start, t_end - t_duration)
         self.assertEqual(t_duration, new_duration)
 
         # Submit a job to the reservation and change its start time.
@@ -1618,8 +1618,8 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_e=True, sequence=2,
                                  a_duration=new_duration2, check_log=False)
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_end, temp_end+shift)
-        self.assertEqual(t_start, t_end-t_duration)
+        self.assertEqual(t_end, temp_end + shift)
+        self.assertEqual(t_start, t_end - t_duration)
         self.assertEqual(t_duration, new_duration2)
 
     def test_adv_resv_dur_and_starttime_before_start(self):
@@ -1640,8 +1640,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
 
-        self.assertEqual(t_end, t_start+t_duration)
-        self.assertEqual(t_start, start+shift)
+        self.assertEqual(t_end, t_start + t_duration)
+        self.assertEqual(t_start, start + shift)
         self.assertEqual(t_duration, new_duration)
 
         # Submit a job to the reservation and change its start time.
@@ -1654,8 +1654,8 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_s=True, sequence=2,
                                  a_duration=new_duration2, check_log=False)
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
-        self.assertEqual(t_end, t_start+t_duration)
-        self.assertEqual(t_start, temp_start+shift)
+        self.assertEqual(t_end, t_start + t_duration)
+        self.assertEqual(t_start, temp_start + shift)
         self.assertEqual(t_duration, new_duration2)
 
     def test_adv_res_dur_after_start(self):
@@ -1781,8 +1781,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_duration, new_duration)
-        self.assertEqual(t_end, end+shift)
-        self.assertEqual(t_start, t_end-t_duration)
+        self.assertEqual(t_end, end + shift)
+        self.assertEqual(t_start, t_end - t_duration)
 
         # Wait for the reservation to start running.
         self.check_resv_running(rid, offset - shift)
@@ -1817,8 +1817,8 @@ class TestPbsResvAlter(TestFunctional):
 
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(t_duration, new_duration)
-        self.assertEqual(t_end, t_start+t_duration)
-        self.assertEqual(t_start, start+shift)
+        self.assertEqual(t_end, t_start + t_duration)
+        self.assertEqual(t_start, start + shift)
 
         # Wait for the reservation to start running.
         self.check_resv_running(rid, offset - shift)
@@ -1853,4 +1853,39 @@ class TestPbsResvAlter(TestFunctional):
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), duration)
+        self.assertEqual(int(t_end), end)
+
+    @skipOnCpuSet
+    def test_alter_empty_fail(self):
+        """
+        This test confirms that if a requested ralter fails due to the
+        reservation having running jobs, the attributes are kept the same
+        """
+        offset = 5
+        dur = 20
+        shift = 120
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, dur)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        now = int(time.time())
+        new_start = self.bu.convert_seconds_to_datetime(now + shift)
+        new_end = self.bu.convert_seconds_to_datetime(now + shift + dur)
+
+        # This bug only shows if end time is changed before start time
+        ralter_cmd = [
+            os.path.join(
+                self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_ralter'),
+            '-E', str(new_end),
+            '-R', str(new_start),
+            rid
+        ]
+        ret = self.du.run_cmd(self.server.hostname, ralter_cmd)
+        self.assertIn('pbs_ralter: Reservation not empty', ret['err'][0])
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), start)
+        self.assertEqual(int(t_duration), dur)
         self.assertEqual(int(t_end), end)
