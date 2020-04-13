@@ -220,13 +220,9 @@ class TestSuspendResumeAccounting(TestFunctional):
         # check for both ncpus and mem are released
         resc_released = 'resources_released=(%s:ncpus=1:mem=524288kb)'
 
-        if self.mom.is_cpuset_mom():
-            node = self.server.status(JOB, 'exec_vnode',
-                                      id=jid)[0]['exec_vnode']
-            vn = node.split('+')[0].split(':')[0].split('(')[1]
-            resc_released = resc_released % vn
-        else:
-            resc_released = resc_released % self.server.shortname
+        node = self.server.status(JOB, 'exec_vnode', id=jid)[0]['exec_vnode']
+        vn = node.split('+')[0].split(':')[0].split('(')[1]
+        resc_released = resc_released % vn
         record = 'z;%s;resources_used.' % jid
         line = self.server.accounting_match(msg=record, id=jid)[1]
         self.assertIn(resc_released, line)
