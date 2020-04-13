@@ -178,14 +178,11 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid1
         self.server.accounting_match(msg=record, id=jid1)
 
-    @skipOnCpuSet
     def test_admin_suspend_resume_signal(self):
         """
         Test case to verify accounting of admin-suspend
         and admin-resume records.
         """
-        a = {ATTR_rescavail + '.ncpus': 2}
-        self.server.create_vnodes('vn', a, 1, self.mom)
         j = Job()
         j.create_script(self.script)
         jid = self.server.submit(j)
@@ -193,14 +190,12 @@ class TestSuspendResumeAccounting(TestFunctional):
 
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
 
         record = 'z;%s;.*resources_used.' % jid
         self.server.accounting_match(msg=record, id=jid, regexp=True)
 
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
 
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
