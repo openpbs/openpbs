@@ -141,7 +141,7 @@ class TestTPP(TestFunctional):
 
     def set_conf(self, host_name, attribs):
         """
-        To set PBS_AUTH_METHOD=munge in pbs.conf and restart PBS services
+        To set PBS_LEAF_ROUTERS in pbs.conf and restart PBS services
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
@@ -164,7 +164,7 @@ class TestTPP(TestFunctional):
         This test verifies communication between server-mom and
         between moms through pbs_comm
         Configuration:
-        Node 1 : Server, Mom, Sched
+        Node 1 : Server, Mom, Sched, Comm
         Node 2 : Mom
         """
         msg = "Need atleast 2 moms as input. use -pmoms=<m1>:<m2>"
@@ -199,7 +199,7 @@ class TestTPP(TestFunctional):
         This test verifies communication between server-mom,
         server-client and between moms through pbs_comm
         Configuration:
-        Node 1 : Server, Mom, Sched
+        Node 1 : Server, Mom, Sched, Comm
         Node 2 : Mom
         Node 3 : Client
         """
