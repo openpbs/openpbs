@@ -572,6 +572,8 @@ class TestCheckNodeExclusivity(TestFunctional):
                 if vnode['resources_available.vntype'] == 'cray_compute':
                     ncpus.append(int(vnode['resources_available.ncpus']))
                     i += 1
+                    if i == 2:
+                        break
         total_ncpus = ncpus[0] + ncpus[1]
         req_ncpus = min(ncpus[0] / 2, ncpus[1] / 2)
         now = int(time.time())
