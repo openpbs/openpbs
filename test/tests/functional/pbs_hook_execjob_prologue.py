@@ -249,7 +249,7 @@ class TestPbsExecutePrologue(TestFunctional):
         j = Job(TEST_USER, {'Resource_List.select': '2:ncpus=1',
                             'Resource_List.place': 'scatter'})
         pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                                       "bin", "pbsdsh")
+                                   "bin", "pbsdsh")
         j.create_script('#!/bin/sh\n%s  hostname\nsleep 10\n' % pbsdsh_path)
         jid = self.server.submit(j)
         attribs = self.server.status(JOB, id=jid)
