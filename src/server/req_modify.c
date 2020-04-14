@@ -817,7 +817,7 @@ req_modifyReservation(struct batch_request *preq)
 			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);
 			return;
 		}
-		
+
 		switch (index) {
 			case RESV_ATR_start:
 				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
@@ -828,6 +828,7 @@ req_modifyReservation(struct batch_request *preq)
 							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
 						} else {
+							resv_revert_alter_times(presv);
 							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 								preq->rq_ind.rq_modify.rq_objname, log_buffer);
@@ -835,10 +836,12 @@ req_modifyReservation(struct batch_request *preq)
 							return;
 						}
 					} else {
+						resv_revert_alter_times(presv);
 						req_reject(PBSE_BADTSPEC, 0, preq);
 						return;
 					}
 				} else {
+					resv_revert_alter_times(presv);
 					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 					else
@@ -854,6 +857,7 @@ req_modifyReservation(struct batch_request *preq)
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
 				} else {
+					resv_revert_alter_times(presv);
 					snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 						preq->rq_ind.rq_modify.rq_objname, log_buffer);
@@ -862,7 +866,7 @@ req_modifyReservation(struct batch_request *preq)
 				}
 
 				break;
-			case RESV_ATR_duration:							
+			case RESV_ATR_duration:
 				send_to_scheduler = RESV_DURATION_MODIFIED;
 				presv->ri_alter_flags |= RESV_DURATION_MODIFIED;
 				break;
@@ -878,13 +882,13 @@ req_modifyReservation(struct batch_request *preq)
 			reply_badattr(rc, 1, psatl, preq);
 			return;
 		}
-		
+
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 	}
 	resc_access_perm = resc_access_perm_save; /* restore perm */
 
 	new_end_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long + presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
-	
+
 	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_etime == 0) {
 		if (!is_standing || new_end_time < next_occr_start) {
 			presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
@@ -896,7 +900,7 @@ req_modifyReservation(struct batch_request *preq)
 			return;
 		}
 	}
-	
+
 	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_stime == 0) {
 		if (!is_standing || new_end_time < next_occr_start) {
 			presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
@@ -908,7 +912,7 @@ req_modifyReservation(struct batch_request *preq)
 			return;
 		}
 	}
-	
+
 
 	if (send_to_scheduler) {
 		presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
