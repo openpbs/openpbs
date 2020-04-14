@@ -79,7 +79,6 @@ struct pbs_config pbs_conf = {
 	0,					/* start comm */
 	0,					/* locallog */
 	NULL,					/* default to NULL for supported auths */
-	ENCRYPT_DISABLE,			/* default encrypt/decrypt disabled */
 	{'\0'},					/* default no auth method to encrypt/decrypt data */
 	AUTH_RESVPORT_NAME,			/* default to reserved port authentication */
 	0,					/* sched_modify_event */
@@ -596,14 +595,6 @@ __pbs_loadconf(int reload)
 				strcpy(pbs_conf.encrypt_method, value);
 				free(value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_MODE)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.encrypt_mode = uvalue;
-				if (pbs_conf.encrypt_mode < ENCRYPT_DISABLE || pbs_conf.encrypt_mode > ENCRYPT_ALL) {
-					fprintf(stderr, "pbsconf error: invalid PBS_ENCRYPT_MODE value: %d\n", uvalue);
-					goto err;
-				}
-			}
 			else if (!strcmp(conf_name, PBS_CONF_SUPPORTED_AUTH_METHODS)) {
 				char *value = convert_string_to_lowercase(conf_value);
 				if (value == NULL)
@@ -965,14 +956,6 @@ __pbs_loadconf(int reload)
 		strcpy(pbs_conf.encrypt_method, value);
 		free(value);
 	}
-	if ((gvalue = getenv(PBS_CONF_ENCRYPT_MODE)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.encrypt_mode = uvalue;
-		if (pbs_conf.encrypt_mode < ENCRYPT_DISABLE || pbs_conf.encrypt_mode > ENCRYPT_ALL) {
-			fprintf(stderr, "pbsconf error: invalid PBS_ENCRYPT_MODE value: %d\n", uvalue);
-			goto err;
-		}
-	}
 	if ((gvalue = getenv(PBS_CONF_SUPPORTED_AUTH_METHODS)) != NULL) {
 		char *value = convert_string_to_lowercase(gvalue);
 		if (value == NULL)
@@ -986,11 +969,14 @@ __pbs_loadconf(int reload)
 		free(value);
 	}
 
-	if (pbs_conf.encrypt_method[0] == '\0' && pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
-		strcpy(pbs_conf.encrypt_method, pbs_conf.auth_method);
+	if (pbs_conf.supported_auth_methods == NULL) {
+		pbs_conf.supported_auth_methods = break_comma_list(AUTH_RESVPORT_NAME);
+		if (pbs_conf.supported_auth_methods == NULL) {
+			goto err;
+		}
 	}
 
-	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
+	if (pbs_conf.encrypt_method[0] != '\0') {
 		/* encryption is not disabled, validate encrypt method */
 		if (is_valid_encrypt_method(pbs_conf.encrypt_method) != 1) {
 			fprintf(stderr, "The given PBS_ENCRYPT_METHOD = %s does not support encrypt/decrypt of data\n", pbs_conf.encrypt_method);

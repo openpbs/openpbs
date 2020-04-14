@@ -77,7 +77,7 @@ decode_DIS_Authenticate(int sock, struct batch_request *preq)
 	int rc;
 	int len = 0;
 
-
+	memset(preq->rq_ind.rq_auth.rq_auth_method, '\0', sizeof(preq->rq_ind.rq_auth.rq_auth_method));
 	len = disrsi(sock, &rc);
 	if (rc != DIS_SUCCESS)
 		return (rc);
@@ -87,25 +87,15 @@ decode_DIS_Authenticate(int sock, struct batch_request *preq)
 	rc = disrfst(sock, len, preq->rq_ind.rq_auth.rq_auth_method);
 	if (rc != DIS_SUCCESS)
 		return (rc);
-	preq->rq_ind.rq_auth.rq_auth_method[MAXAUTHNAME] = '\0';
 
-	preq->rq_ind.rq_auth.rq_encrypt_mode = disrui(sock, &rc);
+	memset(preq->rq_ind.rq_auth.rq_encrypt_method, '\0', sizeof(preq->rq_ind.rq_auth.rq_encrypt_method));
+	len = disrsi(sock, &rc);
 	if (rc != DIS_SUCCESS)
 		return (rc);
-
-	if (preq->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
-		len = disrsi(sock, &rc);
-		if (rc != DIS_SUCCESS)
-			return (rc);
-		if (len <= 0) {
-			return DIS_PROTO;
-		}
+	if (len > 0) {
 		rc = disrfst(sock, len, preq->rq_ind.rq_auth.rq_encrypt_method);
 		if (rc != DIS_SUCCESS)
 			return (rc);
-		preq->rq_ind.rq_auth.rq_encrypt_method[MAXAUTHNAME] = '\0';
-	} else {
-		preq->rq_ind.rq_auth.rq_encrypt_method[0] = '\0';
 	}
 
 	preq->rq_ind.rq_auth.rq_port = disrui(sock, &rc);

@@ -51,12 +51,6 @@ extern "C" {
 #define FOR_AUTH 0
 #define FOR_ENCRYPT 1
 
-enum ENCRYPT_MODE {
-	ENCRYPT_DISABLE = 0,
-	ENCRYPT_ONLY_CLIENT_TO_SERVER,
-	ENCRYPT_ALL
-};
-
 enum AUTH_ROLE {
 	AUTH_ROLE_UNKNOWN = 0,
 	AUTH_CLIENT,
@@ -88,9 +82,6 @@ typedef struct pbs_auth_config {
 	/* Name of encryption method (aka PBS_ENCRYPT_METHOD in pbs.conf). This should be a null-terminated string. */
 	char *encrypt_method;
 
-	/* Encryption mode (aka PBS_ENCRYPT_MODE in pbs.conf) */
-	int encrypt_mode;
-
 	/*
 	 * Function pointer to the logging method with the same signature as log_event from Liblog.
 	 * With this, the user of the authentication library can redirect logs from the authentication
@@ -100,7 +91,8 @@ typedef struct pbs_auth_config {
 	void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text);
 } pbs_auth_config_t;
 
-typedef struct auth_def {
+typedef struct auth_def auth_def_t;
+struct auth_def {
 	/* name of authentication method name */
 	char name[MAXAUTHNAME + 1];
 
@@ -141,7 +133,12 @@ typedef struct auth_def {
 	 * the function pointer to decrypt data
 	 */
 	int (*decrypt_data)(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out);
-} auth_def_t;
+
+	/*
+	 * pointer to next authdef structure
+	 */
+	auth_def_t *next;
+};
 
 enum AUTH_MSG_TYPES {
 	AUTH_CTX_DATA = 1, /* starts from 1, zero means EOF */
@@ -155,7 +152,7 @@ extern auth_def_t * get_auth(char *);
 extern int load_auths(int mode);
 extern void unload_auths(void);
 int is_valid_encrypt_method(char *);
-pbs_auth_config_t * make_auth_config(char *, char *, int, void *);
+pbs_auth_config_t * make_auth_config(char *, char *, void *);
 void free_auth_config(pbs_auth_config_t *);
 
 extern int engage_client_auth(int, char *, int , char *, size_t);

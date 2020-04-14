@@ -200,7 +200,6 @@ struct rq_register {
 struct rq_auth {
 	char rq_auth_method[MAXAUTHNAME + 1];
 	char rq_encrypt_method[MAXAUTHNAME + 1];
-	unsigned int rq_encrypt_mode;
 	unsigned int rq_port;
 };
 
