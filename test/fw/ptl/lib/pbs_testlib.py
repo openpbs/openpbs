@@ -13576,7 +13576,7 @@ class MoM(PBSService):
              str(abort_time) + ' !' + chk_file + ' %sid'}
         self.add_config(c)
         return chk_file
-    
+
     def add_restart_script(self, dirname=None, body=None,
                            abort_time=30):
         """
