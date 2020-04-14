@@ -56,9 +56,14 @@ class TestTPP(TestFunctional):
 
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
                    job_script=False, interactive=False, client=None):
+        """
+        This function submits different types of jobs and verify
+        job attributes.
+        
+        """
         if client is None:
             client = self.server.client
-        j = Job(PBSROOT_USER)
+        j = Job(TEST_USER)
         if set_attrib:
             j.set_attributes(set_attrib)
         if interactive:
@@ -79,7 +84,7 @@ class TestTPP(TestFunctional):
         return jid
 
     def submit_resv(self, set_attrib=None, exp_attrib=None):
-        r = Reservation(PBSROOT_USER)
+        r = Reservation(TEST_USER)
         if set_attrib:
             r.set_attributes(set_attrib)
         rid = self.server.submit(r)
@@ -95,12 +100,13 @@ class TestTPP(TestFunctional):
         """
         if job:
             # Submit job
-            jid = self.submit_job(exp_attrib={'job_state': 'R'})
+            jid = self.submit_job(set_attrib={ATTR_k: 'oe'},
+                                  exp_attrib={'job_state': 'R'})
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
             self.server.log_match("%s;Exit_status=0" % jid)
             # Submit multi-chunk job
             set_attrib = {'Resource_List.select': '2:ncpus=1',
-                          ATTR_l + '.place': 'scatter'}
+                          ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
             jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
                                   job_script=True)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
@@ -109,7 +115,7 @@ class TestTPP(TestFunctional):
             # Submit interactive job
             set_attrib = {'Resource_List.select': '2:ncpus=1',
                           ATTR_inter: '',
-                          ATTR_l + '.place': 'scatter'}
+                          ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
             jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
                                   interactive=True)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET)
@@ -124,7 +130,7 @@ class TestTPP(TestFunctional):
             resv_que = rid.split('.')[0]
             # Submit job into reservation
             set_attrib = {'Resource_List.select': '2:ncpus=1',
-                          ATTR_q: resv_que,
+                          ATTR_q: resv_que, ATTR_k: 'oe',
                           ATTR_l + '.place': 'scatter'}
             jid = self.submit_job(set_attrib, job_script=True)
             # Wait for reservation to start
