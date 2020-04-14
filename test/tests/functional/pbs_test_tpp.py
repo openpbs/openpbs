@@ -168,13 +168,13 @@ class TestTPP(TestFunctional):
         pi = PBSInitServices(hostname=host_name)
         pi.restart()
 
-    def set_conf(self, host_name, conf_param):
+    def set_pbs_conf(self, host_name, conf_param):
         """
         This function sets attributes in pbs.conf file
         :param host_name: Name of the host on which pbs.conf
                           has to be updated
         :type host_name: String
-        :param conf_param: Attributes to be updated in pbs.conf
+        :param conf_param: Parameters to be updated in pbs.conf
         :type conf_param: Dictionary
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
@@ -184,7 +184,12 @@ class TestTPP(TestFunctional):
 
     def unset_pbs_conf(self, host_name, conf_param):
         """
-        To functions unsets "PBS_LEAF_ROUTERS" from pbs.conf file
+        This function unsets parameters in pbs.conf file
+        :param host_name: Name of the host on which pbs.conf
+                          has to be updated
+        :type host_name: String
+        :param conf_param: Parameters to be removed from pbs.conf
+        :type conf_param: List
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.unset_pbs_config(hostname=host_name,
@@ -251,8 +256,7 @@ class TestTPP(TestFunctional):
         self.server.client = self.hostB
         self.common_steps(resv=True)
 
-    @requirements(num_moms=2, num_comms=1, num_clients=1,
-                  no_comm_on_server=True)
+    @requirements(num_moms=2, num_comms=1, num_clients=1)
     def test_comm_non_server_host(self):
         """
         This test verifies communication between server-mom,
@@ -279,9 +283,9 @@ class TestTPP(TestFunctional):
         self.node_list.extend(nodes)
         a = {'PBS_START_COMM': '0', 'PBS_START_MOM': '1',
              'PBS_LEAF_ROUTERS': self.hostD}
-        self.set_conf(host_name=self.server.hostname, attribs=a)
+        self.set_pbs_conf(host_name=self.server.hostname, conf_param=a)
         a = {'PBS_LEAF_ROUTERS': self.hostD}
-        self.set_conf(host_name=self.hostC, attribs=a)
+        self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         self.common_steps(job=True, resv=True)
         self.server.client = self.hostB
         self.common_steps(interactive_job=True)
