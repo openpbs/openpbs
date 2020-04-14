@@ -90,7 +90,15 @@ class TestReservations(TestFunctional):
 
         return self.server.submit(r)
 
-    @skipOnCpuSet
+    @staticmethod
+    def cust_attr(name, totnodes, numnode, attrib):
+        a = {}
+        if numnode % 2 == 0:
+            a['resources_available.color'] = 'red'
+        else:
+            a['resources_available.color'] = 'blue'
+        return {**attrib, **a}
+
     def degraded_resv_reconfirm(self, start, end, rrule=None, run=False):
         """
         Test that a degraded reservation gets reconfirmed
@@ -98,12 +106,18 @@ class TestReservations(TestFunctional):
         a = {'reserve_retry_time': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
+        a = {'type': 'string', 'flag': 'h'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='color')
+        self.scheduler.add_resource('color')
+
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.server.create_vnodes('vn', a, num=3, mom=self.mom,
+                                  attrfunc=self.cust_attr)
 
         now = int(time.time())
 
-        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1:color=red',
                                       rrule=rrule, start=start, end=end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -128,7 +142,7 @@ class TestReservations(TestFunctional):
         a.update(resv_state)
         self.server.expect(RESV, a, id=rid)
 
-        a = {'resources_available.ncpus': (GT, 0)}
+        a = {'resources_available.color': 'red'}
         free_nodes = self.server.filter(NODE, a)
         nodes = list(free_nodes.values())[0]
 
@@ -142,7 +156,6 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, a, id=rid, interval=1)
 
-    @skipOnCpuSet
     def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
                                        run=False, resume=False):
         """
