@@ -57,9 +57,19 @@ class TestTPP(TestFunctional):
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
                    job_script=False, interactive=False, client=None):
         """
-        This function submits different types of jobs and verify
-        job attributes.
-        
+        Submits job and check for the job attributes
+        :param set_attrib: Job attributes to set
+        :type set_attrib: Dictionary. Defaults to None
+        :param exp_attrib: Job attributes to verify
+        :type exp_attrib: Dictionary. Defaults to None
+        :param sleep: Job's sleep time
+        :type sleep: Integer. Defaults to 10s
+        :param job_script: Whether to submit a job using job script
+        :type job_script: Bool. Defaults to False
+        :param interactive: Whether to submit a interactive job
+        :type intercative: Bool. Defaults to False
+        :param resv: Whether to submit reservation
+        :type resv: Bool. Defaults to False
         """
         if client is None:
             client = self.server.client
@@ -84,6 +94,13 @@ class TestTPP(TestFunctional):
         return jid
 
     def submit_resv(self, set_attrib=None, exp_attrib=None):
+        """
+        Submits reservation and check for the reservation attributes
+        :param set_attrib: Reservation attributes to set
+        :type set_attrib: Dictionary. Defaults to None
+        :param exp_attrib: Reservation attributes to verify
+        :type exp_attrib: Dictionary. Defaults to None
+        """
         r = Reservation(TEST_USER)
         if set_attrib:
             r.set_attributes(set_attrib)
@@ -97,6 +114,12 @@ class TestTPP(TestFunctional):
         """
         This function contains common steps of submitting
         different kind of jobs.
+        :param job: Whether to submit job
+        :type job: Bool. Defaults to False
+        :param interactive_job: Whether to submit a interactive job
+        :type intercative_job: Bool. Defaults to False
+        :param resv: Whether to submit reservation
+        :type resv: Bool. Defaults to False
         """
         if job:
             # Submit job
@@ -140,14 +163,22 @@ class TestTPP(TestFunctional):
 
     def pbs_restart(self, host_name):
         """
-        To restart PBS Daemons and capture start time
+        This function starts PBS daemons after updating pbs.conf file
+        :param host_name: Name of the host on which PBS
+                          has to be restarted
+        :type host_name: String
         """
         pi = PBSInitServices(hostname=host_name)
         pi.restart()
 
     def set_conf(self, host_name, attribs):
         """
-        To set PBS_LEAF_ROUTERS in pbs.conf and restart PBS services
+        This function sets attributes in pbs.conf file
+        :param host_name: Name of the host on which pbs.conf
+                          has to be updated
+        :type host_name: String
+        :param attribs: Attributes to be updated in pbs.conf
+        :type attribs: Dictionary
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
@@ -156,7 +187,7 @@ class TestTPP(TestFunctional):
 
     def unset_pbs_conf(self, host_name):
         """
-        To unset PBS_AUTH_METHOD in pbs.conf and restart PBS services
+        To functions unsets "PBS_LEAF_ROUTERS" from pbs.conf file
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.unset_pbs_config(hostname=host_name,
