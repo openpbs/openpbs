@@ -333,6 +333,32 @@ grep "195" $devices_job/devices.list
 echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
 sleep 10
 """
+        self.cpu_controller_script = """
+base='%s'
+echo "cgroups base path for cpuset is $base"
+if [ -d $base ]; then
+    shares=$base/cpu.shares
+    echo shares=${shares}
+    if [ -f $shares ]; then
+        cpu_shares=`cat $shares`
+        echo "cpu_shares=${cpu_shares}"
+    fi
+    cfs_period_us=$base/cpu.cfs_period_us
+    echo cfs_period_us=${cfs_period_us}
+    if [ -f $cfs_period_us ]; then
+        cpu_cfs_period_us=`cat $cfs_period_us`
+        echo "cpu_cfs_period_us=${cpu_cfs_period_us}"
+    fi
+    cfs_quota_us=$base/cpu.cfs_quota_us
+    echo cfs_quota_us=$cfs_quota_us
+    if [ -f $cfs_quota_us ]; then
+        cpu_cfs_quota_us=`cat $cfs_quota_us`
+        echo "cpu_cfs_quota_us=${cpu_cfs_quota_us}"
+    fi
+else
+    echo "Cpu subsystem job directory not created."
+fi
+"""
         self.sleep15_job = """#!/bin/bash
 #PBS -joe
 sleep 15
@@ -773,6 +799,234 @@ sleep 300
     }
 }
 """
+        self.cfg10 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_cpus"    : [],
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "memsw":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpu" : {
+            "enabled"                    : true,
+            "enforce_per_period_quota"   : true
+          }
+    }
+}
+"""
+        self.cfg11 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_cpus"    : [],
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "memsw":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpu" : {
+            "enabled"                    : true,
+            "enforce_per_period_quota"   : true,
+            "cfs_period_us"              : %d,
+            "cfs_quota_fudge_factor"     : %f
+          }
+    }
+}
+"""
+        self.cfg12 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_cpus"    : [],
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "allow_zero_cpus" : true
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "memsw":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpu" : {
+            "enabled"                    : true,
+            "enforce_per_period_quota"   : true
+          }
+    }
+}
+"""
+        self.cfg13 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : ["no_cgroups"],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpuset":
+        {
+            "enabled"         : true,
+            "exclude_cpus"    : [],
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "allow_zero_cpus" : true
+        },
+        "devices":
+        {
+            "enabled"         : false
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "memsw":
+        {
+            "enabled"         : true,
+            "default"         : "256MB",
+            "reserve_amount"  : "64MB",
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : []
+        },
+        "cpu" : {
+            "enabled"                    : true,
+            "enforce_per_period_quota"   : true,
+            "cfs_period_us"              : %d,
+            "cfs_quota_fudge_factor"     : %f,
+            "zero_cpus_shares_fraction"  : %f,
+            "zero_cpus_quota_fraction"   : %f
+          }
+    }
+}
+"""
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
@@ -857,7 +1111,8 @@ if %s e.job.in_ms_mom():
                  'memory': None,
                  'memsw': None,
                  'cpuacct': None,
-                 'devices': None}
+                 'devices': None,
+                 'cpu': None}
         # Loop through the mounts and collect the ones for cgroups
         fd = self.du.cat(host, '/proc/mounts')
         for line in fd['out']:
@@ -876,6 +1131,8 @@ if %s e.job.in_ms_mom():
                 paths['cpuacct'] = paths[subsys]
             if 'devices' in flags:
                 paths['devices'] = paths[subsys]
+            if 'cpu' in flags:
+                paths['cpu'] = paths[subsys]
         return paths
 
     def is_dir(self, cpath, host):
@@ -1757,7 +2014,7 @@ if %s e.job.in_ms_mom():
         with open(os.path.join(os.sep, 'proc', 'meminfo'), 'r') as fd:
             meminfo = fd.read()
         if 'Hugepagesize' not in meminfo:
-                self.skipTest('Hugepagesize not in meminfo')
+            self.skipTest('Hugepagesize not in meminfo')
         name = 'CGROUP7.2'
         vn_per_numa = 'true'
         rv = self.cgroup_offline_node(name, vn_per_numa)
@@ -3073,6 +3330,217 @@ exit 0
                         regexp=True, existence=False)
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
+
+    def test_cpu_controller_enforce_default(self):
+        """
+        Test an enabled cgroup 'cpu' controller with quotas enforced
+        using default (non-specified) values of cfs_period_us, and
+        cfs_quota_fudge_factor.
+        """
+        name = 'CGROUP1'
+        self.load_config(self.cfg10)
+        default_cfs_period_us = 100000
+        default_cfs_quota_fudge_factor = 1.03
+
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
+        self.server.expect(NODE, {'state': 'free'},
+                           id=self.nodes_list[0], interval=1)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=self.nodes_list[0])
+        orig_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertGreater(orig_ncpus, 0)
+        self.logger.info('Original value of ncpus: %d' % orig_ncpus)
+        if orig_ncpus >= 2:
+            ncpus_req = 2
+        else:
+            ncpus_req = 1
+
+        a = {'Resource_List.select':
+             "ncpus=%d" % ncpus_req,
+             ATTR_N: name, ATTR_k: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
+        self.assertFalse(fna is None, 'No job directory for cpu subsystem')
+        cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
+                                  as_script=True)
+        cpu_scr_out = cpu_scr['out']
+        self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
+
+        shares_match = (ncpus_req * 1000)
+        self.assertTrue("cpu_shares=%d" % shares_match in cpu_scr_out)
+        self.logger.info("cpu_shares check passed (match %d)" % shares_match)
+
+        self.assertTrue("cpu_cfs_period_us=%d" %
+                        (default_cfs_period_us) in cpu_scr_out)
+        self.logger.info("cpu_cfs_period_us check passed (match %d)" %
+                         (default_cfs_period_us))
+
+        cfs_quota_us_match = default_cfs_period_us * \
+            ncpus_req * default_cfs_quota_fudge_factor
+        self.assertTrue("cpu_cfs_quota_us=%d" %
+                        (cfs_quota_us_match) in cpu_scr_out)
+        self.logger.info("cpu_cfs_quota_us check passed (match %d)" %
+                         (cfs_quota_us_match))
+
+    def test_cpu_controller_enforce(self):
+        """
+        Test an enabled cgroup 'cpu' controller with quotas enforced,
+        using specific values to:
+              cfs_period_us
+              cfs_quota_fudge_factor
+        in config file 'cfg11'.
+        """
+        name = 'CGROUP1'
+        cfs_period_us = 200000
+        cfs_quota_fudge_factor = 1.05
+        self.load_config(self.cfg11 % (cfs_period_us, cfs_quota_fudge_factor))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
+        self.server.expect(NODE, {'state': 'free'},
+                           id=self.nodes_list[0], interval=1)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=self.nodes_list[0])
+        orig_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertGreater(orig_ncpus, 0)
+        self.logger.info('Original value of ncpus: %d' % orig_ncpus)
+        if orig_ncpus >= 2:
+            ncpus_req = 2
+        else:
+            ncpus_req = 1
+        a = {'Resource_List.select':
+             "ncpus=%d" % ncpus_req,
+             ATTR_N: name, ATTR_k: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
+        self.assertFalse(fna is None, 'No job directory for cpu subsystem')
+        cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
+                                  as_script=True)
+        cpu_scr_out = cpu_scr['out']
+        self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
+        shares_match = (ncpus_req * 1000)
+        self.assertTrue("cpu_shares=%d" % shares_match in cpu_scr_out)
+        self.logger.info("cpu_shares check passed (match %d)" % shares_match)
+
+        self.assertTrue("cpu_cfs_period_us=%d" %
+                        (cfs_period_us) in cpu_scr_out)
+        self.logger.info(
+            "cpu_cfs_period_us check passed (match %d)" % (cfs_period_us))
+        cfs_quota_us_match = cfs_period_us * ncpus_req * cfs_quota_fudge_factor
+        self.assertTrue("cpu_cfs_quota_us=%d" %
+                        (cfs_quota_us_match) in cpu_scr_out)
+        self.logger.info("cpu_cfs_quota_us check passed (match %d)" %
+                         (cfs_quota_us_match))
+
+    def test_cpu_controller_enforce_default_zero_job(self):
+        """
+        Test an enabled cgroup 'cpu' controller with quotas enforced
+        on zero-cpu job, using default (non-specified) values of:
+              cfs_period_us
+              cfs_quota_fudge_factor
+              zero_cpus_shares_fraction
+              zero_cpus_quota_fraction
+        """
+        name = 'CGROUP1'
+        # config file 'cfg12' has 'allow_zero_cpus=true' under cpuset, to allow
+        # zero-cpu jobs.
+        self.load_config(self.cfg12)
+        default_cfs_period_us = 100000
+        default_cfs_quota_fudge_factor = 1.03
+        default_zero_shares_fraction = 0.002
+        default_zero_quota_fraction = 0.2
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
+        a = {'Resource_List.select': 'ncpus=0',
+             ATTR_N: name, ATTR_k: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
+        self.assertFalse(fna is None, 'No job directory for cpu subsystem')
+        cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
+                                  as_script=True)
+        cpu_scr_out = cpu_scr['out']
+        self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
+        shares_match = (default_zero_shares_fraction * 1000)
+        self.assertTrue("cpu_shares=%d" % shares_match in cpu_scr_out)
+        self.logger.info("cpu_shares check passed (match %d)" % shares_match)
+
+        self.assertTrue("cpu_cfs_period_us=%d" %
+                        (default_cfs_period_us) in cpu_scr_out)
+        self.logger.info("cpu_cfs_period_us check passed (match %d)" %
+                         (default_cfs_period_us))
+        cfs_quota_us_match = default_cfs_period_us * \
+            default_zero_quota_fraction * default_cfs_quota_fudge_factor
+        self.assertTrue("cpu_cfs_quota_us=%d" %
+                        (cfs_quota_us_match) in cpu_scr_out)
+        self.logger.info("cpu_cfs_quota_us check passed (match %d)" %
+                         (cfs_quota_us_match))
+
+    def test_cpu_controller_enforce_zero_job(self):
+        """
+        Test an enabled cgroup 'cpu' controller with quotas enforced on a
+        zero-cpu job. Quotas are enforced using specific values to:
+              cfs_period_us
+              cfs_quota_fudge_factor
+              zero_cpus_shares_fraction
+              zero_cpus_quota_fraction
+        in config file 'cfg13'.
+        """
+        name = 'CGROUP1'
+        cfs_period_us = 200000
+        cfs_quota_fudge_factor = 1.05
+        zero_cpus_shares_fraction = 0.3
+        zero_cpus_quota_fraction = 0.5
+        # config file 'cfg13' has 'allow_zero_cpus=true' under cpuset, to allow
+        # zero-cpu jobs.
+        self.load_config(self.cfg13 % (cfs_period_us,
+                                       cfs_quota_fudge_factor,
+                                       zero_cpus_shares_fraction,
+                                       zero_cpus_quota_fraction))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
+        a = {'Resource_List.select': 'ncpus=0',
+             ATTR_N: name, ATTR_k: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        fna = self.get_cgroup_job_dir('cpu', jid, self.hosts_list[0])
+        self.assertFalse(fna is None, 'No job directory for cpu subsystem')
+        cpu_scr = self.du.run_cmd(cmd=[self.cpu_controller_script % fna],
+                                  as_script=True)
+        cpu_scr_out = cpu_scr['out']
+        self.logger.info('cpu_scr_out:\n%s' % cpu_scr_out)
+        shares_match = (zero_cpus_shares_fraction * 1000)
+        self.assertTrue("cpu_shares=%d" % shares_match in cpu_scr_out)
+        self.logger.info("cpu_shares check passed (match %d)" % shares_match)
+
+        self.assertTrue("cpu_cfs_period_us=%d" %
+                        (cfs_period_us) in cpu_scr_out)
+        self.logger.info(
+            "cpu_cfs_period_us check passed (match %d)" % (cfs_period_us))
+        cfs_quota_us_match = cfs_period_us * \
+            zero_cpus_quota_fraction * cfs_quota_fudge_factor
+        self.assertTrue("cpu_cfs_quota_us=%d" %
+                        (cfs_quota_us_match) in cpu_scr_out)
+        self.logger.info("cpu_cfs_quota_us check passed (match %d)" %
+                         (cfs_quota_us_match))
 
     def tearDown(self):
         TestFunctional.tearDown(self)

@@ -2815,7 +2815,9 @@ class CgroupUtils(object):
         defaults['cgroup']['cpu']['cfs_period_us'] = 100000
         defaults['cgroup']['cpu']['cfs_quota_fudge_factor'] = 1.03
         defaults['cgroup']['cpu']['enforce_per_period_quota'] = False
-        defaults['cgroup']['cpu']['zero_cpus_shares_fraction'] = 0
+        # For zero_cpus_shares_fraction, the default value of 0.002 * 1000 = 2,
+        # which is the smallest value allowed by kernel as cpu.shares
+        defaults['cgroup']['cpu']['zero_cpus_shares_fraction'] = 0.002
         defaults['cgroup']['cpu']['zero_cpus_quota_fraction'] = 0.2
         defaults['cgroup']['blkio'] = {}
         defaults['cgroup']['blkio']['enabled'] = False
@@ -4159,7 +4161,7 @@ class CgroupUtils(object):
                                                  ['cpu']
                                                  ['zero_cpus_shares_fraction'])
                     # Note that the minimum in the kernel is 2
-                    self.write_value(path, int(min(2, weightless_shares*1000)))
+                    self.write_value(path, int(max(2, weightless_shares*1000)))
                     value = (self.cfg['cgroup']
                                      ['cpu']
                                      ['zero_cpus_quota_fraction'])
