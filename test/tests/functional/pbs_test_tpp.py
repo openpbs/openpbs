@@ -50,9 +50,6 @@ class TestTPP(TestFunctional):
         TestFunctional.setUp(self)
         self.pbs_conf = self.du.parse_pbs_config(self.server.shortname)
         self.exec_path = os.path.join(self.pbs_conf['PBS_EXEC'], "bin")
-        a = {'resources_available.ncpus': 2}
-        for mom in self.moms.values():
-            self.server.manager(MGR_CMD_SET, NODE, a, id=mom.shortname)
 
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
                    job_script=False, interactive=False, client=None):
@@ -171,31 +168,30 @@ class TestTPP(TestFunctional):
         pi = PBSInitServices(hostname=host_name)
         pi.restart()
 
-    def set_conf(self, host_name, attribs):
+    def set_conf(self, host_name, conf_param):
         """
         This function sets attributes in pbs.conf file
         :param host_name: Name of the host on which pbs.conf
                           has to be updated
         :type host_name: String
-        :param attribs: Attributes to be updated in pbs.conf
-        :type attribs: Dictionary
+        :param conf_param: Attributes to be updated in pbs.conf
+        :type conf_param: Dictionary
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
-                               confs=attribs)
+                               confs=conf_param)
         self.pbs_restart(host_name)
 
-    def unset_pbs_conf(self, host_name):
+    def unset_pbs_conf(self, host_name, conf_param):
         """
         To functions unsets "PBS_LEAF_ROUTERS" from pbs.conf file
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
         self.du.unset_pbs_config(hostname=host_name,
-                                 fin=pbsconfpath, confs=['PBS_LEAF_ROUTERS'])
+                                 fin=pbsconfpath, confs=conf_param)
         self.pbs_restart(host_name)
 
     @requirements(num_moms=2)
-    @skipOnCpuSet
     def test_comm_with_mom(self):
         """
         This test verifies communication between server-mom and
@@ -230,7 +226,6 @@ class TestTPP(TestFunctional):
         self.common_steps(job=True, interactive_job=True, resv=True)
 
     @requirements(num_moms=2, num_comms=1, num_clients=1)
-    @skipOnCpuSet
     def test_client_with_mom(self):
         """
         This test verifies communication between server-mom,
@@ -258,7 +253,6 @@ class TestTPP(TestFunctional):
 
     @requirements(num_moms=2, num_comms=1, num_clients=1,
                   no_comm_on_server=True)
-    @skipOnCpuSet
     def test_comm_non_server_host(self):
         """
         This test verifies communication between server-mom,
@@ -293,7 +287,6 @@ class TestTPP(TestFunctional):
         self.common_steps(interactive_job=True)
 
     @requirements(num_moms=2, no_mom_on_server=True)
-    @skipOnCpuSet
     def test_mom_non_server_host(self):
         """
         This test verifies communication between server-mom,
@@ -319,6 +312,7 @@ class TestTPP(TestFunctional):
 
     def tearDown(self):
         TestFunctional.tearDown(self)
+        conf_param = ['PBS_LEAF_ROUTERS']
         for host in self.node_list:
-            self.unset_pbs_conf(host)
+            self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
