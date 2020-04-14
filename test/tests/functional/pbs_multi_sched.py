@@ -2015,6 +2015,7 @@ e.accept()
         self.assertIn("hook 'h1' encountered an exception",
                       e.exception.msg[0])
 
+    @skipOnCpuSet
     def test_resv_alter(self):
         """
         Test if a reservation confirmed by a multi-sched can be altered by the
