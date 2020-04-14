@@ -92,7 +92,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 60}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -138,7 +138,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              }
         rid = self.submit_and_confirm_resv(a, 1)
         rid_q = rid.split(".")[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -185,7 +185,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 30}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -225,7 +225,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 60}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.logger.info('Waiting 20s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
@@ -259,7 +259,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 1600}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split(".")[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()
         self.logger.info('Waiting 10s for reservation to start')
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
@@ -301,7 +301,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excl
         a = {ATTR_l + '.select': '1:ncpus=1:vnode=%s' % resv_node,
@@ -324,7 +324,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 10,
              'reserve_duration': 3600}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
         # on vnode in resv_node
@@ -369,7 +369,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_start': now + 10,
              'reserve_end': now + 3100}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Submit a non-overlapping reservation requesting place=excli
         # on vnode in resv_node
@@ -408,7 +408,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'},
                            id=resv_node)
@@ -457,7 +457,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'reserve_end': now + 300}
         rid = self.submit_and_confirm_resv(a)
         rid_q = rid.split('.')[0]
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'free'}, id=resv_node)
         self.logger.info('Waiting 10s for reservation to start')
@@ -498,7 +498,7 @@ class TestCheckNodeExclusivity(TestFunctional):
              'Resource_List.place': 'excl', 'reserve_start': now + 20,
              'reserve_end': now + 40}
         rid = self.submit_and_confirm_resv(a)
-        node = self.server.status(RESV, 'resv_nodes', id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
         # Wait for reservation to start and verify
         # node state should not be resv-exclusive
@@ -507,3 +507,144 @@ class TestCheckNodeExclusivity(TestFunctional):
         self.server.expect(RESV, a, id=rid, offset=10)
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=resv_node, op=NE)
+
+    def test_multijob_on_resv_exclusive_node(self):
+        """
+        Test multiple jobs request inside a reservation
+        if none(node,reservation or job) asks for exclusivity
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'shared', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'}, id=resv_node)
+        a = {ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        j2 = Job(TEST_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+    def test_job_with_exclusive_placement(self):
+        """
+        Job will honour exclusivity inside the reservation
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'excl', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'excl'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=1',
+             'Resource_List.place': 'shared'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=5)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+    def test_job_running_on_multinode_reservation(self):
+        """
+        Test to submit job on multinode reservation with different placement
+        """
+        ncpus = []
+        vnodes = self.server.status(NODE)
+        num_vnodes = 2
+        i = 0
+        for vnode in vnodes:
+            if i < 2:
+                if vnode['resources_available.vntype'] == 'cray_compute':
+                    ncpus.append(int(vnode['resources_available.ncpus']))
+                    i += 1
+                    if i == 2:
+                        break
+        total_ncpus = ncpus[0] + ncpus[1]
+        req_ncpus = min(ncpus[0] / 2, ncpus[1] / 2)
+        now = int(time.time())
+        a = {
+            'Resource_List.select': '2:ncpus=%d:vntype=cray_compute' % min(
+                ncpus[0], ncpus[1]),
+            'Resource_List.place': 'excl',
+            'reserve_start': now + 20,
+            'reserve_end': now + 60}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=20)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '2:ncpus=%d' % req_ncpus,
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=%d' % ncpus[0],
+             'Resource_List.place': 'excl'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        a = {ATTR_q: rid_q, ATTR_l + '.select': '1:ncpus=%d' % ncpus[1],
+             'Resource_List.place': 'shared'}
+        j3 = Job(TEST_USER, attrs=a)
+        j3.create_script(self.script)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=5)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+    def test_job_with_exclhost_placement_inside_resv(self):
+        """
+        Job inside a reservation asking for place=exclhost on host
+        will have all resources of the vnodes present on host assigned to it
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=2:vntype=cray_compute',
+             'Resource_List.place': 'exclhost', 'reserve_start': now + 20,
+             'reserve_end': now + 40}
+        rid = self.submit_and_confirm_resv(a)
+        rid_q = rid.split('.')[0]
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, a, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'resv-exclusive'}, id=resv_node)
+        a = {ATTR_q: rid_q}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script(self.script)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(NODE, {'state': 'job-exclusive,resv-exclusive'},
+                           id=resv_node)
+        a = {ATTR_q: rid_q}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.create_script(self.script)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1, offset=10)
+        self.server.expect(RESV, 'queue', op=UNSET, id=rid, offset=10)
+        self.server.expect(NODE, {'state': 'free'}, id=resv_node)
