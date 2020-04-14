@@ -100,7 +100,7 @@ class TestTPP(TestFunctional):
             self.server.log_match("%s;Exit_status=0" % jid)
             # Submit multi-chunk job
             set_attrib = {'Resource_List.select': '2:ncpus=1',
-                           ATTR_l + '.place': 'scatter'}
+                          ATTR_l + '.place': 'scatter'}
             jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
                                   job_script=True)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
@@ -190,7 +190,7 @@ class TestTPP(TestFunctional):
             msg2 = "Leaf registered address %s:15003" % ip
             mom.log_match(msg1)
             self.comm.log_match(msg2)
-        self.common_steps(job=True,interactive_job=True,resv=True)
+        self.common_steps(job=True, interactive_job=True, resv=True)
 
     @requirements(num_moms=2, num_comms=1, num_clients=1)
     @skipOnCpuSet
