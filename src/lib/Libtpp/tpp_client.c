@@ -653,7 +653,7 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
 			return 0;
 	}
 
-	if (tpp_conf->auth_config->encrypt_mode == ENCRYPT_ALL) {
+	if (tpp_conf->auth_config->encrypt_method[0] != '\0') {
 		if (strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) != 0) {
 			void *data_out = NULL;
 			size_t len_out = 0;
@@ -4546,7 +4546,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 		if (is_handshake_done != 1)
 			return 0;
 
-		if (tpp_conf->auth_config->encrypt_mode == ENCRYPT_ALL && ahdr.for_encrypt == FOR_AUTH) {
+		if (tpp_conf->auth_config->encrypt_method[0] != '\0' && ahdr.for_encrypt == FOR_AUTH) {
 			if (strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) != 0) {
 				authdata = NULL;
 				authdef = get_auth(tpp_conf->auth_config->encrypt_method);

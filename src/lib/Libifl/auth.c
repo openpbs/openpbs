@@ -53,7 +53,7 @@
 #include "auth.h"
 #include "log.h"
 
-static auth_def_t **auths = NULL;
+static auth_def_t *loaded_auths = NULL;
 
 static int _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_t ebufsz);
 static int _handle_client_handshake(int fd, char *hostname, char *method, int for_encrypt, pbs_auth_config_t *config, char *ebuf, size_t ebufsz);
@@ -242,18 +242,24 @@ _unload_auth(auth_def_t *auth)
 auth_def_t *
 get_auth(char *method)
 {
-	int i = 0;
+	auth_def_t *auth = NULL;
 
-	if (auths == NULL)
-		return NULL;
-
-	while (auths[i] != NULL) {
-		if (strcmp(auths[i]->name, method) == 0)
-			return auths[i];
-		i++;
+	for (auth = loaded_auths; auth != NULL; auth = auth->next) {
+		if (strcmp(auth->name, method) == 0)
+			return auth;
 	}
 
-	return NULL;
+	/*
+	 * At this point, given method is allowed
+	 * but it's authdef is not loaded
+	 * so lets try to load it
+	 */
+	auth = _load_auth(method);
+	if (auth == NULL)
+		return NULL;
+	auth->next = loaded_auths;
+	loaded_auths = auth;
+	return auth;
 }
 
 /**
@@ -269,44 +275,29 @@ get_auth(char *method)
 int
 load_auths(int mode)
 {
-	int i = 0;
-	int count = 0;
-
-	if (auths != NULL)
+	if (loaded_auths != NULL)
 		return 0;
 
-	if (pbs_conf.supported_auth_methods != NULL && mode == AUTH_SERVER) {
-		i = 0;
-		while (pbs_conf.supported_auth_methods[i++] != NULL) count++;
-	} else {
-		/* for auth and encrypt methods */
-		count = 2;
-	}
-
-	auths = (auth_def_t **)calloc(1, sizeof(auth_def_t *) * (count + 1)); /* +1 for last NULL */
-	if (auths == NULL)
-		return 1;
-
-	count = 0;
 	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		auth_def_t *auth = _load_auth(pbs_conf.auth_method);
 		if (auth == NULL) {
 			return 1;
 		}
-		auths[count++] = auth;
+		loaded_auths = auth;
 	}
 
-	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
+	if (pbs_conf.encrypt_method[0] != '\0' && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
 		auth_def_t *auth = _load_auth(pbs_conf.encrypt_method);
 		if (auth == NULL) {
 			unload_auths();
 			return 1;
 		}
-		auths[count++] = auth;
+		auth->next = loaded_auths;
+		loaded_auths = auth;
 	}
 
-	if (pbs_conf.supported_auth_methods != NULL && mode == AUTH_SERVER) {
-		i = 0;
+	if (mode == AUTH_SERVER) {
+		int i = 0;
 		while (pbs_conf.supported_auth_methods[i] != NULL) {
 			auth_def_t *auth = NULL;
 			if (strcmp(pbs_conf.supported_auth_methods[i], AUTH_RESVPORT_NAME) == 0) {
@@ -322,7 +313,8 @@ load_auths(int mode)
 				unload_auths();
 				return 1;
 			}
-			auths[count++] = auth;
+			auth->next = loaded_auths;
+			loaded_auths = auth;
 			i++;
 		}
 	}
@@ -339,17 +331,11 @@ load_auths(int mode)
 void
 unload_auths(void)
 {
-	int i = 0;
-
-	if (auths == NULL)
-		return;
-
-	while (auths[i] != NULL) {
-		_unload_auth(auths[i]);
-		auths[i] = NULL;
+	while (loaded_auths != NULL) {
+		auth_def_t *cur = loaded_auths;
+		loaded_auths = loaded_auths->next;
+		_unload_auth(cur);
 	}
-	free(auths);
-	auths = NULL;
 }
 
 /**
@@ -394,31 +380,23 @@ tcp_send_auth_req(int sock, unsigned int port, char *user)
 	int am_len = strlen(pbs_conf.auth_method);
 	int em_len = strlen(pbs_conf.encrypt_method);
 
-	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE && em_len == 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-
 	set_conn_errno(sock, 0);
 	set_conn_errtxt(sock, NULL);
 
 	if (encode_DIS_ReqHdr(sock, PBS_BATCH_Authenticate, user) ||
 		diswui(sock, am_len) || /* auth method length */
 		diswcs(sock, pbs_conf.auth_method, am_len) || /* auth method */
-		diswui(sock, pbs_conf.encrypt_mode)) { /* encrypt mode */
+		diswui(sock, em_len)) { /* encrypt method length */
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
-	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
-		if (diswui(sock, em_len) || /* encrypt method length */
-			diswcs(sock, pbs_conf.encrypt_method, em_len)) { /* encrypt method */
-			pbs_errno = PBSE_SYSTEM;
-			return -1;
-		}
+	if (em_len > 0 && diswcs(sock, pbs_conf.encrypt_method, em_len)) { /* encrypt method */
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
 	}
 
-	if (diswui(sock, port) || /* port (only used in resvport auth) */
+	if (diswui(sock, port) ||  /* port (only used in resvport auth) */
 		encode_DIS_ReqExtend(sock, NULL)) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
@@ -705,7 +683,6 @@ free_auth_config(pbs_auth_config_t *config)
  *
  * @param[in] auth_method - auth method name
  * @param[in] encrypt_method - encrypt method name
- * @param[in] encrypt_mode - encrypt mode
  * @param[in] logger - pointer to logger function for auth lib
  *
  * @return	pbs_auth_config_t *
@@ -714,7 +691,7 @@ free_auth_config(pbs_auth_config_t *config)
  *
  */
 pbs_auth_config_t *
-make_auth_config(char *auth_method, char *encrypt_method, int encrypt_mode, void *logger)
+make_auth_config(char *auth_method, char *encrypt_method, void *logger)
 {
 	pbs_auth_config_t *config = NULL;
 
@@ -744,7 +721,6 @@ make_auth_config(char *auth_method, char *encrypt_method, int encrypt_mode, void
 		return NULL;
 	}
 	config->logfunc = logger;
-	config->encrypt_mode = encrypt_mode;
 	return config;
 }
 
@@ -766,7 +742,7 @@ int
 engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 {
 	int rc = -1;
-	pbs_auth_config_t *config = make_auth_config(pbs_conf.auth_method, pbs_conf.encrypt_method, pbs_conf.encrypt_mode, NULL);
+	pbs_auth_config_t *config = make_auth_config(pbs_conf.auth_method, pbs_conf.encrypt_method, NULL);
 
 	if (config == NULL) {
 		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
@@ -801,8 +777,8 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 		}
 	}
 
-	if (pbs_conf.encrypt_mode != ENCRYPT_DISABLE) {
-		if (pbs_conf.encrypt_method[0] != '\0' && strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		if (strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
 			rc = _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
 			free_auth_config(config);
 			return rc;

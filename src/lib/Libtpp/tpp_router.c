@@ -621,7 +621,7 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 		}
 	}
 
-	if (tpp_conf->auth_config->encrypt_mode == ENCRYPT_ALL) {
+	if (tpp_conf->auth_config->encrypt_method[0] != '\0') {
 		if (strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) != 0) {
 			void *data_out = NULL;
 			size_t len_out = 0;
@@ -1416,7 +1416,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		if (is_handshake_done != 1)
 			return 0;
 
-		if (tpp_conf->auth_config->encrypt_mode == ENCRYPT_ALL &&
+		if (tpp_conf->auth_config->encrypt_method[0] != '\0' &&
 			ahdr.for_encrypt == FOR_AUTH &&
 			(ctx != NULL && ((tpp_router_t *)ctx)->initiator == 1) &&
 			strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) != 0) {
@@ -1492,7 +1492,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			ctx->type = TPP_AUTH_NODE; /* denoting that this is an authenticated connection */
 		}
 
-		if (tpp_conf->auth_config->encrypt_mode == ENCRYPT_ALL && strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) == 0) {
+		if (tpp_conf->auth_config->encrypt_method[0] != '\0' && strcmp(tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method) == 0) {
 			authdata->encryptctx = authdata->authctx;
 			authdata->encryptdef = authdata->authdef;
 			tpp_transport_set_conn_extra(tfd, authdata);

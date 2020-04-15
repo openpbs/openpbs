@@ -338,7 +338,7 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 	tpp_conf->node_type = TPP_LEAF_NODE;
 	tpp_conf->numthreads = 1;
 
-	tpp_conf->auth_config = make_auth_config(pbs_conf->auth_method, pbs_conf->encrypt_method, pbs_conf->encrypt_mode, (void *)tpp_auth_logger);
+	tpp_conf->auth_config = make_auth_config(pbs_conf->auth_method, pbs_conf->encrypt_method, (void *)tpp_auth_logger);
 	if (tpp_conf->auth_config == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
 		return -1;
@@ -346,9 +346,7 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 
 	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
 	tpp_log_func(LOG_INFO, NULL, log_buffer);
-	if (tpp_conf->auth_config->encrypt_mode != ENCRYPT_DISABLE) {
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encrypt mode = %d", tpp_conf->auth_config->encrypt_mode);
-		tpp_log_func(LOG_INFO, NULL, log_buffer);
+	if (tpp_conf->auth_config->encrypt_method[0] != '\0') {
 		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encryption method = %s", tpp_conf->auth_config->encrypt_method);
 		tpp_log_func(LOG_INFO, NULL, log_buffer);
 	}
