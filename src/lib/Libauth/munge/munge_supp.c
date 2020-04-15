@@ -399,7 +399,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	if (len_in > 0) {
 		char *data = (char *)data_in;
 		/* enforce null char at given length of data */
-		data[len_in] = '\0';
+		data[len_in - 1] = '\0';
 		rc = munge_validate_auth_data(data, ebuf, sizeof(ebuf) - 1);
 		if (rc == 0) {
 			*is_handshake_done = 1;
@@ -412,7 +412,7 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 	} else {
 		*data_out = (void *)munge_get_auth_data(ebuf, sizeof(ebuf) - 1);
 		if (*data_out) {
-			*len_out = strlen((char *)*data_out);
+			*len_out = strlen((char *)*data_out) + 1; /* +1 to include null char also in data_out */
 			*is_handshake_done = 1;
 			return 0;
 		} else if (ebuf[0] != '\0') {
