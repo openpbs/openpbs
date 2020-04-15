@@ -45,14 +45,17 @@ class TestTPP(TestFunctional):
     Test suite consists of tests to check the functionality of pbs_comm daemon
     """
     node_list = []
+    default_client = None
 
     def setUp(self):
         TestFunctional.setUp(self)
         self.pbs_conf = self.du.parse_pbs_config(self.server.shortname)
         self.exec_path = os.path.join(self.pbs_conf['PBS_EXEC'], "bin")
+        if not self.default_client:
+            self.default_client = self.server.client
 
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
-                   job_script=False, interactive=False, client=None):
+                   job_script=False, interactive=False):
         """
         Submits job and check for the job attributes
         :param set_attrib: Job attributes to set
@@ -64,12 +67,8 @@ class TestTPP(TestFunctional):
         :param job_script: Whether to submit a job using job script
         :type job_script: Bool. Defaults to False
         :param interactive: Whether to submit a interactive job
-        :type intercative: Bool. Defaults to False
-        :param resv: Whether to submit reservation
-        :type resv: Bool. Defaults to False
+        :type interactive: Bool. Defaults to False
         """
-        if client is None:
-            client = self.server.client
         j = Job(TEST_USER)
         if set_attrib:
             j.set_attributes(set_attrib)
@@ -82,7 +81,7 @@ class TestTPP(TestFunctional):
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                        "bin", "pbsdsh")
             script = "#!/bin/sh\n%s sleep %s" % (pbsdsh_path, sleep)
-            j.create_script(script, hostname=client)
+            j.create_script(script, hostname=self.server.client)
         else:
             j.set_sleep_time(sleep)
         jid = self.server.submit(j)
@@ -107,17 +106,23 @@ class TestTPP(TestFunctional):
         return rid
 
     def common_steps(self, job=False, interactive_job=False,
-                     resv=False):
+                     resv=False, client=None):
         """
         This function contains common steps of submitting
         different kind of jobs.
         :param job: Whether to submit job
         :type job: Bool. Defaults to False
         :param interactive_job: Whether to submit a interactive job
-        :type intercative_job: Bool. Defaults to False
+        :type interactive_job: Bool. Defaults to False
         :param resv: Whether to submit reservation
         :type resv: Bool. Defaults to False
+        :param client: Name of the client
+        :type client: String. Defaults to None
         """
+        if client is None:
+            self.server.client = self.server.hostname
+        else:
+            self.server.client = client
         if job:
             # Submit job
             jid = self.submit_job(set_attrib={ATTR_k: 'oe'},
@@ -253,8 +258,7 @@ class TestTPP(TestFunctional):
         self.node_list.extend(nodes)
         self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': True})
         self.common_steps(job=True, interactive_job=True)
-        self.server.client = self.hostB
-        self.common_steps(resv=True)
+        self.common_steps(resv=True, client=self.hostB)
 
     @requirements(num_moms=2, num_comms=1, num_clients=1)
     def test_comm_non_server_host(self):
@@ -268,6 +272,7 @@ class TestTPP(TestFunctional):
         Node 3 : Mom
         Node 4 : Comm
         """
+        print("no_comm_on_server=True")
         msg = "Need atleast 2 moms and a comm installed on host"
         msg += " other than server host"
         if len(self.moms) < 2 or len(self.comms) < 1:
@@ -287,8 +292,7 @@ class TestTPP(TestFunctional):
         a = {'PBS_LEAF_ROUTERS': self.hostD}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         self.common_steps(job=True, resv=True)
-        self.server.client = self.hostB
-        self.common_steps(interactive_job=True)
+        self.common_steps(interactive_job=True, client=self.hostB)
 
     @requirements(num_moms=2, no_mom_on_server=True)
     def test_mom_non_server_host(self):
@@ -309,10 +313,8 @@ class TestTPP(TestFunctional):
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        self.server.client = self.hostA
-        self.common_steps(job=True, resv=True)
-        self.server.client = self.hostB
-        self.common_steps(job=True, interactive_job=True)
+        self.common_steps(job=True, resv=True, client=self.hostA)
+        self.common_steps(job=True, interactive_job=True, client=self.hostB)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
@@ -320,3 +322,4 @@ class TestTPP(TestFunctional):
         for host in self.node_list:
             self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
+        self.server.client = self.default_client
