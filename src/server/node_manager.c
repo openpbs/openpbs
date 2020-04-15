@@ -500,6 +500,10 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	int		nchild;
 	unsigned long	inuse_flag = 0;
 
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set, psvrmom->msr_state, bits, txt, pmom->mi_modtime);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+		pmom->mi_host, log_buffer);
+
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
 	} else {
@@ -543,11 +547,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			continue;	/* skip setting state on this vnode */
 
 		{ /* TODO: FIXME: */
-			if (pmom) {
-				snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state: do_set=%d bits=0x%lx txt=%s mi_modtime=%ld", do_set, bits, txt, pmom->mi_modtime);
-			} else {
-				snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state: do_set=%d bits=0x%lx txt=%s", do_set, bits, txt);
-			}
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state->vnode: do_set=%d pvnd=0x%lx-> bits=0x%lx txt=%s mi_modtime=%ld", do_set, pvnd->nd_state, bits, txt, pmom->mi_modtime);
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 				pvnd->nd_name, log_buffer);
 

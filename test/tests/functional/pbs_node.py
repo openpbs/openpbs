@@ -67,36 +67,57 @@ class TestPbsNode(TestFunctional):
     @requirements(num_moms=2)
     def test_create_and_delete(self):
         """
-        Test:
+        Test:  this will test two things:
+        1.  The stopping and starting of a mom and the proper log messages.
+        2.  The stopping and starting of a mom and the proper hook firing.
         """
         self.logger.info("---- TEST STARTED ----")
-        name = "pbsdev-mgmt-ptl-centos7"
         self.logger.error("socket.gethostname():%s", socket.gethostname())
-        start_time = int(time.time())
-        ret = self.server.delete_node(name, level="DEBUG", logerr=True)
-        # self.assertEqual(ret, 0, "Could not delete node %s" % name)
+
+        self.logger.error("dir(self.server):%s", str(dir(self.server)))
+        self.logger.error("***self.server.name:%s", str(self.server.name))
+        self.logger.error("self.server.moms:%s", str(self.server.moms))
+        for name, value in self.server.moms.items():
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    dir(value):    %s", dir(value))
+            self.logger.error("    ***stopping mom:%s", value)
+            value.stop()
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.logger.error("    ***restart  mom:%s", value)
+            value.restart()
+
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+
+        # ret = self.server.delete_node(name, level="DEBUG", logerr=True)
+        # # self.assertEqual(ret, 0, "Could not delete node %s" % name)
+        # # ret = self.server.create_node(name, level="DEBUG", logerr=True)
+        # # self.logger.error("type:%s val:%s" % (type(ret), ret))
         # ret = self.server.create_node(name, level="DEBUG", logerr=True)
         # self.logger.error("type:%s val:%s" % (type(ret), ret))
-        ret = self.server.create_node(name, level="DEBUG", logerr=True)
-        self.logger.error("type:%s val:%s" % (type(ret), ret))
-        self.assertEqual(ret, 0, "Could not create node %s" % name)
+        # self.assertEqual(ret, 0, "Could not create node %s" % name)
+        # # pkill --signal 3 pbs_mom
+        # # /opt/pbs/sbin/pbs_mom
 
-        # pkill --signal 3 pbs_mom
-        # /opt/pbs/sbin/pbs_mom
+        # pbs_mom = os.path.join(self.server.pbs_conf["PBS_EXEC"],
+        #                        'sbin', 'pbs_mom')
 
-        pbs_mom = os.path.join(self.server.pbs_conf["PBS_EXEC"],
-                               'sbin', 'pbs_mom')
+        # self.logger.error("pbs_mom:%s", pbs_mom)
+        # fpath = self.du.create_temp_file()
+        # fileobj = open(fpath)
+        # self.logger.error("dir(self):%s" % ",".join(dir(self)))
+        # ret = self.server.du.run_cmd(
+        #     self.server.hostname, [pbs_mom], stdin=fileobj, sudo=True,
+        #     logerr=True, level=logging.DEBUG)
+        # fileobj.close()
 
-        self.logger.error("pbs_mom:%s", pbs_mom)
-        fpath = self.du.create_temp_file()
-        fileobj = open(fpath)
-        self.logger.error("dir(self):%s" % ",".join(dir(self)))
-        ret = self.server.du.run_cmd(
-            self.server.hostname, [pbs_mom], stdin=fileobj, sudo=True,
-            logerr=True, level=logging.DEBUG)
-        fileobj.close()
-
-        self.logger.error("pbs_mom(ret):%s", str(pformat(ret)))
+        # self.logger.error("pbs_mom(ret):%s", str(pformat(ret)))
 
 
 
@@ -118,6 +139,5 @@ class TestPbsNode(TestFunctional):
 
         # self.server.log_match("Node;%s;deleted at request of" % name,
         #     starttime=start_time)
-        self.server.log_match("Node;%s;node up" % name,
-            starttime=start_time)
+
         self.logger.info("---- TEST ENDED ----")
