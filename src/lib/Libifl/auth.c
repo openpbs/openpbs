@@ -242,12 +242,11 @@ _unload_auth(auth_def_t *auth)
 auth_def_t *
 get_auth(char *method)
 {
-	auth_def_t *auth = loaded_auths;
+	auth_def_t *auth = NULL;
 
-	while (auth != NULL) {
+	for (auth = loaded_auths; auth != NULL; auth = auth->next) {
 		if (strcmp(auth->name, method) == 0)
 			return auth;
-		auth = auth->next;
 	}
 
 	/*
@@ -332,9 +331,6 @@ load_auths(int mode)
 void
 unload_auths(void)
 {
-	if (loaded_auths == NULL)
-		return;
-
 	while (loaded_auths != NULL) {
 		auth_def_t *cur = loaded_auths;
 		loaded_auths = loaded_auths->next;
