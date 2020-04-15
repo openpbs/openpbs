@@ -160,6 +160,11 @@ class TestPbsNodeRampDown(TestFunctional):
             if lic_count.find('Avail_Global:10000000 ' +
                               'Avail_Local:10000000 Used:0') != -1:
                 return
+            license_type = self.server.status(SERVER, 'pbs_license_info')
+            license_info = license_type[0]['pbs_license_info']
+            node_license = self.du.isfile(path=license_info)
+            if node_license:
+                return
             for lic in lic_count.split():
                 lic_split = lic.split(':')
                 if lic_split[0] == 'Used':
