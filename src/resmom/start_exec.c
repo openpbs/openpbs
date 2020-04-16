@@ -6272,7 +6272,7 @@ start_exec(job *pjob)
 				exec_bail(pjob, i, NULL);
 				return;
 			}
-			
+
 			/* new tasks can't talk to demux anymore */
 			nodemux = 0;
 

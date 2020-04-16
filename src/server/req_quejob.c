@@ -1214,10 +1214,8 @@ req_quejob(struct batch_request *preq)
 	hook_output.last_phook = &last_phook;
 	hook_output.fail_action = &hook_fail_action;
 
-	hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN, PBS_MOM_SERVICE_NAME,
-			mom_host, &hook_input, &hook_output, hook_buf, sizeof(hook_buf), 1);
-
-	switch (hook_rc) {
+	switch ((hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN, PBS_MOM_SERVICE_NAME,
+			mom_host, &hook_input, &hook_output, hook_buf, sizeof(hook_buf), 1))) {
 		case 1:   /* explicit accept */
 			break;
 		case 2:	/* no hook script executed - go ahead and accept event*/

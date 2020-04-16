@@ -4285,7 +4285,6 @@ mom_restart_job(job *pjob)
 	}
 #endif
 
-
 	for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
 		ptask != NULL;
 		ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask)) {
@@ -4360,7 +4359,6 @@ mom_restart_job(job *pjob)
 			taskid, path);
 		goto done;
 	}
-
 
 	sprintf(log_buffer, "Restarted %d task(s)", tcount);
 	rserr = PBSE_NONE;

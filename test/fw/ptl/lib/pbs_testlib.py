@@ -13578,19 +13578,18 @@ class MoM(PBSService):
         self.add_config(c)
         return chk_file
 
-    def add_checkpoint_restart_script(self, dirname=None, body=None,
-                                      abort_time=30):
+    def add_restart_script(self, dirname=None, body=None,
+                           abort_time=30):
         """
-        Add checkpoint restart script in the mom config.
-        returns: a temp file for checkpoint script
+        Add restart script in the mom config.
+        returns: a temp file for restart script
         """
         rst_file = self.du.create_temp_file(hostname=self.hostname, body=body,
                                             dirname=dirname)
-        self.du.chmod(hostname=self.hostname, path=rst_file, mode=0o700)
-        self.du.chown(hostname=self.hostname, path=rst_file, runas=ROOT_USER,
+        self.du.chmod(hostname=self.hostname, path=chk_file, mode=0o700)
+        self.du.chown(hostname=self.hostname, path=chk_file, runas=ROOT_USER,
                       uid=0, gid=0)
-        c = {'$action restart':
-             str(abort_time) + ' !' + rst_file + ' %jobid'}
+        c = {'$action restart': str(abort_time) + ' !' + chk_file + ' %sid'}
         self.add_config(c)
         return rst_file
 

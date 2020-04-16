@@ -3323,7 +3323,7 @@ exit 0
         a[ATTR_q] = 'express'
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)   # failed here
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
         for m in self.moms.values():
             m.log_match(err_msg, max_attempts=3, interval=1, n=100,
