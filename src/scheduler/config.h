@@ -166,7 +166,6 @@
 #define PARSE_UPDATE_COMMENTS "update_comments"
 #define PARSE_RESV_CONFIRM_IGNORE "resv_confirm_ignore"
 #define PARSE_ALLOW_AOE_CALENDAR "allow_aoe_calendar"
-#define PARSE_OPT_BACKFILL_FUZZY_TIME "opt_backfill_fuzzy_time"
 
 /* deprecated */
 #define PARSE_PREEMPT_STARVING "preempt_starving"
@@ -225,6 +224,8 @@
 #define BF_MED 600
 #define BF_HIGH 3600
 #define BF_DEFAULT BF_LOW
+
+#define SCH_CYCLE_LEN_DFLT 1200
 
 #ifdef NAS /* attributes we may define in the server's resourcedef file */
 /* localmod 040 */

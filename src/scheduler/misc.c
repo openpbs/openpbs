@@ -341,41 +341,6 @@ skip_line(char *line)
 }
 
 /**
- * @brief
- *		schdlog - write a log entry to the scheduler log file using log_record
- *
- * @param[in] event	-	the event type
- * @param[in] class	-	the event class
- * @param[in] sev   -	the severity of the log message
- * @param[in] name  -	the name of the object
- * @param[in] text  -	the text of the message
- *
- * @return nothing
- */
-
-void
-schdlog(int event, int class, int sev, const char *name, const char *text)
-{
-	struct tm *ptm;
-	if (text[0] != '\0') {
-		log_event(event, class, sev, name, text);
-		if (conf.logstderr) {
-			time_t logtime;
-
-			logtime = cstat.current_time + (time(NULL) - cstat.cycle_start);
-
-			ptm = localtime(&logtime);
-			if (ptm != NULL) {
-				fprintf(stderr, "%02d/%02d/%04d %02d:%02d:%02d;%s;%s\n",
-					ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
-					ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
-					name, text);
-			}
-		}
-	}
-}
-
-/**
  *	@brief  combination of log_event() and translate_fail_code()
  *		If we're actually going to log a message, translate
  *		err into a message and then log it.  The translated

@@ -63,6 +63,7 @@
 #include "pbs_ifl.h"
 #include "pbs_db.h"
 #include "pbs_error.h"
+#include "pbs_internal.h"
 #include "pbs_sched.h"
 #include "pbs_share.h"
 #include "resource.h"
@@ -635,8 +636,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
-	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+
 	return PBSE_NONE;
 }
 
@@ -676,30 +676,8 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
-	if (actmode != ATR_ACTION_RECOV)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+
 	return PBSE_NONE;
-}
-
-/**
- * @brief action function for 'log_events' sched attribute
- *
- * @param[in]	pattr		attribute being set
- * @param[in]	pobj		Object on which the attribute is being set
- * @param[in]	actmode		the mode of setting
- *
- * @return error code
- */
-int
-action_sched_log_events(attribute *pattr, void *pobj, int actmode)
-{
-	pbs_sched *psched;
-	psched = (pbs_sched *) pobj;
-
-	if (actmode != ATR_ACTION_RECOV)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
-
-		    return PBSE_NONE;
 }
 
 /**
@@ -919,7 +897,6 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 {
 	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
-	int flag = 0;
 
 	if (!psched)
 		return;
@@ -966,34 +943,32 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 	if ((psched->sch_attr[(int)SCHED_ATR_log_events].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[SCHED_ATR_log_events].at_val.at_long = SCHED_LOG_DFLT;
 		psched->sch_attr[SCHED_ATR_log_events].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 
 	if (!(psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_val.at_long = PBS_PREEMPT_QUEUE_PRIO_DEFAULT;
 		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
+
 	}
 	if (!(psched->sch_attr[SCHED_ATR_preempt_prio].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_prio].at_val.at_str = strdup(PBS_PREEMPT_PRIO_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
+
 	}
 	if (!(psched->sch_attr[SCHED_ATR_preempt_order].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_order].at_val.at_str = strdup(PBS_PREEMPT_ORDER_DEFAULT);
 		action_sched_preempt_order(&psched->sch_attr[SCHED_ATR_preempt_order], psched, ATR_ACTION_ALTER);
 		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
+
 	}
 	if ( !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_val.at_str = strdup(PBS_PREEMPT_SORT_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
+
 	}
 	if (!(psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_val.at_long = PBS_SERVER_DYN_RES_ALARM_DEFAULT;
 		psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
-		flag = 1;
 	}
 	if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET)) {
 		set_attr_svr(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait],
@@ -1008,8 +983,11 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_VFLAG_DEFLT;
 	}
 
-	if (flag)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+	if ((psched == dflt_scheduler) && !(psched->sch_attr[SCHED_ATR_partition].at_flags & ATR_VFLAG_SET)) {
+		set_attr_svr(&(psched->sch_attr[(int)SCHED_ATR_partition]),
+					 &sched_attr_def[(int)SCHED_ATR_partition], DEFAULT_PARTITION);
+	}
+	set_scheduler_flag(SCH_CONFIGURE, psched);
 }
 
 
@@ -1032,7 +1010,6 @@ int
 action_sched_partition(attribute *pattr, void *pobj, int actmode)
 {
 	pbs_sched* psched;
-	pbs_sched* pin_sched;
 	attribute *part_attr;
 
 	if (actmode == ATR_ACTION_RECOV)
@@ -1040,7 +1017,7 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 
 	if (pobj == dflt_scheduler)
 		return PBSE_SCHED_OP_NOT_PERMITTED;
-	pin_sched = (pbs_sched*)pobj;
+
 	if (pattr->at_val.at_str == NULL)
 		return PBSE_NONE;
 	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
@@ -1052,32 +1029,6 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 		if ((part_attr->at_flags & ATR_VFLAG_SET) && (!strcmp(pattr->at_val.at_str, part_attr->at_val.at_str)))
 			return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
 	}
-	if (actmode != ATR_ACTION_RECOV)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, pin_sched);
-	return PBSE_NONE;
-}
-
-/**
- * @brief action function for 'server_dyn_res_alarm' sched attribute
- *
- * @param[in]	pattr		attribute being set
- * @param[in]	pobj		Object on which the attribute is being set
- * @param[in]	actmode		the mode of setting
- *
- * @return error code
- */
-int
-action_sched_server_dyn_res_alarm(attribute *pattr, void *pobj, int actmode)
-{
-	pbs_sched *psched;
-	psched = (pbs_sched *) pobj;
-
-	if (pattr->at_val.at_long < 0) {
-		return PBSE_BADATVAL;
-	}
-
-	if (actmode != ATR_ACTION_RECOV)
-		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 
 	return PBSE_NONE;
 }
@@ -1095,13 +1046,19 @@ int
 action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode)
 {
 	char *str = pattr->at_val.at_str;
+	char *endp = NULL;
 
 	if (str == NULL)
 		return PBSE_BADATVAL;
 
 	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		/* Check if this is numeric, also acceptable */
+		strtol(str, &endp, 10);
+		if (*endp == '\0')
+			return PBSE_NONE;
+
 		if (!strcasecmp(str, "off") ||
-		    !strcasecmp(str, "low")  ||
+		    !strcasecmp(str, "low") ||
 		    !strcasecmp(str, "medium") || !strcasecmp(str, "med") ||
 		    !strcasecmp(str, "high"))
 			return PBSE_NONE;

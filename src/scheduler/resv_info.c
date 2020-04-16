@@ -194,7 +194,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		/* Check if this reservation belongs to this scheduler */
 		for (attrp = cur_resv->attribs; attrp != NULL; attrp = attrp->next) {
 			if (strcmp(attrp->name, ATTR_partition) == 0) {
-				if (sinfo->partition != NULL && (strcmp(attrp->value, sinfo->partition) != 0))
+				if (sc_attrs.partition != NULL && (strcmp(attrp->value, sc_attrs.partition) != 0))
 					ignore_resv = 1;
 				break;
 			}
@@ -1576,7 +1576,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * will return an error
 		 */
 		snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
-			 nsinfo->partition?nsinfo->partition:DEFAULT_PARTITION);
+			 sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
 
 		pbsrc = pbs_confirmresv(pbs_sd, nresv_parent->name, short_xc,
 			resv_start_time, confirm_msg);

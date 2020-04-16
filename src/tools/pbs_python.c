@@ -322,11 +322,6 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;
 }
-int
-action_sched_log_events(attribute *pattr, void *pobj, int actmode)
-{
-	return 0;
-}
 
 int
 action_sched_iteration(attribute *pattr, void *pobj, int actmode)
