@@ -2957,7 +2957,6 @@ finish_exec(job *pjob)
 
 	/* If job has been checkpointed, restart from the checkpoint image */
 
-	/* MLIU */
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) ||
 		(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ChkptMig)) {
 		if ((i = local_restart(pjob, NULL)) != 0) {
@@ -6236,7 +6235,6 @@ start_exec(job *pjob)
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) ||
 			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ChkptMig)) {
 
-			/* MLIU */
 			/* NULL value passed to hook_input.vnl */
 			/* means to assign */
 			/* vnode list using pjob->ji_host[].   */
@@ -6267,8 +6265,6 @@ start_exec(job *pjob)
 						send_hook_fail_action(last_phook);
 					}
 					exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
-					snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at ms on job checkpoint restart, hook_rc=%d", hook_rc);
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 					return;
 			}
 

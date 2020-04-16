@@ -3268,9 +3268,6 @@ im_request(int stream, int version)
 					PBS_MOM_SERVICE_NAME, mom_host,
 					&hook_input, &hook_output,
 					hook_msg, sizeof(hook_msg), 1);
-/* MLIU */
-			snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at sister on job start, hook_rc=%d", hook_rc);
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 			switch (hook_rc) {
 				case 1:   	/* explicit accept */
 					break;
@@ -4349,9 +4346,6 @@ join_err:
 					PBS_MOM_SERVICE_NAME, mom_host,
 					&hook_input, &hook_output,
 					hook_msg, sizeof(hook_msg), 1);
-			snprintf(log_buffer, sizeof(log_buffer), "MLIU mom processed begin hook at sister on job checkpoint restart, hook_rc=%d", hook_rc);
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
-			
 			if (hook_rc <= 0) {
 				/* a value of '0' means explicit reject encountered. */
 				if (hook_rc != 0) {

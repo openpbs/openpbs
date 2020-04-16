@@ -3362,7 +3362,6 @@ exit 0
 sleep 300
 """
         a = {'resources_available.ncpus': 1}
-        self.logger.info('## MLIU adding to mom config file')
         for m in self.moms.values():
             # add checkpoint script
             chk_file = m.add_checkpoint_abort_script(body=chk_script)
@@ -3370,7 +3369,6 @@ sleep 300
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
-        self.logger.info('## MLIU submitting normal queue job')
         a = {'Resource_List.select': '2:ncpus=1',
              'Resource_List.place': 'scatter'}
         j1 = Job(TEST_USER, attrs=a)
@@ -3384,7 +3382,6 @@ sleep 300
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
         # Submit an express queue job requesting needing also 2 nodes
-        self.logger.info('## MLIU submitting express queue job')
         a[ATTR_q] = 'express'
         j2 = Job(TEST_USER, attrs=a)
         j2.set_sleep_time(300)
@@ -3398,7 +3395,6 @@ sleep 300
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
         # delete express queue job
-        self.logger.info('## MLIU deleting express queue job')
         self.server.delete(jid2)
         time.sleep(5)      
         self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
