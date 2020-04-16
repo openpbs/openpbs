@@ -5255,6 +5255,16 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 				if (find_node_by_host(job->ninfo_arr, hreq->res_str) != NULL)
 					return 1;
 			} else {
+				if (inp->err->rdef->type.is_non_consumable) {
+				    /* non consumables are used for node selection so
+				     * comparing preemptor and candidate is not sufficient to cull;
+				     * nodes the candidate is using might have the correct tags 
+				     * even if the candidate did not request the non-consumable.
+				     * This will be checked in the node utility test in
+				     * select_index_to_preempt
+				     */
+				    return 1;
+				}
 				for (index = 0; job->select->chunks[index] != NULL; index++)
 				{
 					for (req_scan = job->select->chunks[index]->req; req_scan != NULL; req_scan = req_scan->next)
