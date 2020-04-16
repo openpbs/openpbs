@@ -140,7 +140,7 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	momport = pjob->ji_qs.ji_un.ji_exect.ji_momport;
 
 	pmom = tfind2((unsigned long) momaddr, momport, &ipaddrs);
-	if (!pmom || (((mom_svrinfo_t *) (pmom->mi_data))->msr_state & INUSE_DOWN)) {
+	if (!pmom || ((((mom_svrinfo_t *) (pmom->mi_data))->msr_state & INUSE_DOWN) && open_momstream(pmom) < 0)) {
 		return (PBSE_NORELYMOM);
 	}
 	mom_tasklist_ptr = &(((mom_svrinfo_t *) (pmom->mi_data))->msr_deferred_cmds);

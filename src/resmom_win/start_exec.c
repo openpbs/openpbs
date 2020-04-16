@@ -4176,9 +4176,8 @@ start_exec(job *pjob)
 	int			mtfd = -1;
 
 	/* make sure we have an open tpp stream back to the server */
-
 	if (server_stream == -1)
-		send_restart();
+		send_hellosvr(server_stream);
 
 	/* The following may not be needed for Windows! */
 	if (pjob->ji_mompost) {         /* fail until activity is done */

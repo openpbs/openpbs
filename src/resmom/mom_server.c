@@ -286,109 +286,83 @@ free_vnodemap(void)
  *	reply to server
  *
  * @param[in] stream - connection stream
+ * @param[in] combine_msg - combine message in the caller
  *
- * @return Void
+ * @return int
+ * @retval	0: success
+ * @retval	!0: error code
  *
  */
-static void
-reply_hello4(int stream)
+static int
+registermom(int stream, int combine_msg)
 {
 	int  count = 0;
-	int  hello4_opts = 0;
 	int  ret;
 	job *pjob;
 
-	/* if we have a vnode map, send the version number */
-
-	if ((mominfo_time.mit_time > 0) || (mominfo_time.mit_gen > 0))
-		hello4_opts |= HELLO4_vmap_version;
-
 	/* how many jobs are present */
-
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 		++count;
 	}
-	if (count > 0)
-		hello4_opts |= HELLO4_running_jobs;
 
 	/* Now that all of the options data items are set, send */
 	/* the option set, followed by the optional data if any */
 	/* Please note,  the options MUST be sent in the order  */
 	/* that they are defined, least significant bit to most */
 
-	ret = is_compose(stream, IS_HELLO4);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswui(stream, hello4_opts);
-	if (ret != DIS_SUCCESS)
-		goto err;
-
-	/* Send vmap version (when that is ready post 8.0.x */
-	if (hello4_opts & HELLO4_vmap_version) {
-		ret = diswul(stream, mominfo_time.mit_time);
-		if (ret != DIS_SUCCESS)
+	if (!combine_msg)
+		if ((ret = is_compose(stream, IS_REGISTERMOM)) != DIS_SUCCESS)
 			goto err;
-		ret = diswsi(stream, mominfo_time.mit_gen);
-		if (ret != DIS_SUCCESS)
-			goto err;
-	}
 
 	/* if there are running jobs, report them to the Server */
+	/*
+		* Add to the REGISTERMOM the count of jobs and the
+		* following per running job:
+		*   string  - job id
+		*   int     - job substate
+		*   long    - run version (count)
+		*   int     - Node Id  (0 if Mother Superior)
+		*   string  - exec_vnode string
+		*   string  - pset value if set, otherwise null string
+	*/
 
-	if (hello4_opts & HELLO4_running_jobs) {
+	if ((ret = diswui(stream, count)) != DIS_SUCCESS)
+		goto err;
+	for (pjob = (job *)GET_NEXT(svr_alljobs);
+		pjob && (count > 0);
+		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 
-		/*
-		 * Add to the HELLO4 the count of jobs and the
-		 * following per running job:
-		 *   string  - job id
-		 *   int     - job substate
-		 *   long    - run version (count)
-		 *   int     - Node Id  (0 if Mother Superior)
-		 *   string  - exec_vnode string
-		 *   string  - pset value if set, otherwise null string
-		 */
+		--count;
 
-		ret = diswui(stream, count);
-		for (pjob = (job *)GET_NEXT(svr_alljobs);
-			pjob && (count > 0);
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+		if ((ret = diswst(stream, pjob->ji_qs.ji_jobid)) != DIS_SUCCESS)
+			goto err;
+		if ((ret = diswsi(stream, pjob->ji_qs.ji_substate)) != DIS_SUCCESS)
+			goto err;
 
-			--count;
-
-			ret = diswst(stream, pjob->ji_qs.ji_jobid);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			ret = diswsi(stream, pjob->ji_qs.ji_substate);
-			if (ret != DIS_SUCCESS)
-				goto err;
-
-			if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-				ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long);
-			} else {
-				ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long);
-			}
-			if (ret != DIS_SUCCESS)
-				goto err;
-			/* send Node Id */
-			ret = diswsi(stream, pjob->ji_nodeid);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			if (pjob->ji_wattr[(int)JOB_ATR_pset].at_flags & ATR_VFLAG_SET)
-				ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_pset].at_val.at_str);
-			else
-				ret = diswst(stream, ""); /* send null string */
-			if (ret != DIS_SUCCESS)
-				goto err;
+		if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
+			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long);
+		} else {
+			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long);
 		}
-
+		if (ret != DIS_SUCCESS)
+			goto err;
+		/* send Node Id */
+		if ((ret = diswsi(stream, pjob->ji_nodeid)) != DIS_SUCCESS)
+			goto err;
+		if ((ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str)) != DIS_SUCCESS)
+			goto err;
+		if (pjob->ji_wattr[(int)JOB_ATR_pset].at_flags & ATR_VFLAG_SET)
+			ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_pset].at_val.at_str);
+		else
+			ret = diswst(stream, ""); /* send null string */
+		if (ret != DIS_SUCCESS)
+			goto err;
 	}
 
-	dis_flush(stream);
-	return;
+	if (!combine_msg)
+		dis_flush(stream);
+	return 0;
 
 err:
 	sprintf(log_buffer, "%s for %s", dis_emsg[ret], "HELLO");
@@ -398,6 +372,7 @@ err:
 #endif
 		log_err(errno, "send_resc_used", log_buffer);
 	tpp_close(stream);
+	return ret;
 }
 
 /**
@@ -688,6 +663,105 @@ err:
 
 /**
  * @brief
+ *	This function will process the rpp values from the server stream.
+ *
+ * @param[in]	stream - the communication stream
+ * 
+ * @return	int
+ * @retval	0: success
+ * @retval	!0: Error code
+ */
+static int
+process_rpp_values(int stream) {
+	int new_retry, new_water;
+	int ret = 0;
+
+	DBPRT(("%s: IS_NULL\n", __func__))
+
+	new_retry = disrsi(stream, &ret);
+	if (ret != DIS_SUCCESS)
+		return ret;
+
+	new_water = disrsi(stream, &ret);
+	if (ret != DIS_SUCCESS)
+		return ret;
+	/*
+	** rpp_retry can be zero, i.e. no retries.
+	*/
+	DBPRT(("rpp_retry: %d: rpp_highwater:%d\n", new_retry, new_water))
+	if (new_retry >= 0 && rpp_retry != new_retry) {
+		sprintf(log_buffer, "rpp_retry changed from %d to %d",
+			rpp_retry, new_retry);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_DEBUG, msg_daemonname, log_buffer);
+		rpp_retry = new_retry;
+	}
+	/*
+	** rpp_highwater must be greater than zero.
+	** It is the number of packets allowed to be "on the wire"
+	** at any given time.
+	*/
+	if (new_water > 0 && rpp_highwater != new_water) {
+		sprintf(log_buffer,
+			"rpp_highwater changed from %d to %d",
+			rpp_highwater, new_water);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_DEBUG, msg_daemonname, log_buffer);
+		rpp_highwater = new_water;
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ *	This function will process the cluster addresses from the server stream.
+ *
+ * @param[in]	stream - the communication stream
+ * 
+ * @return	int
+ * @retval	0: success
+ * @retval	!0: Error code
+ */
+static int
+process_cluster_addrs(int stream)
+{
+	u_long	ipaddr;
+	int	i;
+	int 	tot = 0;
+	int	ret = 0;
+	u_long	ipdepth = 0;
+	u_long	counter = 0;
+
+	DBPRT(("%s: IS_CLUSTER_ADDRS2\n", __func__))
+	enable_exechost2 = 1;
+
+	tot = disrui(stream, &ret);
+	if (ret != DIS_SUCCESS)
+		return ret;
+
+	for (i = 0; i < tot; i++) {
+		ipaddr = disrul(stream, &ret);
+		if (ret != DIS_SUCCESS)
+			break;
+		ipdepth = disrul(stream, &ret);
+		if (ret != DIS_SUCCESS)
+			break;
+		counter = ipaddr;
+		while (counter <= ipaddr + ipdepth) {
+			DBPRT(("%s:\t%ld.%ld.%ld.%ld", __func__,
+				(counter & 0xff000000) >> 24,
+				(counter & 0x00ff0000) >> 16,
+				(counter & 0x0000ff00) >> 8,
+				(counter & 0x000000ff)))
+			addrinsert(counter++);
+			DBPRT(("ipdepth: %lu\n", ipdepth))
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *	This handles input coming from another server over a DIS on tpp stream.
  *	Read the stream to get a Inter-Server request.
  *
@@ -698,34 +772,22 @@ err:
 void
 is_request(int stream, int version)
 {
-	u_long			ipdepth = 0;
-	u_long			counter = 0;
 	int			command = 0;
-	int			i;
 	int			n;
 	int			ret = DIS_SUCCESS;
 	u_long			ipaddr;
-	short			port;
 	char			*jobid = NULL;
 	struct	sockaddr_in	*addr;
 	void			init_addrs();
-	char		 	*hostn;
-	char		 	*vnoden;
-	char		 	*vhost;
-	int			notask;
 	job			*pjob;
-	mominfo_t		*pmom;
-	mominfo_time_t		map_stamp;
-	char			vmapfile[MAXPATHLEN+1];
-	char			vmapfilenew[MAXPATHLEN+1];
 	FILE		 	*filen = 0;
-	int			new_retry, new_water;
 	extern vnl_t		*vnlp;        		/* vnode list */
 	extern vnl_t		*vnlp_from_hook;        /* vnode list updates from hook */
 	int			hktype;
 	unsigned long		hkseq;
 	struct hook_job_action *phjba;
 	struct hook_vnl_action *phvna;
+	int			need_inv;
 	mom_hook_input_t	*phook_input = NULL;
 	mom_hook_output_t	*phook_output = NULL;
 
@@ -745,7 +807,6 @@ is_request(int stream, int version)
 		tpp_close(stream);
 		return;
 	}
-	port = ntohs((unsigned short)addr->sin_port);
 	ipaddr = ntohl(addr->sin_addr.s_addr);
 
 	if (!addrfind(ipaddr)) {
@@ -755,108 +816,56 @@ is_request(int stream, int version)
 		return;
 	}
 
+	/* Server can reach out to mom with requests even before mom sending a hello exchange.
+	   This is one such occassion. So trigger hello exchange now */
+	if (server_stream == -1)
+		send_hellosvr(stream);
+
 	command = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS)
 		goto err;
 
 	switch (command) {
 
-		case IS_NULL:		/* a ping from the server */
-			DBPRT(("%s: IS_NULL\n", __func__))
+		case IS_NULL:
+			if ((ret = process_rpp_values(stream)) != 0)
+				goto err;
+			break;
 
-			/*
-			 ** If the server supports it, values for
-			 ** rpp_retry and rpp_highwater will be sent
-			 ** with pings.
-			 */
-			new_retry = disrsi(stream, &ret);
-			if (ret == DIS_EOD)	/* old server */
-				break;
+		case IS_REPLYHELLO:	/* servers return greeting to IS_HELLOSVR */
+			DBPRT(("%s: IS_REPLYHELLO, state=0x%x stream=%d\n", __func__,
+				internal_state, stream))
+			time_delta(MOM_DELTA_RESET);
+			need_inv = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
-
-			new_water = disrsi(stream, &ret);
-			if (ret != DIS_SUCCESS)
+			if ((ret = process_rpp_values(stream)) != DIS_SUCCESS)
 				goto err;
-			/*
-			 ** rpp_retry can be zero, i.e. no retries.
-			 */
-			if (new_retry >= 0 && rpp_retry != new_retry) {
-				sprintf(log_buffer, "rpp_retry changed from %d to %d",
-					rpp_retry, new_retry);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, msg_daemonname, log_buffer);
-				rpp_retry = new_retry;
-			}
-			/*
-			 ** rpp_highwater must be greater than zero.
-			 ** It is the number of packets allowed to be "on the wire"
-			 ** at any given time.
-			 */
-			if (new_water > 0 && rpp_highwater != new_water) {
-				sprintf(log_buffer,
-					"rpp_highwater changed from %d to %d",
-					rpp_highwater, new_water);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, msg_daemonname, log_buffer);
-				rpp_highwater = new_water;
-			}
-			break;
-
-		case IS_HELLO:		/* server wants a return greeting (HELLO) */
-			DBPRT(("%s: IS_HELLO, state=0x%x stream=%d\n", __func__,
-				internal_state, stream))
-			/*
-			 * return a HELLO2 followed by an UPDATE or UPDATE2 which has
-			 *	the number of physical CPUs (int)
-			 *	the number of available CPUs (int)
-			 *	the amount of physical memory in KBs (string)
-			 *	the arch (string)
-			 *	the license type required
-			 * Note, the HELLO2 means the Server is ver 8.0 or higher and
-			 * does "vnodes".
-			 */
-			server_stream = stream;		/* save stream to server */
-			next_sample_time = min_check_poll;
-			reply_hello4(stream);
-			internal_state_update = UPDATE_MOM_STATE;
-			state_to_server(UPDATE_VNODES);
-			sprintf(log_buffer, "Hello from server at %s", netaddr(addr));
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
-				msg_daemonname, log_buffer);
-			break;
-
-		case IS_HELLO_NO_INVENTORY:
-			DBPRT(("%s: IS_HELLO_NO_INVENTORY, state=0x%x stream=%d\n", __func__,
-				internal_state, stream))
-			server_stream = stream;         /* save stream to server */
-			next_sample_time = min_check_poll;
-			reply_hello4(stream);
-			internal_state_update = UPDATE_MOM_STATE;
-			state_to_server(UPDATE_MOM_ONLY);
-			sprintf(log_buffer, "Hello (no inventory required) from server at %s", netaddr(addr));
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
-				msg_daemonname, log_buffer);
-			break;
-
-		case IS_CLUSTER_ADDRS:
-			DBPRT(("%s: IS_CLUSTER_ADDRS\n", __func__))
-			enable_exechost2 = 0;
-			for (;;) {
-				ipaddr = disrul(stream, &ret);
-				if (ret != DIS_SUCCESS)
-					break;
-				DBPRT(("%s:\t%ld.%ld.%ld.%ld\n", __func__,
-					(ipaddr & 0xff000000) >> 24,
-					(ipaddr & 0x00ff0000) >> 16,
-					(ipaddr & 0x0000ff00) >> 8,
-					(ipaddr & 0x000000ff)))
-				addrinsert(ipaddr);
-			}
-			if (ret != DIS_EOD)
+			ret = process_cluster_addrs(stream);
+			if (ret != 0 && ret != DIS_EOD)
 				goto err;
-			is_compose(stream, IS_MOM_READY);  /* tell server we're ready */
-			dis_flush(stream);
+
+			 /* return a IS_REGISTERMOM followed by an UPDATE or UPDATE2 */
+
+			next_sample_time = min_check_poll;
+			if ((ret = is_compose(stream, IS_REGISTERMOM)) != DIS_SUCCESS)
+				goto err;
+			if ((ret = registermom(stream, 1)) != 0)
+				goto err;
+			internal_state_update = UPDATE_MOM_STATE;
+			if (need_inv) {
+				if ((ret = state_to_server(UPDATE_VNODES, 1)) != DIS_SUCCESS)
+					goto err;
+				sprintf(log_buffer, "ReplyHello from server at %s", netaddr(addr));
+			} else {
+				if ((ret = state_to_server(UPDATE_MOM_ONLY, 1)) != DIS_SUCCESS)
+					goto err;
+				sprintf(log_buffer, "ReplyHello (no inventory required) from server at %s", netaddr(addr));
+			}
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
+					msg_daemonname, log_buffer);
+			dis_flush(server_stream);
+
 			if (send_hook_checksums() != DIS_SUCCESS)
 				goto err;
 			/* send any unacknowledged hook job and vnl action requests */
@@ -875,153 +884,9 @@ is_request(int stream, int version)
 			break;
 
 		case IS_CLUSTER_ADDRS2:
-			DBPRT(("%s: IS_CLUSTER_ADDRS2\n", __func__))
-			enable_exechost2 = 1;
-			for (;;) {
-				ipaddr = disrul(stream, &ret);
-				if (ret != DIS_SUCCESS)
-					break;
-				ipdepth = disrul(stream, &ret);
-				if (ret != DIS_SUCCESS)
-					break;
-				counter = ipaddr;
-				while (counter <= ipaddr + ipdepth) {
-					DBPRT(("%s:\t%ld.%ld.%ld.%ld", __func__,
-						(counter & 0xff000000) >> 24,
-						(counter & 0x00ff0000) >> 16,
-						(counter & 0x0000ff00) >> 8,
-						(counter & 0x000000ff)))
-					addrinsert(counter++);
-					DBPRT((" %lu\n", ipdepth))
-				}
-			}
-			if (ret != DIS_EOD)
+			ret = process_cluster_addrs(stream);
+			if (ret != 0 && ret != DIS_EOD)
 				goto err;
-			is_compose(stream, IS_MOM_READY);  /* tell server we're ready */
-			dis_flush(stream);
-
-			if (send_hook_checksums() != DIS_SUCCESS)
-				goto err;
-			/* send any unacknowledged hook job and vnl action requests */
-			send_hook_job_action(NULL);
-			hook_requests_to_server(&svr_hook_vnl_actions);
-			svr_hook_resend_job_attrs = 1;
-
-			/* send any vnode changes made by */
-			/* exechost_startup hook */
-			mom_vnlp_report(vnlp_from_hook, "VNLP_FROM_HOOK");
-			(void)send_hook_vnl(vnlp_from_hook);
-			/* send_hook_vnl() saves 'vnlp_from_hook' internally, */
-			/* to be freed later when server acks the request. */
-			vnlp_from_hook = NULL;
-			mom_recvd_ip_cluster_addrs = 1;
-			break;
-
-		case IS_HOST_TO_VNODE:
-			DBPRT(("%s: IS_HOST_TO_VNODE\n", __func__))
-			/* receive the host/port/vnodes mapping */
-
-			map_stamp.mit_time = disrul(stream, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			map_stamp.mit_gen = disrsi(stream, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			sprintf(log_buffer, "HOST_TO_VNODE map received, ver %lu.%d, prior was %lu.%d", map_stamp.mit_time, map_stamp.mit_gen, mominfo_time.mit_time, mominfo_time.mit_gen);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
-				msg_daemonname, log_buffer);
-
-			if ((map_stamp.mit_time < mominfo_time.mit_time)    ||
-				((map_stamp.mit_time == mominfo_time.mit_time) &&
-				(map_stamp.mit_gen  <= mominfo_time.mit_gen))) {
-
-				/* same old data again, just ignore */
-
-				break;
-			}
-
-			/* have new mapping, discard old and setup new */
-
-			free_vnodemap();		/* free the old arrays */
-			sprintf(vmapfile,    "%s/%s", mom_home, VNODE_MAP);
-			sprintf(vmapfilenew, "%s/%s.new", mom_home, VNODE_MAP);
-			filen = fopen(vmapfilenew, "w");
-			if (filen == NULL)
-				goto err;
-			fprintf(filen, "%lu.%d\n", map_stamp.mit_time, map_stamp.mit_gen);
-			while (1) {
-				hostn = disrst(stream, &ret);	/* a host name */
-				if (ret == DIS_EOD)
-					break;
-				else if (ret != DIS_SUCCESS) {
-					free_vnodemap();
-					goto err;
-				}
-				port = (short)disrui(stream, &ret);
-				if (ret != DIS_SUCCESS) {
-					free(hostn);
-					free_vnodemap();
-					goto err;
-				}
-				n = disrui(stream, &ret);	/* number of vnodes */
-				if (ret != DIS_SUCCESS) {
-					free(hostn);
-					free_vnodemap();
-					goto err;
-				}
-				/* add mominfo_array entry for the host/mom */
-				pmom = create_mom_entry(hostn, (unsigned int)port);
-				fprintf(filen, "%s %u %d\n", hostn, port, n);
-				if (pmom == NULL) {
-					free(hostn);
-					free_vnodemap();
-					goto err;
-				}
-				free(hostn);
-
-				for (i=0; i<n; ++i) {
-					/* add momvmap entry for each vnode */
-					vnoden = disrst(stream, &ret);
-					if (ret != DIS_SUCCESS) {
-						free_vnodemap();
-						goto err;
-					}
-					vhost  = disrst(stream, &ret);
-					if (ret != DIS_SUCCESS) {
-						free(vnoden);
-						free_vnodemap();
-						goto err;
-					}
-					notask = disrui(stream, &ret);
-					if (ret != DIS_SUCCESS) {
-						free(vnoden);
-						free_vnodemap();
-						goto err;
-					}
-					if (create_mommap_entry(vnoden, vhost, pmom, notask) == NULL) {
-						free(vnoden);
-						free_vnodemap();
-						goto err;
-					}
-					if ((vhost == NULL) || (*vhost == '\0'))
-						fprintf(filen, "\t%s - %d\n", vnoden, notask);
-					else
-						fprintf(filen, "\t%s %s %d\n", vnoden, vhost, notask);
-					free(vnoden);
-				}
-			}
-			fclose(filen);
-			filen = NULL;
-			mominfo_time = map_stamp;
-			(void)rename(vmapfilenew, vmapfile);
-#ifdef WIN32
-			secure_file(vmapfile, "Administrators",
-				READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-#endif
-			/* if any of the reads/writes above failed, where we went */
-			/* to "err", the stream to the Server is closed, so we	  */
-			/* still appear down					  */
-
 			break;
 
 		case IS_BADOBIT:
@@ -1081,11 +946,10 @@ is_request(int stream, int version)
 			if (pjob) {
 				long runver;
 
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
+				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
 					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				} else {
+				else
 					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-				}
 				/* a run_version of -1 means any version is to be discarded */
 				if ((n == -1) || (runver == n)) {
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
@@ -1363,15 +1227,18 @@ hook_requests_to_server_err:
  * @param[in]	what_to_update - defines what to update
  * 		UPDATE_VNODES - update all the vnodes
  *		UPDATE_MOM_ONLY - update only the info about the mom
+ * @param[in]	combine_msg	- combine message in the caller.
  *
  *	If we have placement set information to send, we use IS_UPDATE2;
  *	otherwise, we fall back to IS_UPDATE.
  *
- * @return Void
+ * @return int
+ * @retval	0: success
+ * @retval	1: failure
  *
  */
-void
-state_to_server(int what_to_update)
+int
+state_to_server(int what_to_update, int combine_msg)
 {
 	int			i, ret;
 	int			use_UPDATE2;
@@ -1380,10 +1247,10 @@ state_to_server(int what_to_update)
 	char			*pv;
 
 	if (internal_state_update == 0)
-		return;
+		return 0;
 
 	if (server_stream < 0)
-		return;
+		return -1;
 
 	if (av_phy_mem == 0)
 		av_phy_mem = strTouL(physmem(0), &pv, 10);
@@ -1401,36 +1268,31 @@ state_to_server(int what_to_update)
 	else
 		use_UPDATE2 = 0;
 
-	if (use_UPDATE2)
-		ret = is_compose(server_stream, IS_UPDATE2);
-	else
-		ret = is_compose(server_stream, IS_UPDATE);
+	if (!combine_msg) {
+		if (use_UPDATE2)
+			ret = is_compose(server_stream, IS_UPDATE2);
+		else
+			ret = is_compose(server_stream, IS_UPDATE);
+	} else {
+		if (use_UPDATE2)
+			ret = diswui(server_stream, IS_UPDATE2);
+		else
+			ret = diswui(server_stream, IS_UPDATE);
+	}
 	if (ret != DIS_SUCCESS)
 		goto err;
 
-	ret = diswui(server_stream, i);		/* node state */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswui(server_stream, i)) != DIS_SUCCESS)		/* node state */
 		goto err;
-	ret = diswui(server_stream, num_pcpus); /* phy cpus */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswui(server_stream, num_pcpus)) != DIS_SUCCESS) /* phy cpus */
 		goto err;
-	ret = diswui(server_stream, num_acpus); /* avail cpus */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswui(server_stream, num_acpus)) != DIS_SUCCESS) /* avail cpus */
 		goto err;
-	ret = diswull(server_stream, av_phy_mem); /* phy mem */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswull(server_stream, av_phy_mem)) != DIS_SUCCESS) /* phy mem */
 		goto err;
-	ret = diswst(server_stream, arch(0));	/* arch type */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswst(server_stream, arch(0))) != DIS_SUCCESS)	/* arch type */
 		goto err;
-	ret = diswui(server_stream, 0); /* license type in Bubo no longer   */
-	/* makes sense as licenses 	    */
-	/* apply to jobs and not nodes.      */
-	/* Passing a dummy 0 to prevent   */
-	/* breakage of protocol.	  */
 
-	if (ret != DIS_SUCCESS)
-		goto err;
 	if (use_UPDATE2) {
 #if	MOM_ALPS
 		/*
@@ -1454,93 +1316,23 @@ state_to_server(int what_to_update)
 		vnlp->vnl_modtime = time(0);
 #endif	/* MOM_ALPS */
 
-		ret = vn_encode_DIS(server_stream, vnlp);	/* vnode list */
-		if (ret != DIS_SUCCESS)
+		if ((ret = vn_encode_DIS(server_stream, vnlp)) != DIS_SUCCESS)	/* vnode list */
 			goto err;
 	}
 
-	ret = diswst(server_stream, PBS_VERSION);	/* pbs_version */
-	if (ret != DIS_SUCCESS)
+	if ((ret = diswst(server_stream, PBS_VERSION)) != DIS_SUCCESS)	/* pbs_version */
 		goto err;
 
-	dis_flush(server_stream);
+	if (!combine_msg)
+		dis_flush(server_stream);
 	internal_state_update = 0;
-	return;
+	return 0;
 
 err:
 	log_err(errno, "state_to_server", (char *)dis_emsg[ret]);
 	tpp_close(server_stream);
 	server_stream = -1;
-}
-
-/**
- * @brief
- * 	register_withserver() - send info about this Mom to the Server.
- *
- * @return Void
- *
- */
-void
-register_with_server(void)
-{
-	int			i, ret;
-	extern const char *dis_emsg[];
-	char			*pv;
-
-	if (server_stream < 0)
-		return;
-
-	if (av_phy_mem == 0)
-		av_phy_mem = strTouL(physmem(0), &pv, 10);
-
-	i = internal_state & MOM_STATE_MASK;
-	if (internal_state & (MOM_STATE_BUSYKB | MOM_STATE_INBYKB))
-		i |= MOM_STATE_BUSY;
-	if (cycle_harvester == 1)
-		i |= MOM_STATE_CONF_HARVEST;
-
-	DBPRT(("updating state 0x%x to server\n", i))
-	ret = is_compose(server_stream, IS_REGISTERMOM);
-	if (ret != DIS_SUCCESS)
-		goto err;
-
-	ret = diswst(server_stream, mom_short_name); /* short host name */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswui(server_stream, pbs_mom_port);   /* mom's port */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswui(server_stream, i);		/* node state */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswsi(server_stream, num_pcpus); /* phy cpus */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswsi(server_stream, num_acpus); /* avail cpus */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswull(server_stream, av_phy_mem); /* phy mem */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswst(server_stream, arch(0));	/* arch type */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswui(server_stream, 0); /* license type in Bubo no longer */
-	/* makes sense as licenses apply  */
-	/* to jobs instead of nodes.      */
-	/* Passing a dummy 0 to prevent   */
-	/* breakage of protocol.	  */
-	if (ret != DIS_SUCCESS)
-		goto err;
-	dis_flush(server_stream);
-
-	return;
-
-err:
-	log_err(errno, "register_with_server", (char *)dis_emsg[ret]);
-	tpp_close(server_stream);
-	server_stream = -1;
-	return;
+	return ret;
 }
 
 /**

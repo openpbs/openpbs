@@ -385,7 +385,7 @@ class TestJobArray(TestFunctional):
         for _ in range(5):
             self.kill_and_restart_svr()
             self.server.expect(
-                JOB, a, subjid_1, attrop=PTL_AND, max_attempts=1)
+                JOB, a, subjid_1, attrop=PTL_AND, max_attempts=10)
 
     @skipOnCpuSet
     def test_job_array_history_duration(self):

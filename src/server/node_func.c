@@ -160,6 +160,7 @@ extern mominfo_time_t  mominfo_time;
 extern char	*resc_in_err;
 extern char	server_host[];
 extern AVL_IX_DESC *node_tree;
+extern time_t	 time_now;
 extern int write_single_node_mom_attr(struct pbsnode *np);
 
 extern struct python_interpreter_data  svr_interp_data;
@@ -170,7 +171,6 @@ extern int node_recov_db_raw(void *nd, pbs_list_head *phead);
 extern int node_delete_db(struct pbsnode *pnode);
 extern int write_single_node_state(struct pbsnode *np);
 #endif /* localmod 005 */
-
 
 static void	remove_node_topology(char *);
 
@@ -783,8 +783,7 @@ effective_node_delete(struct pbsnode *pnode)
  * @brief
  *	setup_notification -  Sets up the  mechanism for notifying
  *	other members of the server's node pool that a new node was added
- *	manually via qmgr.  Actual notification occurs some time later through
- *	the ping_nodes mechanism.
+ *	manually via qmgr.
  *	The IS_CLUSTER_ADDRS2 message is only sent to the existing Moms.
  * @see
  * 		mgr_node_create
@@ -797,6 +796,10 @@ setup_notification()
 	int	i;
 	int	nmom;
 
+	/* CLUSTERADDR2 is not enabled for multi-server case, hence bailing-out. */
+	if (get_max_servers() > 1)
+		return;
+
 	for (i=0; i<svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_state & INUSE_DELETED)
 			continue;
@@ -805,8 +808,15 @@ setup_notification()
 		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODCACHE;
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
 			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
-			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_timepinged = 0;
 		}
+	}
+
+	/* send IS_CLUSTERADDR2 to happen in next 2 seconds */
+	static	time_t addr_send_tm = 0;
+	if (addr_send_tm <= time_now) {
+		addr_send_tm = time_now + 2;
+		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_moms, NULL);
+		ptask->wt_aux = IS_CLUSTER_ADDRS2;
 	}
 }
 

@@ -88,37 +88,29 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define	IM_PROTOCOL_VER	6	/* inter-mom protocol version number */
 #define	IM_OLD_PROTOCOL_VER 5	/* inter-mom old protocol version number */
 
-#define	IS_PROTOCOL	4	/* inter-server protocol number */
-#define	IS_PROTOCOL_VER	3	/* inter-server protocol version number */
+#define	IS_PROTOCOL	5	/* inter-server protocol number */
+#define	IS_PROTOCOL_VER	1	/* inter-server protocol version number */
 
 
 /*
  **	Types of Inter Server messages (between Server and Mom).
  */
 #define	IS_NULL			0
-#define	IS_HELLO		1
 #define	IS_CLUSTER_ADDRS	2
 #define IS_UPDATE		3
 #define IS_RESCUSED		4
 #define IS_JOBOBIT		5
 #define IS_BADOBIT		6
-#define IS_RESTART		7
+#define IS_REPLYHELLO		7
 #define IS_SHUTDOWN		8
 #define IS_IDLE			9
 #define IS_ACKOBIT		10
-#define IS_GSS_HANDSHAKE	11	/* Deprecated */
-#define IS_CLUSTER_KEY		12	/* Deprecated */
 #define IS_REGISTERMOM		13
 #define IS_UPDATE2		14
-#define IS_HELLO2		15
-#define IS_HOST_TO_VNODE	16
 #define IS_RECVD_VMAP		17
 #define IS_MOM_READY		17	/* alias for IS_RECD_VMAP */
-#define IS_HELLO3		18
 #define IS_DISCARD_JOB		19
-#define IS_HELLO4		20
 #define IS_DISCARD_DONE		21
-#define IS_HPCBP_ATTRIBUTES	22 	/* Deprecated */
 #define	IS_CLUSTER_ADDRS2	23
 #define IS_UPDATE_FROM_HOOK	24 /* request to update vnodes from a hook running on parent mom host */
 #define IS_RESCUSED_FROM_HOOK	25 /* request from child mom for a hook */
@@ -128,13 +120,10 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_HOOK_CHECKSUMS		 30 /* mom reports about hooks seen */
 #define IS_HELLO_NO_INVENTORY	31 /* send info about the mom node only */
 #define IS_UPDATE_FROM_HOOK2	32 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
+#define IS_HELLOSVR		33 /* hello send to server from mom to initiate a hello sequence */
 
 #define IS_CMD          40
 #define IS_CMD_REPLY    41
-
-/* Bits for IS_HELLO4 contents */
-#define HELLO4_vmap_version	 1
-#define HELLO4_running_jobs	 2
 
 /* return codes for client_to_svr() */
 

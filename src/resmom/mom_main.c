@@ -1373,6 +1373,8 @@ initialize(void)
 
 	if (job_launch_delay == -1)
 		job_launch_delay = DEFAULT_JOB_LAUNCH_DELAY;
+
+	time_delta(MOM_DELTA_RESET);
 }
 
 /**
@@ -7992,8 +7994,7 @@ badguy:
 /*
  * @brief
  *	Function called by the Libtpp layer when the network connection to
- *	the pbs_comm router is restored. In this implementation for the mom,
- *	the restore handler sends a mom restart message to the server.
+ *	the pbs_comm router is restored. This is the implementation for mom.
  *
  * @param[in] data - currently unused
  *
@@ -8007,7 +8008,6 @@ net_restore_handler(void *data)
 	mom_net_up_time = time(0);
 	if (tpp_log_func)
 		tpp_log_func(LOG_INFO, msg_daemonname, "net restore handler called");
-	send_restart();
 }
 
 /*
@@ -8058,6 +8058,49 @@ net_down_handler(void *data)
 	mom_net_up_time = 0;
 }
 
+
+/**
+ * @brief
+ *      This function returns the time delta
+ * 	returns short bursts followed by longer intervals.
+ *
+ * 	This is used for how long mom should wait before sending next hello (in secs)
+ * 	Can be used for any such scenario.
+ *
+ * @param[in] mode -	reset mode is to bring it back to bursting mode
+ * 
+ * @return int
+ * @retval >0 : time delta
+ * @retval 0 : only in case of reset mode.
+ */
+int
+time_delta(int mode)
+{
+	static int delta = 1;
+	static int cnt = 1;
+	int max_delta_mask = 0x3F;	/* max interval will be 64s */
+
+	DBPRT(("time_delta: mode: %d, delta: %d, cnt: %d", mode, delta, cnt))
+
+	if (mode == MOM_DELTA_RESET) {
+		delta = 1;
+		cnt = 1;
+		return 0;
+	}
+
+	if (cnt == 0) {
+		if (delta & ~max_delta_mask) {
+			return delta;
+		}
+		delta <<= 1;
+		cnt = delta << 1;
+	} else {
+		cnt--;
+	}
+
+	return delta;
+}
+
 #ifdef	WIN32
 /**
  * @brief
@@ -8075,61 +8118,62 @@ main(int argc, char *argv[])
 	int rc;
 	char *nodename;
 	struct tpp_config	tpp_conf;
-	int					errflg, c;
-	int					stalone = 0;
-	int					i;
-	char				*ptr;
-	char				*servername;
+	int			errflg, c;
+	int			stalone = 0;
+	int			i;
+	char			*ptr;
+	char			*servername;
 	unsigned int		serverport;
-	int					recover = 0;
-	time_t				time_state_update = 0;
-	int					tppfd; /* fd for rm and im comm */
-	double				myla;
-	job					*nxpjob;
-	job					*pjob;
+	int			recover = 0;
+	time_t			time_state_update = 0;
+	int			tppfd; /* fd for rm and im comm */
+	double			myla;
+	time_t			time_next_hello = 0;
+	job			*nxpjob;
+	job			*pjob;
 	extern time_t		wait_time;
-	time_t				getkbdtime();
-	void				activate_jobs();
-	void				idle_jobs();
-	char				*configscriptaction = NULL;
-	char				*inputfile = NULL;
-	char				*scriptname = NULL;
-	resource			*prscput;
-	resource			*prswall;
-	char				*getopt_str;
-	int					fd;
-	u_long				ipaddr;
-	int					optindinc = 0;
+	time_t			getkbdtime();
+	void			activate_jobs();
+	void			idle_jobs();
+	char			*configscriptaction = NULL;
+	char			*inputfile = NULL;
+	char			*scriptname = NULL;
+	resource		*prscput;
+	resource		*prswall;
+	char			*getopt_str;
+	int			fd;
+	u_long			ipaddr;
+	int			optindinc = 0;
 	mom_hook_input_t	hook_input;
-	char				path_hooks_rescdef[MAXPATHLEN+1];
-	int					sock_bind_rm;
-	int					sock_bind_mom;
-	struct				sockaddr_in check_ip;
-	int				is_mom_host_ip;
+	char			path_hooks_rescdef[MAXPATHLEN+1];
+	int			sock_bind_rm;
+	int			sock_bind_mom;
+	struct			sockaddr_in check_ip;
+	int			is_mom_host_ip;
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
-	int					argc;
-	char				**argv;
+	int			argc;
+	char			**argv;
 	SERVICE_STATUS		ss;
-	int					pmode = S_IREAD | S_IWRITE;
+	int			pmode = S_IREAD | S_IWRITE;
 	struct _timeb		tval;
-	char				*pwst = NULL;
-	char				winsta_name[MAXPATHLEN+1];
-	char				desktop_name[MAXPATHLEN+1];
-	HWINSTA				old_winsta = NULL;
-	HWINSTA				pbs_winsta = NULL;
-	HDESK				pbs_desktop = NULL;
-	char				*pch = NULL;
-	extern char			*pbs_conf_env;
+	char			*pwst = NULL;
+	char			winsta_name[MAXPATHLEN+1];
+	char			desktop_name[MAXPATHLEN+1];
+	HWINSTA			old_winsta = NULL;
+	HWINSTA			pbs_winsta = NULL;
+	HDESK			pbs_desktop = NULL;
+	char			*pch = NULL;
+	extern char		*pbs_conf_env;
 #else
 	/* Unix only */
-	int					pmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	int			pmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	struct timeval		tval;
 	struct sigaction	act;
-	gid_t				mygid;
-	extern char			*optarg;
-	extern int			optind;
+	gid_t			mygid;
+	extern char		*optarg;
+	extern int		optind;
 #endif /* WIN32 */
 
 #ifndef	DEBUG
@@ -9561,9 +9605,16 @@ main(int argc, char *argv[])
 		}
 #endif
 
+		time_now = time(NULL);
+		if (server_stream == -1) {
+			if (time_now > time_next_hello) {
+				send_hellosvr(server_stream);
+				time_next_hello = time_now + time_delta(MOM_DELTA_NORMAL);
+			}
+		}
+
 		wait_time = default_next_task();
 		end_proc();
-		time_now = time(NULL);
 
 		dorestrict_user();
 
@@ -9660,7 +9711,7 @@ main(int argc, char *argv[])
 		 * check_busy() or query_adp()
 		 */
 		if (internal_state_update) {
-			state_to_server(UPDATE_VNODES);
+			state_to_server(UPDATE_VNODES, 0);
 
 			(void)send_hook_vnl(vnlp_from_hook);
 			/*
