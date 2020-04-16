@@ -1889,3 +1889,23 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), dur)
         self.assertEqual(int(t_end), end)
+
+    def test_duration_in_hhmmss_format(self):
+        """
+        Test duration input can be in hh:mm:ss format
+        """
+        offset = 20
+        duration = 20
+        new_duration = "00:00:30"
+        new_duration_in_sec = 30
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        new_end = end + 10
+
+        attr = {'reserve_duration': new_duration}
+        self.server.alterresv(rid, attr)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), start)
+        self.assertEqual(int(t_duration), new_duration_in_sec)
+        self.assertEqual(int(t_end), new_end)
