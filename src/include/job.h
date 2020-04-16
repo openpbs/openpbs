@@ -517,7 +517,7 @@ struct block_job_reply {
  */
 
 
-#define	JSVERSION_18	800	/* 18 denotes the PBSPro version and it covers the job structure from >= 13.x to <= 18.x */
+#define	JSVERSION_18	800	/* 18 denotes the PBS version and it covers the job structure from >= 13.x to <= 18.x */
 #define	JSVERSION	1900	/* 1900 denotes the 19.x.x version */
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx

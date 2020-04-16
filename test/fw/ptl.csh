@@ -36,17 +36,22 @@
 # trademark licensing policies.
 
 # This file will set path variables in case of ptl installation
-
-if ( -f "/etc/debian_version" ) then
-	set ptl_prefix_lib=`dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+if ( -f /etc/debian_version ) then
+    set __ptlpkgname=`dpkg -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$'`
+    if ( "x${__ptlpkgname}" != "x" ) then
+        set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+    endif
 else
-	set ptl_prefix_lib=`rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+    set __ptlpkgname=`rpm -qa 2>/dev/null | grep -E '*-ptl-[[:digit:]]'`
+    if ( "x${__ptlpkgname}" != "x" ) then
+        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+    endif
 endif
 if ( ! $?ptl_prefix_lib ) then
 	set python_dir=`/bin/ls -1 ${ptl_prefix_lib}`
 	set prefix=`dirname ${ptl_prefix_lib}`
 
-	setenv PATH=${prefix}/bin/:${PATH} 
+	setenv PATH=${prefix}/bin/:${PATH}
 	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
 	unset python_dir
 	unset prefix
@@ -67,7 +72,7 @@ else
 			if ( $?PATH && -d ${PTL_PREFIX}/bin ) then
 				setenv export PATH="${PATH}:${PTL_PREFIX}/bin"
 			endif
-			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then 
+			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then
 				setenv PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
 			endif
 		endif

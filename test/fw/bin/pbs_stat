@@ -36,24 +36,24 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import sys
+import errno
 import getopt
 import logging
 import logging.config
 import os
-import time
 import re
-import errno
+import sys
+import time
 
 import ptl
+from ptl.lib.pbs_testlib import (HOOK, JOB, PTL_AND, PTL_CLI, PTL_OR, QUEUE,
+                                 RESOURCES_AVAILABLE, RESOURCES_TOTAL, RESV,
+                                 RSC, SCHED, SERVER, VNODE, BatchUtils,
+                                 PbsStatusError, PbsTypeSize, PtlConfig,
+                                 Scheduler, Server)
 from ptl.utils.pbs_cliutils import CliUtils
-from ptl.utils.pbs_logutils import PBSAccountingLog
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.lib.pbs_testlib import PtlConfig, BatchUtils, PbsTypeSize
-from ptl.lib.pbs_testlib import Server, Scheduler, PbsStatusError
-from ptl.lib.pbs_testlib import PTL_AND, PTL_OR, PTL_CLI
-from ptl.lib.pbs_testlib import VNODE, JOB, SERVER, SCHED, RSC, QUEUE, HOOK
-from ptl.lib.pbs_testlib import RESV, RESOURCES_AVAILABLE, RESOURCES_TOTAL
+from ptl.utils.pbs_logutils import PBSAccountingLog
 
 # trap SIGINT and SIGPIPE
 
@@ -195,7 +195,7 @@ class SiteReportFormatter:
         return self.__str__()
 
     def __str__(self):
-        title = 'PBS Pro cluster report on ' + self.report_tm
+        title = 'PBS cluster report on ' + self.report_tm
         if len(self.open_tag) == 0 or self.snap is None:
             msg = []
             self.sep = ['-' * len(title)]
@@ -205,7 +205,7 @@ class SiteReportFormatter:
 
         msg += [title]
         msg += self.sep
-        msg += [self.delim + 'PBS Pro version']
+        msg += [self.delim + 'PBS version']
         msg += self.sep
         msg += self.open_tag
         if self.version == self.sched_version:

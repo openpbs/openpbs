@@ -35,24 +35,22 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import os
-import time
-import tarfile
 import logging
-import socket
-import random
-import shutil
+import os
 import pprint
-import shlex
+import random
 import re
-
+import shlex
+import shutil
+import socket
+import tarfile
+import time
 from subprocess import STDOUT
-from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
+
 from ptl.lib.pbs_ifl_mock import *
+from ptl.lib.pbs_testlib import SCHED, BatchUtils, Scheduler, Server
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
-from ptl.lib.pbs_testlib import BatchUtils
-
 
 # Define an enum which is used to label various pieces of information
 (   # qstat outputs
@@ -1822,11 +1820,11 @@ quit()
 
     def capture_pbs_logs(self):
         """
-        Capture PBSPro logs from all relevant hosts
+        Capture PBS logs from all relevant hosts
 
         :returns: name of the output directory/tarfile containing the snapshot
         """
-        self.logger.info("capturing PBSPro logs")
+        self.logger.info("capturing PBS logs")
 
         if self.num_daemon_logs > 0:
             # Capture server logs

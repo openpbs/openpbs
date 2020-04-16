@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestJobArray(TestFunctional):
     """
-    Test suite for PBSPro's job array feature
+    Test suite for job array feature
     """
 
     def test_arrayjob_Erecord_startval(self):

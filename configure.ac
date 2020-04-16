@@ -38,12 +38,12 @@
 
 AC_PREREQ([2.63])
 # Use PBS_VERSION to override the version statically defined here. For example:
-# ./configure PBS_VERSION=19.1.2 --prefix=/opt/pbs
-AC_INIT([PBS Professional],
-  [19.0.0],
+# ./configure PBS_VERSION=20.0.0 --prefix=/opt/pbs
+AC_INIT([OpenPBS],
+  [20.0.0],
   [pbssupport@altair.com],
-  [pbspro],
-  [http://www.pbspro.org/])
+  [openpbs],
+  [http://www.openpbs.org/])
 AC_CONFIG_HEADERS([src/include/pbs_config.h])
 AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
 AC_CONFIG_AUX_DIR([buildutils])
@@ -345,7 +345,7 @@ PBS_AC_SYSTEMD_UNITDIR
 PBS_AC_WITH_LIBUNDOLR
 
 AC_CONFIG_FILES([
-	pbspro.spec
+	openpbs.spec
 	Makefile
 	buildutils/Makefile
 	doc/Makefile
@@ -402,7 +402,5 @@ AC_CONFIG_FILES([
 	src/tools/Makefile
 	src/tools/wrap_tcl.sh
 	src/unsupported/Makefile
-	src/unsupported/pbs_diag
-	src/unsupported/pbs_dtj
 ])
 AC_OUTPUT

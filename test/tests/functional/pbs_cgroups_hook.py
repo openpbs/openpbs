@@ -35,8 +35,9 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from tests.functional import *
 import glob
+
+from tests.functional import *
 
 
 #
@@ -455,12 +456,12 @@ if [ -d "$devices_base/propbs" ]; then
     elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
         devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
     else
-        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+        devices_job="$devices_base/sbp/sbp-${jobnum}.*.slice"
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
 sleep 10
@@ -482,17 +483,12 @@ if [ -d "$devices_base/propbs" ]; then
         devices_job="$devices_base/propbs/$PBS_JOBID"
     elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
         devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
-    else
         devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-device_list=`cat $devices_job/devices.list`
-grep "195" $devices_job/devices.list
-echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 sleep 10
 """
         self.cpu_controller_script = """
@@ -553,7 +549,7 @@ cat $PBS_NODEFILE
 sleep 300
 """
         self.cfg0 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -584,7 +580,7 @@ sleep 300
 }
 """
         self.cfg1 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [%s],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [%s],
@@ -637,7 +633,7 @@ sleep 300
 }
 """
         self.cfg2 = """{
-    "cgroup_prefix"         : "propbs",
+    "cgroup_prefix"         : "sbp",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -684,7 +680,7 @@ sleep 300
 }
 """
         self.cfg3 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -734,7 +730,7 @@ sleep 300
 }
 """
         self.cfg4 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -823,7 +819,7 @@ sleep 300
 }
 """
         self.cfg7 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -867,7 +863,7 @@ sleep 300
 }
 """
         self.cfg8 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -918,7 +914,7 @@ sleep 300
 }
 """
         self.cfg9 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -962,7 +958,7 @@ sleep 300
 }
 """
         self.cfg10 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1017,7 +1013,7 @@ sleep 300
 }
 """
         self.cfg11 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1074,7 +1070,7 @@ sleep 300
 }
 """
         self.cfg12 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1130,7 +1126,7 @@ sleep 300
 }
 """
         self.cfg13 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1879,7 +1875,7 @@ if %s e.job.in_ms_mom():
 
     def test_cgroup_prefix_and_devices(self):
         """
-        Test to verify that the cgroup prefix is set to propbs and that
+        Test to verify that the cgroup prefix is set to "sbp" and that
         the devices subsystem exists with the correct devices allowed
         """
         if not self.paths['devices']:
@@ -2936,7 +2932,7 @@ if %s e.job.in_ms_mom():
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
             if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbspro')
+                cpath = os.path.join(cdir, 'pbs')
                 if not os.path.isdir(cpath):
                     cpath = os.path.join(cdir, 'pbspro.slice')
                 if not os.path.isdir(cpath):
@@ -4108,7 +4104,7 @@ sleep 300
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[subsys]
                 if os.path.isdir(cdir):
-                    cpath = os.path.join(cdir, 'pbspro')
+                    cpath = os.path.join(cdir, 'pbs')
                     if not os.path.isdir(cpath):
                         cpath = os.path.join(cdir, 'pbspro.slice')
                     if not os.path.isdir(cpath):

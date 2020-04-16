@@ -948,8 +948,6 @@ main(int argc, char **argv)
 					(void)fprintf(stderr, "%s -t bad recovery type\n",
 						argv[0]);
 					return (1);
-				} else if (server_init_type == RECOV_CREATE) {
-					pbs_authors();
 				}
 				break;
 			case 'A':

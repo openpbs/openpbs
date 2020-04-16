@@ -196,7 +196,7 @@ check_job_file(int fd)
 	/* Save our current position so we can comeback to it */
 	pos_saved = lseek(fd, 0, SEEK_CUR);
 
-	/*---------- For PBSPro >=13.x or <=18.x versions jobfix structure ---------- */
+	/*---------- For PBS >=13.x or <=18.x versions jobfix structure ---------- */
 	pos_new = lseek(fd, pos_saved, SEEK_SET);
 	if (pos_new != 0) {
 			fprintf(stderr, "Couldn't set the file position to zero [%s]\n",
@@ -239,7 +239,7 @@ check_job_file_exit:
  *		Upgrade a job file from an earlier version.
  *
  * @param[in]	fd		-	File descriptor from which to read
- * 
+ *
  * @return	int
  * @retval	-1	: failure
  * @retval	 0	: success
@@ -610,7 +610,7 @@ main(int argc, char *argv[])
 
 	switch (ret) {
 		case 18:
-			/* this case will execute for all PBSPro >=13.x or <=18.x versions */
+			/* this case will execute for all PBS >=13.x or <=18.x versions */
 			break;
 		case 19:
 			/* no need to update the job sturcture */

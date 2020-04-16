@@ -1694,7 +1694,7 @@ title_string(enum code_title tc, int mode, INFRA *pinf)
 			fprintf(stderr,
 				"\t-v        - show hierarchy examined\n");
 			fprintf(stderr,
-				"\t--version - show PBS Pro version and exit\n");
+				"\t--version - show version and exit\n");
 			break;
 	}
 }

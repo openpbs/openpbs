@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestPbsInitScript(TestFunctional):
     """
-    Testing PBS Pro init script
+    Testing PBS init script
     """
 
     def test_env_vars_precede_pbs_conf_file(self):

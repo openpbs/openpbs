@@ -7545,8 +7545,8 @@ free_nodes(job *pjob)
 
 		if (special_case) {
 			snprintf(log_buffer, LOG_BUF_SIZE, "\n================================================================"
-				"======================================================\nPBSPro diagnostic information."
-				" Share this log with PBSPro Team.\n=========================================="
+				"======================================================\nPBS diagnostic information."
+				" Share this log with PBS Team.\n=========================================="
 				"============================================================================\n"
 				"Mom's state:%lu, number of jobs on this node: %d, number of vnodes: %d.\n"
 				"Other jobs present in the node follows:",

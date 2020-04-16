@@ -1,7 +1,7 @@
 #%Module1.0
 proc ModulesHelp { } {
 puts stderr "The PBS module defines the default system paths and"
-puts stderr "environment variables needed to utilize the PBS Professional"
+puts stderr "environment variables needed to utilize the PBS"
 puts stderr "workload management system."
 puts stderr ""
 puts stderr "Use the command \"module list\" to determine whether the"

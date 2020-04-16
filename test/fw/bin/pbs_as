@@ -36,24 +36,24 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import sys
-import os
 import getopt
+import os
 import pickle
 import pwd
+import sys
 
-from ptl.lib.pbs_testlib import PtlConfig, Server
-from ptl.lib.pbs_testlib import PbsStatusError, PbsSubmitError, PbsDeleteError
-from ptl.lib.pbs_testlib import PbsManagerError, PbsAlterError, PbsSignalError
-from ptl.lib.pbs_testlib import PbsOrderError, PbsMessageError, PbsHoldError
-from ptl.lib.pbs_testlib import PbsReleaseError, PbsRunError, PbsRerunError
-from ptl.lib.pbs_testlib import PbsMoveError, PbsDeljobError, PbsDelresvError
-from ptl.lib.pbs_testlib import PbsQtermError
+from ptl.lib.pbs_testlib import (PbsAlterError, PbsDeleteError, PbsDeljobError,
+                                 PbsDelresvError, PbsHoldError,
+                                 PbsManagerError, PbsMessageError,
+                                 PbsMoveError, PbsOrderError, PbsQtermError,
+                                 PbsReleaseError, PbsRerunError, PbsRunError,
+                                 PbsSignalError, PbsStatusError,
+                                 PbsSubmitError, PtlConfig, Server)
 
 
 def usage():
     msg = []
-    msg += ['PBS Pro user impersonation tool. This tool is an internal ']
+    msg += ['PBS user impersonation tool. This tool is an internal ']
     msg += ['tool and is not intended to be used by end-users\n\n']
     msg += ['Usage: ' + os.path.basename(sys.argv[0]) + ' [OPTION]\n\n']
     msg += ['-c <cmd>: command to perform, one of submit, status\n']

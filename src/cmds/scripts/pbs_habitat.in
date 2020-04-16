@@ -241,7 +241,7 @@ upgrade_pbs_database() {
 		echo "Database version file: ${data_dir}/PG_VERSION not found, cannot continue"
 		return 1
 	fi
-	
+
 	sys_pgsql_ver=$(echo `${PGSQL_BIN}/postgres -V` | awk 'NR==1 {print $NF}' | cut -d '.' -f 1,2)
 	old_pgsql_ver=`cat ${data_dir}/PG_VERSION`
 	# strip the minor version from sys_pgsql_ver if old_pgsql_ver does not have minor version (for comparison).
@@ -532,11 +532,11 @@ if [ -f "$PBS_HOME/pbs_version" ]; then
 	old_pbs_version=`cat $PBS_HOME/pbs_version`
 fi
 
-# Get the current PBS Pro version from qstat
+# Get the current PBS version from qstat
 if [ -x "$PBS_EXEC/bin/qstat" ]; then
 	pbs_version=`"${PBS_EXEC}/bin/qstat" --version | sed -e 's/^.* = //'`
 	if [ -z "$pbs_version" ]; then
-		echo "*** Could not obtain PBS Pro version from qstat"
+		echo "*** Could not obtain PBS version from qstat"
 		exit 1
 	fi
 	if [ "$pbs_version" != "$PBS_VERSION" ]; then
@@ -552,18 +552,18 @@ fi
 
 # Perform sanity check on server name in pbs.conf
 server_hostname=`get_server_hostname`
-[ "$server_hostname" = 'change_this_to_pbs_pro_server_hostname' ] && server_hostname=''
+[ "$server_hostname" = 'change_this_to_pbs_server_hostname' ] && server_hostname=''
 if [ -z "${server_hostname}" ] ; then
 	echo "***" >&2
-	echo "*** The hostname of the PBS Pro server in ${conf} is invalid." >&2
-	echo "*** Update the configuration file before starting PBS Pro." >&2
+	echo "*** The hostname of the PBS server in ${conf} is invalid." >&2
+	echo "*** Update the configuration file before starting PBS." >&2
 	echo "***" >&2
 	exit 1
 fi
 check_hostname "${server_hostname}"
 if [ $? -ne 0 ]; then
 	echo "***" >&2
-	echo "*** The PBS Pro server could not be found: $server_hostname" >&2
+	echo "*** The PBS server could not be found: $server_hostname" >&2
 	echo "*** This value must resolve to a valid IP address." >&2
 	echo "***" >&2
 	exit 1
@@ -576,7 +576,7 @@ if [ -f "$PBS_HOME/mom_priv/config" ]; then
 	cmd="$cmd | sed -e 's/\t/ /g' -e 's/ \\+/ /g' -e 's/^ //' -e 's/ $//'"
 	cmd="$cmd | grep '\\\$clienthost' | cut -d' ' -f2"
 	for host in `eval $cmd`; do
-		if [ -z "$host" -o "$host" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ]; then
+		if [ -z "$host" -o "$host" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ]; then
 			echo "***" >&2
 			echo "*** Invalid entry in $PBS_HOME/mom_priv/config" >&2
 			echo "*** for clienthost: $host" >&2
@@ -662,11 +662,11 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			if [ $ret -eq 2 ]; then
-				echo "It appears that PostgreSQL has been upgraded independently of PBS Pro."
-				echo "The PBS Pro database must be manually upgraded. Please refer to the"
+				echo "It appears that PostgreSQL has been upgraded independently of PBS."
+				echo "The PBS database must be manually upgraded. Please refer to the"
 				echo "instructions in the release notes for version @PBS_VERSION@ located here:"
-				echo "https://github.com/PBSPro/pbspro/releases"
-			else 
+				echo "https://github.com/openpbs/openpbs/releases"
+			else
 				echo "Failed to upgrade PBS Datastore"
 			fi
 			exit $ret
@@ -679,7 +679,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 					echo "*** For future upgrades to be successful run the below command."
 					echo "*** cp -pr ${PBS_EXEC}/pgsql ${PBS_HOME}/pgsql.forupgrade"
 				else
-					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBSPro."
+					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBS."
 				fi
 			fi
 		fi

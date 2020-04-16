@@ -3537,7 +3537,6 @@ show_help(char *str)
 
 	if ((str == NULL) || (*str == '\0')) {
 		printf(HELP_DEFAULT);
-		pbs_authors();
 	} else if (strncmp(str, "active", 6) == 0)
 		printf(HELP_ACTIVE);
 	else if (strncmp(str, "create", 6) == 0)
@@ -3583,7 +3582,7 @@ show_help(char *str)
 	else if (strncmp(str, "nodeattr", 8) == 0)
 		printf(HELP_NODEATTR);
 	else
-		printf("No help available on: %s\nCheck the PBS Professional Reference Guide for more help.\n", str);
+		printf("No help available on: %s\nCheck the PBS Reference Guide for more help.\n", str);
 
 	printf("\n");
 }

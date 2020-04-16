@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 
 	if (err || (optind == argc)) {
 		fprintf(stderr, "Usage %s -d -s -n path ...\n\twhere:\t-d indicates directory (file otherwise)\n\t\t-s indicates world write allowed if sticky set\n\t\t-n indicates do not return the error status, exit with 0\n", argv[0]);
-		fprintf(stderr, "      %s --version display PBSPro version, exit with 0\n", argv[0]);
+		fprintf(stderr, "      %s --version display version, exit with 0\n", argv[0]);
 		return 1;
 	}
 

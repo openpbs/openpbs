@@ -36,7 +36,7 @@
 # trademark licensing policies.
 
 """
-PBS Professional hook for consuming the Shasta Northbound API.
+PBS hook for consuming the Shasta Northbound API.
 
 This hook services the following events:
 - execjob_begin
@@ -44,11 +44,12 @@ This hook services the following events:
 """
 
 
-import sys
-import os
 import json as JSON
-import urllib
+import os
 import site
+import sys
+import urllib
+
 site.main()
 
 # to be PEP-8 compliant, the imports must be indented

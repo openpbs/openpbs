@@ -356,7 +356,6 @@ extern int encode_DIS_DelHookFile(int, char *);
 extern int encode_DIS_PreemptJobs(int, char **);
 extern char *PBSD_submit_resv(int, char *, struct attropl *, char *);
 extern int DIS_reply_read(int, struct batch_reply *, int);
-extern void pbs_authors(void);
 extern int tcp_pre_process(conn_t *);
 extern char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 extern int PBSD_cred(int, char *, char *, int, char *, long, int, char **);

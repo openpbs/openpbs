@@ -37,11 +37,11 @@
 #
 
 %if !%{defined pbs_name}
-%define pbs_name pbspro
+%define pbs_name openpbs
 %endif
 
 %if !%{defined pbs_version}
-%define pbs_version 19.0.0
+%define pbs_version 20.0.0
 %endif
 
 %if !%{defined pbs_release}
@@ -83,9 +83,9 @@ Name: %{pbs_name}
 Version: %{pbs_version}
 Release: %{pbs_release}
 Source0: %{pbs_dist}
-Summary: PBS Professional
+Summary: OpenPBS
 License: AGPLv3 with exceptions
-URL: http://www.pbspro.org
+URL: http://www.openpbs.org
 Vendor: Altair Engineering, Inc.
 Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 
@@ -138,14 +138,20 @@ BuildRequires: libXft
 %{!?py_site_pkg_64: %global py_site_pkg_64 %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 
 %description
-PBS Professional® is a fast, powerful workload manager and
+OpenPBS is a fast, powerful workload manager and
 job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
 
 %package %{pbs_server}
-Summary: PBS Professional for a server host
+Summary: OpenPBS for a server host
 Group: System Environment/Base
+Conflicts: openpbs-execution
+Conflicts: openpbs-client
+Conflicts: openpbs-execution-ohpc
+Conflicts: openpbs-client-ohpc
+Conflicts: openpbs-server-ohpc
+Conflicts: pbspro-server
 Conflicts: pbspro-execution
 Conflicts: pbspro-client
 Conflicts: pbspro-client-ohpc
@@ -180,18 +186,24 @@ Requires: libical
 Autoreq: 1
 
 %description %{pbs_server}
-PBS Professional® is a fast, powerful workload manager and
+OpenPBS is a fast, powerful workload manager and
 job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
 
 This package is intended for a server host. It includes all
-PBS Professional components.
+PBS components.
 
 %package %{pbs_execution}
-Summary: PBS Professional for an execution host
+Summary: OpenPBS for an execution host
 Group: System Environment/Base
+Conflicts: openpbs-server
+Conflicts: openpbs-client
+Conflicts: openpbs-execution-ohpc
+Conflicts: openpbs-client-ohpc
+Conflicts: openpbs-server-ohpc
 Conflicts: pbspro-server
+Conflicts: pbspro-execution
 Conflicts: pbspro-client
 Conflicts: pbspro-client-ohpc
 Conflicts: pbspro-execution-ohpc
@@ -217,20 +229,26 @@ Requires: hwloc-libs
 Autoreq: 1
 
 %description %{pbs_execution}
-PBS Professional® is a fast, powerful workload manager and
+OpenPBS is a fast, powerful workload manager and
 job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
 
 This package is intended for an execution host. It does not
 include the scheduler, server, or communication agent. It
-does include the PBS Professional user commands.
+does include the PBS user commands.
 
 %package %{pbs_client}
-Summary: PBS Professional for a client host
+Summary: OpenPBS for a client host
 Group: System Environment/Base
+Conflicts: openpbs-server
+Conflicts: openpbs-execution
+Conflicts: openpbs-execution-ohpc
+Conflicts: openpbs-client-ohpc
+Conflicts: openpbs-server-ohpc
 Conflicts: pbspro-server
 Conflicts: pbspro-execution
+Conflicts: pbspro-client
 Conflicts: pbspro-client-ohpc
 Conflicts: pbspro-execution-ohpc
 Conflicts: pbspro-server-ohpc
@@ -242,21 +260,24 @@ Requires: python3 >= 3.5
 Autoreq: 1
 
 %description %{pbs_client}
-PBS Professional® is a fast, powerful workload manager and
+OpenPBS is a fast, powerful workload manager and
 job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
 
 This package is intended for a client host and provides
-the PBS Professional user commands.
+the PBS user commands.
 
 
 %package %{pbs_devel}
-Summary: PBS Professional Development Package
+Summary: OpenPBS Development Package
 Group: Development/System
+Conflicts: pbspro-devel
+Conflicts: pbspro-devel-ohpc
+Conflicts: openpbs-devel-ohpc
 
 %description %{pbs_devel}
-PBS Professional® is a fast, powerful workload manager and
+OpenPBS is a fast, powerful workload manager and
 job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
@@ -271,13 +292,14 @@ HPC clusters, clouds and supercomputers.
 %endif
 
 %package %{pbs_ptl}
-Summary: PBS Test Lab for testing PBS Professional
+Summary: Testing framework for PBS
 Group: System Environment/Base
 Prefix: %{ptl_prefix}
+Conflicts: pbspro-ptl
 
 %description %{pbs_ptl}
-PBS Test Lab is a test harness and test suite intended to validate the
-functionality of PBS Professional®.
+PBS Test Lab is a testing framework intended to test and validate the
+functionality of PBS.
 
 %endif
 
@@ -597,69 +619,5 @@ done
 %endif
 
 %changelog
-* Wed May 6 2020 Lisa Endrjukaitis <lisa@altair.com> - 1.31
-- Remove cpusets
-* Wed Oct 9 2019 Michael Karo <mike0042@gmail.com> - 1.30
-- Update package requirements
-- Fix indentation
-* Mon Sep 30 2019 Michael Karo <mike0042@gmail.com> - 1.29
-- PTL files were being packaged in server, execution, and client RPMs
-* Fri Sep 20 2019 Michael Karo <mike0042@gmail.com> - 1.28
-- Add PMIx conditional
-* Wed Mar 20 2019 Minghui Liu <mliu@altair.com> - 1.27
-- Add pbspro-devel package
-* Thu Dec 13 2018 Michael Karo <mike0042@gmail.com> - 1.26
-- Remove pbspro-rpmlintrc from source list
-- Updates to conditional build of pbspro-ptl package
-* Mon Dec 10 2018 bayucan <bayucan@altair.com> - 1.25
-- Add changelog
-* Wed Nov 28 2018 bayucan <bayucan@altair.com> - 1.24
-- Handle non-conffile-in-etc,explicit-lib-dependency
-* Wed Nov 14 2018 bayucan <bayucan@altair.com> - 1.23
-- Enable pbspro-rpmlintrc under opensuse
-* Thu Oct 25 2018 riyazhakki <riyazhakki@gmail.com> - 1.22
-- Add a M4 macro to enable online data compression in TPP
-* Wed Sep 12 2018 Bhroam Mann <bmann@altair.com> - 1.21
-- Remove reference to ibm-* platforms.
-* Mon Aug 27 2018 Hiren Vadalia <hiren.vadalia@altair.com> - 1.20
-- Add new OSes in CI and remove all old OSes and hacks from Travis
-* Tue Aug 7 2018 Michael Karo <mike0042@gmail.com> - 1.19
-- Build PBS Pro on OpenSUSE Tumbleweed
-* Thu May 10 2018 sandisamp <sandisamp@gmail.com> - 1.18
-- Fix declare not found error in ubuntu and added requires bash in spec file
-* Mon Feb 5 2018 Michael Karo <mike0042@gmail.com> - 1.17
-- Update OSS version from 17.1.0 to 18.1.0
-* Thu Dec 14 2017 Dinesh <dineshjoshi1306@gmail.com> - 1.16
-- Fix copyright headers
-* Tue Sep 26 2017 lisa-altair <lisa@altair.com> - 1.15
-- Remove calling pbs_postinstall on CLE6.0
-* Tue Jun 13 2017 Hiren Vadalia <hiren.vadalia@altair.com> - 1.14
-- Update PBS version to 17
-* Thu Mar 23 2017 Kevin Liu <minghui.liu@trincoll.edu> - 1.13
-- Update copyright year in source file headers
-* Thu Mar 9 2017 Michael Karo <mike0042@gmail.com> - 1.12
-- Update to support installations and upgrades on Cray XC CLE 5.2
-* Thu Jan 5 2017 nithinj <nithin.johnson@altair.com> - 1.11
-- Update as pbs_mom not coming up after switching on compute node on cpuset machines
-* Fri Nov 18 2016 Jan Krcmar <honza801@gmail.com> 1.10
-- Add debian package building support using rpmbuild and alien.
-* Mon Aug 8 2016 Michael Karo <mike0042@gmail.com> - 1.9
-- Update to allow sendmail or postfix to satisfy requirements
-* Mon Aug 1 2016 nithinj <nithin.johnson@altair.com> - 1.8
-- Update so that systemd pbs unit file refer path from pbs.conf file
-* Wed Jun 29 2016 Michael Karo <mike0042@gmail.com> - 1.7
-- Specify libexecdir on SUSE systems
-* Wed Jun 22 2016 nithinj <nithin.johnson@altair.com> - 1.6
-- Replace init script with unit file for systems that support systemd process management
-* Thu Jun 16 2016 Michael Karo <mike0042@gmail.com> - 1.5
-- Handle starting multinode jobs
-* Wed Jun 15 2016 Michael Karo <mike0042@gmail.com> - 1.4
-- Build PBS Pro under non-OHPC OBS instance
-* Fri Jun 3 2016 Nithin Johnson <nithin.johnson@altair.com> - 1.3
-- Add timezone and python-xml as dependencies
-* Wed May 25 2016 Michael Karo <mike0042@users.noreply.github.com> - 1.2
-- Update version to 14.0.1
-* Mon May 23 2016 arungrover <arun.grover@altair.com> - 1.1
-- Change to make sure that unsupported hook files are not compiled and packaged.
-* Thu May 12 2016 Hiren Vadalia <hiren.vadalia@altair.com> - 1.0
-- Initial commit of pbspro
+* Fri Apr 17 2020 Hiren Vadalia <hiren.vadalia@altair.com> - 1.31
+- We are not using this changelog, see commit history

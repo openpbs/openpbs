@@ -127,7 +127,6 @@ notrans_dist_man8_MANS = \
 	man8/pbs_comm.8B \
 	man8/pbs.conf.8B \
 	man8/pbs_dataservice.8B \
-	man8/pbs_diag.8B \
 	man8/pbs_ds_password.8B \
 	man8/pbsfs.8B \
 	man8/pbs_hostn.8B \

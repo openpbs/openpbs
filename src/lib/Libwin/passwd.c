@@ -2349,7 +2349,7 @@ inGroups(char *gname, SID *gidlist[], int len)
  *		If 'ret_profile_path' is 0, then return the default local
  *		home directory under PBS:
  *			example:
- *		       C:\Documents and Settings\<username>\My Documents\PBS Pro
+ *		       C:\Documents and Settings\<username>\My Documents\PBS
  *
  * @par MT-Safe:        no
  * @par Side Effects:
@@ -2428,7 +2428,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	}
 
 	/* For internationalization, obtain "[PROFILE_PATH]\My Documents" */
-	/* to formulate default "[PROFILE PATH]\My Documents\PBS Pro" dir */
+	/* to formulate default "[PROFILE PATH]\My Documents\PBS" dir */
 	/* via a function call. */
 	/* "My Documents" in Portuguese is actually "Meu Documentos" */
 
@@ -2436,7 +2436,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	SHGetFolderPath(NULL, CSIDL_PERSONAL, userlogin,
 		SHGFP_TYPE_DEFAULT, personal_path);
 
-	sprintf(homestr, "%s\\PBS Pro", personal_path);
+	sprintf(homestr, "%s\\PBS", personal_path);
 
 
 	default_local_homedir_end:
@@ -2678,7 +2678,7 @@ getAssignedHomeDirectory(char *user)
 /* The Algorithm is as follows:						   */
 /* 	if [HOME DIRECTORY] is set, use it.                                */
 /*      else                                                               */
-/*          use [PROFILE PATH]\My Documents\PBS Pro                        */
+/*          use [PROFILE PATH]\My Documents\PBS                            */
 /*									   */
 /* NOTE: The returned path may not exist yet, so better to pass result to  */
 /*        CreateDirectory() under user context.                            */
@@ -4685,7 +4685,7 @@ add_pwentry(char *name,
 		log_err(errno, __func__, "no memory");
 		return NULL;
 	}
-	
+
 	if ((pwdn->pw_name = strdup(name)) == NULL) {
 		goto err;
 	}
@@ -4810,7 +4810,7 @@ logon_pw(char *username,
 		strcat(msg, msg2);
 		return NULL;
 	}
-	
+
 	if (passwd_cache_init == 0) {
 		CLEAR_HEAD(passwd_cache_ll);
 		passwd_cache_init = 1;

@@ -618,15 +618,15 @@ pbs_pmix_unpublish(
  * @note
  * The PMIx spec refers to the info parameter as job_info. PMIx refers to
  * an application or client as a job, whereas a job refers to a batch job
- * in PBS Pro nomenclature.
+ * in PBS nomenclature.
  */
 static pmix_status_t
 pbs_pmix_spawn(
-	const pmix_proc_t *proc, 
+	const pmix_proc_t *proc,
 	const pmix_info_t info[],
 	size_t ninfo,
 	const pmix_app_t apps[],
-	size_t napps, 
+	size_t napps,
 	pmix_spawn_cbfunc_t cbfunc,
 	void *cbdata)
 {

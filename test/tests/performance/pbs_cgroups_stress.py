@@ -63,7 +63,7 @@ class TestCgroupsStress(TestPerformance):
 /bin/true
 """
         self.cfg0 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],

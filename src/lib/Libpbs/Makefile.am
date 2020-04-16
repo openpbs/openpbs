@@ -222,7 +222,6 @@ libpbs_la_SOURCES = \
 	../Libifl/int_preempt_jobs.c \
 	../Libifl/list_link.c \
 	../Libifl/PBS_attr.c \
-	../Libifl/pbs_authors.c \
 	../Libifl/pbs_get_attribute_errors.c \
 	../Libifl/pbs_geterrmg.c \
 	../Libifl/pbs_geterrno.c \

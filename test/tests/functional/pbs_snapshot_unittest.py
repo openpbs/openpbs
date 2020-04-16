@@ -35,12 +35,12 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import time
-import os
 import json
+import os
+import time
 
-from tests.functional import *
 from ptl.utils.pbs_snaputils import *
+from tests.functional import *
 
 
 class TestPBSSnapshot(TestFunctional):
@@ -360,7 +360,7 @@ class TestPBSSnapshot(TestFunctional):
 
         if not (server_up or mom_up or comm_up or sched_up):
             # Skip the test
-            self.skipTest("No PBSPro daemons found on the system," +
+            self.skipTest("No PBS daemons found on the system," +
                           " skipping the test")
 
         with PBSSnapUtils(out_dir=self.parent_dir, acct_logs=num_acct_logs,

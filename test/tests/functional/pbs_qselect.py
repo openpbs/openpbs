@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestQselect(TestFunctional):
     """
-    Test suite for PBSPro's qselect command
+    Test suite for qselect command
     """
     def test_qselect_buffer_overflow(self):
         """

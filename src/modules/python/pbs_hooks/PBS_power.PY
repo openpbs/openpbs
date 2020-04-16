@@ -46,13 +46,14 @@ This hook will activate and deactivate a power profile contained
 in the 'eoe' value for a job.
 """
 
-import pbs
+import datetime
+import json
 import os
 import socket
 import time
-import datetime
-from subprocess import Popen, PIPE
-import json
+from subprocess import PIPE, Popen
+
+import pbs
 from pbs.v1._pmi_utils import _get_vnode_names, _svr_vnode
 
 
@@ -111,7 +112,7 @@ def parse_config_file():
     global max_concurrent_nodes
 
     try:
-        # This block will work for PBS Pro versions 13 and later
+        # This block will work for PBS versions 13 and later
         pbs_conf = pbs.get_pbs_conf()
         pbs_home = pbs_conf['PBS_HOME']
         pbs_exec = pbs_conf['PBS_EXEC']

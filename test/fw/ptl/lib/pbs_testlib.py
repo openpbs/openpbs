@@ -35,10 +35,13 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
+import ast
+import base64
 import collections
 import copy
 import datetime
 import grp
+import json
 import logging
 import os
 import pickle
@@ -52,9 +55,6 @@ import tempfile
 import threading
 import time
 import traceback
-import json
-import base64
-import ast
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from operator import itemgetter
@@ -5894,7 +5894,7 @@ class Server(PBSService):
             elif obj_type == SCHED:
                 bs = pbs_statsched(c, a, extend)
             elif obj_type == RSC:
-                # up to PBSPro 12.3 pbs_statrsc was not in pbs_ifl.h
+                # up to PBS 12.3 pbs_statrsc was not in pbs_ifl.h
                 bs = pbs_statrsc(c, id, a, extend)
             elif obj_type in (HOOK, PBS_HOOK):
                 if os.getuid() != 0:
@@ -12590,7 +12590,7 @@ class Scheduler(PBSService):
                     pname = None
                 # if an entity has a negative cgroup it should belong
                 # to the unknown resource, we work around the fact that
-                # PBS Pro (up to 13.0) sets this cgroup id to -1 by
+                # PBS (up to 13.0) sets this cgroup id to -1 by
                 # reassigning it to 0
                 # TODO: cleanup once PBS code is updated
                 if cgrp < 0:

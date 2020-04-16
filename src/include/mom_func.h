@@ -422,7 +422,7 @@ extern void recover_walltime(job *);
 
 /* For windows only, define the window station to use */
 /* for launching processes. */
-#define PBS_DESKTOP_NAME        "PBSProWS\\default"
+#define PBS_DESKTOP_NAME        "PBSWS\\default"
 
 /* max # of users that will be exempted from dorestrict_user process killing */
 #ifdef NAS /* localmod 008 */

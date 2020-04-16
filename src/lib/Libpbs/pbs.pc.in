@@ -4,7 +4,7 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: @PACKAGE_NAME@
-Description: Library for the PBSPro Workload Manager
+Description: Library for the PBS
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lpbs
 Cflags: -I${includedir}

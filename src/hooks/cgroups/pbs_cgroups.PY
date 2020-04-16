@@ -36,8 +36,8 @@
 # trademark licensing policies.
 
 """
-PBS Professional hook for managing cgroups on Linux execution hosts.
-This hook contains the handlers required for PBS Professional to support
+PBS hook for managing cgroups on Linux execution hosts.
+This hook contains the handlers required for PBS to support
 cgroups on Linux hosts that support them (kernel 2.6.28 and higher)
 
 This hook services the following events:
@@ -63,14 +63,15 @@ This hook services the following events:
 # amount of resource requested will not be avaiable to the hook if they
 # are not present.
 
+# if we are not on a Linux system then the hook should always do nothing
+# and accept, and certainly not try Linux-only module imports
+import platform
+
 # Module imports
 #
 # This one is needed to log messages
 import pbs
 
-# if we are not on a Linux system then the hook should always do nothing
-# and accept, and certainly not try Linux-only module imports
-import platform
 if platform.system() != 'Linux':
     pbs.logmsg(pbs.EVENT_DEBUG,
                'Cgroup hook not on supported OS '

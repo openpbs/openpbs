@@ -41,8 +41,6 @@ unsupporteddir = ${exec_prefix}/unsupported
 unsupported_PROGRAMS = pbs_rmget
 
 dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
 	pbs_loganalyzer \
 	pbs_stat \
 	pbs_config
@@ -57,7 +55,6 @@ dist_unsupported_DATA = \
 	run_pelog_shell.py \
 	NodeHealthCheck.json \
 	README \
-	pbs_dtj.8B \
 	pbs_jobs_at.8B \
 	pbs_rescquery.3B \
 	run_pelog_shell.ini \

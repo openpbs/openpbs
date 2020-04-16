@@ -63,7 +63,7 @@
  *	Verify that the name of an object conforms to the type provided.
  *
  * @see
- *	Formats chapter of the PBS Pro Reference Guide for further information.
+ *	Formats chapter of the PBS Reference Guide for further information.
  *
  * @param[in]	type - Object type
  * @param[in]	name - Object name to check
@@ -161,4 +161,3 @@ pbs_verify_object_name(int type, char *name)
 
 	return 0;
 }
-

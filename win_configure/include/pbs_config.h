@@ -95,7 +95,7 @@ typedef int		ssize_t;
  **	Config stuff.
  */
 /* PBS specific: Define to the path of the global configuration file */
-#define PBS_CONF_FILE "C:\\Program Files\\PBS Pro\\pbs.conf"
+#define PBS_CONF_FILE "C:\\Program Files (x86)\\PBS\\pbs.conf"
 #define NGROUPS_MAX		10
 
 /* The number of bytes in a double.  */
@@ -146,7 +146,7 @@ typedef int		ssize_t;
 #define H_ERRNO_DECLARED 1
 
 /* PBS specific: Define to the path of the qstat init file */
-#define QSTATRC_PATH "C:\\Program Files\\PBS Pro\\qstatrc"
+#define QSTATRC_PATH "C:\\Program Files (x86)\\PBS\\qstatrc"
 
 /* Use Python */
 #define	PYTHON	1

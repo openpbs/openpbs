@@ -37,9 +37,9 @@
 #
 
 #
-# This script is responsible for creating and/or updating the PBS Pro
+# This script is responsible for creating and/or updating the PBS
 # configuration file and the PBS_HOME directory. It does not start
-# any PBS Pro services. Additional configuration steps are performed
+# any PBS services. Additional configuration steps are performed
 # by pbs_habitat.
 #
 
@@ -148,7 +148,7 @@ create_conf() {
 			newpbs_home=''
 		else
 			echo "***"
-			echo "*** Unable to locate PBS Pro executables!"
+			echo "*** Unable to locate PBS executables!"
 			echo "***"
 			exit 1
 		fi
@@ -182,7 +182,7 @@ create_conf() {
 	# Add some additional required fields if not present.
 	if is_cray_xt ; then
 		if [ -z "$PBS_SERVER" ]; then
-			PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
+			PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 		fi
 		[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
@@ -203,7 +203,7 @@ create_conf() {
 			;;
 		execution)
 			if [ -z "$PBS_SERVER" ]; then
-				PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
+				PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 			fi
 			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
@@ -213,7 +213,7 @@ create_conf() {
 			;;
 		client)
 			if [ -z "$PBS_SERVER" ]; then
-				PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
+				PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 			fi
 			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
@@ -258,7 +258,7 @@ perform_checks() {
 	fi
 	if [ $fail -ne 0 ] ;then
 		echo "***"
-		echo "*** A required PBS Pro executable is missing. This could be"
+		echo "*** A required PBS executable is missing. This could be"
 		echo "*** due to values defined in $conf"
 		echo "*** Please edit or remove $conf and run the following command:"
 		echo "*** $0 $*"
@@ -272,7 +272,7 @@ perform_checks() {
 		echo "*** ======="
 		echo "*** NOTICE:"
 		echo "*** ======="
-		echo "*** PBS Pro commands have moved."
+		echo "*** PBS commands have moved."
 		echo "*** Old location: $oldpbs_exec"
 		echo "*** New location: $PBS_EXEC"
 		echo "*** Users will need to ensure their PATH and MANPATH are set correctly."
@@ -299,13 +299,13 @@ perform_checks() {
 	fi
 
 	# Issue a warning if PBS_SERVER is invalid
-	if [ -z "$PBS_SERVER" -o "$PBS_SERVER" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ]; then
+	if [ -z "$PBS_SERVER" -o "$PBS_SERVER" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ]; then
 		echo "*** ======="
 		echo "*** NOTICE:"
 		echo "*** ======="
 		echo "*** The value of PBS_SERVER in ${conf} is invalid."
-		echo "*** PBS_SERVER should be set to the PBS Pro server hostname."
-		echo "*** Update this value before starting PBS Pro."
+		echo "*** PBS_SERVER should be set to the PBS server hostname."
+		echo "*** Update this value before starting PBS."
 		echo "***"
 	fi
 }
@@ -330,7 +330,7 @@ install_pbsinitd() {
 			chmod 0644 /opt/modulefiles/pbs/${PBS_VERSION}
 		fi
 	elif [ $INSTALL_PACKAGE != client ] ; then
-		echo "*** Registering PBS Pro as a service."
+		echo "*** Registering PBS as a service."
 		case "$ostype" in
 		Linux)
 			if [ -d /etc/init.d ]; then
@@ -371,28 +371,9 @@ install_pbsinitd() {
 						echo "enable pbs.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
-					echo "*** Systemctl binary is not available; Failed to register PBS Pro as a service"
+					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
 				fi
 			fi
-			;;
-		Darwin)
-			dir="/Library/StartupItems/PBS"
-			initscript="$dir/PBS"
-			createdir "$dir" 0755
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			cat <<-EOF > $dir/StartupParameters.plist
-				{
-				  Description     = "Portable Batch System";
-				  Provides        = ("PBS");
-				  Requires        = ("Network");
-				  OrderPreference = "None";
-				  Messages =
-				  {
-				    start = "Starting PBSPro";
-				    stop  = "Stopping PBSPro";
-				  };
-				}
-			EOF
 			;;
 		esac
 		pbslibdir="${PBS_EXEC}/lib64"
@@ -486,7 +467,7 @@ create_home() {
 
 	# Configure PBS_HOME for server
 	if [ -x "$PBS_EXEC/sbin/pbs_server" ]; then
-		echo "*** The PBS Pro server has been installed in ${PBS_EXEC}/sbin."
+		echo "*** The PBS server has been installed in ${PBS_EXEC}/sbin."
 		createpath <<-EOF
 			0755 server_logs
 			1777 spool
@@ -520,7 +501,7 @@ create_home() {
 
 	# Configure PBS_HOME for scheduler
 	if [ -x "$PBS_EXEC/sbin/pbs_sched" ]; then
-		echo "*** The PBS Pro scheduler has been installed in ${PBS_EXEC}/sbin."
+		echo "*** The PBS scheduler has been installed in ${PBS_EXEC}/sbin."
 		createpath <<-EOF
 			0755 sched_logs
 			0750 sched_priv
@@ -553,7 +534,7 @@ create_home() {
 
 	# Configure PBS_HOME for pbs_comm
 	if [ -x "$PBS_EXEC/sbin/pbs_comm" ]; then
-		echo "*** The PBS Pro communication agent has been installed in ${PBS_EXEC}/sbin."
+		echo "*** The PBS communication agent has been installed in ${PBS_EXEC}/sbin."
 		createpath <<-EOF
 			0755 comm_logs
 			0750 server_priv
@@ -564,7 +545,7 @@ create_home() {
 
 	# Configure PBS_HOME for MOM
 	if [ -x "$PBS_EXEC/sbin/pbs_mom" ] ;then
-		echo "*** The PBS Pro MOM has been installed in ${PBS_EXEC}/sbin."
+		echo "*** The PBS MOM has been installed in ${PBS_EXEC}/sbin."
 		createpath <<-EOF
 			0755 aux
 			0700 checkpoint
@@ -585,14 +566,14 @@ create_home() {
 		grep "^\$clienthost.*${PBS_SERVER}" "$momconfig" >/dev/null
 		if [ $? -ne 0 ] ; then
 			echo "\$clienthost $PBS_SERVER" >> $momconfig
-			if [ "${PBS_SERVER}" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ]; then
+			if [ "${PBS_SERVER}" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ]; then
 				echo "***"
 				echo "*** ======="
 				echo "*** NOTICE:"
 				echo "*** ======="
 				echo "*** The clienthost entry for the server must be manually"
 				echo "*** modified in $momconfig"
-				echo "*** Update this value before starting PBS Pro."
+				echo "*** Update this value before starting PBS."
 			fi
 		fi
 		if is_cray_xt; then
@@ -656,7 +637,7 @@ server)
 	fi
 	if [ ! -x "$newpbs_exec/sbin/pbs_server" ]; then
 		echo "***"
-		echo "*** Unable to locate PBS Pro executables!"
+		echo "*** Unable to locate PBS executables!"
 		echo "***"
 		exit 1
 	fi
@@ -673,7 +654,7 @@ execution)
 	fi
 	if [ ! -x "$newpbs_exec/sbin/pbs_mom" ]; then
 		echo "***"
-		echo "*** Unable to locate PBS Pro executables!"
+		echo "*** Unable to locate PBS executables!"
 		echo "***"
 		exit 1
 	fi
@@ -690,7 +671,7 @@ client)
 	fi
 	if [ ! -x "$newpbs_exec/bin/qstat" ]; then
 		echo "***"
-		echo "*** Unable to locate PBS Pro executables!"
+		echo "*** Unable to locate PBS executables!"
 		echo "***"
 		exit 1
 	fi
@@ -721,7 +702,7 @@ if [ "$sameconf" != "true" ]; then
 	# Create newconf for the rpm install method.
 	create_conf
 
-	# Set defaultdir based on the installed location of PBS Pro. It controls whether
+	# Set defaultdir based on the installed location of PBS. It controls whether
 	# a symbolic link named "default" will be created or updated.
 	defaultdir=0
 	[ `basename "$PBS_EXEC"` = "$PBS_VERSION" ] && defaultdir=1
@@ -773,4 +754,3 @@ create_home
 	fi
 echo "*** End of ${0}"
 exit 0
-

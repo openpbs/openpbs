@@ -270,17 +270,17 @@ start_pbs() {
 
     # Perform sanity checks
     server_hostname=`get_server_hostname`
-    if [ -z "${server_hostname}" -o "${server_hostname}" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ] ; then
+    if [ -z "${server_hostname}" -o "${server_hostname}" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ] ; then
 	echo "***" >&2
-	echo "*** The hostname of the PBS Pro server in ${conf} is invalid." >&2
-	echo "*** Update the configuration file before starting PBS Pro." >&2
+	echo "*** The hostname of the PBS server in ${conf} is invalid." >&2
+	echo "*** Update the configuration file before starting PBS." >&2
 	echo "***" >&2
 	exit 1
     fi
     check_hostname "${server_hostname}"
     if [ $? -ne 0 ]; then
 	echo "***" >&2
-	echo "*** The PBS Pro server could not be found: $server" >&2
+	echo "*** The PBS server could not be found: $server" >&2
 	echo "*** This value must resolve to a valid IP address." >&2
 	echo "***" >&2
 	exit 1
@@ -344,7 +344,7 @@ start_pbs() {
     fi
 
     if [ $core_flag -eq 1 ];then
-        echo "Warning: PBS Professional has detected core file(s) in PBS_HOME that require attention!!!"
+        echo "Warning: PBS has detected core file(s) in PBS_HOME that require attention!!!"
         echo "Warning: Please inform your administrator immediately or contact Altair customer support"
     fi
 

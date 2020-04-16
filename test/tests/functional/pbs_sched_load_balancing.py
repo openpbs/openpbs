@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestSchedLoadBalancing(TestFunctional):
     """
-    Test suite for PBSPro's Scheduler load balancing
+    Test suite for Scheduler load balancing
     """
     def setUp(self):
         """

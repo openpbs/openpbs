@@ -37,15 +37,15 @@
 
 import os
 
-from tests.functional import *
 from ptl.lib.pbs_ifl_mock import *
+from tests.functional import *
 
 
 @tags('commands')
 class TestQmgr(TestFunctional):
 
     """
-    Test suite for PBSPro's qmgr command
+    Test suite for qmgr command
     """
 
     resc_flags = [None, 'n', 'h', 'nh', 'q', 'f', 'fh', 'm', 'mh']

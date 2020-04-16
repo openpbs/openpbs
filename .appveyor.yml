@@ -9,10 +9,8 @@ configuration:
   - Debug
   - Release
 before_build:
-  # - ps: choco install strawberryperl -y --no-progress --ignore-detected-reboot
-  # - ps: choco install wixtoolset -y --no-progress --ignore-detected-reboot
-  - cmd: refreshenv
   - cmd: call .appveyor\appveyor_helper.bat %CONFIGURATION%
 build_script:
   - cmd: msbuild win_configure\pbs_windows_VS2017.sln /p:configuration=%CONFIGURATION% /p:platform=Win32 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+test: off
 deploy: off

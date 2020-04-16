@@ -40,7 +40,7 @@ from tests.functional import *
 
 class TestSchedFifo(TestFunctional):
     """
-    Test suite for PBSPro's FIFO scheduling
+    Test suite for FIFO scheduling
     """
     @skipOnCpuSet
     def test_sched_fifo(self):

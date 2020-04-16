@@ -57,7 +57,7 @@ Parallel epilogues will not run unless the prologue ran successfully on the
 primary execution host. Only the primary execution host will have a value for
 resources_used in epilogue argument $7.
 
-We assume the same requirements as listed in PBS Professional 13.0
+We assume the same requirements as listed in PBS 13.0
 Administrator's Guide 11.5.4 for running all types of prologue and epilogue
 shell scripts:
     - The script must be in the PBS_HOME/mom_priv directory
@@ -123,10 +123,12 @@ Proceed at your own risk.
 
 """
 
-import sys
 import os
+import sys
 import time
+
 import pbs
+
 RERUN = 14
 DELETE = 6
 
@@ -173,12 +175,12 @@ def trace_hook(**kwargs):
         trace_in_reject = False
 
     # Associate hook events with the appropriate PBS constant. This is a list
-    # of all hook events as of PBS Pro 13.0. If the event does not exist, it is
+    # of all hook events as of PBS 13.0. If the event does not exist, it is
     # removed from the list.
     hook_events=['queuejob', 'modifyjob', 'movejob', 'runjob', 'execjob_begin',
-                 'execjob_prologue', 'execjob_launch', 'execjob_attach', 
-                 'execjob_preterm', 'execjob_epilogue', 'execjob_end', 
-                 'resvsub', 'provision', 'exechost_periodic', 
+                 'execjob_prologue', 'execjob_launch', 'execjob_attach',
+                 'execjob_preterm', 'execjob_epilogue', 'execjob_end',
+                 'resvsub', 'provision', 'exechost_periodic',
                  'exechost_startup', 'execjob_resize', 'execjob_abort',
                  'execjob_postsuspend', 'execjob_preresume']
 
@@ -312,7 +314,7 @@ def pbs_conf(pbs_key=None):
             program_files = os.environ['ProgramFiles(x86)']
         else:
             program_files = os.environ['ProgramFiles']
-        pbs_conf_file = '%s\\PBS Pro\\pbs.conf' % program_files
+        pbs_conf_file = '%s\\PBS\\pbs.conf' % program_files
     else:
         pbs_conf_file = '/etc/pbs.conf'
 
@@ -646,7 +648,7 @@ try:
     else:
         rejectjob("The %s does not have the correct " % (p + event) +
                   'permissions. See the section entitled, ' +
-                  '"Prologue and Epilogue Requirements" in the PBS Pro ' +
+                  '"Prologue and Epilogue Requirements" in the PBS ' +
                   "Administrator's Guide.", RERUN)
 
 except SystemExit:

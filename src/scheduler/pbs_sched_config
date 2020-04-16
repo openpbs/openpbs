@@ -180,7 +180,7 @@ nonprimetime_prefix: np_
 
 # job_sort_key
 #
-#	Sort jobs by any resource known to PBS Pro.
+#	Sort jobs by any resource known to PBS.
 #	job_sort_key allows jobs to be sorted by any resource.  This
 #	includes any admin defined resource resources.  The sort can be
 #	ascending (low to high) or descending (high to low).
@@ -205,7 +205,7 @@ nonprimetime_prefix: np_
 
 # node_sort_key
 #
-#	Sort nodes by any resource known to PBS Pro.
+#	Sort nodes by any resource known to PBS.
 #	node_sort_key is similar to job_sort_key but works for nodes.
 #	Nodes can be sorted on any resource.  The resource value
 #	sorted on is the resources_available amount.
@@ -249,7 +249,7 @@ provision_policy: "aggressive_provision"
 #
 # resources
 #
-#	Define resource limits to be honored by PBS Pro.
+#	Define resource limits to be honored by PBS.
 #	The scheduler will not allow a job to run if the amount of assigned
 #	resources exceeds the available amount.
 #
@@ -391,7 +391,7 @@ preemptive_sched: true	ALL
 #
 # peer_queue
 #
-#	Defines and enables the scheduler to obtain work from other PBS Pro
+#	Defines and enables the scheduler to obtain work from other PBS
 #	clusters.
 #
 #	Peer scheduling works by mapping a queue on a remote server to a
@@ -470,4 +470,3 @@ preemptive_sched: true	ALL
 #
 #	NO PRIME OPTION
 dedicated_prefix: ded
-

@@ -179,7 +179,6 @@ src/cmds/qstat
 src/cmds/qstop
 src/cmds/qsub
 src/cmds/qterm
-src/cmds/scripts/au-nodeupdate
 src/cmds/scripts/limits.pbs_mom
 src/cmds/scripts/limits.post_services
 src/cmds/scripts/pbs_habitat
@@ -207,8 +206,6 @@ src/tools/printjob_svr.bin
 src/tools/tracejob
 src/tools/wrap_tcl.sh
 src/tools/pbs_sleep
-src/unsupported/pbs_diag
-src/unsupported/pbs_dtj
 src/unsupported/pbs_rmget
 src/unsupported/renew-test/renew-test
 

@@ -7485,7 +7485,7 @@ char	*prog;
 	printf("To register as a service: %s -R\n", prog);
 	printf("To unregister the service: %s -U\n", prog);
 	printf("To run as a service: %s <other options...>\n", prog);
-	printf("To output PBSpro version and exit: %s --version\n", prog);
+	printf("To output version and exit: %s --version\n", prog);
 	printf("================================================================================\n");
 
 }

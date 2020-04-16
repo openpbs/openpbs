@@ -47,8 +47,8 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import sys
 import os
+import sys
 
 HAS_RTD = False
 try:
@@ -288,7 +288,7 @@ man_pages = [('index', 'pbstestlab', 'PbsTestLab Documentation',
 #  dir menu entry, description, category)
 texinfo_documents = [('index', 'PbsTestLab', 'PbsTestLab Documentation',
                       'Copyright (C) 1994-2020 Altair Engineering, Inc',
-                      'PbsTestLab', 'PBS Pro Testing and Benchmarking\
+                      'PbsTestLab', 'PBS Testing and Benchmarking\
                       Framework', 'Miscellaneous'), ]
 
 # Documents to append as an appendix to all manuals.

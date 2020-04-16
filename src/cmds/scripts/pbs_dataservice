@@ -57,7 +57,7 @@ get_db_user() {
 
 # The get_port function does the following:
 # Setting PBS_DATA_SERVICE_PORT based on availability  in following order:
-# 1. Set PBS_DATA_SERVICE_PORT to port provided by pbs 
+# 1. Set PBS_DATA_SERVICE_PORT to port provided by pbs
 # 2. Set PBS_DATA_SERVICE_PORT to port provided by pbs.conf
 # 3. Set PBS_DATA_SERVICE_PORT to port provided by /etc/services
 # 4. Set PBS_DATA_SERVICE_PORT to default port
@@ -66,7 +66,7 @@ get_port() {
 
 	if [ "$1" ]; then
 		PBS_DATA_SERVICE_PORT="$1"
-		
+
 	else
 		if [ -z "${PBS_DATA_SERVICE_PORT}" ]; then
 		    PBS_DATA_SERVICE_PORT=`awk '{if($1=="pbs_dataservice") {x=$2}} END {{split(x,a,"/")} {if ( a[2] == "tcp" ) print a[1]}}' /etc/services`
@@ -163,10 +163,10 @@ fi
 
 #
 # The check_status function does the following:
-# Checks what pg_ctl thinks about the database status. If pg_ctl says db is up, 
+# Checks what pg_ctl thinks about the database status. If pg_ctl says db is up,
 # just return 0 (running locally) else check if the datastore directory can be
 # locked.
-# If we cannot obtain exclusive lock, then return 2 
+# If we cannot obtain exclusive lock, then return 2
 #
 # Return code values:
 #	-1 - failed to execute
@@ -191,9 +191,9 @@ check_status() {
 
   if [ ${status} -eq 0 ]; then
 	echo "$res" | grep 'no server running'
-	if [ $? -eq 0 ]; then 
-		status=1 
-	else 
+	if [ $? -eq 0 ]; then
+		status=1
+	else
 		msg="PBS data service running locally"
 	fi
   else
@@ -226,11 +226,11 @@ oom_protect() {
 
 
 #
-# Launch monitoring by invoking the pbs_dataservice_monitor program 
-# with the "monitor" parameter. If the monitor returns a 0 exit status, it 
+# Launch monitoring by invoking the pbs_dataservice_monitor program
+# with the "monitor" parameter. If the monitor returns a 0 exit status, it
 # means it has been able to aquire a lock on a flag file, and so we can continue
 # to start the data service by calling pg_ctl.
-# This function also protects the database and the monitoring script from the 
+# This function also protects the database and the monitoring script from the
 # OOM on linux.
 # This function checks whether systemd (i.e. systemctl) is available on system or not?
 # If systemctl is available then register database processes with pbs.service
@@ -314,13 +314,13 @@ start_dataservice() {
 
 data_srv_mon="${PBS_EXEC}/sbin/pbs_ds_monitor"
 
-# 
+#
 # If second parameter is specified as "PBS" it means this was called from the PBS daemons
 # In such a case we do not want to be very verbose (as we only need the error code and msg)
 # When stop is called from command line we do a regular postgres stop, but when called from PBS
 # we do a "fast" stop of postgres. The "fast" stop disconnects any existing clients to ensure that
 # the postgres daemons are indeed stopped when PBS is stopped
-# 
+#
 
 case "$1" in
 	start|startasync)
@@ -340,7 +340,7 @@ case "$1" in
 					if [ ${ret} -eq ${version_mismatch} ]; then
 						echo "PBS database needs to be upgraded."
 						echo "Please follow the upgrade instructions in the release notes for the v18.1.2 release at:"
-						echo "https://github.com/PBSPro/pbspro/releases"
+						echo "https://github.com/openpbs/openpbs/releases"
 					fi
 				fi
 			fi
@@ -423,7 +423,7 @@ case "$1" in
 		fi
 		exit ${ret}
 		;;
-	
+
 	status)
 		check_status
 		ret=$?

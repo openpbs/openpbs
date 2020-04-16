@@ -397,7 +397,7 @@
 }
 
 {
-   From PBSPro (TPP layer) - suppress epoll_pwait() glibc bug
+   From PBS (TPP layer) - suppress epoll_pwait() glibc bug
    Memcheck:Param
    epoll_pwait(sigmask)
    fun:epoll_pwait
@@ -408,7 +408,7 @@
    fun:clone
 }
 {
-   From PBSPro (TPP layer) - suppress warning about uninitialized bytes in sendto
+   From PBS (TPP layer) - suppress warning about uninitialized bytes in sendto
    Memcheck:Param
    socketcall.sendto(msg)
    fun:send
@@ -419,7 +419,7 @@
    fun:clone
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory for pbs_db_get_svr_id
+   From PBS (server) - Suppress intentional unfreed memory for pbs_db_get_svr_id
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -429,7 +429,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from hook_recov
+   From PBS (server) - Suppress intentional unfreed memory from hook_recov
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -438,7 +438,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
+   From PBS (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:pbs_python_ext_alloc_python_script
@@ -447,7 +447,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
+   From PBS (server) - Suppress intentional unfreed memory from loading hook script at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -457,7 +457,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at hook_recov
+   From PBS (server) - Suppress intentional unfreed memory from allocating hook data at hook_recov
    Memcheck:Leak
    fun:malloc
    fun:hook_alloc
@@ -466,7 +466,7 @@
    fun:main
 }
 {
-   From PBSPro (all deamons) - Suppress memory allocated for log mutex
+   From PBS (all deamons) - Suppress memory allocated for log mutex
    Memcheck:Leak
    fun:calloc
    fun:log_mutex_lock
@@ -474,7 +474,7 @@
    fun:*
 }
 {
-   From PBSPro (mom) - Suppress intentional unfreed memory from python_script_alloc() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
+   From PBS (mom) - Suppress intentional unfreed memory from python_script_alloc() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
    Memcheck:Leak
    fun:malloc
    ...
@@ -488,7 +488,7 @@
    fun:main
 }
 {
-   From PBSPro (mom) - Suppress intentional unfreed memory from hook_recov() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
+   From PBS (mom) - Suppress intentional unfreed memory from hook_recov() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
    Memcheck:Leak
    fun:malloc
    ...
@@ -501,14 +501,14 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populae_attributes_to_python_class() that is tracked globally in pbs_resource_value_list.
+   From PBS (server) - Suppress intentional unfreed memory from pbs_python_populae_attributes_to_python_class() that is tracked globally in pbs_resource_value_list.
    Memcheck:Leak
    fun:malloc
    fun:pbs_python_populate_attributes_to_python_class
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head
+   From PBS (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head
    Memcheck:Leak
    fun:malloc
    fun:attrlist_alloc
@@ -519,7 +519,7 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
+   From PBS (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
    Memcheck:Leak
    fun:malloc
    fun:attrlist_alloc
@@ -530,7 +530,7 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
+   From PBS (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
    Memcheck:Leak
    fun:malloc
    fun:attrlist_alloc
@@ -541,7 +541,7 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
+   From PBS (server) - Suppress intentional unfreed memory from pbs_python_populate_attributes_to_python_class() that is tracked and freed in a local pbs_list_head.
    Memcheck:Leak
    fun:malloc
    fun:attrlist_alloc
@@ -552,7 +552,7 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
+   From PBS (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -565,7 +565,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
+   From PBS (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import
    Memcheck:Leak
    fun:malloc
    fun:pbs_python_ext_alloc_python_script
@@ -577,7 +577,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at mgr_hook_create
+   From PBS (server) - Suppress intentional unfreed memory from allocating hook data at mgr_hook_create
    Memcheck:Leak
    fun:malloc
    fun:hook_alloc
@@ -589,7 +589,7 @@
    fun:main
 }
 {
-   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook name at mgr_hook_create
+   From PBS (server) - Suppress intentional unfreed memory from allocating hook name at mgr_hook_create
    Memcheck:Leak
    fun:malloc
    fun:strdup
@@ -602,7 +602,7 @@
    fun:main
 }
 {
-   From PBSPro - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
    Memcheck:Leak
    fun:calloc
    fun:make_auth_config
@@ -610,7 +610,7 @@
    fun:main
 }
 {
-   From PBSPro - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
    Memcheck:Leak
    fun:malloc
    fun:strdup

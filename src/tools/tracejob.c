@@ -274,7 +274,7 @@ main(int argc, char *argv[])
 			"   -v : verbose mode - show more error messages\n");
 
 		printf("\n       %s --version\n", strip_path(argv[0]));
-		printf("   --version : display PBSPro version only\n\n");
+		printf("   --version : display version only\n\n");
 
 		printf("default prefix path = %s\n", pbs_conf.pbs_home_path);
 #if defined(FILTER_EXCESSIVE)
@@ -495,8 +495,8 @@ parse_log(FILE *fp, char *job, int ind)
 				log_lines[ll_cur_amm].date = strdup(tmp.date);
 				if ((ind != IND_ACCT) && (strchr(tmp.date, '.'))) {
 					/* Parse time string looking for high res logging.  If we don't parse 7 fields, we have a invalid log time. */
-					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d.%ld", &tms.tm_mon, 
-					    &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min, 
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d.%ld", &tms.tm_mon,
+					    &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min,
 					    &tms.tm_sec, &(log_lines[ll_cur_amm].highres)) != 7) {
 						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
 						log_lines[ll_cur_amm].highres = NO_HIGH_RES_TIMESTAMP;
@@ -504,14 +504,14 @@ parse_log(FILE *fp, char *job, int ind)
 						has_high_res_timestamp = 1;
 						if (tms.tm_year > 1900)
 							tms.tm_year -= 1900;
-						/* The number of months since January, 
+						/* The number of months since January,
  						 * in the range 0 to 11 for mktime()
  						 */
 						tms.tm_mon--;
 						log_lines[ll_cur_amm].date_time = mktime(&tms);
 					}
 				} else { /* Normal time string */
-					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday, 
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday,
 					    &tms.tm_year, &tms.tm_hour, &tms.tm_min, &tms.tm_sec) != 6) {
 						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
 					} else { /* We found all 6 fields, correctly formed time string */
@@ -904,4 +904,3 @@ filter_excess(int threshold)
 		}
 	}
 }
-

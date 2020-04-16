@@ -44,7 +44,7 @@ Purpose:
 
 Requirements:
 
-- PBS Pro vnodes created in qmgr must be named after a locally-valid
+- PBS vnodes created in qmgr must be named after a locally-valid
   alias for each login node.
 
  Some enhanced operations in a multi-Cray or mixed Cray/non-Cray
@@ -92,16 +92,17 @@ Requirements:
        hostname of a MoM node after installation.
 """
 
-import pbs
-import time
-import sys
+import fcntl
 import os
 import re
 import socket
-import fcntl
 import struct
+import sys
+import time
 from signal import SIGHUP
-from subprocess import Popen, PIPE
+from subprocess import PIPE, Popen
+
+import pbs
 
 XTHOSTNAME = "/etc/xthostname"
 APSTAT_CMD = "/opt/cray/alps/default/bin/apstat"
