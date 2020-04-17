@@ -3364,8 +3364,8 @@ sleep 300
         a = {'resources_available.ncpus': 1}
         for m in self.moms.values():
             # add checkpoint script
-            chk_file = m.add_checkpoint_abort_script(body=chk_script)
-            restart_file = m.add_checkpoint_restart_script(body=restart_script)
+            m.add_checkpoint_abort_script(body=chk_script)
+            m.add_restart_script(body=restart_script)
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
@@ -3396,7 +3396,7 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
-        time.sleep(5)      
+        time.sleep(5)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))

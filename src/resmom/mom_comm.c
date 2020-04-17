@@ -3253,9 +3253,10 @@ im_request(int stream, int version)
 			/* np is set from job_nodes_inner */
 
 
-			/* NULL value passed to hook_input.vnl */
-			/* means to assign */
-			/* vnode list using pjob->ji_host[].   */
+			/* 
+			 * NULL value passed to hook_input.vnl
+			 * means to assign vnode list using pjob->ji_host[].
+			 */
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
 
@@ -3275,10 +3276,11 @@ im_request(int stream, int version)
 				default:
 					/* a value of '0' means explicit reject encountered. */
 					if (hook_rc != 0) {
-						/* we've hit an internal error (malloc error, full disk, etc...), so */
-						/* treat this now like a  hook error so hook fail_action  */
-						/* will be consulted.  */
-						/* Before, behavior of an internal error was to ignore it! */
+						/* 
+						 * we've hit an internal error (malloc error, full disk, etc...), so 
+						 * treat this now like a  hook error so hook fail_action will be 
+						 * consulted. Before, behavior of an internal error was to ignore it!
+						 */
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
@@ -4329,9 +4331,10 @@ join_err:
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobid, "RESTART received");
 
-			/* NULL value passed to hook_input.vnl */
-			/* means to assign */
-			/* vnode list using pjob->ji_host[].   */
+			/* 
+			 * NULL value passed to hook_input.vnl means to assign
+			 * vnode list using pjob->ji_host[].
+			 */
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
 

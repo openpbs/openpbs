@@ -6235,9 +6235,10 @@ start_exec(job *pjob)
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) ||
 			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ChkptMig)) {
 
-			/* NULL value passed to hook_input.vnl */
-			/* means to assign */
-			/* vnode list using pjob->ji_host[].   */
+			/*
+			 * NULL value passed to hook_input.vnl means to assign
+			 * vnode list using pjob->ji_host[].
+			 */
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
 
@@ -6257,10 +6258,11 @@ start_exec(job *pjob)
 				default:
 					/* a value of '0' means explicit reject encountered. */
 					if (hook_rc != 0) {
-						/* we've hit an internal error (malloc error, full disk, etc...), so */
-						/* treat this now like a  hook error so hook fail_action  */
-						/* will be consulted.  */
-						/* Before, behavior of an internal error was to ignore it! */
+						/* 
+						 * we've hit an internal error (malloc error, full disk, etc...), so
+						 * treat this now like a  hook error so hook fail_action will be 
+						 * consulted. Before, behavior of an internal error was to ignore it!
+						 */
 						hook_errcode = PBSE_HOOKERROR;
 						send_hook_fail_action(last_phook);
 					}
