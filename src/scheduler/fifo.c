@@ -869,6 +869,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		comment[0] = '\0';
 		log_msg[0] = '\0';
 		qinfo = njob->job->queue;
+		sort_again = SORTED;
 
 		clear_schd_error(err);
 
