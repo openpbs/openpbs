@@ -135,8 +135,6 @@ class TestPbsNode(TestFunctional):
         # self.mom.start()
         # self.logger.info("**** MOM COMPLETE ****")
 
-
-
         # self.server.log_match("Node;%s;deleted at request of" % name,
         #     starttime=start_time)
 

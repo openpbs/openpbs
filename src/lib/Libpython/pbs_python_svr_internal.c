@@ -157,6 +157,7 @@ typedef struct _pbs_python_types_entry {
 #define  PP_ENV_IDX			26
 #define  PP_MANAGEMENT_IDX	27
 #define  PP_SERVER_ATTRIBUTE_IDX 28
+#define  PP_NODE_STATE_IDX	29
 
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
@@ -188,6 +189,7 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
 	{PY_TYPE_MANAGEMENT,		NULL},		 /* 27 */
 	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
+	{PY_TYPE_NODE_STATE,		NULL},		 /* 29 */
 
 
 	/* ADD ENTRIES ONLY BELOW, OR CHANGE THE PP_XXX_IDX above the table */
@@ -5085,6 +5087,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
 	PyObject *py_management_class = NULL;
+	PyObject *py_node_state_class = NULL;
 	PyObject *py_resv_class = NULL;
 	PyObject *py_env_class = NULL;
 	PyObject *py_varlist = NULL;
@@ -5812,7 +5815,11 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
 			goto event_set_exit;
 		}
-
+	} else if (hook_event == HOOK_EVENT_NODE_STATE) {
+		/* FIXME: */
+		LOG_ERROR_ARG2("%s:failed",
+			PY_TYPE_EVENT, PY_EVENT_PARAM_NODE_STATE);
+		goto event_set_exit;
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
 

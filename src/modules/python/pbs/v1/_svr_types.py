@@ -1478,6 +1478,55 @@ _management._connect_server = PbsAttributeDescriptor(
 management = _management
 
 
+#:------------------------------------------------------------------------
+#                  HOOK STATE TYPE
+#:-------------------------------------------------------------------------
+class _node_state:
+    """
+    This represents a hook state change.
+    """
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+    _attributes_hook_set = {}
+
+    def __init__(self, state, connect_server=None):
+        """__init__"""
+        self.state = state
+        # self.objtype = objtype
+        # self.objname = objname
+        # self.request_time = request_time
+        # self.reply_code = reply_code
+        # self.reply_auxcode = reply_auxcode
+        # self.reply_choice = reply_choice
+        # self.reply_text = reply_text
+        # self.attribs = attribs
+        self._readonly = True
+        self._connect_server = connect_server
+    #: m(__init__)
+
+    def __str__(self):
+        """String representation of the object"""
+        return "%s:%s:%s" % (
+            _pbs_v1.REVERSE_MGR_CMDS.get(self.state, self.cmd),
+            _pbs_v1.REVERSE_MGR_OBJS.get(self.objtype, self.objtype),
+            self.objname
+            )
+    #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the node_state object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
+
+_node_state.state = PbsAttributeDescriptor(_node_state, 'state', None, (int,))
+_node_state._connect_server = PbsAttributeDescriptor(
+    _node_state, '_connect_server', "", (str,))
+#: C(_management)
+
+# This exposes pbs.node_state() to be callable in a hook script
+node_state = _node_state
+
 
 #:------------------------------------------------------------------------
 #                  Reverse Lookup for _pv1mod_insert_int_constants
