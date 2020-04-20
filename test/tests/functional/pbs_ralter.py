@@ -542,7 +542,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         duration = 20
         shift = 10
-        offset = 10
+        offset = 60
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         new_start, new_end = self.alter_a_reservation(rid, start, end, shift,
