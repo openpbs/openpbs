@@ -213,8 +213,8 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1', attrop=PTL_AND, max_attempts=10)
         pbs_home = self.server.pbs_conf['PBS_HOME']
         self.du.run_copy(self.server.hostname,
-                         os.path.join(pbs_home, 'sched_priv'),
-                         os.path.join(pbs_home, 'sc1_new_priv'),
+                         src=os.path.join(pbs_home, 'sched_priv'),
+                         dest=s.path.join(pbs_home, 'sc1_new_priv'),
                          recursive=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_priv': '/var/spool/pbs/sc1_new_priv'},
@@ -276,15 +276,15 @@ class TestMultipleSchedulers(TestFunctional):
         msg = "sched_priv dir is not present for scheduler"
         self.assertTrue(ret['rc'], msg)
         self.du.run_copy(self.server.hostname,
-                         os.path.join(pbs_home, 'sched_priv'),
-                         os.path.join(pbs_home, 'sched_priv_sc5'),
+                         src=os.path.join(pbs_home, 'sched_priv'),
+                         dest=os.path.join(pbs_home, 'sched_priv_sc5'),
                          recursive=True, sudo=True)
         ret = self.scheds['sc5'].start()
         msg = "sched_logs dir is not present for scheduler"
         self.assertTrue(ret['rc'], msg)
         self.du.run_copy(self.server.hostname,
-                         os.path.join(pbs_home, 'sched_logs'),
-                         os.path.join(pbs_home, 'sched_logs_sc5'),
+                         src=os.path.join(pbs_home, 'sched_logs'),
+                         dest=os.path.join(pbs_home, 'sched_logs_sc5'),
                          recursive=True, sudo=True)
         ret = self.scheds['sc5'].start()
         self.scheds['sc5'].log_match(
@@ -2034,8 +2034,8 @@ e.accept()
             self.server.expect(RESV, attr, rid)
             partition = self.server.status(RESV, 'partition', id=rid)
             if (partition[0]['partition'] == 'P1'):
-                    old_end_time = a['reserve_end']
-                    modify_resv = rid
+                old_end_time = a['reserve_end']
+                modify_resv = rid
         # Modify the endtime of reservation confirmed on partition P1 and
         # make sure the node solution is correct.
         end_time = old_end_time + 60
