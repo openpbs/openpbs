@@ -679,7 +679,29 @@ tcp_pre_process(conn_t *conn)
 	char errbuf[LOG_BUF_SIZE];
 	int rc;
 
+	if (conn->cn_auth_config == NULL)
+		return 1;
+
 	DIS_tcp_funcs();
+	if (conn->cn_auth_config->encrypt_method[0] != '\0') {
+		rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
+		if (rc == (int)AUTH_STATUS_UNKNOWN)
+			return 1;
+
+
+		if (rc < (int)AUTH_STATUS_CTX_READY) {
+			errbuf[0] = '\0';
+			rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
+			if (errbuf[0] != '\0') {
+				if (rc != 0)
+					log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+				else
+					log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+			}
+			return rc;
+		}
+	}
+
 	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_AUTH);
 	if (rc == (int)AUTH_STATUS_UNKNOWN)
 		return 1;
@@ -688,23 +710,6 @@ tcp_pre_process(conn_t *conn)
 	if (rc < (int)AUTH_STATUS_CTX_READY) {
 		errbuf[0] = '\0';
 		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
-		if (errbuf[0] != '\0') {
-			if (rc != 0)
-				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
-			else
-				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
-		}
-		return rc;
-	}
-
-	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
-	if (rc == (int)AUTH_STATUS_UNKNOWN)
-		return 1;
-
-
-	if (rc < (int)AUTH_STATUS_CTX_READY) {
-		errbuf[0] = '\0';
-		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
 		if (errbuf[0] != '\0') {
 			if (rc != 0)
 				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
