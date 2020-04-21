@@ -822,7 +822,7 @@ class TestPbsResvAlter(TestFunctional):
         duration = 20
         shift = 10
         offset = 10
-        sleep = 25
+        sleep = 30
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               standing=True)
 
@@ -836,7 +836,7 @@ class TestPbsResvAlter(TestFunctional):
                                            shift, alter_e=True,
                                            confirm=False)[1]
 
-        self.check_resv_running(rid, duration, 0)
+        self.check_resv_running(rid, end - int(time.time()) + 1, True)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
         # Wait for the reservation occurrence to finish.
