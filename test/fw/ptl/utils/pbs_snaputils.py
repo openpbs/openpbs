@@ -893,7 +893,7 @@ class _PBSSnapUtils(object):
             self.sys_info[VMSTAT_OUT] = value
             value = (DF_H_PATH, ["df", "-h"])
             self.sys_info[DF_H_OUT] = value
-            value = (DMESG_PATH, ["dmesg"])
+            value = (DMESG_PATH, ["dmesg", "-T"])
             self.sys_info[DMESG_OUT] = value
             value = (PS_LEAF_PATH, ["ps", "-leaf"])
             self.sys_info[PS_LEAF_OUT] = value
