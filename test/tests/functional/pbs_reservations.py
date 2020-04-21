@@ -239,6 +239,7 @@ class TestReservations(TestFunctional):
 
         self.server.expect(RESV, resv_state, id=rid)
 
+    @skipOnCpuSet
     def test_degraded_standing_reservations(self):
         """
         Verify that degraded standing reservations are reconfirmed
@@ -248,6 +249,7 @@ class TestReservations(TestFunctional):
         self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
                                      rrule='freq=HOURLY;count=5')
 
+    @skipOnCpuSet
     def test_degraded_advance_reservations(self):
         """
         Verify that degraded advance reservations are reconfirmed
@@ -256,6 +258,7 @@ class TestReservations(TestFunctional):
         t = int(time.time())
         self.degraded_resv_reconfirm(start=t + 25, end=t + 625)
 
+    @skipOnCpuSet
     def test_degraded_standing_running_reservations(self):
         """
         Verify that degraded standing reservations are reconfirmed
@@ -265,6 +268,7 @@ class TestReservations(TestFunctional):
         self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
                                      rrule='freq=HOURLY;count=5', run=True)
 
+    @skipOnCpuSet
     def test_degraded_advance_running_reservations(self):
         """
         Verify that degraded advance reservations are not reconfirmed
@@ -274,6 +278,7 @@ class TestReservations(TestFunctional):
         self.degraded_resv_reconfirm(
             start=t + 25, end=t + 625, run=True)
 
+    @skipOnCpuSet
     def test_degraded_standing_reservations_fail(self):
         """
         Verify that degraded standing reservations are not
@@ -283,6 +288,7 @@ class TestReservations(TestFunctional):
         self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720,
                                             rrule='freq=HOURLY;count=5')
 
+    @skipOnCpuSet
     def test_degraded_advance_reservations_fail(self):
         """
         Verify that advance reservations are not reconfirmed if there
@@ -291,6 +297,7 @@ class TestReservations(TestFunctional):
         t = int(time.time())
         self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720)
 
+    @skipOnCpuSet
     def test_degraded_standing_running_reservations_fail(self):
         """
         Verify that degraded running standing reservations are not
@@ -301,6 +308,7 @@ class TestReservations(TestFunctional):
                                             rrule='freq=HOURLY;count=5',
                                             run=True)
 
+    @skipOnCpuSet
     def test_degraded_advance_running_reservations_fail(self):
         """
         Verify that advance running reservations are not reconfirmed if there
