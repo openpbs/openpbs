@@ -504,6 +504,8 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 
 	preq = alloc_br(PBS_BATCH_NodeState);
 	/* FIXME: check for NULL */
+	strncpy(preq->rq_host, pmom->mi_host, PBS_MAXHOSTNAME);
+	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
 	node_state = &preq->rq_ind.rq_node_state;
 	node_state->hostname = pmom->mi_host;
 	node_state->old_state = psvrmom->msr_state;

@@ -5081,6 +5081,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_que = NULL;
 	PyObject *py_resv = NULL;
 	PyObject *py_margs = NULL;
+	PyObject *py_nsargs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
 	PyObject *py_node_state = NULL;
@@ -5829,18 +5830,18 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				goto event_set_exit;
 			}
 
-			py_margs = Py_BuildValue("(skk)",
-				req_host,
+			py_nsargs = Py_BuildValue("(skk)",
+				rqj->hostname,
 				rqj->new_state,
 				rqj->old_state
 				); /* NEW ref */
 			Py_CLEAR(py_attr);
 
-			if (!py_margs) {
+			if (!py_nsargs) {
 				log_err(PBSE_INTERNAL, __func__, "could not build args list for node_state");
 				goto event_set_exit;
 			}
-			py_node_state = PyObject_CallObject(py_node_state_class, py_margs);
+			py_node_state = PyObject_CallObject(py_node_state_class, py_nsargs);
 
 			if (!py_node_state) {
 				pbs_python_write_error_to_log(__func__);
@@ -6343,6 +6344,7 @@ event_set_exit:
 	Py_CLEAR(py_pid);
 	Py_CLEAR(py_resvlist);
 	Py_CLEAR(py_margs);
+	Py_CLEAR(py_nsargs);
 	Py_CLEAR(py_management);
 	Py_CLEAR(py_node_state);
 	return (rc);

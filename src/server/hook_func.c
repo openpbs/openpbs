@@ -206,6 +206,7 @@ extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_management_hooks;
+extern pbs_list_head svr_node_state_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -3868,7 +3869,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	} else if (preq->rq_type == PBS_BATCH_NodeState) {
 		hook_event = HOOK_EVENT_NODE_STATE;
 		req_ptr.rq_node_state = (struct rq_node_state *)&preq->rq_ind.rq_node_state;
-		head_ptr = &svr_management_hooks;
+		head_ptr = &svr_node_state_hooks;
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
@@ -3900,6 +3901,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_Manager) {
 			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
+		} else if (preq->rq_type == PBS_BATCH_NodeState) {
+			phook_next = (hook *)GET_NEXT(phook->hi_node_state_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {

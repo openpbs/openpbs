@@ -39,9 +39,21 @@ import os
 import time
 import socket
 import logging
+import textwrap
+import datetime
 from pprint import pformat
 from tests.functional import *
 
+
+def get_hook_body(hook_msg):
+    hook_body = """
+    import pbs
+    e = pbs.event()
+    ns = e.node_state
+    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    """ % hook_msg
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
 
 @tags('smoke')
 class TestPbsNode(TestFunctional):
@@ -137,5 +149,53 @@ class TestPbsNode(TestFunctional):
 
         # self.server.log_match("Node;%s;deleted at request of" % name,
         #     starttime=start_time)
+
+        self.logger.info("---- TEST ENDED ----")
+
+
+    @requirements(num_moms=2)
+    def test_create_hook_and_delete(self):
+        """
+        Test:  this will test three things:
+        1.  The stopping and starting of a mom and the proper log messages.
+        2.  The testing of the hook
+        3.  The stopping and starting of a mom and the proper hook firing.
+        """
+        self.logger.info("---- TEST STARTED ----")
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+
+        attrs = {'event': 'node_state', 'enabled': 'True'}
+        hook_name_00 = 'a1234'
+        hook_msg_00 = 'running node_state create, hook, delete'
+        hook_body_00 = get_hook_body(hook_msg_00)
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+
+        self.logger.error("socket.gethostname():%s", socket.gethostname())
+
+        self.logger.error("dir(self.server):%s", str(dir(self.server)))
+        self.logger.error("***self.server.name:%s", str(self.server.name))
+        self.logger.error("self.server.moms:%s", str(self.server.moms))
+        for name, value in self.server.moms.items():
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    dir(value):    %s", dir(value))
+            self.logger.error("    ***stopping mom:%s", value)
+            value.stop()
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.logger.error("    ***restart  mom:%s", value)
+            value.restart()
+
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+
+            self.server.log_match(hook_msg_00, starttime=start_time)
 
         self.logger.info("---- TEST ENDED ----")

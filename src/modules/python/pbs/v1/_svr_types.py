@@ -1488,41 +1488,36 @@ class _node_state:
     attributes = PbsReadOnlyDescriptor('attributes', {})
     _attributes_hook_set = {}
 
-    def __init__(self, state, connect_server=None):
+    def __init__(self, hostname, new_state, old_state, connect_server=None):
         """__init__"""
-        self.state = state
-        # self.objtype = objtype
-        # self.objname = objname
-        # self.request_time = request_time
-        # self.reply_code = reply_code
-        # self.reply_auxcode = reply_auxcode
-        # self.reply_choice = reply_choice
-        # self.reply_text = reply_text
-        # self.attribs = attribs
+        self.hostname = hostname
+        self.new_state = new_state
+        self.old_state = old_state
         self._readonly = True
         self._connect_server = connect_server
     #: m(__init__)
 
     def __str__(self):
         """String representation of the object"""
-        return "%s:%s:%s" % (
-            _pbs_v1.REVERSE_MGR_CMDS.get(self.state, self.cmd),
-            _pbs_v1.REVERSE_MGR_OBJS.get(self.objtype, self.objtype),
-            self.objname
-            )
+        return "%s:%s->%s" % (self.hostname, self.old_state, self.new_state)
     #: m(__str__)
 
     def __setattr__(self, name, value):
         if _pbs_v1.in_python_mode():
             raise BadAttributeValueError(
-                "'%s' attribute in the node_state object is readonly" % (name,))
+                "'%s' attribute in the node state object is readonly" % (name,))
         super().__setattr__(name, value)
     #: m(__setattr__)
 
-_node_state.state = PbsAttributeDescriptor(_node_state, 'state', None, (int,))
+_node_state.hostname = PbsAttributeDescriptor(
+    _node_state, 'hostname', None, (str,))
+_node_state.new_state = PbsAttributeDescriptor(
+    _node_state, 'new_state', None, (int,))
+_node_state.old_state = PbsAttributeDescriptor(
+    _node_state, 'old_state', None, (int,))
 _node_state._connect_server = PbsAttributeDescriptor(
     _node_state, '_connect_server', "", (str,))
-#: C(_management)
+#: C(_node_state)
 
 # This exposes pbs.node_state() to be callable in a hook script
 node_state = _node_state
@@ -1536,6 +1531,7 @@ _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
+# FIXME: need reverse lookups for state bitmasks
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
         _pbs_v1.REVERSE_MGR_CMDS[value] = key
