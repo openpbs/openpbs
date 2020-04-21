@@ -90,6 +90,26 @@ pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
 
 /**
  * @brief
+ *	-Pass-through call to send alter Job request
+ *	really an instance of the "manager" request.
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+int
+pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend) {
+	return (*pfn_pbs_asyalterjob)(c, jobid, attrib, extend);
+}
+
+/**
+ * @brief
  * 	-pbs_confirmresv - this function is for exclusive use by the Scheduler
  *	to confirm an advanced reservation.
  *

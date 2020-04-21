@@ -689,6 +689,8 @@ extern int pbs_asyrunjob(int, char *, char *, char *);
 
 extern int pbs_alterjob(int, char *, struct attrl *, char *);
 
+extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
+
 extern int pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 extern int pbs_connect(char *);
@@ -771,6 +773,7 @@ extern preempt_job_info *pbs_preempt_jobs(int, char **);
 /* IFL function pointers */
 extern int (*pfn_pbs_asyrunjob)(int, char *, char *, char *);
 extern int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *);
+extern int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *);
 extern int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *);
 extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);
