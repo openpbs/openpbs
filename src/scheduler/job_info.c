@@ -1765,7 +1765,7 @@ int send_job_updates(int pbs_sd, resource_resv *job) {
  * 		send delayed attributes to the server for a job
  *
  * @param[in]	pbs_sd	-	server connection descriptor
- * @param[in]	job_name	-	name of job for pbs_alterjob()
+ * @param[in]	job_name	-	name of job for pbs_asyalterjob()
  * @param[in]	pattr	-	attrl list to update on the server
  *
  * @return	int
@@ -4755,7 +4755,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 
 	/* create attrl for estimated.exec_vnode to be passed as the 'extra' field
 	 * to update_job_attr().  This will cause both attributes to be updated
-	 * in one call to pbs_alterjob()
+	 * in one call to pbs_asyalterjob()
 	 */
 	attr.name = ATTR_estimated;
 	attr.resource = "exec_vnode";

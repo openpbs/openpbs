@@ -516,8 +516,6 @@ extern int pbs_rescreserve(int, char **, int, pbs_resource_t *);
 
 extern int pbs_rescrelease(int, pbs_resource_t);
 
-extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
-
 extern char *avail(int, char *);
 
 extern int totpool(int, int);
