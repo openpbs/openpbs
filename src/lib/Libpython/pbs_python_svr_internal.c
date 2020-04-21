@@ -5083,6 +5083,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_margs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
+	PyObject *py_node_state = NULL;
 
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
@@ -5817,6 +5818,43 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 	} else if (hook_event == HOOK_EVENT_NODE_STATE) {
 		/* FIXME: */
+		{
+			PyObject *py_attr = (PyObject *) NULL;
+			struct rq_node_state *rqj = req_params->rq_node_state;
+			py_node_state_class = pbs_python_types_table[PP_NODE_STATE_IDX].t_class;
+			if (!py_node_state_class) {
+				log_err(PBSE_INTERNAL, __func__, "failed to acquire note state class");
+				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
+					Py_None);
+				goto event_set_exit;
+			}
+
+			py_margs = Py_BuildValue("(skk)",
+				req_host,
+				rqj->new_state,
+				rqj->old_state
+				); /* NEW ref */
+			Py_CLEAR(py_attr);
+
+			if (!py_margs) {
+				log_err(PBSE_INTERNAL, __func__, "could not build args list for node_state");
+				goto event_set_exit;
+			}
+			py_node_state = PyObject_CallObject(py_node_state_class, py_margs);
+
+			if (!py_node_state) {
+				pbs_python_write_error_to_log(__func__);
+				log_err(PBSE_INTERNAL, __func__, "failed to create a python node state object");
+				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
+					Py_None);
+				goto event_set_exit;
+			}
+
+			rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
+				py_node_state);
+		}
+
+
 		LOG_ERROR_ARG2("%s:failed",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_NODE_STATE);
 		goto event_set_exit;
@@ -6306,6 +6344,7 @@ event_set_exit:
 	Py_CLEAR(py_resvlist);
 	Py_CLEAR(py_margs);
 	Py_CLEAR(py_management);
+	Py_CLEAR(py_node_state);
 	return (rc);
 }
 
