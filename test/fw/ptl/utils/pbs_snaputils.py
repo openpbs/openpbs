@@ -425,7 +425,7 @@ class ObfuscateSnapshot(object):
             self.logger.info("Total bad records found: " +
                              str(self.num_bad_acct_records))
 
-    def _replace_str_in_file(self, key, val, fpath):
+    def _replace_str_in_file(self, key, val, fpath, sudo=False):
         """
         Helper function to replace a given string (key) with another (val)
 
@@ -442,6 +442,8 @@ class ObfuscateSnapshot(object):
             alltext = fd.read()
             otext = re.sub(r'\b' + key + r'\b', val, alltext)
             fdout.write(otext)
+
+        self.du.rm(path=fpath, sudo=sudo)
         shutil.move(fout, fpath)
 
     def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
@@ -554,7 +556,7 @@ class ObfuscateSnapshot(object):
 
                 # Obfuscate values from val_obf_map
                 for key, val in self.val_obf_map.items():
-                    self._replace_str_in_file(key, val, fpath)
+                    self._replace_str_in_file(key, val, fpath, sudo=sudo_val)
                     if key in fname:
                         new_fname = fname.replace(key, val)
 

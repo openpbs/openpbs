@@ -129,14 +129,13 @@ req_authenResvPort(struct batch_request *preq)
 			if ((cp->cn_authen & (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL)) == 0) {
 				cp->cn_auth_config = make_auth_config(preq->rq_ind.rq_auth.rq_auth_method,
 									preq->rq_ind.rq_auth.rq_encrypt_method,
-									preq->rq_ind.rq_auth.rq_encrypt_mode,
 									(void *)log_event);
 				if (cp->cn_auth_config == NULL) {
 					req_reject(PBSE_SYSTEM, 0, preq);
 					return;
 				}
 
-				if (preq->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
+				if (preq->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
 					auth_def_t *encryptdef = get_auth(preq->rq_ind.rq_auth.rq_encrypt_method);
 					if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL) {
 						req_reject(PBSE_NOSUP, 0, preq);

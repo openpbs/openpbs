@@ -869,6 +869,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		comment[0] = '\0';
 		log_msg[0] = '\0';
 		qinfo = njob->job->queue;
+		sort_again = SORTED;
 
 		clear_schd_error(err);
 
@@ -945,10 +946,8 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			int cal_rc;
 #ifdef NAS /* localmod 034 */
 			int bf_rc;
-			sort_again = SORTED;
 			if ((bf_rc = site_should_backfill_with_job(policy, sinfo, njob, num_topjobs, num_topjobs_per_queues, err)))
 #else
-			sort_again = SORTED;
 			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs) != 0) {
 #endif
 				cal_rc = add_job_to_calendar(sd, policy, sinfo, njob, should_use_buckets);
@@ -975,6 +974,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 							break;
 					}
 #else
+					sort_again = MAY_RESORT_JOBS;
 					if (njob->job->is_preempted == 0 || sinfo->enforce_prmptd_job_resumption == 0) { /* preempted jobs don't increase top jobs count */
 						if (qinfo->backfill_depth == UNSPECIFIED)
 							num_topjobs++;

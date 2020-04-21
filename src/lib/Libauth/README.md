@@ -23,9 +23,6 @@
 			/* Name of encryption method (aka same value as PBS_ENCRYPT_METHOD in pbs.conf). This must be a null-terminated string. */
 			char *encrypt_method;
 
-			/* Encryption mode (aka same value as PBS_ENCRYPT_MODE in pbs.conf) */
-			int encrypt_mode;
-
 			/*
 			 * Function pointer to the logging method with the same signature as log_event from Liblog.
 			 * With this, the user of the authentication library can redirect logs from the authentication

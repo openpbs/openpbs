@@ -10,17 +10,17 @@ if [ -f /src/ci ]; then
   FIRST_TIME_BUILD=$1
   workdir=/src
   logdir=/logs
-  PBS_DIR=/pbspro
+  PBS_DIR=/pbssrc
 else
   PBS_DIR=$( readlink -f $0 | awk -F'/ci/' '{print $1}' )
 fi
 
 cd ${PBS_DIR}
 . /etc/os-release
-SPEC_FILE=${PBS_DIR}/pbspro.spec
+SPEC_FILE=$(/bin/ls -1 ${PBS_DIR}/*.spec)
 REQ_FILE=${PBS_DIR}/test/fw/requirements.txt
 if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
-  echo "Couldn't find pbspro.spec or requirement.txt"
+  echo "Couldn't find pbs spec file or ptl requirements file"
   exit 1
 fi
 
@@ -165,12 +165,12 @@ pbs_config --make-ug
 
 if [ "x${RUN_TESTS}" == "x1" ];then
   if [ "x${ID}" == "xcentos" ];then
-    export LC_ALL=en_US.utf-8 
+    export LC_ALL=en_US.utf-8
     export LANG=en_US.utf-8
   elif [ "x${ID}" == "xopensuse" ]; then
     export LC_ALL=C.utf8
   fi
-  ptl_tests_dir=/pbspro/test/tests
+  ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
   benchpress_opt="$( cat ${workdir}/.benchpress_opt )"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"

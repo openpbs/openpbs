@@ -214,7 +214,7 @@ authenticate_external(conn_t *conn, struct batch_request *request)
 	authdef = get_auth(request->rq_ind.rq_auth.rq_auth_method);
 	if (authdef == NULL)
 		return -2;
-	if (request->rq_ind.rq_auth.rq_encrypt_mode != ENCRYPT_DISABLE) {
+	if (request->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
 		encryptdef = get_auth(request->rq_ind.rq_auth.rq_encrypt_method);
 		if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL)
 			return -2;
@@ -222,7 +222,6 @@ authenticate_external(conn_t *conn, struct batch_request *request)
 
 	conn->cn_auth_config = make_auth_config(request->rq_ind.rq_auth.rq_auth_method,
 						request->rq_ind.rq_auth.rq_encrypt_method,
-						request->rq_ind.rq_auth.rq_encrypt_mode,
 						(void *)log_event);
 	if (conn->cn_auth_config == NULL) {
 		pbs_errno = PBSE_SYSTEM;
@@ -345,15 +344,22 @@ process_request(int sfds)
 #endif	/* PBS_MOM */
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "", msg_request, request->rq_type, request->rq_user, request->rq_host, sfds);
 
-	if (request->rq_type == PBS_BATCH_Authenticate && strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) != 0) {
-		rc = authenticate_external(conn, request);
-		if (rc == 0)
-			reply_ack(request);
-		else if (rc == -2)
+	if (request->rq_type == PBS_BATCH_Authenticate) {
+		if (!is_string_in_arr(pbs_conf.supported_auth_methods, request->rq_ind.rq_auth.rq_auth_method)) {
 			req_reject(PBSE_NOSUP, 0, request);
-		else
-			req_reject(PBSE_BADCRED, 0, request);
-		return;
+			close_client(sfds);
+			return;
+		}
+		if (strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) != 0) {
+			rc = authenticate_external(conn, request);
+			if (rc == 0) {
+				reply_ack(request);
+				return;
+			}
+			req_reject(rc == -2 ? PBSE_NOSUP : PBSE_BADCRED, 0, request);
+			close_client(sfds);
+			return;
+		}
 	}
 
 #ifndef PBS_MOM

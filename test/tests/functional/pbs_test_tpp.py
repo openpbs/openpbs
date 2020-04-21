@@ -44,14 +44,31 @@ class TestTPP(TestFunctional):
     """
     Test suite consists of tests to check the functionality of pbs_comm daemon
     """
+    node_list = []
+    default_client = None
 
     def setUp(self):
         TestFunctional.setUp(self)
         self.pbs_conf = self.du.parse_pbs_config(self.server.shortname)
         self.exec_path = os.path.join(self.pbs_conf['PBS_EXEC'], "bin")
+        if not self.default_client:
+            self.default_client = self.server.client
 
     def submit_job(self, set_attrib=None, exp_attrib=None, sleep=10,
                    job_script=False, interactive=False):
+        """
+        Submits job and check for the job attributes
+        :param set_attrib: Job attributes to set
+        :type set_attrib: Dictionary. Defaults to None
+        :param exp_attrib: Job attributes to verify
+        :type exp_attrib: Dictionary. Defaults to None
+        :param sleep: Job's sleep time
+        :type sleep: Integer. Defaults to 10s
+        :param job_script: Whether to submit a job using job script
+        :type job_script: Bool. Defaults to False
+        :param interactive: Whether to submit a interactive job
+        :type interactive: Bool. Defaults to False
+        """
         j = Job(TEST_USER)
         if set_attrib:
             j.set_attributes(set_attrib)
@@ -64,7 +81,7 @@ class TestTPP(TestFunctional):
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                        "bin", "pbsdsh")
             script = "#!/bin/sh\n%s sleep %s" % (pbsdsh_path, sleep)
-            j.create_script(script)
+            j.create_script(script, hostname=self.server.client)
         else:
             j.set_sleep_time(sleep)
         jid = self.server.submit(j)
@@ -73,6 +90,13 @@ class TestTPP(TestFunctional):
         return jid
 
     def submit_resv(self, set_attrib=None, exp_attrib=None):
+        """
+        Submits reservation and check for the reservation attributes
+        :param set_attrib: Reservation attributes to set
+        :type set_attrib: Dictionary. Defaults to None
+        :param exp_attrib: Reservation attributes to verify
+        :type exp_attrib: Dictionary. Defaults to None
+        """
         r = Reservation(TEST_USER)
         if set_attrib:
             r.set_attributes(set_attrib)
@@ -81,11 +105,110 @@ class TestTPP(TestFunctional):
             self.server.expect(RESV, exp_attrib, id=rid)
         return rid
 
+    def common_steps(self, job=False, interactive_job=False,
+                     resv=False, client=None):
+        """
+        This function contains common steps of submitting
+        different kind of jobs.
+        :param job: Whether to submit job
+        :type job: Bool. Defaults to False
+        :param interactive_job: Whether to submit a interactive job
+        :type interactive_job: Bool. Defaults to False
+        :param resv: Whether to submit reservation
+        :type resv: Bool. Defaults to False
+        :param client: Name of the client
+        :type client: String. Defaults to None
+        """
+        if client is None:
+            self.server.client = self.server.hostname
+        else:
+            self.server.client = client
+        if job:
+            # Submit job
+            jid = self.submit_job(set_attrib={ATTR_k: 'oe'},
+                                  exp_attrib={'job_state': 'R'})
+            self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
+            self.server.log_match("%s;Exit_status=0" % jid)
+            # Submit multi-chunk job
+            set_attrib = {'Resource_List.select': '2:ncpus=1',
+                          ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
+            jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
+                                  job_script=True)
+            self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
+            self.server.log_match("%s;Exit_status=0" % jid)
+        if interactive_job:
+            # Submit interactive job
+            set_attrib = {'Resource_List.select': '2:ncpus=1',
+                          ATTR_inter: '',
+                          ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
+            jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
+                                  interactive=True)
+            self.server.expect(JOB, 'queue', id=jid, op=UNSET)
+        if resv:
+            # Submit reservation
+            set_attrib = {'Resource_List.select': '2:ncpus=1',
+                          ATTR_l + '.place': 'scatter',
+                          'reserve_start': int(time.time() + 10),
+                          'reserve_end': int(time.time() + 120)}
+            exp_attrib = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            rid = self.submit_resv(set_attrib, exp_attrib)
+            resv_que = rid.split('.')[0]
+            # Submit job into reservation
+            set_attrib = {'Resource_List.select': '2:ncpus=1',
+                          ATTR_q: resv_que, ATTR_k: 'oe',
+                          ATTR_l + '.place': 'scatter'}
+            jid = self.submit_job(set_attrib, job_script=True)
+            # Wait for reservation to start
+            a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            self.server.expect(RESV, a, rid, offset=10)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def pbs_restart(self, host_name):
+        """
+        This function starts PBS daemons after updating pbs.conf file
+        :param host_name: Name of the host on which PBS
+                          has to be restarted
+        :type host_name: String
+        """
+        pi = PBSInitServices(hostname=host_name)
+        pi.restart()
+
+    def set_pbs_conf(self, host_name, conf_param):
+        """
+        This function sets attributes in pbs.conf file
+        :param host_name: Name of the host on which pbs.conf
+                          has to be updated
+        :type host_name: String
+        :param conf_param: Parameters to be updated in pbs.conf
+        :type conf_param: Dictionary
+        """
+        pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
+        self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
+                               confs=conf_param)
+        self.pbs_restart(host_name)
+
+    def unset_pbs_conf(self, host_name, conf_param):
+        """
+        This function unsets parameters in pbs.conf file
+        :param host_name: Name of the host on which pbs.conf
+                          has to be updated
+        :type host_name: String
+        :param conf_param: Parameters to be removed from pbs.conf
+        :type conf_param: List
+        """
+        pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
+        self.du.unset_pbs_config(hostname=host_name,
+                                 fin=pbsconfpath, confs=conf_param)
+        self.pbs_restart(host_name)
+
     @requirements(num_moms=2)
     def test_comm_with_mom(self):
         """
         This test verifies communication between server-mom and
         between moms through pbs_comm
+        Configuration:
+        Node 1 : Server, Mom, Sched, Comm
+        Node 2 : Mom
         """
         msg = "Need atleast 2 moms as input. use -pmoms=<m1>:<m2>"
         if len(self.moms) < 2:
@@ -110,38 +233,93 @@ class TestTPP(TestFunctional):
             msg2 = "Leaf registered address %s:15003" % ip
             mom.log_match(msg1)
             self.comm.log_match(msg2)
-        # Submit job
-        jid = self.submit_job(exp_attrib={'job_state': 'R'})
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
-        self.server.log_match("%s;Exit_status=0" % jid)
-        # Submit multi-chunk job
-        set_attrib = {'Resource_List.select': '2:ncpus=1',
-                      ATTR_l + '.place': 'scatter'}
-        jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
-                              job_script=True)
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
-        self.server.log_match("%s;Exit_status=0" % jid)
-        # Submit interactive job
-        set_attrib = {'Resource_List.select': '2:ncpus=1',
-                      ATTR_inter: '',
-                      ATTR_l + '.place': 'scatter'}
-        jid = self.submit_job(set_attrib, exp_attrib={'job_state': 'R'},
-                              interactive=True)
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET)
-        # Submit reservation
-        set_attrib = {'Resource_List.select': '2:ncpus=1',
-                      ATTR_l + '.place': 'scatter',
-                      'reserve_start': int(time.time() + 10),
-                      'reserve_end': int(time.time() + 120)}
-        exp_attrib = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        rid = self.submit_resv(set_attrib, exp_attrib)
-        resv_que = rid.split('.')[0]
-        # Submit job into reservation
-        set_attrib = {'Resource_List.select': '2:ncpus=1',
-                      ATTR_q: resv_que,
-                      ATTR_l + '.place': 'scatter'}
-        jid = self.submit_job(set_attrib, job_script=True)
-        # Wait for reservation to start
-        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-        self.server.expect(RESV, a, rid, offset=10)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.common_steps(job=True, interactive_job=True, resv=True)
+
+    @requirements(num_moms=2, num_comms=1, num_clients=1)
+    def test_client_with_mom(self):
+        """
+        This test verifies communication between server-mom,
+        server-client and between moms through pbs_comm
+        Configuration:
+        Node 1 : Server, Mom, Sched, Comm
+        Node 2 : Mom
+        Node 3 : Client
+        """
+        msg = "Need atleast 2 moms and 1 client as input. "
+        msg += "use -pmoms=<m1>:<m2>,client=<c1>"
+        if len(self.moms) < 2 and self.server.client == self.server.hostname:
+            self.skip_test(reason=msg)
+        self.momA = self.moms.values()[0]
+        self.momB = self.moms.values()[1]
+        self.hostA = self.momA.shortname
+        self.hostB = self.momB.shortname
+        self.hostC = self.server.client
+        nodes = [self.hostA, self.hostB, self.hostC]
+        self.node_list.extend(nodes)
+        self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': True})
+        self.common_steps(job=True, interactive_job=True)
+        self.common_steps(resv=True, client=self.hostB)
+
+    @requirements(num_moms=2, num_comms=1, num_clients=1)
+    def test_comm_non_server_host(self):
+        """
+        This test verifies communication between server-mom,
+        server-client and between moms through pbs_comm which
+        is running on non server host
+        Configuration:
+        Node 1 : Server, Mom, Sched
+        Node 2 : Client
+        Node 3 : Mom
+        Node 4 : Comm
+        """
+        print("no_comm_on_server=True")
+        msg = "Need atleast 2 moms and a comm installed on host"
+        msg += " other than server host"
+        if len(self.moms) < 2 or len(self.comms) < 1:
+            self.skip_test(reason=msg)
+        self.momA = self.moms.values()[0]
+        self.momB = self.moms.values()[1]
+        self.comm1 = self.comms.values()[0]
+        self.hostA = self.momA.shortname
+        self.hostB = self.server.client
+        self.hostC = self.momB.shortname
+        self.hostD = self.comm1.shortname
+        nodes = [self.hostA, self.hostB, self.hostC, self.hostD]
+        self.node_list.extend(nodes)
+        a = {'PBS_START_COMM': '0', 'PBS_START_MOM': '1',
+             'PBS_LEAF_ROUTERS': self.hostD}
+        self.set_pbs_conf(host_name=self.server.hostname, conf_param=a)
+        a = {'PBS_LEAF_ROUTERS': self.hostD}
+        self.set_pbs_conf(host_name=self.hostC, conf_param=a)
+        self.common_steps(job=True, resv=True)
+        self.common_steps(interactive_job=True, client=self.hostB)
+
+    @requirements(num_moms=2, no_mom_on_server=True)
+    def test_mom_non_server_host(self):
+        """
+        This test verifies communication between server-mom,
+        between moms which are running on non server host
+        through pbs_comm.
+        Configuration:
+        Node 1 : Server, Sched, Comm
+        Node 2 : Mom
+        Node 3 : Mom
+        """
+        msg = "Need atleast 2 moms which are running on a "
+        msg += " non server host"
+        if len(self.moms) < 2 or self.server.shortname in self.moms.values():
+            self.skip_test(reason=msg)
+        self.momA = self.moms.values()[0]
+        self.momB = self.moms.values()[1]
+        self.hostA = self.momA.shortname
+        self.hostB = self.momB.shortname
+        self.common_steps(job=True, resv=True, client=self.hostA)
+        self.common_steps(job=True, interactive_job=True, client=self.hostB)
+
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+        conf_param = ['PBS_LEAF_ROUTERS']
+        for host in self.node_list:
+            self.unset_pbs_conf(host, conf_param)
+        self.node_list.clear()
+        self.server.client = self.default_client

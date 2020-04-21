@@ -374,3 +374,40 @@ class TestFairshare(TestFunctional):
         fs_usage = int(fs.usage)
         self.assertEqual(fs_usage, 1,
                          "Fairshare usage %d not equal to 1" % fs_usage)
+
+    def test_fairshare_topjob(self):
+        """
+        Test that jobs are run in the augmented fairshare order after a topjob
+        is added to the calendar
+        """
+        self.scheduler.set_sched_config({'fair_share': 'True'})
+        self.scheduler.set_sched_config({'fairshare_usage_res': 'ncpus'})
+        self.scheduler.set_sched_config({'strict_ordering': 'True'})
+        self.scheduler.add_to_resource_group(TEST_USER, 11, 'root', 10)
+        self.scheduler.add_to_resource_group(TEST_USER1, 12, 'root', 10)
+        self.scheduler.add_to_resource_group(TEST_USER2, 13, 'root', 10)
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 5},
+                            id=self.mom.shortname)
+        a = {'Resource_List.select': '5:ncpus=1'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        j2 = Job(TEST_USER1, attrs=a)
+        jid2 = self.server.submit(j2)
+        j3 = Job(TEST_USER1, attrs=a)
+        jid3 = self.server.submit(j3)
+        j4 = Job(TEST_USER2, attrs=a)
+        jid4 = self.server.submit(j4)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.scheduler.log_match(jid2 + ';Job is a top job and will run at')
+        c = self.scheduler.cycles(lastN=1)[0]
+        jorder = [jid2, jid4, jid3]
+        jorder = [j.split('.')[0] for j in jorder]
+        msg = 'Jobs ran out of order'
+        self.assertEqual(jorder, c.political_order, msg)

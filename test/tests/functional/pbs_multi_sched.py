@@ -2015,6 +2015,7 @@ e.accept()
         self.assertIn("hook 'h1' encountered an exception",
                       e.exception.msg[0])
 
+    @skipOnCpuSet
     def test_resv_alter(self):
         """
         Test if a reservation confirmed by a multi-sched can be altered by the
@@ -2078,7 +2079,6 @@ e.accept()
         # Add two nodes to partition P1 and turn off scheduling for all other
         # schedulers serving partition P2 and P3. Make scheduler sc1 serve
         # only partition P1 (vnode[0], vnode[1]).
-        self.common_setup()
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, NODE, p1, id="vnode[1]")
         self.server.expect(SCHED, p1, id="sc1")
@@ -2142,6 +2142,7 @@ e.accept()
         Test degraded reservation gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200)
 
@@ -2150,6 +2151,7 @@ e.accept()
         Test degraded running reservation gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True)
 
@@ -2158,6 +2160,7 @@ e.accept()
         Test degraded standing resv gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200,
                                      rrule='FREQ=HOURLY;COUNT=2')
@@ -2167,6 +2170,7 @@ e.accept()
         Test degraded running standing resv gets reconfirmed on a different
         node of the same partition in multi-sched environment
         """
+        self.common_setup()
         now = int(time.time())
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')

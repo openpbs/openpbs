@@ -48,7 +48,7 @@ class Test_RootOwnedScript(TestFunctional):
         """
         Set up the parameters required for Test_RootOwnedScript
         """
-        if os.getuid() != 0:
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
             self.skipTest("Test need to run as root")
         TestFunctional.setUp(self)
         mom_conf_attr = {'$reject_root_scripts': 'true'}
@@ -63,8 +63,7 @@ class Test_RootOwnedScript(TestFunctional):
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
         # Make sure local mom is ready to run jobs
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
-        self.server.expect(VNODE, a, count=True,
-                           max_attempts=10, interval=2)
+        self.server.expect(VNODE, a, max_attempts=10, interval=2)
 
     def test_root_owned_script(self):
         """
@@ -156,3 +155,29 @@ class Test_RootOwnedScript(TestFunctional):
         ja_comment = "Job Array Held, too many failed attempts to run subjob"
         self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
                            ja_comment)}, attrop=PTL_AND, id=jid)
+
+    def test_root_owned_job_pbs_attach(self):
+        """
+        submit a job as root and test pbs_attach feature.
+        """
+        mom_conf_attr = {'$reject_root_scripts': 'false'}
+        self.mom.add_config(mom_conf_attr)
+        self.mom.restart()
+        qmgr_attr = {'acl_roots': ROOT_USER}
+        self.server.manager(MGR_CMD_SET, SERVER, qmgr_attr)
+        pbs_attach = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                  'bin', 'pbs_attach')
+
+        # Job script
+        test = []
+        test += ['#PBS -l select=ncpus=1\n']
+        test += ['%s -j $PBS_JOBID -P -s /bin/sleep 30\n' % pbs_attach]
+
+        # Submit a job
+        j = Job(ROOT_USER)
+        j.create_script(body=test)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+        msg_expected = ".+%s;pid.+attached as task.+" % jid
+        s = self.mom.log_match(msg_expected, regexp=True, max_attempts=10)

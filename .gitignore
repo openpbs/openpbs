@@ -264,7 +264,7 @@ src/cmds/scripts/pbs.service
 src/lib/Libpbs/pbs.pc
 
 # rpm spec file
-pbspro.spec
+*.spec
 
 # Other archive file types
 *.tar
