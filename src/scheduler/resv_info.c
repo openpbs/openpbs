@@ -1655,18 +1655,33 @@ int
 check_vnodes_down(resource_resv *resv, int *tot_vnodes, char *names_of_down_vnodes)
 {
 	int nn_length; /* number of characters allowable in log buffer */
-	int vnodes_down; /* number of unavailable vnodes */
+	int vnodes_down = 0; /* number of unavailable vnodes */
 	int j;
+	int tot_chk_cnt;
+	int chk_ind = 0;
+	chunk *chk;
 
 	if (resv == NULL || resv->nspec_arr == NULL || tot_vnodes == NULL)
 		return -2;
 
-	*tot_vnodes = 0; /* initialize the total number of vnodes */
-	vnodes_down = 0;
+	*tot_vnodes = 0;
+	chk = resv->select->chunks[0];
+	/* check chunk in the select spec has the number of chunks of that type we need.
+	 * tot_chnk_cnt is the number of chunks of the previous chunks plus the number of this chunk.
+	 * Once we've reached this number of nodes we know we have to move onto the next chunk.
+	 */
+	tot_chk_cnt = chk->num_chunks;
 
 	for (j = 0; resv->nspec_arr[j] != NULL; j++) {
 		node_info *ninfo = resv->nspec_arr[j]->ninfo;
 		(*tot_vnodes)++;
+
+		if (j == tot_chk_cnt) {
+			chk_ind++;
+			chk = resv->select->chunks[chk_ind];
+			tot_chk_cnt += chk->num_chunks;
+		}
+
 		if (ninfo->is_down || ninfo->is_offline || ninfo->is_stale || ninfo->is_unknown) {
 			int k, m;
 			/* We can't reconfirm a reservation if there is a running job on one of our unavailable nodes */
@@ -1680,6 +1695,12 @@ check_vnodes_down(resource_resv *resv, int *tot_vnodes, char *names_of_down_vnod
 
 			vnodes_down++;
 			resv->nspec_arr[j]->ninfo = NULL;
+			/*
+			 * The nspec_arr only has consumable resources.  When replacing a vnode we need
+			 * to make sure to replace it with the right type of node matching the non-consumables
+			 */
+			free_resource_req_list(resv->nspec_arr[j]->resreq);
+			resv->nspec_arr[j]->resreq = dup_resource_req_list(chk->req);
 			if (names_of_down_vnodes != NULL) {
 				/* -4 accounts for the trailing "...\0" for truncation */
 				nn_length = MAXVNODELIST - strlen(names_of_down_vnodes) - 4;
