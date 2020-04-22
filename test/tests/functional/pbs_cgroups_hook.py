@@ -3338,11 +3338,6 @@ exit 0
         job restarts, execjob_begin cgroups hook gets called on both mother
         superior and sister moms.
         """
-        # Skip test if number of mom provided is not equal to two
-        if len(self.moms) != 2:
-            self.skipTest("test requires two MoMs as input, " +
-                          "use -p moms=<mom1>:<mom2>")
-
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
