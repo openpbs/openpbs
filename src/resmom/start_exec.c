@@ -6074,7 +6074,6 @@ start_exec(job *pjob)
 	struct	sockaddr_in	saddr;
 	hnodent		*np;
 	pbs_list_head	phead;
-
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
 	int hook_errcode = 0;

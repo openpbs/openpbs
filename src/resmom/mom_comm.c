@@ -4337,12 +4337,10 @@ join_err:
 			 */
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
-
 			mom_hook_output_init(&hook_output);
 			hook_output.reject_errcode = &hook_errcode;
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
-
 			
 			hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
 					PBS_MOM_SERVICE_NAME, mom_host,
