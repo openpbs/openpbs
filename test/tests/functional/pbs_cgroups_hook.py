@@ -3331,6 +3331,77 @@ exit 0
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
+    @requirements(num_moms=2)
+    def test_checkpoint_restart(self):
+        """
+        Test to make sure that when a preempted and checkpointed multi-node
+        job restarts, execjob_begin cgroups hook gets called on both mother
+        superior and sister moms.
+        """
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "express")
+
+        # have scheduler preempt lower priority jobs using 'checkpoint'
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # have moms do checkpoint_abort
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        restart_script = """#!/bin/bash
+sleep 300
+"""
+        a = {'resources_available.ncpus': 1}
+        for m in self.moms.values():
+            # add checkpoint script
+            m.add_checkpoint_abort_script(body=chk_script)
+            m.add_restart_script(body=restart_script)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
+
+        # submit multi-node job
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.set_sleep_time(300)
+        jid1 = self.server.submit(j1)
+        time.sleep(5)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
+        # Submit an express queue job requesting needing also 2 nodes
+        a[ATTR_q] = 'express'
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(300)
+        jid2 = self.server.submit(j2)
+        time.sleep(5)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
+        # delete express queue job
+        self.server.delete(jid2)
+        time.sleep(5)
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
+        self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
+        self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
     def test_cpu_controller_enforce_default(self):
         """
         Test an enabled cgroup 'cpu' controller with quotas enforced
