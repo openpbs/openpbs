@@ -68,5 +68,6 @@ class TestMomMockRun(TestFunctional):
         self.server.accounting_match(msg=used_ncpus, id=jid)
         used_mem = "resources_used.mem=5mb"
         self.server.accounting_match(msg=used_mem, id=jid)
-        used_walltime = "resources_used.walltime=00:00:05"
-        self.server.accounting_match(msg=used_walltime, id=jid)
+        used_walltime = "resources_used.walltime=00:00:00"
+        self.server.accounting_match(
+            msg=used_walltime, existence=False, id=jid)
