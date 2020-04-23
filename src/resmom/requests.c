@@ -2954,41 +2954,44 @@ req_cpyfile(struct batch_request *preq)
 	addpid(cpyinfo->pio.pi.hProcess);
 
 	snprintf(buf, sizeof(buf)-1, "path_log=%s\n", path_log);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_spool=%s\n", path_spool);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_undeliv=%s\n", path_undeliv);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_checkpoint=%s\n", path_checkpoint);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "pbs_jobdir=%s\n", pbs_jobdir);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "actual_homedir=%s\n",
 		(pjob ? (pjob->ji_grpcache ? pjob->ji_grpcache->gc_homedir : "") : actual_homedir));
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "mom_host=%s\n", mom_host);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "log_file=%s\n", (log_file ? log_file : ""));
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "log_event_mask=%ld\n", *log_event_mask);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "direct_write=%d\n", direct_write);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	send_pcphosts(&cpyinfo->pio, pcphosts);
-	send_rq_cpyfile_cred(&cpyinfo->pio, rqcpf);
+
+	if (!send_rq_cpyfile_cred(&cpyinfo->pio, rqcpf)) {
+		log_err(-1, __func__, "Failed to send data");
+	}
 
 	snprintf(buf, sizeof(buf)-1, "quit\n");
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	chdir(mom_home);
 }
