@@ -664,8 +664,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			if [ $ret -eq 2 ]; then
 				echo "It appears that PostgreSQL has been upgraded independently of PBS."
 				echo "The PBS database must be manually upgraded. Please refer to the"
-				echo "instructions in the release notes for version @PBS_VERSION@ located here:"
-				echo "https://github.com/openpbs/openpbs/releases"
+				echo "documentation/release notes for details."
 			else
 				echo "Failed to upgrade PBS Datastore"
 			fi

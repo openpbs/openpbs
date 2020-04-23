@@ -339,8 +339,7 @@ case "$1" in
 					cat $log_file 2> /dev/null
 					if [ ${ret} -eq ${version_mismatch} ]; then
 						echo "PBS database needs to be upgraded."
-						echo "Please follow the upgrade instructions in the release notes for the v18.1.2 release at:"
-						echo "https://github.com/openpbs/openpbs/releases"
+						echo "Consult the documentation/release notes for details."
 					fi
 				fi
 			fi
