@@ -186,7 +186,7 @@ encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_enco
 	BIO_write(mem_obj1, buffer, buffer_len);
 	(void)BIO_flush(mem_obj1);
 	buf_len = BIO_get_mem_data(mem_obj1, &buf);
-	if (buf_len < 0)
+	if (buf_len <= 0)
 		return 1;
 	*ret_encoded_data = (char *)malloc(buf_len + 1);
 	if (*ret_encoded_data == NULL) {
@@ -224,15 +224,15 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 	input_len = strlen(buffer);
 	if (input_len == 0)
 		return 1;
-	if ((buffer[input_len-1] == '=') && (buffer[input_len-2] == '=')) {
+	if ((buffer[input_len - 1] == '=') && (buffer[input_len - 2] == '=')) {
 		char_padding = 2;
 		padding_enabled = 0;
 	}
 	if (padding_enabled) {
-		if (buffer[input_len-1] == '=')
+		if (buffer[input_len - 1] == '=')
 			char_padding = 1;
 	}
-	decode_length = ((input_len*3)/4 - char_padding);
+	decode_length = ((input_len * 3)/4 - char_padding);
 	*ret_decoded_data = (unsigned char*)malloc(decode_length + 1);
 	if (*ret_decoded_data == NULL)
 		return 1;
