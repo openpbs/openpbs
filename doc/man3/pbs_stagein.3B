@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_stagein 3B "3 March 2015" Local "PBS Professional"
+.TH pbs_stagein 3B "3 March 2015" Local "PBS"
 .SH NAME
 pbs_stagein - request that files for a PBS batch job be staged in.
 .SH SYNOPSIS
@@ -50,7 +50,7 @@ A
 .I "stage in"
 batch request is generated and sent to the server over the connection
 specified by
-.I connect 
+.I connect
 which is the return value of \f3pbs_connect\f1().
 .LP
 This request directs the server to begin the stage in of files specified in the
@@ -68,7 +68,7 @@ the form:
 .LP
 The argument,
 .I location ,
-if not the null pointer or null string, specifies the location where the 
+if not the null pointer or null string, specifies the location where the
 job will  be run and hence to where the files will be staged.
 The location is the name of a host in the cluster managed by the server.
 If the job is then directed to run at different location, the run request will

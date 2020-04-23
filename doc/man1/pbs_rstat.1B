@@ -33,15 +33,15 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rstat 1B "15 October 2019" Local "PBS Professional"
+.TH pbs_rstat 1B "15 October 2019" Local "PBS"
 .SH NAME
-.B pbs_rstat 
+.B pbs_rstat
 \- show status of PBS advance, standing, or maintenance reservations
 .SH SYNOPSIS
-.B pbs_rstat 
+.B pbs_rstat
 [-B] [-F] [-S] [<reservation ID>...]
 .br
-.B pbs_rstat 
+.B pbs_rstat
 --version
 .SH DESCRIPTION
 The
@@ -60,9 +60,9 @@ The
 .B pbs_rstat
 command displays output in any of brief, short, or full formats.
 
-See the 
-.B pbs_resv_attributes(7B) 
-man page for information about reservation attributes, and the 
+See the
+.B pbs_resv_attributes(7B)
+man page for information about reservation attributes, and the
 "States" chapter in the PBS Professional Reference Guide.
 
 .SH OPTIONS
@@ -70,31 +70,31 @@ man page for information about reservation attributes, and the
 Brief output.  Displays each reservation identifier only.
 
 .IP "-F" 10
-Full output.  Displays all reservation attributes that are not set to 
+Full output.  Displays all reservation attributes that are not set to
 the default value.  Users without manager or operator privilege
 cannot print custom resources which were created to be invisible to users.
 
 .IP "-S" 10
-Short output.  Displays a table showing the name, queue, owner, state, 
+Short output.  Displays a table showing the name, queue, owner, state,
 start time, duration, and end time of each reservation.
 
 .IP "--version" 10
-The 
+The
 .B pbs_rstat
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .IP "(no options)" 10
-Short output.  Same behavior as 
-.I -S 
+Short output.  Same behavior as
+.I -S
 option.
 
 .SH OPERANDS
-The 
-.B pbs_rstat 
+The
+.B pbs_rstat
 command accepts one or more
 .I reservation ID
-operands.  
+operands.
 .br
 
 Format for an advance reservation:
@@ -113,7 +113,7 @@ Format for a maintenance reservation:
 .RE
 
 
-.I @<remote server> 
+.I @<remote server>
 specifies a reservation at a server other than the default server.
 
 .SH SEE ALSO
@@ -123,4 +123,3 @@ the
 .B PBS Professional Administrator's Guide,
 .br
 pbs_rsub(1B), pbs_rdel(1B), pbs_resv_attributes(7B)
-

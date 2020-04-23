@@ -33,17 +33,17 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_wish 8B "2 December 2019" Local "PBS Professional"
+.TH pbs_wish 8B "2 December 2019" Local "PBS"
 .SH NAME
-.B pbs_wish 
+.B pbs_wish
 - TK window shell with TCL-wrapped PBS API
 .SH SYNOPSIS
-.B pbs_wish 
+.B pbs_wish
 
 .B pbs_wish
 --version
 .SH DESCRIPTION
-.B Deprecated.  
+.B Deprecated.
 The
 .B pbs_wish
 command is a version of the TK window shell which includes wrapped versions of
@@ -52,7 +52,7 @@ pbs_tclapi(3B) manual page.
 
 .SH OPTIONS
 .IP "--version" 8
-The 
+The
 .B pbs_wish
 command returns its PBS version information and exits.
 This option can only be used alone.

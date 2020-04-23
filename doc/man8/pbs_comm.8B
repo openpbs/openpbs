@@ -33,12 +33,12 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_comm 8B "19 November 2019" Local "PBS Professional"
+.TH pbs_comm 8B "19 November 2019" Local "PBS"
 .SH NAME
-.B pbs_comm 
+.B pbs_comm
 - start the PBS communication daemon
 .SH SYNOPSIS
-.B pbs_comm 
+.B pbs_comm
 [-N] [-r <other routers>] [-t <number of threads>]
 .br
 .B pbs_comm
@@ -46,8 +46,8 @@
 .br
 
 .SH DESCRIPTION
-The PBS communication daemon, 
-.B pbs_comm, 
+The PBS communication daemon,
+.B pbs_comm,
 handles communication between daemons, except for scheduler-server and
 server-server communication, which uses TCP.  The server, scheduler,
 and MoMs are connected by one or more pbs_comm daemons.
@@ -61,24 +61,24 @@ Available on Linux only.
 Runs the communication daemon in standalone mode.
 
 .IP "-r <other routers>" 10
-List of other 
-.B pbs_comm 
+List of other
+.B pbs_comm
 daemons to which this
-.B pbs_comm 
+.B pbs_comm
 must connect. This is equivalent to the pbs.conf variable
-.I PBS_COMM_ROUTERS. 
-The command line overrides the variable.  
+.I PBS_COMM_ROUTERS.
+The command line overrides the variable.
 .br
 Format: <host>[:<port>][,<host>[:<port>]]
 
 .IP "-t" 10
-Number of threads the 
-.B pbs_comm 
+Number of threads the
+.B pbs_comm
 daemon uses.  This
-is equivalent to the pbs.conf variable 
-.I PBS_COMM_THREADS.  
+is equivalent to the pbs.conf variable
+.I PBS_COMM_THREADS.
 The command
-line overrides the variable.  
+line overrides the variable.
 .br
 Format: Integer
 
@@ -157,7 +157,7 @@ Example: PBS_START_COMM=1
 .SH COMMUNICATION DAEMON LOGFILES
 
 The pbs_comm daemon creates its log files under $PBS_HOME/comm_logs.
-This directory is automatically created by the PBS installer.  
+This directory is automatically created by the PBS installer.
 
 In a
 failover configuration, this directory is in the shared PBS_HOME,
@@ -166,7 +166,7 @@ secondary servers.  This directory must never be shared across
 multiple pbs_comm daemons in any other case.
 
 The log filename format is yyyymmdd (the same as for other PBS
-daemons).  
+daemons).
 
 The log record format is the same as used by other pbs
 daemons, with the addition of the thread number and the daemon name in
@@ -175,14 +175,14 @@ the log record. The log record format is as follows:
 <date and time>;<event code>;<daemon name>(<thread number>);<object
 type>;<object name>;<message>
 
-Example: 
+Example:
 .br
 03/25/2014
 15:13:39;0d86;host1.example.com;TPP;host1.example.com(Thread 2);
 Connection from leaf 192.168.184.156:19331, tfd=81 down
 
 .SH SIGNAL HANDLING
-The 
+The
 .B pbs_comm
 daemon handles the following signals:
 
@@ -192,7 +192,7 @@ Re-reads the value of
 from pbs.conf.
 
 .IP "TERM" 10
-The 
+The
 .B pbs_comm
 daemon exits.
 

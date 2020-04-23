@@ -33,22 +33,22 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_jobs_at 8B "22 September 2015" Local "PBS Professional"
+.TH pbs_jobs_at 8B "22 September 2015" Local "PBS"
 .SH NAME
-.B pbs_jobs_at 
+.B pbs_jobs_at
 \- tool to identify historical PBS jobs
 .SH SYNOPSIS
-.B pbs_jobs_at 
-[-s <start date>] 
-[-e <end date>] 
-[-n <nodes>] 
+.B pbs_jobs_at
+[-s <start date>]
+[-e <end date>]
+[-n <nodes>]
 .br
-\ \ \ \ \ \ \ \ \ \ \ 
-[-a <accounting logs directory>] 
-[-w <max walltime>] 
+\ \ \ \ \ \ \ \ \ \ \
+[-a <accounting logs directory>]
+[-w <max walltime>]
 .br
-\ \ \ \ \ \ \ \ \ \ \ 
-[-v] 
+\ \ \ \ \ \ \ \ \ \ \
+[-v]
 [-h]
 
 .SH DESCRIPTION
@@ -71,8 +71,8 @@ run on or a named directory containing copies of accounting logs.
 
 When specifying nodes of interest it is possible to define node ranges
 using host[xx-yy], e.g. node[1-100] or node[01-09]. It is also
-possible to specify multiple node(s) as a comma-separated list, for 
-example node[1-10],node[20-29]. 
+possible to specify multiple node(s) as a comma-separated list, for
+example node[1-10],node[20-29].
 
 All arguments are optional. If no arguments are specified it will
 report all jobs on all nodes in all the accounting logs.
@@ -85,7 +85,7 @@ if known for a historical issue.
 .IP "-s <start date>" 10
 Start date/time of time period. If no start date specified, begins
 at first accounting log.
- 
+
 .IP "-e <end date>" 10
 End date/time of time period. If no end date specified, finishes at
 last accounting log.
@@ -97,11 +97,11 @@ Nodes of interest. If no nodes specified, reports jobs on all nodes.
 Path to directory containing accounting logs.  If no accounting logs
 directory specified, uses system logs in
 $PBS_HOME/server_priv/accounting
- 
+
 .IP "-w <max walltime>" 10
 Specify maximum job length to optimize search for jobs still running
 at <start date>.  If not specified, searches from first accounting log
- 
+
 .IP "-v" 10
 Verbose output. Display Nodes-Per-Job and Jobs-Per-Node.  If not
 specified, displays list of jobs.

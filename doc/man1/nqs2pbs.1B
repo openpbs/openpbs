@@ -33,13 +33,13 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH nqs2pbs 1B "1 Oct 2009" Local "PBS Professional"
+.TH nqs2pbs 1B "1 Oct 2009" Local "PBS"
 .SH NAME
-.B nqs2pbs 
+.B nqs2pbs
 - convert NQS job scripts to PBS format
 
 .SH SYNOPSIS
-.B nqs2pbs 
+.B nqs2pbs
 <NQS script> [<PBS script>]
 .br
 .B nqs2pbs
@@ -49,7 +49,7 @@ This utility converts an existing NQS job script to work with PBS and NQS.
 The existing script is copied and PBS directives, using
 .I #PBS,
 are inserted prior to each NQS directive (
-.I #QSUB 
+.I #QSUB
 or
 .I #@$
 ), in the original script.
@@ -85,7 +85,7 @@ time on the qsub command line rather than in the script.
 
 .SH OPTIONS
 .IP "--version" 10
-The 
+The
 .B nqs2pbs
 command returns its PBS version information and exits.
 This option must be used alone.

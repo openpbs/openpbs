@@ -37,7 +37,7 @@
 .\" trademark licensing policies.
 .\"
 .if \n(Pb .ig Iq
-.TH pbs_rmget 8B "8 February 2007" Local "PBS Professional"
+.TH pbs_rmget 8B "8 February 2007" Local "PBS"
 .\" The following macros are style for object names and values.
 .de Ar		\" command/function arguments and operands (italic)
 .ft 2
@@ -90,12 +90,12 @@
 .fi
 .ft 1
 ..
-.\" End of macros 
+.\" End of macros
 .Iq
 
 
 .SH NAME
-.B pbs_rmget 
+.B pbs_rmget
 \- queries MOM for resource values
 
 .SH SYNOPSIS
@@ -109,43 +109,43 @@ for resource values.
 
 .SH OPTIONS
 .IP "-m MOM name" 15
-The 
-.I MOM name 
+The
+.I MOM name
 (hostname) to query.
-If the 
-.I MOM name 
+If the
+.I MOM name
 is not specified, the MOM on the current host is queried.
 
 .IP "-p port" 15
-Specifies the MOM's RM 
-.I port 
-to query.  If the 
+Specifies the MOM's RM
+.I port
+to query.  If the
 .I port
 is not specified, the default port is queried.
 
 .SH OPERANDS
-.IP "resource list" 15 
+.IP "resource list" 15
 Space-separated list of one or more resources.
-If no 
-.I resource list 
-is given, the 
+If no
+.I resource list
+is given, the
 .B pbs_rmget
 command returns its usage.
 
 .SH OUTPUT
-Given 
+Given
 .B pbs_rmget RES_A RES_B,
 the output is:
 .RS 5
 [0] RES_A=<value of RES_A>
-.br 
+.br
 [1] RES_B=<value of RES_B>
 .RE
 .br
 
 Querying a nonexistent resource:
 .br
-Given 
+Given
 .B pbs_rmget RES_C,
 where RES_C is nonexistent, the output is:
 .RS 5
@@ -153,7 +153,7 @@ where RES_C is nonexistent, the output is:
 .RE
 
 .SH EXIT STATUS
-.IP "0" 15 
+.IP "0" 15
 Success
 .IP "1" 15
 if MOM name, option, or port is unrecognized.
@@ -161,10 +161,10 @@ A message is printed to standard error.
 .LP
 
 .SH ERROR MESSAGES
-If the 
+If the
 .B pbs_rmget
-command fails to open a connection to the MOM name given in the 
-.I -m 
+command fails to open a connection to the MOM name given in the
+.I -m
 option:
 .RS 5
 "Unable to open connection to mom: <MOM name>, <MOM port>"
@@ -172,7 +172,7 @@ option:
 The default MOM port is reported as zero.
 .br
 
-If the 
+If the
 .B pbs_rmget
 command fails to get a message back from MOM:
 .RS 5
@@ -181,9 +181,9 @@ command fails to get a message back from MOM:
 
 .SH SEE ALSO
 The
-.B PBS Professional External Reference Specification, 
-The 
-.B PBS Professional Administrator's Guide, 
+.B PBS Professional External Reference Specification,
+The
+.B PBS Professional Administrator's Guide,
 .br
 rm(3B),
 pbs_mom(8B), pbs_tclsh(8B)

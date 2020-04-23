@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_submitresv 3B "29 August 2011" Local "PBS Professional"
+.TH pbs_submitresv 3B "29 August 2011" Local "PBS"
 .SH NAME
 pbs_submitresv - submit a pbs reservation
 .SH SYNOPSIS
@@ -50,7 +50,7 @@ A
 .I "Submit Reservation"
 batch request is generated and sent to the server over the connection
 specified by
-.I connect 
+.I connect
 which is the return value of \f3pbs_connect\f1().
 .LP
 The parameter,
@@ -95,7 +95,7 @@ each attribute.
 .LP
 Associated with an attribute of type ATTR_l (the letter ell)
 is a resource name indicated by
-.I resource 
+.I resource
 in the
 .I attrl
 structure.
@@ -104,7 +104,7 @@ All other attribute types should have a pointer to a null string for
 .LP
 The
 .I op
-member is forced to a value of 
+member is forced to a value of
 .I SET
 by pbs_submitresv().
 .LP
@@ -115,7 +115,7 @@ is reserved for implementation-defined extensions.
 The return value is a character string which is the
 .I reservation_identifier
 assigned to the job by the server.
-The space for the 
+The space for the
 .I reservation_identifier
 string is allocated by \f3pbs_submitresv\f1()
 and should be released via a call to \f3free\f1()

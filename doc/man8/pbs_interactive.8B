@@ -33,12 +33,12 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_interactive 8B "19 October 2017" Local "PBS Professional"
+.TH pbs_interactive 8B "19 October 2017" Local "PBS"
 .SH NAME
-.B pbs_interactive 
+.B pbs_interactive
 \- For Windows. Register, unregister, or get the version of the PBS_INTERACTIVE service
 .SH SYNOPSIS
-.B pbs_interactive 
+.B pbs_interactive
 [R | U]
 .br
 .B pbs_interactive
@@ -61,13 +61,11 @@ Admin privilege is required to use this command.
 .IP "R" 15
 Registers the PBS_INTERACTIVE service.
 
-.IP "U" 15  
+.IP "U" 15
 Unregisters the PBS_INTERACTIVE service.
 
-.IP "--version" 15   
-The 
+.IP "--version" 15
+The
 .B pbs_interactive
 command returns its version information and exits.
 This option can only be used alone.
-
-

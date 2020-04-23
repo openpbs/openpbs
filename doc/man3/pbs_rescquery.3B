@@ -35,7 +35,7 @@
 .\" trademark licensing policies.
 .\"
 .if \n(Pb .ig Ig
-.TH pbs_rescquery 3B "1 Oct 2009" Local "PBS Professional"
+.TH pbs_rescquery 3B "1 Oct 2009" Local "PBS"
 .\" The following macros are style for object names and values.
 .de Ar		\" command/function arguments and operands (italic)
 .ft 2
@@ -88,7 +88,7 @@
 .fi
 .ft 1
 ..
-.\" End of macros 
+.\" End of macros
 .Ig
 .SH NAME
 pbs_rescquery, avail, totpool, usepool - query resource availability
@@ -121,7 +121,7 @@ int usepool\^(\^int connect, int update\^)
 Issue a request to the batch server to query the availability of resources.
 .Ar connect
 is the connection returned by \f3pbs_connect\fP().
-.Ar resourcelist 
+.Ar resourcelist
 is an array of one or more strings specifying the resources to be queried.
 .Ar arraysize
 is the is the number of strings in resourcelist.
@@ -134,12 +134,12 @@ are integer arrays of size arraysize.  The amount of resource specified in
 the corresponding resourcelist string which is available, already allocated,
 reserved, and down/off-line is returned in the integer arrays.
 .IP
-At the present time the only resources which may be specified is "nodes". 
-It may be specified as 
+At the present time the only resources which may be specified is "nodes".
+It may be specified as
 .br
 .Ty \ \ \ \ nodes
 .br
-.Ty \ \ \ \ nodes= 
+.Ty \ \ \ \ nodes=
 .br
 .Ty \ \ \ \ nodes=\f2specification\f1
 .br
@@ -152,13 +152,13 @@ or "nodes=\f2type\fP", the numbers returned reflect the actual number of nodes
 \f2reserved\fP, or \f2down\fP.
 .IP
 For a more complex node resourcelist, such as
-"nodes=2" or "nodes=type1:type2", only the value returned in 
+"nodes=2" or "nodes=type1:type2", only the value returned in
 .I available
 has meaning.
 If the number in
 .I available
 is positive, it is the number of nodes required to satisfy the specification
-and that some set of nodes are available which will satisfy it, see 
+and that some set of nodes are available which will satisfy it, see
 .I avail ().
 If the number in
 .I available
@@ -179,11 +179,11 @@ The
 .I avail ()
 call is provided as a conversion aid for schedulers written for early versions
 of PBS.   The avail() routine uses pbs_rescquery() and returns a character
-string answer.  
+string answer.
 .Ar connect
 is the connection returned by \f3pbs_connect\fP().
 .Ar resc
-is a single 
+is a single
 .I node=specification
 specification as discussed above.  If the nodes to satisfy the specification
 are currently available, the return value is the character string
@@ -202,7 +202,7 @@ An error in the specification returns the character string
 .Ig
 .B totpool
 .br
-The 
+The
 .I totpool ()
 function returns the total number of nodes known to the PBS server.  This is
 the sum of the number of nodes available, allocated, reserved, and down.
@@ -222,7 +222,7 @@ fresh information.   If zero, numbers from the prior pbs_rescquery() are used.
 .B usepool
 .br
 .I usepool ()
-returns the number of nodes currently in use, the sum of allocated, reserved, 
+returns the number of nodes currently in use, the sum of allocated, reserved,
 and down.
 The parameter
 .Ar connection

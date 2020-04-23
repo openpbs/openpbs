@@ -33,26 +33,26 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs 8B "13 October 2017" Local "PBS Professional"
+.TH pbs 8B "13 October 2017" Local "PBS"
 .SH NAME
-.B pbs 
+.B pbs
 \- Start, stop, restart, or get the PIDs of PBS daemons
 
 
 .SH SYNOPSIS
-.B pbs 
-[start|stop|restart|status] 
+.B pbs
+[start|stop|restart|status]
 
 
 .SH DESCRIPTION
 The
 .B pbs
 command starts, stops or restarts all PBS daemons on the local machine, or
-reports the PIDs of all daemons when given the 
+reports the PIDs of all daemons when given the
 .I status
 argument.  Does not affect other hosts.
 
-You can start, stop, restart, or status the PBS daemons using the 
+You can start, stop, restart, or status the PBS daemons using the
 .B systemctl
 command; see Starting and Stopping PBS in the PBS Professional Installation
 and Upgrade Guide.
@@ -64,8 +64,8 @@ in pbs.conf.  For example, if PBS_START_MOM is set to 0 in the local
 pbs.conf, this command will not operate on pbs_mom, and will not
 start, stop, or restart pbs_mom.
 
-This command is typically placed in /etc/init.d so that 
-PBS starts up automatically.  
+This command is typically placed in /etc/init.d so that
+PBS starts up automatically.
 
 .B Required Privilege
 .br
@@ -75,7 +75,7 @@ Root privilege is required to use this command.
 
 .IP "restart" 10
 All daemons on the local machine are stopped, then they are restarted.
-PBS reports the name of the license server and the 
+PBS reports the name of the license server and the
 number and type of licenses available.
 
 .IP "start" 10

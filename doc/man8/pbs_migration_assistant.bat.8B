@@ -33,13 +33,13 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_migration_assistant.bat 8B "19 October 2017" Local "PBS Professional"
+.TH pbs_migration_assistant.bat 8B "19 October 2017" Local "PBS"
 .SH NAME
 .B pbs_migration_assistant.bat
 \- For Windows.  Tells PBS which server configuration settings to use
 
 .SH SYNOPSIS
-.B pbs_migration_assistant.bat 
+.B pbs_migration_assistant.bat
 /b
 .br
 .B pbs_migration_assistant.bat
@@ -54,4 +54,3 @@ Tells PBS to use the old server configuration settings.
 
 .IP "/r" 15
 Tells PBS to use the new server configuration settings.
-

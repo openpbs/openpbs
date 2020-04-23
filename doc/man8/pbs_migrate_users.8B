@@ -33,22 +33,22 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_migrate_users 8B "19 October 2017" Local "PBS Professional"
+.TH pbs_migrate_users 8B "19 October 2017" Local "PBS"
 .SH NAME
-.B pbs_migrate_users 
-\- transfer per-user or per-server passwords between 
+.B pbs_migrate_users
+\- transfer per-user or per-server passwords between
 PBS servers during a migration upgrade
 .SH SYNOPSIS
-.B pbs_migrate_users 
+.B pbs_migrate_users
 <old server> <new server>
 .br
-.B pbs_migrate_users 
+.B pbs_migrate_users
 --version
 .SH DESCRIPTION
 The
 .B pbs_migrate_users
-command is used to transfer the per-user or per-server 
-password of a PBS user from one server to another during a 
+command is used to transfer the per-user or per-server
+password of a PBS user from one server to another during a
 migration upgrade.
 .LP
 Users' passwords on the old server are not deleted.
@@ -58,17 +58,17 @@ Available on Windows and supported Linux x86 and x86_64 platforms only.
 
 .SH OPTIONS
 .IP "--version" 15
-The 
+The
 .B pbs_migrate_users
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-The format of 
+The format of
 .I old server
-and 
+and
 .I new server
-is 
+is
 .RS
 <hostname>[:<port number>]
 .RE
@@ -82,16 +82,16 @@ Writing out passwords to files failed
 .IP "-2" 15
 Communication failure between
 .I old server
-and 
+and
 .I new server
 .IP "-3" 15
 .I single_signon_password_enable
-not set in either 
+not set in either
 .I old server
 or
 .I new server
 .IP "-4" 15
-User running 
+User running
 .B pbs_migrate_users
 not authorized to migrate users
 
