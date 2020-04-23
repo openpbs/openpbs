@@ -168,27 +168,32 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
 int
 encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data)
 {
-	BUF_MEM *b_mem;
 	BIO *mem_obj1, *mem_obj2;
-	int buf_len = 0;
+	long buf_len = 0;
+	char *buf;
 
 	mem_obj1 = BIO_new(BIO_s_mem());
+	if (mem_obj1 == NULL) {
+		return (1);
+	}
 	mem_obj2 = BIO_new(BIO_f_base64());
+	if (mem_obj2 == NULL) {
+		BIO_free(mem_obj1);
+		return (1);
+	}
 
 	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
 	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(mem_obj1, buffer, buffer_len);
 	(void)BIO_flush(mem_obj1);
-	BIO_get_mem_ptr(mem_obj1, &b_mem);
+	buf_len = BIO_get_mem_data(mem_obj1, &buf);
 
-	buf_len = (*b_mem).length;
-
-	*ret_encoded_data = malloc(buf_len + 1);
+	*ret_encoded_data = (char *)malloc(buf_len + 1);
 	if (*ret_encoded_data == NULL) {
 		BIO_free_all(mem_obj1);
 		return (1);
 	}
-	memcpy(*ret_encoded_data, (*b_mem).data, buf_len);
+	memcpy(*ret_encoded_data, buf, buf_len);
 	(*ret_encoded_data)[buf_len] = '\0';
 
 	BIO_free_all(mem_obj1);
@@ -237,6 +242,10 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 
 	mem_obj1 = BIO_new_mem_buf(buffer, -1);
 	mem_obj2 = BIO_new(BIO_f_base64());
+	if (mem_obj2 == NULL) {
+		BIO_free_all(mem_obj1);
+		return (1);
+	}
 
 	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
 	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
