@@ -899,7 +899,7 @@ attribute or resource type.
 Most of a vnode's attributes may be set using qmgr.  However, some
 must be set on the individual execution host in local vnode definition
 files, NOT by using qmgr.  See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .B Setting Resource Type and Flag(s)
 .br
@@ -1664,7 +1664,7 @@ Error making object active
 Memory allocation error
 
 .SH See Also
-.I The PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 and pbs_server_attributes.7B,
 pbs_job_attributes.7B, pbs_hook_attributes.7B, pbs_node_attributes.7B,
 pbs_queue_attributes.7B, pbs_resv_attributes.7B, and pbs_sched_attributes.7B

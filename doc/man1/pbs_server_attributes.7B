@@ -599,7 +599,7 @@ Default:
 .IP job_sort_formula 8
 Formula for computing job priorities.
 Described in the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 If the attribute
 .I job_sort_formula
 is set, all schedulers use the formula in it to compute job
@@ -618,7 +618,7 @@ Mathematical formula; can be made up of expressions, where
 expressions contain terms which are added, subtracted,
 multiplied, or divided, and which can contain parentheses,
 exponents, and unary plus and minus. For details, see the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 .br
 Python type:
 .I pbs.job_sort_formula
@@ -900,7 +900,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -922,7 +922,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -952,7 +952,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -974,7 +974,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -1005,7 +1005,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -1035,7 +1035,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -1503,7 +1503,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 .RE
 .IP
 Python type:
@@ -1524,7 +1524,7 @@ Format:
 See the
 .I Formats
 chapter in the
-.I PBS Professional Reference Guide
+.I PBS Reference Guide
 .RE
 .IP
 Python type:
@@ -2098,13 +2098,13 @@ set server max_run-="[u:user2], [g:group3]"
 
 .IP
 See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 qdel(1B),
 qmgr(1B),
 qsub(1b)

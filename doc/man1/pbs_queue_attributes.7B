@@ -1481,7 +1481,7 @@ set server max_run_res.ncpus="[u:PBS_GENERIC=2], [g:group1=8], [o:PBS_ALL = 64]"
 .RE
 .IP
 See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .SH Incompatible Limit Attributes
 The old and new limit attributes are incompatible.
@@ -1492,5 +1492,5 @@ All of one kind must be unset in order to set any of the other kind.
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 qmgr(1B)

@@ -228,9 +228,9 @@ Upon error
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 pbs_queue_attributes(7B), pbs_server_attributes(1B),
 qsub(1B), qsig(1B), pbs_deljob(3B)

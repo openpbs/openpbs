@@ -93,6 +93,6 @@ command fails to process any operand.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 and the following manual page:
 pbs_server(8B)

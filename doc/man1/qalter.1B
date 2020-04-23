@@ -240,7 +240,7 @@ The user alters job attributes via options to the
 command.  Each
 .B qalter
 option changes a job attribute.  See the
-.B PBS Professional User's Guide
+.B PBS User's Guide
 and
 .B pbs_job_attributes(7B).
 
@@ -703,7 +703,7 @@ Format:
 (See
 .I Formats
 in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 )
 .br
 Default: if a script is used to submit the job, the job's name is the
@@ -803,7 +803,7 @@ Format:
 (See
 .I Formats
 in the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 )
 .br
 Default:
@@ -1287,9 +1287,9 @@ impact any inter-job dependencies.
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 pbs_job_attributes(7B),
 pbs_resources(7B),

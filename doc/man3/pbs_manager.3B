@@ -270,7 +270,7 @@ to
 .I SET
 .RE
 See the
-.I PBS Professional Hooks Guide.
+.I PBS Hooks Guide.
 
 .SH RETURN VALUE
 The routine returns 0 (zero) on success.

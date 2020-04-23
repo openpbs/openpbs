@@ -144,7 +144,7 @@ Any PBS directives
 The user's tasks: programs, commands, or applications
 
 Optional comments (Under Windows, comments can contain only ASCII
-characters.  See the PBS Professional User's Guide.)
+characters.  See PBS User's Guide.)
 .RE
 
 .B Using Shells and Interpreters
@@ -455,9 +455,9 @@ man page.
 
 For more on resources, resource requests, usage limits, and job
 placement, see the
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the
-.I PBS Professional User's Guide.
+.I PBS User's Guide.
 
 .B Caveats for Requesting Resources
 .br
@@ -486,7 +486,7 @@ Most qsub options set a job attribute, and have a corresponding PBS
 directive with the same syntax as the option.  Attributes set via
 command-line options take precedence over those set using PBS
 directives.  See the
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 or
 .I pbs_job_attributes.7B.
 
@@ -585,7 +585,7 @@ An
 script is required to checkpoint the job.
 
 See the
-.I PBS Professional User's Guide.
+.I PBS User's Guide.
 
 The argument
 .I checkpoint spec
@@ -772,7 +772,7 @@ is running.
 If a job script is given, only its directives are processed.  When the job
 begins execution, all input to the job is taken from the terminal session.
 See the
-.I PBS Professional User's Guide
+.I PBS User's Guide
 for additional information on interactive jobs.
 
 Interactive jobs are not rerunnable.
@@ -975,7 +975,7 @@ attribute and name to
 Format:
 .I Job Name;
 See the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 
 Default: if a script is used to submit the job, the job's name is the
 name of the script.  If no script is used, the job's name is "STDIN".
@@ -1067,7 +1067,7 @@ attribute to
 Format:
 .I Project Name;
 see the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 
 Default value: "_pbs_project_default"
 
@@ -1843,9 +1843,9 @@ impact any inter-job dependencies.
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 pbs_job_attributes(7B),
 pbs_server_attributes(7B),

@@ -63,7 +63,7 @@ command depends upon whether the job can be checkpointed.
 The job can be checkpointed if the OS supports checkpointing, or
 if the application being checkpointed supports checkpointing.  See
 the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 If the job can be checkpointed, the following happens:
 .RS 3
 The job is checkpointed and its execution is interrupted.
@@ -200,8 +200,8 @@ command fails to process any operand
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 qrls(1B), qalter(1B), qsub(1B), pbs_alterjob(3B), pbs_holdjob(3B),
 pbs_rlsjob(3B), pbs_job_attributes(7B), pbs_resources(7B)

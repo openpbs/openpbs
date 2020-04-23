@@ -108,7 +108,7 @@ This option can only be used alone.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .LP
 pbs_attach(8B),
 pbsrun(8B),

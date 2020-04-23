@@ -301,6 +301,6 @@ There is an error querying the server for the vnodes
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 .br
 pbs_server(8B) and qmgr(8B)

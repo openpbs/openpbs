@@ -234,5 +234,5 @@ over another.  The smaller the number the higher the priority.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 pbs_sched(8B)

@@ -47,7 +47,7 @@ provides an interface to PBS and the hook environment.
 The interface is made up of Python objects, which have attributes and
 methods.  You can operate on these objects using Python code.
 For a description of each object, see the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .SH PBS MODULE OBJECTS
 
@@ -756,7 +756,7 @@ Creates a PBS
 .I size
 object out of the given string specification.
 See the
-.I PBS Professional Reference Guide
+.I PBS Reference Guide
 for suffix information.
 The size of a word
 is the word size on the execution host.
@@ -906,7 +906,7 @@ A message is printed to the daemon log.
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 pbs_hook_attributes(7B), pbs_resources(7B),
 qmgr(1B)

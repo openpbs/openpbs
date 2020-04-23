@@ -92,6 +92,6 @@ Each daemon on the local machine is stopped, and its PID is reported.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .br
 pbs_mom(8B), pbs_server(8B), pbs_sched(8B), and pbs_comm(8B)

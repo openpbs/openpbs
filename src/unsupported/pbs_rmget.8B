@@ -183,7 +183,7 @@ command fails to get a message back from MOM:
 The
 .B PBS Professional External Reference Specification,
 The
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 .br
 rm(3B),
 pbs_mom(8B), pbs_tclsh(8B)

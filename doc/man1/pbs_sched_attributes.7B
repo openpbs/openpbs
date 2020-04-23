@@ -314,7 +314,7 @@ Python type: No Python type
 Specifies whether jobs most eligible for preemption are sorted
 according to their start times.  See "Sorting Within Preemption Level"
 in Scheduling chapter of the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 .br
 Readable by all; settable by Manager.
 .br
@@ -525,7 +525,7 @@ Python type: No Python type
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 .B qmgr(1B)

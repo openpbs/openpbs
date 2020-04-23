@@ -100,7 +100,7 @@ about what the hook changed.  You can use these as inputs to a hook when debuggi
 
 For a complete description of using
 .B pbs_python
-with debugging files, see "Debugging Hooks" in the PBS Professional Hooks Guide.
+with debugging files, see "Debugging Hooks" in the PBS Hooks Guide.
 
 .SH Options to pbs_python
 .IP "--hook" 6

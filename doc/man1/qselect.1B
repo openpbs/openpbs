@@ -294,7 +294,7 @@ attribute.
 Format:
 .I Project Name;
 see the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 
 .IP "-q <destination>" 8
 Restricts selection to those jobs at the specified
@@ -398,7 +398,7 @@ specifies which time-based attribute is tested.  You give the
 in
 .I datetime
 format.  See the
-.I PBS Professional Reference Guide.
+.I PBS Reference Guide.
 
 The
 .I time option
@@ -518,9 +518,9 @@ command fails to process any option
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 qstat(1B),
 qsub(1B),

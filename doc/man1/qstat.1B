@@ -1086,9 +1086,9 @@ If any operands could not be processed
 
 .SH SEE ALSO
 The
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 .br
 qalter(1B), qsub(1B), pbs_alterjob(3B), pbs_statjob(3B), pbs_statque(3B),
 pbs_statserver(3B), pbs_submit(3B),

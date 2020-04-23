@@ -104,6 +104,6 @@ If the qstart command fails to process any operand
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the following manual pages:
 pbs_server(8B), qstop(8B), and qmgr(8B)

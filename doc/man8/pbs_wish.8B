@@ -64,6 +64,6 @@ command writes a diagnostic message to standard error for each error occurrence.
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the following manual pages:
 pbs_tclsh(8B), pbs_mom(8B), pbs_server(8B), pbs_sched(8B)

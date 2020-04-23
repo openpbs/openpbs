@@ -215,5 +215,5 @@ command fails to process any operand
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 pbs_server(8B), pbs_mom(8B), pbs_sched(8B)

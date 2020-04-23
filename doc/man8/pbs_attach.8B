@@ -199,6 +199,6 @@ exits after attaching the session ID(s) to the job.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .br
 pbs_mom(8B), pbs_tmrsh(8B), setsid(2), tm(3)

@@ -79,7 +79,7 @@ runs.
 The MoM manages one or more vnodes.  PBS may treat a  host as
 a set of virtual nodes, in which case one MoM
 manages all of the host's vnodes.  See the
-.B PBS Professional Administrator's Guide.
+.B PBS Administrator's Guide.
 
 .B Logging
 .br
@@ -135,7 +135,7 @@ A PBS job can run across multiple machines that run supported versions
 of Performance Software - Message Passing Interface.
 
 PBS can run using HPE SGI's MPI (MPT) over InfiniBand.  See the
-.B PBS Professional Administrator's Guide.
+.B PBS Administrator's Guide.
 .LP
 
 .B Effect on Jobs of Starting MoM
@@ -455,7 +455,7 @@ Configuration files with the following syntax describe vnodes and
 the resources available on them.  They do not contain initialization
 values for MoM.
 See the
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 for a definition of
 .I vnodes.
 PBS-prefixed configuration files use the following syntax.  Other
@@ -631,7 +631,7 @@ for an event with the site-specified
 is the time allowed for
 .I new action
 to run.  See
-.B The PBS Professional Administrator's Guide.
+.B PBS Administrator's Guide.
 The
 .I default action
 can be one of:
@@ -846,7 +846,7 @@ have associated values.  Syntax:
 .I $enforce <variable name> <value>
 .br
 See
-.B The PBS Professional Administrator's Guide.
+.B PBS Administrator's Guide.
 
 .RS
 .IP "$enforce mem" 5
@@ -1035,7 +1035,7 @@ DEBUG4     0800       Limit-related messages
 .IP "$max_check_poll <seconds>" 5
 Maximum time between polling cycles, in seconds.  Minimum recommended
 value: 30 seconds.  See the
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 for usage.
 
 The interval between each poll starts at
@@ -1494,7 +1494,7 @@ option on a nonexistent script
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 pbs_server(8B),
 pbs_sched(8B),
 qstat(1B)

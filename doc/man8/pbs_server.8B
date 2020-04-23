@@ -191,7 +191,7 @@ Default:
 .IP "-s <replacement string>" 10
 Specifies the string to use when replacing spaces in accounting
 entity names.  Only available under Windows.  See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .IP "-t <restart type>"
 Specifies behavior when the server restarts.  The
@@ -317,7 +317,7 @@ If the server command fails to begin batch operation
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the following manual pages:
 qsub (1B), pbs_connect(3B),
 pbs_mom(8B), pbs_sched(8B),

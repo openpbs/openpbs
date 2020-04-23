@@ -178,7 +178,7 @@ must be installed and working on all thev nodes in the PBS complex.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .LP
 pbs_attach(8B),
 pbsrun(8B),

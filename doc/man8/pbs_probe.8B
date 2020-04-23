@@ -113,6 +113,6 @@ When run incorrectly
 .RE
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 and the following manual pages:
 pbs_server(8B), pbs_sched(8B), pbs_mom(8B).

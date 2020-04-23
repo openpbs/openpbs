@@ -152,7 +152,7 @@ each error occurrence.
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.B PBS User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 qsub(1B), tm(3).

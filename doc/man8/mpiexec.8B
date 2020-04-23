@@ -158,7 +158,7 @@ is located in
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .LP
 HPE SGI man pages:
 HPE SGI's mpirun(1),

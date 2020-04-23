@@ -103,6 +103,6 @@ The PATH on remote machines must contain
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .LP
 lamboot(1), tm(3)

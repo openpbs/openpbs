@@ -1040,5 +1040,5 @@ Zero upon normal termination.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 pbs_server(8B), pbs_mom(8B)

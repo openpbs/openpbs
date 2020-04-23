@@ -119,6 +119,6 @@ program exits with the exit status of the remote command or with
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the following manual pages:
 pbs_attach(8B), tm(3)

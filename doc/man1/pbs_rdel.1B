@@ -92,9 +92,9 @@ Upon failure to process any operand
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.B PBS User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 pbs_rsub(1B),
 pbs_rstat(1B),
 pbs_resv_attributes(7B)

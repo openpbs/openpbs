@@ -1478,7 +1478,7 @@ Default: Unset
 .IP "Rerunable" 8
 Specifies whether the job can be rerun.  Does not affect how a job is
 treated if the job could not begin execution.  See "Allowing Your Job
-to be Re-run", in the PBS Professional User's Guide.
+to be Re-run", in the PBS User's Guide.
 .br
 Job arrays are required to be rerunnable and are rerunnable by
 default.

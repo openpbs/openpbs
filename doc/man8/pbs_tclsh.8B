@@ -87,8 +87,8 @@ each error occurrence.
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 the
-.I PBS Professional Programmer's Guide,
+.I PBS Programmer's Guide,
 and the following manual pages:
 pbs_wish(8B), pbs_server(8B), pbs_mom(8B), pbs_sched(8B)

@@ -129,6 +129,6 @@ into
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.B PBS Administrator's Guide
 .LP
 mpirun(1)

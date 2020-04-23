@@ -63,7 +63,7 @@ command displays output in any of brief, short, or full formats.
 See the
 .B pbs_resv_attributes(7B)
 man page for information about reservation attributes, and the
-"States" chapter in the PBS Professional Reference Guide.
+"States" chapter in the PBS Reference Guide.
 
 .SH OPTIONS
 .IP "-B" 10
@@ -118,8 +118,8 @@ specifies a reservation at a server other than the default server.
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.B PBS User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 .br
 pbs_rsub(1B), pbs_rdel(1B), pbs_resv_attributes(7B)

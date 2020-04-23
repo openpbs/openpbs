@@ -142,7 +142,7 @@ space or memory.  Can also specify a subsequent action to be taken
 when hook runs successfully.  Value can be either "none" or one or more of
 "offline_vnodes", "clear_vnodes_upon_recovery", and "scheduler_restart_cycle".
 If this attribute is set to multiple values, scheduler restart happens last.
-See the Hooks chapter in the PBS Professional Administrator's Guide.
+See the Hooks chapter in the PBS Administrator's Guide.
 .br
 .I offline_vnodes
 .RS 11
@@ -247,11 +247,11 @@ Default value: "pbsadmin"
 
 .SH SEE ALSO
 The
-.I PBS Professional Hooks Guide,
+.I PBS Hooks Guide,
 the
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 the
-.I PBS Professional Programmer's Guide,
+.I PBS Programmer's Guide,
 .br
 qmgr(1B),
 pbs_module(7B),

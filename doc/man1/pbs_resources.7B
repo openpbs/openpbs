@@ -53,7 +53,7 @@ available on a given vnode, as well as at the queue or server level
 See the
 .I qmgr(8B)
 man page and the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 
 Resources defined at the queue or server level apply to an entire job.
@@ -61,7 +61,7 @@ If resources are defined at the host level, they apply only to the part of
 the job running on that host.
 
 For information on defining resources, see the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .B Allocating Resources to Jobs
 .br
@@ -379,7 +379,7 @@ If a job-wide resource limit exceeds queue or server restrictions, it
 will not be put in the queue or accepted by the server.  If, while
 running, a job exceeds its limit for a consumable or time-based
 resource, it will be terminated.  See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 .B Controlling Placement of Jobs
 .br
@@ -417,7 +417,7 @@ statement.
 For a detailed description of the
 .I place
 statement, see the qsub(1B) man page, or the
-.I PBS Professional User's Guide.
+.I PBS User's Guide.
 
 Note that vnodes can have sharing attributes that override
 job placement requests.  See the
@@ -489,13 +489,13 @@ Custom resources are site-defined and site-dependent.  The
 administrator defines custom resources.  These are typically used for
 licenses and scratch space.  PBS provides custom resources
 specifically for Cray systems.  See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 
 A job requesting a floating license must specify it outside of a
 selection statement, as a job-wide resource limit.  A job requesting a
 node-locked license must specify it inside a selection statement in a
 chunk.  See your system administrator.  Refer to the
-.I PBS Professional User's Guide.
+.I PBS User's Guide.
 
 Custom resources can be created to be invisible or read-only for
 unprivileged users.  See the pbsnodes(8B), pbs_rstat(1B), pbs_rsub(1B),
@@ -1013,7 +1013,7 @@ OMP_NUM_THREADS are set to the value of
 .I ompthreads.
 For other MPI processes, behavior is dependent on MPI implementation.
 See the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 .br
 Can be requested only inside of a select statement.
 .br
@@ -1601,9 +1601,9 @@ Site-defined host-level resources with flags including "h"
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide,
+.I PBS Administrator's Guide,
 the
-.I PBS Professional User's Guide,
+.I PBS User's Guide,
 pbs_node_attributes(7B),
 pbs_rsub(1B),
 qalter(1B),

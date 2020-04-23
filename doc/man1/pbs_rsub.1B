@@ -134,7 +134,7 @@ maintenance reservation that overlaps an advance or standing job
 reservation, the overlapping vnodes become unavailable to the job
 reservation, and the job reservation becomes degraded.  PBS looks for
 replacement vnodes; see "Reservation Fault Tolerance" in chapter 9 of the
-.I PBS Professional Administrator's Guide.
+.I PBS Administrator's Guide.
 .RE
 
 PBS will not start any new jobs on vnodes overlapping or in a
@@ -414,7 +414,7 @@ man page.
 .LP
 .IP " " 8
 For more on reservations, see
-.B The PBS Professional User's Guide.
+.B PBS User's Guide.
 .RE
 .IP "-l resource request" 8
 The
@@ -574,7 +574,7 @@ option.  For example,
 .br
 results in a reservation that starts at 9:30 and runs for 1 hour.
 See the
-.B PBS Professional User's Guide.
+.B PBS User's Guide.
 
 .IP "until spec" 5
 Occurrences will start up to but not after date and time
@@ -601,7 +601,7 @@ options.
 The PBS_TZID environment variable must be set at the submission host.  The
 format for PBS_TZID is a timezone location.  Examples: America/Los_Angeles,
 America/Detroit, Europe/Berlin, Asia/Calcutta.  See the
-.B PBS Professional User's Guide.
+.B PBS User's Guide.
 
 .B Examples of Standing Reservations
 .br
@@ -795,9 +795,9 @@ characters, and plus sign, dash or minus, underscore, and dot or period.
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.B PBS User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.B PBS Administrator's Guide,
 .br
 pbs_resv_attributes(7B),
 pbs_rdel(1B),
