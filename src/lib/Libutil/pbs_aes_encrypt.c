@@ -155,7 +155,7 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
 
 /**
  * @brief
- *	encode_to_base64 - Encode data into bas64 format
+ *	encode_to_base64 - Encode data into base64 format
  *
  * @param[in]		buffer			-	Data buffer for encoding
  * @param[in]		buffer_len		-	Length of the data buffer
@@ -181,7 +181,6 @@ encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_enco
 	(void)BIO_flush(mem_obj1);
 	BIO_get_mem_ptr(mem_obj1, &b_mem);
 
-	*ret_encoded_data = (*b_mem).data;
 	buf_len = (*b_mem).length;
 
 	*ret_encoded_data = malloc(buf_len + 1);
@@ -198,7 +197,7 @@ encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_enco
 
 /**
  * @brief
- *	decode_from_base64 - Decode data from bas64 format
+ *	decode_from_base64 - Decode data from base64 format
  *
  * @param[in]		buffer			-	Data buffer for decoding
  * @param[in/out]	ret_decoded_data	-	Return the decoded data

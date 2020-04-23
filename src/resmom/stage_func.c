@@ -2351,7 +2351,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			}
 
 			if (cred_len != a_cnt) {
-				sprintf(log_buffer, "Mismatch: cred_len = %d, a_cnt=%d", cred_len, a_cnt);
+				sprintf(log_buffer, "Data mismatch, cred_len: %d, decoded_cred_len: %d", cred_len, a_cnt);
 				log_err(-1, __func__, log_buffer);
 				free_rq_cpyfile_cred(pcf);
 				free(cred_buf);
