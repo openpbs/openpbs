@@ -1983,10 +1983,10 @@ class NodeUtils(object):
             else:
                 total = size_as_int(hpmemtotal)
         except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG,
+            pbs.logmsg(pbs.EVENT_DEBUG3,
                        '%s: Could not determine huge page availability' %
                        caller_name())
-            raise
+            total = 0
         if total <= 0:
             total = 0
             pbs.logmsg(pbs.EVENT_DEBUG4,
