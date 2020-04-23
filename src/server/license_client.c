@@ -56,8 +56,6 @@
 #define	LICSTATE_SOCKETS_UNCONF	0x4	/* no socket license file configured */
 #define	LICSTATE_HAS_SOCKETS	0x8	/* nonzero number of socket licenses */
 
-static unsigned int total_sockets   = 10000000;
-static unsigned int avail_sockets   = 10000000;
 enum licensing_backend  prev_lb     = LIC_UNKNOWN;	/* Value of previous licensing backend. */
 enum licensing_backend last_valid_attempt = LIC_UNKNOWN;
 
@@ -89,7 +87,7 @@ pbs_licensing_status(void)
 int
 pbs_licensing_count(void)
 {
-	return (avail_sockets);
+	return (licenses.lb_aval_floating);
 }
 
 /**
@@ -175,30 +173,6 @@ init_socket_licenses(char *license_file)
 
 /**
  * @brief
- *		sockets_available	- It's a placeholder function
- * 		which has intentionally kept empty.
- * @return	10000000
- */
-int
-sockets_available(void)
-{
-	return (avail_sockets);
-}
-
-/**
- * @brief
- *		sockets_reset	- It's a placeholder function
- * 		which has intentionally kept empty.
- * @return	void
- */
-void
-sockets_reset(void)
-{
-	return;
-}
-
-/**
- * @brief
  *		sockets_release	- It's a placeholder function
  * 		which has intentionally kept empty.
  * @return	void
@@ -219,18 +193,6 @@ int
 sockets_consume(int nsockets)
 {
 	return (0);
-}
-
-/**
- * @brief
- *		sockets_total	- It's a placeholder function
- * 		which has intentionally kept empty.
- * @return	total sockets
- */
-int
-sockets_total(void)
-{
-	return (total_sockets);
 }
 
 /**
