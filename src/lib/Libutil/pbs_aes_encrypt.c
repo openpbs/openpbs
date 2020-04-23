@@ -168,31 +168,36 @@ pbs_decrypt_pwd(char *crypted, int credtype, size_t len, char **uncrypted)
 int
 encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data)
 {
-	BUF_MEM *b_mem;
 	BIO *mem_obj1, *mem_obj2;
-	int buf_len = 0;
+	long buf_len = 0;
+	char *buf;
 
 	mem_obj1 = BIO_new(BIO_s_mem());
+	if (mem_obj1 == NULL)
+		return 1;
 	mem_obj2 = BIO_new(BIO_f_base64());
+	if (mem_obj2 == NULL) {
+		BIO_free(mem_obj1);
+		return 1;
+	}
 
 	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
 	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
 	BIO_write(mem_obj1, buffer, buffer_len);
 	(void)BIO_flush(mem_obj1);
-	BIO_get_mem_ptr(mem_obj1, &b_mem);
-
-	buf_len = (*b_mem).length;
-
-	*ret_encoded_data = malloc(buf_len + 1);
+	buf_len = BIO_get_mem_data(mem_obj1, &buf);
+	if (buf_len <= 0)
+		return 1;
+	*ret_encoded_data = (char *)malloc(buf_len + 1);
 	if (*ret_encoded_data == NULL) {
 		BIO_free_all(mem_obj1);
-		return (1);
+		return 1;
 	}
-	memcpy(*ret_encoded_data, (*b_mem).data, buf_len);
+	memcpy(*ret_encoded_data, buf, buf_len);
 	(*ret_encoded_data)[buf_len] = '\0';
 
 	BIO_free_all(mem_obj1);
-	return (0);
+	return 0;
 }
 
 /**
@@ -217,26 +222,30 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 	int padding_enabled = 1;
 
 	input_len = strlen(buffer);
-	if (input_len == 0) {
-		return (1);
-	}
-	if ((buffer[input_len-1] == '=') && (buffer[input_len-2] == '=')) {
+	if (input_len == 0)
+		return 1;
+	if ((buffer[input_len - 1] == '=') && (buffer[input_len - 2] == '=')) {
 		char_padding = 2;
 		padding_enabled = 0;
 	}
 	if (padding_enabled) {
-		if (buffer[input_len-1] == '=')
+		if (buffer[input_len - 1] == '=')
 			char_padding = 1;
 	}
-	decode_length = ((input_len*3)/4 - char_padding);
+	decode_length = ((input_len * 3)/4 - char_padding);
 	*ret_decoded_data = (unsigned char*)malloc(decode_length + 1);
-	if (*ret_decoded_data == NULL) {
-		return (1);
-	}
+	if (*ret_decoded_data == NULL)
+		return 1;
 	(*ret_decoded_data)[decode_length] = '\0';
 
 	mem_obj1 = BIO_new_mem_buf(buffer, -1);
+	if (mem_obj1 == NULL)
+		return 1;
 	mem_obj2 = BIO_new(BIO_f_base64());
+	if (mem_obj2 == NULL) {
+		BIO_free_all(mem_obj1);
+		return 1;
+	}
 
 	mem_obj1 = BIO_push(mem_obj2, mem_obj1);
 	BIO_set_flags(mem_obj1, BIO_FLAGS_BASE64_NO_NL);
@@ -244,8 +253,8 @@ decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_d
 
 	if (*ret_decoded_len != decode_length) {
 		BIO_free_all(mem_obj1);
-		return (1);
+		return 1;
 	}
 	BIO_free_all(mem_obj1);
-	return (0);
+	return 0;
 }
