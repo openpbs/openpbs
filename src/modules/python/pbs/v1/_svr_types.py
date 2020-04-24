@@ -1531,7 +1531,7 @@ _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
-# FIXME: need reverse lookups for state bitmasks
+_pbs_v1.REVERSE_NODE_STATES = {}
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
         _pbs_v1.REVERSE_MGR_CMDS[value] = key
@@ -1543,3 +1543,5 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_BATCH_OPS[value] = key
     elif key.startswith("ATR_VFLAG_"):
         _pbs_v1.REVERSE_ATR_VFLAGS[value] = key
+    elif key.startswith("NODE_STATE_"):
+        _pbs_v1.REVERSE_NODE_STATES[value] = key
