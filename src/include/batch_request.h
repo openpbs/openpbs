@@ -343,7 +343,6 @@ extern int authenticate_user(struct batch_request *, conn_t *);
 #endif
 
 #ifndef PBS_MOM
-extern void req_authenResvPort(struct batch_request *);
 extern void req_confirmresv(struct batch_request *);
 extern void req_connect(struct batch_request *);
 extern void req_defschedreply(struct batch_request *);
