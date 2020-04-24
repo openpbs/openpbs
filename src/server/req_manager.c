@@ -1164,10 +1164,6 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 
 			(pdef+index)->at_free(pattr+index);
 			(pattr+index)->at_flags |= ATR_VFLAG_MODIFY;
-			if (index == SRV_ATR_pbs_license_info) {
-				unlicense_socket_licensed_nodes();
-				clear_license_info();
-			}
 		}
 		plist = (svrattrl *)GET_NEXT(plist->al_link);
 	}

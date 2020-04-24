@@ -1115,18 +1115,12 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 			init_licensing();
 			if (license_sanity_check())
 				license_more_nodes();
-		} else {
-			if (licenses.lb_aval_floating == 0) {	
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
-					LOG_ALERT, msg_daemonname,	
-					"One or more PBS license keys are invalid, jobs may not run");	
-			} else {	
-				sprintf(log_buffer,	
-					"Licenses valid for %d floating hosts",	
-					licenses.lb_aval_floating);	
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
-					LOG_NOTICE, msg_daemonname, log_buffer);	
-			}
+		} else {	
+			sprintf(log_buffer,	
+				"Licenses valid for %d floating hosts",	
+				licenses.lb_aval_floating);	
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
+				LOG_NOTICE, msg_daemonname, log_buffer);	
 		}
 	}
 
@@ -1149,6 +1143,7 @@ unset_license_location(void)
 
 			close_licensing();
 			unlicense_socket_licensed_nodes();
+			clear_license_info();
 		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
 

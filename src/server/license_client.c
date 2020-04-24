@@ -280,7 +280,7 @@ propagate_socket_licensing(mominfo_t *pmom, int distribute) {
  * @return	zero
  */
 int
-nsockets_from_topology(char *topology_str, ntt_t type)
+nsockets_from_topology(char *topology_str, ntt_t type, long *node_lic_reqd, long *socket_lic_reqd)
 {
 	return 0;
 }

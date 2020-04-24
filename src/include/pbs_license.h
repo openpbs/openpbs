@@ -96,8 +96,6 @@ enum licensing_backend {
 struct	pbs_lic_counts {
 	long socket_lic_needed;
 	long node_lic_needed;
-	long nsockets;
-	long node_count;
 };
 extern struct license_block licenses;
 extern struct attribute *pbs_float_lic;
@@ -118,7 +116,7 @@ extern void   inspect_license_path(void);
 extern int    licstate_is_up(enum licensing_backend);
 extern void   licstate_down(void);
 extern void   licstate_unconfigured(enum licensing_backend);
-extern int	nsockets_from_topology(char *, ntt_t);
+extern int	nsockets_from_topology(char *, ntt_t, long *, long *);
 extern int	check_sign(void *, void *);
 extern void	process_topology_info(void *, char *, ntt_t );
 extern void	unset_signature(void *, char *);
