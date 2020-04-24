@@ -81,11 +81,11 @@ extern unsigned char pbs_aes_iv[][16];
  *			used to provide a failure message.
  */
 void
-pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg)
+pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)
 {
 	char *str;
 	char *p;
-	char fmt[] = "%s %s failed: %s";
+	char fmt[] = "%s %s failed: %s %s";
 
 	if (conn->conn_db_err) {
 		free(conn->conn_db_err);
@@ -100,12 +100,11 @@ pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg)
 	while ((p >= str) && (*p == '\r' || *p == '\n'))
 		*p-- = 0; /* supress the last newline */
 
-	conn->conn_db_err = malloc(strlen(fnc) + strlen(msg) +
-		strlen(str) + sizeof(fmt) + 1);
+	conn->conn_db_err = malloc(strlen(fnc) + strlen(msg) + strlen(msg2) + strlen(str) + sizeof(fmt) + 1);
 	if (!conn->conn_db_err)
 		return;
 
-	sprintf((char *) conn->conn_db_err, fmt, fnc, msg, str);
+	sprintf((char *) conn->conn_db_err, fmt, fnc, msg, str, msg2);
 #ifdef DEBUG
 	printf("%s\n", (char *) conn->conn_db_err);
 	fflush(stdout);
@@ -138,7 +137,8 @@ pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql,
 		num_vars,
 		NULL);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pg_set_error(conn, "Prepare of statement", stmt);
+		char *sql_error = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+		pg_set_error(conn, "Prepare of statement", stmt, sql_error);
 		PQclear(res);
 		return -1;
 	}
@@ -151,9 +151,9 @@ pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql,
  * @brief
  *	Execute a prepared DML (insert or update) statement
  *
- * @param[in]	conn - The connnection handle
- * @param[in]	stmt - Name of the statement (prepared previously)
- * @param[in]	num_vars - The number of parameters in the sql ($1, $2 etc)
+ * @param[in] 	  conn - The connnection handle
+ * @param[in]	  stmt - Name of the statement (prepared previously)
+ * @param[in]     num_vars - The number of parameters in the sql ($1, $2 etc)
  *
  * @return      Error code
  * @retval	-1 - Execution of prepared statement failed
@@ -162,25 +162,32 @@ pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql,
  *
  *
  */
-int
-pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars)
+int pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars)
 {
 	PGresult *res;
 	char *rows_affected = NULL;
+	ExecStatusType res_rc;
 
-	res = PQexecPrepared((PGconn*) conn->conn_db_handle,
-		stmt,
-		num_vars,
-		((pg_conn_data_t *) conn->conn_data)->paramValues,
-		((pg_conn_data_t *) conn->conn_data)->paramLengths,
-		((pg_conn_data_t *) conn->conn_data)->paramFormats,
-		0);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pg_set_error(conn, "Execution of Prepared statement", stmt);
+	res = PQexecPrepared((PGconn*) conn->conn_db_handle, stmt, num_vars,
+			((pg_conn_data_t *) conn->conn_data)->paramValues,
+			((pg_conn_data_t *) conn->conn_data)->paramLengths,
+			((pg_conn_data_t *) conn->conn_data)->paramFormats,
+			conn->conn_result_format);
+
+	res_rc = PQresultStatus(res);
+	if (!(res_rc == PGRES_COMMAND_OK || res_rc == PGRES_TUPLES_OK)) {
+		char *sql_error = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+		pg_set_error(conn, "Execution of Prepared statement", stmt, sql_error);
 		PQclear(res);
 		return -1;
 	}
+	
+	if (PQntuples(res) <= 0) {
+		PQclear(res);
+		return 1;
+	}
 	rows_affected = PQcmdTuples(res);
+
 	/*
 	 *  we can't call PQclear(res) yet, since rows_affected
 	 * (used below) is a pointer to a field inside res (PGresult)
@@ -189,7 +196,7 @@ pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars)
 		PQclear(res);
 		return 1;
 	}
-	PQclear(res);
+	conn->conn_resultset = res; /* store, since caller will retrieve results */
 
 	return 0;
 }
@@ -210,8 +217,7 @@ pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars)
  *
  */
 int
-pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars,
-	PGresult **res)
+pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars, PGresult **res)
 {
 	*res = PQexecPrepared((PGconn*) conn->conn_db_handle,
 		stmt,
@@ -222,7 +228,8 @@ pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars,
 		conn->conn_result_format);
 
 	if (PQresultStatus(*res) != PGRES_TUPLES_OK) {
-		pg_set_error(conn, "Execution of Prepared statement", stmt);
+		char *sql_error = PQresultErrorField(*res, PG_DIAG_SQLSTATE);
+		pg_set_error(conn, "Execution of Prepared statement", stmt, sql_error);
 		PQclear(*res);
 		return -1;
 	}
@@ -772,49 +779,4 @@ pbs_ntohll(unsigned long long x)
 	 * so there is no clash.
 	 */
 	return (unsigned long long)(((unsigned long long) ntohl((x) & 0xffffffff)) << 32) | ntohl(((unsigned long long)(x)) >> 32);
-}
-
-/**
- * @brief
- *	Execute a prepared DML (insert or update) statement
- *
- * @param[in] 	  conn - The connnection handle
- * @param[in]	  stmt - Name of the statement (prepared previously)
- * @param[in]     num_vars - The number of parameters in the sql ($1, $2 etc)
- *
- * @return      Error code
- * @retval	-1 - Execution of prepared statement failed
- * @retval	 0 - Success and > 0 rows were affected
- * @retval	 1 - Execution succeeded but statement did not affect any rows
- *
- *
- */
-int pg_db_cmd_ret(pbs_db_conn_t *conn, char *stmt, int num_vars)
-{
-	PGresult *res;
-	char *rows_affected = NULL;
-
-	res = PQexecPrepared((PGconn*) conn->conn_db_handle, stmt, num_vars,
-			((pg_conn_data_t *) conn->conn_data)->paramValues,
-			((pg_conn_data_t *) conn->conn_data)->paramLengths,
-			((pg_conn_data_t *) conn->conn_data)->paramFormats, 0);
-
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pg_set_error(conn, "Execution of Prepared statement", stmt);
-		PQclear(res);
-		return -1;
-	}
-	rows_affected = PQcmdTuples(res);
-
-	/*
-	 *  we can't call PQclear(res) yet, since rows_affected
-	 * (used below) is a pointer to a field inside res (PGresult)
-	 */
-	if (rows_affected == NULL || strtol(rows_affected, NULL, 10) <= 0) {
-		PQclear(res);
-		return 1;
-	}
-	conn->conn_resultset = res; /* store, since caller will retrieve results */
-
-	return 0;
 }

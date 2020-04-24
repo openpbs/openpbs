@@ -981,7 +981,6 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 			(char *)0,
 			(char *)0,
 			new_exec_vnode);
-		pjob->ji_modified = 1;
 
 		(void)update_resources_list(pjob, ATTR_l, JOB_ATR_resource, new_exec_vnode, INCR, 0, JOB_ATR_resource_orig);
 	}
@@ -995,7 +994,6 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 			(char *)0,
 			(char *)0,
 			new_exec_host);
-		pjob->ji_modified = 1;
 	}
 
 	if (new_exec_host2 != NULL) {
@@ -1007,7 +1005,6 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 			(char *)0,
 			(char *)0,
 			new_exec_host2);
-		pjob->ji_modified = 1;
 	}
 
 	if (new_schedselect != NULL) {
@@ -1016,7 +1013,6 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 			(char *)0,
 			(char *)0,
 			new_schedselect);
-		pjob->ji_modified = 1;
 	}
 
 	rc = 0;
@@ -1347,8 +1343,7 @@ receive_job_update(int stream, job *pjob)
 
 
 		pjob->ji_updated = 1;
-		pjob->ji_modified = 1;
-		(void)job_save(pjob, SAVEJOB_FULL);
+		(void)job_save(pjob);
 
 		for (i=0; i<pjob->ji_numvnod; i++) {
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -3146,7 +3141,6 @@ im_request(int stream, int version)
 				strcpy(pjob->ji_qs.ji_fileprefix, basename);
 			else
 				*pjob->ji_qs.ji_fileprefix = '\0';
-			pjob->ji_modified = 1;
 			pjob->ji_nodeid = -1;
 			pjob->ji_qs.ji_svrflags = 0;
 			pjob->ji_qs.ji_un_type = JOB_UNION_TYPE_MOM;
@@ -3335,7 +3329,7 @@ im_request(int stream, int version)
 				}
 			}
 
-			(void)job_save(pjob, SAVEJOB_FULL);
+			(void)job_save(pjob);
 			(void)strcpy(namebuf, path_jobs);	/* job directory path */
 			if (*pjob->ji_qs.ji_fileprefix != '\0')
 				(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
@@ -4573,7 +4567,7 @@ join_err:
  						if (!do_tolerate_node_failures(pjob) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB)) {
 							if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) {
 								pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
-								job_save(pjob, SAVEJOB_QUICK);
+								job_save(pjob);
 							}
 							finish_exec(pjob);
 							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
@@ -5107,7 +5101,7 @@ join_err:
 						 */
 						if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) {
 							pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
-							job_save(pjob, SAVEJOB_QUICK);
+							job_save(pjob);
 						}
 						finish_exec(pjob);
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
@@ -6007,7 +6001,7 @@ tm_request(int fd, int version)
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 
 		/*

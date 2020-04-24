@@ -351,7 +351,7 @@ encode_state(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
 	if (rtnl)
 		*rtnl = pal;
 
-	return (0);             /*success*/
+	return (1);             /*success*/
 }
 
 /**
@@ -682,8 +682,8 @@ encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  *
  * @return      int
  * @retval      <0      an error encountered; value is negative of an error code
- * @retval       0      ok, encode happened and svrattrl created and linked in,
- *                      or nothing to encode
+ * @retval      >=0     ok, encode happened and svrattrl created and linked in >0,
+ *                      or nothing to encode = 0
  */
 
 int
@@ -715,7 +715,7 @@ encode_sharing(const attribute *pattr, pbs_list_head *ph, char *aname, char *rna
 	if (rtnl)
 		*rtnl = pal;
 
-	return (0);             /*success*/
+	return (1);             /*success*/
 }
 
 /**

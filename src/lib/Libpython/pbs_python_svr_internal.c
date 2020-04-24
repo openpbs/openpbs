@@ -3350,7 +3350,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 		que->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = que->qu_numjobs -
 			(que->qu_njstate[JOB_STATE_MOVED] + que->qu_njstate[JOB_STATE_FINISHED] + que->qu_njstate[JOB_STATE_EXPIRED]);
 	}
-	que->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	que->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	update_state_ct(&que->qu_attr[(int)QA_ATR_JobsByState],
 		que->qu_njstate,
@@ -3497,7 +3497,7 @@ _pps_helper_get_server(char *perf_label)
 	server.sv_attr[(int)SRV_ATR_TotalJobs].at_val.at_long = \
 					server.sv_qs.sv_numjobs;
 	server.sv_attr[(int)SRV_ATR_TotalJobs].at_flags |= \
-					ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+					ATR_VFLAG_SET|ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	update_state_ct(&server.sv_attr[(int)SRV_ATR_JobsByState],
 		server.sv_jobstates,
 		server.sv_jobstbuf);
@@ -9411,7 +9411,6 @@ _pbs_python_do_vnode_set(void)
 
 	vnode_set_req	*vn_set_req = NULL;
 	struct pbsnode  	*pnode;
-	int			need_todo  = 0;
 	int             	bad = 0;
 	int			rc;
 	char		*hook_name = NULL;
@@ -9435,8 +9434,6 @@ _pbs_python_do_vnode_set(void)
 			vn_set_req = (vnode_set_req *) GET_NEXT(vn_set_req->all_reqs);
 			continue;
 		}
-
-		save_characteristic(pnode);
 
 		plist = (svrattrl *)GET_NEXT(vn_set_req->rq_attr);
 
@@ -9479,7 +9476,6 @@ _pbs_python_do_vnode_set(void)
 			}
 			return;
 		} else {
-			(void)chk_characteristic(pnode, &need_todo);
 
 			mgr_log_attr(msg_man_set, plist,
 				PBS_EVENTCLASS_NODE, pnode->nd_name, hook_name);
@@ -9501,16 +9497,7 @@ _pbs_python_do_vnode_set(void)
 		vn_set_req = (vnode_set_req *) GET_NEXT(vn_set_req->all_reqs);
 	}
 
-	/* save_nodes_db calls write_node_state internally,
-	 * so call write_node_state only if save_nodes_db is not
-	 * being called
-	 */
-	if (need_todo & WRITE_NEW_NODESFILE) {
-		/*create/delete/prop/ntype change*/
-		(void)save_nodes_db(0, NULL);
-	} else if (need_todo & WRITENODE_STATE) {  /*nodes "offline"/comment changed*/
-		write_node_state();
-	}
+	save_nodes_db(0, NULL);
 }
 
 const char pbsv1mod_meth_set_python_mode_doc[] =

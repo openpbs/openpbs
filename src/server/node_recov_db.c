@@ -46,11 +46,6 @@
  *		node_recov_db.c - This file contains the functions to record a node
  *		data structure to database and to recover it from database.
  *
- * Included functions are:
- *	node_save_db()
- *	svr_to_db_node()
- *	node_recov_db_raw()
- *	node_delete_db()
  */
 
 
@@ -88,152 +83,187 @@
 #include "libutil.h"
 #include "pbs_db.h"
 
-#ifdef NAS /* localmod 005 */
-/* External Functions Called */
-extern int recov_attr_db(pbs_db_conn_t *conn,
-	void *parent,
-	pbs_db_attr_info_t *p_attr_info,
-	struct attribute_def *padef,
-	struct attribute *pattr,
-	int limit,
-	int unknown);
-extern int recov_attr_db_raw(pbs_db_conn_t *conn,
-	pbs_db_attr_info_t *p_attr_info,
-	pbs_list_head *phead);
-#endif /* localmod 005 */
-
-
-extern int make_pbs_list_attr_db(void *parent, pbs_db_attr_list_t *attr_list, struct attribute_def *padef, pbs_list_head *phead, int limit, int unknown);
 
 /**
  * @brief
- *		Load a database node object from a server node object
+ *		convert from database to node structure
+ *
+ * @param[out]	pnode - Address of the node in the server
+ * @param[in]	pdbnd - Address of the database node object
+ *
+ * @return	Error code
+ * @retval   0 - Success
+ * @retval  -1 - Failure
+ *
+ */
+static int
+db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
+{
+	if (pdbnd->nd_name && pdbnd->nd_name[0] != 0) {
+		pnode->nd_name = strdup(pdbnd->nd_name);
+		if (pnode->nd_name == NULL)
+			return -1;
+	}
+	else
+		pnode->nd_name = NULL;
+
+	if (pdbnd->nd_hostname && pdbnd->nd_hostname[0]!=0) {
+		pnode->nd_hostname = strdup(pdbnd->nd_hostname);
+		if (pnode->nd_hostname == NULL)
+			return -1;
+	}
+	else
+		pnode->nd_hostname = NULL;
+
+	pnode->nd_ntype = pdbnd->nd_ntype;
+	pnode->nd_state = pdbnd->nd_state;
+	if (pnode->nd_pque)
+		strcpy(pnode->nd_pque->qu_qs.qu_name, pdbnd->nd_pque);
+
+	if ((decode_attr_db(pnode, &pdbnd->cache_attr_list, &pdbnd->db_attr_list, node_attr_def, pnode->nd_attr, (int) ND_ATR_LAST, 0)) != 0)
+		return -1;
+
+	strcpy(pnode->nd_savetm, pdbnd->nd_savetm);
+
+	return 0;
+}
+
+
+/**
+ * @brief
+ *		Recover a node from the database
+ *
+ * @param[in]	nd_name	- node name
+ * @param[in]	pnode	- node pointer, if any, to be updated
+ *
+ * @return	The recovered node structure
+ * @retval	NULL - Failure
+ * @retval	!NULL - Success - address of recovered node returned
+ */
+struct pbsnode *
+node_recov_db(char *nd_name, struct pbsnode *pnode)
+{
+	pbs_db_obj_info_t obj;
+	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_node_info_t dbnode = {{0}};
+	int rc = 0;
+	struct pbsnode *pnd = NULL;
+
+	if (pnode)
+		strcpy(dbnode.nd_savetm, pnode->nd_savetm);
+	else {
+		dbnode.nd_savetm[0] = '\0';
+		if ((pnd = malloc(sizeof(struct pbsnode)))) {
+			pnode = pnd;
+			initialize_pbsnode(pnode, strdup(nd_name), NTYPE_PBS);
+		} else {
+			log_err(-1, __func__, "node_alloc failed");
+			return NULL;
+		}
+	}
+
+	strcpy(dbnode.nd_name, nd_name);
+	obj.pbs_db_obj_type = PBS_DB_NODE;
+	obj.pbs_db_un.pbs_db_node = &dbnode;
+
+	rc = pbs_db_load_obj(conn, &obj);
+	if (rc == -2)
+		return pnode; /* no change in node, return the same pnode */
+
+	if (rc == 0)
+		rc = db_2_node(pnode, &dbnode);
+	
+	free_db_attr_list(&dbnode.db_attr_list);
+	free_db_attr_list(&dbnode.cache_attr_list);
+
+	if (rc != 0) {
+		pnode = NULL; /* so we return NULL */
+		if (pnd)
+			free(pnd); /* free if we allocated here */
+	}
+	return pnode;
+}
+
+/**
+ * @brief
+ *		convert node structure to DB format
  *
  * @param[in]	pnode - Address of the node in the server
  * @param[out]	pdbnd - Address of the database node object
  *
  * @return 0    Success
- * @return !=0  Failure
+ * @retval	>=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-svr_to_db_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
+node_2_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 {
-	int j, wrote_np = 0;
-	svrattrl *psvrl;
-	pbs_list_head wrtattr;
-	pbs_db_attr_info_t *attrs = NULL;
-	int numattr = 0;
-	int count = 0;
+	int wrote_np = 0;
+	svrattrl *psvrl, *tmp;
 	int vnode_sharing = 0;
+	int savetype = 0;
 
-	if (pnode->nd_name)
-		strcpy(pdbnd->nd_name, pnode->nd_name);
-	else
-		pdbnd->nd_name[0]=0;
+	strcpy(pdbnd->nd_name, pnode->nd_name);
+	strcpy(pnode->nd_savetm, pdbnd->nd_savetm);
 
-	/* node_index is used to sort vnodes upon recovery.
-	 * For Cray multi-MoM'd vnodes, we ensure that natural vnodes come
-	 * before the vnodes that it manages by introducing offsetting all
-	 * non-natural vnodes indices to come after natural vnodes.
+	savetype |= OBJ_SAVE_QS;
+	/* nodes do not have a qs area, so we cannot check whether qs changed or not 
+	 * hence for now, we always write the qs area, for now!
 	 */
+		
+	/* node_index is used to sort vnodes upon recovery.
+	* For Cray multi-MoM'd vnodes, we ensure that natural vnodes come
+	* before the vnodes that it manages by introducing offsetting all
+	* non-natural vnodes indices to come after natural vnodes.
+	*/
 	pdbnd->nd_index = (pnode->nd_nummoms * svr_totnodes) + pnode->nd_index;
 
 	if (pnode->nd_hostname)
 		strcpy(pdbnd->nd_hostname, pnode->nd_hostname);
-	else
-		pdbnd->nd_hostname[0]=0;
-
+	
 	if (pnode->nd_moms && pnode->nd_moms[0])
 		pdbnd->mom_modtime = pnode->nd_moms[0]->mi_modtime;
-	else
-		pdbnd->mom_modtime = 0;
-
+	
 	pdbnd->nd_ntype = pnode->nd_ntype;
 	pdbnd->nd_state = pnode->nd_state;
 	if (pnode->nd_pque)
 		strcpy(pdbnd->nd_pque, pnode->nd_pque->qu_qs.qu_name);
 	else
-		pdbnd->nd_pque[0]=0;
+		pdbnd->nd_pque[0] = 0;
 
-	/*
-	 * node attributes are saved in a different way than attributes of other objects
-	 * for other objects we directly call save_attr_db, but for node attributes
-	 * we massage some of the attributes. The special ones are pcpus
-	 * and resv_enable and sharing.
-	 */
-	CLEAR_HEAD(wrtattr);
+	if ((encode_attr_db(node_attr_def, pnode->nd_attr, ND_ATR_LAST, &pdbnd->cache_attr_list, &pdbnd->db_attr_list, 0)) != 0)
+		return -1;
 
-	for (j = 0; j < ND_ATR_LAST; ++j) {
-		/* skip certain ones: no-save and default values */
-		if ((node_attr_def[j].at_flags & ATR_DFLAG_NOSAVM) ||
-				(pnode->nd_attr[j].at_flags & ATR_VFLAG_DEFLT))
-			continue;
-
-		(void) node_attr_def[j].at_encode(&pnode->nd_attr[j],
-		                                  &wrtattr,
-		                                  node_attr_def[j].at_name,
-		                                  NULL,
-		                                  ATR_ENCODE_SVR,
-		                                  NULL);
-
-		node_attr_def[j].at_flags &= ~ATR_VFLAG_MODIFY;
-	}
-
-	vnode_sharing = (((pnode->nd_attr[ND_ATR_Sharing].at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT))
-				== (ATR_VFLAG_SET | ATR_VFLAG_DEFLT))
-				&& ((pnode->nd_attr[ND_ATR_Sharing].at_val.at_long != VNS_UNSET)
-						&& (pnode->nd_attr[ND_ATR_Sharing].at_val.at_long != VNS_DFLT_SHARED)));
-	numattr = vnode_sharing;
-	psvrl = (svrattrl *)GET_NEXT(wrtattr);
-	while (psvrl) {
-		if ((strcmp(psvrl->al_name, ATTR_rescavail) == 0) &&
-				(strcmp(psvrl->al_resc, "ncpus") == 0)) {
+	/* MSTODO: how can we optimize this loop - eliminate this? */
+	psvrl = (svrattrl *) GET_NEXT(pdbnd->db_attr_list.attrs);
+	while (psvrl != NULL) {
+		if ((strcmp(psvrl->al_name, ATTR_rescavail) == 0) && (strcmp(psvrl->al_resc, "ncpus") == 0)) {
 			wrote_np = 1;
+			psvrl = (svrattrl *)GET_NEXT(psvrl->al_link);
+			continue;
 		}
-		psvrl = (svrattrl *)GET_NEXT(psvrl->al_link);
-		numattr++;
-	}
-	if (wrote_np == 0) {
-		numattr++;
-	}
-	pdbnd->attr_list.attributes = calloc(sizeof(pbs_db_attr_info_t), numattr);
-	if (!pdbnd->attr_list.attributes)
-			return -1;
-	pdbnd->attr_list.attr_count = 0;
-	attrs = pdbnd->attr_list.attributes;
-
-	while ((psvrl = (svrattrl *) GET_NEXT(wrtattr)) != NULL) {
 
 		if (strcmp(psvrl->al_name, ATTR_NODE_pcpus) == 0) {
 			/* don't write out pcpus at this point, see */
 			/* check for pcpus if needed after loop end */
+			tmp = (svrattrl *)GET_NEXT(psvrl->al_link); /* store next node pointer */
 			delete_link(&psvrl->al_link);
-			(void) free(psvrl);
-
+			free(psvrl);
+			pdbnd->db_attr_list.attr_count--;
+			psvrl = tmp;
 			continue;
+
 		} else if (strcmp(psvrl->al_name, ATTR_NODE_resv_enable) == 0) {
 			/*  write resv_enable only if not default value */
 			if ((psvrl->al_flags & ATR_VFLAG_DEFLT) != 0) {
+				tmp = (svrattrl *)GET_NEXT(psvrl->al_link); /* store next node pointer */
 				delete_link(&psvrl->al_link);
-				(void) free(psvrl);
-
+				free(psvrl);
+				pdbnd->db_attr_list.attr_count--;
+				psvrl = tmp;
 				continue;
 			}
 		}
-
-		/* every attribute to this point we write to database */
-		snprintf(attrs[count].attr_name, sizeof(attrs[count].attr_name), "%s", psvrl->al_name);
-		if (psvrl->al_resc) {
-	        	snprintf(attrs[count].attr_resc, sizeof(attrs[count].attr_resc), "%s", psvrl->al_resc);
-		}
-		else
-			strcpy(attrs[count].attr_resc, "");
-		attrs[count].attr_value = strdup(psvrl->al_value);
-		attrs[count].attr_flags = psvrl->al_flags;
-		count++;
-
-        delete_link(&psvrl->al_link);
-        (void)free(psvrl);
+		psvrl = (svrattrl *)GET_NEXT(psvrl->al_link);
 	}
 
 	/*
@@ -249,60 +279,28 @@ svr_to_db_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	 */
 	if (wrote_np == 0) {
 		char pcpu_str[10];
+		svrattrl *pal;
+
 		/* write the default value for the num of cpus */
-		attrs[count].attr_name[sizeof(attrs[count].attr_name) - 1] = '\0';
-		strncpy(attrs[count].attr_name, ATTR_NODE_pcpus, sizeof(attrs[count].attr_name));
-		strcpy(attrs[count].attr_resc, "");
 		sprintf(pcpu_str, "%ld", pnode->nd_nsn);
-		attrs[count].attr_value = strdup(pcpu_str);
-		count++;
+		pal = make_attr(ATTR_NODE_pcpus, "", pcpu_str, 0);
+		append_link(&pdbnd->db_attr_list.attrs, &pal->al_link, pal);
+
+		pdbnd->db_attr_list.attr_count++;
 	}
 
 	if (vnode_sharing) {
 		char *vn_str;
+		svrattrl *pal;
+
 		vn_str = vnode_sharing_to_str((enum vnode_sharing) pnode->nd_attr[ND_ATR_Sharing].at_val.at_long);
+		pal = make_attr(ATTR_NODE_Sharing, "", vn_str, 0);
+		append_link(&pdbnd->db_attr_list.attrs, &pal->al_link, pal);
 
-		attrs[count].attr_name[sizeof(attrs[count].attr_name) - 1] = '\0';
-		strncpy(attrs[count].attr_name, ATTR_NODE_Sharing, sizeof(attrs[count].attr_name));
-		strcpy(attrs[count].attr_resc, "");
-		attrs[count].attr_value = strdup(vn_str);
-		count++;
+		pdbnd->db_attr_list.attr_count++;
 	}
-	pdbnd->attr_list.attr_count = count;
 
-	pnode->nd_modified &= ~NODE_UPDATE_OTHERS;
-
-	return 0;
-}
-
-/**
- * @brief
- *	Recover a node from the database without calling the action routines
- *	for the node attributes. This is because, the node attribute action
- *	routines access other resources in the node attributes which may
- *	not have been loaded yet. create_pbs_node (the top level caller)
- *	eventually calls mgr_set_attr to atomically set all the attributes
- *	and in that process triggers all the action routines.
- *
- * @param[in]	nd - Information about the node to recover
- * @param[in]	phead - list head to which to append loaded node attributes
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-node_recov_db_raw(void *nd, pbs_list_head *phead)
-{
-	pbs_db_node_info_t *dbnode =(pbs_db_node_info_t *) nd;
-
-	/* now convert attributes array to pbs list structure */
-	if ((make_pbs_list_attr_db(nd, &dbnode->attr_list, node_attr_def,
-		phead, (int) ND_ATR_LAST, 0)) != 0)
-		return -1;
-
-	return 0;
+	return savetype;
 }
 
 /**
@@ -313,11 +311,6 @@ node_recov_db_raw(void *nd, pbs_list_head *phead)
  *	updated to the database.
  *
  * @param[in]	pnode - Pointer to the node to save
- * @param[in]	mode:
- *		NODE_SAVE_FULL - Full update along with attributes
- *		NODE_SAVE_QUICK - Quick update without attributes
- *		NODE_SAVE_NEW	- New node insert into database
- *		NODE_SAVE_QUICK_STATE - Quick update, along with state attrib
  *
  * @return      Error code
  * @retval	0 - Success
@@ -327,32 +320,37 @@ node_recov_db_raw(void *nd, pbs_list_head *phead)
 int
 node_save_db(struct pbsnode *pnode)
 {
-	pbs_db_node_info_t dbnode;
+	pbs_db_node_info_t dbnode = {{0}};
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	int savetype;
+	int rc = -1;
+
+	if ((savetype = node_2_db(pnode, &dbnode))  == -1)
+		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 
-	svr_to_db_node(pnode, &dbnode);
-
-	if (pbs_db_save_obj(conn, &obj, PBS_UPDATE_DB_FULL) != 0) {
-		if (pbs_db_save_obj(conn, &obj, PBS_INSERT_DB) != 0) {
-			goto db_err;
-		}
+	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) != 0) {
+		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
+		rc = pbs_db_save_obj(conn, &obj, savetype);
 	}
 
-	pbs_db_reset_obj(&obj);
-
-	return (0);
-db_err:
-	pbs_db_reset_obj(&obj);
-	strcpy(log_buffer, "node_save failed ");
-	if (conn->conn_db_err != NULL)
-		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-	log_err(-1, "node_save_db", log_buffer);
-	panic_stop_db(log_buffer);
-	return (-1);
+	if (rc == 0)
+		strcpy(pnode->nd_savetm, dbnode.nd_savetm);
+done:
+	free_db_attr_list(&dbnode.db_attr_list);
+	free_db_attr_list(&dbnode.cache_attr_list);
+	
+	if (rc != 0) {
+		strcpy(log_buffer, "node_save failed ");
+		if (conn->conn_db_err != NULL)
+			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
+		log_err(-1, __func__, log_buffer);
+		panic_stop_db(log_buffer);
+	}
+	return rc;
 }
 
 
@@ -375,7 +373,7 @@ node_delete_db(struct pbsnode *pnode)
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 
-	snprintf(dbnode.nd_name, sizeof(dbnode.nd_name), "%s", pnode->nd_name);
+	strcpy(dbnode.nd_name, pnode->nd_name);
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 

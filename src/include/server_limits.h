@@ -99,6 +99,7 @@ extern "C" {
 #define PBS_SCHEDDB		"scheddb"
 #define PBS_SCHED_PRIVATE	"sched_priv"
 #define PBS_SVRLIVE		"svrlive"
+#define DIGEST_LENGTH	20 /* for now making this equal to SHA_DIGEST_LENGTH  which is 20 */
 
 /*
  * Security, Authentication, Authorization Control:

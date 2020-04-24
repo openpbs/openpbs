@@ -341,7 +341,6 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 			}
 
 			presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-			presv->ri_modified = 1;
 		}
 	}
 
@@ -440,8 +439,7 @@ degrade_overlapping_resv(resc_resv *presv)
 
 					remove_host_from_resv(tmp_presv, pl->vnode->nd_hostname);
 
-					if (tmp_presv->ri_modified)
-						job_or_resv_save((void *)tmp_presv, SAVERESV_FULL, RESC_RESV_OBJECT);
+					resv_save_db(tmp_presv);
 
 					/* we need 'break' here and start over because remove_host_from_resv()
 					 * modifies pl->vnode->nd_resvp */
@@ -496,8 +494,6 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 			NULL,
 			NULL,
 			node_str);
-
-		presv->ri_modified = 1;
 	}
 
 	return (ret);
@@ -640,8 +636,7 @@ req_confirmresv(struct batch_request *preq)
 	if ((newstart = (time_t)preq->rq_ind.rq_run.rq_resch) != 0) {
 		presv->ri_qs.ri_stime = newstart;
 		presv->ri_wattr[RESV_ATR_start].at_val.at_long = newstart;
-		presv->ri_wattr[RESV_ATR_start].at_flags
-		|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 		presv->ri_qs.ri_etime = newstart + presv->ri_qs.ri_duration;
 		petime->at_val.at_long = presv->ri_qs.ri_etime;
@@ -717,15 +712,13 @@ req_confirmresv(struct batch_request *preq)
 			}
 			if (!is_being_altered) {
 				presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long = resv_count;
-				presv->ri_wattr[RESV_ATR_resv_count].at_flags |= ATR_VFLAG_SET
-					| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				presv->ri_wattr[RESV_ATR_resv_count].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 			}
 
 			/* Set first occurrence to index 1
 			 * (rather than 0 because it gets displayed in pbs_rstat -f) */
 			presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = 1;
-			presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_VFLAG_SET
-				| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		}
 
 		/* Skip setting the execvnodes sequence when reconfirming the last
@@ -857,13 +850,12 @@ req_confirmresv(struct batch_request *preq)
 		} else {
 			que_attr_def[(int)QA_ATR_partition].at_decode(&rque->qu_attr[QA_ATR_partition],
 									NULL, NULL, partition_name);
-			que_save_db(rque, QUE_SAVE_FULL);
+			que_save_db(rque);
 		}
 		free(qname);
 	}
 	free(partition_name);
-	if (presv->ri_modified)
-		(void)job_or_resv_save((void *)presv, SAVERESV_FULL, RESC_RESV_OBJECT);
+	resv_save_db(presv);
 
 	log_buffer[0] = '\0';
 
@@ -989,15 +981,13 @@ resv_revert_alter_times(resc_resv *presv)
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {
 		presv->ri_qs.ri_stime = presv->ri_alter_stime;
 		presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter_stime;
-		presv->ri_wattr[RESV_ATR_start].at_flags
-		|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		presv->ri_alter_stime = 0;
 	}
 	if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED) {
 		presv->ri_qs.ri_etime = presv->ri_alter_etime;
 		presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter_etime;
-		presv->ri_wattr[RESV_ATR_end].at_flags
-		|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		presv->ri_alter_etime = 0;
 	}
 	if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
@@ -1019,8 +1009,7 @@ resv_revert_alter_times(resc_resv *presv)
 
 	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags
-	|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	presv->ri_alter_flags = 0;
 	eval_resvState(presv, RESVSTATE_alter_failed, 0, &state, &sub);
 	/* While requesting alter, substate was retained, so we use the same here. */

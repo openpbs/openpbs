@@ -281,13 +281,12 @@ post_cred(struct work_task *pwt)
 			/* send_cred was successful  - update validity*/
 
 			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_val.at_long = preq->rq_ind.rq_cred.rq_cred_validity;
-			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-			pjob->ji_modified = 1;
-			/* save the full job */
-			(void)job_save(pjob, SAVEJOB_FULL);
+			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
-				"sending credential to mom succeed");
+			/* save the full job */
+			(void)job_save_db(pjob);
+
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "sending credential to mom succeed");
 		}
 	} else
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_INFO, __func__, "failed, job unknown");

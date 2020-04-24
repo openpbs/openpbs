@@ -110,7 +110,11 @@ exit 0
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
         start_time = int(time.time())
+        """
+        Commenting out scheduling=False
+        Restart of HOT jobs not supported by multiserver
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        """
         self.server.qterm(manner=qterm_type)
 
         self.verify_checkpoint_abort(jid1, start_time)

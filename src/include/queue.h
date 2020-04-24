@@ -148,14 +148,13 @@ struct pbs_queue {
 	pbs_list_head qu_jobs;		/* jobs in this queue */
 	resc_resv *qu_resvp;		/* != NULL if que established */
 	/* to support a reservation */
-	int qu_nseldft;		/* number of elm in qu_seldft */
-	key_value_pair *qu_seldft;		/* defaults for job -l select */
+	int		 qu_nseldft;		/* number of elm in qu_seldft */
+	key_value_pair  *qu_seldft;		/* defaults for job -l select */
+
+	char qs_hash[DIGEST_LENGTH];
 	struct queuefix {
-		int qu_modified;		/* != 0 => update disk file */
-		int qu_type;		/* queue type: exec, route */
-		time_t qu_ctime;		/* time queue created */
-		time_t qu_mtime;		/* time queue last modified */
-		char qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
+		int	qu_type;		/* queue type: exec, route */
+		char	qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
 	} qu_qs;
 
 	int qu_numjobs;			/* current numb jobs in queue */
@@ -164,7 +163,8 @@ struct pbs_queue {
 
 	/* the queue attributes */
 
-	attribute qu_attr[QA_ATR_LAST];
+	attribute	qu_attr[QA_ATR_LAST];
+	char    	qu_savetm[DB_TIMESTAMP_LEN + 1];
 };
 typedef struct pbs_queue pbs_queue;
 
@@ -174,9 +174,9 @@ extern pbs_queue *find_resvqueuebyname(char *);
 #endif /* localmod 075 */
 extern pbs_queue *get_dfltque(void);
 extern pbs_queue *que_alloc(char *name);
-extern void   que_free(pbs_queue *);
-extern pbs_queue *que_recov_db(char *);
-extern int    que_save_db(pbs_queue *, int mode);
+extern pbs_queue *que_recov_db(char *, pbs_queue	*pq);
+extern void      que_free(pbs_queue *);
+extern int       que_save_db(pbs_queue *);
 
 #define QUE_SAVE_FULL 0
 #define QUE_SAVE_NEW  1

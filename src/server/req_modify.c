@@ -398,16 +398,13 @@ req_modifyjob(struct batch_request *preq)
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
 	}
-	else {
-		(void)job_save(pjob, SAVEJOB_FULL);
-	}
-	(void)sprintf(log_buffer, msg_manager, msg_jobmod,
-		preq->rq_user, preq->rq_host);
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pjob->ji_qs.ji_jobid, log_buffer);
+	
+	job_save_db(pjob); /* we must save the updates anyway, if any */
+	
+	(void)sprintf(log_buffer, msg_manager, msg_jobmod, preq->rq_user, preq->rq_host);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 
 	/* if a resource limit changed for a running job, send to MOM */
-
 	if (sendmom) {
 		rc = relay_to_mom(pjob, preq, post_modify_req);
 		if (rc)
@@ -463,7 +460,6 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	int	   changed_resc;
 	int	   allow_unkn;
 	long	   i;
-	int	   modified = 0;
 	attribute *newattr;
 	attribute *pre_copy;
 	attribute *attr_save;
@@ -649,8 +645,9 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		 * We only want to call the action functions for attributes which are being modified by this function.
 		 */
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-			if ((job_attr_def[i].at_flags & ATR_DFLAG_NOSAVM) == 0)
-				modified = 1;	/* full save to disk for job */
+			if ((job_attr_def[i].at_flags & ATR_DFLAG_NOSAVM))
+				continue;
+				
 			if (job_attr_def[i].at_action) {
 				rc = job_attr_def[i].at_action(&newattr[i],
 					pjob, ATR_ACTION_ALTER);
@@ -703,9 +700,6 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 
 	if (newaccruetype != -1)
 		update_eligible_time(newaccruetype, pjob);
-
-	if (modified)
-		pjob->ji_modified = 1;	/* an attr was modified, do full save */
 
 	free(newattr);
 	free(pre_copy);
@@ -955,7 +949,7 @@ req_modifyReservation(struct batch_request *preq)
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 			}
-			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+			que_save_db(presv->ri_qp);
 			free(pattrl);
 		} else {
 			resv_attr_def[(int)RESV_ATR_auth_g].at_free(&presv->ri_wattr[(int)RESV_ATR_auth_g]);
@@ -964,7 +958,7 @@ req_modifyReservation(struct batch_request *preq)
 			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup].at_flags |= ATR_VFLAG_MODIFY;
 			que_attr_def[(int)QE_ATR_AclGroupEnabled].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled]);
 			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_MODIFY;
-			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+			que_save_db(presv->ri_qp);
 		}
 	}
 
@@ -1044,7 +1038,6 @@ modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad)
 	if (rc == 0) {
 		for (i = 0; i < RESV_ATR_LAST; i++) {
 			if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-				presv->ri_modified = 1;	/* an attr was modified, do full save */
 				if (resv_attr_def[i].at_action) {
 					rc = resv_attr_def[i].at_action(&newattr[i],
 						presv, ATR_ACTION_ALTER);

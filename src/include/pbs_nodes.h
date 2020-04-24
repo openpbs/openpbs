@@ -289,9 +289,9 @@ struct	pbsnode {
 	unsigned short	 	 nd_ntype;	/* node type */
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
-	int			 nd_modified;	/* flag indicating whether state update is required */
-	struct devices device;
-	attribute		 nd_attr[ND_ATR_LAST];
+	struct 				devices device;
+	attribute		 	nd_attr[ND_ATR_LAST];
+	char    			nd_savetm[DB_TIMESTAMP_LEN + 1];
 };
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
@@ -387,25 +387,6 @@ enum vnode_degraded_op {
 
 #define PBSNODE_NTYPE_MASK	0xf		 /* relevant ntype bits */
 
-#define WRITENODE_STATE		0x1		 /*associated w/ offline*/
-#define WRITE_NEW_NODESFILE	0x2 /*changed: deleted,ntype,or properties*/
-
-/*
- * To indicate the type of attribute that needs to be updated in the datastore
- */
-#define NODE_UPDATE_STATE           0x1  /* state attribute to be updated */
-#define NODE_UPDATE_COMMENT         0x2  /* update comment attribute */
-#define NODE_UPDATE_OTHERS          0x4  /* other attributes need to be updated */
-#define NODE_UPDATE_VNL             0x8  /* this vnode updated in vnl by Mom  */
-#define NODE_UPDATE_CURRENT_AOE     0x10  /* current_aoe attribute to be updated */
-#define NODE_UPDATE_MOM             0x20 /* update only the mom attribute */
-
-
-#define NODE_SAVE_FULL  0
-#define NODE_SAVE_QUICK 1
-#define NODE_SAVE_NEW   2
-#define NODE_SAVE_QUICK_STATE 3
-
 
 /* tree for mapping contact info to node struture */
 struct tree {
@@ -425,7 +406,7 @@ extern pntPBS_IP_LIST pbs_iplist;
 extern int mominfo_array_size;
 extern int mom_send_vnode_map;
 extern int svr_num_moms;
-extern int svr_chngNodesfile;
+
 
 /* Handlers for vnode state changing.for degraded reservations */
 extern	void vnode_unavailable(struct pbsnode *, int);
@@ -497,6 +478,7 @@ extern char *msg_daemonname;
 
 #ifndef PBS_MOM
 extern int node_save_db(struct pbsnode *pnode);
+struct pbsnode *node_recov_db(char *nd_name, struct pbsnode *pnode);
 extern int add_mom_to_pool(mominfo_t *);
 extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);

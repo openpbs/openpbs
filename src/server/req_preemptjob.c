@@ -252,8 +252,6 @@ static void clear_preempt_hold(job *pjob)
 					       &temphold, DECR);
 
 	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
-		pjob->ji_modified = 1; /* indicates attributes changed    */
-
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
 	}

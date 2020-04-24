@@ -193,7 +193,7 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 		if (strcmp(pjob->ji_qs.ji_jobid, d_jobid)) {
 			dpj = make_dependjob(dp, d_jobid, d_svr);
 			pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY|ATR_VFLAG_SET;
-			job_save(pjob, SAVEJOB_FULLFORCE);
+			job_save(pjob);
 			/* runone dependencies are circular */
 			if (type == JOB_DEPEND_TYPE_RUNONE)
 				update_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op, type);
@@ -242,7 +242,6 @@ req_register(struct batch_request *preq)
 	int		   rc = 0;
 	int		   revtype;
 	int		   type;
-	int		   savetype = SAVEJOB_FULL;
 	int		   is_finished = FALSE;
 
 	/*  make sure request is from a server */
@@ -282,7 +281,6 @@ req_register(struct batch_request *preq)
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
 	type = preq->rq_ind.rq_register.rq_dependtype;
-	pjob->ji_modified = 1;
 
 	/* more of the server:port fix kludge */
 
@@ -446,7 +444,6 @@ req_register(struct batch_request *preq)
 						if (pdj) {
 							del_depend_job(pdj);
 							pattr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-							savetype = SAVEJOB_FULLFORCE;
 							(void)sprintf(log_buffer, msg_registerrel,
 								preq->rq_ind.rq_register.rq_child);
 							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
@@ -486,7 +483,6 @@ req_register(struct batch_request *preq)
 						}
 					}
 					update_depend(pjob, preq->rq_ind.rq_register.rq_parent, preq->rq_ind.rq_register.rq_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
-					savetype = SAVEJOB_FULLFORCE;
 					log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 						pjob->ji_qs.ji_jobid, msg_registerrel, preq->rq_ind.rq_register.rq_parent);
 
@@ -530,16 +526,9 @@ req_register(struct batch_request *preq)
 	}
 
 	if (rc) {
-		pjob->ji_modified = 0;
 		req_reject(rc, 0, preq);
 	} else {
-		/* If this is an array job, forcibly save it to ensure
-		 * dependencies are recorded.
-		 */
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
-			savetype = SAVEJOB_FULLFORCE;
-		if (pjob->ji_modified)
-			(void)job_save(pjob, savetype);
+		job_save_db(pjob);
 		reply_ack(preq);
 	}
 	return;
@@ -1169,7 +1158,7 @@ set_depend_hold(job *pjob, attribute *pattr)
 		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SYNCHOLD) ||
 			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)) {
 			pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
-			pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODCACHE;
+			pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 0);
 			(void)svr_setjobstate(pjob, newstate, newsubst);
 		}
@@ -1178,7 +1167,7 @@ set_depend_hold(job *pjob, attribute *pattr)
 		/* there are dependencies, set system hold accordingly */
 
 		pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		(void)svr_setjobstate(pjob, JOB_STATE_HELD, substate);
 	}
 	return;
@@ -1239,7 +1228,7 @@ static struct depend *make_depend(int type, attribute *pattr)
 	if (pdep) {
 		clear_depend(pdep, type, 0);
 		append_link(&pattr->at_val.at_list, &pdep->dp_link, pdep);
-		pattr->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	}
 	return (pdep);
 }

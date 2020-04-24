@@ -283,7 +283,7 @@ wait_action(void)
 				}
 				pjob->ji_mompost = 0;
 			}
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			(void)job_save(pjob);
 			continue;
 		}
 

@@ -1276,7 +1276,7 @@ scan_for_terminated(void)
 			if (pjob->ji_mompost) {
 				pjob->ji_mompost(pjob, exiteval);
 			}
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			(void)job_save(pjob);
 			continue;
 		}
 		DBPRT(("%s: task %8.8X pid %d exit value %d\n", __func__,

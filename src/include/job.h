@@ -542,7 +542,6 @@ struct job {
 	pbs_list_link       ji_jobque;	/* SVR: links to jobs in same queue */
 	/* MOM: links to polled jobs */
 	pbs_list_link	ji_unlicjobs;	/* links to unlicensed jobs */
-	int		ji_modified;	/* struct changed, needs to be saved */
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* PROT_TCP or PROT_TPP */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
@@ -631,19 +630,6 @@ struct job {
 	char	       *ji_clterrmsg;	/* error message to return to client */
 
 	/*
-	 *	The flag ji_newjob is used to ensure that calls to svr_setjobstate
-	 *	etc dont attempt to save the job to the database even before the
-	 *	the job is committed to the database for the first time. We can't
-	 *	use the ji_un flag from ji_qs here since that gets modified earlier
-	 *	by the eval_jobstate function. This flag is cleared in job_alloc
-	 *	function when a new job structure is created. It is set in req_quejob
-	 *	to indicate that this is a newly queued job and does not exist in
-	 *	the database yet. This is again reset to 0 when the job is first
-	 *	saved to database in req_commit.
-	 */
-	int             ji_newjob;
-
-	/*
 	 *	This variable is used to temporarily hold the script for a new job
 	 *	in memory instead of immediately saving it to the database in the
 	 *	req_jobscript function. The script is eventually saved into the
@@ -669,7 +655,9 @@ struct job {
 	 *
 	 * This area CANNOT contain any pointers!
 	 */
-
+#ifndef PBS_MOM
+	char qs_hash[DIGEST_LENGTH];
+#endif
 	struct jobfix {
 		int	    ji_jsversion;	/* job structure version - JSVERSION */
 		int	    ji_state;		/* internal copy of state */
@@ -746,6 +734,8 @@ struct job {
 	 */
 
 	attribute	ji_wattr[JOB_ATR_LAST]; /* decoded attributes  */
+
+	char     ji_savetm[DB_TIMESTAMP_LEN + 1]; /* last time job was saved */
 };
 
 typedef struct job job;
@@ -931,15 +921,6 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
-
-
-/*
- * Related defines
- */
-#define SAVEJOB_QUICK     0
-#define SAVEJOB_FULL      1
-#define SAVEJOB_NEW       2
-#define SAVEJOB_FULLFORCE 3
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'
@@ -1162,25 +1143,18 @@ extern int   do_tolerate_node_failures(job *);
 #ifdef PBS_MOM
 
 extern job  *job_recov_fs(char *);
-extern int   job_save_fs(job *, int);
-extern int   job_or_resv_save_fs(void *, int, int);
-void*	job_or_resv_recov_fs(char *, int);
-#define job_recov job_recov_fs
+extern int   job_save_fs(job *);
+
 #define job_save job_save_fs
-#define job_or_resv_save job_or_resv_save_fs
-#define job_or_resv_recov job_or_resv_recov_fs
+#define job_recov job_recov_fs
 
 #else
 
-extern job  *job_recov_db(char *);
-extern void *job_or_resv_recov_db(char *, int);
-extern int  job_save_db(job *, int);
-extern int   job_or_resv_save_db(void *, int, int);
-#define job_recov job_recov_db
+extern job  *job_recov_db(char *, job *pjob);
+extern int  job_save_db(job *);
+
 #define job_save job_save_db
-#define job_or_resv_save job_or_resv_save_db
-#define job_or_resv_recov job_or_resv_recov_db
-/* server uses the db versions so just redefine - saves lots of code changes */
+#define job_recov job_recov_db
 
 extern char *get_job_credid(char *jobid);
 

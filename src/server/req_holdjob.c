@@ -205,7 +205,7 @@ req_holdjob(struct batch_request *preq)
 	hold_val = &pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
 	old_hold = *hold_val;
 	*hold_val |= temphold.at_val.at_long;
-	pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	/* Note the hold time in the job comment. */
 	now = time(NULL);
@@ -232,7 +232,7 @@ req_holdjob(struct batch_request *preq)
 		} else {
 			pjob->ji_qs.ji_svrflags |=
 				(JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			(void)job_save_db(pjob);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, log_buffer);
 		}
@@ -244,7 +244,6 @@ req_holdjob(struct batch_request *preq)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		if (old_hold != *hold_val) {
 			/* indicate attributes changed     */
-			pjob->ji_modified = 1;
 			svr_evaljobstate(pjob, &newstate, &newsub, 0);
 			(void)svr_setjobstate(pjob, newstate, newsub);
 		}
@@ -321,9 +320,8 @@ req_releasejob(struct batch_request *preq)
 		{
 			attribute *etime = &pjob->ji_wattr[(int)JOB_ATR_etime];
 			etime->at_val.at_long = time_now;
-			etime->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+			etime->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 #endif /* localmod 105 */
-		pjob->ji_modified = 1;	/* indicates attributes changed    */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
 
@@ -348,9 +346,8 @@ req_releasejob(struct batch_request *preq)
 				{
 					attribute *etime = &psubjob->ji_wattr[(int)JOB_ATR_etime];
 					etime->at_val.at_long = time_now;
-					etime->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+					etime->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 #endif /* localmod 105 */
-					psubjob->ji_modified = 1;	/* indicates attributes changed    */
 					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
 					(void)svr_setjobstate(psubjob, newstate, newsub); /* saves job */
 				}
@@ -508,8 +505,7 @@ post_hold(struct work_task *pwt)
 				(pjob->ji_qs.ji_svrflags & ~JOB_SVFLG_CHKPT) |
 			JOB_SVFLG_HASRUN | JOB_SVFLG_ChkptMig;
 
-		pjob->ji_modified = 1;	  /* indicate attributes changed     */
-		(void)job_save(pjob, SAVEJOB_QUICK);
+		job_save_db(pjob);
 
 		/* note in accounting file */
 

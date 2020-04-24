@@ -405,8 +405,6 @@ job_alloc(void)
 	CLEAR_HEAD(pj->ji_rejectdest);
 	pj->ji_terminated = 0;
 	pj->ji_deletehistory = 0;
-	pj->ji_newjob = 0;
-	pj->ji_modified = 0;
 	pj->ji_script = NULL;
 #endif
 	pj->ji_qs.ji_jsversion = JSVERSION;
@@ -1478,7 +1476,6 @@ update_resources_list(job *pjob, char *res_list_name,
 			}
 			pr = next;
 		}
-		pjob->ji_modified = 1;
 	}
 
 	rc = 0;
@@ -1573,7 +1570,6 @@ update_resources_list_error:
 	job_attr_def[res_list_index].at_set(
 			&pjob->ji_wattr[res_list_index],
 			&pjob->ji_wattr[backup_res_list_index], INCR);
-	pjob->ji_modified = 1;
 	return (1);
 }
 
@@ -1595,9 +1591,9 @@ resc_resv_alloc(void)
 {
 	resc_resv	*resvp;
 
-	resvp = (resc_resv *)malloc(sizeof(resc_resv));
+	resvp = (resc_resv *) calloc(1, sizeof(resc_resv));
 	if (resvp == NULL) {
-		log_err(errno, "resc_resv_alloc", "no memory");
+		log_err(errno, __func__, "no memory");
 		return NULL;
 	}
 	(void)memset((char *)resvp, (int)0, (size_t)sizeof(resc_resv));

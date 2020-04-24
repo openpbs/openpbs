@@ -3952,7 +3952,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
 			pjob->ji_wattr[(int)JOB_ATR_exit_status].\
 								at_flags |=
-				(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
+				(ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 			set_job_exit = 1;
 		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
 

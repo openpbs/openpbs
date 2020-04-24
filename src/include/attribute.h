@@ -592,10 +592,12 @@ extern int action_queue_partition(attribute *pattr, void *pobj, int actmode);
 /* Extern functions (at_action) called  from resv_attr_def */
 extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 
+
 /* Functions used to save and recover the attributes from the database */
-extern int encode_attr_db(struct attribute_def *padef, const attribute *pattr,
-	int numattr, pbs_db_attr_list_t *attr_list, int all);
-extern int decode_attr_db(void *parent, pbs_db_attr_list_t *attr_list,
+extern int encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int all);
+extern int encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr, 
+	pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int all);
+extern int decode_attr_db(void *parent, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, 
 	struct attribute_def *padef, struct attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);
@@ -603,7 +605,7 @@ extern int is_attr(int, char *, int);
 extern int set_attr(struct attrl **attrib, char *attrib_name, char *attrib_value);
 extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
 
-extern void unset_attr_array_flags(attribute *pattr, int flags, int numattrs);
+extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
 
 /* "type" to pass to acl_check() */
 #define ACL_Host  1

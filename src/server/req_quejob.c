@@ -111,10 +111,6 @@
 #include "hook.h"
 #include "pbs_internal.h"
 #include "pbs_sched.h"
-#ifndef PBS_MOM
-#include "pbs_db.h"
-#define SEQ_WIN_INCR 1000 /*save jobid number to database in this increment*/
-#endif
 
 #ifdef PBS_MOM
 #include "mom_hook_func.h"
@@ -193,11 +189,8 @@ static	int	ignore_attr(char *);
 static	int	validate_place_req_of_job_in_reservation(job *pj);
 
 /* To generate the job/resv id's locally */
-static long long get_next_svr_sequence_id(void);
-static long long svr_sequence_window_count = 0;
 void reset_svr_sequence_window(void);
 long long next_svr_sequence_id = 0;
-long long svr_jobidnumber = 0;
 
 static char *pbs_o_que = "PBS_O_QUEUE=";
 /**
@@ -510,7 +503,6 @@ req_quejob(struct batch_request *preq)
 		return;
 	}
 
-	pj->ji_newjob = 1; /* set it as new job so wont get saved to DB */
 	*pj->ji_qs.ji_fileprefix = '\0';
 
 #else                /* PBS_MOM mom mom mom mom*/
@@ -616,7 +608,6 @@ req_quejob(struct batch_request *preq)
 #endif          /* PBS_MOM */
 
 	(void)strcpy(pj->ji_qs.ji_jobid, jid);
-	pj->ji_modified = 1;
 	pj->ji_qs.ji_svrflags = created_here;
 	pj->ji_qs.ji_un_type  = JOB_UNION_TYPE_NEW;
 
@@ -886,13 +877,13 @@ req_quejob(struct batch_request *preq)
 
 		pj->ji_wattr[(int)JOB_ATR_ctime].at_val.at_long =(long)time_now;
 		pj->ji_wattr[(int)JOB_ATR_ctime].at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 		/* set hop count = 1 */
 
 		pj->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long = 1;
 		pj->ji_wattr[(int)JOB_ATR_hopcount].at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 		/* need to set certain environmental variables per POSIX */
 
@@ -919,7 +910,7 @@ req_quejob(struct batch_request *preq)
 			pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str =
 				prefix_std_file(pj, (int)'o');
 			pj->ji_wattr[(int)JOB_ATR_outpath].at_flags |=
-				ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+				ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		} else {
 			l = strlen(pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str);
 			if (l > 0) {
@@ -939,7 +930,7 @@ req_quejob(struct batch_request *preq)
 			pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str =
 				prefix_std_file(pj, (int)'e');
 			pj->ji_wattr[(int)JOB_ATR_errpath].at_flags |=
-				ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+				ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		} else {
 			l = strlen(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str);
 			if (l > 0) {
@@ -995,8 +986,7 @@ req_quejob(struct batch_request *preq)
 
 		/* increment hop count */
 
-		pj->ji_wattr[(int)JOB_ATR_hopcount].at_flags |=
-			ATR_VFLAG_MODCACHE;
+		pj->ji_wattr[(int)JOB_ATR_hopcount].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		if (++pj->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long >
 			PBS_MAX_HOPCOUNT) {
 			job_purge(pj);
@@ -1098,7 +1088,7 @@ req_quejob(struct batch_request *preq)
 	pj->ji_wattr[(int)JOB_ATR_substate].at_val.at_long =
 		JOB_SUBSTATE_TRANSIN;
 	pj->ji_wattr[(int)JOB_ATR_substate].at_flags |=
-		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	/* action routine for select does not have reservation data hence
 	 * returns without doing checks. Checks are called now.
@@ -1123,7 +1113,7 @@ req_quejob(struct batch_request *preq)
 
 	pj->ji_wattr[(int)JOB_ATR_mtime].at_val.at_long = (long)time_now;
 	pj->ji_wattr[(int)JOB_ATR_mtime].at_flags |=
-		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 	pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
@@ -1283,7 +1273,7 @@ req_quejob(struct batch_request *preq)
 			pjob->ji_wattr[(int)JOB_ATR_block].at_val.at_long = 0;
 			pjob->ji_wattr[(int)JOB_ATR_block].at_flags &= ~ATR_VFLAG_SET;
 			pjob->ji_wattr[(int)JOB_ATR_block].at_flags |=
-				ATR_VFLAG_MODCACHE;
+				ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 		}
 	}
@@ -1779,10 +1769,10 @@ req_commit(struct batch_request *preq)
 	pj->ji_qs.ji_state = JOB_STATE_TRANSIT;
 	pj->ji_wattr[(int) JOB_ATR_state].at_val.at_char = 'T';
 	pj->ji_wattr[(int) JOB_ATR_state].at_flags |=
-		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSICM;
 	pj->ji_wattr[(int) JOB_ATR_substate].at_flags |=
-		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 #ifdef PBS_MOM	/* MOM only */
 
@@ -1819,7 +1809,7 @@ req_commit(struct batch_request *preq)
 	 */
 
 	(void)reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit);
-	job_or_resv_save((void *)pj, SAVEJOB_NEW, JOB_OBJECT);
+	job_save(pj);
 	start_exec(pj);
 
 	/* The ATR_VFLAG_MODIFY bit for several attributes used to be
@@ -1859,7 +1849,7 @@ req_commit(struct batch_request *preq)
 	/* set the queue rank attribute */
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_flags |=
-		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	if ((rc = svr_enquejob(pj)) != 0) {
 		job_purge(pj);
@@ -1872,7 +1862,7 @@ req_commit(struct batch_request *preq)
 	pbs_db_begin_trx(conn, 0, 0);
 
 	/* Make things faster by writing job only once here  - at commit time */
-	if (job_or_resv_save((void *) pj, SAVEJOB_NEW, JOB_OBJECT)) {
+	if (job_save_db(pj)) {
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		job_purge(pj);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
@@ -1884,16 +1874,14 @@ req_commit(struct batch_request *preq)
 	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
 	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
 
-	if (pbs_db_save_obj(conn, &obj, PBS_INSERT_DB) != 0) {
+	if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
 		job_purge(pj);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return;
 	}
-	if (pj->ji_script) {
-		free(pj->ji_script);
-		pj->ji_script = NULL;
-	}
+	free(pj->ji_script);
+	pj->ji_script = NULL;
 
 	/* Now, no need to save server here because server
 	   has already saved in the get_next_svr_sequence_id() */
@@ -2420,7 +2408,7 @@ req_resvSub(struct batch_request *preq)
 		} else  { /* If only 1 occurrence, treat it as an advance reservation */
 			presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long = 0;
 			presv->ri_wattr[RESV_ATR_resv_standing].at_flags |=\
-					ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+					ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		}
 	}
 
@@ -2428,7 +2416,6 @@ req_resvSub(struct batch_request *preq)
 		rid[0] = qbuf[0] = PBS_MNTNC_RESV_ID_CHAR;
 
 	(void)strcpy(presv->ri_qs.ri_resvID, rid);
-	presv->ri_modified = 1;
 	if (created_here) {
 		presv->ri_qs.ri_svrflags = created_here;
 	}
@@ -2511,7 +2498,7 @@ req_resvSub(struct batch_request *preq)
 		presv->ri_wattr[(int)RESV_ATR_ctime]
 		.at_val.at_long =(long)time_now;
 		presv->ri_wattr[(int)RESV_ATR_ctime].at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 		/* set hop count = 1 */
 		presv->ri_wattr[(int)RESV_ATR_hopcount].at_val.at_long = 1;
@@ -2640,18 +2627,14 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_qs.ri_substate = RESV_UNCONFIRMED;
 
 	presv->ri_wattr[(int)RESV_ATR_state].at_val.at_long = RESV_UNCONFIRMED;
-	presv->ri_wattr[(int)RESV_ATR_state].at_flags |= ATR_VFLAG_SET |
-		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[(int)RESV_ATR_state].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-	presv->ri_wattr[(int)RESV_ATR_substate]
-	.at_val.at_long = RESV_UNCONFIRMED;
-	presv->ri_wattr[(int)RESV_ATR_substate].at_flags |= ATR_VFLAG_SET |
-		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[(int)RESV_ATR_substate].at_val.at_long = RESV_UNCONFIRMED;
+	presv->ri_wattr[(int)RESV_ATR_substate].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 
 	presv->ri_wattr[(int)RESV_ATR_mtime].at_val.at_long = (long)time_now;
-	presv->ri_wattr[(int)RESV_ATR_mtime].at_flags |= ATR_VFLAG_SET |
-		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[(int)RESV_ATR_mtime].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	if (presv->ri_wattr[(int) RESV_ATR_convert].at_flags & ATR_VFLAG_SET &&
 	    !(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET)) {
@@ -2667,12 +2650,9 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_qs.ri_un.ri_newt.ri_fromsock = sock;
 	presv->ri_qs.ri_un.ri_newt.ri_fromaddr = get_connectaddr(sock);
 
-	/* start a transaction and save resv and server structure */
-	pbs_db_begin_trx(conn, 0, 0);
-
-	if (job_or_resv_save((void *)presv, SAVERESV_NEW, RESC_RESV_OBJECT)) {
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		resv_purge(presv);
+	/* save resv and server structure */
+	if (resv_save_db(presv)) {
+		(void)resv_purge(presv);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
 		return;
 	}
@@ -3172,11 +3152,9 @@ handle_qmgr_reply_to_resvQcreate(struct work_task *pwt)
 			pque->qu_resvp = presv;
 		if ((pjob = find_job(presv->ri_wattr[RESV_ATR_job].at_val.at_str)))
 			pjob->ji_myResv = presv;
-		(void)strcpy(presv->ri_qs.ri_queue,
-			presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
-		if (job_or_resv_save((void *)presv, SAVERESV_QUICK,
-			RESC_RESV_OBJECT)) {
-			resv_purge(presv);
+		(void)strcpy(presv->ri_qs.ri_queue, presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
+		if (resv_save_db(presv)) {
+			(void)resv_purge(presv);
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
@@ -3277,43 +3255,25 @@ validate_place_req_of_job_in_reservation(job *pj)
  * @retval	-1	: database error
  *
  */
-
-static
-long long get_next_svr_sequence_id(void)
+long long 
+get_next_svr_sequence_id(void)
 {
-	long long ret_svr_sequence_id = 0;
+	static long long lastid = -1;
+	long long seq = server.sv_qs.sv_jobidnumber;
 
-	/* JobId's save to the database after every 1000 jobs */
-	if (svr_sequence_window_count == 0) {
-		/* Save the job-id numbers in the database by a SEQ_WIN_INCR(1000) in advance.
-		 * So this way, we have to save it once only after every SEQ_WIN_INCR(1000) submissions.
-		 */
-		long long update_svr_sv_jobidnumber = 0;
-		svr_jobidnumber = server.sv_qs.sv_jobidnumber;
-		update_svr_sv_jobidnumber = server.sv_qs.sv_jobidnumber + SEQ_WIN_INCR;
-		if (update_svr_sv_jobidnumber > svr_max_job_sequence_id) {
-			update_svr_sv_jobidnumber = SEQ_WIN_INCR;
-		}
-		/* sv_jobidnumber has been increased by 1000 and then update it to the database */
-		server.sv_qs.sv_jobidnumber = update_svr_sv_jobidnumber;
-		if (svr_save_db(&server, SVR_SAVE_QUICK) != 0) {
-			/* reset back stuff to the current count, which gets written at server exit anyway */
-			server.sv_qs.sv_jobidnumber = svr_jobidnumber;
-			return -1;
-		}
-	}
-	++svr_sequence_window_count;
-	ret_svr_sequence_id = svr_jobidnumber;
-	/* sequence window count is more than 1000, reset back to zero*/
-	if (svr_sequence_window_count >= SEQ_WIN_INCR) {
-		svr_sequence_window_count = 0;
-	}
 	/* If server job limit is over, reset back to zero */
-	if (++svr_jobidnumber > svr_max_job_sequence_id) {
-		svr_sequence_window_count = 0;
+	if (++server.sv_qs.sv_jobidnumber > svr_max_job_sequence_id) {
 		server.sv_qs.sv_jobidnumber = 0;
+		lastid = -1;
 	}
-	return ret_svr_sequence_id;
+
+	/* check if we should save jobid */
+	if (lastid == -1 ||  server.sv_qs.sv_jobidnumber == lastid) {
+		lastid = ((server.sv_qs.sv_jobidnumber / 1000)+1)*1000;
+		server.sv_qs.sv_lastid = lastid;
+		svr_save_db(&server);
+	}
+	return seq;
 }
 
 /**
@@ -3325,9 +3285,7 @@ long long get_next_svr_sequence_id(void)
  */
 void reset_svr_sequence_window(void)
 {
-	svr_sequence_window_count = 0;
 	server.sv_qs.sv_jobidnumber = 0;
-	(void)svr_save_db(&server, SVR_SAVE_QUICK);
 }
 
 /**
