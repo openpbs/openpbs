@@ -973,11 +973,12 @@ class HookUtils(object):
                                  'but job does not request ncpus on '
                                  'mother superior: rejecting job')
                 else:
+                    # will be done in configure_job
                     pbs.logmsg(pbs.EVENT_JOB_USAGE,
                                'cpuset enabled with mandatory ncpus >= 1, '
                                'but job does not request ncpus on host: '
                                'deleting cpuset cgroup')
-                # will be done in configure_job
+
         # Configure the new cgroup
         cgroup.configure_job(event.job.id, jobutil.assigned_resources,
                              node, cgroup, event.type)
@@ -1212,11 +1213,12 @@ class HookUtils(object):
                                  'but job does not request ncpus on '
                                  'mother superior: rejecting resize')
                 else:
+                    # will be done in configure_job
                     pbs.logmsg(pbs.EVENT_ERROR,
                                'cpuset enabled with mandatory ncpus >= 1, '
                                'but job no longer requests ncpus on host: '
                                'deleting cpuset cgroup')
-                # will be done in configure_job
+
         # Configure the cgroup
         cgroup.configure_job(event.job.id, jobutil.assigned_resources,
                              node, cgroup, event.type)
@@ -3491,7 +3493,7 @@ class CgroupUtils(object):
                     pbs.event().reject('No cpuset cgroup present '
                                        'and npcus==0 disallowed')
                 else:
-                    # zero CPU  job: should be attached to root pbspro cpuset
+                    # zero CPU job: should be attached to root pbspro cpuset
                     tasks_file = self._cgroup_path(subsys, 'tasks')
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: tasks file = %s' %
                        (caller_name(), tasks_file))
