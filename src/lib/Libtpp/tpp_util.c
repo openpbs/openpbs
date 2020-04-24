@@ -495,6 +495,18 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 	return 0;
 }
 
+/**
+ * @brief tpp_make_authdata - allocate conn_auth_t structure based given values
+ *
+ * @param[in] tpp_conf - pointer to tpp config structure
+ * @param[in] conn_type - one of AUTH_CLIENT or AUTH_SERVER
+ * @param[in] auth_method - auth method name
+ * @param[in] encrypt_method - encrypt method name
+ *
+ * @return conn_auth_t *
+ * @return !NULL - success
+ * @return NULL  - failure
+ */
 conn_auth_t *
 tpp_make_authdata(struct tpp_config *tpp_conf, int conn_type, char *auth_method, char *encrypt_method)
 {
@@ -518,6 +530,21 @@ tpp_make_authdata(struct tpp_config *tpp_conf, int conn_type, char *auth_method,
 	return authdata;
 }
 
+/**
+ * @brief tpp_handle_auth_handshake - initiate handshake or process incoming handshake data
+ *
+ * @param[in] tfd - file descriptor
+ * @param[in] conn_fd - connection fd for sending data
+ * @param[in] authdata - pointer to conn auth data struct associated with tfd
+ * @param[in] for_encrypt - whether to handle incoming data for encrypt/decrypt or for authentication
+ * @param[in] data_in - incoming handshake data (if any)
+ * @param[in] len_in - length of data_in else 0
+ *
+ * @return int
+ * @return -1 - failure
+ * @return 0  - need handshake continuation
+ * @return 1  - handshake completed
+ */
 int
 tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_encrypt, void *data_in, size_t len_in)
 {

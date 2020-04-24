@@ -415,7 +415,7 @@ typedef struct {
 	void *encryptctx;
 	auth_def_t *encryptdef;
 	pbs_auth_config_t *config;
-	int initiator;
+	int conn_initiator;
 	int conn_type;
 } conn_auth_t;
 

@@ -548,13 +548,24 @@ router_post_connect_handler(int tfd, void *data, void *c, void *extra)
 	if (tpp_conf->auth_config->encrypt_method[0] != '\0' ||
 		strcmp(tpp_conf->auth_config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 
+		/*
+		 * Since either auth is not resvport or encryption is enabled,
+		 * initiate handshakes for them
+		 *
+		 * If encryption is enabled then first initiate handshake for it
+		 * else for authentication
+		 *
+		 * Here we are only initiating handshake, if any handshake needs
+		 * continuation then it will be handled in leaf_pkt_handler
+		 */
+
 		int conn_fd = ((tpp_router_t *) ctx->ptr)->conn_fd;
 		authdata = tpp_make_authdata(tpp_conf, AUTH_CLIENT, tpp_conf->auth_config->auth_method, tpp_conf->auth_config->encrypt_method);
 		if (authdata == NULL) {
 			/* tpp_make_authdata already logged error */
 			return -1;
 		}
-		authdata->initiator = 1;
+		authdata->conn_initiator = 1;
 		tpp_transport_set_conn_extra(tfd, authdata);
 
 		if (authdata->config->encrypt_method[0] != '\0') {
@@ -1270,7 +1281,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			strcmp(authdata->config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 
 			if (strcmp(authdata->config->auth_method, authdata->config->encrypt_method) != 0) {
-				if (authdata->initiator) {
+				if (authdata->conn_initiator) {
 					rc = tpp_handle_auth_handshake(tfd, tfd, authdata, FOR_AUTH, NULL, 0);
 					if (rc != 1) {
 						return rc;
