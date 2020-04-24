@@ -49,7 +49,7 @@ class TestQsub_remove_files(TestFunctional):
         are getting deleted when remove_files option is used.
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
@@ -65,7 +65,7 @@ class TestQsub_remove_files(TestFunctional):
         and job is submitted with -Wsandbox=private.
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_sandbox: 'private'})
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
@@ -80,7 +80,7 @@ class TestQsub_remove_files(TestFunctional):
         gets deleted after job finishes
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'o'})
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'o'}, id=jid)
@@ -101,7 +101,7 @@ class TestQsub_remove_files(TestFunctional):
         gets deleted after job finishes and works with direct_write
         """
         j = Job(TEST_USER, attrs={ATTR_k: 'de', ATTR_R: 'e'})
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
@@ -132,7 +132,7 @@ class TestQsub_remove_files(TestFunctional):
         out_file = os.path.join(tmp_dir, 'output_file')
         a = {ATTR_e: err_file, ATTR_o: out_file, ATTR_R: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
@@ -150,7 +150,7 @@ class TestQsub_remove_files(TestFunctional):
         tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
         a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_R: 'oe'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
@@ -166,7 +166,7 @@ class TestQsub_remove_files(TestFunctional):
         directory when default_qsub_arguments is set to -Roe.
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(1)
+        j.set_sleep_time(5)
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'default_qsub_arguments': '-Roe'})
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
