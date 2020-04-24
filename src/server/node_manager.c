@@ -500,15 +500,17 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	int		nchild;
 	unsigned long	inuse_flag = 0;
 	struct batch_request *preq = NULL;
-	struct rq_node_state *node_state = NULL;
+	struct rq_node_state *rq_node_state = NULL;
+	char local_log_buffer[LOG_BUF_SIZE];
 
+	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 	preq = alloc_br(PBS_BATCH_NodeState);
 	/* FIXME: check for NULL */
 	strncpy(preq->rq_host, pmom->mi_host, PBS_MAXHOSTNAME);
 	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
-	node_state = &preq->rq_ind.rq_node_state;
-	node_state->hostname = pmom->mi_host;
-	node_state->old_state = psvrmom->msr_state;
+	rq_node_state = &preq->rq_ind.rq_node_state;
+	rq_node_state->hostname = pmom->mi_host;
+	rq_node_state->old_state = psvrmom->msr_state;
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
@@ -516,17 +518,17 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		psvrmom->msr_state &= ~bits;
 	}
 
-	node_state->new_state = psvrmom->msr_state;
+	rq_node_state->new_state = psvrmom->msr_state;
 
 	{ /* TODO: FIXME: */
 		char hook_msg[HOOK_MSG_SIZE] = {0};
 		size_t msg_len = sizeof(hook_msg);
 		
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
+		snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
 			"msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set,
 			psvrmom->msr_state, bits, txt, pmom->mi_modtime);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-			pmom->mi_host, log_buffer);
+			pmom->mi_host, local_log_buffer);
 		
 		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
@@ -571,12 +573,12 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			continue;	/* skip setting state on this vnode */
 
 		{ /* TODO: FIXME: */
-			snprintf(log_buffer, LOG_BUF_SIZE-1,
+			snprintf(local_log_buffer, LOG_BUF_SIZE-1,
 				"set_all_state->vnode: do_set=%d pvnd=0x%lx-> bits=0x%lx "
 				"txt=%s mi_modtime=%ld", do_set, pvnd->nd_state, bits, txt,
 				pmom->mi_modtime);
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-				pvnd->nd_name, log_buffer);
+				pvnd->nd_name, local_log_buffer);
 
 			/*
 			process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
@@ -1001,7 +1003,9 @@ momptr_down(mominfo_t *pmom, char *why)
 	int		 setwktask = 0;
 	int		 is_provisioning = 0;
 
+	/*
 	psvrmom->msr_state |= (INUSE_DOWN | INUSE_NEEDS_HELLO_PING);
+	*/
 
 	/* log message if node just down or been down for an hour */
 	/* mark mom down and vnodes down as well                  */
