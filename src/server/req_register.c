@@ -79,6 +79,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include "libpbs.h"
 #include "list_link.h"
 #include "attribute.h"
@@ -203,6 +204,10 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 		if (dpj == NULL)
 			return;
 		del_depend_job(dpj);
+		if (GET_NEXT(dp->dp_jobs) == 0)
+			/* no more dependencies of this type */
+			del_depend(dp);
+
 		pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		/* runone dependencies are circular */
 		if (type == JOB_DEPEND_TYPE_RUNONE)
@@ -1056,6 +1061,9 @@ depend_on_term(job *pjob)
 				break;
 
 			case JOB_DEPEND_TYPE_BEFORENOTOK:
+				/* exitstat has defined values in case of user/admin forcefully deletes the job.
+				 * In such cases delete the chain on dependency.
+				 */
 				if (exitstat != 0)
 					op = JOB_DEPEND_OP_RELEASE;
 				else
@@ -1069,13 +1077,31 @@ depend_on_term(job *pjob)
 			case JOB_DEPEND_TYPE_RUNONE:
 				op = JOB_DEPEND_OP_DELETE;
 				break;
-
+			/* This case can only happen when a job with before start
+			 * dependency is getting deleted before it even runs.
+			 */
+			case JOB_DEPEND_TYPE_BEFORESTART:
+				op = JOB_DEPEND_OP_DELETE;
+				break;
 		}
-
 		if (op != -1) {
+			/* Check if the job is being deleted. If so, delete the dependency chain */
+			if (pjob->ji_terminated == 1)
+				op = JOB_DEPEND_OP_DELETE;
+			/* This function is also called from job_abt when the job is in held state and abort substate.
+			 * In case of a held job, release the dependency chain.
+			 */
+			if (pjob->ji_qs.ji_state == JOB_STATE_HELD && pjob->ji_qs.ji_substate == JOB_SUBSTATE_ABORT) {
+				op = JOB_DEPEND_OP_DELETE;
+				/* In case the job being deleted is a job with runone dependency type
+				 * then there is no need to delete other dependent jobs.
+				 */
+				if (type == JOB_DEPEND_TYPE_RUNONE)
+					op = JOB_DEPEND_OP_RELEASE;
+			}
+
 			pparent = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 			while (pparent) {
-
 				/* "release" the job to execute */
 				rc = send_depend_req(pjob, pparent, type, op,
 					SYNC_SCHED_HINT_NULL, release_req);

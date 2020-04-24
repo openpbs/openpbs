@@ -353,3 +353,182 @@ e.accept()
 
         a = {ATTR_depend: 'beforenotok:' + j1 + ":" + j2}
         self.check_job(a, reject_msg, 'F')
+
+    def check_depend_delete_msg(self, pjid, cjid):
+        """
+        helper function to check ia message that the dependent job (cjid)
+        is deleted because of the parent job (pjid)
+        """
+        msg = cjid + ";Job deleted as result of dependency on job " + pjid
+        self.server.log_match(msg)
+
+    def test_job_end_deleting_chain_of_dependency(self):
+        """
+        Submit a chain of dependent jobs and see if one of the running jobs
+        ends, all the dependent jobs (and their dependent jobs)
+        are also deleted.
+        """
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        job.set_sleep_time(10)
+        j1 = self.server.submit(job)
+
+        a = {ATTR_depend: "afternotok:" + j1}
+        job = Job(attrs=a)
+        j2 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j2}
+        job = Job(attrs=a)
+        j3 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j1}
+        job = Job(attrs=a)
+        j4 = self.server.submit(job)
+
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j1, j2)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j3, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j2, j3)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j4, max_attempts=3)
+
+    def test_qdel_deleting_chain_of_dependency(self):
+        """
+        Submit a chain of dependent jobs and see if one of the running jobs
+        is deleted, all the dependent jobs (and their dependent jobs)
+        are also deleted.
+        Try the same test with array jobs as well.
+        """
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        j1 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j1}
+        job = Job(attrs=a)
+        j2 = self.server.submit(job)
+
+        a = {ATTR_depend: "afternotok:" + j2}
+        job = Job(attrs=a)
+        j3 = self.server.submit(job)
+
+        a = {ATTR_depend: "after:" + j1}
+        job = Job(attrs=a)
+        j4 = self.server.submit(job)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
+        self.server.delete(j1)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j1, j2)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j3, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j2, j3)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j4)
+        self.server.delete(j4)
+
+        # repeat the steps for array job
+        job = Job(attrs={ATTR_J: '1-2'})
+        j5 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j5}
+        job = Job(attrs=a)
+        j6 = self.server.submit(job)
+
+        a = {ATTR_depend: "afternotok:" + j6}
+        job = Job(attrs=a)
+        j7 = self.server.submit(job)
+
+        a = {ATTR_depend: "after:" + j5}
+        job = Job(attrs=a)
+        j8 = self.server.submit(job)
+
+        self.server.expect(JOB, {'job_state': 'B'}, id=j5)
+        self.server.delete(j5)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j5, extend='x')
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j6, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j5, j6)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j7, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j6, j7)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j8)
+
+    def test_qdel_held_job_deleting_chain_of_dependency(self):
+        """
+        Submit a chain of dependent jobs and see if one of the held jobs
+        is deleted, all its dependent jobs (and their dependent jobs)
+        are also deleted.
+        """
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        j1 = self.server.submit(job)
+
+        a = {ATTR_depend: "afternotok:" + j1}
+        job = Job(attrs=a)
+        j2 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j2}
+        job = Job(attrs=a)
+        j3 = self.server.submit(job)
+
+        a = {ATTR_depend: "after:" + j2}
+        job = Job(attrs=a)
+        j4 = self.server.submit(job)
+
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j3)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j4)
+        self.server.delete(j2)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
+                           max_attempts=3)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j3, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j2, j3)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j4, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j2, j4)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
+
+    def test_only_after_dependency_chain_is_deleted(self):
+        """
+        Submit a chain of dependent jobs and see that only downstream jobs
+        with after dependencies are deleted.
+        """
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        job = Job()
+        j1 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j1}
+        job = Job(attrs=a)
+        j2 = self.server.submit(job)
+
+        a = {ATTR_depend: "afterok:" + j2}
+        job = Job(attrs=a)
+        j3 = self.server.submit(job)
+
+        a = {ATTR_depend: "after:" + j3}
+        job = Job(attrs=a)
+        j4 = self.server.submit(job)
+
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j3)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j4)
+        self.server.delete(j3)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j2)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j3, extend='x',
+                           max_attempts=3)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=j4, extend='x',
+                           max_attempts=3)
+        self.check_depend_delete_msg(j3, j4)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)

@@ -819,6 +819,11 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
 				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 			}
+
+			/* see if it has any dependencies */
+			if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
+				(void)depend_on_term(pjob);
+
 			/*
 			 * Check if the history of the finished job can be saved or it needs to be purged .
 			 */

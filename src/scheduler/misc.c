@@ -856,6 +856,36 @@ count_array(void **arr)
 
 /**
  * @brief
+ *  dup_array - make a shallow copy of elements in a NULL terminated array
+ *		      of pointers
+ *
+ * @param[in]	arr	-	the array to copy
+ *
+ * @return	array of pointers
+ *
+ */
+void **
+dup_array(void **arr)
+{
+	void **ret;
+	int len = 0;
+	int i;
+
+	if (arr == NULL)
+		return NULL;
+
+	len = count_array(arr);
+	ret = malloc(len * sizeof(void *));
+	if (ret == NULL)
+		return NULL;
+	for (i = 0; arr[i] != NULL; i++)
+		ret[i] = arr[i];
+	ret[i] = NULL;
+	return ret;
+}
+
+/**
+ * @brief
  *		remove_ptr_from_array - remove a pointer from a ptr list and move
  *				the rest of the pointers up to fill the hole
  *				Pointer array size will not change - an extra
