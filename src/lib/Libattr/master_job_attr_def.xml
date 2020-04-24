@@ -2189,7 +2189,7 @@
 				NULL_FUNC
 			#endif</member_at_action>
       <member_at_flags>
-         <both>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | READ_ONLY | ATR_DFLAG_NOSAVM</both>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | READ_ONLY </both>
       </member_at_flags>
       <member_at_type>
          <both>ATR_TYPE_STR</both>

@@ -1835,7 +1835,7 @@ record_finish_exec(int sd)
 
 	pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 	pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-	job_save(pjob, SAVEJOB_QUICK);
+	job_save(pjob);
 
 	if (mom_get_sample() == PBSE_NONE) {
 		time_resc_updated = time_now;
@@ -2560,8 +2560,6 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 		(char *)0,
 		new_schedselect);
 
-	pjob->ji_modified = 1;
-
 	free(new_exec_vnode);
 	free(new_exec_host);
 	free(new_schedselect);
@@ -2574,7 +2572,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 		return (-1);
 	}
 
-	job_save(pjob, SAVEJOB_FULL);
+	job_save(pjob);
 	/* set modify flag on the job attributes that will be sent to the server */
 	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
@@ -4801,7 +4799,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 		(void)sprintf(log_buffer, "task %8.8X started, %s",
 			ptask->ti_qs.ti_task, argv[0]);

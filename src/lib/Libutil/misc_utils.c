@@ -2163,12 +2163,12 @@ crc_file(char *filepath)
 
 /**
  * @brief
- * 	Return the maximum number of servers possible in the cluster
+ * 	Return multiserver mode
  *
  * @return int
  */
 int 
-get_max_servers(void)
+get_msvr_mode(void)
 {
-	return 1;
+	return 0;
 }

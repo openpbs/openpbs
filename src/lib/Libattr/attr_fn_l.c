@@ -111,11 +111,10 @@ decode_l(struct attribute *patr, char *name, char *rescn, char *val)
 				return (PBSE_BADATVAL);	 /* invalid string */
 			pc++;
 		}
-		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= VALUE_SET;
 		patr->at_val.at_long = strtol(val, &endp, 10);
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | VALUE_DIRTY;
 		patr->at_val.at_long = 0;
 	}
 	return (0);
@@ -206,7 +205,7 @@ set_l(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= VALUE_SET;
 	return (0);
 }
 

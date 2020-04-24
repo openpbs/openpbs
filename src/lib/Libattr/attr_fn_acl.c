@@ -513,7 +513,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= VALUE_SET;
 	return (0);
 }
 
