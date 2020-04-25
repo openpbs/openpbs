@@ -1184,7 +1184,7 @@ class DshUtils(object):
                     if recursive:
                         cmd += ['-r']
                     cmd += [src]
-                    cmd = cmd + [dest]
+                    cmd += [dest]
                 else:
                     if not preserve_permission:
                         copy_cmd.remove('-p')
@@ -1213,7 +1213,7 @@ class DshUtils(object):
                 if recursive:
                     cmd += ['-r']
                 cmd += [src]
-                cmd = cmd + [dest]
+                cmd += [dest]
 
             if srchost == targethost:
                 ret = self.run_cmd(targethost, cmd, env=env,
