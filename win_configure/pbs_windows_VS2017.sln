@@ -88,10 +88,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_mom", "projects\pbs_mom
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tracejob", "projects\tracejob.vcxproj", "{F80F4C0C-C062-4CBC-B269-B4314D255E3F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_password", "projects\pbs_password.vcxproj", "{1B3F287F-25C3-4A92-ACE0-4F7ACF1154B4}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_migrate_users", "projects\pbs_migrate_users.vcxproj", "{10EC1C3B-C339-48DF-845A-0AACF2A9A155}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_account", "projects\pbs_account.vcxproj", "{6432B35D-EBE7-4AAE-BB7F-B5548173C040}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_runas", "projects\pbs_runas.vcxproj", "{E0D6D5C6-7E07-4520-9FF9-2C92A163E958}"
@@ -304,14 +300,6 @@ Global
 		{F80F4C0C-C062-4CBC-B269-B4314D255E3F}.Debug|Win32.Build.0 = Debug|Win32
 		{F80F4C0C-C062-4CBC-B269-B4314D255E3F}.Release|Win32.ActiveCfg = Release|Win32
 		{F80F4C0C-C062-4CBC-B269-B4314D255E3F}.Release|Win32.Build.0 = Release|Win32
-		{1B3F287F-25C3-4A92-ACE0-4F7ACF1154B4}.Debug|Win32.ActiveCfg = Debug|Win32
-		{1B3F287F-25C3-4A92-ACE0-4F7ACF1154B4}.Debug|Win32.Build.0 = Debug|Win32
-		{1B3F287F-25C3-4A92-ACE0-4F7ACF1154B4}.Release|Win32.ActiveCfg = Release|Win32
-		{1B3F287F-25C3-4A92-ACE0-4F7ACF1154B4}.Release|Win32.Build.0 = Release|Win32
-		{10EC1C3B-C339-48DF-845A-0AACF2A9A155}.Debug|Win32.ActiveCfg = Debug|Win32
-		{10EC1C3B-C339-48DF-845A-0AACF2A9A155}.Debug|Win32.Build.0 = Debug|Win32
-		{10EC1C3B-C339-48DF-845A-0AACF2A9A155}.Release|Win32.ActiveCfg = Release|Win32
-		{10EC1C3B-C339-48DF-845A-0AACF2A9A155}.Release|Win32.Build.0 = Release|Win32
 		{6432B35D-EBE7-4AAE-BB7F-B5548173C040}.Debug|Win32.ActiveCfg = Debug|Win32
 		{6432B35D-EBE7-4AAE-BB7F-B5548173C040}.Debug|Win32.Build.0 = Debug|Win32
 		{6432B35D-EBE7-4AAE-BB7F-B5548173C040}.Release|Win32.ActiveCfg = Release|Win32

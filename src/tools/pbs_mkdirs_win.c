@@ -86,21 +86,15 @@ main(int argc, char *argv[])
 		return 1;
 	}
 	if (argc > 3) {
-		fprintf(stderr, "%s [all|server|mom|sched] [pbs_conf_env]", argv[0]);
+		fprintf(stderr, "%s [mom] [pbs_conf_env]", argv[0]);
 		exit(1);
 	}
 
 	if (argc > 1) {
-		if (strcmp(argv[1], "server") == 0)
-			mode = Server;
-		else if (strcmp(argv[1], "mom") == 0)
+		if (strcmp(argv[1], "mom") == 0)
 			mode = Mom;
-		else if (strcmp(argv[1], "sched") == 0)
-			mode = Sched;
-		else if (strcmp(argv[1], "all") == 0)
-			mode = All;
 		else {
-			fprintf(stderr, "%s [all|server|mom|sched] [pbs_conf_env]", argv[0]);
+			fprintf(stderr, "%s [mom] [pbs_conf_env]", argv[0]);
 			exit(2);
 		}
 	}
@@ -147,24 +141,11 @@ main(int argc, char *argv[])
 		"\\Everyone", READS_MASK | READ_CONTROL);
 	printf("securing %s for read access by Everyone\n",
 		pbs_conf.pbs_exec_path);
+	secure_exec_files();
 
-	secure_misc_files();
-
-	if (mode == All) {
-		secure_exec_files();
-	}
-
-	if ((mode == All) || (mode == Server)) {
-		secure_server_files();
-	}
-
-	if ((mode == All) || (mode == Mom)) {
+	if (mode == Mom) {
+		secure_misc_files();
 		secure_mom_files();
-		secure_rshd_files();
-	}
-
-	if ((mode == All) || (mode == Sched)) {
-		secure_sched_files();
 	}
 
 	return 0;

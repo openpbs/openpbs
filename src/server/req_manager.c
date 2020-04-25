@@ -1473,26 +1473,12 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 
-	/* Check unsetting single_signon_password_enable,	*/
-	/*                 pbs_license_info,			*/
+	/* Check unsetting pbs_license_info,			*/
 	/*                 pbs_license_min,			*/
 	/*                 pbs_license_max,			*/
 	/*                 pbs_license_linger_time.		*/
 	while (plist) {
-		if (strcasecmp(plist->al_name, ATTR_ssignon_enable) == 0) {
-
-			/* from true to unset */
-			if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags       \
-						       & ATR_VFLAG_SET) &&     \
-        		(server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long \
-								== 1) && \
-        		(GET_NEXT(svr_alljobs) != NULL) ) {
-
-				reply_badattr(PBSE_SSIGNON_BAD_TRANSITION1, bad_attr,
-					plist, preq);
-				return;
-			}
-		} else if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
+		if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
 			/*Only root at server host can unset server attribute "acl_roots".*/
 			if (!is_local_root(preq->rq_user, preq->rq_host)) {
 				reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);

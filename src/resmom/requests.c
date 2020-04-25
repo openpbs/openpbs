@@ -143,6 +143,8 @@ extern	int		update_job_launch_delay;
 extern	pbs_list_head	svr_allhooks;
 /* External Functions */
 extern int	is_direct_write(job *, enum job_file, char *, int *);
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 /* Local Data Items */
 char rcperr[MAXPATHLEN] = {'\0'};	/* file to contain rcp error */
@@ -420,7 +422,7 @@ fork_to_user(struct batch_request *preq)
 					log_err(errno, __func__, "set privilege as user");
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
-				if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &pwd_buf) != 0) {
+				if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &pwd_buf, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
 					log_joberr(-1, __func__, "decrypt_pwd",
 						pjob->ji_qs.ji_jobid);
 					frk_err(PBSE_BADCRED, preq); /* no return */

@@ -320,6 +320,18 @@ extern char *netaddr(struct sockaddr_in *);
 extern unsigned long crc_file(char *fname);
 extern int get_fullhostname(char *, char *, int);
 
+#ifdef _USRDLL
+#ifdef DLL_EXPORT
+#define DECLDIR __declspec(dllexport)
+#else
+#define DECLDIR __declspec(dllimport)
+#endif
+DECLDIR void encode_SHA(char*, size_t, char **);
+#else
+void encode_SHA(char*, size_t, char **);
+#endif
+
+
 #ifdef  __cplusplus
 }
 #endif

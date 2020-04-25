@@ -70,11 +70,6 @@ struct rq_usercred {
 	char *rq_data;
 };
 
-/* UserMigrate */
-struct rq_user_migrate {
-	char rq_tohost[PBS_MAXHOSTNAME + 1];
-};
-
 /* Job File */
 struct rq_jobfile {
 	int rq_sequence;
@@ -310,7 +305,6 @@ struct batch_request {
 		struct rq_cpyfile_cred rq_cpyfile_cred;
 		int rq_failover;
 		struct rq_usercred rq_usercred;
-		struct rq_user_migrate rq_user_migrate;
 		struct rq_defschrpy rq_defrpy;
 		struct rq_hookfile rq_hookfile;
 		struct rq_preempt rq_preempt;
@@ -376,7 +370,6 @@ extern int decode_DIS_CopyFiles(int, struct batch_request *);
 extern int decode_DIS_CopyFiles_Cred(int, struct batch_request *);
 extern int decode_DIS_JobCred(int, struct batch_request *);
 extern int decode_DIS_UserCred(int, struct batch_request *);
-extern int decode_DIS_UserMigrate(int, struct batch_request *);
 extern int decode_DIS_JobFile(int, struct batch_request *);
 extern int decode_DIS_CopyHookFile(int, struct batch_request *);
 extern int decode_DIS_DelHookFile(int, struct batch_request *);

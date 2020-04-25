@@ -15,19 +15,4 @@ before_build:
   - cmd: call .appveyor\appveyor_helper.bat %CONFIGURATION%
 build_script:
   - cmd: msbuild win_configure\pbs_windows_VS2017.sln /p:configuration=%CONFIGURATION% /p:platform=Win32 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-after_build:
-  - cmd: call .appveyor\generate_installer.bat %CONFIGURATION%
-before_test:
-  - ps: copy c:\projects\win_build\msi\*.msi c:\projects\pbs.msi
-  - ps: Start-Process msiexec -ArgumentList "/quiet","/qn","/norestart","/i","c:\projects\pbs.msi" -Wait
-  - ps: $ip = [System.Net.Dns]::GetHostByName($env:computerName).AddressList[0].IPAddressToString
-  - ps: Add-Content C:\Windows\System32\Drivers\Etc\Hosts "$ip pbsdev.dev.local pbsdev"
-  - ps: net user $env:username pbS@123
-  - cmd: refreshenv
-  - cmd: C:\PROGRA~2\PBS\exec\python\python.exe C:\PROGRA~2\PBS\exec\etc\win_postinstall.py -u %USERNAME% -p pbS@123 -t execution -s pbsdev
-after_test:
-  - ps: rm c:\projects\pbs.msi
-  - ps: copy c:\projects\win_build\msi\*.msi .
-artifacts:
-  - path: '*.msi'
 deploy: off

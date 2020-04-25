@@ -165,24 +165,7 @@ extern "C" {
 #define PBSE_LICENSEUNAV 15098		/* Floating License unavailable  */
 #define PBSE_NOSCHEDULER 15099		/* Unable to contact Scheduler */
 #define PBSE_RESCNOTSTR  15100		/* resource is not of type string */
-#define PBSE_SSIGNON_UNSET_REJECT 15101	/* SVR_ssignon_enable not set */
-#define PBSE_SSIGNON_SET_REJECT 15102	/* SVR_ssignon_enable set */
-#define PBSE_SSIGNON_BAD_TRANSITION1 15103 /* bad attempt: true to false */
 
-/*
- * Error number 15104 for PBSE_SSIGNON_BAD_TRANSITION2
- * will no longer be supported because returning this error as
- * exit code would be erroneously interpreted as 0(success) on
- * systems whose exit code is a single byte (15104%256 = 0).
- * Changed error number from 15104 to 15207.
- * #define PBSE_SSIGNON_BAD_TRANSITION2 15104
- */
-#define PBSE_SSIGNON_BAD_TRANSITION2 15207 /* bad attempt: false to true */
-
-#define PBSE_SSIGNON_NOCONNECT_DEST  15105 /* couldn't connect to dest. host */
-
-/* during a user migration request */
-#define PBSE_SSIGNON_NO_PASSWORD     15106 /* no per user/per server password */
 #define PBSE_MaxArraySize	     15107 /* max array size exceeded */
 #define PBSE_INVALSELECTRESC	     15108 /* resc invalid in select spec */
 #define PBSE_INVALJOBRESC	     15109 /* invalid job resource */
@@ -276,8 +259,6 @@ extern "C" {
 #define RM_ERR_NOPARAM	PBSE_RMNOPARAM
 #define RM_ERR_EXIST	PBSE_RMEXIST
 #define RM_ERR_SYSTEM	PBSE_RMSYSTEM
-
-/* PBSE_SSIGNON_BAD_TRANSITION2 is using 15207 (see above) */
 
 #define PBSE_TRYAGAIN	15208		/* Try the request again later */
 #define PBSE_ALPSRELERR	15209		/* ALPS failed to release the resv */

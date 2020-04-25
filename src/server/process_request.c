@@ -166,12 +166,8 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 			/*   ensure job's euser exists as this can be called */
 			/*   from pbs_send_job who is moving a job from a routing */
 			/*   queue which doesn't have euser set */
-			if ( ((jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		        && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) &&   \
-		     (server.sv_attr[SRV_ATR_ssignon_enable].at_flags &      \
-							   ATR_VFLAG_SET) && \
-                     (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long  \
-								      == 1) ) {
+			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
+		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
 				ret = user_read_password(
 					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
 					data, dsize);
@@ -550,7 +546,6 @@ process_request(int sfds)
 			case PBS_BATCH_AsyrunJob:
 			case PBS_BATCH_JobCred:
 			case PBS_BATCH_UserCred:
-			case PBS_BATCH_UserMigrate:
 			case PBS_BATCH_MoveJob:
 			case PBS_BATCH_QueueJob:
 			case PBS_BATCH_RunJob:
@@ -708,18 +703,6 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_JobCred:
-#ifndef  PBS_MOM
-
-			/* Reject if a user client (qsub -Wpwd) and not a */
-			/* server (qmove) enqueued a job with JobCredential */
-			if (!request->rq_fromsvr &&
-				(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) &&
-				(server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1)) {
-				req_reject(PBSE_SSIGNON_SET_REJECT, 0, request);
-				close_client(sfds);
-				break;
-			}
-#endif
 			if (prot == PROT_TPP)
 				request->tpp_ack = 0;
 			req_jobcredential(request);
@@ -736,19 +719,6 @@ dispatch_request(int sfds, struct batch_request *request)
 #else
 			req_usercredential(request);
 #endif
-			break;
-
-		case PBS_BATCH_UserMigrate:
-#ifdef	PBS_MOM
-#ifdef	WIN32
-			req_reject(PBSE_NOSUP, 0, request);
-#else
-			req_reject(PBSE_UNKREQ, 0, request);
-#endif	/* WIN32 */
-			close_client(sfds);
-#else
-			req_user_migrate(request);
-#endif	/* PBS_MOM */
 			break;
 
 		case PBS_BATCH_jobscript:

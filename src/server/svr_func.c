@@ -55,7 +55,6 @@
  * 	set_rpp_highwater()
  * 	set_sched_sock()
  * 	is_valid_resource()
- * 	ssignon_transition_okay()
  * 	deflt_chunk_action()
  * 	set_license_location()
  * 	unset_license_location()
@@ -842,82 +841,6 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 }
 
 
-/**
- * @brief
- *		The action function for the "single_signon_password_enable" server
- *		attribute, which validates transitions between "true" and "false"
- *		values.
- *
- * @param[in]	pattr	-	target "single_signon_password_enable" attribute value
- * @param[in]	pobject -	pointer to some parent object.(required but unused here)
- * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
- *
- * @return	Whether or not okay to set to new value.
- * @retval	0	: Action is okay.
- * @retval	PBSE_SSIGNON_BAD_TRANSITION1	:
- * 				single_signon_password_enable from true to false: jobs exist!
- *
- * @retval	PBSE_SSIGNON_BAD_TRANSITION2	:
- * 				single_signon_password_enable from false to true: not all jobs have a
- *      		bad password hold!
- */
-int
-ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
-{
-	job *pjob;
-
-	if (actmode == ATR_ACTION_FREE)
-		return (0);
-
-	/* from true to false */
-	if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) && \
-          (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1) && \
-	  (pattr->at_val.at_long == 0) ) {
-
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* found at least a job that is not moved or finished */
-			return (PBSE_SSIGNON_BAD_TRANSITION1);
-
-		}
-	}
-
-	/* from false to true */
-
-	if ( (!(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) ||\
-           (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 0)) && \
-	  (pattr->at_val.at_long == 1) ) {
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* any unheld job found, or if held but not */
-			/* containing password hold */
-			if (!(pjob->ji_wattr[(int)JOB_ATR_hold].at_flags &
-			ATR_VFLAG_SET) || \
-			    !(pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long \
-						         & HOLD_bad_password) )
-				return (PBSE_SSIGNON_BAD_TRANSITION2);
-		}
-
-	}
-
-	return (0);
-
-}
 
 /**
  * @brief

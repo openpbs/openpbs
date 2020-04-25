@@ -83,6 +83,7 @@
 #include "pbs_version.h"
 #include "tpp.h"
 #include "dis.h"
+#include <openssl/sha.h>
 
 
 #define	RESCASSN_NCPUS	"resources_assigned.ncpus"
@@ -148,6 +149,38 @@ extern unsigned long	 hook_action_id;
 extern	int		internal_state_update; /* flag for sending mom information update to the server */
 
 extern int		server_stream;
+
+#ifdef WIN32
+extern int get_sha(job *, char **);
+static
+int hook_env_setup(job *pjob, hook *phook)
+{
+	char *hex_digest = NULL;
+
+	if (get_sha(pjob, &hex_digest) == 0) {
+		if (setenv(ENV_AUTH_KEY, hex_digest, 1) != 0) {
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, "Failed to set PBS_AUTH_KEY");
+			goto err;
+		}
+		free(hex_digest);
+		hex_digest = NULL;
+		return 0;
+	} else {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name, "Unable to get hash of encrypted password");
+		goto err;
+	}
+
+err:
+	if (hex_digest) {
+		free(hex_digest);
+		hex_digest = NULL;
+	}
+	return 1;
+}
+#endif
+
 /**
  * @brief
  * 	Print job data into stream pointed by 'fp'.
@@ -1472,9 +1505,18 @@ run_hook_exit:
 			run_exit = 255;
 			goto run_hook_exit;
 		}
+		if (event_type == HOOK_EVENT_EXECJOB_EPILOGUE ||
+				event_type == HOOK_EVENT_EXECJOB_PROLOGUE ||
+				event_type == HOOK_EVENT_EXECJOB_PRETERM) {
+			int ret = 0;
+			ret = hook_env_setup(pjob, phook);
+			if ( ret != 0 )
+				goto run_hook_exit;
+		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
 		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
 		(void)win_alarm(0, NULL);
+		setenv(ENV_AUTH_KEY, NULL, 1);
 	} else {
 		/* The following blocks until after */
 		(void)win_alarm(phook->alarm, run_hook_alarm);

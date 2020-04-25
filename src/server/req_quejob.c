@@ -1062,36 +1062,6 @@ req_quejob(struct batch_request *preq)
 		return;
 	}
 
-
-	/*
-	 * if single, signon password scheme is in place, only allow submission
-	 * if a per user per server password exists.
-	 *
-	 */
-
-	/* Important, only jobs in execution queues get euser attribute set */
-	if (((pj->ji_wattr[(int)JOB_ATR_euser].at_flags & ATR_VFLAG_SET) &&
-		pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str) &&
-		(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) &&
-		(server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1)) {
-			char *credb = NULL;
-			size_t credl = 0;
-			int	ret;
-
-			ret = user_read_password(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-				&credb, &credl);
-
-			if (credb) {
-				(void)free(credb);
-				credb = NULL;
-			}
-			if (ret == 1) {	/* no entry */
-				job_purge(pj);
-				req_reject(PBSE_SSIGNON_NO_PASSWORD, 0, preq);
-				return;
-			}
-	}
-
 	(void)strcpy(pj->ji_qs.ji_queue, pque->qu_qs.qu_name);
 
 	/* Is job being submitted to a reservation queue?

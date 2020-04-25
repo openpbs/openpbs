@@ -400,13 +400,6 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 }
 
 int
-ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
-{
-	return (0);
-
-}
-
-int
 deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 {
 

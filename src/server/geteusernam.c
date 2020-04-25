@@ -351,18 +351,11 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 
 	if (!isowner || !server.sv_attr[(int)SRV_ATR_FlatUID].at_val.at_long) {
 #ifdef WIN32
-		if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags &      \
-                                                          ATR_VFLAG_SET) && \
-                    (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long  \
-                                                                     == 1) ) {
-			/* read/cache user password */
-			cache_usertoken_and_homedir(puser, NULL, 0,
-				user_read_password, (char *)puser, pbs_decrypt_pwd, 0);
-		} else {
-			/* read/cache job password */
-			cache_usertoken_and_homedir(puser, NULL, 0,
-				read_cred, (job *)pobj, pbs_decrypt_pwd, 0);
-		}
+
+		/* read/cache user password */
+		cache_usertoken_and_homedir(puser, NULL, 0,
+			user_read_password, (char *)puser, pbs_decrypt_pwd, 0);
+		
 #endif
 		if (site_check_user_map(pobj, objtype, puser) == -1)
 			return (bad_euser);

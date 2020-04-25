@@ -163,5 +163,4 @@ notrans_dist_man8_MANS = \
 	man8/qstart.8B \
 	man8/qstop.8B \
 	man8/qterm.8B \
-	man8/tracejob.8B \
-	man8/win_postinstall.py.8B
+	man8/tracejob.8B

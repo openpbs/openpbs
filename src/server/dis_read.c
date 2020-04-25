@@ -515,10 +515,6 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_UserCred(sfds, request);
 			break;
 
-		case PBS_BATCH_UserMigrate:
-			rc = decode_DIS_UserMigrate(sfds, request);
-			break;
-
 		case PBS_BATCH_jobscript:
 		case PBS_BATCH_MvJobFile:
 			rc = decode_DIS_JobFile(sfds, request);
