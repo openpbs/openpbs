@@ -4409,7 +4409,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 
 		if (ahdr.for_encrypt == FOR_ENCRYPT && strcmp(authdata->config->auth_method, AUTH_RESVPORT_NAME) != 0) {
 			if (strcmp(authdata->config->auth_method, authdata->config->encrypt_method) != 0) {
-				rc = tpp_handle_auth_handshake(tfd, tfd, authdata, ahdr.for_encrypt, NULL, 0);
+				rc = tpp_handle_auth_handshake(tfd, tfd, authdata, FOR_AUTH, NULL, 0);
 				if (rc != 1) {
 					return rc;
 				}
