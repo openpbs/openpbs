@@ -61,7 +61,6 @@ extern pbs_db_conn_t	*svr_db_conn;
 #include "pbs_array_list.h"
 #include "hook.h"
 #include "hook_func.h"
-#include "pbs_license.h"
 
 /* Attributes in the Server's vnode (old node) object */
 enum nodeattr {
@@ -261,6 +260,12 @@ union ndu_ninfo {
 	unsigned int	__nd_int;
 };
 
+/* Device structure */
+struct	devices {
+	long nsockets;
+	long nnodes;
+};
+
 /*
  * Vnode structure
  */
@@ -283,7 +288,7 @@ struct	pbsnode {
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
 	int			 nd_modified;	/* flag indicating whether state update is required */
-	struct pbs_lic_counts lic_counts;	
+	struct devices lic_counts;
 	attribute		 nd_attr[ND_ATR_LAST];
 };
 

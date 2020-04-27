@@ -887,13 +887,9 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	if (licstate_is_up(LIC_NODES) || licstate_is_up(LIC_SOCKETS)) {
-		sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-				licenses.lb_glob_floating, licenses.lb_aval_floating,
-				licenses.lb_used_floating, licenses.lb_high_used_floating);
-	} else
-		sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d", 0, 0, 0, 0);
-
+	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
+			licenses.lb_glob_floating, licenses.lb_aval_floating,
+			licenses.lb_used_floating, licenses.lb_high_used_floating);
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 }

@@ -1115,12 +1115,6 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 			init_licensing();
 			if (license_sanity_check())
 				license_more_nodes();
-		} else {	
-			sprintf(log_buffer,	
-				"Licenses valid for %d floating hosts",	
-				licenses.lb_aval_floating);	
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,	
-				LOG_NOTICE, msg_daemonname, log_buffer);	
 		}
 	}
 
@@ -1149,8 +1143,7 @@ unset_license_location(void)
 
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
-		licstate_unconfigured(LIC_NODES);
-		licstate_unconfigured(LIC_SOCKETS);
+		licstate_unconfigured(LIC_SERVER);
 	}
 
 }
