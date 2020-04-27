@@ -49,14 +49,16 @@ class Test_pbs_python(TestFunctional):
 
     def test_pbs_python(self):
         """
-        Thi method spawns a python process using
+        This method spawns a python process using
         pbs_python and checks for the result
         """
         fn = self.du.create_temp_file(prefix='test', suffix='.py',
                                       body="print(\"Hello\")", text=True)
+        self.logger.info("created temp python script " + fn)
         pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                   "bin", "pbs_python")
         msg = ['Hello']
         cmd = [pbs_python] + [fn]
         rc = self.du.run_cmd(cmd=cmd, sudo=True)
+        self.assertTrue('out' in rc)
         self.assertEqual(rc['out'], msg)
