@@ -159,10 +159,9 @@ int is_num(char *str);
 int count_array(void **arr);
 
 /*
- *	dup_array - make a shallow copy of elements in a NULL terminated array
- *		      of pointers
+ *	dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
  */
-void **dup_array(void **arr);
+void **dup_array(void *ptr);
 
 /*
  *	remove_ptr_from_array - remove a pointer from a ptr list and move

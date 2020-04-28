@@ -856,8 +856,7 @@ count_array(void **arr)
 
 /**
  * @brief
- *  dup_array - make a shallow copy of elements in a NULL terminated array
- *		      of pointers
+ *  dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
  *
  * @param[in]	arr	-	the array to copy
  *
@@ -865,22 +864,22 @@ count_array(void **arr)
  *
  */
 void **
-dup_array(void **arr)
+dup_array(void *ptr)
 {
 	void **ret;
+	void **arr;
 	int len = 0;
-	int i;
 
+	arr = (void **)ptr;
 	if (arr == NULL)
 		return NULL;
 
 	len = count_array(arr);
-	ret = malloc(len * sizeof(void *));
+	ret = malloc((len +1) * sizeof(void *));
 	if (ret == NULL)
 		return NULL;
-	for (i = 0; arr[i] != NULL; i++)
-		ret[i] = arr[i];
-	ret[i] = NULL;
+	memcpy(ret, arr, len * sizeof(void *));
+	ret[len] = NULL;
 	return ret;
 }
 

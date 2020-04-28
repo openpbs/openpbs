@@ -3961,7 +3961,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 
 	/* make a copy of dependent jobs */
 	subjob->job->depend_job_str = string_dup(array->job->depend_job_str);
-	subjob->job->dependent_jobs = (resource_resv **) dup_array((void **)array->job->dependent_jobs);
+	subjob->job->dependent_jobs = (resource_resv **) dup_array(array->job->dependent_jobs);
 
 	array->job->queued_subjobs = tmp;
 

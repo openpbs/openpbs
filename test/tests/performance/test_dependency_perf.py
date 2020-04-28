@@ -64,7 +64,7 @@ class TestDependencyPerformance(TestPerformance):
         job.set_sleep_time(3600)
         jid = self.server.submit(job)
         j_arr = [jid]
-        for each in range(5000):
+        for _ in range(5000):
             a = {ATTR_depend: 'afternotok:' + jid}
             jid = self.server.submit(Job(attrs=a))
             j_arr.append(jid)

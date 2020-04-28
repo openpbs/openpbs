@@ -80,7 +80,7 @@ e.accept()
             # enumerated job
             check_dl = dl[:ind] + dl[ind + 1:]
             for job_list in check_dl:
-                    self.assertIn(job, job_list)
+                self.assertIn(job, job_list)
 
     @skipOnCpuSet
     def test_runone_depend_basic(self):
@@ -371,6 +371,7 @@ e.accept()
 
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job = Job()
         job.set_sleep_time(10)
         j1 = self.server.submit(job)
@@ -387,6 +388,7 @@ e.accept()
         job = Job(attrs=a)
         j4 = self.server.submit(job)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
                            max_attempts=3)
@@ -399,13 +401,14 @@ e.accept()
     def test_qdel_deleting_chain_of_dependency(self):
         """
         Submit a chain of dependent jobs and see if one of the running jobs
-        is deleted, all the dependent jobs (and their dependent jobs)
+        is deleted, all the jobs without their dependency released
         are also deleted.
         Try the same test with array jobs as well.
         """
 
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job = Job()
         j1 = self.server.submit(job)
 
@@ -421,7 +424,9 @@ e.accept()
         job = Job(attrs=a)
         j4 = self.server.submit(job)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j4)
         self.server.delete(j1)
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
@@ -434,6 +439,7 @@ e.accept()
         self.server.delete(j4)
 
         # repeat the steps for array job
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job = Job(attrs={ATTR_J: '1-2'})
         j5 = self.server.submit(job)
 
@@ -449,7 +455,9 @@ e.accept()
         job = Job(attrs=a)
         j8 = self.server.submit(job)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'B'}, id=j5)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j8)
         self.server.delete(j5)
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j5, extend='x')
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j6, extend='x',
@@ -463,12 +471,13 @@ e.accept()
     def test_qdel_held_job_deleting_chain_of_dependency(self):
         """
         Submit a chain of dependent jobs and see if one of the held jobs
-        is deleted, all its dependent jobs (and their dependent jobs)
+        is deleted, all the jobs without their dependency released
         are also deleted.
         """
 
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job = Job()
         j1 = self.server.submit(job)
 
@@ -484,6 +493,7 @@ e.accept()
         job = Job(attrs=a)
         j4 = self.server.submit(job)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j2)
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j3)
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j4)
@@ -506,6 +516,7 @@ e.accept()
 
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job = Job()
         j1 = self.server.submit(job)
 
@@ -521,6 +532,7 @@ e.accept()
         job = Job(attrs=a)
         j4 = self.server.submit(job)
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j2)
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j3)
         self.server.expect(JOB, {ATTR_state: 'H'}, id=j4)
