@@ -221,6 +221,39 @@ def caller_name():
 
 
 #
+# FUNCTION systemd_escape
+#
+def systemd_escape(buf):
+    """
+    Escape strings for usage in system unit names
+    Some distros don't provide the systemd-escape command
+    """
+    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+    if not isinstance(buf, str):
+        raise ValueError('Not a basetype string')
+    ret = ''
+    for i, char in enumerate(buf):
+        if i < 1 and char == '.':
+            if (sys.version_info[0] < 3):
+                ret += '\\x' + '.'.encode('hex')
+            else:
+                ret += '\\x' + b'.'.hex()
+        elif char.isalnum() or char in '_.':
+            ret += char
+        elif char == '/':
+            ret += '-'
+        else:
+            # Will turn non-ASCII into UTF-8 hex sequence on both Py2/3
+            if (sys.version_info[0] < 3):
+                hexval = char.encode('hex')
+            else:
+                hexval = char.encode('utf-8').hex()
+            for j in range(0, len(hexval), 2):
+                ret += '\\x' + hexval[j:j + 2]
+    return ret
+
+
+#
 # FUNCTION convert_size
 #
 def convert_size(value, units='b'):
@@ -2532,6 +2565,9 @@ class CgroupUtils(object):
         subdir = os.path.dirname(dest)
         parent = os.path.dirname(subdir)
         source = os.path.join(parent, filename)
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'Copying value from %s to %s'
+                   % (source, dest))
         if not os.path.isfile(source):
             raise CgroupConfigError('Failed to read %s' % (source))
         with open(source, 'r') as desc:
@@ -2556,10 +2592,10 @@ class CgroupUtils(object):
                 prefix = ''
             else:
                 prefix = subsys + '.'
-#        if self.systemd_version < 205:
-#            now return the exact same path -- do not try to elide ".slice"
         return os.path.join(mnt_point,
-                            str(self.cfg['cgroup_prefix']) + '.slice', prefix)
+                            str(self.cfg['cgroup_prefix'])
+                            + '.service/jobid',
+                            prefix)
 
     def _get_paths(self):
         """
@@ -2616,17 +2652,16 @@ class CgroupUtils(object):
         if not cgfile:
             if jobid:
                 # Caller wants parent directory of job
-                return os.path.join(subdir,
-                                    self._jobid_to_systemd_subdir(jobid), '')
+                return os.path.join(subdir, jobid, '')
             # Caller wants parent directory of subsystem
             return os.path.join(subdir, '')
         # Caller wants full path to file
         if cgfile == 'tasks':
             # tasks file never uses a prefix
-            return os.path.join(subdir, self._jobid_to_systemd_subdir(jobid),
+            return os.path.join(subdir, jobid,
                                 cgfile)
         if jobid:
-            return os.path.join(subdir, self._jobid_to_systemd_subdir(jobid),
+            return os.path.join(subdir, jobid,
                                 prefix + cgfile)
         return os.path.join(subdir, prefix + cgfile)
 
@@ -2832,7 +2867,7 @@ class CgroupUtils(object):
         # with the default cgroup configuration files.
         defaults = {}
         defaults['enabled'] = True
-        defaults['cgroup_prefix'] = 'pbspro'
+        defaults['cgroup_prefix'] = 'pbs_jobs'
         defaults['cgroup_lock_file'] = os.path.join(PBS_MOM_HOME, 'mom_priv',
                                                     'cgroups.lock')
         defaults['nvidia-smi'] = os.path.join(os.sep, 'usr', 'bin',
@@ -2961,7 +2996,71 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4,
                    '%s: cgroup hook configuration: %s' %
                    (caller_name(), config))
+        config['cgroup_prefix'] = systemd_escape(config['cgroup_prefix'])
         return config
+
+    def _create_service(self):
+        """
+        Create the pbs_jobs.service systemd service
+        """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        if self.systemd_version < 205:
+            return
+        if (pbs.event().type == pbs.EXECJOB_BEGIN):
+            # normally service is there for this event -- if so, return
+            try:
+                cmd = ['systemctl', 'is-active', self.cfg['cgroup_prefix']]
+                process = subprocess.Popen(cmd, shell=False,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                out, err = process.communicate()
+                if (process.returncode == 0):
+                    # service is already active -- no need to create it
+                    return
+                else:
+                    pbs.logmsg(pbs.EVENT_DEBUG,
+                               '%s: systemctl is-active <service> returned %s'
+                               % (caller_name(), cmd.returncode))
+            except Exception:
+                # was worth a try -- try to create service now
+                # and see if that fails
+                pass
+        description = 'PBS Pro job parent service'
+        servicefile = os.path.join(os.sep, 'run', 'systemd', 'system',
+                                   self.cfg['cgroup_prefix'] + '.service')
+        try:
+            with open(servicefile, 'w') as desc:
+                desc.write('[Unit]\n'
+                           'Description=%s\n'
+                           '[Service]\n'
+                           'Type=simple\n'
+                           'Slice=-.slice\n'
+                           'TasksMax=infinity\n'
+                           'RemainAfterExit=yes\n'
+                           'ExecStart=/bin/sleep infinity\n'
+                           'ExecStop=/bin/true\n'
+                           'CPUAccounting=off\n'
+                           'MemoryAccounting=off\n'
+                           'Delegate=yes'
+                           % description)
+                desc.truncate()
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to write service file: %s'
+                       % (caller_name(), servicefile))
+            raise
+        try:
+            cmd = ['systemctl', 'start', os.path.basename(servicefile)]
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            out, err = process.communicate()
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: Failed to start systemd service: %s' %
+                       (caller_name(), os.path.basename(servicefile)))
+            raise
+        pbs.logmsg(pbs.EVENT_DEBUG, '%s: Started systemd service with file %s'
+                   % (caller_name(), servicefile))
 
     def create_paths(self):
         """
@@ -2970,18 +3069,25 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         old_umask = os.umask(0o022)
         try:
-            # Create a systemd slice for PBS
-            self._create_slice()
+            # Create a systemd service for PBS jobs (if necessary)
+            self._create_service()
             # Create the directories that PBS will use to house the jobs
+            # now under the controller mount at <prefix>.service/jobid
             for subsys in self.subsystems:
                 subdir = self._cgroup_path(subsys)
                 if not subdir:
-                    raise CgroupConfigError('No path for subsystem: %s' %
-                                            (subsys))
+                    raise CgroupConfigError('No path for subsystem: %s'
+                                            % (subsys))
+                created = False
                 if not os.path.exists(subdir):
                     os.makedirs(subdir, 0o755)
+                    created = True
                     pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Created directory %s' %
                                (caller_name(), subdir))
+                if (not created and pbs.event().type == pbs.EXECJOB_BEGIN):
+                    # only exechost_startup configures values in the cgroups
+                    # if they exist
+                    continue
                 if subsys == 'memory' or subsys == 'memsw':
                     # Enable 'use_hierarchy' for memory when either memory
                     # or memsw is in use.
@@ -2994,93 +3100,28 @@ class CgroupUtils(object):
                     except CgroupBusyError:
                         # Some kernels do not like the value written when
                         # other jobs are running.
+                        # but then things were already set up anyway
                         pass
                 elif subsys == 'cpuset':
+                    # copy <cgroup_prefix>.services cpuset values
+                    # from its parent (root), then copy those to
+                    # directory under it; necessary if systemd is not there
+                    (cpuset_dir, cpus_file) = \
+                        os.path.split(self._cgroup_path(subsys, 'cpus'))
+                    (memset_dir, mems_file) = \
+                        os.path.split(self._cgroup_path(subsys, 'mems'))
+                    cpuset_pardir = \
+                        os.path.dirname(cpuset_dir)
+                    self._copy_from_parent(os.path.join(cpuset_pardir,
+                                                        cpus_file))
+                    self._copy_from_parent(os.path.join(cpuset_pardir,
+                                                        mems_file))
                     self._copy_from_parent(self._cgroup_path(subsys, 'cpus'))
                     self._copy_from_parent(self._cgroup_path(subsys, 'mems'))
         except Exception as exc:
             raise CgroupConfigError('Failed to create cgroup paths: %s' % exc)
         finally:
             os.umask(old_umask)
-
-    def _create_slice(self, jobid=None):
-        """
-        Create the cgroup slice for the parent or job
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if self.systemd_version < 205:
-            return
-        if jobid:
-            description = 'PBS Pro job %s' % jobid
-            slicefile = os.path.join(os.sep, 'run', 'systemd', 'system',
-                                     self._jobid_to_systemd_subdir(jobid))
-        else:
-            description = 'PBS Pro parent'
-            slicefile = os.path.join(os.sep, 'run', 'systemd', 'system',
-                                     self.cfg['cgroup_prefix'] + '.slice')
-        try:
-            with open(slicefile, 'w') as desc:
-                desc.write('[Unit]\n'
-                           'Description=%s\n'
-                           '[Slice]\n'
-                           'Delegate=yes\n'
-                           'TasksMax=infinity\n' % description)
-                desc.truncate()
-        except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to write slice file: %s' %
-                       (caller_name(), slicefile))
-            raise
-        try:
-            cmd = ['systemctl', 'start', os.path.basename(slicefile)]
-            process = subprocess.Popen(cmd, shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
-        except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG,
-                       '%s: Failed to start systemd slice: %s' %
-                       (caller_name(), os.path.basename(slicefile)))
-            raise
-
-    def _delete_slice(self, jobid=None):
-        """
-        Delete the cgroup slice for the parent or job
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if self.systemd_version < 205:
-            return
-        if jobid:
-            description = 'PBS Pro job %s' % jobid
-            slicefile = os.path.join(os.sep, 'run', 'systemd', 'system',
-                                     self._jobid_to_systemd_subdir(jobid))
-        else:
-            description = 'PBS Pro parent'
-            slicefile = os.path.join(os.sep, 'run', 'systemd', 'system',
-                                     self.cfg['cgroup_prefix'] + '.slice')
-        try:
-            cmd = ['systemctl', 'stop', os.path.basename(slicefile)]
-            process = subprocess.Popen(cmd, shell=False,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
-        except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG,
-                       '%s: Failed to stop systemd slice: %s' %
-                       (caller_name(), os.path.basename(slicefile)))
-            raise
-        if os.path.isfile(slicefile):
-            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Removing slice file %s' %
-                       (caller_name(), slicefile))
-            try:
-                os.remove(slicefile)
-            except Exception:
-                pbs.logmsg(pbs.EVENT_DEBUG,
-                           '%s: Failed to delete slice file: %s' %
-                           (caller_name(), slicefile))
-                raise
-        else:
-            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Slice file missing %s' %
-                       (caller_name(), slicefile))
 
     def _get_vnode_type(self):
         """
@@ -3142,12 +3183,12 @@ class CgroupUtils(object):
             if not self.enabled(key):
                 continue
             path = os.path.dirname(self._cgroup_path(key))
-            # Adjust the wildcard for systemd, do not exclude orphans
-            pattern = self._systemd_subdir_wildcard()
+            # do not exclude orphans
+            pattern = self._glob_subdir_wildcard()
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Examining %s' %
-                       (caller_name(), pattern))
+                       (caller_name(), os.path.join(path, pattern)))
             for subdir in glob.glob(os.path.join(path, pattern)):
-                jobid = self._systemd_subdir_to_jobid(os.path.basename(subdir))
+                jobid = os.path.basename(subdir)
                 if not jobid:
                     continue
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job ID is %s' %
@@ -3235,39 +3276,21 @@ class CgroupUtils(object):
             return 0
         if not os.path.exists(
                 os.path.join(os.sep, 'run', 'systemd', 'system')):
-            # no place to put slices in? systemd not running in system mode?
+            # no place to drop unit files? systemd not running in system mode?
             return 0
         return ver
 
-    def _systemd_subdir_wildcard(self, extension=''):
+    def _glob_subdir_wildcard(self, extension=''):
         """
         Return a string that may be used as a pattern with glob.glob
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        buf = self._systemd_escape(self.cfg['cgroup_prefix'])
-        buf += '-[0-9]*'
+        buf = '[0-9]*'
         if extension:
-            buf += '.' + self._systemd_escape(extension)
+            buf += '.' + extension
         return buf
 
-    def _systemd_subdir_to_jobid(self, subdir):
-        """
-        Extract the jobid from the subdirectory provided
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        escaped = re.sub(r'%s-(.*).slice$' % self.cfg['cgroup_prefix'],
-                         r'\1', subdir)
-        return self._systemd_unescape(escaped)
-
-    def _jobid_to_systemd_subdir(self, jobid):
-        """
-        Convert the supplied jobid to its directory format
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        return '%s-%s.slice' % (self.cfg['cgroup_prefix'],
-                                self._systemd_escape(jobid))
-
-    def _systemd_escape(self, buf):
+    def systemd_escape(self, buf):
         """
         Escape strings for usage in system unit names
         Some distros don't provide the systemd-escape command
@@ -3294,46 +3317,6 @@ class CgroupUtils(object):
                     hexval = char.encode('utf-8').hex()
                 for j in range(0, len(hexval), 2):
                     ret += '\\x' + hexval[j:j + 2]
-        return ret
-
-    def _systemd_unescape(self, buf):
-        """
-        Unescape strings encoded for usage in system unit names
-        Some distros don't provide the systemd-escape command
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if not isinstance(buf, str):
-            raise ValueError('Not a basetype string')
-        # Cannot decode UTF-8 in Py3 before we have the whole byte array
-        # Gather everything and then convert at the end
-        ret = b''
-        length = len(buf)
-        i = 0
-        while i < length:
-            if (length - i) > 3 and buf[i] == '\\' and buf[i + 1] == 'x' and \
-                buf[i + 2] in '0123456789abcdef' and \
-                    buf[i + 3] in '0123456789abcdef':
-                if (sys.version_info[0] < 3):
-                    ret += buf[(i + 2):(i + 4)].decode('hex')
-                else:
-                    ret += bytes.fromhex(buf[(i + 2):(i + 4)])
-                i += 4
-                continue
-            if buf[i] == '-':
-                ret += b'/'
-            elif buf[i].isalnum() or buf[i] in '_.':
-                if (sys.version_info[0] < 3):
-                    ret += buf[i]
-                else:
-                    # normal char -- should never require UTF-8
-                    ret += buf[i].encode('ascii', 'strict')
-            else:
-                raise ValueError('Invalid systemd escaped string')
-            i += 1
-        if (sys.version_info[0] < 3):
-            ret = str(ret)
-        else:
-            ret = ret.decode('utf-8')
         return ret
 
     def enabled(self, subsystem):
@@ -4418,10 +4401,6 @@ class CgroupUtils(object):
         Creates the cgroup if it doesn't exists
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        # Create a systemd slice for the job
-        # if there is a recent systemd, should create the "systemd" directory
-        # so that systemd doesn't delete what we create here
-        self._create_slice(jobid)
         # Iterate over the enabled subsystems
         for subsys in self.subsystems:
             # Create a directory for the job
@@ -4830,7 +4809,7 @@ class CgroupUtils(object):
         if not jobid:
             parent = path
         else:
-            parent = os.path.join(path, self._jobid_to_systemd_subdir(jobid))
+            parent = os.path.join(path, jobid)
         # Recursively delete children
         self._delete_cgroup_children(parent)
         # Delete the parent
@@ -4862,9 +4841,6 @@ class CgroupUtils(object):
                 if not os.path.isdir(parent):
                     break
                 time.sleep(0.5)
-            # Delete the systemd slice for the job - if there is a job
-            if jobid:
-                self._delete_slice(jobid)
             return True
         if not os.path.isdir(parent):
             return True
@@ -4920,18 +4896,15 @@ class CgroupUtils(object):
         for key in keys_to_process:
             path = os.path.dirname(self._cgroup_path(key))
             # Identify any orphans and append an orphan suffix
-            pattern = self._systemd_subdir_wildcard()
+            pattern = self._glob_subdir_wildcard()
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Searching for orphans: %s' %
                        (caller_name(), os.path.join(path, pattern)))
             for subdir in glob.glob(os.path.join(path, pattern)):
-                jobid = self._systemd_subdir_to_jobid(os.path.basename(subdir))
+                jobid = os.path.basename(subdir)
                 if jobid in local_jobs or jobid.endswith('.orphan'):
                     continue
-                # Delete the systemd slice before we rename the directory
-                self._delete_slice(jobid)
-                # Now rename the directory. The _jobid_to_systemd_subdir()
-                # method will append the .slice extension.
-                filename = self._jobid_to_systemd_subdir(jobid + '.orphan')
+                # Now rename the directory.
+                filename = jobid + '.orphan'
                 new_subdir = os.path.join(path, filename)
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Renaming %s to %s' %
                            (caller_name(), subdir, new_subdir))
@@ -4945,7 +4918,7 @@ class CgroupUtils(object):
                                    '%s: Failed to rename %s to %s' %
                                    (caller_name(), subdir, new_subdir))
             # Attempt to remove the orphans
-            pattern = self._systemd_subdir_wildcard(extension='orphan.slice')
+            pattern = self._glob_subdir_wildcard(extension='orphan')
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Cleaning up orphans: %s' %
                        (caller_name(), os.path.join(path, pattern)))
             for subdir in glob.glob(os.path.join(path, pattern)):
@@ -4971,11 +4944,9 @@ class CgroupUtils(object):
         finished = False
         giveup_time = time.time() + self.cfg['kill_timeout']
         try:
-            self._delete_slice(jobid)
             while not finished:
                 failure = False
-                # Always do systemd first, to prevent it from re-"mirroring"
-                # that directory into other hierarchies behind our back
+                # Always do systemd first
                 if 'systemd' in self.paths:
                     keys_to_process = \
                         (['systemd']
@@ -4985,8 +4956,7 @@ class CgroupUtils(object):
                 for key in keys_to_process:
                     cgroup_path = self._cgroup_path(key)
                     path = os.path.dirname(self._cgroup_path(key))
-                    pattern = self._systemd_subdir_wildcard()
-                    subdir_basename = self._jobid_to_systemd_subdir(jobid)
+                    subdir_basename = jobid
                     subdir = os.path.join(path, subdir_basename)
                     subdir_parent = path
                     # Make sure it still exists
