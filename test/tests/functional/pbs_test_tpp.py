@@ -50,7 +50,8 @@ class TestTPP(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         self.pbs_conf = self.du.parse_pbs_config(self.server.shortname)
-        self.pbs_conf_path = self.du.get_pbs_conf_file(hostname=self.server.hostname)
+        self.pbs_conf_path = self.du.get_pbs_conf_file(
+            hostname=self.server.hostname)
         msg = "Unable to retrieve pbs.conf file path"
         self.assertNotEqual(self.pbs_conf_path, None, msg)
 
@@ -131,12 +132,12 @@ class TestTPP(TestFunctional):
         if job:
             if not jset_attrib:
                 jset_attrib = {'Resource_List.select': '2:ncpus=1',
-                                 ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
+                               ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
             j.set_attributes(jset_attrib)
             if not jexp_attrib:
-               exp_attrib = {'job_state': 'R'}
+                exp_attrib = {'job_state': 'R'}
             else:
-               exp_attrib = jexp_attrib
+                exp_attrib = jexp_attrib
 
         if interactive:
             if not iset_attrib:
@@ -149,9 +150,9 @@ class TestTPP(TestFunctional):
                                      self.exec_path, '.*'),
                                     ('qstat', '.*')]
             if not iexp_attrib:
-               exp_attrib = {'job_state': 'R'}
+                exp_attrib = {'job_state': 'R'}
             else:
-               exp_attrib = iexp_attrib
+                exp_attrib = iexp_attrib
 
         if resv_job:
             resv_que = rid.split('.')[0]
@@ -161,9 +162,9 @@ class TestTPP(TestFunctional):
                                 ATTR_l + '.place': 'scatter'}
             j.set_attributes(rjset_attrib)
             if not rjexp_attrib:
-               exp_attrib = {'job_state': 'Q'}
+                exp_attrib = {'job_state': 'Q'}
             else:
-               exp_attrib = rjexp_attrib
+                exp_attrib = rjexp_attrib
 
         if job_script:
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -201,7 +202,8 @@ class TestTPP(TestFunctional):
     def common_steps(self, jset_attrib=None, jexp_attrib=None, job=False,
                      iset_attrib=None, iexp_attrib=None, interactive_job=False,
                      rset_attrib=None, rexp_attrib=None, rjset_attrib=None,
-                     rjexp_attrib=None, resv=False, resv_job=False, client=None):
+                     rjexp_attrib=None, resv=False,
+                     resv_job=False, client=None):
         """
         This function contains common steps of submitting
         different kind of jobs.
@@ -245,8 +247,11 @@ class TestTPP(TestFunctional):
             self.server.expect(JOB, 'queue', id=jid, op=UNSET)
         if resv:
             # Submit reservation
-            rid = self.submit_resv(rset_attrib=rset_attrib, rexp_attrib=rexp_attrib)
-            jid = self.submit_job(resv_job=True, rid=rid, rjset_attrib=rjset_attrib,
+            rid = self.submit_resv(
+                rset_attrib=rset_attrib,
+                rexp_attrib=rexp_attrib)
+            jid = self.submit_job(resv_job=True, rid=rid,
+                                  rjset_attrib=rjset_attrib,
                                   rjexp_attrib=rjexp_attrib, job_script=True)
             # Wait for reservation to start
             a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
@@ -348,13 +353,14 @@ class TestTPP(TestFunctional):
         if self.server.shortname not in hosts:
             hosts.append(self.server.shortname)
         for host in hosts:
-                if host == self.server.shortname and host in moms:
-                    self.set_pbs_conf(host_name=host, conf_param=a)
-                elif host == self.server.shortname and host not in self.moms.values():
-                    a['PBS_START_MOM'] = "0"
-                    self.set_pbs_conf(host_name=host, conf_param=a)
-                else:
-                    self.set_pbs_conf(host_name=host, conf_param=b)
+            if host == self.server.shortname and host in moms:
+                self.set_pbs_conf(host_name=host, conf_param=a)
+            elif host == self.server.shortname and \
+                    host not in self.moms.values():
+                a['PBS_START_MOM'] = "0"
+                self.set_pbs_conf(host_name=host, conf_param=a)
+            else:
+                self.set_pbs_conf(host_name=host, conf_param=b)
         self.common_steps(job=True, resv=True, resv_job=True)
         self.common_steps(interactive_job=True, client=self.hostB)
 
@@ -383,7 +389,7 @@ class TestTPP(TestFunctional):
         if self.server.shortname in nodes:
             self.skip_test(reason=msg)
         self.common_steps(job=True, resv=True,
-                           resv_job=True, client=self.hostA)
+                          resv_job=True, client=self.hostA)
         self.common_steps(job=True, interactive_job=True,
                           client=self.hostB)
 
@@ -397,9 +403,10 @@ class TestTPP(TestFunctional):
             vnode_val = "vnode=vn[0]:ncpus=1+vnode=vn[1]:ncpus=1"
         else:
             vnode_val = "vnode=%s:ncpus=1" % self.server.status(NODE)[1]['id']
-            vnode_val += "+vnode=%s:ncpus=1" % self.server.status(NODE)[2]['id']
+            vnode_val += "+vnode=%s:ncpus=1" % self.server.status(NODE)[
+                2]['id']
         set_attrib = {'Resource_List.select': vnode_val,
-                       ATTR_k: 'oe'}
+                      ATTR_k: 'oe'}
         self.common_steps(job=True, jset_attrib=set_attrib)
         self.comm.stop('KILL')
         if self.mom.is_cpuset_mom():
@@ -408,8 +415,10 @@ class TestTPP(TestFunctional):
         else:
             vnode_list = ["vn[0]", "vn[1]"]
         for vnode in vnode_list:
-            self.server.expect(VNODE, {'state': 'state-unknown,down'}, id=vnode)
-        
+            self.server.expect(
+                VNODE, {
+                    'state': 'state-unknown,down'}, id=vnode)
+
     @requirements(num_moms=2, num_comms=1)
     def test_multiple_comm_with_mom(self):
         """
@@ -440,14 +449,15 @@ class TestTPP(TestFunctional):
         b = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=b)
         for host in hosts:
-                if host == self.server.shortname and host not in self.moms.values():
-                    a['PBS_START_MOM'] = "0"
-                    self.set_pbs_conf(host_name=host, conf_param=a)
-                else:
-                    self.set_pbs_conf(host_name=host, conf_param=b)
+            if host == self.server.shortname and \
+                    host not in self.moms.values():
+                a['PBS_START_MOM'] = "0"
+                self.set_pbs_conf(host_name=host, conf_param=a)
+            else:
+                self.set_pbs_conf(host_name=host, conf_param=b)
         self.common_steps(job=True, interactive_job=True, resv=True,
                           resv_job=True)
- 
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         conf_param = ['PBS_LEAF_ROUTERS', 'PBS_COMM_ROUTERS']
@@ -455,4 +465,3 @@ class TestTPP(TestFunctional):
             self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
         self.server.client = self.default_client
-
