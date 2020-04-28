@@ -288,7 +288,7 @@ struct	pbsnode {
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
 	int			 nd_modified;	/* flag indicating whether state update is required */
-	struct devices lic_counts;
+	struct devices device;
 	attribute		 nd_attr[ND_ATR_LAST];
 };
 

@@ -476,8 +476,8 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->nd_modified = 0;
-	pnode->lic_counts.nnodes = 0;
-	pnode->lic_counts.nsockets = 0;
+	pnode->device.nnodes = 0;
+	pnode->device.nsockets = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
