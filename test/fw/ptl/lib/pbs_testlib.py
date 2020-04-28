@@ -4298,7 +4298,8 @@ class PBSService(PBSObject):
                             return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
-                        rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
+                        rv = self.du.run_copy(
+                            self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
@@ -4329,7 +4330,8 @@ class PBSService(PBSObject):
                             return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
-                        rv = self.du.run_copy(self.hostname, fn, k, sudo=True)
+                        rv = self.du.run_copy(
+                            self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
                             self.logger.error("Failed to restore "
                                               + "configuration: %s" % k)
@@ -5169,13 +5171,13 @@ class Server(PBSService):
                 dohup = False
                 if (self.du.cmp(self.hostname, self.dflt_atom_hk,
                                 self.atom_hk, sudo=True) != 0):
-                    self.du.run_copy(self.hostname, self.dflt_atom_hk,
-                                     self.atom_hk, mode=0o644, sudo=True)
+                    self.du.run_copy(self.hostname, src=self.dflt_atom_hk,
+                                     dest=self.atom_hk, mode=0o644, sudo=True)
                     dohup = True
                 if self.du.cmp(self.hostname, self.dflt_atom_cf,
                                self.atom_cf, sudo=True) != 0:
-                    self.du.run_copy(self.hostname, self.dflt_atom_cf,
-                                     self.atom_cf, mode=0o644, sudo=True)
+                    self.du.run_copy(self.hostname, src=self.dflt_atom_cf,
+                                     dest=self.atom_cf, mode=0o644, sudo=True)
                     dohup = True
                 if dohup:
                     self.signal('-HUP')
@@ -6174,7 +6176,8 @@ class Server(PBSService):
                 # remote host is identical to the local host. When not
                 # the case, this code will need to be updated to copy
                 # to a known remote location and update the obj.script
-                self.du.run_copy(self.hostname, obj.script, obj.script)
+                self.du.run_copy(
+                    self.hostname, src=obj.script, dest=obj.script)
                 os.remove(obj.script)
             objid = self.pbs_api_as('submit', obj, user=obj.username,
                                     extend=extend)
@@ -7972,7 +7975,7 @@ class Server(PBSService):
                                 'resourcedef')
         else:
             dest = filename
-        self.du.run_copy(self.hostname, fn, dest, sudo=True,
+        self.du.run_copy(self.hostname, src=fn, dest=dest, sudo=True,
                          preserve_permission=False)
         os.remove(fn)
         if restart:
@@ -8088,7 +8091,7 @@ class Server(PBSService):
             if self._is_local:
                 os.chdir(tempfile.gettempdir())
             else:
-                self.du.run_copy(self.hostname, fn, fn)
+                self.du.run_copy(self.hostname, src=fn, dest=fn)
 
         if not self._is_local:
             p_env = '"import os; print(os.environ[\'PTL_EXEC\'])"'
@@ -9719,7 +9722,7 @@ class Server(PBSService):
         if not self._is_local:
             tmpdir = self.du.get_tempdir(self.hostname)
             rfile = os.path.join(tmpdir, os.path.basename(fn))
-            self.du.run_copy(self.hostname, fn, rfile)
+            self.du.run_copy(self.hostname, src=fn, dest=rfile)
         else:
             rfile = fn
 
@@ -9845,7 +9848,7 @@ class Server(PBSService):
         if not self._is_local:
             tmpdir = self.du.get_tempdir(self.hostname)
             rfile = os.path.join(tmpdir, os.path.basename(fn))
-            rc = self.du.run_copy(self.hostname, fn, rfile)
+            rc = self.du.run_copy(self.hostname, src=fn, dest=rfile)
             if rc != 0:
                 raise AssertionError("Failed to copy file %s"
                                      % (rfile))
@@ -11399,8 +11402,8 @@ class Scheduler(PBSService):
                 sp = os.path.join(sched_priv, "sched_config")
             else:
                 sp = path
-            self.du.run_copy(self.hostname, fn, sp, preserve_permission=False,
-                             sudo=True)
+            self.du.run_copy(self.hostname, src=fn, dest=sp,
+                             preserve_permission=False, sudo=True)
             os.remove(fn)
 
             self.logger.debug(self.logprefix + "updated configuration")
@@ -11491,7 +11494,7 @@ class Scheduler(PBSService):
                                                 body=script_body,
                                                 hostname=host)
             res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
-            self.du.run_copy(host, tmp_file, res_file, sudo=True,
+            self.du.run_copy(host, src=tmp_file, dest=res_file, sudo=True,
                              preserve_permission=False)
             self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
                           sudo=True)
@@ -11554,20 +11557,20 @@ class Scheduler(PBSService):
         self.clear_dedicated_time(hup=False)
         if self.du.cmp(self.hostname, self.dflt_resource_group_file,
                        self.resource_group_file, sudo=True) != 0:
-            self.du.run_copy(self.hostname, self.dflt_resource_group_file,
-                             self.resource_group_file,
+            self.du.run_copy(self.hostname, src=self.dflt_resource_group_file,
+                             dest=self.resource_group_file,
                              preserve_permission=False,
                              sudo=True)
         rc = self.holidays_revert_to_default()
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file, sudo=True) != 0:
-            self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, preserve_permission=False,
-                             sudo=True)
+            self.du.run_copy(self.hostname, src=self.dflt_sched_config_file,
+                             dest=self.sched_config_file,
+                             preserve_permission=False, sudo=True)
         if self.du.cmp(self.hostname, self.dflt_dedicated_file,
                        self.dedicated_time_file, sudo=True):
-            self.du.run_copy(self.hostname, self.dflt_dedicated_file,
-                             self.dedicated_time_file,
+            self.du.run_copy(self.hostname, src=self.dflt_dedicated_file,
+                             dest=self.dedicated_time_file,
                              preserve_permission=False, sudo=True)
 
         self.signal('-HUP')
@@ -11598,15 +11601,17 @@ class Scheduler(PBSService):
                                       self.attributes['sched_log'])
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
-            self.du.run_copy(self.hostname, self.dflt_resource_group_file,
-                             self.resource_group_file, mode=0o644,
+            self.du.run_copy(self.hostname, src=self.dflt_resource_group_file,
+                             dest=self.resource_group_file, mode=0o644,
                              sudo=True)
-            self.du.run_copy(self.hostname, self.dflt_holidays_file,
-                             self.holidays_file, mode=0o644, sudo=True)
-            self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, mode=0o644, sudo=True)
-            self.du.run_copy(self.hostname, self.dflt_dedicated_file,
-                             self.dedicated_time_file, mode=0o644, sudo=True)
+            self.du.run_copy(self.hostname, src=self.dflt_holidays_file,
+                             dest=self.holidays_file, mode=0o644, sudo=True)
+            self.du.run_copy(self.hostname, src=self.dflt_sched_config_file,
+                             dest=self.sched_config_file, mode=0o644,
+                             sudo=True)
+            self.du.run_copy(self.hostname, src=self.dflt_dedicated_file,
+                             dest=self.dedicated_time_file, mode=0o644,
+                             sudo=True)
         if not os.path.exists(sched_logs_dir):
             self.du.mkdir(path=sched_logs_dir, sudo=True)
 
@@ -11747,8 +11752,8 @@ class Scheduler(PBSService):
         # Copy over the holidays file from PBS_EXEC if it exists
         if self.du.cmp(self.hostname, self.dflt_holidays_file,
                        self.holidays_file, sudo=True) != 0:
-            ret = self.du.run_copy(self.hostname, self.dflt_holidays_file,
-                                   self.holidays_file,
+            ret = self.du.run_copy(self.hostname, src=self.dflt_holidays_file,
+                                   dest=self.holidays_file,
                                    preserve_permission=False, sudo=True,
                                    logerr=True)
             rc = ret['rc']
@@ -12296,7 +12301,7 @@ class Scheduler(PBSService):
         self.logger.debug("content being written:\n" + str(content))
 
         fn = self.du.create_temp_file(self.hostname, body=content)
-        ret = self.du.run_copy(self.hostname, fn, out_path,
+        ret = self.du.run_copy(self.hostname, src=fn, dest=out_path,
                                preserve_permission=False, sudo=True)
         self.du.rm(self.hostname, fn)
 
@@ -12425,7 +12430,7 @@ class Scheduler(PBSService):
                     fd.write(l + '\n')
             ddfile = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_priv',
                                   'dedicated_time')
-            self.du.run_copy(self.hostname, fn, ddfile, sudo=True,
+            self.du.run_copy(self.hostname, src=fn, dest=ddfile, sudo=True,
                              preserve_permission=False)
             os.remove(fn)
         except:
@@ -12840,7 +12845,8 @@ class FairshareTree(object):
     def update_resource_group(self):
         if self.resource_group:
             fn = self.du.create_temp_file(body=self.__str__())
-            ret = self.du.run_copy(self.hostname, fn, self.resource_group,
+            ret = self.du.run_copy(self.hostname, src=fn,
+                                   dest=self.resource_group,
                                    preserve_permission=False, sudo=True)
             os.remove(fn)
 
@@ -13710,7 +13716,7 @@ class MoM(PBSService):
                         f.write(str(k) + ' ' + str(v) + '\n')
             dest = os.path.join(
                 self.pbs_conf['PBS_HOME'], 'mom_priv', 'config')
-            self.du.run_copy(self.hostname, fn, dest,
+            self.du.run_copy(self.hostname, src=fn, dest=dest,
                              preserve_permission=False, sudo=True)
             os.remove(fn)
         except:
@@ -13905,7 +13911,7 @@ class MoM(PBSService):
                 self.logger.info("\n".join(_b.readlines()))
         self.logger.info('---')
 
-        ret = self.du.run_copy(self.hostname, src, pelog,
+        ret = self.du.run_copy(self.hostname, src=src, dest=pelog,
                                preserve_permission=False, sudo=True)
         if body is not None:
             os.remove(src)
@@ -13978,7 +13984,7 @@ class MoM(PBSService):
                                                 hostname=host)
 
             res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
-            self.du.run_copy(host, tmp_file, res_file, sudo=True,
+            self.du.run_copy(host, src=tmp_file, dest=res_file, sudo=True,
                              preserve_permission=False)
             self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
                           sudo=True)
