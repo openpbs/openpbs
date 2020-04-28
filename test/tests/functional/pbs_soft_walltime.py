@@ -1023,7 +1023,7 @@ e.accept()
 
         now = int(time.time())
 
-        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 65,
+        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 80,
              'reserve_end': now + 240}
         R = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(R)
