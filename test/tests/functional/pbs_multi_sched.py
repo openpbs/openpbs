@@ -600,6 +600,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1',
                            attrop=PTL_AND, max_attempts=10)
 
+    @skipOnCpuSet
     def test_job_sorted_per_scheduler(self):
         """
         Test jobs are sorted as per job_sort_formula
@@ -1794,6 +1795,7 @@ class TestMultipleSchedulers(TestFunctional):
                             {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)
 
+    @skipOnCpuSet
     def test_advance_resv_in_multi_sched(self):
         """
         Test that advance reservations in a multi-sched environment can be
@@ -1844,6 +1846,7 @@ class TestMultipleSchedulers(TestFunctional):
         result = {'job_state': 'R', 'exec_vnode': '(vnode[1]:ncpus=1)'}
         self.server.expect(JOB, result, id=jid4)
 
+    @skipOnCpuSet
     def test_resv_in_empty_multi_sched_env(self):
         """
         Test that advance reservations gets confirmed by all the schedulers
@@ -1870,6 +1873,7 @@ class TestMultipleSchedulers(TestFunctional):
         msg = "Resv;" + rid + ";Reservation denied"
         self.server.log_match(msg)
 
+    @skipOnCpuSet
     def test_asap_resv(self):
         """
         Test ASAP reservation in multisched environment. It should not
@@ -2175,6 +2179,7 @@ e.accept()
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
+    @skipOnCpuSet
     def test_resv_from_job_in_multi_sched_using_qsub(self):
         """
         Test that a user is able to create a reservation out of a job using
@@ -2202,6 +2207,7 @@ e.accept()
              'partition': 'P1'}
         self.server.expect(RESV, a, id=rid)
 
+    @skipOnCpuSet
     def test_resv_from_job_in_multi_sched_using_rsub(self):
         """
         Test that a user is able to create a reservation out of a job using
