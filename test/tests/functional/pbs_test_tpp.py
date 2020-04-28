@@ -26,13 +26,13 @@
 # go to: (http://www.pbspro.com/UserArea/agreement.html)
 # or contact the Altair Legal Department.
 #
-# Altair.s dual-license business model allows companies, individuals, and
+# Altair's dual-license business model allows companies, individuals, and
 # organizations to create proprietary derivative works of PBS Pro and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair.s trademarks, including but not limited to "PBS.",
-# "PBS Professional®", and "PBS Pro." and Altair.s logos is subject to Altair's
+# Use of Altair's trademarks, including but not limited to "PBS.",
+# "PBS Professional®", and "PBS Pro." and Altair's logos is subject to Altair's
 # trademark licensing policies.
 
 from tests.functional import *
