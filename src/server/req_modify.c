@@ -786,6 +786,7 @@ req_modifyReservation(struct batch_request *preq)
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	presv->ri_alter_flags = 0;
+	presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 
 	while (psatl) {
 		long temp = 0;
@@ -836,13 +837,11 @@ req_modifyReservation(struct batch_request *preq)
 							return;
 						}
 					} else {
-						presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 						resv_revert_alter_times(presv);
 						req_reject(PBSE_BADTSPEC, 0, preq);
 						return;
 					}
 				} else {
-					presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 					resv_revert_alter_times(presv);
 					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
@@ -859,7 +858,6 @@ req_modifyReservation(struct batch_request *preq)
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
 				} else {
-					presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 					resv_revert_alter_times(presv);
 					snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
@@ -889,7 +887,7 @@ req_modifyReservation(struct batch_request *preq)
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 	}
 
-	presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+	
 	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_RUNNING && num_jobs) {
 		if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)) {
 			resv_revert_alter_times(presv);
@@ -927,7 +925,6 @@ req_modifyReservation(struct batch_request *preq)
 
 
 	if (send_to_scheduler) {
-		presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 		resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
 		/*"start", "end","duration", and "wall"; derive and check */
 		if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
