@@ -41,11 +41,25 @@ from tests.functional import *
 from ptl.lib.pbs_ifl_mock import *
 
 
+@tags('smoke')
 class TestQmgr(TestFunctional):
 
     """
     Test suite for PBSPro's qmgr command
     """
+
+    resc_flags = [None, 'n', 'h', 'nh', 'q', 'f', 'fh', 'm', 'mh']
+    resc_flags_ctl = [None, 'r', 'i']
+    objs = [QUEUE, SERVER, NODE, JOB, RESV]
+    resc_name = "ptl_custom_res"
+    avail_resc_name = 'resources_available.' + resc_name
+
+    def setUp(self):
+        TestFunctional.setUp(self)
+        self.obj_map = {QUEUE: self.server.default_queue,
+                        SERVER: self.server.name,
+                        NODE: self.mom.shortname,
+                        JOB: None, RESV: None}
 
     def __check_whitespace_prefix(self, line):
         """
@@ -186,6 +200,109 @@ class TestQmgr(TestFunctional):
                                     cmd=qmgr_cmd_set, as_script=True)
             self.assertEqual(ret_s['rc'], 0)
 
+    def create_resource_helper(self, resc_type, resc_flag, ctrl_flag):
+        """
+        create a resource with associated type, flag, and control flag
+
+        resc_type - Type of the resource
+
+        resc_flag - Permissions/flags associated to the resource
+
+        ctrl_flag - Control flags
+        """
+        attr = {}
+        if resc_type:
+            attr['type'] = resc_type
+        if resc_flag:
+            attr['flag'] = resc_flag
+        if ctrl_flag:
+            if 'flag' in attr:
+                attr['flag'] += ctrl_flag
+            else:
+                attr['flag'] = ctrl_flag
+        if attr is not None:
+            try:
+                rc = self.server.manager(MGR_CMD_CREATE, RSC, attr,
+                                         id=self.resc_name)
+            except PbsManagerError as e:
+                msg = 'Erroneous to have'
+                self.assertIn(msg, e.msg[0])
+                return False
+        else:
+            rv = self.server.resources[self.resc_name].attributes['type']
+            if resc_type is None:
+                self.assertEqual(rv, 'string')
+            else:
+                self.assertEqual(rv, resc_type)
+
+            if ctrl_flag is not None:
+                resc_flag += ctrl_flag
+            if resc_flag:
+                rv = self.server.resources[self.resc_name].attributes['flag']
+                self.assertEqual(sorted(rv), sorted(resc_flag))
+        return True
+
+    def delete_resource_helper(self, resc_type, resc_flg, ctrl_flg,
+                               obj_type, obj_id):
+        """
+        Vierify behavior upon deleting a resource that is set on a PBS object.
+
+        resc_type - The type of resource
+
+        resc_flg - The permissions/flags of the resource
+
+        ctrl_flg - The control flags of the resource
+
+        obj_type - The object type (server, queue, node, job, reservation) on
+        which the resource is set.
+
+        obj_id - The object identifier/name
+        """
+        ar = 'resources_available.' + self.resc_name
+        resc_map = {'long': 1, 'float': 1.0, 'string': 'abc', 'boolean': False,
+                    'string_array': 'abc', 'size': '1gb'}
+        if resc_type is not None:
+            val = resc_map[resc_type]
+        else:
+            val = 'abc'
+        objs = [JOB, RESV]
+        if obj_type in objs:
+            attr = {'Resource_List.' + self.resc_name: val}
+            if obj_type == JOB:
+                j = Job(TEST_USER1, attr)
+            else:
+                j = Reservation(TEST_USER1, attr)
+            try:
+                jid = self.server.submit(j)
+            except PbsSubmitError as e:
+                jid = e.rv
+            if ctrl_flg is not None and ('r' in ctrl_flg or 'i' in ctrl_flg):
+                self.assertEqual(jid, None)
+                self.server.manager(MGR_CMD_DELETE, RSC, id=self.resc_name)
+                return
+            if obj_type == RESV:
+                a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+                self.server.expect(RESV, a, id=jid)
+            self.assertNotEqual(jid, None)
+        else:
+            self.server.manager(MGR_CMD_SET, obj_type, {ar: val},
+                                id=obj_id)
+        try:
+            rc = self.server.manager(MGR_CMD_DELETE, RSC, id=self.resc_name)
+        except PbsManagerError as e:
+            if obj_type in objs:
+                self.assertNotEqual(e.rc, 0)
+                m = "Resource busy on " + PBS_OBJ_MAP[obj_type]
+                self.assertIn(m, e.msg[0])
+                self.server.delete(jid)
+                self.server.expect(obj_type, 'queue', op=UNSET)
+                self.server.manager(MGR_CMD_DELETE, RSC, id=self.resc_name)
+            else:
+                self.assertEqual(e.rc, 0)
+                d = self.server.status(obj_type, ar, id=obj_id)
+                if d:
+                    self.assertNotIn(ar, d[0])
+
     def test_string_single_quoting(self):
         """
         Test to verify that if a string attribute has a double quote,
@@ -199,3 +316,101 @@ class TestQmgr(TestFunctional):
         is double-quoted correctly
         """
         self.set_and_test_comment("This node isn't good.")
+
+    def test_string_type_resource_create_delete(self):
+        """
+        Test behavior of string type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('string', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('string', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_long_type_resource_create_delete(self):
+        """
+        Test behavior of long type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('long', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('long', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_float_type_resource_create_delete(self):
+        """
+        Test behavior of float type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('float', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('float', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_boolean_type_resource_create_delete(self):
+        """
+        Test behavior of boolean type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('boolean', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('boolean', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_size_type_resource_create_delete(self):
+        """
+        Test behavior of size type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('size', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('size', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_string_array_type_resource_create_delete(self):
+        """
+        Test behavior of string_array type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper('string_array', resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper('string_array', resc_flag,
+                                                    ctrl_flag, k, v)
+
+    def test_none_type_resource_create_delete(self):
+        """
+        Test behavior of None type resource creation and deletion
+        by all possible and supported types and flags.
+        """
+        for k, v in self.obj_map.items():
+            for resc_flag in self.resc_flags:
+                for ctrl_flag in self.resc_flags_ctl:
+                    rv = self.create_resource_helper(None, resc_flag,
+                                                     ctrl_flag)
+                    if rv:
+                        self.delete_resource_helper(None, resc_flag,
+                                                    ctrl_flag, k, v)
