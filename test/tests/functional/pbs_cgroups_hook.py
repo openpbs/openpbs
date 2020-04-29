@@ -294,7 +294,7 @@ if [ "${mbase}" != "None" ] ; then
     fi
 fi
 """
-# no need to cater for cgroup_prefix options, it is obviously propbs here
+# no need to cater different cgroup_prefix, it is obviously propbs here
         self.check_dirs_script = """
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
