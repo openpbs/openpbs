@@ -850,7 +850,7 @@ bld_wenv_variables(char *name, char *value)
 	int	i;
 	char    str_buf[MAXPATHLEN+1] = {0};
 
-	if ((*name == '\0') || (*name == '\n'))
+	if ((!name) || (*name == '\0') || (*name == '\n'))
 		return;			/* invalid name */
 
 	if (env_array == NULL) {
