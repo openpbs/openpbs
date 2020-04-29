@@ -3926,51 +3926,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 			return -1;
 		}
 
-		if (strm->t_state == TPP_TRNS_STATE_OPEN) {
-			/*
-			 * both in the case of net or peer closed, it means the receiver
-			 * is not expecting (or cannot) receive a packet, so never send it
-			 * a data packet (ack packets are fine).
-			 */
-
-			/* if packet cannot be sent now then shelve them */
-			if (strm->num_unacked_pkts > rpp_highwater) {
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-					"Stream %u reached highwater, %d, throttling, seq=%d", sd,
-					strm->num_unacked_pkts, ntohl(data->seq_no));
-				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-				if (shelve_pkt(pkt, NULL, now + TPP_THROTTLE_RETRY) != 0) {
-					tpp_free_pkt(pkt);
-				}
-
-				/*
-				 * return -1, so transport does not send packet,
-				 * but do not delete packet
-				 */
-				return -1;
-			}
-
-			/* add an ack packet to the data packet if available */
-			if (ack_no == UNINITIALIZED_INT) {
-				ack_info_t *ack = tpp_deque(&strm->ack_queue);
-				if (ack) {
-					ack->strm_ack_node = NULL; /* since we dequeued from strm */
-
-					ack_no = ack->seq_no;
-					TPP_DBPRT(("Setting piggyback ack sd=%u, seq=%u", sd, ack_no));
-					data->ack_seq = htonl(ack_no);
-
-					/* since we dequeued the ack, also remove from global list */
-					if (ack->global_ack_node) {
-						tpp_que_del_elem(&global_ack_queue, ack->global_ack_node);
-						ack->global_ack_node = NULL;
-					}
-
-					free(ack);
-				}
-			}
-			return 0;
-		} else {
+		if (strm->t_state != TPP_TRNS_STATE_OPEN) {
 			/* remove pkt from retry list in case its linked there */
 			if (pkt->extra_data) {
 				retry_info_t *rt = pkt->extra_data;
@@ -3982,6 +3938,50 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *extra)
 			tpp_free_pkt(pkt);
 			return -1;
 		}
+
+		/*
+		 * both in the case of net or peer closed, it means the receiver
+		 * is not expecting (or cannot) receive a packet, so never send it
+		 * a data packet (ack packets are fine).
+		 */
+
+		/* if packet cannot be sent now then shelve them */
+		if (strm->num_unacked_pkts > rpp_highwater) {
+			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
+				"Stream %u reached highwater, %d, throttling, seq=%d", sd,
+				strm->num_unacked_pkts, ntohl(data->seq_no));
+			tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+			if (shelve_pkt(pkt, NULL, now + TPP_THROTTLE_RETRY) != 0) {
+				tpp_free_pkt(pkt);
+			}
+
+			/*
+			 * return -1, so transport does not send packet,
+			 * but do not delete packet
+			 */
+			return -1;
+		}
+
+		/* add an ack packet to the data packet if available */
+		if (ack_no == UNINITIALIZED_INT) {
+			ack_info_t *ack = tpp_deque(&strm->ack_queue);
+			if (ack) {
+				ack->strm_ack_node = NULL; /* since we dequeued from strm */
+
+				ack_no = ack->seq_no;
+				TPP_DBPRT(("Setting piggyback ack sd=%u, seq=%u", sd, ack_no));
+				data->ack_seq = htonl(ack_no);
+
+				/* since we dequeued the ack, also remove from global list */
+				if (ack->global_ack_node) {
+					tpp_que_del_elem(&global_ack_queue, ack->global_ack_node);
+					ack->global_ack_node = NULL;
+				}
+
+				free(ack);
+			}
+		}
+		/* Fall through below so we can encrypt data packet */
 	}
 
 	/*
