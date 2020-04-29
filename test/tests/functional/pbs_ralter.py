@@ -476,7 +476,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 40
+        offset = 60
         duration = 20
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
@@ -599,7 +599,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 30
+        offset = 60
         duration = 20
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
@@ -671,7 +671,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 30
+        offset = 60
         duration = 20
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
@@ -769,7 +769,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        duration = 20
+        duration = 30
         shift = 10
         offset = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
