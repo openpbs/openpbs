@@ -422,21 +422,16 @@ job_alloc(void)
 
 
 #ifndef PBS_MOM
-	/* mark as JOB_INITIAL, set accrue times to zero */
-	pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = JOB_INITIAL;
-	pj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = 0;
 	/* start accruing time from the time job was created */
 	time(&ctm);
-	pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = (long)ctm;
+	pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = (long) ctm;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
-		pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |= ATR_VFLAG_SET;
+		int elig_val;
 
-		pj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
-
-
-		pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
+		elig_val = determine_accruetype(pj);
+		update_eligible_time(elig_val, pj);
 	}
 #endif
 

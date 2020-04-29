@@ -1569,26 +1569,8 @@ eligibletime_action(attribute *pattr, void *pobject, int actmode)
 
 		pj = (job *)GET_NEXT(svr_alljobs);
 		while (pj != NULL) {
-			/*
-			 * try to determine accruetype for
-			 * jobs submitted when eligible_time_enable was 'off'
-			 * if unable to determine now, wait for scheduling cycle
-			 */
-			if ((pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_INITIAL) ||
-				((pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags & ATR_VFLAG_SET) == 0)) {
-				accruetype = determine_accruetype(pj);
-				if (accruetype == -1)
-					pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = JOB_INITIAL;
-				else
-					pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = accruetype;
-
-				pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-				pj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-				pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-			}
+			accruetype = determine_accruetype(pj);
+			update_eligible_time(accruetype, pj);
 
 			pj = (job *)GET_NEXT(pj->ji_alljobs);
 		}
