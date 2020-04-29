@@ -5256,13 +5256,13 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 					return 1;
 			} else {
 				if (inp->err->rdef->type.is_non_consumable) {
-				    /* In the non-consumable case, we need to pass the job on.
-				     * There is a case when a job requesting a non-specific 
-                     * select is allocated a node with a non-consumable.
-                     * We will check nodes to see if they are useful in 
-                     * select_index_to_preempt()
-				     */
-				    return 1;
+					/* In the non-consumable case, we need to pass the job on.
+					 * There is a case when a job requesting a non-specific 
+					 * select is allocated a node with a non-consumable.
+					 * We will check nodes to see if they are useful in 
+					 * select_index_to_preempt
+					 */
+					return 1;
 				}
 				for (index = 0; job->select->chunks[index] != NULL; index++)
 				{
@@ -5270,7 +5270,7 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 					{
 						if (req_scan->def == inp->err->rdef) {
 							if (req_scan->type.is_non_consumable ||
-							    req_scan->amount > 0) {
+								req_scan->amount > 0) {
 									return 1;
 							}
 						}
