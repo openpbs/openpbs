@@ -94,11 +94,11 @@ class TestHookTimeout(TestFunctional):
         self.server.import_hook("test", hook_body)
 
         # First batch of hook update is for the *.HK files
-        self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=3 received=2)", n=600,
-            max_attempts=timeout_max_attempt, interval=30,
-            starttime=start_time)
+        for count in range(3):
+            self.server.log_match(
+                "Timing out previous send of mom hook updates ", n=600,
+                max_attempts=timeout_max_attempt, interval=30,
+                starttime=start_time)
 
         # sent hook control file
         for h in [self.hostA, self.hostB, self.hostC]:
@@ -116,11 +116,11 @@ class TestHookTimeout(TestFunctional):
 
         # Second batch of hook update is for the *.PY files + resend of
         # *.HK file to momB
-        self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=4 received=2)", n=600,
-            max_attempts=timeout_max_attempt, interval=30,
-            starttime=start_time)
+        for count in range(3):
+            self.server.log_match(
+                "Timing out previous send of mom hook updates ", n=600,
+                max_attempts=timeout_max_attempt, interval=30,
+                starttime=start_time)
 
         # sent hook content file
         for h in [self.hostA, self.hostB, self.hostC]:
@@ -155,11 +155,11 @@ class TestHookTimeout(TestFunctional):
 
         # Ensure that hook send updates are retried for
         # the *.HK and *.PY file to momB
-        self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=2 received=0)", n=600,
-            max_attempts=timeout_max_attempt, interval=30,
-            starttime=start_time)
+        for count in range(3):
+            self.server.log_match(
+                "Timing out previous send of mom hook updates ", n=600,
+                max_attempts=timeout_max_attempt, interval=30,
+                starttime=start_time)
 
         # Submit a job, it should still run
         a = {'Resource_List.select': '3:ncpus=1',
