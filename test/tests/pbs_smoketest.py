@@ -558,6 +558,7 @@ class SmokeTest(PBSTestSuite):
                 (GE, a['Resource_List.min_walltime'])}
         self.server.expect(JOB, attr, id=jid)
 
+    @skipOnCpuSet
     def test_submit_job_with_script(self):
         """
         Test to submit job with job script
@@ -1567,6 +1568,7 @@ class SmokeTest(PBSTestSuite):
             msg += " %s command" % pbs_cmd
             self.logger.info(msg)
 
+    @skipOnCpuSet
     def test_exclhost(self):
         """
         Test that a job requesting exclhost is not placed on another host
