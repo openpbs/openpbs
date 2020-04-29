@@ -3099,8 +3099,9 @@ class CgroupUtils(object):
                         self.write_value(filename, 1)
                     except CgroupBusyError:
                         # Some kernels do not like the value written when
-                        # other jobs are running.
-                        # but then things were already set up anyway
+                        # other jobs are running, or if the parent already
+                        # enabled use_hierarchy.
+                        # But then things were already set up anyway
                         pass
                 elif subsys == 'cpuset':
                     # copy <cgroup_prefix>.services cpuset values

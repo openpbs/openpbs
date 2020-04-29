@@ -294,7 +294,7 @@ if [ "${mbase}" != "None" ] ; then
     fi
 fi
 """
-
+# no need to cater different cgroup_prefix, it is obviously propbs here
         self.check_dirs_script = """
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
@@ -302,10 +302,14 @@ devices_base='%s'
 if [ -d "$devices_base/propbs" ]; then
     if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
         devices_job="$devices_base/propbs/$PBS_JOBID"
+    elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
     else
         devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
     fi
-else
+elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+else [ -d "$devices_base/propbs.slice" ]; then
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
@@ -324,8 +328,16 @@ fi
 jobnum=${PBS_JOBID%%.*}
 devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
 if [ -d "$devices_base/propbs" ]; then
-    devices_job="$devices_base/propbs/$PBS_JOBID"
-else
+    if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
+        devices_job="$devices_base/propbs/$PBS_JOBID"
+    elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+    else
+        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+    fi
+elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+else [ -d "$devices_base/propbs.slice" ]; then
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
 device_list=`cat $devices_job/devices.list`
@@ -1163,7 +1175,11 @@ if %s e.job.in_ms_mom():
         """
         basedir = self.paths[subsys]
         # one of these should exist depending on platform
+        # That last option should never exist, but let us
+        # leave it in there
         jobdirs = [os.path.join(basedir, 'pbspro', jobid),
+                   os.path.join(basedir, 'pbspro.service/jobid', jobid),
+                   os.path.join(basedir, 'pbs_jobs.service/jobid', jobid),
                    os.path.join(basedir, 'pbspro.slice',
                                 'pbspro-%s.slice' % systemd_escape(jobid)),
                    os.path.join(basedir, 'pbspro',
@@ -1171,6 +1187,7 @@ if %s e.job.in_ms_mom():
         for jdir in jobdirs:
             if self.du.isdir(hostname=host, path=jdir):
                 return jdir
+        return None
 
     def load_hook(self, filename):
         """
@@ -2333,7 +2350,17 @@ if %s e.job.in_ms_mom():
             if (any([x in subsys for x in enabled_subsys])):
                 continue
             if path:
+                # Apparently cgroup_prefix for this test is pbspro
                 filename = os.path.join(path, 'pbspro', str(jid))
+                self.logger.info('Checking that file %s should not exist'
+                                 % filename)
+                self.assertFalse(os.path.isfile(filename))
+                filename = os.path.join(path, 'pbspro.slice', 'pbspro-%s.slice'
+                                        % systemd_escape(jid))
+                self.logger.info('Checking that file %s should not exist'
+                                 % filename)
+                self.assertFalse(os.path.isfile(filename))
+                filename = os.path.join(path, 'pbspro.service', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
@@ -2641,16 +2668,22 @@ if %s e.job.in_ms_mom():
         """
         now = time.time()
         # Remove PBS directories from memory subsystem
+        cpath = None
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
             if os.path.isdir(cdir):
                 cpath = os.path.join(cdir, 'pbspro')
                 if not os.path.isdir(cpath):
                     cpath = os.path.join(cdir, 'pbspro.slice')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         else:
             self.skipTest(
                 "memory subsystem is not enabled for cgroups")
-        cmd = ["rmdir", cpath]
+        if cpath is not None:
+            cmd = ["rmdir", cpath]
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.swapctl))
@@ -3622,6 +3655,10 @@ sleep 300
                     cpath = os.path.join(cdir, 'pbspro')
                     if not os.path.isdir(cpath):
                         cpath = os.path.join(cdir, 'pbspro.slice')
+                    if not os.path.isdir(cpath):
+                        cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                    if not os.path.isdir(cpath):
+                        cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
                     if os.path.isdir(cpath):
                         for jdir in glob.glob(os.path.join(cpath, '*', '')):
                             if not os.path.isdir(jdir):
