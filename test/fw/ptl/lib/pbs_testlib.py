@@ -6051,7 +6051,7 @@ class Server(PBSService):
             self.logger.error(m)
             return None
 
-        if not submit_dir and self.du.get_platform() != 'shasta':
+        if not submit_dir:
             submit_dir = pwd.getpwnam(obj.username)[5]
 
         cwd = os.getcwd()
