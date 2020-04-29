@@ -1490,6 +1490,56 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 
 /**
  * @brief
+ * 		Change the state bits of a vnode.
+ *
+ * 		This function detects the type of change, either from available to
+ * 		unavailable, and invokes the appropriate handler to handle the state
+ * 		change.
+ *
+ * @param[in]	pbsnode	- The vnode
+ * @param[in]	state_bits	- the value to set the vnode to
+ * @param[in]	type	- The operation on the node
+ *
+ * @return	vnode_state_change
+ *
+ * @par MT-safe: No
+ */
+vnode_state_change_t *
+set_vnode_state_bits(pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
+{
+	unsigned long nd_state;
+	if (pnode == NULL)
+		return;
+
+	vnode_state_change_t *vnode_state_change_ptr = malloc(sizeof(vnode_state_change_t));
+	vnode_state_change_ptr->time_int_val = time_now;
+	nd_state = pnode->nd_state;
+	vnode_state_change_ptr->nd_prev_state = nd_state;
+
+	switch (type) {
+		case Nd_State_Set:
+			pnode->nd_state = state_bits;
+			break;
+		case Nd_State_Or:
+			pnode->nd_state |= state_bits;
+			break;
+		case Nd_State_And:
+			pnode->nd_state &= state_bits;
+			break;
+		default:
+			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
+				__func__, type))
+			type = Nd_State_Set;
+			pnode->nd_state = state_bits;
+	}
+	vnode_state_change_ptr->nd_new_state = pnode->nd_state;
+	vnode_state_change_ptr->vnode_state_op = type;
+	return vnode_state_change_ptr;
+}
+
+
+/**
+ * @brief
  * 		Change the state of a vnode. See pbs_nodes.h for definition of node's
  * 		availability and unavailability.
  *
@@ -1508,6 +1558,7 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
+	vnode_state_change_t *vnode_state_change;
 	unsigned long nd_prev_state;
 	int time_int_val;
 
@@ -1516,24 +1567,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	if (pnode == NULL)
 		return;
 
-	nd_prev_state = pnode->nd_state;
-	switch (type) {
-		case Nd_State_Set:
-			pnode->nd_state = state_bits;
-			break;
-		case Nd_State_Or:
-			pnode->nd_state |= state_bits;
-			break;
-		case Nd_State_And:
-			pnode->nd_state &= state_bits;
-			break;
-
-		default:
-			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
-				__func__, type))
-			type = Nd_State_Set;
-			pnode->nd_state = state_bits;
-	}
+	vnode_state_change = set_vnode_state_bits(pnode, state_bits, type);
+	type = vnode_state_change->vnode_state_op;
+	nd_prev_state = vnode_state_change->nd_prev_state;
 
 	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 		nd_prev_state, pnode->nd_state))

@@ -471,7 +471,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_ncpus	  = 1;
 	pnode->nd_psn     = NULL;
 	pnode->nd_hostname= NULL;
-	pnode->nd_state = INUSE_UNKNOWN | INUSE_DOWN;
+	set_vnode_state_bits(pnode, INUSE_UNKNOWN | INUSE_DOWN, Nd_State_Set);
 	pnode->nd_resvp   = NULL;
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;

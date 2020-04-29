@@ -147,7 +147,7 @@ svr_to_db_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 		pdbnd->mom_modtime = 0;
 
 	pdbnd->nd_ntype = pnode->nd_ntype;
-	pdbnd->nd_state = pnode->nd_state;
+	set_vnode_state_bits(pdbnd, pnode->nd_state, Nd_State_Set);
 	if (pnode->nd_pque)
 		strcpy(pdbnd->nd_pque, pnode->nd_pque->qu_qs.qu_name);
 	else
