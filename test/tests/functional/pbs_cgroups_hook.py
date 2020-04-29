@@ -309,7 +309,9 @@ if [ -d "$devices_base/propbs" ]; then
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+
 else
+
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
@@ -337,6 +339,7 @@ if [ -d "$devices_base/propbs" ]; then
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+<<<<<<< HEAD
 else
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
