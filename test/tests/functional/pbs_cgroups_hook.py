@@ -372,7 +372,7 @@ sleep 5
 for i in 1 2 3 4; do while : ; do : ; done & done
 """
         self.job_scr2 = """#!/bin/bash
-#PBS -l select=host=%s:ncpus=1+ncpus=4:mem=2gb
+#PBS -l select=host=%s:ncpus=1+ncpus=1
 #PBS -l place=vscatter
 #PBS -W umask=022
 #PBS -koe
@@ -381,8 +381,8 @@ cat $PBS_NODEFILE
 sleep 300
 """
         self.job_scr3 = """#!/bin/bash
-#PBS -l select=2:ncpus=4:mem=2gb
-#PBS -l place=pack
+#PBS -l select=2:ncpus=1:mem=100mb
+#PBS -l place=vscatter
 #PBS -W umask=022
 #PBS -W tolerate_node_failures=job_start
 #PBS -koe
@@ -1369,10 +1369,6 @@ if %s e.job.in_ms_mom():
         Test to verify that cgroups are not enforced on nodes
         that have an exclude vntype file set
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         name = 'CGROUP8'
         if self.vntypename[0] == 'no_cgroups':
             self.logger.info('Adding vntype %s to mom %s ' %
@@ -1426,10 +1422,6 @@ if %s e.job.in_ms_mom():
         Test to verify that cgroups are not enforced on nodes
         that have the exclude_hosts set
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         name = 'CGROUP9'
         mom, log = self.get_host_names(self.hosts_list[0])
         self.load_config(self.cfg1 % ('%s' % mom, '', '', '', self.swapctl))
@@ -1467,10 +1459,6 @@ if %s e.job.in_ms_mom():
         Test to verify that cgroups are not enforced on nodes
         that have an exclude vntype file set
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         name = 'CGROUP12'
         if self.vntypename[0] == 'no_cgroups':
             self.logger.info('Adding vntype %s to mom %s' %
@@ -2024,11 +2012,6 @@ if %s e.job.in_ms_mom():
         Test to verify that cgroups subsystems are not enforced on nodes
         that have the exclude_hosts set but are enforced on other systems
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
-
         name = 'CGROUP10'
         mom, _ = self.get_host_names(self.hosts_list[0])
         self.load_config(self.cfg1 % ('', '', '', '%s' % mom, self.swapctl))
@@ -2066,11 +2049,6 @@ if %s e.job.in_ms_mom():
         Test to verify that the cgroup hook only runs on nodes
         in the run_only_on_hosts
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
-
         name = 'CGROUP11'
         mom, log = self.get_host_names(self.hosts_list[0])
         self.load_config(self.cfg1 % ('', '', '%s' % mom, '', self.swapctl))
@@ -2224,10 +2202,6 @@ if %s e.job.in_ms_mom():
         """
         Test multi-node jobs with cgroups
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         name = 'CGROUP16'
         self.load_config(self.cfg6 % (self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
@@ -2314,10 +2288,6 @@ if %s e.job.in_ms_mom():
         """
         Test that cgroups files are cleaned up after qdel
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         self.load_config(self.cfg1 % ('', '', '', '', self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
@@ -2826,53 +2796,14 @@ event.accept()
         self.moms_list[0].log_match(msg=logmsg, starttime=presubmit,
                                     max_attempts=1, existence=False)
 
-    def check_req_rjs(self):
-        """
-        Check the requirements for the reliable job startup tests.
-        MomA must have two free vnodes and MomB has one free vnode.
-        Return 1 if requirements are not satisfied.
-        """
-        # Check that momA has two free vnodes
-        attr = {'state': 'free'}
-        rv1 = True
-        try:
-            self.server.expect(VNODE, attr, id='%s[0]' % self.hosts_list[0],
-                               max_attempts=3, interval=2)
-        except PtlExpectError as exc:
-            rv1 = exc.rv
-        rv2 = True
-        try:
-            self.server.expect(VNODE, attr, id='%s[1]' % self.hosts_list[0],
-                               max_attempts=3, interval=2)
-        except PtlExpectError as exc:
-            rv2 = exc.rv
-        # Check that momB has one free vnode
-        rv3 = True
-        try:
-            self.server.expect(VNODE, attr, id='%s[0]' % self.hosts_list[1],
-                               max_attempts=3, interval=2)
-        except PtlExpectError as exc:
-            rv3 = exc.rv
-        if not rv1 or not rv2 or not rv3:
-            return 1
-        return 0
-
-    @requirements(num_moms=2)
+    @requirements(num_moms=3)
     def test_cgroup_release_nodes(self):
         """
         Verify that exec_vnode values are trimmed
         when execjob_launch hook prunes job via release_nodes(),
         tolerate_node_failures=job_start
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         self.load_config(self.cfg7)
-        # Check that MomA has two free vnodes and MomB has a free vnode
-        if self.check_req_rjs() == 1:
-            self.skipTest(
-                'MomA must have two free vnodes and MomB one free vnode')
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -2913,11 +2844,11 @@ event.accept()
         self.logger.info("released vnode: %s" % vnodeB)
         # Submit a second job requesting the released vnode, job runs
         j2 = Job(TEST_USER,
-                 {ATTR_l + '.select': '1:ncpus=1:mem=2gb:vnode=%s' % vnodeB})
+                 {ATTR_l + '.select': '1:ncpus=1:mem=100mb:vnode=%s' % vnodeB})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
-    @requirements(num_moms=2)
+    @requirements(num_moms=3)
     def test_cgroup_sismom_resize_fail(self):
         """
         Verify that exec_vnode values are trimmed
@@ -2925,15 +2856,7 @@ event.accept()
         exec_job_resize failure in sister mom,
         tolerate_node_failures=job_start
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         self.load_config(self.cfg7)
-        # Check that MomA has two free vnodes and MomB has a free vnode
-        if self.check_req_rjs() == 1:
-            self.skipTest(
-                'MomA must have two free vnodes and MomB one free vnode')
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -2986,13 +2909,13 @@ event.accept()
         # Check that the sister mom failed to update the job
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
-            % (jid, self.hosts_list[1]),
+            % (jid, self.hosts_list[0]),
             starttime=stime, interval=2, regexp=True)
         # Because of resize hook reject Mom failed to update the job.
         # Check that job got requeued.
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
 
-    @requirements(num_moms=2)
+    @requirements(num_moms=3)
     def test_cgroup_msmom_resize_fail(self):
         """
         Verify that exec_vnode values are trimmed
@@ -3000,15 +2923,7 @@ event.accept()
         exec_job_resize failure in mom superior,
         tolerate_node_failures=job_start
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         self.load_config(self.cfg7)
-        # Check that MomA has two free vnodes and MomB has a free vnode
-        if self.check_req_rjs() == 1:
-            self.skipTest(
-                'MomA must have two free vnodes and MomB one free vnode')
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3061,7 +2976,7 @@ event.accept()
         # Check that job got requeued
         self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
 
-    @requirements(num_moms=2)
+    @requirements(num_moms=3)
     def test_cgroup_msmom_nodes_only(self):
         """
         Verify that exec_vnode values are trimmed
@@ -3069,15 +2984,7 @@ event.accept()
         job is using only vnodes from mother superior host,
         tolerate_node_failures=job_start
         """
-        # Test requires 2 nodes
-        if len(self.moms) < 2:
-            self.skipTest('Test requires at least two Moms as input, '
-                          'use -p moms=<mom1:mom2>')
         self.load_config(self.cfg7)
-        # Check that MomA has two free vnodes and MomB has a free vnode
-        if self.check_req_rjs() == 1:
-            self.skipTest(
-                'MomA must have two free vnodes and MomB one free vnode')
         # disable queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3087,7 +2994,7 @@ event.accept()
         hook_event = 'execjob_launch'
         hook_name = 'launch'
         a = {'event': hook_event, 'enabled': 'true'}
-        self.keep_select = '"ncpus=4:mem=2gb"'
+        self.keep_select = '"ncpus=1:mem=100mb"'
         self.server.create_import_hook(
             hook_name, a, self.launch_hook_body % (self.keep_select))
         # disable execjob_resize hook
@@ -3096,7 +3003,7 @@ event.accept()
         a = {'event': hook_event, 'enabled': 'false'}
         self.server.create_import_hook(
             hook_name, a, self.resize_hook_body % (''))
-        # Submit a job that requires two vnodes on one host
+        # Submit a job that requires two vnodes
         j = Job(TEST_USER)
         j.create_script(self.job_scr3)
         stime = time.time()
@@ -3131,7 +3038,7 @@ event.accept()
         self.logger.info("released vnode: %s" % vnodeB)
         # Submit job2 requesting the released vnode, job runs
         j2 = Job(TEST_USER, {
-            ATTR_l + '.select': '1:ncpus=1:mem=2gb:vnode=%s' % vnodeB})
+            ATTR_l + '.select': '1:ncpus=1:mem=100mb:vnode=%s' % vnodeB})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
@@ -3143,10 +3050,6 @@ event.accept()
         cleanup the cgroups files on sister moms and primary
         mom
         """
-
-        if (len(self.moms) < 3):
-            self.skipTest("Test needs at least 3 moms")
-
         self.logger.info("Stopping mom on host %s" % self.hosts_list[1])
         self.moms_list[1].signal('-19')
 
