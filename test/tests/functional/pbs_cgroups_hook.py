@@ -1704,15 +1704,15 @@ if %s e.job.in_ms_mom():
         # the config file named entries must be translated to major/minor
         # containers will make them different!!
         console_results = \
-            self.du.run_cmd('ls -al /dev/console'
-                            '| awk \'BEGIN {FS=" |,"} '
-                            '{print $5} {print $7}\'',
+            self.du.run_cmd(cmd=['ls -al /dev/console'
+                                 '| awk \'BEGIN {FS=" |,"} '
+                                 '{print $5} {print $7}\''],
                             as_script=True)
         (console_major, console_minor) = console_results['out'].split()
         tty0_major_results = \
-            self.du.run_cmd('ls -al /dev/tty0'
-                            '| awk \'BEGIN {FS=" |,"} '
-                            '{print $5}\'',
+            self.du.run_cmd(cmd=['ls -al /dev/tty0'
+                                 '| awk \'BEGIN {FS=" |,"} '
+                                 '{print $5}\''],
                             as_script=True)
         tty0_major = tty0_major_results['out'].strip()
         check_devices = ['b *:* rwm',
@@ -3473,17 +3473,16 @@ sleep 300
 
         # submit multi-node job
         a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': 'scatter:excl'}
         j1 = Job(TEST_USER, attrs=a)
         j1.set_sleep_time(300)
         jid1 = self.server.submit(j1)
-        time.sleep(5)
-
         # to work around a scheduling race, check for substate 42
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
+        time.sleep(5)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
@@ -3620,6 +3619,14 @@ sleep 300
               cfs_quota_fudge_factor
         in config file 'cfg11'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'])
+        except Exception:
+            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3707,6 +3714,14 @@ sleep 300
               zero_cpus_shares_fraction
               zero_cpus_quota_fraction
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'])
+        except Exception:
+            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3788,6 +3803,14 @@ sleep 300
               zero_cpus_quota_fraction
         in config file 'cfg13'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'])
+        except Exception:
+            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
