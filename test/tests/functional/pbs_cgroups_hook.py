@@ -1703,18 +1703,18 @@ if %s e.job.in_ms_mom():
         self.logger.info('scr_out:\n%s' % scr_out)
         # the config file named entries must be translated to major/minor
         # containers will make them different!!
-        console_out = \
+        console_results = \
             self.du.run_cmd('ls -al /dev/console'
                             '| awk \'BEGIN {FS=" |,"} '
                             '{print $5} {print $7}\'',
                             as_script=True)
-        (console_major, console_minor) = console_out.split()
-        tty0_major_out = \
+        (console_major, console_minor) = console_results['out'].split()
+        tty0_major_results = \
             self.du.run_cmd('ls -al /dev/tty0'
                             '| awk \'BEGIN {FS=" |,"} '
                             '{print $5}\'',
                             as_script=True)
-        tty0_major = tty0_major_out.strip()
+        tty0_major = tty0_major_results['out'].strip()
         check_devices = ['b *:* rwm',
                          'c %s:%s rwm' % (console_major, console_minor),
                          'c %s:* rwm' % (tty0_major),
@@ -3526,7 +3526,7 @@ sleep 300
             root_quota_host1_str = \
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str)
+            root_quota_host1 = int(root_quota_host1_str['out'])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3538,7 +3538,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3549,7 +3549,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
 
@@ -3620,14 +3620,6 @@ sleep 300
               cfs_quota_fudge_factor
         in config file 'cfg11'.
         """
-        root_quota_host1 = None
-        try:
-            root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str)
-        except Exception:
-            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3637,7 +3629,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3648,7 +3640,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
 
@@ -3715,14 +3707,6 @@ sleep 300
               zero_cpus_shares_fraction
               zero_cpus_quota_fraction
         """
-        root_quota_host1 = None
-        try:
-            root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str)
-        except Exception:
-            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3732,7 +3716,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3743,7 +3727,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
 
@@ -3804,14 +3788,6 @@ sleep 300
               zero_cpus_quota_fraction
         in config file 'cfg13'.
         """
-        root_quota_host1 = None
-        try:
-            root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str)
-        except Exception:
-            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3821,7 +3797,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3832,7 +3808,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str)
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
 
