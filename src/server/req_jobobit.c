@@ -966,7 +966,7 @@ on_job_exit(struct work_task *ptask)
 
 			if (ptask->wt_type != WORK_Deferred_Reply) { /* first time in */
 
-				/* see if have any dependencys */
+				/* see if have any dependencies */
 
 				if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
 					(void)depend_on_term(pjob);

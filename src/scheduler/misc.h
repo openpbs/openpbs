@@ -159,6 +159,11 @@ int is_num(char *str);
 int count_array(void **arr);
 
 /*
+ *	dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
+ */
+void **dup_array(void *ptr);
+
+/*
  *	remove_ptr_from_array - remove a pointer from a ptr list and move
  *				the rest of the pointers up to fill the hole
  *				Pointer array size will not change - an extra
