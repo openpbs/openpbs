@@ -2923,6 +2923,7 @@ event.accept()
         exec_job_resize failure in mom superior,
         tolerate_node_failures=job_start
         """
+        self.load_config(self.cfg7)
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -2983,6 +2984,7 @@ event.accept()
         job is using only vnodes from mother superior host,
         tolerate_node_failures=job_start
         """
+        self.load_config(self.cfg7)
         # disable queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
