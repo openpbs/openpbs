@@ -1703,18 +1703,21 @@ if %s e.job.in_ms_mom():
         self.logger.info('scr_out:\n%s' % scr_out)
         # the config file named entries must be translated to major/minor
         # containers will make them different!!
+        # du.run_cmd returns a list of one-line strings
+        # the console awk command produces major and minor on separate lines
         console_results = \
             self.du.run_cmd(cmd=['ls -al /dev/console'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5} {print $7}\''],
                             as_script=True)
-        (console_major, console_minor) = console_results['out'].split()
+        (console_major, console_minor) = console_results['out']
+        # only one line here
         tty0_major_results = \
             self.du.run_cmd(cmd=['ls -al /dev/tty0'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5}\''],
                             as_script=True)
-        tty0_major = tty0_major_results['out'].strip()
+        tty0_major = tty0_major_results['out'][0]
         check_devices = ['b *:* rwm',
                          'c %s:%s rwm' % (console_major, console_minor),
                          'c %s:* rwm' % (tty0_major),
@@ -3424,12 +3427,15 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
+        # wait until the preempted job is restarted
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
         time.sleep(5)
-        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        # check the cpusets for the deleted preemptor are gone
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
+        # check the cpusets for the restarted formerly-preempted are there
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
@@ -3503,12 +3509,15 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
+        # wait until the preempted job is restarted
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
         time.sleep(5)
-        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        # check the cpusets for the deleted preemptor are gone
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
+        # check the cpusets for the restarted formerly-preempted are there
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
@@ -3525,7 +3534,7 @@ sleep 300
             root_quota_host1_str = \
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str['out'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3537,7 +3546,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3548,7 +3557,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
 
@@ -3624,7 +3633,7 @@ sleep 300
             root_quota_host1_str = \
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str['out'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3636,7 +3645,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3647,7 +3656,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
 
@@ -3719,7 +3728,7 @@ sleep 300
             root_quota_host1_str = \
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str['out'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3731,7 +3740,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3742,7 +3751,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
 
@@ -3808,7 +3817,7 @@ sleep 300
             root_quota_host1_str = \
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str['out'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3820,7 +3829,7 @@ sleep 300
                                cmd=['cat',
                                     '/sys/fs/cgroup/'
                                     'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
@@ -3831,7 +3840,7 @@ sleep 300
                     du.run_cmd(hosts=self.hosts_list[0],
                                cmd=['cat',
                                     '/sys/fs/cgroup/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
 
