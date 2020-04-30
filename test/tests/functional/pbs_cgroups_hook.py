@@ -3509,17 +3509,16 @@ sleep 300
 
         # submit multi-node job
         a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': 'scatter:excl'}
         j1 = Job(TEST_USER, attrs=a)
         j1.set_sleep_time(300)
         jid1 = self.server.submit(j1)
-        time.sleep(5)
-
         # to work around a scheduling race, check for substate 42
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
         self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
+        time.sleep(5)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
