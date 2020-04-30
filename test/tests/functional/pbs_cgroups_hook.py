@@ -3338,7 +3338,7 @@ exit 0
         """
         self.skipTest('Test replaced with alternative '
                       'to avoid scheduling race')
-       
+
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
