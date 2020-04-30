@@ -6053,12 +6053,13 @@ class Server(PBSService):
             self.logger.error(m)
             return None
 
-        if not submit_dir and self.du.get_platform() != 'shasta':
+        if not submit_dir:
             submit_dir = pwd.getpwnam(obj.username)[5]
 
         cwd = os.getcwd()
-        if submit_dir:
-            os.chdir(submit_dir)
+        if self.platform != 'shasta':
+            if submit_dir:
+                os.chdir(submit_dir)
         c = None
         # 1- Submission using the command line tools
         if self.get_op_mode() == PTL_CLI:
