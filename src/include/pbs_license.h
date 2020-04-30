@@ -101,7 +101,6 @@ extern void   init_fl_license_attrs(struct license_block *);
 extern void   log_licenses(struct license_used *pu);
 extern void   init_licensing(void);
 extern int    status_licensing(void);
-extern int    checkin_licensing(void);
 extern void   close_licensing(void);
 extern int    count_needed_flic(int);
 extern void   relicense_nodes_floating(int);

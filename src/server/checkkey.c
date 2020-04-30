@@ -103,12 +103,6 @@ status_licensing(void)
 	return (0);
 }
 
-int
-checkin_licensing(void)
-{
-	return (0);
-}
-
 void
 close_licensing(void)
 {
