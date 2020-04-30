@@ -3566,7 +3566,7 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
                 du.run_cmd(hosts=self.hosts_list[0],
                            cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str)
+            root_quota_host1 = int(root_quota_host1_str['out'])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3669,6 +3669,7 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
+            
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3765,6 +3766,7 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
+
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3855,16 +3857,17 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
+
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    self.du.run_cmd(hosts=self.hosts_list[0],
-                                    cmd=['cat',
-                                         '/sys/fs/cgroup/'
-                                         'cpu,cpuacct/cpu.cfs_quota_us'])
-                root_quota_host1 = int(root_quota_host1_str['out'][0])
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/'
+                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'])
             except Exception:
                 pass
         # If still not found, try to see if it is in a unified cgroup mount
