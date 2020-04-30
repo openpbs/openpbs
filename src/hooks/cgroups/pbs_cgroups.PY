@@ -3291,35 +3291,6 @@ class CgroupUtils(object):
             buf += '.' + extension
         return buf
 
-    def systemd_escape(self, buf):
-        """
-        Escape strings for usage in system unit names
-        Some distros don't provide the systemd-escape command
-        """
-        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if not isinstance(buf, str):
-            raise ValueError('Not a basetype string')
-        ret = ''
-        for i, char in enumerate(buf):
-            if i < 1 and char == '.':
-                if (sys.version_info[0] < 3):
-                    ret += '\\x' + '.'.encode('hex')
-                else:
-                    ret += '\\x' + b'.'.hex()
-            elif char.isalnum() or char in '_.':
-                ret += char
-            elif char == '/':
-                ret += '-'
-            else:
-                # Will turn non-ASCII into UTF-8 hex sequence on both Py2/3
-                if (sys.version_info[0] < 3):
-                    hexval = char.encode('hex')
-                else:
-                    hexval = char.encode('utf-8').hex()
-                for j in range(0, len(hexval), 2):
-                    ret += '\\x' + hexval[j:j + 2]
-        return ret
-
     def enabled(self, subsystem):
         """
         Return whether a subsystem is enabled.

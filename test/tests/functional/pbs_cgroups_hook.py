@@ -1701,11 +1701,26 @@ if %s e.job.in_ms_mom():
             as_script=True)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
+        # the config file named entries must be translated to major/minor
+        # containers will make them different!!
+        console_out = \
+            self.du.run_cmd('ls -al /dev/console'
+                            '| awk \'BEGIN {FS=" |,"} '
+                            '{print $5} {print $7}\'',
+                            as_script=True)
+        (console_major, console_minor) = console_out.split()
+        tty0_major_out = \
+            self.du.run_cmd('ls -al /dev/tty0'
+                            '| awk \'BEGIN {FS=" |,"} '
+                            '{print $5}\'',
+                            as_script=True)
+        tty0_major = tty0_major_out.strip()
         check_devices = ['b *:* rwm',
-                         'c 5:1 rwm',
-                         'c 4:* rwm',
+                         'c %s:%s rwm' % (console_major, console_minor),
+                         'c %s:* rwm' % (tty0_major),
                          'c 1:* rwm',
-                         'c 10:* rwm']
+                         'c 10:* rwm']        
+         
         for device in check_devices:
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
@@ -2700,7 +2715,7 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match("Hook handler returned success for"
                                     " exechost_startup event",
                                     starttime=now)
-        # check chere cpath is once more
+        # check where cpath is once more
         # since we loaded a new cgrou config file
         cpath = None
         if 'memory' in self.paths and self.paths['memory']:
@@ -3007,7 +3022,7 @@ event.accept()
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
         initial_vnodes = execvnode1.split('+')
-        # Check the exec_resize hook reject message in sister mom logs
+        # Check the exec_resize hook reject message in momsup log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2)
@@ -3294,6 +3309,9 @@ exit 0
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+       
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
@@ -3332,7 +3350,7 @@ exit 0
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
 
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
@@ -3424,6 +3442,10 @@ sleep 300
         job restarts, execjob_begin cgroups hook gets called on both mother
         superior and sister moms.
         """
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+        return
+
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
@@ -3461,7 +3483,7 @@ sleep 300
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
