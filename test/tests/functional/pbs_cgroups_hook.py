@@ -2742,7 +2742,7 @@ if %s e.job.in_ms_mom():
                                     " exechost_startup event",
                                     starttime=now)
 
-        # check chere cpath is once more
+        # check where cpath is once more
         # since we loaded a new cgrou config file
         cpath = None
         if 'memory' in self.paths and self.paths['memory']:
@@ -3336,6 +3336,9 @@ exit 0
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+       
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
@@ -3374,7 +3377,7 @@ exit 0
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
 
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
@@ -3475,6 +3478,10 @@ sleep 300
         job restarts, execjob_begin cgroups hook gets called on both mother
         superior and sister moms.
         """
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+        return
+
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
@@ -3512,7 +3519,7 @@ sleep 300
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
