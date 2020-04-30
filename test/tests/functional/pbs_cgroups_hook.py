@@ -309,7 +309,7 @@ if [ -d "$devices_base/propbs" ]; then
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
-else [ -d "$devices_base/propbs.slice" ]; then
+else
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
@@ -337,7 +337,7 @@ if [ -d "$devices_base/propbs" ]; then
     fi
 elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
-else [ -d "$devices_base/propbs.slice" ]; then
+else
     devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
 fi
 device_list=`cat $devices_job/devices.list`
@@ -2293,8 +2293,16 @@ if %s e.job.in_ms_mom():
         self.server.delete(id=subj2, extend='force')
         self.server.expect(JOB, {'job_state': 'X'}, subj2)
         # Adding extra sleep for file to clean up
-        time.sleep(2)
+        # since qdel -Wforce changed state of subjob
+        # without waiting for MoM
+        # retry 10 times (for 20 seconds max. in total)
+        # if the directory is still there...
         cpath = self.get_cgroup_job_dir('memory', subj2, ehost1)
+        for trial in range(0, 10):
+            time.sleep(2)
+            if not self.is_dir(cpath, ehost1):
+                # we're done
+                break
         self.assertFalse(self.is_dir(cpath, ehost1))
 
     @requirements(num_moms=2)
@@ -2692,6 +2700,19 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match("Hook handler returned success for"
                                     " exechost_startup event",
                                     starttime=now)
+        # check chere cpath is once more
+        # since we loaded a new cgrou config file
+        cpath = None
+        if 'memory' in self.paths and self.paths['memory']:
+            cdir = self.paths['memory']
+            if os.path.isdir(cdir):
+                cpath = os.path.join(cdir, 'pbspro')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbspro.slice')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
@@ -2907,6 +2928,7 @@ event.accept()
             hook_name, a, self.resize_hook_body % ('not'))
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
+        # Note mother superior is mom[1] not mom[0]
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
         stime = time.time()
         jid = self.server.submit(j)
@@ -2936,7 +2958,8 @@ event.accept()
             jid, execvnode1), starttime=stime)
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
             jid, execvnode2), starttime=stime)
-        # Check that the sister mom failed to update the job
+        # Check that momsup saw that the sister mom failed to update the job
+        # This message is on momsup mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
             % (jid, self.hosts_list[0]),
@@ -2984,7 +3007,7 @@ event.accept()
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
         initial_vnodes = execvnode1.split('+')
-        # Check the exec_resize hook reject message in mom superior logs
+        # Check the exec_resize hook reject message in sister mom logs
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2)
@@ -3208,6 +3231,62 @@ event.accept()
         self.logger.info('MemSocket check passed')
 
     @requirements(num_moms=2)
+    def test_checkpoint_abort_preemption_schedrace(self):
+        """
+        Test to make sure that when scheduler preempts a multi-node job with
+        checkpoint_abort, execjob_abort cgroups hook on secondary node
+        gets called.  The abort hook cleans up assigned cgroups, allowing
+        the higher priority job to run on the same node.
+        """
+        # Skip test if number of mom provided is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires two MoMs as input, " +
+                          "use -p moms=<mom1>:<mom2>")
+
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "express")
+
+        # have scheduler preempt lower priority jobs using 'checkpoint'
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # have moms do checkpoint_abort
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        a = {'resources_available.ncpus': 1}
+        for m in self.moms.values():
+            chk_file = m.add_checkpoint_abort_script(body=chk_script)
+            # ensure resulting checkpoint file has correct permission
+            self.du.chown(hostname=m.shortname, path=chk_file, uid=0, gid=0,
+                          sudo=True)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
+
+        # submit multi-node job
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter:exclhost'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Submit an express queue job requesting needing also 2 nodes
+        a[ATTR_q] = 'express'
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
+        for m in self.moms.values():
+            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
+                        regexp=True, existence=False)
+
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
+
+    @requirements(num_moms=2)
     def test_checkpoint_abort_preemption(self):
         """
         Test to make sure that when scheduler preempts a multi-node job with
@@ -3245,10 +3324,15 @@ exit 0
 
         # submit multi-node job
         a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # to work around a scheduling race, check for substate 42
+        # if you test for R then a slow job startup might update
+        # resources_assigned late and make scheduler overcommit nodes
+        # and run both jobs
+        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
 
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
@@ -3263,7 +3347,7 @@ exit 0
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
     @requirements(num_moms=2)
-    def test_checkpoint_restart(self):
+    def test_checkpoint_restart_schedrace(self):
         """
         Test to make sure that when a preempted and checkpointed multi-node
         job restarts, execjob_begin cgroups hook gets called on both mother
@@ -3333,12 +3417,128 @@ sleep 300
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
 
+    @requirements(num_moms=2)
+    def test_checkpoint_restart(self):
+        """
+        Test to make sure that when a preempted and checkpointed multi-node
+        job restarts, execjob_begin cgroups hook gets called on both mother
+        superior and sister moms.
+        """
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "express")
+
+        # have scheduler preempt lower priority jobs using 'checkpoint'
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'})
+
+        # have moms do checkpoint_abort
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        restart_script = """#!/bin/bash
+sleep 300
+"""
+        a = {'resources_available.ncpus': 1}
+        for m in self.moms.values():
+            # add checkpoint script
+            m.add_checkpoint_abort_script(body=chk_script)
+            m.add_restart_script(body=restart_script)
+            self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
+
+        # submit multi-node job
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.set_sleep_time(300)
+        jid1 = self.server.submit(j1)
+        time.sleep(5)
+
+        # to work around a scheduling race, check for substate 42
+        # if you test for R then a slow job startup might update
+        # resources_assigned late and make scheduler overcommit nodes
+        # and run both jobs
+        self.server.expect(JOB, {'ATTR_substate': '42'}, id=jid1)
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
+        # Submit an express queue job requesting needing also 2 nodes
+        a[ATTR_q] = 'express'
+        j2 = Job(TEST_USER, attrs=a)
+        j2.set_sleep_time(300)
+        jid2 = self.server.submit(j2)
+        time.sleep(5)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
+        # delete express queue job
+        self.server.delete(jid2)
+        time.sleep(5)
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
+        self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
+        self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
+        cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
+        self.assertTrue(self.is_dir(cpath, self.hosts_list[1]))
+
     def test_cpu_controller_enforce_default(self):
         """
         Test an enabled cgroup 'cpu' controller with quotas enforced
         using default (non-specified) values of cfs_period_us, and
         cfs_quota_fudge_factor.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str)
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/'
+                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         self.load_config(self.cfg10)
         default_cfs_period_us = 100000
@@ -3398,6 +3598,46 @@ sleep 300
               cfs_quota_fudge_factor
         in config file 'cfg11'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str)
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/'
+                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
@@ -3453,6 +3693,46 @@ sleep 300
               zero_cpus_shares_fraction
               zero_cpus_quota_fraction
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str)
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/'
+                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         # config file 'cfg12' has 'allow_zero_cpus=true' under cpuset, to allow
         # zero-cpu jobs.
@@ -3502,6 +3782,46 @@ sleep 300
               zero_cpus_quota_fraction
         in config file 'cfg13'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                du.run_cmd(hosts=self.hosts_list[0],
+                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str)
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/'
+                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    du.run_cmd(hosts=self.hosts_list[0],
+                               cmd=['cat',
+                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str)
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
