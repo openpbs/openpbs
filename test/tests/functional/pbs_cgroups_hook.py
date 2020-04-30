@@ -1719,8 +1719,8 @@ if %s e.job.in_ms_mom():
                          'c %s:%s rwm' % (console_major, console_minor),
                          'c %s:* rwm' % (tty0_major),
                          'c 1:* rwm',
-                         'c 10:* rwm']        
-         
+                         'c 10:* rwm']
+
         for device in check_devices:
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
@@ -2973,8 +2973,8 @@ event.accept()
             jid, execvnode1), starttime=stime)
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
             jid, execvnode2), starttime=stime)
-        # Check that momsup saw that the sister mom failed to update the job
-        # This message is on momsup mom[1] but mentions sismom mom[0]
+        # Check that MS saw that the sister mom failed to update the job
+        # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
             % (jid, self.hosts_list[0]),
@@ -3022,7 +3022,7 @@ event.accept()
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
         initial_vnodes = execvnode1.split('+')
-        # Check the exec_resize hook reject message in momsup log
+        # Check the exec_resize hook reject message in MS log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2)
@@ -3311,7 +3311,7 @@ exit 0
         """
         self.skipTest('Test replaced with alternative '
                       'to avoid scheduling race')
-       
+
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
