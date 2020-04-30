@@ -572,22 +572,6 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
-		{ /* TODO: FIXME: */
-			snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-				"set_all_state->vnode: do_set=%d pvnd=0x%lx-> bits=0x%lx "
-				"txt=%s mi_modtime=%ld", do_set, pvnd->nd_state, bits, txt,
-				pmom->mi_modtime);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-				pvnd->nd_name, local_log_buffer);
-
-			/*
-			process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-			rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
-				hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func,
-				&num_run, &event_initialized);
-			*/
-		}
-
 		if (do_set) {
 			set_vnode_state(pvnd, bits, Nd_State_Or);
 		} else {
@@ -1555,17 +1539,67 @@ set_vnode_state_bits(pbsnode *pnode, unsigned long state_bits, enum vnode_state_
  *
  * @par MT-safe: No
  */
+char*
+get_vnode_state_op(enum vnode_state_op op)
+{
+	switch(op) {
+		case Nd_State_Set: 
+			return "Nd_State_Set";
+		case Nd_State_Or: 
+			return "Nd_State_Or";
+		case Nd_State_And: 
+			return "Nd_State_And";
+		return "ND_state_unknown";
+	}
+}
+
+
+/**
+ * @brief
+ * 		Change the state of a vnode. See pbs_nodes.h for definition of node's
+ * 		availability and unavailability.
+ *
+ * 		This function detects the type of change, either from available to
+ * 		unavailable, and invokes the appropriate handler to handle the state
+ * 		change.
+ *
+ * @param[in]	pbsnode	- The vnode
+ * @param[in]	state_bits	- the value to set the vnode to
+ * @param[in]	type	- The operation on the node
+ *
+ * @return	void
+ *
+ * @par MT-safe: No
+ */
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
 	vnode_state_change_t *vnode_state_change;
 	unsigned long nd_prev_state;
 	int time_int_val;
+	char local_log_buffer[LOG_BUF_SIZE];
+
+	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 
 	time_int_val = time_now;
 
 	if (pnode == NULL)
 		return;
+
+	{ /* TODO: FIXME: */
+		snprintf(local_log_buffer, LOG_BUF_SIZE-1,
+			"set_vnode_state: pnode->nd_state=0x%lx-> state_bits=0x%lx "
+			"type=%d type_r=%s time_int_val=%ld", pnode->nd_state, state_bits, 
+			type, get_vnode_state_op(type), time_int_val);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+			pnode->nd_name, local_log_buffer);
+
+		/*
+		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		*/
+	}
+
+
 
 	vnode_state_change = set_vnode_state_bits(pnode, state_bits, type);
 	type = vnode_state_change->vnode_state_op;
