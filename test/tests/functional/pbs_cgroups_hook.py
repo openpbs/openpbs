@@ -1842,10 +1842,8 @@ if %s e.job.in_ms_mom():
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         # mem and vmem limit will both be set, and either could be detected
-        self.mom.log_match(
-            '%s;Cgroup mem(ory|sw) limit exceeded' % jid,
-            regexp=True,
-            max_attempts=20)
+        self.mom.log_match('%s;Cgroup mem(ory|sw) limit exceeded' % jid,
+                           regexp=True)
 
     def test_cgroup_enforce_memsw(self):
         """
