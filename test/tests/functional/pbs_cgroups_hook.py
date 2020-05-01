@@ -3568,9 +3568,6 @@ sleep 300
                                 cmd=['cat',
                                      '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
-            root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
         # If that link is missing and it's only
@@ -3776,10 +3773,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3867,10 +3864,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3893,7 +3890,6 @@ sleep 300
             self.skipTest('cpu group controller test: '
                           'root cfs_quota_us is not unlimited, cannot test '
                           'cgroup hook CPU quotas in this environment')
-
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
