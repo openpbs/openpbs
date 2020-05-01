@@ -563,7 +563,7 @@ class SmokeTest(PBSTestSuite):
         Test to submit job with job script
         """
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
-        j.create_script('sleep 5\n', hostname=self.server.client)
+        j.create_script('sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(id=jid, extend='force', wait=True)
