@@ -1703,7 +1703,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('scr_out:\n%s' % scr_out)
         # the config file named entries must be translated to major/minor
         # containers will make them different!!
-        # du.run_cmd returns a list of one-line strings
+        # self.du.run_cmd returns a list of one-line strings
         # the console awk command produces major and minor on separate lines
         console_results = \
             self.du.run_cmd(cmd=['ls -al /dev/console'
@@ -3536,8 +3536,9 @@ sleep 300
         root_quota_host1 = None
         try:
             root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
@@ -3546,10 +3547,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3558,9 +3559,9 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3635,8 +3636,9 @@ sleep 300
         root_quota_host1 = None
         try:
             root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
@@ -3645,10 +3647,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3657,9 +3659,9 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3730,8 +3732,9 @@ sleep 300
         root_quota_host1 = None
         try:
             root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
@@ -3740,10 +3743,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3752,9 +3755,9 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3819,8 +3822,9 @@ sleep 300
         root_quota_host1 = None
         try:
             root_quota_host1_str = \
-                du.run_cmd(hosts=self.hosts_list[0],
-                           cmd=['cat', '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
@@ -3829,10 +3833,10 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/'
-                                    'cpu,cpuacct/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3841,9 +3845,9 @@ sleep 300
         if root_quota_host1 is None:
             try:
                 root_quota_host1_str = \
-                    du.run_cmd(hosts=self.hosts_list[0],
-                               cmd=['cat',
-                                    '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
                 root_quota_host1 = int(root_quota_host1_str['out'][0])
             except Exception:
                 pass
@@ -3855,7 +3859,6 @@ sleep 300
             self.skipTest('cpu group controller test: '
                           'root cfs_quota_us is not unlimited, cannot test '
                           'cgroup hook CPU quotas in this environment')
-
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
