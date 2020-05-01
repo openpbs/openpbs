@@ -3427,9 +3427,11 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
-        # wait until the preempted job is restarted
-        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
-        time.sleep(5)
+        # wait until the preempted job is sent to MoM again
+        # the checkpointing script hangs, so it stays in substate 41
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        # we need to give the hooks some time here...
+        time.sleep(10)
         # check the cpusets for the deleted preemptor are gone
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
@@ -3487,7 +3489,7 @@ sleep 300
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
+        self.server.expect(JOB, {'substate': '42'}, id=jid1)
         time.sleep(5)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
@@ -3499,9 +3501,9 @@ sleep 300
         j2 = Job(TEST_USER, attrs=a)
         j2.set_sleep_time(300)
         jid2 = self.server.submit(j2)
-        time.sleep(5)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'substate': '42'}, id=jid2)
+        time.sleep(5)
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
@@ -3509,9 +3511,11 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
-        # wait until the preempted job is restarted
-        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
-        time.sleep(5)
+        # wait until the preempted job is sent to MoM again
+        # the checkpointing script hangs, so it stays in substate 41
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        # we need to give the hooks some time here...
+        time.sleep(10)
         # check the cpusets for the deleted preemptor are gone
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
