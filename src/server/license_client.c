@@ -269,7 +269,7 @@ license_more_nodes(void) {
  * @return	void
  */
 void
-propagate_socket_licensing(mominfo_t *pmom, int distribute) {
+propagate_socket_licensing(mominfo_t *pmom) {
 	return;
 }
 

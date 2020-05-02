@@ -4924,7 +4924,6 @@ found:
 							}
 						}
 					}
-					propagate_socket_licensing(pmom, 1);
 				}
 				vnl_free(vnlp);
 				vnlp = NULL;

@@ -476,7 +476,7 @@ extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
 extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
-extern void	propagate_socket_licensing(mominfo_t *, int);
+extern void	propagate_socket_licensing(mominfo_t *);
 
 extern char *msg_daemonname;
 
