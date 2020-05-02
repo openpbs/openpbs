@@ -1518,7 +1518,8 @@ class NodeUtils(object):
             if host_resv_hpmem < 0:
                 host_resv_hpmem = 0
             node_resv_hpmem = int(math.ceil(host_resv_hpmem / num_numa_nodes))
-            node_resv_hpmem -= (node_resv_hpmem %
+            if 'Hugepagesize' in self.meminfo:
+                node_resv_hpmem -= (node_resv_hpmem %
                                 size_as_int(self.meminfo['Hugepagesize']))
             # Physical memory
             host_mem = self.get_memory_on_node(ignore_reserved=True)
@@ -1541,9 +1542,12 @@ class NodeUtils(object):
             node_swapmem -= node_swapmem % (1024 * 1024)
             # Set the NUMA node values
             for num in numa_nodes:
-                val = numa_nodes[num]['HugePages_Total']
-                val *= size_as_int(self.meminfo['Hugepagesize'])
-                val -= node_resv_hpmem
+                val = 0
+                if 'HugePages_Total' in numa_nodes[num]:
+                    val = numa_nodes[num]['HugePages_Total']
+                    if 'Hugepagesize' in self.meminfo:
+                        val *= size_as_int(self.meminfo['Hugepagesize'])
+                    val -= node_resv_hpmem
                 numa_nodes[num]['hpmem'] = val
                 val = size_as_int(numa_nodes[num]['MemTotal'])
                 # round down only svr-reported values, not internal values
@@ -2043,7 +2047,8 @@ class NodeUtils(object):
         # Calculate remaining vmem
         remaining = total - reserved
         # Round down to nearest huge page
-        remaining -= remaining % (size_as_int(self.meminfo['Hugepagesize']))
+        if 'Hugepagesize' in self.meminfo:
+            remaining -= remaining % (size_as_int(self.meminfo['Hugepagesize']))
         if remaining <= 0:
             raise ValueError('Too much reserved hpmem')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining hpmem: %d' % remaining)
