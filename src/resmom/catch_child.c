@@ -2453,7 +2453,7 @@ void
 mom_deljob(job *pjob)
 {
 
-	del_job_resc(pjob);	/* rm tmpdir etc */
+	del_job_resc(pjob);	/* rm tmpdir, etc. */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)	/* MS */
 		(void)send_sisters(pjob, IM_DELETE_JOB, NULL);
@@ -2485,7 +2485,7 @@ mom_deljob_wait(job *pjob)
 {
 	int	i;
 
-	del_job_resc(pjob);	/* rm tmpdir etc */
+	del_job_resc(pjob);	/* rm tmpdir, etc. */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {	/* MS */
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_DELJOB;

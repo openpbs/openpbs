@@ -488,8 +488,8 @@ stop_pbs() {
     fi
     if [ "${PBS_START_MOM}" -gt 0 ] ; then
       if check_prog "mom" ; then
-	kill ${pbs_mom_pid}
-	echo "PBS mom - was pid: ${pbs_mom_pid}"
+        kill ${pbs_mom_pid}
+        echo "PBS mom - was pid: ${pbs_mom_pid}"
       fi
     fi
     if [ "${PBS_START_SCHED}" -gt 0 ] ; then

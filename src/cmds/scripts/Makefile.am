@@ -77,7 +77,6 @@ dist_unitfile_DATA = \
 	pbs.service
 
 dist_libexec_SCRIPTS = \
-	au-nodeupdate \
 	install_db \
 	pbs_habitat \
 	pbs_init.d \
