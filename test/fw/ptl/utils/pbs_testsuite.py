@@ -170,13 +170,14 @@ def skipOnShasta(function):
 
 def skipOnCpuSet(function):
     """
-    Decorator to skip a test on a CpuSet system
+    Decorator to skip a test on a cgroup cpuset system
     """
 
     def wrapper(self, *args, **kwargs):
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                msg = 'capability not supported on Cpuset mom:' + mom.shortname
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                      mom.shortname
                 self.skipTest(reason=msg)
                 break
         else:
@@ -1460,6 +1461,8 @@ class PBSTestSuite(unittest.TestCase):
             if 'clienthost' in self.conf:
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
+            if mom.is_cpuset_mom():
+                mom.enable_cgroup_cset()
         if restart:
             mom.restart()
         else:

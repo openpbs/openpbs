@@ -6053,13 +6053,12 @@ class Server(PBSService):
             self.logger.error(m)
             return None
 
-        if not submit_dir:
+        if not submit_dir and self.du.get_platform() != 'shasta':
             submit_dir = pwd.getpwnam(obj.username)[5]
 
         cwd = os.getcwd()
-        if self.platform != 'shasta':
-            if submit_dir:
-                os.chdir(submit_dir)
+        if submit_dir:
+            os.chdir(submit_dir)
         c = None
         # 1- Submission using the command line tools
         if self.get_op_mode() == PTL_CLI:
@@ -13442,28 +13441,15 @@ class MoM(PBSService):
 
     def is_cpuset_mom(self):
         """
-        Check for cpuset mom
+        Check for cgroup cpuset enabled system
         """
         if self._is_cpuset_mom is not None:
             return self._is_cpuset_mom
-        a = {'state': 'free'}
-        try:
-            self.server.expect(NODE, a, id=self.shortname, interval=1)
-        except PtlExpectError:
-            return False
-        raa = ATTR_rescavail + '.arch'
-        a = {raa: None}
-        try:
-            rv = self.server.status(NODE, a, id=self.shortname)
-        except PbsStatusError:
-            try:
-                rv = self.server.status(NODE, a, id=self.hostname)
-            except PbsStatusError as e:
-                if e.msg[0].endswith('Server has no node list'):
-                    return False
-                else:
-                    raise e
-        if len(rv) > 0 and raa in rv[0] and rv[0][raa] == 'linux_cpuset':
+        hpe_file1 = "/etc/sgi-compute-node-release"
+        hpe_file2 = "/etc/sgi-known-distributions"
+        ret1 = self.du.isfile(self.hostname, path=hpe_file1)
+        ret2 = self.du.isfile(self.hostname, path=hpe_file2)
+        if ret1 or ret2:
             self._is_cpuset_mom = True
         else:
             self._is_cpuset_mom = False
@@ -14001,6 +13987,56 @@ class MoM(PBSService):
         a = {custom_resource: '!' + res_file}
         self.add_config(a)
         return res_file
+
+    def enable_cgroup_cset(self):
+        """
+        Configure and enable cgroups hook
+        """
+        # check if cgroups subsystems including cpusets are mounted
+        with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as fd:
+            mounts = fd.read()
+        if 'cgroup' in mounts and mounts.count('cpuset') >= 2:
+            pbs_conf_val = self.du.parse_pbs_config(self.hostname)
+            f1 = os.path.join(pbs_conf_val['PBS_EXEC'], 'lib',
+                              'python', 'altair', 'pbs_hooks',
+                              'pbs_cgroups.CF')
+            vpn1 = r'"vnode_per_numa_node"\s*:\s*false,'
+            vpn2 = '"vnode_per_numa_node"   : true,'
+            uht1 = r'"use_hyperthreads"\s*:\s*false,'
+            uht2 = '"use_hyperthreads"      : true,'
+            mem1 = r'"memory"\s*:\s*{'
+            mem2 = r'"memsw"\s*:\s*{'
+            ena1 = r'"enabled"\s*:\s*true,'
+            ena2 = '"enabled"            : false,'
+            # set vnode_per_numa_node = true, use_hyperthreads = true
+            with open(f1, "r") as cfg:
+                lines = cfg.readlines()
+            for i, line in enumerate(lines):
+                if re.search(vpn1, line):
+                    lines[i] = re.sub(vpn1, vpn2, line)
+                if re.search(uht1, line):
+                    lines[i] = (re.sub(uht1, uht2, line))
+                # memory subsystem not mounted, do not enable in config
+                if (re.search(mem1, line) or re.search(mem2, line)) and \
+                        mounts.count('memory') == 0:
+                    if re.search(ena1, lines[i + 1]):
+                        lines[i + 1] = (re.sub(ena1, ena2, lines[i + 1]))
+            _, path = tempfile.mkstemp(prefix="cfg", suffix=".json")
+            with open(path, "w") as cfg1:
+                for line in lines:
+                    cfg1.write((line))
+            # read in the cgroup hook configuration
+            a = {'content-type': 'application/x-config',
+                 'content-encoding': 'default',
+                 'input-file': path}
+            rv = self.server.manager(MGR_CMD_IMPORT, HOOK, a,
+                                     'pbs_cgroups')
+            os.remove(path)
+            # enable cgroups hook
+            self.server.manager(MGR_CMD_SET, HOOK,
+                                {'enabled': 'True'}, 'pbs_cgroups')
+        else:
+            self.logger.error('cgroup subsystems not mounted')
 
 
 class Hook(PBSObject):
