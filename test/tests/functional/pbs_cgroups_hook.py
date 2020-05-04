@@ -1762,8 +1762,7 @@ if %s e.job.in_ms_mom():
         sibs = 0
         cores = 0
         pval = 0
-        phys = 1
-        prev = 0
+        phys = {}
         with open('/proc/cpuinfo', 'r') as desc:
             for line in desc:
                 if re.match('^processor', line):
@@ -1777,9 +1776,7 @@ if %s e.job.in_ms_mom():
                     cores = int(cores_match.groups()[0])
                 if phys_match:
                     pval = int(phys_match.groups()[0])
-                    if pval != prev:
-                        prev = pval
-                        phys += 1
+                    phys[pval] = 1
         if (sibs == 0 or cores == 0):
             self.skipTest('Insufficient information about the processors.')
         if pcpus < 2:
@@ -1790,7 +1787,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
         # Submit M*N jobs, where M is the amount of physical processors and
         # N is number of 'cpu cores' per M. Expect them to run.
-        njobs = phys * cores
+        njobs = len(phys) * cores
         if njobs > 64:
             self.skipTest("too many jobs (%d) to submit" % njobs)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -3513,6 +3510,63 @@ sleep 300
                         (cfs_quota_us_match) in cpu_scr_out)
         self.logger.info("cpu_cfs_quota_us check passed (match %d)" %
                          (cfs_quota_us_match))
+
+    def test_vnodepernuma_use_hyperthreads(self):
+        """
+        Test to verify that correct number of jobs run with
+        vnodes_per_numa=true and use_hyperthreads=true
+        """
+        pcpus = 0
+        sibs = 0
+        cores = 0
+        pval = 0
+        phys = {}
+        with open('/proc/cpuinfo', 'r') as desc:
+            for line in desc:
+                if re.match('^processor', line):
+                    pcpus += 1
+                sibs_match = re.search(r'siblings	: ([0-9]+)', line)
+                cores_match = re.search(r'cpu cores	: ([0-9]+)', line)
+                phys_match = re.search(r'physical id	: ([0-9]+)', line)
+                if sibs_match:
+                    sibs = int(sibs_match.groups()[0])
+                if cores_match:
+                    cores = int(cores_match.groups()[0])
+                if phys_match:
+                    pval = int(phys_match.groups()[0])
+                    phys[pval] = 1
+        if (sibs == 0 or cores == 0):
+            self.skipTest('Insufficient information about the processors.')
+        if pcpus < 2:
+            self.skipTest('This test requires at least two processors.')
+
+        hyperthreads_per_core = int(sibs / cores)
+        name = 'CGROUP20'
+        # set vnode_per_numa=true with use_hyperthreads=true
+        self.load_config(self.cfg3 % ('', 'true', '', '', self.swapctl, ''))
+        # Restart mom so vnodes created by cgroups would show
+        self.mom.restart()
+        # Submit M*N*P jobs, where M is the number of physical processors,
+        # N is the number of 'cpu cores' per M. and P being the
+        # number of hyperthreads per core.
+        njobs = len(phys) * cores * hyperthreads_per_core
+        if njobs > 64:
+            self.skipTest("too many jobs (%d) to submit" % njobs)
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.hosts_list[0], ATTR_N: name + 'a'}
+        for _ in range(njobs):
+            j = Job(TEST_USER, attrs=a)
+            jid = self.server.submit(j)
+            a1 = {'job_state': 'R'}
+            self.server.expect(JOB, a1, jid)
+
+        # Submit another job, expect in Q state
+        b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.hosts_list[0], ATTR_N: name + 'b'}
+        j2 = Job(TEST_USER, attrs=b)
+        jid2 = self.server.submit(j2)
+        b1 = {'job_state': 'Q'}
+        self.server.expect(JOB, b1, jid2)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
