@@ -1527,8 +1527,6 @@ adjust_for_os(struct infrastruct *pinf)
 		/* Linux + /etc/sgi-compute-node_release => SGI ICE	*/
 		if (access("/etc/sgi-compute-node-release", R_OK) == 0) {
 			lib_mpugs[ofs_lib + 23].notReq = 0;    /* sgiMPI.awk       */
-			sbin_mpugs[ofs_sbin + 5].notReq = 0x1; /* pbs_mom.cpuset   */
-			sbin_mpugs[ofs_sbin + 6].notReq = 0x1; /* pbs_mom.standard */
 		}
 
 		/* Linux: pbsrun.<keyword>.init.in files must exist */
