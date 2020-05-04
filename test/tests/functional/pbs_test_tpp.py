@@ -61,7 +61,7 @@ class TestTPP(TestFunctional):
 
     def pbs_restart(self, host_name):
         """
-        This function starts PBS daemons after updating pbs.conf file
+        This function starts PBS daemons
         :param host_name: Name of the host on which PBS
                           has to be restarted
         :type host_name: String
@@ -97,74 +97,69 @@ class TestTPP(TestFunctional):
                                  fin=pbsconfpath, confs=conf_param)
         self.pbs_restart(host_name)
 
-    def submit_job(self, job=False, jset_attr=None, jexp_attr=None,
-                   sleep=10, job_script=False, interactive=False,
-                   iset_attr=None, iexp_attr=None, resv_job=False,
-                   rid=None, rjset_attr=None, rjexp_attr=None):
+    def submit_resv(self, resv_set_attr=None, resv_exp_attr=None):
+        """
+        Submits reservation and check for the reservation attributes
+        :param resv_set_attr: Reservation attributes to set
+        :type resv_set_attr: Dictionary. Defaults to None
+        :param resv_exp_attrib: Reservation attributes to verify
+        :type resv_exp_attrib: Dictionary. Defaults to None
+        """
+        r = Reservation(TEST_USER)
+        if resv_set_attr is None:
+            resv_set_attr = {'Resource_List.select': '2:ncpus=1',
+                             ATTR_l + '.place': 'scatter',
+                             'reserve_start': int(time.time() + 10),
+                             'reserve_end': int(time.time() + 120)}
+        r.set_attributes(resv_set_attr)
+        rid = self.server.submit(r)
+        if not resv_exp_attr:
+            resv_exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, resv_exp_attr, id=rid)
+        return rid
+
+    def submit_job(self, set_attr=None, exp_attr=None, job=False,
+                   job_script=False, interactive=False, rid=None,
+                   resv_job=False, sleep=10):
         """
         Submits job and check for the job attributes
+        :param set_attr: Job attributes to set
+        :type set_attr: Dictionary. Defaults to None
+        :param exp_attr: Job attributes to verify
+        :type exp_attr: Dictionary. Defaults to None
         :param job: Whether to submit a multi chunk job
         :type job: Bool. Defaults to False
-        :param jset_attr: Job attributes to set
-        :type jset_attr: Dictionary. Defaults to None
-        :param jexp_attr: Job attributes to verify
-        :type jexp_attr: Dictionary. Defaults to None
-        :param sleep: Job's sleep time
-        :type sleep: Integer. Defaults to 10s
         :param job_script: Whether to submit a job using job script
         :type job_script: Bool. Defaults to False
         :param interactive: Whether to submit a interactive job
         :type interactive: Bool. Defaults to False
-        :param iset_attr: Interactive Job attributes to set
-        :type iset_attr: Dictionary. Defaults to None
-        :param iexp_attr: Interactive Job attributes to verify
-        :type iexp_attr: Dictionary. Defaults to None
-        :param resv_job: Whether to submit job into reservation.
-        :type resv_job: Bool. Defaults to False
         :param rid: Reservation id
         :type rid: String
-        :param rjset_attr: Reservation Job attributes to set
-        :type rjset_attr: Dictionary. Defaults to None
-        :param rjexp_attr: Reservation Job attributes to verify
-        :type rjexp_attr: Dictionary. Defaults to None
+        :param resv_job: Whether to submit job into reservation.
+        :type resv_job: Bool. Defaults to False
+        :param sleep: Job's sleep time
+        :type sleep: Integer. Defaults to 10s
         """
         j = Job(TEST_USER)
+        if set_attr is None:
+            set_attr = {'Resource_List.select': '2:ncpus=1',
+                        ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
         if job:
-            if not jset_attr:
-                jset_attr = {'Resource_List.select': '2:ncpus=1',
-                             ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-            j.set_attributes(jset_attr)
-            if not jexp_attr:
-                exp_attrib = {'job_state': 'R'}
-            else:
-                exp_attrib = jexp_attr
+            j.set_attributes(set_attr)
 
         if interactive:
-            if not iset_attr:
-                iset_attr = {'Resource_List.select': '2:ncpus=1',
-                             ATTR_inter: '',
-                             ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-            j.set_attributes(iset_attr)
+            set_attr[ATTR_inter] = ''
+            j.set_attributes(set_attr)
             j.interactive_script = [('hostname', '.*'),
                                     ('export PATH=$PATH:%s' %
                                      self.exec_path, '.*'),
                                     ('qstat', '.*')]
-            if not iexp_attr:
-                exp_attrib = {'job_state': 'R'}
-            else:
-                exp_attrib = iexp_attr
-
         if resv_job:
+            if 'ATTR_inter' in set_attr:
+                del set_attr[ATTR_inter]
             resv_que = rid.split('.')[0]
-            if not rjset_attr:
-                rjset_attr = {'Resource_List.select': '2:ncpus=1',
-                              ATTR_q: resv_que, ATTR_k: 'oe',
-                              ATTR_l + '.place': 'scatter'}
-            j.set_attributes(rjset_attr)
-            if not rjexp_attr:
-                exp_attrib = {'job_state': 'Q'}
-            else:
-                exp_attrib = rjexp_attr
+            set_attr[ATTR_q] = resv_que
+            j.set_attributes(set_attr)
 
         if job_script:
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -175,57 +170,33 @@ class TestTPP(TestFunctional):
             j.set_sleep_time(sleep)
 
         jid = self.server.submit(j)
-        self.server.expect(JOB, exp_attrib, id=jid)
+        if exp_attr is None:
+            exp_attr = {'job_state': 'R'}
+        self.server.expect(JOB, exp_attr, id=jid)
         return jid
 
-    def submit_resv(self, rset_attr=None, rexp_attrib=None):
-        """
-        Submits reservation and check for the reservation attributes
-        :param rset_attr: Reservation attributes to set
-        :type rset_attr: Dictionary. Defaults to None
-        :param rexp_attrib: Reservation attributes to verify
-        :type rexp_attrib: Dictionary. Defaults to None
-        """
-        r = Reservation(TEST_USER)
-        if not rset_attr:
-            rset_attr = {'Resource_List.select': '2:ncpus=1',
-                         ATTR_l + '.place': 'scatter',
-                         'reserve_start': int(time.time() + 10),
-                         'reserve_end': int(time.time() + 120)}
-        r.set_attributes(rset_attr)
-        rid = self.server.submit(r)
-        if not rexp_attrib:
-            rexp_attrib = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, rexp_attrib, id=rid)
-        return rid
-
-    def common_steps(self, jset_attr=None, jexp_attr=None, job=False,
-                     iset_attr=None, iexp_attr=None, interactive_job=False,
-                     rset_attr=None, rexp_attrib=None, rjset_attr=None,
-                     rjexp_attr=None, resv=False,
+    def common_steps(self, set_attr=None, exp_attr=None, job=False,
+                     interactive=False, resv=False,
+                     resv_set_attr=None, resv_exp_attr=None,
                      resv_job=False, client=None):
         """
         This function contains common steps of submitting
         different kind of jobs.
         Submits job and check for the job attributes
-        :param jset_attr: Job attributes to set
-        :type jset_attr: Dictionary. Defaults to None
-        :param jexp_attr: Job attributes to verify
-        :type jexp_attr: Dictionary. Defaults to None
+        :param set_attr: Job attributes to set
+        :type set_attr: Dictionary. Defaults to None
+        :param exp_attr: Job attributes to verify
+        :type exp_attr: Dictionary. Defaults to None
         :param job: Whether to submit a multi chunk job
         :type job: Bool. Defaults to False
-        :param iset_attr: Interactive Job attributes to set
-        :type iset_attr: Dictionary. Defaults to None
-        :param iexp_attr: Interactive Job attributes to verify
-        :type iexp_attr: Dictionary. Defaults to None
         :param interactive: Whether to submit a interactive job
         :type interactive: Bool. Defaults to False
-        :param rset_attr: Reservation attributes to set
-        :type rset_attr: Dictionary. Defaults to None
-        :param rexp_attrib: Reservation attributes to verify
-        :type rexp_attrib: Dictionary. Defaults to None
         :param resv: Whether to submit reservation.
         :type resv: Bool. Defaults to False
+        :param resv_set_attr: Reservation attributes to set
+        :type resv_set_attr: Dictionary. Defaults to None
+        :param resv_exp_attrib: Reservation attributes to verify
+        :type resv_exp_attrib: Dictionary. Defaults to None
         :param resv_job: Whether to submit job into reservation.
         :type resv_job: Bool. Defaults to False
         :param client: Name of the client
@@ -236,23 +207,19 @@ class TestTPP(TestFunctional):
         else:
             self.server.client = client
         if job:
-            jid = self.submit_job(job=True, jset_attr=jset_attr,
-                                  jexp_attr=jexp_attr, job_script=True)
+            jid = self.submit_job(
+                set_attr, exp_attr, job=True, job_script=True)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
             self.server.log_match("%s;Exit_status=0" % jid)
-        if interactive_job:
+        if interactive:
             # Submit Interactive Job
-            jid = self.submit_job(iset_attr=iset_attr,
-                                  iexp_attr=iexp_attr, interactive=True)
+            jid = self.submit_job(set_attr, exp_attr, interactive=True)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET)
         if resv:
             # Submit reservation
-            rid = self.submit_resv(
-                rset_attr=rset_attr,
-                rexp_attrib=rexp_attrib)
-            jid = self.submit_job(resv_job=True, rid=rid,
-                                  rjset_attr=rjset_attr,
-                                  rjexp_attr=rjexp_attr, job_script=True)
+            rid = self.submit_resv(resv_set_attr, resv_exp_attr)
+            jid = self.submit_job(set_attr, exp_attr, resv_job=True,
+                                  rid=rid, job_script=True)
             # Wait for reservation to start
             a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
             self.server.expect(RESV, a, rid, offset=10)
@@ -289,7 +256,7 @@ class TestTPP(TestFunctional):
             msg2 = "Leaf registered address %s:15003" % ip
             mom.log_match(msg1)
             self.comm.log_match(msg2)
-        self.common_steps(job=True, interactive_job=True, resv=True,
+        self.common_steps(job=True, interactive=True, resv=True,
                           resv_job=True)
 
     @skip(reason="Run this through cmd-line by removing this decorator")
@@ -311,7 +278,7 @@ class TestTPP(TestFunctional):
         nodes = [self.hostA, self.hostB, self.hostC]
         self.node_list.extend(nodes)
         self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': True})
-        self.common_steps(job=True, interactive_job=True)
+        self.common_steps(job=True, interactive=True)
         self.common_steps(resv=True, resv_job=True, client=self.hostB)
 
     @skip(reason="Run this through cmd-line by removing this decorator")
@@ -355,7 +322,7 @@ class TestTPP(TestFunctional):
             else:
                 self.set_pbs_conf(host_name=host, conf_param=b)
         self.common_steps(job=True, resv=True, resv_job=True)
-        self.common_steps(interactive_job=True, client=self.hostB)
+        self.common_steps(interactive=True, client=self.hostB)
 
     @skip(reason="Run this through cmd-line by removing this decorator")
     @requirements(num_moms=2, no_mom_on_server=True)
@@ -378,7 +345,7 @@ class TestTPP(TestFunctional):
         msg = "Requires mom which is running on non server host"
         self.common_steps(job=True, resv=True,
                           resv_job=True, client=self.hostA)
-        self.common_steps(job=True, interactive_job=True,
+        self.common_steps(job=True, interactive=True,
                           client=self.hostB)
 
     def test_comm_with_vnode_insertion(self):
@@ -407,7 +374,7 @@ class TestTPP(TestFunctional):
                 'state': 'state-unknown,down'}, id=vnode)
 
     @skip(reason="Run this through cmd-line by removing this decorator")
-    @requirements(num_moms=2, num_comms=1)
+    @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
         """
         This test verifies communication between server-mom and
@@ -441,7 +408,7 @@ class TestTPP(TestFunctional):
                 self.set_pbs_conf(host_name=host, conf_param=a)
             else:
                 self.set_pbs_conf(host_name=host, conf_param=c)
-        self.common_steps(job=True, interactive_job=True, resv=True,
+        self.common_steps(job=True, interactive=True, resv=True,
                           resv_job=True)
 
     def tearDown(self):
