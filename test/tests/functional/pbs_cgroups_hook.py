@@ -294,7 +294,7 @@ if [ "${mbase}" != "None" ] ; then
     fi
 fi
 """
-# no need to cater different cgroup_prefix, it is obviously propbs here
+# no need to cater for cgroup_prefix options, it is obviously propbs here
         self.check_dirs_script = """
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
@@ -3256,6 +3256,11 @@ event.accept()
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
+
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+        return
+
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
@@ -3312,9 +3317,6 @@ exit 0
         gets called.  The abort hook cleans up assigned cgroups, allowing
         the higher priority job to run on the same node.
         """
-        self.skipTest('Test replaced with alternative '
-                      'to avoid scheduling race')
-
         # Skip test if number of mom provided is not equal to two
         if len(self.moms) != 2:
             self.skipTest("test requires two MoMs as input, " +
@@ -3353,7 +3355,7 @@ exit 0
         # if you test for R then a slow job startup might update
         # resources_assigned late and make scheduler overcommit nodes
         # and run both jobs
-        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid1)
+        self.server.expect(JOB, {'substate': '42'}, id=jid1)
 
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
@@ -3374,6 +3376,11 @@ exit 0
         job restarts, execjob_begin cgroups hook gets called on both mother
         superior and sister moms.
         """
+
+        self.skipTest('Test replaced with alternative '
+                      'to avoid scheduling race')
+        return
+
         # create express queue
         a = {'queue_type': 'execution',
              'started': 'True',
@@ -3450,9 +3457,6 @@ sleep 300
         job restarts, execjob_begin cgroups hook gets called on both mother
         superior and sister moms.
         """
-        self.skipTest('Test replaced with alternative '
-                      'to avoid scheduling race')
-        return
 
         # create express queue
         a = {'queue_type': 'execution',
