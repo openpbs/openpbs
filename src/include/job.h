@@ -967,7 +967,7 @@ task_find	(job		*pjob,
 #define JOB_STDERR_SUFFIX  ".ER"	/* job standard error */
 #define JOB_CKPT_SUFFIX    ".CK"	/* job checkpoint file */
 #define JOB_TASKDIR_SUFFIX ".TK"	/* job task directory */
-#define JOB_BAD_SUFFIX	   ".BD"	/* save bad job file */
+#define JOB_BAD_SUFFIX     ".BD"	/* save bad job file */
 
 /*
  * Job states are defined by POSIX as:
