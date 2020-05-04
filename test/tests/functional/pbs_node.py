@@ -49,8 +49,14 @@ def get_hook_body(hook_msg):
     hook_body = """
     import pbs
     e = pbs.event()
-    ns = e.node_state
+    hostname = e.node_state.hostname
+    new_state = e.node_state.new_state
+    old_state = e.node_state.old_state
+    pbs.logmsg(pbs.LOG_DEBUG, 'hostname:' + hostname)
+    pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
+    pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
     pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    e.accept()
     """ % hook_msg
     hook_body = textwrap.dedent(hook_body)
     return hook_body
@@ -154,7 +160,7 @@ class TestPbsNode(TestFunctional):
 
 
     @requirements(num_moms=2)
-    def test_create_hook_and_delete(self):
+    def test_create_hook_and_delete_00(self):
         """
         Test:  this will test three things:
         1.  The stopping and starting of a mom and the proper log messages.
@@ -167,7 +173,7 @@ class TestPbsNode(TestFunctional):
 
         attrs = {'event': 'node_state', 'enabled': 'True'}
         hook_name_00 = 'a1234'
-        hook_msg_00 = 'running node_state create, hook, delete'
+        hook_msg_00 = 'running create_hook_and_delete_00'
         hook_body_00 = get_hook_body(hook_msg_00)
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
@@ -197,5 +203,63 @@ class TestPbsNode(TestFunctional):
                                   starttime=start_time)
 
             self.server.log_match(hook_msg_00, starttime=start_time)
+
+        self.logger.info("---- TEST ENDED ----")
+
+    @requirements(num_moms=2)
+    def test_create_hook_and_delete_01(self):
+        """
+        Test:  this will test three things:
+        1.  The stopping and starting of a mom and the proper log messages.
+        2.  The testing of the hook
+        3.  The stopping and starting of a mom and the proper hook firing.
+        """
+        self.logger.info("---- TEST STARTED ----")
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+
+        attrs = {'event': 'node_state', 'enabled': 'True'}
+        hook_name_00 = 'b1234'
+        hook_msg_00 = 'running create_hook_and_delete_01'
+        hook_body_00 = get_hook_body(hook_msg_00)
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+
+        for name, value in self.server.moms.items():
+            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.',1)[0]
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    dir(value):    %s", dir(value))
+
+            self.logger.error("    ***stopping mom:%s", value)
+            start_time = int(time.time())
+            value.stop()
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("new_state:0x202", starttime=start_time)
+            self.server.log_match("old_state:0x0", starttime=start_time)
+
+            start_time = int(time.time())
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.server.log_match("new_state:0x422", starttime=start_time)
+            self.server.log_match("old_state:0x400", starttime=start_time)
+
+            start_time = int(time.time())
+            self.logger.error("    ***restart  mom:%s", value)
+            value.restart()
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("new_state:0x0", starttime=start_time)
+            self.server.log_match("old_state:0x400", starttime=start_time)
+
+
+            self.server.log_match(hook_msg_00, starttime=start_time)
+            self.server.log_match("hostname:%s" % hostbasename, starttime=start_time)
 
         self.logger.info("---- TEST ENDED ----")

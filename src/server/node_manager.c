@@ -530,7 +530,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 			pmom->mi_host, local_log_buffer);
 		
-		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		/* process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt); */
 
 		free_br(preq);
 		preq = NULL;
@@ -1524,20 +1524,12 @@ set_vnode_state_bits(pbsnode *pnode, unsigned long state_bits, enum vnode_state_
 
 /**
  * @brief
- * 		Change the state of a vnode. See pbs_nodes.h for definition of node's
- * 		availability and unavailability.
+ * 		Given a vnode_state_op, return the string value.
+ * 		The enum is found in pbs_nodes.h
  *
- * 		This function detects the type of change, either from available to
- * 		unavailable, and invokes the appropriate handler to handle the state
- * 		change.
+ * @param[in]	op - The operation for the state change
  *
- * @param[in]	pbsnode	- The vnode
- * @param[in]	state_bits	- the value to set the vnode to
- * @param[in]	type	- The operation on the node
- *
- * @return	void
- *
- * @par MT-safe: No
+ * @return	char*
  */
 char*
 get_vnode_state_op(enum vnode_state_op op)
@@ -1549,8 +1541,8 @@ get_vnode_state_op(enum vnode_state_op op)
 			return "Nd_State_Or";
 		case Nd_State_And: 
 			return "Nd_State_And";
-		return "ND_state_unknown";
 	}
+	return "ND_state_unknown";
 }
 
 
@@ -1578,32 +1570,39 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	unsigned long nd_prev_state;
 	int time_int_val;
 	char local_log_buffer[LOG_BUF_SIZE];
+	struct batch_request *preq = NULL;
+	struct rq_node_state *rq_node_state = NULL;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
 
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-
-	time_int_val = time_now;
+	preq = alloc_br(PBS_BATCH_NodeState);
 
 	if (pnode == NULL)
 		return;
 
-	{ /* TODO: FIXME: */
-		snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-			"set_vnode_state: pnode->nd_state=0x%lx-> state_bits=0x%lx "
-			"type=%d type_r=%s time_int_val=%ld", pnode->nd_state, state_bits, 
-			type, get_vnode_state_op(type), time_int_val);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-			pnode->nd_name, local_log_buffer);
+	time_int_val = time_now;
 
-		/*
-		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-		*/
-	}
+	/* FIXME: check for NULL */
+	strncpy(preq->rq_host, pnode->nd_hostname, PBS_MAXHOSTNAME);
+	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
+	rq_node_state = &preq->rq_ind.rq_node_state;
+	rq_node_state->hostname = pnode->nd_hostname;
+	rq_node_state->old_state = pnode->nd_state;
 
-
+	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
+		"set_vnode_state: pnode->nd_state=0x%lx-> state_bits=0x%lx "
+		"type=%d type_r=%s time_int_val=%ld", pnode->nd_state, state_bits,
+		type, get_vnode_state_op(type), time_int_val);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+		pnode->nd_name, local_log_buffer);
 
 	vnode_state_change = set_vnode_state_bits(pnode, state_bits, type);
-	type = vnode_state_change->vnode_state_op;
 	nd_prev_state = vnode_state_change->nd_prev_state;
+	rq_node_state->new_state = pnode->nd_state;
+
+	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+	free_br(preq);
+	preq = NULL;
 
 	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 		nd_prev_state, pnode->nd_state))
