@@ -281,8 +281,6 @@ extern char     *getlogin_full(void);           /* chars are in a static area */
 /* returns <domain>\<user>    */
 extern char	*getHomedir(char *user);	/* return the homedir of user */
 /* return value must be free()*/
-extern char	*getRhostsFile(char *user, HANDLE userlogin);
-/* returns .rhosts file path */
 /* return value is static */
 extern char	*map_unc_path(char *path, struct passwd *pw);
 extern void	unmap_unc_path(char *path);
@@ -307,7 +305,6 @@ extern int	isLocalAdminMember(char *user);
 extern DWORD 	sid2rid(SID *sid);
 extern int	isAdminPrivilege(char *user);
 extern int	sidIsAdminPrivilege(SID *sid);
-extern int	inGroups(char *gname, SID *gidlist[], int len);
 extern SID	*create_domain_admins_sid(void);  /* must free with LocalFree() */
 extern SID	*create_domain_users_sid(void);  /* must free with LocalFree() */
 extern SID	*create_administrators_sid(void); /* must free with LocalFree() */
@@ -317,11 +314,8 @@ extern SID*	create_everyone_sid(void);
 extern HANDLE LogonUserNoPass(char *username);
 extern BOOL impersonate_user(HANDLE hlogintoken);
 extern BOOL revert_impersonated_user();
-extern int setuser(char *username);
-extern int setuser_with_password(char *username, char *cred_buf,
-	size_t cred_len, int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *));
-extern HANDLE setuser_handle(void);
-extern void setuser_close_handle(void);
+extern HANDLE setuser(char *username);
+extern void setuser_close_handle(HANDLE user_handle);
 extern int setuid(uid_t uid);	/* mimics UNIX call */
 
 extern DWORD get_activesessionid(int return_on_no_active_session, char *username);
@@ -344,7 +338,6 @@ extern int  accessinfo_mask_allzero(struct accessinfo *acc, int len);
 extern void accessinfo_free(struct accessinfo *acc, int len);
 extern char *accessinfo_values(struct accessinfo *acc, int len);
 extern int perm_granted_admin_and_owner(char *path, int mask, char *owner, char *errmsg);
-extern int perm_granted(char *path, int mask, char *user, char realuser[]);
 extern int secure_file(char *path, char *user, ACCESS_MASK mask);
 extern int secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2);
 extern void fix_perms(char *fname);
@@ -475,8 +468,6 @@ extern int ena_privilege(char *);
 
 /* Modify window staiion and desktop privilege */
 extern int use_window_station_desktop(SID *usid);
-
-extern int use_window_station_desktop2(char *user);
 
 /* Services related routine */
 #define SERVICE_ACCOUNT "pbsadmin"

@@ -715,16 +715,17 @@ log_open_main(char *filename, char *directory, int silent)
 void
 log_err(int errnum, const char *routine, const char *text)
 {
-	char buf[LOG_BUF_SIZE], *errmsg;
+	char buf[LOG_BUF_SIZE] =  {'\0'};
+	char *errmsg;
 	int  i;
 
 	if (errnum == -1) {
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
-
+		snprintf(buf, LOG_BUF_SIZE, "Error code: %lu. ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -732,7 +733,7 @@ log_err(int errnum, const char *routine, const char *text)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);

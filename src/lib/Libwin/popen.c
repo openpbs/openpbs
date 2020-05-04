@@ -77,7 +77,7 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 	char                    cmd_shell[MAX_PATH + 1] = {'\0'};       /* path to cmd shell */
 	char	                current_dir[MAX_PATH + 1] = {'\0'};
 	char	                *temp_dir = NULL;
-	int	                changed_dir = 0;
+	int                     changed_dir = 0;
 
 	sa.nLength = sizeof(sa);
 	sa.lpSecurityDescriptor = NULL;
@@ -96,13 +96,13 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 	/* pipe to read stdout of the process */
 	if (CreatePipe(&hReadPipe_out, &hWritePipe_out, &sa, 0) == 0) {
 		fprintf(stderr, "\npopen: pipe creation failed!\n");
-		errno = GetLastError();
+		log_err(-1, __func__, "failed in CreatePipe for out");
 		return (0);
 	}
 	/* pipe to read stderr of the process */
 	if (CreatePipe(&hReadPipe_err, &hWritePipe_err, &sa, 0) == 0) {
 		fprintf(stderr, "\npopen: pipe creation failed!\n");
-		errno = GetLastError();
+		log_err(-1, __func__, "failed in CreatePipe for err");
 		return (0);
 	}
 
@@ -120,7 +120,7 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 		 */
 		if (CreatePipe(&hRead_dummy, &hWrite_dummy, &sa, 0) == 0) {
 			fprintf(stderr, "\npopen: pipe creation failed!\n");
-			errno = GetLastError();
+			log_err(-1, __func__, "failed in CreatePipe for dummy");
 			return (0);
 		}
 		si.hStdInput = hRead_dummy;
@@ -129,7 +129,7 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 	} else if (strcmp(type, "w") == 0) {
 		if (CreatePipe(&hReadPipe_in, &hWritePipe_in, &sa, 0) == 0) {
 			fprintf(stderr, "\npopen: pipe creation failed!\n");
-			errno = GetLastError();
+			log_err(-1, __func__, "failed in CreatePipe for in");
 			return (0);
 		}
 		si.hStdInput = hReadPipe_in;
@@ -161,6 +161,9 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 
 	current_dir[0] = '\0';
 	_getcwd(current_dir, MAX_PATH+1);
+	if (current_dir[0] == '\0') {
+		log_err(-1, __func__, "failed in _getcwd");
+	}
 	if ((strstr(current_dir, "\\\\") != NULL) || (proc_info != NULL && proc_info->is_current_path_network)) {	/* \\host\share or Z:\*/
 		temp_dir = get_win_rootdir();
 		if (chdir(temp_dir?temp_dir:"C:\\") == 0)
@@ -177,7 +180,9 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 		else
 			fsuccess = CreateProcess(NULL, cmd_line, &sa, &sa, proc_info->bInheritHandle,
 				CREATE_NO_WINDOW, NULL, NULL, &si, &pio->pi);
-
+		if (fsuccess == 0) {
+			log_err(-1, __func__, "failed in CreateProcess");	
+		}
 		close_valid_handle(&(hRead_dummy));
 		close_valid_handle(&(hWrite_dummy));
 
@@ -185,12 +190,12 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 			pio->hJob = CreateJobObject(NULL, NULL);
 			if ((pio->hJob == NULL) || (pio->hJob == INVALID_HANDLE_VALUE)) {
 				fprintf(stderr, "\npopen: CreateJobObject() failed!\n");
-				errno = GetLastError();
+				log_err(-1, __func__, "failed in CreateJobObject");
 				return 0;
 			}
 			if (!AssignProcessToJobObject(pio->hJob, pio->pi.hProcess)) {
 				fprintf(stderr, "\npopen: AssignProcessToJobObject() failed!\n");
-				errno = GetLastError();
+				log_err(-1, __func__, "failed in AssignProcessToJobObject");
 				return 0;
 			}
 		}
@@ -218,7 +223,7 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 		return (1);
 	} else {
 		fprintf(stderr, "\npopen: CreateProcess() failed!\n");
-		errno = GetLastError();
+		log_err(-1, __func__, "failed in CreateProcess");
 		return (0);
 	}
 
@@ -257,6 +262,7 @@ win_pread2(pio_handles *pio)
 		}
 		else {/* wait failed */
 			errno = GetLastError();
+			log_err(-1, __func__, "failed in WaitForSingleObject");
 			return errno;
 		}
 	}
@@ -284,6 +290,9 @@ win_pread(pio_handles *pio, char *output, int len)
 	DWORD	nRead;
 	int		ret;
 	ret = ReadFile(pio->hReadPipe_out, output, len, &nRead, NULL);
+	if (!ret) {
+		log_err(-1, __func__, "failed in ReadFile");
+	}
 	return (nRead);
 }
 
@@ -306,7 +315,9 @@ int
 win_pwrite(pio_handles *pio, char *output, int len)
 {
 	DWORD	nWritten;
-	WriteFile(pio->hWritePipe_in, output, len, &nWritten, NULL);
+	if (!WriteFile(pio->hWritePipe_in, output, len, &nWritten, NULL)) {
+		log_err(-1, __func__, "failed in WriteFile");
+	}
 	return (nWritten);
 }
 /**
@@ -342,15 +353,19 @@ void
 win_pclose(pio_handles *pio)
 {
 	DWORD rc = 0;
+	int ret = 0;
 	if (pio) {
 		win_pclose2(pio);
 		if ((pio->pi.hProcess != NULL) && (pio->pi.hProcess != INVALID_HANDLE_VALUE)) {
 			/* Terminate the jobs object or the process only if it is not already exited */
 			if ((GetExitCodeProcess(pio->pi.hProcess, &rc)) && (rc == STILL_ACTIVE)) {
 				if (pio->hJob != INVALID_HANDLE_VALUE && pio->hJob != NULL)
-					TerminateJobObject(pio->hJob, 0);
+					ret = TerminateJobObject(pio->hJob, 0);
 				else
-					TerminateProcess(pio->pi.hProcess, 0);
+					ret = TerminateProcess(pio->pi.hProcess, 0);
+				if(!ret) {
+					log_err(-1, __func__, "failed to terminate process");	
+				}
 			}
 		}
 		close_valid_handle(&(pio->pi.hProcess));

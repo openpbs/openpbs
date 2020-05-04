@@ -91,8 +91,6 @@ typedef NTSTATUS(NTAPI *NtCreateToken_t)
 	PTOKEN_SOURCE /* identifies creator of token*/
 	);
 
-static NtCreateToken_t NtCreateToken=NULL;
-
 #define	WAIT_TIME_FOR_ACTIVE_SESSION	100	/* While waiting for an active session in loop, sleep for 100 seconds */
 
 /*
@@ -396,17 +394,21 @@ sid_dup(SID *src_sid)
 	DWORD	sid_len_need;
 	SID	*dest_sid = NULL;
 
-	if ((src_sid == NULL) || (!IsValidSid(src_sid)))
+	if ((src_sid == NULL) || (!IsValidSid(src_sid))) {
+		log_err(-1, __func__, "Invalid sid");
 		return NULL;	/* nothing happens */
+	}
 
 	sid_len_need = GetLengthSid(src_sid);
 
 	if ((dest_sid = (SID *)LocalAlloc(LPTR, sid_len_need)) == NULL) {
+		log_err(-1, __func__, "failed to allocate memory");
 		return NULL;
 	}
 
 	if (CopySid(sid_len_need, dest_sid, src_sid) == 0) {
 		LocalFree(dest_sid);
+		log_err(-1, __func__, "failed in CopySid");
 		return NULL;
 	}
 
@@ -430,11 +432,13 @@ create_administrators_sid(void)
 {
 	SID_IDENTIFIER_AUTHORITY	sid_auth = SECURITY_NT_AUTHORITY;
 	SID				*sid = NULL;
-	SID                             *sid_tmp = NULL;
+	SID             *sid_tmp = NULL;
 
 	if (AllocateAndInitializeSid(&sid_auth, 2, SECURITY_BUILTIN_DOMAIN_RID,
-		DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0)
+		DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0) {
+		log_err(-1, __func__, "failed in AllocateAndInitializeSid");
 		return NULL;
+	}
 
 	/* Need to make a duplicate that is freeable by LocalFree() */
 	/* (and not FreeSid) for consistency throughout the code */
@@ -466,10 +470,11 @@ create_everyone_sid(void)
 	SID				*sid;
 	SID                             *sid_tmp = NULL;
 
-
 	if (AllocateAndInitializeSid(&sid_auth, 1, SECURITY_WORLD_RID,
-		0, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0)
+		0, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0) {
+		log_err(-1, __func__, "failed in AllocateAndInitializeSid");
 		return NULL;
+	}
 
 	/* Need to make a duplicate that is freeable by LocalFree() */
 	/* (and not FreeSid) for consistency throughout the code */
@@ -504,14 +509,17 @@ create_domain_users_sid(void)
 	SID                             *sid_tmp = NULL;
 	SID                             *usid = NULL;
 	BYTE				auth_ct = 0;
+	int					retval = 0;
 
 	usid = getusersid(getlogin());
-	if (usid == NULL)
+	if (usid == NULL) {
+		log_err(-1, __func__, "Unable to find user sid");
 		return NULL;
+	}
 
 	auth_ct = *GetSidSubAuthorityCount(usid);
 
-	AllocateAndInitializeSid(&sid_auth, auth_ct,
+	retval = AllocateAndInitializeSid(&sid_auth, auth_ct,
 		(auth_ct == 1) ? DOMAIN_GROUP_RID_USERS:
 		((auth_ct > 1) ? *GetSidSubAuthority(usid, 0) : 0),
 		(auth_ct == 2) ? DOMAIN_GROUP_RID_USERS:
@@ -529,7 +537,9 @@ create_domain_users_sid(void)
 		(auth_ct == 8) ? DOMAIN_GROUP_RID_USERS:
 		((auth_ct > 8) ? *GetSidSubAuthority(usid, 7) : 0),
 		&sid_tmp);
-
+	if (retval == 0) {
+		log_err(-1, __func__, "failed in AllocateAndInitializeSid");
+	}
 	LocalFree(usid);
 	/* Need to make a duplicate that is freeable by LocalFree() */
 	/* (and not FreeSid) for consistency throughout the code */
@@ -581,14 +591,17 @@ get_full_username(char *username,
 		sprintf(tryname, "%s\\%s", get_saved_env("USERDOMAIN"),
 			username);
 		strcpy(actual_name, tryname);
-		LookupAccountName(0, tryname, sid, &sid_sz, domain,
-			&domain_sz, psid_type);
+		if (LookupAccountName(0, tryname, sid, &sid_sz, domain,
+			&domain_sz, psid_type) == 0) {
+				log_err(-1, __func__,  "failed in LookupAccountName (tryname)");
+			}
 	}
 
 	if (sid_sz <= 0) {
 		strcpy(actual_name, username);
-		LookupAccountName(0, username, sid, &sid_sz, domain,
-			&domain_sz, psid_type);
+		if (LookupAccountName(0, username, sid, &sid_sz, domain,
+			&domain_sz, psid_type) == 0) {
+				log_err(-1, __func__,  "failed in LookupAccountName (username)");		}
 	}
 
 	if (sid_sz <= 0)
@@ -601,6 +614,7 @@ get_full_username(char *username,
 	if (LookupAccountName(0, actual_name, sid, &sid_sz, domain,
 		&domain_sz, psid_type) == 0) {
 		LocalFree(sid);
+		log_err(-1, __func__,  "failed in LookupAccountName (actualname)");
 		return NULL;
 	}
 
@@ -639,8 +653,8 @@ GetComputerDomainName(char domain_name[PBS_MAXHOSTNAME+1])
 	PWCHAR name = NULL;
 	char local_name[MAX_COMPUTERNAME_LENGTH+1];
 	DWORD local_sz;
-
 	int	rval = 0;
+	NTSTATUS lsa_stat;
 
 	if (the_domain_name != NULL) {	/* used the cached value */
 		strncpy(domain_name, the_domain_name, PBS_MAXHOSTNAME);
@@ -649,15 +663,17 @@ GetComputerDomainName(char domain_name[PBS_MAXHOSTNAME+1])
 
 	strcpy(local_name, "");
 	local_sz = sizeof(local_name);
-	GetComputerName(local_name, &local_sz);
+	if (GetComputerName(local_name, &local_sz) == 0) {
+		log_err(-1, __func__, "failed in GetComputerName");
+	}
 	strncpy(domain_name, local_name, PBS_MAXHOSTNAME);
 
 	ZeroMemory(&obj_attrs, sizeof(obj_attrs));
-	if (LsaOpenPolicy(NULL, &obj_attrs, POLICY_VIEW_LOCAL_INFORMATION,
-	&h_policy) \
-                                                        != ERROR_SUCCESS )
+	lsa_stat = LsaOpenPolicy(NULL, &obj_attrs, POLICY_VIEW_LOCAL_INFORMATION, &h_policy);
+	if ( lsa_stat != ERROR_SUCCESS ) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in LsaOpenPolicy, with errno %d", LsaNtStatusToWinError(lsa_stat));
 		goto get_computer_domain_name_end;
-
+	}
 
 	ntsResult = LsaQueryInformationPolicy(
 		h_policy,    // Open handle to a Policy object.
@@ -685,6 +701,9 @@ GetComputerDomainName(char domain_name[PBS_MAXHOSTNAME+1])
 		}
 		wcstombs(domain_name, name, PBS_MAXHOSTNAME);
 		rval = 1;
+	} else {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in LsaQueryInformationPolicy, with errno %d",
+				LsaNtStatusToWinError(ntsResult));
 	}
 
 get_computer_domain_name_end:
@@ -734,6 +753,7 @@ get_dcinfo(char *net_name,
 	/* c_data_[2] is the domain controller hostname.  	*/
 	char	*c_data = NULL;	/* returned cached data */
 	char	c_data_[3][PBS_MAXHOSTNAME+1] = {0};
+	NET_API_STATUS nBufferStat;
 
 	if (net_name == NULL)
 		return (0);
@@ -757,7 +777,11 @@ get_dcinfo(char *net_name,
 		if (dctrl) {
 			strncpy(domain_name, dctrl->DomainName, PBS_MAXHOSTNAME);
 			strncpy(domain_ctrl, dctrl->DomainControllerName, PBS_MAXHOSTNAME);
-			NetApiBufferFree(dctrl);
+			nBufferStat = NetApiBufferFree(dctrl);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d", 
+					nBufferStat);
+			}
 
 			/* cache "success" case */
 			strcpy(c_data_[0], "1");
@@ -936,7 +960,7 @@ getusersid2(char *uname,
 	DWORD		dwBufferSize = 0;
 	PTOKEN_USER	pTokenUser = NULL;
 	char		*login_full = NULL;
-	char		logb[LOG_BUF_SIZE] = {'\0' } ;
+	int			ret = 0;
 
 	if (uname == NULL)
 		return NULL;
@@ -992,14 +1016,13 @@ getusersid2(char *uname,
 			/*determine sid of current user without making query to the domain.*/
 			/* Open the access token associated with the calling process. */
 			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
-				sprintf(logb,"OpenProcessToken failed. GetLastError returned: %d", GetLastError());
-				log_err(-1, "getusersid2", logb);
+				log_err(-1, __func__, "failed in OpenProcessToken");
 				return NULL;
 				/**     this function returns SID. **/
 			}
 
 			/* get the size of the memory buffer needed for the SID */
-			GetTokenInformation(hToken, TokenUser, NULL, 0, &dwBufferSize);
+			ret = GetTokenInformation(hToken, TokenUser, NULL, 0, &dwBufferSize);
 			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
 
 				pTokenUser = (PTOKEN_USER)malloc(dwBufferSize);
@@ -1011,6 +1034,9 @@ getusersid2(char *uname,
 
 			} else { /* actual error */
 				CloseHandle(hToken);
+				if (ret == 0) {
+					log_err(-1, __func__, "failed in GetTokenInformation (dwBufferSize)");
+				}
 				return NULL;
 			}
 
@@ -1019,15 +1045,13 @@ getusersid2(char *uname,
 			/* Retrieve the token information in a TOKEN_USER structure. */
 			if (!GetTokenInformation(hToken, TokenUser, pTokenUser, dwBufferSize,
 				&dwBufferSize)) {
-				sprintf(logb,"GetTokenInformation failed. GetLastError returned: %d", GetLastError());
-				log_err(-1, "getusersid2", logb);
+				log_err(-1, __func__, "failed in GetTokenInformation (hToken)");
 				CloseHandle(hToken);
 				free(pTokenUser);
 				return NULL;
 			}
 			if (!IsValidSid(pTokenUser->User.Sid)) {
-				sprintf(logb,"The owner SID is invalid.");
-				log_err(-1, "getusersid2", logb);
+				log_err(-1, __func__, "owner SID is invalid");
 				CloseHandle(hToken);
 				free(pTokenUser);
 				return NULL;
@@ -1081,6 +1105,7 @@ getusername(SID *sid)
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
+		log_err(-1, __func__, "failed in LookupAccountSid");
 		return NULL;
 	}
 
@@ -1130,6 +1155,7 @@ getusername_full(SID *sid)
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
+		log_err(-1, __func__, "failed in LookupAccountSid");
 		return NULL;
 	}
 
@@ -1206,11 +1232,13 @@ getgrpsid(char *grpnam)
 			}
 
 			if ((sid = (SID *)LocalAlloc(LPTR, sid_sz)) == NULL) {
+				log_err(-1, __func__, "failed in LocalAlloc");
 				return NULL;
 			}
 
 			if (LookupAccountName(0, grpnam2, sid, &sid_sz,
 				domain, &domain_sz, &type) == 0) {
+				log_err(-1, __func__, "failed in LookupAccountName");
 				LocalFree(sid);
 				return NULL;
 			}
@@ -1273,6 +1301,7 @@ getgrpname(SID *sid)
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
+		log_err(-1, __func__, "failed in LookupAccountSid");
 		return NULL;
 	}
 
@@ -1322,6 +1351,7 @@ getgrpname_full(SID *sid)
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
+		log_err(-1, __func__, "failed in LookupAccountSid");
 		return NULL;
 	}
 
@@ -1376,6 +1406,7 @@ getGlobalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	char    dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
 	wchar_t dctrlw[PBS_MAXHOSTNAME+1] = {'\0'};
 	char	*p = NULL;
+	NET_API_STATUS nBufferStat;
 
 	/* user: <domain_name>\<user_name> */
 	if ((p=strrchr(user, '\\'))) {
@@ -1402,7 +1433,11 @@ getGlobalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	do {
 		pref *= 4096;
 		if (groups) {
-			NetApiBufferFree(groups);
+			nBufferStat = NetApiBufferFree(groups);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+						nBufferStat);
+			}
 			groups = NULL;
 		}
 
@@ -1417,7 +1452,11 @@ getGlobalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 
 	if (rc != NERR_Success) {
 		if (groups) {
-			NetApiBufferFree(groups);
+			nBufferStat = NetApiBufferFree(groups);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+						nBufferStat);
+			}
 			groups = NULL;
 			nread = 0;
 		}
@@ -1459,6 +1498,7 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	char    dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
 	wchar_t dctrlw[PBS_MAXHOSTNAME+1] = {'\0'};
 	char	*p = NULL;
+	NET_API_STATUS nBufferStat;
 
 	/* user: <domain_name>\<user_name> */
 	if ((p=strrchr(user, '\\'))) {
@@ -1485,7 +1525,11 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	do {
 		pref *= 4096;
 		if (groups) {
-			NetApiBufferFree(groups);
+			nBufferStat = NetApiBufferFree(groups);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+					nBufferStat);
+			}
 			groups = NULL;
 		}
 
@@ -1501,7 +1545,11 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 
 	if (rc != NERR_Success) {
 		if (groups) {
-			NetApiBufferFree(groups);
+			nBufferStat = NetApiBufferFree(groups);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+					nBufferStat);
+			}
 			groups = NULL;
 			nread = 0;
 		}
@@ -1538,6 +1586,7 @@ isLocalAdminMember(char *user)
 	DWORD	totentries = 0;
 	DWORD	i = 0;
 	int	ret = 0;
+	NET_API_STATUS status;
 
 	sid = create_administrators_sid();
 
@@ -1550,8 +1599,11 @@ isLocalAdminMember(char *user)
 	mbstowcs(userw, user, PBS_MAXHOSTNAME+UNLEN+1);
 	mbstowcs(gnamew, gname, GNLEN);
 
-	if (NetLocalGroupGetMembers(NULL, gnamew, 2, (LPBYTE *)&members,
-		MAX_PREFERRED_LENGTH, &nread, &totentries, NULL) != NERR_Success) {
+	status = NetLocalGroupGetMembers(NULL, gnamew, 2, (LPBYTE *)&members,
+				MAX_PREFERRED_LENGTH, &nread, &totentries, NULL);
+	if (status != NERR_Success) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetLocalGroupGetMembers, with errno %d",
+			status);
 		goto isLocalAdminMember_end;
 	}
 
@@ -1570,7 +1622,11 @@ isLocalAdminMember_end:
 		(void)free(gname);
 	}
 	if (members) {
-		NetApiBufferFree(members);
+		status = NetApiBufferFree(members);
+		if (status != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+				status);
+		}
 	}
 
 	return (ret);
@@ -1600,6 +1656,7 @@ isMember(char *user, char *group)
 	char		realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	SID_NAME_USE	sid_type;
 	SID		*sid = NULL;
+	NET_API_STATUS nBufferStat;
 
 	sid = get_full_username(user, realuser, &sid_type);
 
@@ -1617,11 +1674,19 @@ isMember(char *user, char *group)
 
 		for (i=0; i < nread; i++) {
 			if (wcscmp(groups[i].grui0_name, groupw) == 0) {
-				NetApiBufferFree(groups);
+				nBufferStat = NetApiBufferFree(groups);
+				if (nBufferStat != NERR_Success) {
+					log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+						nBufferStat);
+				}
 				return (TRUE);
 			}
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+				nBufferStat);
+		}
 		groups = NULL;
 	}
 
@@ -1630,11 +1695,19 @@ isMember(char *user, char *group)
 
 		for (i=0; i < nread; i++) {
 			if (wcscmp(groups[i].grui0_name, groupw) == 0) {
-				NetApiBufferFree(groups);
+				nBufferStat = NetApiBufferFree(groups);
+				if (nBufferStat != NERR_Success) {
+					log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+						nBufferStat);
+				}
 				return (TRUE);
 			}
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d",
+				nBufferStat);
+		}
 		groups = NULL;
 	}
 	return (FALSE);
@@ -1684,12 +1757,15 @@ isLocalSystem()
    * and get user sid
    */
   if (!OpenProcessToken(GetCurrentProcess(),
-	  TOKEN_QUERY,
-	  &hToken_currentproc))
+	  TOKEN_QUERY, &hToken_currentproc)) {
+	  log_err(-1, __func__, "failed in OpenProcessToken");
 	  return FALSE;
+	}
+	  
   if (!GetTokenInformation(hToken_currentproc, TokenUser, pusertoken,
 	  sizeof(usertoken), &usertoken_returnlen))
   {
+	  log_err(-1, __func__, "failed in GetTokenInformation");
 	  CloseHandle(hToken_currentproc);
 	  return FALSE;
   }
@@ -1697,11 +1773,15 @@ isLocalSystem()
 
   /* See if user sid is Local System SID */
   if (!AllocateAndInitializeSid(&sid_ia_NT, 1, SECURITY_LOCAL_SYSTEM_RID,
-	  0, 0, 0, 0, 0, 0, 0, &pls_sid))
+	  0, 0, 0, 0, 0, 0, 0, &pls_sid)) {
+	  log_err(-1, __func__, "failed in AllocateAndInitializeSid");
 	  return FALSE;
+	  }
 
   is_local_system = EqualSid(pusertoken->User.Sid, pls_sid);
-  FreeSid(pls_sid);
+  if (FreeSid(pls_sid) != NULL) {
+	  log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in FreeSid");
+  }
 
   return is_local_system;
 }
@@ -1748,6 +1828,7 @@ isAdminPrivilege(char *user)
 	char	c_data_[1][6] = {0};/* 6 is for length of MAX("TRUE","FALSE") */
 
 	char *gfull = NULL;
+	NET_API_STATUS nBufferStat;
 
 	if (user == NULL)
 		return (FALSE);
@@ -1793,7 +1874,11 @@ isAdminPrivilege(char *user)
 					(grid == DOMAIN_ALIAS_RID_SYSTEM_OPS) ||
 					(grid == DOMAIN_GROUP_RID_ENTERPRISE_ADMINS) ||
 					(grid == DOMAIN_GROUP_RID_SCHEMA_ADMINS)) {
-					NetApiBufferFree(groups);
+					nBufferStat = NetApiBufferFree(groups);
+					if (nBufferStat != NERR_Success) {
+						log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (global groups: getgrpsid), with errno %d",
+							nBufferStat);
+					}
 					LocalFree(gsid);
 
 					strcpy(c_data_[0], "TRUE");
@@ -1810,7 +1895,11 @@ isAdminPrivilege(char *user)
 						strcpy(c_data_[0], "TRUE");
 						cache_data(__func__, user, (char *)c_data_,
 							1, 6);
-						NetApiBufferFree(groups);
+						nBufferStat = NetApiBufferFree(groups);
+						if (nBufferStat != NERR_Success) {
+							log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree(getgrpname_full), with errno %d",
+								nBufferStat);
+						}
 						LocalFree(gsid);
 						free(gfull);
 						return (TRUE);
@@ -1820,7 +1909,11 @@ isAdminPrivilege(char *user)
 				LocalFree(gsid);
 			}
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (global groups), with errno %d",
+				nBufferStat);
+		}
 		groups = NULL;
 	}
 
@@ -1838,8 +1931,11 @@ isAdminPrivilege(char *user)
 					(grid == DOMAIN_ALIAS_RID_SYSTEM_OPS) ||
 					(grid == DOMAIN_GROUP_RID_ENTERPRISE_ADMINS) ||
 					(grid == DOMAIN_GROUP_RID_SCHEMA_ADMINS)) {
-					NetApiBufferFree(groups);
-
+					nBufferStat = NetApiBufferFree(groups);
+					if (nBufferStat != NERR_Success) {
+						log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (local groups: getgrpsid), with errno %d",
+							nBufferStat);
+					}
 					strcpy(c_data_[0], "TRUE");
 					cache_data(__func__, user, (char *)c_data_,
 						1, 6);
@@ -1848,7 +1944,11 @@ isAdminPrivilege(char *user)
 				}
 			}
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (local groups), with errno %d",
+				nBufferStat);
+		}
 		groups = NULL;
 	}
 
@@ -1906,6 +2006,7 @@ getdefgrpname(char *user)
 
 	char	*c_data = NULL;
 	char	c_data_[1][GNLEN+1] = {0};
+	NET_API_STATUS nBufferStat;
 
 	if (user == NULL)
 		return NULL;
@@ -1928,8 +2029,11 @@ getdefgrpname(char *user)
 	/* Search Local groups */
 	if (getLocalGroups(realuser, &groups) > 0 && groups) {
 		wcstombs(group, groups[0].grui0_name, GNLEN);
-		NetApiBufferFree(groups);
-
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (local groups), with errno %d",
+				nBufferStat);
+		}
 		strcpy(c_data_[0], group);
 		cache_data(__func__, user, (char *)c_data_, 1, GNLEN+1);
 
@@ -1939,8 +2043,11 @@ getdefgrpname(char *user)
 	/* Search Global groups */
 	if (getGlobalGroups(realuser, &groups) > 0 && groups) {
 		wcstombs(group, groups[0].grui0_name, GNLEN);
-		NetApiBufferFree(groups);
-
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (global groups), with errno %d",
+				nBufferStat);
+		}
 		strcpy(c_data_[0], group);
 		cache_data(__func__, user, (char *)c_data_, 1, GNLEN+1);
 
@@ -1989,8 +2096,10 @@ getlogin(void)
 
 		if (OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS,
 			TRUE, &token)  == 0) {
-			OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
-				&token);
+			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
+					&token) == 0) {
+				log_err(-1, __func__, "failed in OpenProcessToken");
+			}
 		}
 		if (token == INVALID_HANDLE_VALUE) {
 			strcpy(usern, "");
@@ -2025,6 +2134,8 @@ getlogin(void)
 				else {
 					strcpy(usern, "");
 				}
+			} else {
+				log_err(-1, __func__, "failed in GetTokenInformation");
 			}
 			(void)free(buf);
 		}
@@ -2053,8 +2164,10 @@ getlogin_full(void)
 
 		if (OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS,
 			TRUE, &token)  == 0) {
-			OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
-				&token);
+			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
+					&token) == 0) {
+				log_err(-1, __func__, "failed in OpenProcessToken");
+			}
 		}
 		if (token == INVALID_HANDLE_VALUE) {
 			strcpy(usern, "");
@@ -2089,6 +2202,8 @@ getlogin_full(void)
 				else {
 					strcpy(usern, "");
 				}
+			} else {
+				log_err(-1, __func__, "failed in GetTokenInformation");
 			}
 			(void)free(buf);
 		}
@@ -2206,6 +2321,7 @@ getgids(char *user, SID *grp[], DWORD rids[])
 
 	char		*c_data = NULL;
 	char		c_data_[_MAX_GROUPS][GNLEN+1] = {0};
+	NET_API_STATUS	nBufferStat;
 
 	if (user == NULL)
 		return (0);
@@ -2267,7 +2383,10 @@ getgids(char *user, SID *grp[], DWORD rids[])
 				LocalFree(g);
 			}
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (global groups), with errno %d", nBufferStat);
+		}
 		groups = NULL;
 	}
 
@@ -2302,7 +2421,10 @@ getgids(char *user, SID *grp[], DWORD rids[])
 			}
 
 		}
-		NetApiBufferFree(groups);
+		nBufferStat = NetApiBufferFree(groups);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (local groups), with errno %d", nBufferStat);
+		}
 		groups = NULL;
 	}
 	cache_data(__func__, user, (char *)c_data_, j, GNLEN+1);
@@ -2310,28 +2432,6 @@ getgids(char *user, SID *grp[], DWORD rids[])
 	return (j);
 }
 
-/* Returns 1 if gname matches one of the SIDS in gidlist[len]; 0 otherwise */
-int
-inGroups(char *gname, SID *gidlist[], int len)
-{
-
-	int	i, ret;
-	char *gname2;
-
-	ret = 0;
-	for (i=0; i < len; i++) {
-		gname2 = getgrpname_full(gidlist[i]);
-		if (gname2 == NULL)
-			gname2 = getusername(gidlist[i]);
-
-		if (strcmp(gname, gname2) == 0) {
-			ret = 1;
-			break;
-		}
-	}
-	(void)free(gname2);
-	return (ret);
-}
 
 /** @fn default_local_homedir
  * @brief       return the default local HomeDirectory of a 'username'.
@@ -2365,7 +2465,6 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	static  char 	homestr[MAXPATHLEN+1] = {'\0'};
 	char		profilepath[MAXPATHLEN+1] = {'\0'};
 	char		personal_path[MAX_PATH] = {'\0'};
-	char		logb[LOG_BUF_SIZE] = {'\0' } ;
 	DWORD		profsz;
 	HANDLE		userlogin;
 	int		became_admin = 0;
@@ -2398,13 +2497,15 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 			/* LoadUserProfile() or LogonUserNoPass() */
 			if (! OpenProcessToken(GetCurrentProcess(),
 				TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, &ht)) {
-				sprintf(logb,"OpenProcessToken error : %d", GetLastError);
-				log_err(-1, "default_local_homedir", logb);
+				log_err(-1, __func__, "failed in OpenProcessToken");
 				return NULL;
 			}
 			userlogin = ht;
 		} else {
 			userlogin = LogonUserNoPass(username);
+			if (userlogin == 0) {
+				log_err(-1, __func__, "failed in LogonUserNoPass");
+			}
 		}
 		token_created_here = 1;
 	}
@@ -2414,12 +2515,16 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	profilepath[0] = '\0';
 	if (GetUserProfileDirectory(userlogin, profilepath,
 		&profsz) == 0) {
-		if (LoadUserProfile(userlogin, &pi) == 0)
+		if (LoadUserProfile(userlogin, &pi) == 0) {
+			log_err(-1, __func__, "failed in LoadUserProfile");
 			goto default_local_homedir_end;
+		}
 
 		if (GetUserProfileDirectory(userlogin, profilepath,
-			&profsz) == 0)
+				&profsz) == 0) {
+			log_err(-1, __func__, "failed in GetUserProfileDirectory");
 			goto default_local_homedir_end;
+		}
 	}
 
 	if (ret_profile_path) {
@@ -2433,17 +2538,20 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	/* "My Documents" in Portuguese is actually "Meu Documentos" */
 
 	strcpy(personal_path, "");
-	SHGetFolderPath(NULL, CSIDL_PERSONAL, userlogin,
-		SHGFP_TYPE_DEFAULT, personal_path);
+	if (SHGetFolderPath(NULL, CSIDL_PERSONAL, userlogin,
+			SHGFP_TYPE_DEFAULT, personal_path) != S_OK) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in SHGetFolderPath");
+	}
 
 	sprintf(homestr, "%s\\PBS Pro", personal_path);
-
 
 	default_local_homedir_end:
 
 	if (userlogin != INVALID_HANDLE_VALUE) {
 		if (pi.hProfile != INVALID_HANDLE_VALUE)
-			UnloadUserProfile(userlogin, pi.hProfile);
+			if (!UnloadUserProfile(userlogin, pi.hProfile)) {
+				log_err(-1, __func__, "failed in UnloadUserProfile");
+			}
 
 		if (token_created_here)
 			CloseHandle(userlogin);
@@ -2472,6 +2580,7 @@ map_unc_path(char *path, struct passwd *pw)
 	NETRESOURCE nr;
 	static char local_drive[MAXPATHLEN+1] = {'\0'};
 	int	    lsize = MAXPATHLEN+1;
+	char *tmp = NULL;
 
 	strcpy(local_drive, "");
 	if (path == NULL)
@@ -2508,10 +2617,9 @@ map_unc_path(char *path, struct passwd *pw)
 		(void)free(nr.lpRemoteName);
 
 	if (ret != 0) { /* unc path failed to map */
-
-		strncpy(local_drive,
-			default_local_homedir(pw->pw_name, pw->pw_userlogin, 0),
-			MAXPATHLEN+1);
+		tmp = default_local_homedir(pw->pw_name, pw->pw_userlogin, 0);
+		if (tmp != NULL)
+			strncpy(local_drive, tmp, MAXPATHLEN+1);
 		return (local_drive);
 	}
 
@@ -2548,13 +2656,17 @@ is_network_drive_path(char *path)
 void
 unmap_unc_path(char *path)
 {
+	DWORD rc = 0;
 	if (path == NULL || path[0] == '\0')
 		return;
 
 	if (path[strlen(path)-1] != ':')
 		return;
 
-	WNetCancelConnection2(path, CONNECT_UPDATE_PROFILE, TRUE);
+	rc = WNetCancelConnection2(path, CONNECT_UPDATE_PROFILE, TRUE);
+	if (rc == NO_ERROR) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in WNetCancelConnection2, with errno %d", rc);
+	}
 }
 
 
@@ -2586,6 +2698,7 @@ getAssignedHomeDirectory(char *user)
 
 	char	*c_data = NULL;
 	char	c_data_[1][CACHE_STR_SIZE] = {0};
+	NET_API_STATUS	stat;
 
 	if (user == NULL)
 		return NULL;
@@ -2614,7 +2727,10 @@ getAssignedHomeDirectory(char *user)
 		*p = '\\';
 		mbstowcs(dnamew, dname, PBS_MAXHOSTNAME);
 
-		NetGetDCName(NULL, dnamew, (LPBYTE *)&dcw);
+		stat = NetGetDCName(NULL, dnamew, (LPBYTE *)&dcw);
+		if (stat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetGetDCName with errno %d", stat);
+		}
 	}
 
 	if ((wrap_NetUserGetInfo(0, realuserw, 1,
@@ -2631,8 +2747,16 @@ getAssignedHomeDirectory(char *user)
 				homedir = (char *)malloc(len+1);
 
 				if (homedir == NULL) {
-					NetApiBufferFree(uinfo);
-					if (dcw) NetApiBufferFree(dcw);
+					stat = NetApiBufferFree(uinfo);
+					if (stat != NERR_Success) {
+						log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for user info), with errno %d", stat);
+					}
+					if (dcw) {
+						stat = NetApiBufferFree(dcw);
+						if (stat != NERR_Success) {
+							log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for domain controller), with errno %d", stat);
+						}
+					}
 
 					c_data_[0][0] = '\0';
 					cache_data(__func__, user, (char *)c_data_,
@@ -2641,9 +2765,16 @@ getAssignedHomeDirectory(char *user)
 					return NULL;
 				}
 				wcstombs(homedir, uinfo->usri1_home_dir, len);
-				NetApiBufferFree(uinfo);
-				if (dcw) NetApiBufferFree(dcw);
-
+				stat = NetApiBufferFree(uinfo);
+				if (stat != NERR_Success) {
+					log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for uinfo), with errno %d", stat);
+				}
+				if (dcw) {
+					stat = NetApiBufferFree(dcw);
+					if (stat != NERR_Success) {
+						log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for dcw, with errno %d", stat);
+					}
+				}
 				if (strlen(homedir) < CACHE_STR_SIZE) {
 					strcpy(c_data_[0], homedir);
 					cache_data(__func__, user, (char *)c_data_,
@@ -2654,10 +2785,18 @@ getAssignedHomeDirectory(char *user)
 			}
 		}
 
-		NetApiBufferFree(uinfo);
+		stat = NetApiBufferFree(uinfo);
+		if (stat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for uinfo, no homedir), with errno %d", stat);
+		}
 	}
 
-	if (dcw) NetApiBufferFree(dcw);
+	if (dcw) {
+		stat = NetApiBufferFree(dcw);
+		if (stat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree (for user info, no dcw), with errno %d", stat);
+		}
+	}
 
 	if (homedir == NULL) {
 		c_data_[0][0] = '\0';
@@ -2691,6 +2830,7 @@ getHomedir(char *user)
 	HANDLE	userlogin = INVALID_HANDLE_VALUE;
 	int	i;
 	struct passwd *pwdp = NULL;
+	char *tmp = NULL;
 
 
 	homedir = getAssignedHomeDirectory(user);
@@ -2711,53 +2851,10 @@ getHomedir(char *user)
 			break;
 		}
 	}
-	homedir = strdup(default_local_homedir(user, userlogin, 0));
+	tmp = default_local_homedir(user, userlogin, 0);
+	if (tmp != NULL)
+		homedir = strdup(tmp);
 	return (homedir);
-}
-
-/* Returns the user's .rhosts file path					*/
-/* The username and user logon handle must be given as input.           */
-/* 									*/
-/* Algorithm:								*/
-/*									*/
-/*	if [HOME DIRECTORY]\.rhosts exists, returns it.			*/
-/*	else if [PROFILE PATH]\.rhosts exists, returns it.		*/
-/*	else no .rhosts file. (return "")				*/
-/*									*/
-/* NOTE: Please call this function under the user's security context.   */
-
-char *
-getRhostsFile(char *user, HANDLE userlogin)
-{
-
-	struct  stat sbuf;
-	static char rhosts_file[MAXPATHLEN+1] = {'\0'};
-	char	*homedir = NULL;
-	char	profilepath[MAXPATHLEN+1] = {'\0'};
-
-
-	homedir = getAssignedHomeDirectory(user);
-
-	if (homedir) {
-		sprintf(rhosts_file, "%s\\.rhosts", homedir);
-		(void)free(homedir);
-		homedir = NULL;
-
-		if (lstat(rhosts_file, &sbuf) == 0)
-			return (rhosts_file);
-	}
-
-	/* Let's call default_local_homedir() to force */
-	/* creation of [PROFILE PATH] if it doesn't exist. */
-
-	strncpy(profilepath, default_local_homedir(user, userlogin, 1), MAXPATHLEN);
-
-	sprintf(rhosts_file, "%s\\.rhosts", profilepath);
-
-	if (lstat(rhosts_file, &sbuf) == 0)
-		return (rhosts_file);
-
-	return ("");
 }
 
 /* returns 1 if privname is enabled for current process; otherwise, returns
@@ -2772,22 +2869,27 @@ has_privilege(char *privname)
 	int	i;
 	int	stat = 0;
 
+
 	if (!LookupPrivilegeValue(NULL, privname, &luid)) {
+		log_err(-1, __func__, "failed in LookupPrivilegeValue");
 		goto has_privilege_end;
 	}
 
 	if (!OpenProcessToken(GetCurrentProcess(),
 		TOKEN_QUERY|TOKEN_ADJUST_PRIVILEGES, &procToken)) {
+		log_err(-1, __func__, "failed in OpenProcessToken");
 		goto has_privilege_end;
 	}
-	GetTokenInformation(procToken, TokenPrivileges, toke, 0, &tokelen);
 
+	GetTokenInformation(procToken, TokenPrivileges, toke, 0, &tokelen);
 	toke = (TOKEN_PRIVILEGES *)malloc(tokelen);
 	if (toke == NULL) {
+		log_err(errno, __func__, "failed to allocate memory for toke");
 		goto has_privilege_end;
 	}
-	GetTokenInformation(procToken, TokenPrivileges, toke, tokelen,
-		&tokelen);
+	if (!GetTokenInformation(procToken, TokenPrivileges, toke, tokelen, &tokelen)) {
+		log_err(-1, __func__, "failed in GetTokenInformation");
+	}
 	for (i=0; i< (int)toke->PrivilegeCount; i++) {
 		if (memcmp(&toke->Privileges[i].Luid, &luid,
 			sizeof(LUID)) == 0) {
@@ -2801,6 +2903,7 @@ has_privilege(char *privname)
 	}
 
 	if (!AdjustTokenPrivileges(procToken, FALSE, toke, 0, NULL, 0)) {
+		log_err(-1, __func__, "failed in AdjustTokenPrivileges");
 		goto has_privilege_end;
 	}
 	stat = 1;
@@ -2825,11 +2928,13 @@ ena_privilege(char *privname)
 	int	stat = 0;
 
 	if (!LookupPrivilegeValue(NULL, privname, &luid)) {
+		log_err(-1, __func__, "failed in LookupPrivilegeValue");
 		goto ena_privilege_end;
 	}
 
 	if (!OpenProcessToken(GetCurrentProcess(),
-		TOKEN_QUERY|TOKEN_ADJUST_PRIVILEGES, &procToken)) {
+			TOKEN_QUERY|TOKEN_ADJUST_PRIVILEGES, &procToken)) {
+		log_err(-1, __func__, "failed in OpenProcessToken");
 		goto ena_privilege_end;
 	}
 
@@ -2838,6 +2943,7 @@ ena_privilege(char *privname)
 	toke.Privileges[0].Luid = luid;
 
 	if (!AdjustTokenPrivileges(procToken, FALSE, &toke, 0, NULL, 0)) {
+		log_err(-1, __func__, "failed in AdjustTokenPrivileges");
 		goto ena_privilege_end;
 	}
 	stat = 1;
@@ -2874,16 +2980,19 @@ setgroups(int size, SID *grp[])
 
 	/* get the process token */
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &htok) == 0) {
+		log_err(-1, __func__, "failed in OpenProcessToken");
 		return (-1);
 	}
 
 	/* convert process token to impersonation token */
 	if (DuplicateTokenEx(htok, TOKEN_ALL_ACCESS, 0, DEFAULT_IMPERSONATION_LEVEL,
 		TokenImpersonation, &htok2) == 0) {
+		log_err(-1, __func__, "failed in DuplicateTokenEx");
 		return (-1);
 	}
 
 	if (CreateRestrictedToken(htok2, 0, 0, NULL, 0, NULL, i, groups, &ntok) == 0) {
+		log_err(-1, __func__, "failed in CreateRestrictedToken");
 		return (-1);
 	}
 	/* attach the impersonation token to thread (not process token!) */
@@ -3030,8 +3139,10 @@ luid2sid(LUID luid)
 	SID	*sid;
 	SID_IDENTIFIER_AUTHORITY nt_auth = SECURITY_NT_AUTHORITY;
 
-	AllocateAndInitializeSid(&nt_auth, 3, SECURITY_LOGON_IDS_RID,
-		luid.HighPart, luid.LowPart, 0, 0, 0, 0, 0, &sid);
+	if (!AllocateAndInitializeSid(&nt_auth, 3, SECURITY_LOGON_IDS_RID,
+			luid.HighPart, luid.LowPart, 0, 0, 0, 0, 0, &sid)) {
+		log_err(-1, __func__, "failed in AllocateAndInitializeSid");
+	}
 
 	return (sid);
 }
@@ -3046,13 +3157,17 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	ULONG numRights = 0;
 	int	len, i;
 	char privname[GNLEN+1] = {'\0'};
+	NTSTATUS lsa_stat;
 
 	if (hLsa == INVALID_HANDLE_VALUE || usid == NULL)
 		return NULL;
 
 	/* get user rights and add to list of user token privileges */
-	LsaEnumerateAccountRights(hLsa, usid, &lsaRights, &numRights);
-
+	lsa_stat = LsaEnumerateAccountRights(hLsa, usid, &lsaRights, &numRights);
+	if (lsa_stat != ERROR_SUCCESS) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in LsaEnumerateAccountRights, with errno %d",
+			LsaNtStatusToWinError(lsa_stat));
+	}
 	len = sizeof(TOKEN_PRIVILEGES) + \
 		((numRights-ANYSIZE_ARRAY)*sizeof(LUID_AND_ATTRIBUTES));
 
@@ -3066,8 +3181,10 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	for (i=0; i< (int)numRights; i++) {
 		token_privs->Privileges[i].Attributes = attrib;
 		wcstombs(privname, lsaRights[i].Buffer, sizeof(privname));
-		LookupPrivilegeValue(NULL, privname,
-			&token_privs->Privileges[i].Luid);
+		if (!LookupPrivilegeValue(NULL, privname,
+				&token_privs->Privileges[i].Luid)) {
+			log_err(-1, __func__, "failed in LookupPrivilegeValue");
+		}
 	}
 
 	LsaFreeMemory(lsaRights);
@@ -3086,6 +3203,7 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 	char privname[GNLEN+1] = {'\0'};
 	LUID	luid;
 	BOOL	found_match;
+	NTSTATUS lsa_stat;
 
 	if (hLsa == INVALID_HANDLE_VALUE)
 		return NULL;
@@ -3116,7 +3234,9 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 		for (j=0; j < (int)numRights; j++) {
 			wcstombs(privname, lsaRights[j].Buffer,
 				sizeof(privname));
-			LookupPrivilegeValue(NULL, privname, &luid);
+			if (!LookupPrivilegeValue(NULL, privname, &luid)) {
+				log_err(-1, __func__, "failed in LookupPrivilegeValue");
+			}
 			/* check to see if this luid already in list */
 			found_match = FALSE;
 			for (k=0; k < (int)token_privs->PrivilegeCount; k++) {
@@ -3134,7 +3254,11 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 			}
 
 		}
-		LsaFreeMemory(lsaRights);
+		lsa_stat = LsaFreeMemory(lsaRights);
+		if ( lsa_stat != ERROR_SUCCESS) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in LsaFreeMemory, with errno %d", 
+				LsaNtStatusToWinError(lsa_stat));
+		}
 	}
 	len = sizeof(TOKEN_PRIVILEGES) + \
 		((token_privs->PrivilegeCount - \
@@ -3223,8 +3347,7 @@ print_token_privs(TOKEN_PRIVILEGES *token_privs)
 		luid = token_privs->Privileges[i].Luid;
 		cb = sizeof(buf);
 		if (LookupPrivilegeName(NULL, &luid, buf, &cb) == 0) {
-			sprintf(logb, "lookup for %d failed", luid);
-			log_err(-1, "print_token_privs", logb);
+			log_err(-1, __func__, "failed in LookupPrivilegeName");
 			continue;
 		}
 
@@ -3303,7 +3426,9 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	if (ndacl == NULL)
 		return NULL;
 
-	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
+	if (!InitializeAcl(ndacl, cbAcl, ACL_REVISION)) {
+		log_err(-1, __func__, "failed in InitializeAcl");
+	}
 	for (i=0; i < (int)token_groups->GroupCount; i++) {
 		rid = sid2rid(token_groups->Groups[i].Sid);
 		if( rid == DOMAIN_ALIAS_RID_ADMINS || \
@@ -3312,6 +3437,7 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 				SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL,
 				token_groups->Groups[i].Sid) == 0) {
+				log_err(-1, __func__, "failed in AddAccessAllowedAce");
 				(void)free(ndacl);
 				return NULL;
 
@@ -3320,12 +3446,14 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	}
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, usid) == 0) {
+		log_err(-1, __func__, "failed in AddAccessAllowedAce (usid)");
 		(void)free(ndacl);
 		return NULL;
 	}
 
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, ssid) == 0) {
+		log_err(-1, __func__, "failed in AddAccessAllowedAce (ssid)");
 		(void)free(ndacl);
 		return NULL;
 	}
@@ -3333,66 +3461,6 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	return (ndacl);
 }
 
-
-static ACL *
-create_dacl(SID *usid, TOKEN_GROUPS *token_groups)
-{
-	int	i;
-	int     cbAcl, cbAce;
-	ACL     *ndacl;
-	SID	*ssid;
-
-	cbAcl = sizeof(ACL);
-
-	for (i=0; i < (int)token_groups->GroupCount; i++) {
-		/* subract ACE.SidStart from the size */
-		cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
-		/* add this ACE's SID length */
-		cbAce += GetLengthSid(token_groups->Groups[i].Sid);
-		/* add the length of each ACE to the total ACL length */
-		cbAcl += cbAce;
-	}
-
-	/* add 2 extra entries for 'usid' and SYSTEM sid */
-	cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
-	cbAce += GetLengthSid(usid);
-	cbAcl += cbAce;
-
-	cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
-	ssid = getusersid("SYSTEM");
-	if (ssid == NULL)
-		return NULL;
-
-	cbAce += GetLengthSid(ssid);
-	cbAcl += cbAce;
-
-	ndacl = (ACL *)malloc(cbAcl);
-	if (ndacl == NULL)
-		return NULL;
-
-	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
-	for (i=0; i < (int)token_groups->GroupCount; i++) {
-		if (AddAccessAllowedAce(ndacl, ACL_REVISION,
-			SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL,
-			token_groups->Groups[i].Sid) == 0) {
-			(void)free(ndacl);
-			return NULL;
-		}
-	}
-	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
-		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, usid) == 0) {
-		(void)free(ndacl);
-		return NULL;
-	}
-
-	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
-		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, ssid) == 0) {
-		(void)free(ndacl);
-		return NULL;
-	}
-
-	return (ndacl);
-}
 
 /* print_dacl: returns as a string the list of entries in 'pdacl'.
  Return value must be freed! */
@@ -3406,10 +3474,14 @@ print_dacl(ACL *pdacl)
 	char			buf2[80] = {'\0'};
 	char			*secname;
 
-	GetAclInformation(pdacl, &sizeInfo, sizeof(sizeInfo), AclSizeInformation);
+	if (!GetAclInformation(pdacl, &sizeInfo, sizeof(sizeInfo), AclSizeInformation)) {
+		log_err(-1, __func__, "failed in GetAclInformation");
+	}
 	strcpy(bigbuf, "");
 	for (i=0; i < (int)sizeInfo.AceCount; i++) {
-		GetAce(pdacl, i, (void **)&pace);
+		if (!GetAce(pdacl, i, (void **)&pace)) {
+			log_err(-1, __func__, "failed in GetAce");
+		}
 		secname = getgrpname_full((SID*)&pace->SidStart);
 		if (secname == NULL)
 			secname = getusername((SID*)&pace->SidStart);
@@ -3454,15 +3526,15 @@ get_token_info(HANDLE token,
 
 		if (OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS,
 			TRUE, &token)  == 0)
-			OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
-				&token);
+			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
+					&token) == 0) {
+				log_err(-1, __func__, "failed in OpenProcessToken");
+			}
 
 	}
 
-	if (GetTokenInformation(token, TokenUser, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "User: 1st GetTokenInformation failed!");
-		return;
-	} else {
+	if ( !GetTokenInformation(token, TokenUser, buf, cb, &cb)) {
+		/* User: 1st GetTokenInformation failed! */
 
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
@@ -3476,15 +3548,12 @@ get_token_info(HANDLE token,
 			*user = getusername(ptu->User.Sid);
 			free(buf);
 		} else {
-			sprintf(logb, "GetTokenInformation of Primary token failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenOwner, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Owner: 1st GetTokenInformation failed!");
-	} else {
-
+	if ( !GetTokenInformation(token, TokenOwner, buf, cb, &cb)) {
+		/* Owner: 1st GetTokenInformation failed! */
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
 			fprintf(stderr, "Unable to allocate memory!\n");
@@ -3497,14 +3566,12 @@ get_token_info(HANDLE token,
 			*owner = getusername(ptu->Owner);
 			free(buf);
 		} else {
-			sprintf(logb, "Owner: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (owner)");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenPrimaryGroup, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Group: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenPrimaryGroup, buf, cb, &cb)) {
+		/* Group: 1st GetTokenInformation failed! */
 
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
@@ -3518,14 +3585,12 @@ get_token_info(HANDLE token,
 			*prigrp= getgrpname(ptu->PrimaryGroup);
 			free(buf);
 		} else {
-			sprintf(logb, "Group: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (group)");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenGroups, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Groups: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenGroups, buf, cb, &cb)) {
+		/* Groups: 1st GetTokenInformation failed! */
 		int l;
 		char	bigbuf[512];
 		char	*gname;
@@ -3557,15 +3622,13 @@ get_token_info(HANDLE token,
 			}
 			free(buf);
 		} else {
-			sprintf(logb, "Groups: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (groups)");
 		}
 	}
 
 	cb = 0;
-	if (GetTokenInformation(token, TokenPrivileges, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Groups: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenPrivileges, buf, cb, &cb)) {
+		
 		int l;
 		char	bigbuf[3000];
 		char	buf2[1040];
@@ -3581,7 +3644,7 @@ get_token_info(HANDLE token,
 		}
 
 		if (GetTokenInformation(token, TokenPrivileges, buf, cb, &cb)) {
-
+			/* Groups: 1st GetTokenInformation failed! */
 			TOKEN_PRIVILEGES *ptu = (TOKEN_PRIVILEGES *)buf;
 			sprintf(logb, "get_token_info: # of privs=%d", ptu->PrivilegeCount);
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
@@ -3593,8 +3656,7 @@ get_token_info(HANDLE token,
 					&luid,
 					buf3,
 					&cb3) == 0) {
-					sprintf(logb, "nt_suid: lookup for %d failed", luid);
-					log_err(-1, "get_token_info", logb);
+					log_err(-1, __func__, "failed in LookupPrivilegeName");
 					continue;
 				}
 
@@ -3621,14 +3683,12 @@ get_token_info(HANDLE token,
 			}
 			free(buf);
 		} else {
-			sprintf(logb, "Privs: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (privs)");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenDefaultDacl, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "DACL: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenDefaultDacl, buf, cb, &cb)) {
+		/* DACL: 1st GetTokenInformation failed! */
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
 			fprintf(stderr, "Unable to allocate memory!\n");
@@ -3641,14 +3701,12 @@ get_token_info(HANDLE token,
 			*dacl = print_dacl(ptu->DefaultDacl);
 			free(buf);
 		} else {
-			sprintf(logb, "DACL: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (DACL)");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenSource, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Source: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenSource, buf, cb, &cb)) {
+		/* Source: 1st GetTokenInformation failed! */
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
 			fprintf(stderr, "Unable to allocate memory!\n");
@@ -3665,14 +3723,12 @@ get_token_info(HANDLE token,
 			}
 			free(buf);
 		} else {
-			sprintf(logb, "Source: GetTokenInformation failed with error=%d", GetLastError());
-			log_err(-1, "get_token_info", logb);
+			log_err(-1, __func__, "failed in GetTokenInformation (source)");
 		}
 	}
 	cb = 0;
-	if (GetTokenInformation(token, TokenType, buf, cb, &cb)) {
-		log_err(-1, "get_token_info", "Source: 1st GetTokenInformation failed!");
-	} else {
+	if ( !GetTokenInformation(token, TokenType, buf, cb, &cb)) {
+		/* Source: 1st GetTokenInformation failed! */
 		buf = (char *) malloc(cb);
 		if (buf == NULL) {
 			fprintf(stderr, "Unable to allocate memory!\n");
@@ -3694,7 +3750,7 @@ get_token_info(HANDLE token,
 					return;
 				}
 			} else {
-				sprintf(logb, "Source: GetTokenInformation failed with error=%d", GetLastError());
+				sprintf(logb, "Source: GetTokenInformation failed with errno %d", GetLastError());
 				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
 
 			}
@@ -3703,29 +3759,6 @@ get_token_info(HANDLE token,
 	CloseHandle(token);
 }
 
-static void
-get_auth_luid(LUID *pluid)
-{
-	HANDLE	htok;
-	TOKEN_STATISTICS stat;
-	int	tokelen;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
-
-	/* get the process token */
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &htok)) {
-
-		if (GetTokenInformation(htok, TokenStatistics, &stat, sizeof(stat),
-			&tokelen)) {
-			sprintf(logb, "get_auth_luid: returning id=%d\n", stat.AuthenticationId);
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
-			*pluid = stat.AuthenticationId;
-		}
-	}
-
-	if (htok != INVALID_HANDLE_VALUE)
-		CloseHandle(htok);
-
-}
 /* returns the handle value to the impersonation security token that can be
  passed on to ImpersonateLoggedOnUser(). */
 HANDLE
@@ -3741,7 +3774,9 @@ LogonUserNoPass(char *user)
 	TOKEN_PRIVILEGES *token_privs_groups = NULL;
 	TOKEN_SOURCE *token_source = NULL;
 	TOKEN_DEFAULT_DACL token_dacl;
-	char	logb[LOG_BUF_SIZE] = {'\0'} ;
+	static NtCreateToken_t NtCreateToken=NULL;
+	NTSTATUS lsa_stat;
+	NTSTATUS stat;
 
 	SID	*usid = NULL;
 	LUID	authLuid = ANONYMOUS_LOGON_LUID;
@@ -3765,23 +3800,31 @@ LogonUserNoPass(char *user)
 	if (NtCreateToken == NULL) {
 		HMODULE hNtDll;
 		hNtDll=LoadLibrary("ntdll.dll");
+		if (hNtDll == NULL) {
+			log_err(-1, __func__, "failed in LoadLibrary");
+		}
 		NtCreateToken = (NtCreateToken_t)GetProcAddress(hNtDll,
 			"NtCreateToken");
-		if (NtCreateToken == NULL)
+		if (NtCreateToken == NULL) {
+			log_err(-1, __func__, "failed in GetProcAddress");
 			return (0);
+		}
 	}
 
 	if (!has_privilege(SE_CREATE_TOKEN_NAME)) {
 		if (!ena_privilege(SE_CREATE_TOKEN_NAME)) {
-			goto setuser_end;
+			goto end;
 		}
 	}
-
-	if (LsaOpenPolicy(NULL, &lsa, POLICY_ALL_ACCESS, &hLsa) != ERROR_SUCCESS)
-		goto setuser_end;
+	lsa_stat = LsaOpenPolicy(NULL, &lsa, POLICY_ALL_ACCESS, &hLsa);
+	if (lsa_stat != ERROR_SUCCESS) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in LsaOpenPolicy, with errno %d",
+				LsaNtStatusToWinError(lsa_stat));
+		goto end;
+	}
 
 	if ((usid=getusersid(user)) == NULL)
-		goto setuser_end;
+		goto end;
 
 	token_owner.Owner = usid;
 
@@ -3789,7 +3832,7 @@ LogonUserNoPass(char *user)
 	token_user.User.Attributes=0;
 
 	if ((token_prigrp.PrimaryGroup=getdefgrpsid(user)) == NULL)
-		goto setuser_end;
+		goto end;
 
 	token_groups = create_token_groups(user,
 		SE_GROUP_ENABLED|SE_GROUP_ENABLED_BY_DEFAULT);
@@ -3836,46 +3879,57 @@ LogonUserNoPass(char *user)
 		SE_PRIVILEGE_ENABLED|SE_PRIVILEGE_ENABLED_BY_DEFAULT, hLsa);
 
 	if (token_privs_user == NULL) {
-		sprintf(logb,"token_privs_user is NULL");
-		log_err(-1, "LogonUserNoPass", logb);
-		goto setuser_end;
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "token_privs_user is NULL");
+		goto end;
 	}
 
 	token_privs_groups = create_token_privs_bygroups(token_groups,
 		SE_PRIVILEGE_ENABLED|SE_PRIVILEGE_ENABLED_BY_DEFAULT, hLsa);
 
-	if (token_privs_groups == NULL)
-		goto setuser_end;
+	if (token_privs_groups == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "token_privs_groups is NULL");
+		goto end;
+	}
 
 	token_privs = merge_token_privs(token_privs_groups, token_privs_user);
 
-	if (token_privs == NULL)
-		goto setuser_end;
+	if (token_privs == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "token_privs is NULL");
+		goto end;
+	}
 
 	token_source = create_token_source("pbs");
 
-	if (token_source == NULL)
-		goto setuser_end;
+	if (token_source == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "token_source is NULL");
+		goto end;
+	}
 
 	token_dacl.DefaultDacl = create_default_dacl(usid, token_groups);
-	if (token_dacl.DefaultDacl == NULL)
-		goto setuser_end;
-
-	if (NtCreateToken(&hToken, TOKEN_ALL_ACCESS, &oa, TokenImpersonation,
+	if (token_dacl.DefaultDacl == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "token_dacl is NULL");
+		goto end;
+	}
+	stat = NtCreateToken(&hToken, TOKEN_ALL_ACCESS, &oa, TokenImpersonation,
 		&authLuid, &expire, &token_user, token_groups, token_privs,
 		&token_owner, &token_prigrp, &token_dacl,
-		token_source) != ERROR_SUCCESS)
-		goto setuser_end;
+		token_source);
+	if (stat != ERROR_SUCCESS) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NtCreateToken, with errno %d", stat);
+		goto end;
+	}
 	hPrimaryToken = hToken;
 
 	if (DuplicateTokenEx(hToken, TOKEN_ALL_ACCESS, &sa,
 		SecurityImpersonation,
-		TokenPrimary, &hPrimaryToken) == 0)
-		goto setuser_end;
+		TokenPrimary, &hPrimaryToken) == 0) {
+		log_err(-1, __func__, "failed in DuplicateTokenEx");	
+		goto end;
+		}
 
 	retval = hPrimaryToken;
 
-setuser_end:
+end:
 	if (usid)
 		LocalFree(usid);
 
@@ -3909,127 +3963,33 @@ setuser_end:
 	return (retval);
 }
 
-static HANDLE setuser_hdle = INVALID_HANDLE_VALUE;
-
-/* returns 0 for fail and non-zero for success */
+/* returns current user handle for fail and non-zero for success */
 /* records internally the current user handle */
-int
+HANDLE
 setuser(char *user)
 {
-	int	retval;
+	HANDLE setuser_hdle = INVALID_HANDLE_VALUE;
 
 	if (user == NULL)
-		return (0);
+		return setuser_hdle;
 
 	setuser_hdle = LogonUserNoPass(user);
-
+	if (setuser_hdle == 0) {
+		log_err(-1, __func__, "failed in LogonUserNoPass");
+	}
 	if (setuser_hdle != INVALID_HANDLE_VALUE) {
-		retval = impersonate_user(setuser_hdle);
-	} else
-		retval =0;
+		if (!impersonate_user(setuser_hdle)) {
+			log_err(-1, __func__, "failed in impersonate_user");
+		}
+	}
 
-	return (retval);
+	return setuser_hdle;
 }
 
-
-/* setuser_with_password: like setuser() but with password cred_buf
- * and cred_len. If cred_buf is NULL, then it defaults to calling
- * setuser().
- * Returns: 0 for fail; non-zero for success
- */
-int
-setuser_with_password(char *user,
-	char *cred_buf,
-	size_t cred_len,
-	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *))
-{
-
-	SID     *usid;
-	char    thepass[PWLEN+1] = {'\0'};
-	char    realname[UNLEN+1] = {'\0'};
-	char    domain[PBS_MAXHOSTNAME+1] = "";
-	struct	passwd *pwdp = NULL;
-	int	i;
-
-	if ((user == NULL) || (decrypt_func == NULL))
-		return (0);
-
-	if (passwd_cache_init == 0) {
-		CLEAR_HEAD(passwd_cache_ll);
-		passwd_cache_init = 1;
-	}
-
-	/* look in internal cache for saved usertoken handle */
-	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
-		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
-		if ( (strcmp(pwdp->pw_name, user) == 0) && \
-			(pwdp->pw_userlogin != INVALID_HANDLE_VALUE) ) {
-			setuser_hdle = pwdp->pw_userlogin;
-			return (impersonate_user(setuser_hdle));
-		}
-	}
-
-	usid = getusersid2(user, realname);
-	if (usid == NULL) {
-		return (0);
-	}
-	LocalFree(usid);
-
-	if (cred_buf) { /* there's password supplied */
-		char *pass = NULL;
-		char *p = NULL;
-
-		if (decrypt_func(cred_buf, PBS_CREDTYPE_AES, cred_len, &pass, pbs_aes_key, pbs_aes_iv) != 0) {/* fails */
-			return (0);
-		}
-		strncpy(thepass, pass, cred_len);
-		thepass[cred_len] = '\0';
-
-		if (pass) {
-			memset(pass, 0, cred_len);
-			(void)free(pass);
-		}
-
-		strcpy(domain, ".");
-		if (p=strrchr(realname, '\\')) {
-			*p = '\0';
-			strcpy(domain, realname);
-			*p = '\\';
-		}
-
-		/* clear handle if previously set */
-		if (setuser_hdle != INVALID_HANDLE_VALUE) {
-			CloseHandle(setuser_hdle);
-			setuser_hdle = INVALID_HANDLE_VALUE;
-		}
-
-		if (LogonUser(user, domain, thepass,
-			LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT,
-			&setuser_hdle) == 0) {
-			LogonUser(user, domain, thepass,
-				LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
-				&setuser_hdle);
-		}
-		memset(thepass, 0, cred_len);
-
-		return (impersonate_user(setuser_hdle));
-	}
-
-	/* no password */
-
-	return (setuser(user));
-}
-
-/* returns the current user handle */
-HANDLE
-setuser_handle()
-{
-	return (setuser_hdle);
-}
 
 /* closes the current user handle */
 void
-setuser_close_handle()
+setuser_close_handle(HANDLE setuser_hdle)
 {
 	struct passwd *pwdp = NULL;
 	int	i;
@@ -4061,14 +4021,18 @@ setuid(uid_t uid)
 {
 	int ret = 0;
 	struct passwd *pw = NULL;
+	HANDLE setuser_hdle = INVALID_HANDLE_VALUE;
 
-	if ((pw=getpwuid(uid)) == NULL)
+	if ((pw=getpwuid(uid)) == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in getpwuid");
 		return (-1);
+	}
 
-	if (setuser(pw->pw_name) == 0) { /* fail */
+	setuser_hdle = setuser(pw->pw_name);
+	if ((setuser_hdle == 0) || (setuser_hdle == INVALID_HANDLE_VALUE)) { /* fail */
 		ret = -1;
 	}
-	setuser_close_handle();
+	setuser_close_handle(setuser_hdle);
 	return (ret);
 }
 
@@ -4099,6 +4063,7 @@ wsystem(char *cmdline, HANDLE user_handle)
 	char			current_dir[MAX_PATH+1] = {'\0'};
 	char			*temp_dir = NULL;
 	int			changed_dir = 0;
+	DWORD		stat;
 
 	si.cb = sizeof(si);
 	si.lpDesktop = NULL;
@@ -4132,17 +4097,24 @@ wsystem(char *cmdline, HANDLE user_handle)
 	}
 
 	run_exit = GetLastError();
+	if (rc == 0) {
+		log_err(-1, __func__, "failed in process creation");
+	}
 
 	/* restore current working directory */
 	if (changed_dir)
 		chdir(current_dir);
 
 	if (rc) { /* CreateProcess* successful */
+		stat = WaitForSingleObject(pi.hProcess, INFINITE);
+		if (stat != WAIT_OBJECT_0) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in WaitForSingleObject, with errno %d", stat);
+		}
 
-		WaitForSingleObject(pi.hProcess, INFINITE);
-
-		if (GetExitCodeProcess(pi.hProcess, &run_exit) == 0)
+		if (GetExitCodeProcess(pi.hProcess, &run_exit) == 0) {
 			run_exit = GetLastError();
+			log_err(-1, __func__, "failed in GetExitCodeProcess");
+		}
 
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
@@ -4179,20 +4151,18 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 	sd_sz = 0;
 	sd_sz_need = 0;
 	if (GetUserObjectSecurity(hwin, &si, sd, sd_sz, &sd_sz_need) == 0) {
-
 		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
 			if ((sd=(SECURITY_DESCRIPTOR *)malloc(sd_sz_need)) == NULL) {
-				errno = GetLastError();
+				log_err(errno, __func__, "memory allocation failed for GetUserObjectSecurity");
 				goto fail;
 			}
 			memset((SECURITY_DESCRIPTOR *)sd, 0, sd_sz_need);
 		}
 
 		sd_sz = sd_sz_need;
-		if (GetUserObjectSecurity(hwin, &si, sd, sd_sz,
-			&sd_sz_need) == 0) {
-
+		if (GetUserObjectSecurity(hwin, &si, sd, sd_sz, &sd_sz_need) == 0) {
 			errno = GetLastError();
+			log_err(-1, __func__, "failed in GetUserObjectSecurity");
 			goto fail;
 		}
 	}
@@ -4200,6 +4170,7 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 	acl = NULL;
 	if (GetSecurityDescriptorDacl(sd, &hasDacl, &acl, &defDacl) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in GetSecurityDescriptorDacl");
 		goto fail;
 	}
 
@@ -4212,13 +4183,14 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 	(2 * sizeof(DWORD));
 
 	if ((acl_new=(ACL *)malloc(acl_new_sz)) == NULL) {
-		errno = GetLastError();
+		log_err(errno, __func__, "memory allocation for acl_new");
 		goto fail;
 	}
 	memset((ACL *)acl_new, 0, acl_new_sz);
 
 
 	if (InitializeAcl(acl_new, acl_new_sz, ACL_REVISION) == 0) {
+		log_err(-1, __func__, "failed in InitializeAcl");
 		goto fail;
 	}
 
@@ -4228,6 +4200,7 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 			(VOID *)&acl_szinfo, sizeof(ACL_SIZE_INFORMATION),
 			AclSizeInformation) == 0) {
 			errno = GetLastError();
+			log_err(-1, __func__, "failed in GetAclInformation");
 			goto fail;
 		}
 
@@ -4238,13 +4211,14 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 
 				if (GetAce(acl, i, (VOID **)&ace_temp) == 0) {
 					errno  = GetLastError();
+					log_err(-1, __func__, "failed in GetAce");
 					goto fail;
 				}
 				acl_new_sz += ((ACE_HEADER *)ace_temp)->AceSize;
 			}
 			if( (acl_new_tmp=(ACL *)realloc(acl_new, acl_new_sz)) \
 								     == NULL ) {
-				errno = GetLastError();
+				log_err(errno, __func__, "memory reallocation failed for acl_new ");
 				goto fail;
 			}
 
@@ -4253,13 +4227,14 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 
 			if( InitializeAcl(acl_new, acl_new_sz, ACL_REVISION) \
 									== 0 ) {
-
+				log_err(-1, __func__, "failed in InitializeAcl (acl_new)");
 				goto fail;
 			}
 
 			for (i=0; i < acl_szinfo.AceCount; i++) {
 				if (GetAce(acl, i, (VOID **)&ace_temp) == 0) {
 					errno  = GetLastError();
+					log_err(-1, __func__, "failed in GetAce (ace_temp)");
 					goto fail;
 				}
 
@@ -4268,6 +4243,7 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 					ace_temp,
 					((ACE_HEADER *)ace_temp)->AceSize) == 0) {
 					errno = GetLastError();
+					log_err(-1, __func__, "failed in AddAce for the new ACL");
 					goto fail;
 				}
 			}
@@ -4281,6 +4257,7 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 		GetLengthSid(usid) -
 		sizeof(DWORD))) == NULL) {
 		errno = GetLastError();
+		log_err(errno, __func__, "memory allocation failed for ace");
 		goto fail;
 	}
 
@@ -4298,12 +4275,14 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 
 	if (CopySid(GetLengthSid(usid), &ace->SidStart, usid) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in CopySid");
 		goto fail;
 	}
 
 	if (AddAce(acl_new, ACL_REVISION, MAXDWORD, (VOID *)ace,
 		ace->Header.AceSize) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in AddAce");
 		goto fail;
 	}
 
@@ -4325,26 +4304,30 @@ add_window_station_ace(HWINSTA hwin, SID *usid)
 	WRITE_OWNER;
 	if (AddAce(acl_new, ACL_REVISION, MAXDWORD, (VOID *)ace, ace->Header.AceSize) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in AddAce (for the second ACE)");
 		goto fail;
 	}
 
 	if ((sd_new=(SECURITY_DESCRIPTOR *)malloc(sd_sz)) == NULL) {
-		errno = GetLastError();
+		log_err(errno, __func__, "failed to allocate memory for sd_new");
 		goto fail;
 	}
 
 	if (InitializeSecurityDescriptor(sd_new,
 		SECURITY_DESCRIPTOR_REVISION) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in InitializeSecurityDescriptor");
 		goto fail;
 	}
 
 	/* set new dacl for the security descriptor */
 	if (SetSecurityDescriptorDacl(sd_new, TRUE, acl_new, FALSE) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in SetSecurityDescriptorDacl");
 		goto fail;
 	}
 	if (SetUserObjectSecurity(hwin, &si, sd_new) == 0) {
+		log_err(-1, __func__, "failed in SetUserObjectSecurity");
 		goto fail;
 	}
 
@@ -4404,7 +4387,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
 
 			if ((sd=(SECURITY_DESCRIPTOR *)malloc(sd_sz_need)) == NULL) {
-				errno = GetLastError();
+				log_err(errno, __func__, "memory allocation for sd failed");
 				goto fail;
 			}
 			memset((SECURITY_DESCRIPTOR *)sd, 0, sd_sz_need);
@@ -4414,6 +4397,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 		if (GetUserObjectSecurity(hdesk, &si, sd, sd_sz,
 			&sd_sz_need) == 0) {
 			errno = GetLastError();
+			log_err(-1, __func__, "failed in GetUserObjectSecurity");
 			goto fail;
 		}
 	}
@@ -4421,6 +4405,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 	acl = NULL;
 	if (GetSecurityDescriptorDacl(sd, &hasDacl, &acl, &defDacl) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in GetSecurityDescriptorDacl");
 		goto fail;
 	}
 
@@ -4440,6 +4425,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 	memset((ACL *)acl_new, 0, acl_new_sz);
 
 	if (InitializeAcl(acl_new, acl_new_sz, ACL_REVISION) == 0) {
+		log_err(-1, __func__, "failed in InitializeAcl");
 		goto fail;
 	}
 
@@ -4450,6 +4436,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 			(VOID *)&acl_szinfo, sizeof(ACL_SIZE_INFORMATION),
 			AclSizeInformation) == 0) {
 			errno = GetLastError();
+			log_err(-1, __func__, "failed in GetAclInformation");
 			goto fail;
 		}
 
@@ -4459,6 +4446,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 			for (i=0; i < acl_szinfo.AceCount; i++) {
 				if (GetAce(acl, i, &ace_temp) == 0) {
 					errno  = GetLastError();
+					log_err(-1, __func__, "failed in GetAce");
 					goto fail;
 				}
 				acl_new_sz += ((ACE_HEADER *)ace_temp)->AceSize;
@@ -4466,7 +4454,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 
 			if( (acl_new_tmp=(ACL *)realloc(acl_new,acl_new_sz)) \
 								     == NULL ) {
-				errno = GetLastError();
+				log_err(-1, __func__, "memory reallocation failed for acl_new_tmp");
 				goto fail;
 			}
 			acl_new = acl_new_tmp;
@@ -4474,12 +4462,14 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 			memset((ACL *)acl_new, 0, acl_new_sz);
 
 			if (InitializeAcl(acl_new, acl_new_sz, ACL_REVISION) == 0) {
+				log_err(-1, __func__, "failed in InitializeAcl (dacl");
 				goto fail;
 			}
 
 			for (i=0; i < acl_szinfo.AceCount; i++) {
 				if (GetAce(acl, i, &ace_temp) == 0) {
 					errno  = GetLastError();
+					log_err(-1, __func__, "failed in GetAce (dacl)");
 					goto fail;
 				}
 
@@ -4488,6 +4478,7 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 					ace_temp,
 					((ACE_HEADER *)ace_temp)->AceSize) == 0) {
 					errno = GetLastError();
+					log_err(-1, __func__, "failed in AddAce (dacl)");
 					goto fail;
 				}
 			}
@@ -4499,17 +4490,19 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 	if (AddAccessAllowedAce(acl_new, ACL_REVISION, DESKTOP_ALL,
 		usid) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in AddAccessAllowedAce");
 		goto fail;
 	}
 
 	if ((sd_new=(SECURITY_DESCRIPTOR *)malloc(sd_sz)) == NULL) {
-		errno = GetLastError();
+		log_err(errno, __func__, "memory allocation for sd_new failed");
 		goto fail;
 	}
 
 	if (InitializeSecurityDescriptor(sd_new,
 		SECURITY_DESCRIPTOR_REVISION) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in InitializeSecurityDescriptor");
 		goto fail;
 	}
 
@@ -4517,10 +4510,12 @@ add_desktop_ace(HDESK hdesk, SID *usid)
 
 	if (SetSecurityDescriptorDacl(sd_new, TRUE, acl_new, FALSE) == 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in SetSecurityDescriptorDacl");
 		goto fail;
 	}
 
 	if (SetUserObjectSecurity(hdesk, &si, sd_new) == 0) {
+		log_err(-1, __func__, "failed in SetUserObjectSecurity");
 		goto fail;
 	}
 
@@ -4549,25 +4544,30 @@ use_window_station_desktop(SID *usid)
 
 	if ((hwin=GetProcessWindowStation()) == NULL) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in GetProcessWindowStation");
 		goto end;
 	}
 
 	if ((hdesk=GetThreadDesktop(GetCurrentThreadId())) == NULL) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in GetThreadDesktop");
 		goto end;
 	}
 
 	if (add_window_station_ace(hwin, usid)) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in add_window_station_ace");
 		goto end;
 	}
 
 	if (add_desktop_ace(hdesk, usid)) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in add_desktop_ace");
 		goto end;
 	}
 
 	ret = 0;
 
-	end:  	if (hwin)
+	end:  	
+	if (hwin)
 		CloseWindowStation(hwin);
 
 	if (hdesk)
@@ -4575,54 +4575,6 @@ use_window_station_desktop(SID *usid)
 
 	return (ret);
 
-}
-
-/* use_window_station_desktop2: add 'user' to list of users allowed access
- to calling process' window station and desktop.
- Returns 0 for success; 1 for fail. */
-int
-use_window_station_desktop2(char *user)
-{
-	HWINSTA	hwin;
-	HDESK	hdesk;
-	SID	*usid;
-	int	ret = 1;
-
-	if ((hwin=GetProcessWindowStation()) == NULL) {
-		errno = GetLastError();
-		goto end;
-	}
-
-	if ((hdesk=GetThreadDesktop(GetCurrentThreadId())) == NULL) {
-		errno = GetLastError();
-		goto end;
-	}
-
-	if ((usid=getusersid(user)) == NULL) {
-		errno = GetLastError();
-		goto end;
-	}
-
-	if (add_window_station_ace(hwin, usid)) {
-		goto end;
-	}
-
-	if (add_desktop_ace(hdesk, usid)) {
-		goto end;
-	}
-
-
-	ret = 0;
-	end:  	if (hwin)
-		CloseWindowStation(hwin);
-
-	if (hdesk)
-		CloseDesktop(hdesk);
-
-	if (usid)
-		LocalFree(usid);
-
-	return (ret);
 }
 
 static void
@@ -4704,7 +4656,9 @@ add_pwentry(char *name,
 
 		pwdn->pw_uid = (uid_t)malloc(sid_len_need);
 		if (pwdn->pw_uid) {
-			CopySid(sid_len_need, pwdn->pw_uid, uid);
+			if (!CopySid(sid_len_need, pwdn->pw_uid, uid)) {
+				log_err(-1, __func__, "failed in CopySid");
+			}
 		} else {
 			goto err;
 		}
@@ -4716,7 +4670,9 @@ add_pwentry(char *name,
 
 		pwdn->pw_gid = (gid_t)malloc(sid_len_need);
 		if (pwdn->pw_gid) {
-			CopySid(sid_len_need, pwdn->pw_gid, gid);
+			if (!CopySid(sid_len_need, pwdn->pw_gid, gid)) {
+				log_err(-1, __func__, "failed in CopySid (gid)");
+			}
 		} else {
 			goto err;
 		}
@@ -4909,9 +4865,11 @@ logon_pw(char *username,
 		if (LogonUser(pwdp->pw_name, domain, thepass,
 			LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT,
 			&pwdp->pw_userlogin) == 0) {
-			LogonUser(pwdp->pw_name, domain, thepass,
-				LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
-				&pwdp->pw_userlogin);
+			if (LogonUser(pwdp->pw_name, domain, thepass,
+					LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
+					&pwdp->pw_userlogin) == 0) {
+				log_err(-1, __func__, "failed in LogonUser");
+			}
 		}
 		memset(thepass, 0, credl);
 		if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
@@ -4922,6 +4880,8 @@ logon_pw(char *username,
 					(void)free(pwdp->pw_dir);
 				pwdp->pw_dir = getHomedir(username);
 				(void)revert_impersonated_user();
+			} else {
+				log_err(-1, __func__, "failed to impersonate user");
 			}
 		}
 
@@ -4930,11 +4890,16 @@ logon_pw(char *username,
 		/* check if userlogin handle is stale */
 		if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 			if (!impersonate_user(pwdp->pw_userlogin)) {
-
 				CloseHandle(pwdp->pw_userlogin);
 				pwdp->pw_userlogin = LogonUserNoPass(username);
+				if (pwdp->pw_userlogin == 0) {
+					log_err(-1, __func__, "failed in LogonUserNoPass");
+				}
+
 			} else {
-				RevertToSelf();
+				if (RevertToSelf() == 0) {
+					log_err(-1, __func__, "failed in RevertToSelf");
+				}
 			}
 		}
 	}
@@ -5065,7 +5030,9 @@ cache_usertoken_and_homedir(char *user,
 		read_password_func(param, &credb, &credl);
 	}
 
-	logon_pw(user, credb, credl, decrypt_func, 0, msg);
+	if (logon_pw(user, credb, credl, decrypt_func, 0, msg) == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in logon_pw");
+	}
 
 }
 
@@ -5115,6 +5082,7 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 
 		}
@@ -5130,10 +5098,17 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 				(void)revert_impersonated_user();
 			} else {
 				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
 			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
+		}
+	} else {
+		if (netst != NERR_Success) {
+			sprintf(winlog_buffer, "NetUserGetGroups failed with system errno %d", netst);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 		}
 	}
 
@@ -5188,6 +5163,7 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 		}
 
@@ -5201,10 +5177,17 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 				(void)revert_impersonated_user();
 			} else {
 				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
 			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
+		}
+	} else {
+		if (netst != NERR_Success) {
+			sprintf(winlog_buffer, "NetUserGetLocalGroups failed with system errno %d", netst);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 		}
 	}
 
@@ -5256,6 +5239,7 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 		}
 
@@ -5267,10 +5251,12 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 				(void)revert_impersonated_user();
 			} else {
 				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
 			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 		}
 
 	}
@@ -5303,6 +5289,8 @@ has_read_access_domain_users(wchar_t dctrlw[PBS_MAXHOSTNAME+1])
 	USER_INFO_1     *ui1_ptr = NULL;
 	NET_API_STATUS  netst = 0;
 	int	ncheck = 0;
+	NET_API_STATUS nBufferStat;
+
 
 	sid = create_domain_users_sid();
 
@@ -5316,7 +5304,8 @@ has_read_access_domain_users(wchar_t dctrlw[PBS_MAXHOSTNAME+1])
 	mbstowcs(gnamew, gname, GNLEN);
 
 	if ((netst=NetGroupGetUsers(dctrlw, gnamew, 0, (LPBYTE *)&members,
-		MAX_PREFERRED_LENGTH, &nread, &totentries, NULL)) != NERR_Success) {
+			MAX_PREFERRED_LENGTH, &nread, &totentries, NULL)) != NERR_Success) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetGroupGetUsers, with errno %d", netst);
 		goto has_read_access_domain_users_end;
 	}
 
@@ -5326,11 +5315,16 @@ has_read_access_domain_users(wchar_t dctrlw[PBS_MAXHOSTNAME+1])
 			members[i].grui0_name, 1, (LPBYTE *)&ui1_ptr);
 
 		if (ui1_ptr) {
-			NetApiBufferFree(ui1_ptr);
+			nBufferStat = NetApiBufferFree(ui1_ptr);
+			if (nBufferStat != NERR_Success) {
+				log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d", nBufferStat);
+			}
+
 		}
 
 		if ((netst == ERROR_ACCESS_DENIED) ||
 			(netst == ERROR_LOGON_FAILURE)) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetUserGetInfo, with errno %d", netst);
 			goto has_read_access_domain_users_end;
 		}
 		ncheck++;
@@ -5345,7 +5339,10 @@ has_read_access_domain_users_end:
 		(void)free(gname);
 	}
 	if (members) {
-		NetApiBufferFree(members);
+		nBufferStat = NetApiBufferFree(members);
+		if (nBufferStat != NERR_Success) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in NetApiBufferFree, with errno %d", nBufferStat);
+		}
 	}
 
 	return (ret);
@@ -5407,6 +5404,7 @@ check_executor(void)
 		if (stricmp(exec_dname, dname) != 0) {
 			sprintf(winlog_buffer,
 				"%s: Executing user %s must be a domain account in domain %s", __func__, exec_uname, dname);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (2);
 		}
 
@@ -5414,6 +5412,7 @@ check_executor(void)
 		if (!isAdminPrivilege(exec_uname)) {
 			sprintf(winlog_buffer,
 				"%s: executing user %s should be an admin account", __func__, exec_uname);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (1);
 		}
 
@@ -5426,12 +5425,14 @@ check_executor(void)
 		if (!has_read_access_domain_users(dctrlw)) {
 			sprintf(winlog_buffer,
 				"%s: executing user %s cannot read all users info in %s (DC is %S)", __func__, exec_uname, dname, dctrlw);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (3);
 		}
 	} else {
 		if (!isAdminPrivilege(exec_uname)) {
 			sprintf(winlog_buffer,
 				"%s: executing user %s should be an admin account", __func__, exec_uname);
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, winlog_buffer);
 			return (1);
 		}
 	}
@@ -5462,11 +5463,14 @@ get_activesessionid(int return_on_no_active_session, char *username)
 	DWORD				i = 0;
 	DWORD ret = -1;
 	char  *active_user = NULL;
+
 	/* Keep running the loop untill an active session is found */
 	while(1)
 	{
 		/* Get information of all sessions */
-		WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, &PWinSessionInfo, &dwCount);
+		if (WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, &PWinSessionInfo, &dwCount) == 0) {
+			log_err(-1, __func__, "failed in WTSEnumerateSessions");
+		}
 
 		/* Find active session from all sessions */
 		for (i = 0; i < dwCount; ++i) {
@@ -5519,6 +5523,7 @@ get_activeusertoken(DWORD activesessionid)
 
 	/* Get user's token */
 	if (!WTSQueryUserToken(activesessionid, &hUserToken)) {
+		log_err(-1, __func__, "failed in WTSQueryUserToken");
 		return INVALID_HANDLE_VALUE;
 	}
 
@@ -5554,16 +5559,19 @@ get_usernamefromsessionid(DWORD sessionid, char** p_username)
 		return NULL;
 
 	if (!WTSQueryUserToken(sessionid, &hUserToken)) {
+		log_err(-1, __func__, "failed in WTSQueryUserToken");
 		return NULL;
 	}
 
 	if (!DuplicateToken(hUserToken, SecurityImpersonation, &hDupUserToken)) {
+		log_err(-1, __func__, "failed in DuplicateToken");
 		CloseHandle(hUserToken);
 		return NULL;
 	}
 
 	CloseHandle(hUserToken);
 	if (!impersonate_user(hDupUserToken)) {
+		log_err(-1, __func__, "failed to impersonate user");
 		CloseHandle(hDupUserToken);
 		return NULL;
 	}
@@ -5611,6 +5619,9 @@ BOOL PBS_QueryFullProcessImageName(HANDLE hProcess, char *exe_name, int *exe_nam
 
 	if(hprocessSnap)
 	{
+		if (hprocessSnap == INVALID_HANDLE_VALUE) {
+			log_err(-1, __func__, "failed in CreateToolhelp32Snapshot");
+		}
 		BOOL nextProcess = Process32First(hprocessSnap, &pe32);
 
 		while(nextProcess)
@@ -5673,12 +5684,14 @@ get_processowner(DWORD processid, uid_t *puid, char *puname, size_t uname_len, c
 	int rc = -1;
 
 	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processid);
-	if (hProcess == INVALID_HANDLE_VALUE) {
+	if ((hProcess == INVALID_HANDLE_VALUE) || (hProcess == NULL)) {
+		log_err(-1, __func__, "failed in OpenProcess");
 		CloseHandle(hProcess);
 		return NULL;
 	}
 
 	if (!OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+		log_err(-1, __func__, "failed in OpenProcessToken");
 		CloseHandle(hProcess);
 		return NULL;
 	}
@@ -5686,6 +5699,7 @@ get_processowner(DWORD processid, uid_t *puid, char *puname, size_t uname_len, c
 
 	hUser = (TOKEN_USER *) owner_fqdn_buf;
 	if (!GetTokenInformation(hToken, TokenUser, hUser, buf_size, &username_len)) {
+		log_err(-1, __func__, "failed in GetTokenInformation");
 		CloseHandle(hToken);
 		CloseHandle(hProcess);
 		return NULL;
@@ -5697,6 +5711,7 @@ get_processowner(DWORD processid, uid_t *puid, char *puname, size_t uname_len, c
 		*puid = hUser->User.Sid;
 
 	if (!LookupAccountSid(0, hUser->User.Sid, username, &username_len, domainname, &domainname_len, (PSID_NAME_USE)&sid_buf)) {
+		log_err(-1, __func__, "failed in LookupAccountSid");
 		CloseHandle(hToken);
 		CloseHandle(hProcess);
 		return NULL;
@@ -5720,6 +5735,7 @@ get_processowner(DWORD processid, uid_t *puid, char *puname, size_t uname_len, c
 #endif
 		if (query_image == FALSE) {
 			rc = GetLastError();
+			log_err(-1, __func__, "failed in query Process image");
 			*comm = '\0';
 		}
 	}
@@ -5813,6 +5829,9 @@ access_uncpath(char *path, int mode)
 
 	unmap = get_localpath(path_temp_buf, map_drive);
 	ret = _access(path_temp_buf, mode);
+	if (ret != 0) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "file %s don't have access %d", path_temp_buf, mode);
+	}
 	if (unmap)
 		unmap_unc_path(map_drive);
 	return ret;
@@ -5835,6 +5854,7 @@ get_uncpath(char *path)
 	int endslash = 0;
 	size_t path_len = 0;
 	char path_temp_buf[MAXPATHLEN+1] = {'\0'};
+	int ret;
 
 	if (path == NULL ||
 		*path == '\0' ||
@@ -5858,11 +5878,16 @@ get_uncpath(char *path)
 	}
 
 	uni_name = (UNIVERSAL_NAME_INFO *) &uni_name_info_buf;
-	if (WNetGetUniversalName(path_temp_buf, UNIVERSAL_NAME_INFO_LEVEL, (LPVOID) uni_name, &buf_len) == NO_ERROR) {
+	ret = WNetGetUniversalName(path_temp_buf, UNIVERSAL_NAME_INFO_LEVEL, (LPVOID) uni_name, &buf_len);
+	if (ret == NO_ERROR) {
 		strncpy(path, uni_name->lpUniversalName, MAXPATHLEN);
 		/* append '\' if it is removed here */
 		if (endslash) {
 			strncat(path, "\\", 1);
+		}
+	} else {
+		if (ret != ERROR_NOT_CONNECTED) {
+			log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in WNetGetUniversalName, with errno %d", ret);
 		}
 	}
 }

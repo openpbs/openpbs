@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include "win.h"
+#include "log.h"
 /**
  * @file	dir.c
  */
@@ -71,20 +72,23 @@ opendir(const char *name)
 	strncat(search, "/*", _MAX_PATH);
 
 	hdir = FindFirstFile(search, &data);
-	if (hdir == INVALID_HANDLE_VALUE)
+	if (hdir == INVALID_HANDLE_VALUE) {
+		log_err(-1, __func__, "failed in FindFirstFile");
 		return NULL;
-
+	}
 	dir = (DIR *)malloc(sizeof(DIR));
 
-	if (dir == NULL)
+	if (dir == NULL) {
+		log_err(errno, __func__, "failed to allocate memory for dir");
 		return NULL;
-
+	}
 
 	dir->handle = hdir;
 	dir->pos = DIR_BEGIN;
 	dir->entry = (struct dirent *)malloc(sizeof(struct dirent));
 
 	if (dir->entry == NULL) {
+		log_err(errno, __func__, "failed to allocate memory for dir->entry");
 		(void)free(dir);
 		return NULL;
 	}
@@ -152,7 +156,9 @@ closedir(DIR *hdir)
 		return (-1);
 
 	ret = FindClose(hdir->handle);
-
+	if (ret == 0) {
+		log_err(-1, __func__, "failed in FindClose");
+	}
 	if (hdir->entry)
 		(void)free(hdir->entry);
 
@@ -187,6 +193,7 @@ link(const char *oldpath, const char *newpath)
 
 	if (ret != 0) {
 		errno = GetLastError();
+		log_err(-1, __func__, "failed in rename");
 		return (-1);
 	}
 	return (0);

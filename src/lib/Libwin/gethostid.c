@@ -147,8 +147,10 @@ gethostid(void)
 
 	sz = sizeof(cname);
 
-	if (GetComputerName(cname, &sz) == 0)
+	if (GetComputerName(cname, &sz) == 0) {
+		log_err(-1, __func__, "failed in GetComputerName");
 		return (ret);
+	}
 
 	sz1 = 0;
 	sz2 = sizeof(domain);
@@ -158,6 +160,7 @@ gethostid(void)
 
 	sid = malloc(sz1);
 	if (sid == NULL) {
+		log_err(errno, __func__, "memory allocation failed for sid");
 		return (ret);
 	}
 
