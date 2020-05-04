@@ -1833,6 +1833,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('This test requires hyperthreading to be enabled.')
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
+        
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
