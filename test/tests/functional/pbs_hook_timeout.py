@@ -37,6 +37,7 @@
 
 import os
 from tests.functional import *
+from time import sleep
 
 
 @requirements(num_moms=3)
@@ -80,6 +81,7 @@ class TestHookTimeout(TestFunctional):
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         timeout_max_attempt = 7
+        timeout_msg = False
 
         # Make momB unresponsive
         self.logger.info("Stopping MomB")
@@ -94,11 +96,10 @@ class TestHookTimeout(TestFunctional):
         self.server.import_hook("test", hook_body)
 
         # First batch of hook update is for the *.HK files
-        for count in range(3):
-            self.server.log_match(
-                "Timing out previous send of mom hook updates ", n=600,
-                max_attempts=timeout_max_attempt, interval=30,
-                starttime=start_time)
+        self.server.log_match(
+            "Timing out previous send of mom hook updates ", n=600,
+            max_attempts=timeout_max_attempt, interval=30,
+            starttime=start_time)
 
         # sent hook control file
         for h in [self.hostA, self.hostB, self.hostC]:
@@ -116,11 +117,17 @@ class TestHookTimeout(TestFunctional):
 
         # Second batch of hook update is for the *.PY files + resend of
         # *.HK file to momB
-        for count in range(3):
-            self.server.log_match(
-                "Timing out previous send of mom hook updates ", n=600,
-                max_attempts=timeout_max_attempt, interval=30,
-                starttime=start_time)
+        for count in range(10):
+            sleep(30)
+            allmatch_msg = self.server.log_match(
+                "Timing out previous send of mom hook updates ",
+                n=600, starttime=start_time, allmatch=True)
+            if len(allmatch_msg) >= 2:
+                timeout_msg = True
+                break
+        if not timeout_msg:
+            self.logger.error("Doesn't gets expected timeout messages")
+        timeout_msg = False
 
         # sent hook content file
         for h in [self.hostA, self.hostB, self.hostC]:
@@ -155,12 +162,16 @@ class TestHookTimeout(TestFunctional):
 
         # Ensure that hook send updates are retried for
         # the *.HK and *.PY file to momB
-        for count in range(3):
-            self.server.log_match(
-                "Timing out previous send of mom hook updates ", n=600,
-                max_attempts=timeout_max_attempt, interval=30,
-                starttime=start_time)
-
+        for count in range(10):
+            sleep(30)
+            allmatch_msg = self.server.log_match(
+                "Timing out previous send of mom hook updates ",
+                n=600, starttime=start_time, allmatch=True)
+            if len(allmatch_msg) >= 3:
+                timeout_msg = True
+                break
+        if not timeout_msg:
+            self.logger.error("Doesn't gets expected timeout messages")
         # Submit a job, it should still run
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
