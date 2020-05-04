@@ -3558,7 +3558,7 @@ sleep 300
             j = Job(TEST_USER, attrs=a)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
-            self.server.expect(JOB, a1, jid, max_attempts=10)
+            self.server.expect(JOB, a1, jid)
 
         # Submit another job, expect in Q state
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -3566,7 +3566,7 @@ sleep 300
         j2 = Job(TEST_USER, attrs=b)
         jid2 = self.server.submit(j2)
         b1 = {'job_state': 'Q'}
-        self.server.expect(JOB, b1, jid2, max_attempts=10)
+        self.server.expect(JOB, b1, jid2)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
