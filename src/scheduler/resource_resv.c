@@ -177,6 +177,7 @@ new_resource_resv()
 	resresv->server = NULL;
 	resresv->ninfo_arr = NULL;
 	resresv->nspec_arr = NULL;
+	resresv->orig_nspec_arr = NULL;
 
 	resresv->job = NULL;
 	resresv->resv = NULL;
@@ -369,6 +370,9 @@ free_resource_resv(resource_resv *resresv)
 
 	if (resresv->nspec_arr != NULL)
 		free_nspecs(resresv->nspec_arr);
+	
+	if (resresv->orig_nspec_arr != NULL)
+		free_nspecs(resresv->orig_nspec_arr);
 
 	if (resresv->job != NULL)
 		free_job_info(resresv->job);
@@ -615,7 +619,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	nresresv->project = string_dup(oresresv->project);
 
 	nresresv->nodepart_name = string_dup(oresresv->nodepart_name);
-	nresresv->select = dup_selspec(oresresv->select);
+	nresresv->select = dup_selspec(oresresv->select); /* must come before calls to dup_nspecs() below */
 	nresresv->execselect = dup_selspec(oresresv->execselect);
 
 	nresresv->is_invalid = oresresv->is_invalid;
@@ -656,17 +660,22 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 		nresresv->is_job = 1;
 		nresresv->job = dup_job_info(oresresv->job, nqinfo, nsinfo);
 		if (nresresv->job != NULL) {
-			if (nresresv->job->resv !=NULL) {
+			if (nresresv->job->resv != NULL) {
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
 					nresresv->job->resv->resv->resv_nodes);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nresresv->job->resv->ninfo_arr);
+					nresresv->job->resv->ninfo_arr, NULL);
+				nresresv->orig_nspec_arr = dup_nspecs(oresresv->orig_nspec_arr,
+					nresresv->job->resv->ninfo_arr, nresresv->select);
+
 			}
 			else {
 				nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
 					nsinfo->nodes);
+				nresresv->orig_nspec_arr = dup_nspecs(oresresv->orig_nspec_arr,
+					nsinfo->nodes, nresresv->select);
 				nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-					nsinfo->nodes);
+					nsinfo->nodes, NULL);
 			}
 		}
 	}
@@ -674,10 +683,9 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 		nresresv->is_resv = 1;
 		nresresv->resv = dup_resv_info(oresresv->resv, nsinfo);
 
-		nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr,
-			nsinfo->nodes);
-		nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr,
-			nsinfo->nodes);
+		nresresv->ninfo_arr = copy_node_ptr_array(oresresv->ninfo_arr, nsinfo->nodes);
+		nresresv->orig_nspec_arr = dup_nspecs(oresresv->orig_nspec_arr, nsinfo->nodes, nresresv->select);
+		nresresv->nspec_arr = dup_nspecs(oresresv->nspec_arr, nsinfo->nodes, NULL);
 	}
 	else  { /* error */
 		free_resource_resv(nresresv);
@@ -2258,6 +2266,25 @@ free_chunk(chunk *ch)
 	free(ch);
 }
 
+/**
+ * @brief find_chunk_by_seq_num - find a chunk by its sequence number
+ * 
+ * @param[in] chunks - array of chunks to search
+ * @param[in] seq_num - sequence number to search for
+ * 
+ * @return chunk *
+ * @retval chunk found
+ * @retval NULL if not found
+ */
+chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num)
+{
+	int i;
+	for (i = 0; chunks[i] != NULL; i++)
+		if (chunks[i]->seq_num == seq_num)
+			return chunks[i];
+
+	return NULL;
+}
 /**
  * @brief
  *		new_selspec - constructor for selspec

@@ -1144,6 +1144,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 	long count;			/* long used in string->long conversion */
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
+	char *execvnode = NULL;		/* Hold the exec_vnode until the end of the parsing */
 
 	if ((resresv = new_resource_resv()) == NULL)
 		return NULL;
@@ -1265,7 +1266,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		else if (!strcmp(attrp->name, ATTR_comment))	/* job comment */
 			resresv->job->comment = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_released)) /* resources_released */
-			resresv->job->resreleased = parse_execvnode(attrp->value, sinfo);
+			resresv->job->resreleased = parse_execvnode(attrp->value, sinfo, NULL);
 		else if (!strcmp(attrp->name, ATTR_euser))	/* account name */
 			resresv->user = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_egroup))	/* group name */
@@ -1310,19 +1311,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		/* array_indices_remaining */
 		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_execvnode)) { /* where job is running*/
-			/*
-			 * An execvnode may have a vnode chunk in it multiple times.
-			 * parse_execvnode() will return us a nspec array with a nspec per
-			 * chunk.  The rest of the scheduler expects one nspec per vnode.
-			 * This combining of vnode chunks is the job of combine_nspec_array().
-			 */
-			resresv->nspec_arr = parse_execvnode(attrp->value, sinfo);
-			combine_nspec_array(resresv->nspec_arr);
-
-			if (resresv->nspec_arr != NULL)
-				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
-		}
+		else if (!strcmp(attrp->name, ATTR_execvnode))
+			execvnode = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
 			if (resreq == NULL) {
@@ -1359,30 +1349,26 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 					}
 				}
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rel_list)) {
+		} else if (!strcmp(attrp->name, ATTR_rel_list)) {
 			resreq = find_alloc_resource_req_by_str(resresv->job->resreq_rel, attrp->resource);
 			if (resreq != NULL)
 				set_resource_req(resreq, attrp->value);
 			if (resresv->job->resreq_rel == NULL)
 				resresv->job->resreq_rel = resreq;
-		}
-		else if (!strcmp(attrp->name, ATTR_used)) { /* resources used */
+		} else if (!strcmp(attrp->name, ATTR_used)) { /* resources used */
 			resreq =
 				find_alloc_resource_req_by_str(resresv->job->resused, attrp->resource);
 			if (resreq != NULL)
 				set_resource_req(resreq, attrp->value);
 			if (resresv->job->resused ==NULL)
 				resresv->job->resused = resreq;
-		}
-		else if (!strcmp(attrp->name, ATTR_accrue_type)) {
+		} else if (!strcmp(attrp->name, ATTR_accrue_type)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->job->accrue_type = count;
 			else
 				resresv->job->accrue_type = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_eligible_time))
+		} else if (!strcmp(attrp->name, ATTR_eligible_time))
 			resresv->job->eligible_time = (time_t) res_to_num(attrp->value, NULL);
 		else if (!strcmp(attrp->name, ATTR_estimated)) {
 			if (!strcmp(attrp->resource, "start_time")) {
@@ -1405,6 +1391,15 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		}
 
 		attrp = attrp->next;
+	}
+
+	if (execvnode != NULL) {
+		resresv->orig_nspec_arr = parse_execvnode(execvnode, sinfo, resresv->select);
+		resresv->nspec_arr = dup_nspecs(resresv->orig_nspec_arr, sinfo->nodes, resresv->select);
+		combine_nspec_array(resresv->nspec_arr);
+
+		if (resresv->nspec_arr != NULL)
+			resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
 	}
 
 	return resresv;
@@ -2780,7 +2775,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->array_id = string_dup(ojinfo->array_id);
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
 
-	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes);
+	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes, NULL);
 	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
 
 	if (nqinfo->server->fairshare !=NULL) {
@@ -5018,7 +5013,7 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
 	if ((resresv == NULL) || (resresv->nspec_arr == NULL) || (resresv->ninfo_arr == NULL))
 		return NULL;
 
-	nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr);
+	nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr, NULL);
 	if (nspec_arr == NULL)
 		return NULL;
 	if (policy->rel_on_susp != NULL) {

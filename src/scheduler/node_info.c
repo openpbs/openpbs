@@ -696,6 +696,7 @@ new_node_info()
 	new->is_stale = 0;
 	new->is_maintenance = 0;
 	new->is_provisioning = 0;
+	new->is_sleeping = 0;
 	new->is_multivnoded = 0;
 	new->has_ghost_job = 0;
 
@@ -2337,6 +2338,7 @@ new_nspec()
 	ns->go_provision = 0;
 	ns->ninfo = NULL;
 	ns->resreq = NULL;
+	ns->chk = NULL;
 
 	return ns;
 }
@@ -2368,12 +2370,13 @@ free_nspec(nspec *ns)
  *
  * @param[in]	ons	-	the nspec to duplicate
  * @param[in]	nsinfo	-	the new server info
+ * @param[in]	sel	-	select spec to map nspec to
  *
  * @return	newly duplicated nspec
  *
  */
 nspec *
-dup_nspec(nspec *ons, node_info **ninfo_arr)
+dup_nspec(nspec *ons, node_info **ninfo_arr, selspec *sel)
 {
 	nspec *nns;
 
@@ -2391,6 +2394,8 @@ dup_nspec(nspec *ons, node_info **ninfo_arr)
 	nns->go_provision = ons->go_provision;
 	nns->ninfo = find_node_by_indrank(ninfo_arr, ons->ninfo->node_ind, ons->ninfo->rank);
 	nns->resreq = dup_resource_req_list(ons->resreq);
+	if (sel != NULL)
+		nns->chk = find_chunk_by_seq_num(sel->chunks, ons->seq_num);
 
 	return nns;
 }
@@ -2399,14 +2404,14 @@ dup_nspec(nspec *ons, node_info **ninfo_arr)
  * @brief
  * 		dup_nspecs - duplicate an array of nspecs
  *
- * @param[in]	onspecs	-	the nspecs to duplicate
- * @param[in]	ninfo_arr	-	the nodes corresponding to the nspecs
- *
+ * @param[in]	onspecs		- the nspecs to duplicate
+ * @param[in]	ninfo_arr	- the nodes corresponding to the nspecs
+ * @param[in]	sel		- select spec to map nspecs to
  * @return	duplicated nspec array
  *
  */
 nspec **
-dup_nspecs(nspec **onspecs, node_info **ninfo_arr)
+dup_nspecs(nspec **onspecs, node_info **ninfo_arr, selspec *sel)
 {
 	nspec **nnspecs;
 	int num_ns;
@@ -2423,7 +2428,7 @@ dup_nspecs(nspec **onspecs, node_info **ninfo_arr)
 		return NULL;
 
 	for (i = 0; onspecs[i] != NULL; i++)
-		nnspecs[i] = dup_nspec(onspecs[i], ninfo_arr);
+		nnspecs[i] = dup_nspec(onspecs[i], ninfo_arr, sel);
 
 	nnspecs[i] = NULL;
 
@@ -4720,13 +4725,14 @@ create_execvnode(nspec **ns)
  *		parse_execvnode - parse an execvnode into an nspec array
  *
  * @param[in]	execvnode	-	the execvnode to parse
- * @param[in]	sinfo	-	server to get the nodes from
+ * @param[in]	sinfo		-	server to get the nodes from
+ * @param[in]	sel		- select to map 
  *
  * @return	a newly allocated nspec array for the execvnode
  *
  */
 nspec **
-parse_execvnode(char *execvnode, server_info *sinfo)
+parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 {
 	char *simplespec;
 	char *excvndup;
@@ -4746,6 +4752,10 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 	char *p;
 	char *tailptr = NULL;
 	int hp;
+	int cur_chunk_num = 0;
+	int cur_tot_chunks;
+	int chunks_ind;
+	int num_paren = 0;
 
 	if (execvnode == NULL || sinfo == NULL)
 		return NULL;
@@ -4758,9 +4768,15 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 	while (p != NULL && *p != '\0') {
 		if (*p == '+')
 			num_chunk++;
+		if (*p == '(')
+			num_paren++;
 
 		p++;
 	}
+
+	/* Number of chunks in exec_vnode don't match selspec, don't map chunks*/
+	if (sel != NULL && num_paren != sel->total_chunks)
+		sel = NULL;
 
 	if ((nspec_arr = (nspec **) calloc(num_chunk + 1, sizeof(nspec *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -4777,6 +4793,10 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 	else if (parse_node_resc_r(simplespec, &node_name, &num_el, &nlkv, &kv) != 0)
 		invalid = 1;
 
+	if (sel != NULL) {
+		cur_tot_chunks = sel->chunks[0]->num_chunks;
+		chunks_ind = 0;
+	}
 	for (i = 0; i < num_chunk && !invalid && simplespec != NULL; i++) {
 		nspec_arr[i] = new_nspec();
 		if (nspec_arr[i] != NULL) {
@@ -4802,8 +4822,24 @@ parse_execvnode(char *execvnode, server_info *sinfo)
 					"Exechost contains a node that does not exist.");
 				invalid = 1;
 			}
-			if (i == num_chunk - 1)
+			if (sel != NULL) {
+				/* This shouldn't happen since we checked above to make sure we could map properly */
+				if (sel->chunks[chunks_ind] == NULL) {
+					log_event(PBS_EVENTCLASS_NODE, PBS_EVENTCLASS_NODE, LOG_WARNING, __func__, "Select spec and exec_vnode/resv_nodes can not be mapped");
+					free_nspecs(nspec_arr);
+					return NULL;
+				}
+				nspec_arr[i]->chk = sel->chunks[chunks_ind];
+				nspec_arr[i]->seq_num = nspec_arr[i]->chk->seq_num;
+			}
+			if (i == num_chunk - 1) {
 				nspec_arr[i]->end_of_chunk = 1;
+				if (sel != NULL) {
+					cur_chunk_num++;
+					if (cur_chunk_num == cur_tot_chunks)
+						chunks_ind++;
+				}
+			}
 		}
 		else
 			invalid = 1;
@@ -4889,7 +4925,8 @@ node_state_to_str(node_info *ninfo)
 /**
  * @brief
  *		combine_nspec_array - find and combine any nspec's for the same node
- *		in an nspec array
+ *		in an nspec array.  Because nspecs no longer map to the original chunks
+ *		they came from, seq_num and chk longer have meaning.  They are cleared.
  *
  * @param[in,out]	nspec_arr	-	array to combine
  *
@@ -4909,6 +4946,8 @@ combine_nspec_array(nspec **nspec_arr)
 		return;
 
 	for (i = 0; nspec_arr[i] != NULL; i++) {
+		nspec_arr[i]->seq_num = 0;
+		nspec_arr[i]->chk = NULL;
 		for (j = i + 1; nspec_arr[j] != NULL; j++) {
 			if (nspec_arr[i]->resreq != NULL &&
 				nspec_arr[i]->ninfo == nspec_arr[j]->ninfo) {
@@ -4916,16 +4955,15 @@ combine_nspec_array(nspec **nspec_arr)
 				prev_j = NULL;
 
 				while (req_j != NULL) {
-					req_i =
-						find_resource_req(nspec_arr[i]->resreq, req_j->def);
+					req_i = find_resource_req(nspec_arr[i]->resreq, req_j->def);
 					if (req_i != NULL) {
 						/* we assume that if the resource is a boolean or a string
 						 * the value is either the same, or doesn't exist
 						 * so we don't need to do validity checking
 						 */
 						if (req_j->type.is_consumable)
-							req_i->amount +=  req_j->amount;
-						else if (req_j->type.is_string && req_i->res_str ==NULL) {
+							req_i->amount += req_j->amount;
+						else if (req_j->type.is_string && req_i->res_str == NULL) {
 							req_i->res_str = req_j->res_str;
 							req_j->res_str = NULL;
 						}

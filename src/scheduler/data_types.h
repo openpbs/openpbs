@@ -727,84 +727,85 @@ struct node_info
 
 struct resv_info
 {
-	unsigned 	 is_standing:1;			/* set to 1 for a standing reservation */
-	char		 *queuename;			/* the name of the queue */
-	char		 *rrule;			/* recurrence rule for standing reservations */
-	char		 *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
-	time_t		 *occr_start_arr;		/* occurrence start time */
-	char		 *timezone;			/* timezone associated to a reservation */
-	int		 resv_idx;			/* the index of standing resv occurrence */
-	int		 count;				/* the total number of occurrences */
-	time_t		 req_start;			/* user requested start time of resv */
-	time_t		 req_end;			/* user requested end tiem of resv */
-	time_t		 req_duration;			/* user requested duration of resv */
-	time_t		 retry_time;			/* time at which a reservation is to be reconfirmed */
-	int		 resv_type;			/* type of reservation i.e. job general etc */
-	enum resv_states resv_state;			/* reservation state */
-	enum resv_states resv_substate;			/* reservation substate */
-	queue_info 	 *resv_queue;			/* general resv: queue which is owned by resv */
-	node_info 	 **resv_nodes;			/* node universe for reservation */
-	char		 *partition;			/* name of the partition in which the reservation was confirmed */
+	unsigned is_standing:1;		/* set to 1 for a standing reservation */
+	char *queuename;		/* the name of the queue */
+	char *rrule;			/* recurrence rule for standing reservations */
+	char *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
+	time_t *occr_start_arr;		/* occurrence start time */
+	char *timezone;			/* timezone associated to a reservation */
+	int resv_idx;			/* the index of standing resv occurrence */
+	int count;			/* the total number of occurrences */
+	time_t req_start;		/* user requested start time of resv */
+	time_t req_end;			/* user requested end tiem of resv */
+	time_t req_duration;		/* user requested duration of resv */
+	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
+	int resv_type;			/* type of reservation i.e. job general etc */
+	enum resv_states resv_state;	/* reservation state */
+	enum resv_states resv_substate;	/* reservation substate */
+	queue_info *resv_queue;		/* general resv: queue which is owned by resv */
+	node_info **resv_nodes;		/* node universe for reservation */
+	char *partition;		/* name of the partition in which the reservation was confirmed */
+	selspec *select_orig;		/* original schedselect pre-alter */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
 struct resource_resv
 {
-	unsigned	can_not_run:1;		/* res resv can not run this cycle */
-	unsigned	can_never_run:1;	/* res resv can never run and will be deleted */
-	unsigned	can_not_fit:1;		/* res resv can not fit into node group */
-	unsigned	is_invalid:1;		/* res resv is invalid and will be ignored */
-	unsigned	is_peer_ob:1;		/* res resv can from a peer server */
+	unsigned can_not_run : 1;	/* res resv can not run this cycle */
+	unsigned can_never_run : 1;	/* res resv can never run and will be deleted */
+	unsigned can_not_fit : 1;	/* res resv can not fit into node group */
+	unsigned is_invalid : 1;	/* res resv is invalid and will be ignored */
+	unsigned is_peer_ob : 1;	/* res resv can from a peer server */
 
-	unsigned	is_job:1;		/* res resv is a job */
-	unsigned	is_prov_needed:1;	/* res resv requires provisioning */
-	unsigned	is_shrink_to_fit:1;	/* res resv is a shrink-to-fit job */
-	unsigned	is_resv:1;		/* res resv is an advanced reservation */
+	unsigned is_job : 1;		/* res resv is a job */
+	unsigned is_prov_needed : 1;	/* res resv requires provisioning */
+	unsigned is_shrink_to_fit : 1;	/* res resv is a shrink-to-fit job */
+	unsigned is_resv : 1;		/* res resv is an advanced reservation */
 
-	unsigned	will_use_multinode:1;	/* res resv will use multiple nodes */
+	unsigned will_use_multinode:1;	/* res resv will use multiple nodes */
 
-	char		*name;			/* name of res resv */
-	char		*user;			/* username of the owner of the res resv */
-	char		*group;			/* exec group of owner of res resv */
-	char		*project;		/* exec project of owner of res resv */
-	char		*nodepart_name;		/* name of node partition to run res resv in */
+	char *name;			/* name of res resv */
+	char *user;			/* username of the owner of the res resv */
+	char *group;			/* exec group of owner of res resv */
+	char *project;			/* exec project of owner of res resv */
+	char *nodepart_name;		/* name of node partition to run res resv in */
 
-	long		sch_priority;		/* scheduler priority of res resv */
-	int		rank;			/* unique numeric identifier for resource_resv */
-	int		ec_index;		/* Index into server's job_set array*/
+	long sch_priority;		/* scheduler priority of res resv */
+	int rank;			/* unique numeric identifier for resource_resv */
+	int ec_index;			/* Index into server's job_set array*/
 
-	time_t		qtime;			/* time res resv was submitted */
-	long		qrank;			/* time on which we might need to stabilize the sort */
-	time_t		start;			/* start time (UNDEFINED means no start time */
-	time_t		end;			/* end time (UNDEFINED means no end time */
-	time_t		duration;		/* duration of resource resv request */
-	time_t		hard_duration;		/* hard duration of resource resv request */
-	time_t		min_duration;		/* minimum duration of STF job */
+	time_t qtime;			/* time res resv was submitted */
+	long qrank;			/* time on which we might need to stabilize the sort */
+	time_t start;			/* start time (UNDEFINED means no start time */
+	time_t end;			/* end time (UNDEFINED means no end time */
+	time_t duration;		/* duration of resource resv request */
+	time_t hard_duration;		/* hard duration of resource resv request */
+	time_t min_duration;		/* minimum duration of STF job */
 
-	resource_req	*resreq;		/* list of resources requested */
-	selspec		*select;		/* select spec */
-	selspec		*execselect;		/* select spec from exec_vnode and resv_nodes */
-	place		*place_spec;		/* placement spec */
+	resource_req *resreq;		/* list of resources requested */
+	selspec *select;		/* select spec */
+	selspec *execselect;		/* select spec from exec_vnode and resv_nodes */
+	place *place_spec;		/* placement spec */
 
-	server_info	*server;		/* pointer to server which owns res resv */
-	node_info	**ninfo_arr;		/* nodes belonging to res resv */
-	nspec		**nspec_arr;		/* exec host of object in internal sched form */
+	server_info *server;		/* pointer to server which owns res resv */
+	node_info **ninfo_arr; 		/* nodes belonging to res resv */
+	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
-	job_info	*job;			/* pointer to job specific structure */
-	resv_info	*resv;			/* pointer to reservation specific structure */
+	job_info *job;			/* pointer to job specific structure */
+	resv_info *resv;		/* pointer to reservation specific structure */
 
-	char		*aoename;		/* store name of aoe if requested */
-	char		*eoename;		/* store name of eoe if requested */
-	char		**node_set_str;		/* user specified node string */
-	node_info	**node_set;		/* node array specified by node_set_str */
-#ifdef NAS /* localmod 034 */
-	enum site_j_share_type share_type;	/* How resv counts against group share */
-#endif /* localmod 034 */
-	int		resresv_ind;		/* resource_resv index in all_resresv array */
-	timed_event 	*run_event;		/* run event in calendar */
-	timed_event	*end_event;		/* end event in calendar */
+	char *aoename;			   /* store name of aoe if requested */
+	char *eoename;			   /* store name of eoe if requested */
+	char **node_set_str;		   /* user specified node string */
+	node_info **node_set;		   /* node array specified by node_set_str */
+#ifdef NAS				   /* localmod 034 */
+	enum site_j_share_type share_type; /* How resv counts against group share */
+#endif					   /* localmod 034 */
+	int resresv_ind;		   /* resource_resv index in all_resresv array */
+	timed_event *run_event;		   /* run event in calendar */
+	timed_event *end_event;		   /* end event in calendar */
 };
-
 
 struct resource_type
 {
@@ -1076,6 +1077,7 @@ struct nspec
 	int sub_seq_num;		/* sub sequence number for sort stabilization */
 	node_info *ninfo;
 	resource_req *resreq;
+	chunk *chk;
 };
 
 struct nameval

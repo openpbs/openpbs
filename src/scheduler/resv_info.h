@@ -92,10 +92,10 @@ int check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, se
 int confirm_reservation(status *policy, int pbs_sd, resource_resv *nresv, server_info *sinfo);
 
 /**
- *      counts the number of vnodes associated to a reservation that are not
+ *      checks that vnodes associated to a reservation that are not
  *                               available
  */
-int check_vnodes_down(resource_resv *resv, int * total_vnodes, char *vnodes_down_name);
+int check_vnodes_unavailable(resource_resv *resv);
 
 /**
  * Release reousrces allocated to a reservation

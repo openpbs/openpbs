@@ -213,7 +213,7 @@ char *create_execvnode(nspec **ns);
 /*
  *      parse_execvnode - parse an execvnode into an nspec array
  */
-nspec **parse_execvnode(char *execvnode, server_info *sinfo);
+nspec **parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel);
 
 /*
  *      new_nspec - allocate a new nspec
@@ -232,12 +232,15 @@ void free_nspec(nspec *ns);
 /*
  *      dup_nspec - duplicate an nspec
  */
-nspec *dup_nspec(nspec *ons, node_info **ninfo_arr);
+nspec *dup_nspec(nspec *ons, node_info **ninfo_arr, selspec *sel);
 
 /*
  *      dup_nspecs - duplicate an array of nspecs
  */
-nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr);
+nspec **dup_nspecs(nspec **onspecs, node_info **ninfo_arr, selspec *sel);
+
+/* find a chunk by a sequence number */
+chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num);
 
 /*
  *	empty_nspec_array - free the contents of an nspec array but not

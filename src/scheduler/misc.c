@@ -898,19 +898,22 @@ dup_array(void *ptr)
  *
  */
 int
-remove_ptr_from_array(void **arr, void *ptr)
+remove_ptr_from_array(void *arr, void *ptr)
 {
 	int i, j;
+	void **parr;
 
 	if (arr == NULL || ptr == NULL)
 		return 0;
 
-	for (i = 0; arr[i] != NULL && arr[i] != ptr; i++)
+	parr = (void **) arr;
+
+	for (i = 0; parr[i] != NULL && parr[i] != ptr; i++)
 		;
 
-	if (arr[i] != NULL) {
-		for (j = i; arr[j] != NULL; j++)
-			arr[j] = arr[j + 1];
+	if (parr[i] != NULL) {
+		for (j = i; parr[j] != NULL; j++)
+			parr[j] = parr[j + 1];
 		return 1;
 	}
 
