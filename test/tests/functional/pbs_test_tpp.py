@@ -324,7 +324,6 @@ class TestTPP(TestFunctional):
         self.common_steps(job=True, resv=True, resv_job=True)
         self.common_steps(interactive=True, client=self.hostB)
 
-    @skip(reason="Run this through cmd-line by removing this decorator")
     @requirements(num_moms=2, no_mom_on_server=True)
     def test_mom_non_server_host(self):
         """
@@ -373,7 +372,6 @@ class TestTPP(TestFunctional):
             self.server.expect(VNODE, {
                 'state': 'state-unknown,down'}, id=vnode)
 
-    @skip(reason="Run this through cmd-line by removing this decorator")
     @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
         """
