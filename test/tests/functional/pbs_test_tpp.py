@@ -141,6 +141,7 @@ class TestTPP(TestFunctional):
         :type sleep: Integer. Defaults to 10s
         """
         j = Job(TEST_USER)
+        offset = 1
         if set_attr is None:
             set_attr = {'Resource_List.select': '2:ncpus=1',
                         ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
@@ -160,6 +161,7 @@ class TestTPP(TestFunctional):
             resv_que = rid.split('.')[0]
             set_attr[ATTR_q] = resv_que
             j.set_attributes(set_attr)
+            offset = 10
 
         if job_script:
             pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -170,11 +172,8 @@ class TestTPP(TestFunctional):
             j.set_sleep_time(sleep)
 
         jid = self.server.submit(j)
-        offset = 1
         if exp_attr is None:
             exp_attr = {'job_state': 'R'}
-        if resv_job:
-            offset = 10
         self.server.expect(JOB, exp_attr, offset=offset, id=jid)
         return jid
 
@@ -390,7 +389,7 @@ class TestTPP(TestFunctional):
         else:
             self.momA = self.moms.values()[1]
             self.momB = self.moms.values()[0]
-        if self.server.shortname == self.comms.values()[0]:
+        if self.comms.values()[0].shortname == self.server.shortname:
             self.comm2 = self.comms.values()[1]
         else:
             self.comm2 = self.comms.values()[0]
