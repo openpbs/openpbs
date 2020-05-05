@@ -368,7 +368,6 @@ AC_CONFIG_FILES([
 	src/cmds/pbsrun_wrap
 	src/cmds/pbsrun
 	src/cmds/scripts/Makefile
-	src/cmds/scripts/au-nodeupdate
 	src/cmds/scripts/modulefile
 	src/cmds/scripts/pbs_habitat
 	src/cmds/scripts/pbs_init.d
