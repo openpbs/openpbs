@@ -425,6 +425,7 @@ job_alloc(void)
 	/* start accruing time from the time job was created */
 	time(&ctm);
 	pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = (long) ctm;
+	pj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = 0;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {

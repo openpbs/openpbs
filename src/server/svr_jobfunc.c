@@ -4936,7 +4936,7 @@ determine_accruetype(job* pjob)
 		if (pque->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0)
 			return JOB_ELIGIBLE;
 
-	/* New job without any apparent crimes, make it accrue eligible time */
+	/* The job doesn't have any reason to not accrue eligible time (e.g. on hold), so it should accrue it */
 	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT &&
 		pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSIN)
 		return JOB_ELIGIBLE;
