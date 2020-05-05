@@ -172,7 +172,11 @@ class TestTPP(TestFunctional):
         jid = self.server.submit(j)
         if exp_attr is None:
             exp_attr = {'job_state': 'R'}
-        self.server.expect(JOB, exp_attr, id=jid)
+        if resv_job:
+            offset = 10
+        else:
+            offset = 1
+        self.server.expect(JOB, exp_attr, offset=offset, id=jid)
         return jid
 
     def common_steps(self, set_attr=None, exp_attr=None, job=False,
@@ -223,7 +227,6 @@ class TestTPP(TestFunctional):
             # Wait for reservation to start
             a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
             self.server.expect(RESV, a, rid, offset=10)
-            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
             self.server.log_match("%s;Exit_status=0" % jid)
 
@@ -361,7 +364,7 @@ class TestTPP(TestFunctional):
                 2]['id']
         set_attr = {'Resource_List.select': vnode_val,
                     ATTR_k: 'oe'}
-        self.common_steps(job=True, jset_attr=set_attr)
+        self.common_steps(job=True, set_attr=set_attr)
         self.comm.stop('KILL')
         if self.mom.is_cpuset_mom():
             vnode_list = [self.server.status(NODE)[1]['id'],
@@ -386,26 +389,21 @@ class TestTPP(TestFunctional):
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.comm1 = self.comms.values()[0]
+        self.comm2 = self.comms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         self.hostC = self.comm1.shortname
-        nodes = [self.hostA, self.hostB, self.hostC]
+        self.hostD = self.comm2.shortname
+        nodes = [self.hostA, self.hostB, self.hostC, self.hostD]
         self.node_list.extend(nodes)
         hosts = [self.hostA, self.hostB]
         if self.server.shortname not in hosts:
             hosts.append(self.server.shortname)
-        a = {'PBS_START_COMM': '0', 'PBS_START_MOM': '1',
-             'PBS_LEAF_ROUTERS': self.hostC}
-        b = {'PBS_COMM_ROUTERS': self.hostA}
-        c = {'PBS_LEAF_ROUTERS': self.hostC}
-        self.set_pbs_conf(host_name=self.hostC, conf_param=b)
+        a = {'PBS_COMM_ROUTERS': self.hostA}
+        b = {'PBS_LEAF_ROUTERS': self.hostD}
+        self.set_pbs_conf(host_name=self.hostD, conf_param=a)
         for host in hosts:
-            if host == self.server.shortname and \
-                    host not in self.moms.values():
-                a['PBS_START_MOM'] = "0"
-                self.set_pbs_conf(host_name=host, conf_param=a)
-            else:
-                self.set_pbs_conf(host_name=host, conf_param=c)
+            self.set_pbs_conf(host_name=host, conf_param=b)
         self.common_steps(job=True, interactive=True, resv=True,
                           resv_job=True)
 
