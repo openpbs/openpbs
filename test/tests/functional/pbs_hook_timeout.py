@@ -74,6 +74,19 @@ class TestHookTimeout(TestFunctional):
         for mom in self.moms.values():
             self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
 
+    def timeout_messages(self, num_msg=1, starttime=None):
+        msg_found = None
+        for count in range(10):
+            sleep(30)
+            allmatch_msg = self.server.log_match(
+                "Timing out previous send of mom hook updates ",
+                max_attempts=1, starttime=starttime, allmatch=True)
+            if len(allmatch_msg) >= num_msg:
+                msg_found = allmatch_msg
+                break
+        self.assertIsNotNone(msg_found,
+                             msg="Didn't get expected timeout messages")
+
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for
@@ -81,7 +94,6 @@ class TestHookTimeout(TestFunctional):
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         timeout_max_attempt = 7
-        timeout_msg = False
 
         # Make momB unresponsive
         self.logger.info("Stopping MomB")
@@ -117,18 +129,7 @@ class TestHookTimeout(TestFunctional):
 
         # Second batch of hook update is for the *.PY files + resend of
         # *.HK file to momB
-        for count in range(10):
-            sleep(30)
-            allmatch_msg = self.server.log_match(
-                "Timing out previous send of mom hook updates ",
-                n=600, starttime=start_time, allmatch=True)
-            if len(allmatch_msg) >= 2:
-                timeout_msg = True
-                break
-        if not timeout_msg:
-            self.logger.error("Doesn't gets expected timeout messages")
-        timeout_msg = False
-
+        self.timeout_messages(2, start_time)
         # sent hook content file
         for h in [self.hostA, self.hostB, self.hostC]:
             hfile = os.path.join(self.server.pbs_conf['PBS_HOME'],
@@ -162,16 +163,7 @@ class TestHookTimeout(TestFunctional):
 
         # Ensure that hook send updates are retried for
         # the *.HK and *.PY file to momB
-        for count in range(10):
-            sleep(30)
-            allmatch_msg = self.server.log_match(
-                "Timing out previous send of mom hook updates ",
-                n=600, starttime=start_time, allmatch=True)
-            if len(allmatch_msg) >= 3:
-                timeout_msg = True
-                break
-        if not timeout_msg:
-            self.logger.error("Doesn't gets expected timeout messages")
+        self.timeout_messages(3, start_time)
         # Submit a job, it should still run
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
