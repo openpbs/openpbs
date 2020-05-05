@@ -1510,7 +1510,6 @@ adjust_for_os(struct infrastruct *pinf)
 
 	int	ofs_bin = 1;  /* use with bin_mpugs[] */
 	int	ofs_lib = 1;  /* use with lib_mpugs[] */
-	int	ofs_sbin = 1; /* use with sbin_mpugs[] */
 
 	if (strstr(pinf->utsd.ub.sysname, "Linux") != NULL) {
 
