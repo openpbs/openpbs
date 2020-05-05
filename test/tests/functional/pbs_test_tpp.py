@@ -384,19 +384,18 @@ class TestTPP(TestFunctional):
         Node 2 : Mom
         Node 3 : Comm
         """
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
-        self.comm2 = self.comms.values()[1]
         if self.moms.values()[0].shortname == self.server.shortname:
             self.momA = self.moms.values()[0]
             self.momB = self.moms.values()[1]
         else:
             self.momA = self.moms.values()[1]
             self.momB = self.moms.values()[0]
-
+        if self.server.shortname == self.comms.values()[0]:
+            self.comm2 = self.comms.values()[1]
+        else:
+            self.comm2 = self.comms.values()[0]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        self.comm2 = self.comms.values()[1]
         self.hostC = self.comm2.shortname
         nodes = [self.hostA, self.hostB, self.hostC]
         self.node_list.extend(nodes)
