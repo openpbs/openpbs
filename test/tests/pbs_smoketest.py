@@ -360,10 +360,11 @@ class SmokeTest(PBSTestSuite):
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
         exp_eq_val = {ATTR_used+'.ncpus': '2',
-                      ATTR_used+'.cput': '00:00:15', ATTR_exit_status: '0'}
+                      ATTR_exit_status: '0'}
         for key in exp_eq_val:
             self.assertEqual(exp_eq_val[key], jobs[0][key])
         exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
+                         ATTR_used+'.cput': '00:00:00',
                          ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
         for key in exp_noteq_val:
             self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
