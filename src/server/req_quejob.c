@@ -2088,14 +2088,17 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 	pbs_sched *psched;
 	char *partition_name = NULL;
 
-	if (resv != NULL && resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
-		partition_name = resv->ri_wattr[(int)RESV_ATR_partition].at_val.at_str;
-	else if (resv != NULL)
-		/* for reservations without partitions, set request/reply count to 0
-		 * because this is the only case when notification will be sent to multiple
-		 * schedulers and server expects multiple replies. Once partition name is set,
-		 * only relevant scheduler is notified and server will receive only one reply. */
-		resv->req_sched_count = resv->rep_sched_count = 0;
+	if (resv != NULL) {
+		if (resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
+			partition_name = resv->ri_wattr[(int)RESV_ATR_partition].at_val.at_str;
+		else
+			/* for reservations without partitions, set request/reply count to 0
+			 * because this is the only case when notification will be sent to multiple
+			 * schedulers and server expects multiple replies. Once partition name is set,
+			 * only relevant scheduler is notified and server will receive only one reply.
+			 */
+			resv->req_sched_count = resv->rep_sched_count = 0;
+	}
 
 
 	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
