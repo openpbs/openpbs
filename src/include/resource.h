@@ -89,7 +89,7 @@ typedef struct resource {
 typedef struct resource_def {
 	char   *rs_name;
 	int   (*rs_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rs_encode)(attribute *prsv, pbs_list_head *phead, char *atname,
+	int   (*rs_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
 		char *rsname, int mode, svrattrl **rtnl);
 	int   (*rs_set)(attribute *old, attribute *new, enum batch_op op);
 	int   (*rs_comp)(attribute *prsc, attribute *with);
@@ -123,7 +123,7 @@ extern int	     svr_resc_unk;	/* index to "unknown" resource   */
 
 extern resource     *add_resource_entry(attribute *, resource_def *);
 extern resource_def *find_resc_def(resource_def *, char *, int);
-extern resource     *find_resc_entry(attribute *, resource_def *);
+extern resource     *find_resc_entry(const attribute *, resource_def *);
 extern int          is_builtin(resource_def *rscdef);
 extern int           update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
 extern int           add_resource_def(char *name, int type, int perms);
@@ -149,7 +149,7 @@ struct resc_type_map {
 	char *rtm_rname;
 	int   rtm_type;
 	int   (*rtm_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rtm_encode)(attribute *prsv, pbs_list_head *phead, char *atname,
+	int   (*rtm_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
 		char *rsname, int mode, svrattrl **rtnl);
 	int   (*rtm_set)(attribute *old, attribute *new, enum batch_op op);
 	int   (*rtm_comp)(attribute *prsc, attribute *with);

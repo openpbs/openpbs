@@ -238,11 +238,6 @@ enum job_atr {
 	JOB_ATR_altid,		/* alternate job id, for irix6 = array id */
 	JOB_ATR_altid2,         /* alternate job id, currently unused */
 	JOB_ATR_etime,		/* time job became eligible to run	  */
-	JOB_ATR_reserve_start,
-	JOB_ATR_reserve_end,
-	JOB_ATR_reserve_duration,
-	JOB_ATR_reserve_state,
-	JOB_ATR_reserve_Tag,
 	JOB_ATR_reserve_ID,
 	JOB_ATR_refresh,
 	JOB_ATR_gridname,
@@ -619,7 +614,6 @@ struct job {
 	struct batch_request *ji_prunreq; /* outstanding runjob request */
 	pbs_list_head	ji_svrtask;	/* links to svr work_task list */
 	struct pbs_queue  *ji_qhdr;	/* current queue header */
-	struct resc_resv  *ji_resvp;	/* !=0 reservation job;see job_purge */
 	struct resc_resv  *ji_myResv;	/* !=0 job belongs to a reservation */
 	/* see also, attribute JOB_ATR_myResv */
 
@@ -1122,21 +1116,17 @@ extern struct depend_job *find_dependjob(struct depend *pdep, char *name);
 extern int send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int schedhint, void (*postfunc)(struct work_task *));
 extern void post_runone(struct work_task *pwt);
 extern job  *find_job(char *);
-extern char *get_egroup(job *);
 extern char *get_variable(job *, char *);
 extern void  check_block(job *, char *);
 extern char *lookup_variable(void *, int, char *);
-extern int   init_chkmom(job *);
 extern void  issue_track(job *);
 extern void  issue_delete(job *);
 extern int   job_abt(job *, char *);
 extern job  *job_alloc(void);
 extern void  job_free(job *);
-extern int   add_resc_resv_if_resvJob(job*);
 extern int   modify_job_attr(job *, svrattrl *, int, int *);
 extern char *prefix_std_file(job *, int);
 extern void  cat_default_std(job *, int, char *, char **);
-extern int   set_jobexid(job *, attribute *);
 extern int   set_objexid(void *, int, attribute *);
 #if 0
 extern int   site_check_user_map(job *, char *);
@@ -1207,7 +1197,6 @@ extern struct batch_request *cpy_stage(struct batch_request *, job *, enum job_a
 
 #ifdef	_RESERVATION_H
 extern int   svr_chk_ownerResv(struct batch_request *, resc_resv *);
-extern int   start_end_dur_wall(resc_resv *);
 #endif	/* _RESERVATION_H */
 #endif	/* _BATCH_REQUEST_H */
 

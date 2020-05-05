@@ -665,14 +665,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 	return 0;
 }
 
-int
-encode_rcost(attr, phead, atname, rsname, mode, rtnl)
-attribute	*attr;	  /* ptr to attribute */
-pbs_list_head	*phead;	  /* head of attrlist list */
-char		*atname;  /* attribute name */
-char		*rsname;  /* resource name or null */
-int		mode;	  /* encode mode, unused here */
-svrattrl      **rtnl;	  /* RETURN: ptr to svrattrl */
+int encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return (1);
 }
@@ -750,7 +743,7 @@ set_cred_renew_cache_period(attribute *pattr, void *pobj, int actmode) {
  * @param[out]	rtnl	-	RETURN: ptr to svrattrl
  */
 int
-encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return (1);
 }
@@ -791,7 +784,7 @@ decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
  * @retval	success
  */
 int
-encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return 0;
 }

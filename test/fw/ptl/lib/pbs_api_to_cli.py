@@ -156,7 +156,6 @@ api_to_cli = {
     ATTR_submit_arguments: 'Submit_arguments',
     ATTR_resv_name: 'Reserve_Name',
     ATTR_resv_owner: 'Reserve_Owner',
-    ATTR_resv_type: 'reserve_type',
     ATTR_resv_Tag: 'reservation_Tag',
     ATTR_resv_ID: 'reserve_ID',
     ATTR_resv_retry: 'reserve_retry',

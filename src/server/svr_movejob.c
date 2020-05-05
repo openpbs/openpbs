@@ -296,7 +296,7 @@ local_move(job *jobp, struct batch_request *req)
 
 	if ((pbs_errno = svr_enquejob(jobp)) != 0)
 		return -1;		/* should never ever get here */
-	account_jobstr2(jobp, PBS_ACCT_QUEUE);
+	account_jobstr(jobp, PBS_ACCT_QUEUE);
 
 	jobp->ji_lastdest = 0;	/* reset in case of another route */
 

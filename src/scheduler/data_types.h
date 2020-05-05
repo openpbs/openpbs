@@ -741,7 +741,6 @@ struct resv_info
 	time_t req_end;			/* user requested end tiem of resv */
 	time_t req_duration;		/* user requested duration of resv */
 	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
-	int resv_type;			/* type of reservation i.e. job general etc */
 	enum resv_states resv_state;	/* reservation state */
 	enum resv_states resv_substate;	/* reservation substate */
 	queue_info *resv_queue;		/* general resv: queue which is owned by resv */

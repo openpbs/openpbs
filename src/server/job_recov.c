@@ -548,8 +548,7 @@ job_recov_fs(char *filename)
  * @param[in] updatetype - Type of update, 0 = quick, 1=full, 2=new
  * @param[in] objtype - Type of object
  *						JOB_OBJECT,
- *						RESC_RESV_OBJECT,
- *						RESV_JOB_OBJECT
+ *						RESC_RESV_OBJECT
  *
  * @return     Error code
  * @retval	0 - Success
@@ -592,7 +591,7 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 	pmode = 0600;
 #endif
 
-	if (objtype == RESC_RESV_OBJECT || objtype == RESV_JOB_OBJECT) {
+	if (objtype == RESC_RESV_OBJECT) {
 #ifndef PBS_MOM	/* MOM knows not of resc_resv structs */
 		resc_resv  *presv;
 		presv = (resc_resv *)pobj;
@@ -618,24 +617,6 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 	else if (objtype == JOB_OBJECT) {
 		job   *pj = (job *)pobj;
 
-#ifndef PBS_MOM	/*MOM knows not of resc_resv structs*/
-		if (pj->ji_resvp) {
-			int	rc = 0;
-
-			if (updatetype == SAVEJOB_QUICK)
-				rc = job_or_resv_save((void *)pj->ji_resvp,
-					SAVERESV_QUICK,
-					RESC_RESV_OBJECT);
-			else if ((updatetype == SAVEJOB_FULL) ||
-				(updatetype == SAVEJOB_FULLFORCE)  ||
-				(updatetype == SAVEJOB_NEW))
-				rc = job_or_resv_save((void *)pj->ji_resvp,
-					SAVERESV_FULL,
-					RESC_RESV_OBJECT);
-			if (rc)
-				return (rc);
-		}
-#endif
 		err_msg = "job_save";
 		err_msgl = "Link in job_save failed";
 		path = path_jobs;
@@ -810,8 +791,7 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
  * @param[in] filename - Name of file to load object from
  * @param[in] objtype - Type of object
  *					JOB_OBJECT,
- *					RESC_RESV_OBJECT,
- *					RESV_JOB_OBJECT
+ *					RESC_RESV_OBJECT
  *
  * @return	Pointer to the new job (resc_resv) struct
  * @retval	NULL - Failure

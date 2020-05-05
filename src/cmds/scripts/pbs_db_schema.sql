@@ -56,7 +56,7 @@ CREATE TABLE pbs.info (
     pbs_schema_version TEXT 		NOT NULL
 );
 
-INSERT INTO pbs.info values('1.4.0'); /* schema version */
+INSERT INTO pbs.info values('1.5.0'); /* schema version */
 
 ---------------------- SERVER ------------------------------
 
@@ -145,7 +145,6 @@ CREATE TABLE pbs.resv (
     ri_queue		TEXT		NOT NULL,
     ri_state		INTEGER		NOT NULL,
     ri_substate		INTEGER		NOT NULL,
-    ri_type		INTEGER		NOT NULL,
     ri_stime		BIGINT		NOT NULL,
     ri_etime		BIGINT		NOT NULL,
     ri_duration		BIGINT		NOT NULL,

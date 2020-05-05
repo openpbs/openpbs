@@ -1047,9 +1047,7 @@ req_deleteReservation(struct batch_request *preq)
 	 *with the batch_request structure.
 	 */
 
-	if (presv->ri_qs.ri_type == RESC_RESV_OBJECT
-		&& presv->ri_qp != NULL
-		&& presv->ri_qp->qu_numjobs > 0) {
+	if (presv->ri_qp != NULL && presv->ri_qp->qu_numjobs > 0) {
 
 		/*One or more jobs are attached to this resource reservation
 		 *Issue a PBS_BATCH_Manager request to set "enable" to "False"
@@ -1229,24 +1227,19 @@ req_deleteReservation(struct batch_request *preq)
 		/*This is all we can do for now*/
 		return;
 
-	} else if (presv->ri_qs.ri_type == RESV_JOB_OBJECT ||
-		presv->ri_qs.ri_type == RESC_RESV_OBJECT) {
-
-		/*Ok, we have no jobs attached so can purge reservation
-		 If reservation has an attached queue, a request to qmgr
-		 will get made to delete the queue
-		 */
-		relVal = 2;
-		eval_resvState(presv, RESVSTATE_req_deleteReservation,
-			relVal, &state, &sub);
-		(void) resv_setResvState(presv, state, sub);
-		reply_ack(preq);
-		resv_purge(presv);
-		return;
-	} else {
-		/*Don't expect to ever see this message*/
-		req_reject(PBSE_UNKRESVTYPE, 0, preq);
 	}
+
+	/* Ok, we have no jobs attached so can purge reservation
+		If reservation has an attached queue, a request to qmgr
+		will get made to delete the queue
+		*/
+	relVal = 2;
+	eval_resvState(presv, RESVSTATE_req_deleteReservation,
+		relVal, &state, &sub);
+	(void) resv_setResvState(presv, state, sub);
+	reply_ack(preq);
+	resv_purge(presv);
+	return;
 }
 
 
@@ -1400,28 +1393,24 @@ struct work_task *pwt;
 	if (presv == NULL)
 		return;
 
-	if (presv->ri_qs.ri_type == RESC_RESV_OBJECT) {
-		presv->ri_downcnt = presv->ri_qp->qu_numjobs;
-		if (presv->ri_downcnt != 0) {
-			if (presv->ri_qp)
-				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
-			while (pjob != NULL) {
-				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
-					break;
-				pjob = (job *) GET_NEXT(pjob->ji_jobque);
-			}
-			/*
-			 * If pjob is NULL, then all are history jobs only,
-			 * make the ri_downcnt to 0, so that resv_purge()
-			 * can be called down.
-			 */
-			if (pjob == NULL)
-				presv->ri_downcnt = 0;
+	presv->ri_downcnt = presv->ri_qp->qu_numjobs;
+	if (presv->ri_downcnt != 0) {
+		if (presv->ri_qp)
+			pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
+		while (pjob != NULL) {
+			if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
+				(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
+				(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
+				break;
+			pjob = (job *) GET_NEXT(pjob->ji_jobque);
 		}
-	} else {
-		return; /* not a reservation object, do nothing */
+		/*
+			* If pjob is NULL, then all are history jobs only,
+			* make the ri_downcnt to 0, so that resv_purge()
+			* can be called down.
+			*/
+		if (pjob == NULL)
+			presv->ri_downcnt = 0;
 	}
 
 	if (presv->ri_downcnt == 0) {

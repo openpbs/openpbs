@@ -1199,7 +1199,7 @@ complete_running(job *jobp)
 			parent->ji_wattr[(int)JOB_ATR_stime].at_flags |=
 			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 
-			account_jobstr(parent);
+			account_jobstr(parent, PBS_ACCT_RUN);
 			job_attr_def[(int) JOB_ATR_Comment].at_decode(
 					&parent->ji_wattr[(int) JOB_ATR_Comment], NULL,
 					NULL,
@@ -1268,7 +1268,7 @@ complete_running(job *jobp)
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT)
 		account_record(PBS_ACCT_RESTRT, jobp, NULL);
 	else
-		account_jobstr(jobp);
+		account_jobstr(jobp, PBS_ACCT_RUN);
 
 	/* if any dependencies, see if action required */
 

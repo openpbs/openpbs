@@ -64,10 +64,6 @@
  *	 post_resv_purge			- handles the return reply from an internally generated request.
  *	 resv_abt					- abort a reservation
  *	 job_or_resv_init_wattr		- initialize job (resc_resv) working attribute array
- *	 add_resc_resv_to_job		- adds a resc_resv structure to a job if the job is a "reservation job"
- *	 add_resc_resv_if_resvJob	- Checks to see if the job is a reservation job
- *	 								and if so attempts to attach a "resc_resv" structure to the job.
- *	 set_resvAttrs_off_jobAttrs - set reservation attributes off those associated with the "resevation job"
  *	 resv_exclusive_handler     - Set node state to resv-exclusive
  *	 find_aoe_from_request      - Find aoe from the reservation request
  *	 spool_filename             - creates stdout/err file name in the spool area.
@@ -156,7 +152,6 @@ static void job_init_wattr(job *);
 #ifndef PBS_MOM		/*SERVER ONLY*/
 static void job_or_resv_init_wattr(void*, int);
 static void post_resv_purge(struct work_task *pwt);
-static int  set_resvAttrs_off_jobAttrs(resc_resv*, job*);
 #endif
 
 /* Global Data items */
@@ -940,7 +935,7 @@ job_purge(job *pjob)
 			}
 		}
 
-		(void)account_entity_limit_usages(pjob, NULL, NULL, DECR,
+		account_entity_limit_usages(pjob, NULL, NULL, DECR,
 				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
 
 		svr_dequejob(pjob);
@@ -1043,29 +1038,6 @@ job_purge(job *pjob)
 		is_called_by_job_purge = 1;
 		free_nodes(pjob);
 		is_called_by_job_purge = 0;
-	}
-
-	if (pjob->ji_resvp) {
-		int rc;
-
-		if (pjob->ji_resvp->ri_qs.ri_type == RESV_JOB_OBJECT) {
-
-			/* reservation structure should not point to a
-			 * job structure that is going away
-			 */
-			pjob->ji_resvp->ri_jbp = 0;
-
-			/* relinquish any nodes belonging to this reservation-job */
-
-			if (pjob->ji_resvp->ri_qs.ri_svrflags & RESV_SVFLG_HasNodes)
-				free_resvNodes(pjob->ji_resvp);
-
-			if ((rc = gen_deleteResv(pjob->ji_resvp, 0)))
-				log_err(rc, __func__, "no reservation delete task generated");
-		}
-		else
-			log_err(PBSE_INTERNAL, __func__,
-				"ji_resvp or ri_qs.ri_type not correct");
 	}
 #endif
 
@@ -1832,9 +1804,7 @@ resv_purge(resc_resv *presv)
 		presv->ri_giveback = 0;
 	}
 
-	/* Remove reservation's link element from whichever of the server's
-	 * global lists (svr_allresvs or svr_newresvs) has it
-	 */
+	/* Remove reservation's link element from the server's global list (svr_allresvs) */
 	delete_link(&presv->ri_allresvs);
 
 	/* Delete any lingering tasks pointing to this reservation */
@@ -1931,25 +1901,15 @@ resv_abt(resc_resv *presv, char *text)
 	old_state = presv->ri_qs.ri_state;
 
 	if (old_state == RESV_BEING_DELETED) {
-		if (presv->ri_qs.ri_type == RESV_JOB_OBJECT) {
-			if (presv->ri_jbp == NULL) {
+		if ((presv->ri_qp != NULL &&
+			presv->ri_qp->qu_numjobs == 0) ||
+			presv->ri_qp == NULL) {
 
-				account_recordResv(PBS_ACCT_ABT, presv, "");
-				svr_mailownerResv(presv, MAIL_ABORT, MAIL_NORMAL, text);
-				resv_purge(presv);
-			} else
-				rc = -1;
-		} else if (presv->ri_qs.ri_type == RESC_RESV_OBJECT) {
-			if ((presv->ri_qp != NULL &&
-				presv->ri_qp->qu_numjobs == 0) ||
-				presv->ri_qp == NULL) {
-
-				account_recordResv(PBS_ACCT_ABT, presv, "");
-				svr_mailownerResv(presv, MAIL_ABORT, MAIL_NORMAL, text);
-				resv_purge(presv);
-			} else
-				rc = -1;
-		}
+			account_recordResv(PBS_ACCT_ABT, presv, "");
+			svr_mailownerResv(presv, MAIL_ABORT, MAIL_NORMAL, text);
+			resv_purge(presv);
+		} else
+			rc = -1;
 	}
 	return (rc);
 }
@@ -1988,295 +1948,6 @@ job_or_resv_init_wattr(void *pobj, int obj_type)
 	for (i=0; i<attr_final; i++) {
 		clear_attr(&wattr[i], &p_attr_def[i]);
 	}
-}
-
-
-/**
- * @brief
- * 		add_resc_resv_to_job - adds a resc_resv structure to
- *		a job if the job is a "reservation job"
- *		Specifically, generates and fills out a resc_resv
- *		structure, attaches it to the job, and appends the
- *		reservation to the server's "svr_allresvs" list.
- *
- * @see
- * 		add_resc_resv_if_resvJob
- *
- * @param[in,out]	pobj - pointer to job struct
- *
- * @return error code
- * @retval	0		- successful
- * @retval	nonzero	- failure
- */
-int
-add_resc_resv_to_job(job *pjob)
-{
-	resc_resv	*presv;
-	char            buf[256];
-	int		state, sub;
-	int		rc;
-
-	if (pjob == NULL) {
-		return  (PBSE_NONE);
-	}
-
-	if ((pjob->ji_wattr[JOB_ATR_reserve_start]
-		.at_flags & ATR_VFLAG_SET) == 0
-		&& (pjob->ji_wattr[JOB_ATR_reserve_duration]
-		.at_flags & ATR_VFLAG_SET) == 0)
-		return  (PBSE_NOTRESV);
-
-	if ((presv = resc_resv_alloc()) == NULL)
-		return  (PBSE_SYSTEM);
-
-	/* First, fill out the "non-saved" and "quick-save"
-	 * area of the resc_resv structure
-	 *
-	 * remark: pbs_list_head structures in the resc_resv are
-	 * initialized as part of the above "resc_resv_alloc()"
-	 * Start, end and duration in "quick save" will be set
-	 * further on by "start_end_dur_wall ()"
-	 */
-
-	presv->ri_jbp = pjob;
-	pjob->ji_resvp = presv;
-
-	if (pjob->ji_myResv)
-		/*case where have "reservation job" in a reservation*/
-		presv->ri_parent = pjob->ji_myResv;
-
-	presv->ri_modified = 1;
-
-	presv->ri_qs.ri_state = pjob->ji_wattr[JOB_ATR_reserve_state]
-		.at_val.at_long;
-	presv->ri_qs.ri_substate = presv->ri_qs.ri_state;
-	presv->ri_qs.ri_type = RESV_JOB_OBJECT;
-
-	(void)strcpy(presv->ri_qs.ri_resvID, pjob->ji_qs.ji_jobid);
-
-	(void)strcpy(presv->ri_qs.ri_fileprefix,
-		pjob->ji_qs.ji_jobid);
-
-
-	/* A resc_resv's "ri_queue" is not the empty string if a
-	 * queue has been specifically established to support the
-	 * reservation's job(s)
-	 */
-	(void)strcpy(presv->ri_qs.ri_queue, "");
-	presv->ri_qp = NULL;
-
-	/* Now set various of the reservation attributes
-	 * based on what is specified for the job
-	 * Makes use of the correspondence table located
-	 * in resv_attr_def.c
-	 */
-	rc =  set_resvAttrs_off_jobAttrs(presv, pjob);
-	if (rc != 0) {
-		resv_purge(presv);
-		return (PBSE_INTERNAL);
-	}
-
-	/* Set any other needed attributes and resc_resv fields */
-
-
-	/* set reservation "owner" attribute to user@host */
-	resv_attr_def[(int)RESV_ATR_resv_owner].at_free(
-		&presv->ri_wattr[(int)RESV_ATR_resv_owner]);
-	(void)strcpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
-	resv_attr_def[(int)RESV_ATR_resv_owner].at_decode(
-		&presv->ri_wattr[(int)RESV_ATR_resv_owner],
-		NULL, NULL, buf);
-
-	/* make sure owner is put in reservation's User_List */
-	if (act_resv_add_owner(&presv->ri_wattr[(int)RESV_ATR_userlst],
-		presv, ATR_ACTION_NEW)) {
-		resv_purge(presv);
-		return (PBSE_BADATVAL);
-	}
-
-
-	presv->ri_wattr[(int)RESV_ATR_resv_type]
-	.at_val.at_long = presv->ri_qs.ri_type;
-	presv->ri_wattr[(int)RESV_ATR_resv_type].at_flags |= ATR_VFLAG_SET |
-		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-
-	eval_resvState(presv, RESVSTATE_add_resc_resv_to_job,
-		0, &state, &sub);
-	(void)resv_setResvState(presv, state, sub);
-
-	/* process reservation window, duration, wall info */
-
-	if (start_end_dur_wall(presv->ri_jbp, RESV_JOB_OBJECT)) {
-		(void)resv_purge(presv);
-		return (PBSE_SYSTEM);
-	}
-
-	/*For any resource limits that aren't specified,
-	 *see if a default value can be determined from
-	 *queue, server, etc. and use that value for the limit
-	 */
-
-	(void)set_resc_deflt((void *)presv, RESC_RESV_OBJECT, NULL);
-
-	/* write of disk image for this resc_resv structure
-	 * occurs when function job_or_resv_save () is called
-	 */
-
-	/* put onto the "timed task" list a task that causes
-	 * deletion of the reservation if the window passes
-	 */
-
-	if (gen_task_EndResvWindow(presv)) {
-		(void)resv_purge(presv);
-		return (PBSE_SYSTEM);
-	}
-
-	/*
-	 *We don't want to attach the reservation to the job at this
-	 *point but rather in "req_commit" where the job is taken from
-	 *the servers's "svr_newjobs" list and placed on the server's
-	 *"svr_alljobs" list.
-	 *This avoids a timing issue where "stat" requests coming from
-	 *the scheduler and the "req_commit" request can be such that
-	 *the scheduler sees the reservation before the reservation's
-	 *job is on svr_alljobs.  Immediate deleting of such a reservation
-	 *ends up deleting the reservation but leaves the job structure
-	 *still in existence (on the svr_alljobs list) following the
-	 *req_commit request).
-	 */
-
-	append_link(&svr_newresvs, &presv->ri_allresvs, presv);
-	return (PBSE_NONE);
-}
-
-
-/**
- * @brief
- * 		add_resc_resv_if_resvjob - Checks to see if the job is a
- *		reservation job and if so attempts to attach a
- *		"resc_resv" structure to the job.  If successful, it
- *		also appends the structure to the "svr_allresvs" list
- *
- * @param[in]	pobj - pointer to job struct
- *
- * @return error code
- * @retval	0		- successful
- * @retval	nonzero	- failure
- */
-int
-add_resc_resv_if_resvJob(job *pjob)
-{
-	if (pjob == NULL)
-		return (PBSE_INTERNAL);
-
-	if ((pjob->ji_wattr[JOB_ATR_reserve_start]
-		.at_flags & ATR_VFLAG_SET) == 0)
-		return (0);
-
-	return (add_resc_resv_to_job(pjob));
-}
-
-
-/**
- * @brief
- * 		set_resvAttrs_off_jobAttrs - set reservation attributes off
- *		those associated with the "resevation job"
- *
- * @param[in,out]	presv - pointer to reservation struct
- * @param[in,out]	pobj - pointer to job struct
- *
- * @see
- * 		req_quejob
- *
- * @return	int
- * @retval	0	- success
- * @retval	-1	- failed
- */
-static	int
-set_resvAttrs_off_jobAttrs(resc_resv *presv, job *pjob)
-{
-	int	i = 0;
-	int	ri, ji;
-	int	rc = -1;
-	resource	*prent;
-	resource_def    *prdef;
-
-	attribute_def	*pjd = job_attr_def;
-	attribute_def	*prd = resv_attr_def;
-	svrattrl	*tpsatl;
-	svrattrl	*psatl = NULL;
-	pbs_list_head	lhead;	  /*list of attrlist structs*/
-
-	CLEAR_HEAD(lhead);
-	for (i=0, ji = index_atrJob_to_atrResv [i][1],
-		ri = index_atrJob_to_atrResv [i][0];
-
-		ji != JOB_ATR_LAST;
-
-		++i, ji = index_atrJob_to_atrResv [i][1],
-		ri = index_atrJob_to_atrResv [i][0]) {
-
-
-		if (pjob->ji_wattr[ji].at_flags & ATR_VFLAG_SET) {
-
-			rc = pjd[ji].at_encode(&pjob->ji_wattr[ji], &lhead,
-				prd[ri].at_name, NULL,
-				ATR_ENCODE_CLIENT, NULL);
-			if (rc < 0) {
-				rc = -1;
-			} else if (rc > 0) {
-				/*at_encode appended something to list*/
-
-				if (psatl)
-					psatl = (svrattrl *)GET_NEXT(psatl->al_link);
-				else
-					psatl = (svrattrl *)GET_NEXT(lhead);
-
-				do {
-
-					if (psatl->al_resc == NULL) {
-						rc = prd[ri].at_decode(&presv->ri_wattr[ri],
-							psatl->al_name,
-							psatl->al_resc,
-							psatl->al_value);
-						if (rc > 0) {
-							rc = -1;
-							break;
-						}
-					} else {
-						prdef = find_resc_def(svr_resc_def,
-							psatl->al_resc,
-							RESV_ATR_LAST);
-						if (prdef) {
-							if ((prent = add_resource_entry(&presv->ri_wattr[ri],
-								prdef)) != 0) {
-								rc = prdef->rs_decode(&prent->rs_value,
-									psatl->al_name,
-									psatl->al_resc,
-									psatl->al_value);
-								if (rc)
-									rc = -1;
-							} else
-								rc = -1;
-						} else
-							rc = -1;
-					}
-					if (rc == -1)
-						break;
-
-					tpsatl = (svrattrl *)GET_NEXT(psatl->al_link);
-					if (tpsatl)
-						psatl = tpsatl;
-				} while (tpsatl);	/*Bottom of inner do while loop*/
-
-			} /*Bottom of if/elseif*/
-			if (rc == -1)
-				break;
-		} /*Bottom of outer if */
-	} /*Bottom of for loop*/
-
-	free_attrlist(&lhead);
-	return (rc);
 }
 
 /**

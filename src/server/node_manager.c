@@ -2375,7 +2375,7 @@ stat_update(int stream)
 							(void)prdefsl->rs_decode(&presc->rs_value, NULL, "select", schedselect_entry->al_value);
 						}
 					}
-					account_jobstr2(pjob, PBS_ACCT_PRUNE);
+					account_jobstr(pjob, PBS_ACCT_PRUNE);
 				} else {
 					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 						  pjob->ji_qs.ji_jobid,
@@ -8633,7 +8633,7 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
 
 	if (rc == 0) {
 		account_job_update(pjob, PBS_ACCT_UPDATE);
-		account_jobstr2(pjob, PBS_ACCT_NEXT);
+		account_jobstr(pjob, PBS_ACCT_NEXT);
 	}
 
 	return (rc);

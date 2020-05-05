@@ -139,12 +139,12 @@ decode_size(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 23
 
 int
-encode_size(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_size(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	     ct;
 	char	     cvnbuf[CVNBUFSZ];
 	svrattrl *pal;
-	void from_size(struct size_value *, char *);
+	void from_size(const struct size_value *, char *);
 
 	if (!attr)
 		return (-1);
@@ -434,7 +434,7 @@ to_size(char *val, struct size_value *psize)
  */
 
 void
-from_size(struct size_value *psize, char *cvnbuf)
+from_size(const struct size_value *psize, char *cvnbuf)
 {
 
 #ifdef WIN32

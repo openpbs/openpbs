@@ -163,7 +163,7 @@ make_attr(char *attr_name, char *attr_resc,
  *
  */
 int
-encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr, pbs_db_attr_list_t *attr_list, int all)
+encode_attr_db(struct attribute_def *padef, const attribute *pattr, int numattr, pbs_db_attr_list_t *attr_list, int all)
 {
 	pbs_list_head lhead;
 	int i;
@@ -189,8 +189,6 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 			(char *)0, ATR_ENCODE_DB, NULL);
 		if (rc < 0)
 			return -1;
-
-		(pattr+i)->at_flags &= ~ATR_VFLAG_MODIFY;
 	}
 	count = 0;
 	pal = (svrattrl *)GET_NEXT(lhead);

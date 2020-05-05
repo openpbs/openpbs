@@ -105,7 +105,7 @@
 /*ARGSUSED*/
 
 int
-encode_inter(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_inter(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	if ((mode == ATR_ENCODE_CLIENT) || (mode == ATR_ENCODE_HOOK))
 		return (encode_b(attr, phead, atname, rsname, mode, rtnl));

@@ -61,7 +61,6 @@ extern "C" {
 
 #define	JOB_OBJECT		1
 #define	RESC_RESV_OBJECT	2
-#define RESV_JOB_OBJECT		3
 
 #define RESV_START_TIME_MODIFIED	0x1
 #define RESV_END_TIME_MODIFIED		0x2
@@ -82,7 +81,6 @@ extern "C" {
 enum resv_atr {
 	RESV_ATR_resv_name,
 	RESV_ATR_resv_owner,
-	RESV_ATR_resv_type,
 	RESV_ATR_state,
 	RESV_ATR_substate,
 	RESV_ATR_reserve_Tag,
@@ -256,7 +254,6 @@ struct resc_resv {
 		int		ri_rsversion;		/* reservation struct verison#, see RSVERSION */
 		int		ri_state;		/* internal copy of state */
 		int		ri_substate;		/* substate of resv state */
-		int		ri_type;		/* "reservation" or "reservation job"*/
 		time_t		ri_stime;		/* left window boundry  */
 		time_t		ri_etime;		/* right window boundry */
 		time_t		ri_duration;		/* reservation duration */
@@ -335,7 +332,7 @@ struct resc_resv {
 extern resc_resv  *find_resv(char *);
 extern resc_resv  *resc_resv_alloc(void);
 extern void  resv_purge(resc_resv *);
-extern int   start_end_dur_wall(void *, int);
+extern int start_end_dur_wall(resc_resv *);
 
 #ifdef	_PBS_JOB_H
 extern void*  job_or_resv_recov(char *, int);
@@ -366,9 +363,7 @@ extern void set_idle_delete_task(resc_resv *presv);
 extern int change_enableORstart(resc_resv *, int, char *);
 extern	void unset_resv_retry(resc_resv *);
 extern	void set_resv_retry(resc_resv *, long);
-extern	void eval_resvState(resc_resv *, enum resvState_discrim, int, int *,
-	int *);
-extern	void cmp_resvStateRelated_attrs(void *pobj, int);
+extern	void eval_resvState(resc_resv *, enum resvState_discrim, int, int *, int *);
 extern	void free_resvNodes(resc_resv *);
 extern	int  act_resv_add_owner(attribute*, void*, int);
 extern	void svr_mailownerResv(resc_resv*, int, int, char*);

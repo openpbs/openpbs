@@ -332,8 +332,6 @@ extern int issue_Drequest(int, struct batch_request *, void (*)(), struct work_t
 #endif /* _WORK_TASK_H */
 
 #ifdef _RESERVATION_H
-extern void Update_Resvstate_if_resv(job *);
-extern int add_resc_resv_to_job(job *);
 extern void is_resv_window_in_future(resc_resv *);
 extern void resv_setResvState(resc_resv *, int, int);
 extern void is_resv_window_in_future(resc_resv *);
