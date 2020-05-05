@@ -170,12 +170,11 @@ class TestTPP(TestFunctional):
             j.set_sleep_time(sleep)
 
         jid = self.server.submit(j)
+        offset = 1
         if exp_attr is None:
             exp_attr = {'job_state': 'R'}
         if resv_job:
             offset = 10
-        else:
-            offset = 1
         self.server.expect(JOB, exp_attr, offset=offset, id=jid)
         return jid
 
@@ -226,7 +225,7 @@ class TestTPP(TestFunctional):
                                   rid=rid, job_script=True)
             # Wait for reservation to start
             a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-            self.server.expect(RESV, a, rid, offset=10)
+            self.server.expect(RESV, a, rid)
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=10)
             self.server.log_match("%s;Exit_status=0" % jid)
 
@@ -381,29 +380,30 @@ class TestTPP(TestFunctional):
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
         Configuration:
-        Node 1 : Server, Sched, Comm
+        Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
-        Node 3 : Mom
-        Node 4 : Comm
+        Node 3 : Comm
         """
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
-        self.comm1 = self.comms.values()[0]
         self.comm2 = self.comms.values()[1]
+        if self.moms.values()[0].shortname == self.server.shortname:
+            self.momA = self.moms.values()[0]
+            self.momB = self.moms.values()[1]
+        else:
+            self.momA = self.moms.values()[1]
+            self.momB = self.moms.values()[0]
+
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        self.hostC = self.comm1.shortname
-        self.hostD = self.comm2.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD]
+        self.comm2 = self.comms.values()[1]
+        self.hostC = self.comm2.shortname
+        nodes = [self.hostA, self.hostB, self.hostC]
         self.node_list.extend(nodes)
-        hosts = [self.hostA, self.hostB]
-        if self.server.shortname not in hosts:
-            hosts.append(self.server.shortname)
         a = {'PBS_COMM_ROUTERS': self.hostA}
-        b = {'PBS_LEAF_ROUTERS': self.hostD}
-        self.set_pbs_conf(host_name=self.hostD, conf_param=a)
-        for host in hosts:
-            self.set_pbs_conf(host_name=host, conf_param=b)
+        self.set_pbs_conf(host_name=self.hostC, conf_param=a)
+        b = {'PBS_LEAF_ROUTERS': self.hostC}
+        self.set_pbs_conf(host_name=self.hostB, conf_param=b)
         self.common_steps(job=True, interactive=True, resv=True,
                           resv_job=True)
 
