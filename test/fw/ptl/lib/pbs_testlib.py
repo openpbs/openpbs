@@ -5205,14 +5205,20 @@ class Server(PBSService):
         if len(setdict) > 0:
             self.manager(MGR_CMD_SET, MGR_OBJ_SERVER, setdict)
         if revertresources:
-            try:
-                rescs = self.status(RSC)
-                rescs = [r['id'] for r in rescs]
-            except:
-                rescs = []
-            if len(rescs) > 0:
-                self.manager(MGR_CMD_DELETE, RSC, id=rescs)
+            self.delete_resources()
         return True
+
+    def delete_resources(self):
+        """
+        Delete all resources
+        """
+        try:
+            rescs = self.status(RSC)
+            rescs = [r['id'] for r in rescs]
+        except:
+            rescs = []
+        if len(rescs) > 0:
+            self.manager(MGR_CMD_DELETE, RSC, id=rescs)
 
     def unset_svr_attrib(self, server_stat=None):
         """
