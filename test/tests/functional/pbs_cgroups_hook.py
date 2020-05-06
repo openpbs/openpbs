@@ -1832,6 +1832,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('This test requires at least two processors.')
         if sibs / cores == 1:
             self.skipTest('This test requires hyperthreading to be enabled.')
+
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
 
