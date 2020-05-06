@@ -9023,6 +9023,9 @@ main(int argc, char *argv[])
 #endif /* DEBUG */
 
 	mom_pid = (pid_t)getpid();
+	(void)lseek(lockfds, (off_t)0, SEEK_SET);
+	(void)sprintf(log_buffer, "%d\n", mom_pid);
+	(void)write(lockfds, log_buffer, strlen(log_buffer));
 
 #else /* ! WIN32 ------------------------------------------------------------*/
 

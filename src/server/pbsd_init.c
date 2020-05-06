@@ -404,6 +404,8 @@ pbsd_init(int type)
 	if (setup_env(pbs_conf.pbs_environment)==-1)
 		return (-1);
 
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
+
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
 
@@ -1841,6 +1843,7 @@ change_logs(int sig)
 	log_close(1);
 	log_open(log_file, path_log);
 	(void)acct_open(acct_file);
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 }
 
 /**

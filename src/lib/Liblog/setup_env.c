@@ -157,3 +157,31 @@ setup_env(char *filen)
 	fclose(efile);
 	return (-1);
 }
+
+/**
+ * @brief
+ * 	log_supported_auth_methods() - print PBS_SUPPORTED_AUTH_METHODS to the log file.
+ *
+ * @param[in]	supported_auth_methods = An array of supported methods
+ *
+ * @return	void
+ */
+void
+log_supported_auth_methods(char **supported_auth_methods) {
+
+	if (supported_auth_methods != NULL) {
+		int i;
+		char temp_buf[100 + 1]; //MAXAUTHNAME 100
+		char *sep = ",";
+		memset(temp_buf, '\0', sizeof(temp_buf));
+		for (i = 0; supported_auth_methods[i] != NULL; i++) {
+			strcat(temp_buf, supported_auth_methods[i]);
+			if (supported_auth_methods[i + 1] != NULL)
+				strcat(temp_buf, sep);
+		}
+		sprintf(log_buffer, "PBS_SUPPORTED_AUTH_METHODS=%s", temp_buf);
+		log_event(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+	} else {
+		log_event(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "PBS_SUPPORTED_AUTH_METHODS=None");
+	}
+}
