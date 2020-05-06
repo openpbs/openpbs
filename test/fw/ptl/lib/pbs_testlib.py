@@ -14001,37 +14001,20 @@ class MoM(PBSService):
             f1 = os.path.join(pbs_conf_val['PBS_EXEC'], 'lib',
                               'python', 'altair', 'pbs_hooks',
                               'pbs_cgroups.CF')
-            vpn1 = r'"vnode_per_numa_node"\s*:\s*false,'
-            vpn2 = '"vnode_per_numa_node"   : true,'
-            uht1 = r'"use_hyperthreads"\s*:\s*false,'
-            uht2 = '"use_hyperthreads"      : true,'
-            mem1 = r'"memory"\s*:\s*{'
-            mem2 = r'"memsw"\s*:\s*{'
-            ena1 = r'"enabled"\s*:\s*true,'
-            ena2 = '"enabled"            : false,'
             # set vnode_per_numa_node = true, use_hyperthreads = true
             with open(f1, "r") as cfg:
-                lines = cfg.readlines()
-            for i, line in enumerate(lines):
-                if re.search(vpn1, line):
-                    lines[i] = re.sub(vpn1, vpn2, line)
-                if re.search(uht1, line):
-                    lines[i] = (re.sub(uht1, uht2, line))
-                # memory subsystem not mounted, do not enable in config
-                if (re.search(mem1, line) or re.search(mem2, line)) and \
-                        mounts.count('memory') == 0:
-                    if re.search(ena1, lines[i + 1]):
-                        lines[i + 1] = (re.sub(ena1, ena2, lines[i + 1]))
+                cfg_dict = json.load(cfg)
+            cfg_dict['vnode_per_numa_node'] = 'true'
+            cfg_dict['use_hyperthreads'] = 'true'
             _, path = tempfile.mkstemp(prefix="cfg", suffix=".json")
             with open(path, "w") as cfg1:
-                for line in lines:
-                    cfg1.write((line))
+                json.dump(cfg_dict, cfg1, indent=4)
             # read in the cgroup hook configuration
             a = {'content-type': 'application/x-config',
                  'content-encoding': 'default',
                  'input-file': path}
-            rv = self.server.manager(MGR_CMD_IMPORT, HOOK, a,
-                                     'pbs_cgroups')
+            self.server.manager(MGR_CMD_IMPORT, HOOK, a,
+                                'pbs_cgroups')
             os.remove(path)
             # enable cgroups hook
             self.server.manager(MGR_CMD_SET, HOOK,
