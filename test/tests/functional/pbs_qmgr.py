@@ -41,7 +41,7 @@ from tests.functional import *
 from ptl.lib.pbs_ifl_mock import *
 
 
-@tags('smoke')
+@tags('commands')
 class TestQmgr(TestFunctional):
 
     """
