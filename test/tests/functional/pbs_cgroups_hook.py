@@ -1741,7 +1741,16 @@ if %s e.job.in_ms_mom():
         if pcpus < 2:
             self.skipTest('Test requires at least two physical CPUs')
         name = 'CGROUP4'
+        # since we do not configure vnodes ourselves wait for the setup
+        # of this test to propagate all hooks etc.
+        # otherwise the load_config tests to see if it's all done
+        # might get confused
+        # occasional trouble seen on TH2
+        time.sleep(5)
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # make sure that the hooks are properly configured first
+        # occasional trouble seen on TH2
+        time.sleep(5)
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
@@ -1792,12 +1801,16 @@ if %s e.job.in_ms_mom():
         Test to verify that correct number of jobs run on a hyperthread
         enabled system when ncpus_are_cores is set to true.
         """
-        # Check that system has hyperthreading enabled and has two processors
+        # Check that system has hyperthreading enabled and has
+        # at least two threads ("pcpus")
+        # WARNING: do not assume that physical CPUs are numbered from 0
+        # and that all processors from a physical ID are contiguous
+        # count the number of different physical IDs with a set!
         pcpus = 0
         sibs = 0
         cores = 0
         pval = 0
-        phys = {}
+        phys_set = set()
         with open('/proc/cpuinfo', 'r') as desc:
             for line in desc:
                 if re.match('^processor', line):
@@ -1810,8 +1823,8 @@ if %s e.job.in_ms_mom():
                 if cores_match:
                     cores = int(cores_match.groups()[0])
                 if phys_match:
-                    pval = int(phys_match.groups()[0])
-                    phys[pval] = 1
+                    phys_set.add(pval)
+        phys = len(phys_set)
         if (sibs == 0 or cores == 0):
             self.skipTest('Insufficient information about the processors.')
         if pcpus < 2:
