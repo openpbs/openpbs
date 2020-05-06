@@ -193,11 +193,6 @@ typedef	struct	proc_mem  {
 } proc_mem_t;
 
 int	mom_does_chkpnt = 0;
-ulong	cpuset_nodes = 1;
-ulong	memreserved = 0;
-ulong	mempernode;
-ulong	cpupernode;
-ulong	totalmem;
 
 static int	myproc_max = 0;		/* entries in Proc_lnks  */
 pbs_plinks	*Proc_lnks = NULL;	/* process links table head */
@@ -6316,6 +6311,7 @@ physmem(struct rm_attribute *attrib)
 {
 	char		strbuf[256];
 	FILE		*fp;
+	ulong		totalmem;
 
 	if (attrib) {
 		log_err(-1, __func__, extra_parm);
@@ -6333,12 +6329,8 @@ physmem(struct rm_attribute *attrib)
 			fclose(fp);
 			totalmem = (ulong)atol(ret_string);
 
-			mempernode = (totalmem / cpuset_nodes) -
-				(memreserved * 1024);
-			cpupernode = num_pcpus / cpuset_nodes;
-
 			sprintf(ret_string, "%lukb",
-				mempernode * (num_acpus/cpupernode));
+				totalmem * (num_acpus/num_pcpus));
 			return ret_string;
 		}
 	}
