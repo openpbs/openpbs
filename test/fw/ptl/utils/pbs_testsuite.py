@@ -1604,6 +1604,8 @@ class PBSTestSuite(unittest.TestCase):
         svr.delete_nodes()
         # Delete queues
         svr.delete_queues()
+        # Delete resources
+        svr.delete_resources()
 
     def tearDown(self):
         """
