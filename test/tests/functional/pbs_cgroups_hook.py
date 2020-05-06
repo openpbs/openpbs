@@ -1833,24 +1833,34 @@ if %s e.job.in_ms_mom():
             self.skipTest('This test requires hyperthreading to be enabled.')
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
-        # Submit M*N jobs, where M is the amount of physical processors and
-        # N is number of 'cpu cores' per M. Expect them to run.
-        njobs = len(phys) * cores
+        # Submit M jobs N cpus wide, where M is the amount of physical
+        # processors and N is number of 'cpu cores' per M. Expect them to run.
+        njobs = phys
         if njobs > 64:
             self.skipTest("too many jobs (%d) to submit" % njobs)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], ATTR_N: name + 'a'}
+        a = {'Resource_List.select': '1:ncpus=%s:mem=300mb:host=%s' %
+             (cores, self.hosts_list[0]), ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
+            # make sure this stays around for an hour
+            # (or until deleted in teardown)
+            j.set_sleep_time(3600)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
-            self.server.expect(JOB, a1, jid, max_attempts=10)
-        # Submit another job, expect in Q state
+            # give the scheduler, server and MoM some time
+            # it's not a luxury on containers with few CPU resources
+            time.sleep(2)
+            self.server.expect(JOB, a1, jid, max_attempts=20)
+        # Submit another job, expect in Q state -- this one with only 1 CPU
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
         jid2 = self.server.submit(j2)
         b1 = {'job_state': 'Q'}
+        # Make sure to give the scheduler ample time here:
+        # we want to make sure jid2 doesn't run because it can't,
+        # not because the scheduler has not yet gotten to it
+        time.sleep(30)
         self.server.expect(JOB, b1, jid2, max_attempts=10)
 
     def test_cgroup_enforce_memory(self):
