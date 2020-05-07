@@ -1016,8 +1016,6 @@ class HookUtils(object):
         cgroup.configure_job(event.job.id, jobutil.assigned_resources,
                              node, cgroup, event.type)
 
-        # Initialize resource usage for the job
-        cgroup.update_job_usage(event.job.id, event.job.resources_used)
         # Write out the assigned resources
         cgroup.write_cgroup_assigned_resources(event.job.id)
         # Write out the environment variable for the host (pbs_attach)
@@ -1113,6 +1111,13 @@ class HookUtils(object):
                        'assigned_resources: %s' %
                        (cgroup.assigned_resources))
             cgroup.setup_job_devices_env(node.devices['gpu'])
+
+        # Initialize rss_used values that the hook will update
+        # so that they are not updated through MoM polling.
+        # Particularly important for rss_used.vmem which has
+        # different semantics when the cgroup hook manages mem+swap.
+        # Add 'force' flag because we haven't reached substate 42 yet
+        cgroup.update_job_usage(event.job.id, event.job.resources_used, force=True)
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
@@ -4246,14 +4251,14 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Resource %s not handled' %
                        (caller_name(), resource))
 
-    def update_job_usage(self, jobid, resc_used):
+    def update_job_usage(self, jobid, resc_used, force=False):
         """
         Update resource usage for a job
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: resc_used = %s' %
                    (caller_name(), str(resc_used)))
-        if not job_is_running(jobid):
+        if not job_is_running(jobid) and not force:
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job %s is not running' %
                        (caller_name(), jobid))
             return
