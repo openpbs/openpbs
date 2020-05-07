@@ -81,10 +81,7 @@ def convert_size(value, units='b'):
         if (val - int(val)) > 0.0:
             val += 1.0
         val = int(val)
-        # pbs.size() does not like units following zero
-        if val <= 0:
-            return '0'
-        return str(val) + new
+        return str(val) + units.lower()
     except Exception:
         return None
 
