@@ -10856,7 +10856,6 @@ class Scheduler(PBSService):
         "nonprimetime_prefix": "np_",
         "preempt_queue_prio": "150",
         "preempt_prio": "\"express_queue, normal_jobs\"",
-        "load_balancing": "false ALL",
         "prime_exempt_anytime_queues": "false",
         "round_robin": "False    all",
         "fairshare_usage_res": "cput",
