@@ -193,6 +193,7 @@ typedef	struct	proc_mem  {
 } proc_mem_t;
 
 int	mom_does_chkpnt = 0;
+ulong	totalmem;
 
 static int	myproc_max = 0;		/* entries in Proc_lnks  */
 pbs_plinks	*Proc_lnks = NULL;	/* process links table head */
@@ -6311,7 +6312,6 @@ physmem(struct rm_attribute *attrib)
 {
 	char		strbuf[256];
 	FILE		*fp;
-	ulong		totalmem;
 
 	if (attrib) {
 		log_err(-1, __func__, extra_parm);

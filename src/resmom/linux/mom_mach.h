@@ -88,7 +88,7 @@ typedef struct	pbs_plinks {		/* struct to link processes */
 	int	 pl_done;		/* kill has been done */
 } pbs_plinks;
 
-
+extern ulong totalmem;extern ulong totalmem;extern ulong totalmem;
 extern int kill_session(pid_t pid, int sig, int dir);
 extern int bld_ptree(pid_t sid);
 
