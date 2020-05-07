@@ -1047,13 +1047,13 @@ class HookUtils(object):
         # job is new and its cgroup should not be cleaned up
         cgroup.add_jobid_to_cgroup_jobs(event.job.id)
 
-        # Initialize rss_used values that the hook will update
+        # Initialize resources_used values that the hook will update
         # so that they are not updated through MoM polling.
-        # Particularly important for rss_used.vmem which has
+        # Particularly important for resources_used.vmem which has
         # different semantics when the cgroup hook manages mem+swap.
         # Add 'force' flag because we haven't reached substate 42 yet
-        cgroup.update_job_usage(event.job.id, event.job.resources_used, force=True)
-        
+        cgroup.update_job_usage(event.job.id, event.job.resources_used,
+                                force=True)
         return True
 
     def _execjob_epilogue_handler(self, event, cgroup, jobutil):
@@ -1558,8 +1558,9 @@ class NodeUtils(object):
                 host_resv_hpmem = 0
             node_resv_hpmem = int(math.ceil(host_resv_hpmem / num_numa_nodes))
             if 'Hugepagesize' in self.meminfo:
-                node_resv_hpmem -= (node_resv_hpmem %
-                                size_as_int(self.meminfo['Hugepagesize']))
+                node_resv_hpmem -= \
+                    (node_resv_hpmem
+                     % size_as_int(self.meminfo['Hugepagesize']))
             # Physical memory
             host_mem = self.get_memory_on_node(ignore_reserved=True)
             host_mem_net = self.get_memory_on_node(ignore_reserved=False)
@@ -2087,7 +2088,8 @@ class NodeUtils(object):
         remaining = total - reserved
         # Round down to nearest huge page
         if 'Hugepagesize' in self.meminfo:
-            remaining -= remaining % (size_as_int(self.meminfo['Hugepagesize']))
+            remaining -= (remaining
+                          % (size_as_int(self.meminfo['Hugepagesize'])))
         if remaining <= 0:
             raise ValueError('Too much reserved hpmem')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining hpmem: %d' % remaining)
