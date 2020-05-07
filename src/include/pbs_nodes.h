@@ -260,6 +260,12 @@ union ndu_ninfo {
 	unsigned int	__nd_int;
 };
 
+/* Device structure */
+struct	devices {
+	long nsockets;
+	long nnodes;
+};
+
 /*
  * Vnode structure
  */
@@ -282,6 +288,7 @@ struct	pbsnode {
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
 	int			 nd_modified;	/* flag indicating whether state update is required */
+	struct devices device;
 	attribute		 nd_attr[ND_ATR_LAST];
 };
 
@@ -469,7 +476,7 @@ extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
 extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
-extern void	propagate_socket_licensing(mominfo_t *, int);
+extern void	propagate_socket_licensing(mominfo_t *);
 
 extern char *msg_daemonname;
 
