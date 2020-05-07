@@ -38,6 +38,55 @@
 from tests.functional import *
 import glob
 
+#
+# FUNCTION convert_size
+#
+def convert_size(value, units='b'):
+    """
+    Convert a string containing a size specification (e.g. "1m") to a
+    string using different units (e.g. "1024k").
+
+    This function only interprets a decimal number at the start of the string,
+    stopping at any unrecognized character and ignoring the rest of the string.
+
+    When down-converting (e.g. MB to KB), all calculations involve integers and
+    the result returned is exact. When up-converting (e.g. KB to MB) floating
+    point numbers are involved. The result is rounded up. For example:
+
+    1023MB -> GB yields 1g
+    1024MB -> GB yields 1g
+    1025MB -> GB yields 2g  <-- This value was rounded up
+
+    Pattern matching or conversion may result in exceptions.
+    """
+    logs = {'b': 0, 'k': 10, 'm': 20, 'g': 30,
+            't': 40, 'p': 50, 'e': 60, 'z': 70, 'y': 80}
+    try:
+        new = units[0].lower()
+        if new not in logs:
+            raise ValueError('Invalid unit value')
+        result = re.match(r'([-+]?\d+)([bkmgtpezy]?)',
+                          str(value).lower())
+        if not result:
+            raise ValueError('Unrecognized value')
+        val, old = result.groups()
+        if int(val) < 0:
+            raise ValueError('Value may not be negative')
+        if old not in logs:
+            old = 'b'
+        factor = logs[old] - logs[new]
+        val = float(val)
+        val *= 2 ** factor
+        if (val - int(val)) > 0.0:
+            val += 1.0
+        val = int(val)
+        # pbs.size() does not like units following zero
+        if val <= 0:
+            return '0'
+        return str(val) + new
+    except Exception:
+        return None
+
 
 def have_swap():
     """
@@ -1542,13 +1591,13 @@ if %s e.job.in_ms_mom():
         if self.swapctl == 'true':
             resc_list.append('resources_used.vmem')
         qstat = self.server.status(JOB, resc_list, id=jid)
-        mem = qstat[0]['resources_used.mem']
+        mem = convert_size(qstat[0]['resources_used.mem'],'kb')
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
         usage = int(match.groups()[0])
         self.assertGreater(300000, usage)
         if self.swapctl == 'true':
-            vmem = qstat[0]['resources_used.vmem']
+            vmem = convert_size(qstat[0]['resources_used.vmem'],'kb')
             match = re.match(r'(\d+)kb', vmem)
             self.assertFalse(match is None)
             usage = int(match.groups()[0])

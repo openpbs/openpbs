@@ -1046,6 +1046,14 @@ class HookUtils(object):
         # Add jobid to cgroup_jobs file to tell periodic handler that this
         # job is new and its cgroup should not be cleaned up
         cgroup.add_jobid_to_cgroup_jobs(event.job.id)
+
+        # Initialize rss_used values that the hook will update
+        # so that they are not updated through MoM polling.
+        # Particularly important for rss_used.vmem which has
+        # different semantics when the cgroup hook manages mem+swap.
+        # Add 'force' flag because we haven't reached substate 42 yet
+        cgroup.update_job_usage(event.job.id, event.job.resources_used, force=True)
+        
         return True
 
     def _execjob_epilogue_handler(self, event, cgroup, jobutil):
@@ -1111,13 +1119,6 @@ class HookUtils(object):
                        'assigned_resources: %s' %
                        (cgroup.assigned_resources))
             cgroup.setup_job_devices_env(node.devices['gpu'])
-
-        # Initialize rss_used values that the hook will update
-        # so that they are not updated through MoM polling.
-        # Particularly important for rss_used.vmem which has
-        # different semantics when the cgroup hook manages mem+swap.
-        # Add 'force' flag because we haven't reached substate 42 yet
-        cgroup.update_job_usage(event.job.id, event.job.resources_used, force=True)
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
