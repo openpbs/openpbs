@@ -38,6 +38,7 @@
 from tests.functional import *
 import glob
 
+
 #
 # FUNCTION convert_size
 #
@@ -1591,13 +1592,13 @@ if %s e.job.in_ms_mom():
         if self.swapctl == 'true':
             resc_list.append('resources_used.vmem')
         qstat = self.server.status(JOB, resc_list, id=jid)
-        mem = convert_size(qstat[0]['resources_used.mem'],'kb')
+        mem = convert_size(qstat[0]['resources_used.mem'], 'kb')
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
         usage = int(match.groups()[0])
         self.assertGreater(300000, usage)
         if self.swapctl == 'true':
-            vmem = convert_size(qstat[0]['resources_used.vmem'],'kb')
+            vmem = convert_size(qstat[0]['resources_used.vmem'], 'kb')
             match = re.match(r'(\d+)kb', vmem)
             self.assertFalse(match is None)
             usage = int(match.groups()[0])
