@@ -137,7 +137,7 @@ parse_config(char *fname)
 	struct resource_type type = {0};
 
 	if ((fp = fopen(fname, "r")) == NULL) {
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 			fname, "Can not open file: %s", fname);
 		return 0;
 	}
@@ -231,6 +231,8 @@ parse_config(char *fname)
 						conf.prime_lb = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == ALL)
 						conf.non_prime_lb = num ? 1 : 0;
+					obsolete[0] = PARSE_LOAD_BALANCING;
+					obsolete[1] = "exechost_periodic and node_sort_key";
 				}
 				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
 					if (prime == PRIME || prime == ALL)
@@ -459,8 +461,8 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && npkey_num > MAX_SORTS)) {
-						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
-							"Too many %s sorts.  %s sort ignored.  %d max sorts", 
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
+							"Too many %s sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
 					} else {
 						tok = strtok(config_value, DELIM);
@@ -523,8 +525,8 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && node_pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && node_npkey_num > MAX_SORTS)) {
-						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
-							"Too many %s node sorts.  %s sort ignored.  %d max sorts", 
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
+							"Too many %s node sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
 					}
 					else {
@@ -794,15 +796,15 @@ parse_config(char *fname)
 		}
 
 		if (error)
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 				"Error reading line %d: %s", linenum, errbuf);
 
 		if (obsolete[0] != NULL) {
 			if (obsolete[1] != NULL)
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 					"Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
 			else
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 					"Obsolete config name %s", obsolete[0]);
 		}
 	}
