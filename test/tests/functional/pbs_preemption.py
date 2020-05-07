@@ -758,14 +758,7 @@ exit 3
                                   usenatvnode=False, additive=True)
 
         # set the preempt_order to kill/requeue only -- try old and new syntax
-        try:
-            self.scheduler.set_sched_config({'preempt_order': 'R'})
-        except Exception:
-            pass
-        try:
-            self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
-        except Exception:
-            pass
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
 
         # create express queue
         a = {'queue_type': 'execution',
