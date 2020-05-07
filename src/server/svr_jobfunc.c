@@ -3516,17 +3516,8 @@ Time4occurrenceFinish(resc_resv *presv)
 			set_resv_retry(presv, time_now + 120);
 	}
 
-	if (sub == RESV_DEGRADED) {
+	if (sub == RESV_DEGRADED)
 		DBPRT(("degraded_time of %s is %s", presv->ri_qs.ri_resvID, ctime(&presv->ri_degraded_time)))
-		/* If no jobs are running in this reservation, unset the scheduler name
-		 * so that the reservation can be confirmed by any scheduler
-		 */
-		if (presv->ri_qp->qu_njstate[JOB_STATE_RUNNING] + presv->ri_qp->qu_njstate[JOB_STATE_EXITING] == 0) {
-			resv_attr_def[(int)RESV_ATR_partition].at_free(&presv->ri_wattr[(int)RESV_ATR_partition]);
-			presv->rep_sched_count= 0;
-			presv->req_sched_count= 0;
-		}
-	}
 
 	/* Set the reservation state and substate */
 	resv_setResvState(presv, state, sub);
