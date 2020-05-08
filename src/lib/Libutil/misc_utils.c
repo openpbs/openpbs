@@ -1179,7 +1179,7 @@ break_comma_list(char *strlist)
 
 /**
  *
- *	@brief: Join an array of strings using separator and returns as a single string
+ *	@brief Join an array of strings using separator and returns as a single string
  *
  *	NOTE: Caller has to free the return value
  *

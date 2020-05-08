@@ -169,17 +169,13 @@ setup_env(char *filen)
  */
 void
 log_supported_auth_methods(char **supported_auth_methods) {
-	char *ret_str;
-	char *sep = ",";
 	if (supported_auth_methods) {
-		ret_str = join_str_list(supported_auth_methods, sep);
+		char *ret_str = join_str_list(supported_auth_methods, ",");
 		if (ret_str != NULL) {
-			sprintf(log_buffer, "PBS_SUPPORTED_AUTH_METHODS=%s", ret_str);
-			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "PBS_SUPPORTED_AUTH_METHODS = %s", ret_str);
 			free(ret_str);
 		} else {
-			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname,
-					   "Failed to get PBS_SUPPORTED_AUTH_METHODS list");
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "join_str_list() failed!");
 		}
 	}
 }
