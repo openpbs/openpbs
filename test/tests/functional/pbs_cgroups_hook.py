@@ -277,6 +277,68 @@ for i in range(iterations):
 if sleeptime > 0:
     time.sleep(sleeptime)
 """
+        self.eatmem_script2 = """
+import sys
+import time
+MB = 2 ** 20
+
+iterations1 = 1
+chunkSizeMb1 = 1
+sleeptime1 = 0
+if (len(sys.argv) > 1):
+    iterations1 = int(sys.argv[1])
+if (len(sys.argv) > 2):
+    chunkSizeMb1 = int(sys.argv[2])
+if (len(sys.argv) > 3):
+    sleeptime1 = int(sys.argv[3])
+if (iterations1 < 1):
+    print('Iteration count must be greater than zero.')
+    exit(1)
+if (chunkSizeMb1 < 1):
+    print('Chunk size must be greater than zero.')
+    exit(1)
+totalSizeMb1 = chunkSizeMb1 * iterations1
+print('Allocating %d chunk(s) of size %dMB. (%dMB total)' %
+      (iterations1, chunkSizeMb1, totalSizeMb1))
+start_time1 = time.time()
+buf = ''
+for i in range(iterations1):
+    print('allocating %dMB' % ((i + 1) * chunkSizeMb1))
+    buf += ('#' * MB * chunkSizeMb1)
+end_time1 = time.time()
+if sleeptime1 > 0 and (end_time1 - start_time1) < sleeptime1 :
+    time.sleep(sleeptime1 - end_time1 + start_time1)
+
+if len(sys.argv) <= 4:
+    exit(0)
+
+iterations2 = 1
+chunkSizeMb2 = 1
+sleeptime2 = 0
+if (len(sys.argv) > 4):
+    iterations2 = int(sys.argv[4])
+if (len(sys.argv) > 5):
+    chunkSizeMb2 = int(sys.argv[5])
+if (len(sys.argv) > 6):
+    sleeptime2 = int(sys.argv[6])
+if (iterations2 < 1):
+    print('Iteration count must be greater than zero.')
+    exit(1)
+if (chunkSizeMb2 < 1):
+    print('Chunk size must be greater than zero.')
+    exit(1)
+totalSizeMb2 = chunkSizeMb2 * iterations2
+print('Allocating %d chunk(s) of size %dMB. (%dMB total)' %
+      (iterations2, chunkSizeMb2, totalSizeMb2))
+start_time2 = time.time()
+# Do not reinitialize buf!!
+for i in range(iterations2):
+    print('allocating %dMB' % ((i + 1) * chunkSizeMb2))
+    buf += ('#' * MB * chunkSizeMb2)
+end_time2 = time.time()
+if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
+    time.sleep(sleeptime2 - end_time2 + start_time2)
+"""
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
@@ -301,10 +363,10 @@ if sleeptime > 0:
             '#PBS -S /bin/bash\n' \
             'sync\n' \
             'sleep 2\n' \
-            'let i=0; while [ $i -lt 500000 ]; do let i+=1 ; done\n' \
-            'python - 90 5 30 <<EOF\n' \
-            '%s\nEOF\n' % self.eatmem_script
-
+            '# Args are segments1 sizeMB1 sleep1 segments2 sizeMB2 sleep2\n' \
+            'python -  9 25 9  8 25 300 <<EOF\n' \
+            '%s\nEOF\n' % self.eatmem_script2
+           
         self.cpuset_mem_script = """
 base='%s'
 echo "cgroups base path for cpuset is $base"

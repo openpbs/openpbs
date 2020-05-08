@@ -5469,8 +5469,18 @@ def main():
             # otherwise *another* event could actually win the lock
             # even though *this* event printed this message last,
             # and we'd be confused about the event that the winner services
-            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Event type is %s' %
-                       (caller_name(), hooks.event_name(event.type)))
+            if event.type == pbs.EXECHOST_PERIODIC:
+                loglevel = pbs.EVENT_DEBUG3
+            else:
+                loglevel = pbs.EVENT_DEBUG2
+            if hasattr(event, 'job') and hasattr(event.job, 'id'):
+                pbs.logmsg(loglevel, '%s: Event type is %s, job ID is %s'
+                           % (caller_name(), hooks.event_name(event.type),
+                              event.job.id))
+            else:
+                pbs.logmsg(loglevel, '%s: Event type is %s'
+                           % (caller_name(), hooks.event_name(event.type)))
+ 
             cgroup = CgroupUtils(hostname, vnode, cfg=cfg)
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Cgroup utility class instantiated' % caller_name())
@@ -5557,8 +5567,21 @@ if (__name__ == 'builtins') or (__name__ == '__builtin__'):
                    str(traceback.format_exc().strip().splitlines()))
         pbs.event().reject(str(traceback.format_exc().strip().splitlines()))
     finally:
-        pbs.logmsg(pbs.EVENT_DEBUG, 'Hook ended: %s, '
-                   'event_type %s (elapsed time: %0.4lf)' %
-                   (pbs.event().hook_name,
-                    str(pbs.event().type),
-                    (time.time() - START)))
+        event = pbs.event()
+        if event.type == pbs.EXECHOST_PERIODIC:
+            loglevel = pbs.EVENT_DEBUG3
+        else:
+            loglevel = pbs.EVENT_DEBUG2
+        if hasattr(event, 'job') and hasattr(event.job, 'id'): 
+            pbs.logmsg(loglevel, 'Hook ended: %s, job ID %s, '
+                       'event_type %s (elapsed time: %0.4lf)' %
+                       (pbs.event().hook_name,
+                        event.job.id,
+                        str(pbs.event().type),
+                        (time.time() - START)))
+        else:
+            pbs.logmsg(loglevel, 'Hook ended: %s, '
+                       'event_type %s (elapsed time: %0.4lf)' %
+                       (pbs.event().hook_name,
+                        str(pbs.event().type),
+                       (time.time() - START)))
