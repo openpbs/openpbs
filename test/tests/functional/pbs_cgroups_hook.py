@@ -3637,7 +3637,7 @@ sleep 300
                                      '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
-            pass            
+            pass
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
