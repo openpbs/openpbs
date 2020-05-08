@@ -1843,7 +1843,6 @@ change_logs(int sig)
 	log_close(1);
 	log_open(log_file, path_log);
 	(void)acct_open(acct_file);
-	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 }
 
 /**

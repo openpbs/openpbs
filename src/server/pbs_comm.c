@@ -214,7 +214,6 @@ hup_me(int sig)
 	sprintf(buf, "Caught signal %d\n", sig);
 	fprintf(stderr, "%s\n", buf);
 	log_err(-1, __func__, buf);
-	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 }
 
 /**

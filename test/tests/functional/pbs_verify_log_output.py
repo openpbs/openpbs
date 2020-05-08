@@ -155,23 +155,15 @@ class TestVerifyLogOutput(TestFunctional):
 
     def test_supported_auth_method_msgs(self):
         """
-        Test case to verify pbs_supported_auth_method messages in the log
-        during start/restart or HUP the SERVER/COMM daemon
+        Test to verify PBS_SUPPORTED_AUTH_METHODS is logged in server
+        and comm daemon logs after start or restart
         """
         attr_name = 'PBS_SUPPORTED_AUTH_METHODS'
         started_time = time.time()
-        # check the logs after restart the server and comm daemon
+        # check the logs after restarting the server and comm daemon
         self.server.restart()
         self.comm.restart()
         search_msg = attr_name + '=' + 'resvport'
-        if self.server.isUp() and self.comm.isUp():
-            self.server.log_match(search_msg, starttime=started_time)
-            self.comm.log_match(search_msg, starttime=started_time)
-
-        started_time = time.time()
-        # check the logs after HUP the server and comm daemon
-        self.server.signal('-HUP')
-        self.comm.signal('-HUP')
         if self.server.isUp() and self.comm.isUp():
             self.server.log_match(search_msg, starttime=started_time)
             self.comm.log_match(search_msg, starttime=started_time)
@@ -180,19 +172,11 @@ class TestVerifyLogOutput(TestFunctional):
         conf_attr = {'PBS_SUPPORTED_AUTH_METHODS': 'munge,resvport'}
         self.du.set_pbs_config(confs=conf_attr)
         started_time = time.time()
-        # check the logs after restart the server and comm daemon
+        # check the logs after restarting the server and comm daemon
         self.server.restart()
         self.comm.restart()
         pbs_conf = self.du.parse_pbs_config()
         search_msg = attr_name + '=' + pbs_conf['PBS_SUPPORTED_AUTH_METHODS']
-        if self.server.isUp() and self.comm.isUp():
-            self.server.log_match(search_msg, starttime=started_time)
-            self.comm.log_match(search_msg, starttime=started_time)
-
-        started_time = time.time()
-        # check the logs after HUP the server and comm daemon
-        self.server.signal('-HUP')
-        self.comm.signal('-HUP')
         if self.server.isUp() and self.comm.isUp():
             self.server.log_match(search_msg, starttime=started_time)
             self.comm.log_match(search_msg, starttime=started_time)

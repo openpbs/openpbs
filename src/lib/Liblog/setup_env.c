@@ -171,9 +171,8 @@ log_supported_auth_methods(char **supported_auth_methods) {
 
 	if (supported_auth_methods != NULL) {
 		int i;
-		char temp_buf[100 + 1]; //MAXAUTHNAME 100
+		char temp_buf[100 + 1] = {'\0'}; //MAXAUTHNAME 100
 		char *sep = ",";
-		memset(temp_buf, '\0', sizeof(temp_buf));
 		for (i = 0; supported_auth_methods[i] != NULL; i++) {
 			strcat(temp_buf, supported_auth_methods[i]);
 			if (supported_auth_methods[i + 1] != NULL)
