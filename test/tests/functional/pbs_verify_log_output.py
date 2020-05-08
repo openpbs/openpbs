@@ -163,7 +163,7 @@ class TestVerifyLogOutput(TestFunctional):
         # check the logs after restarting the server and comm daemon
         self.server.restart()
         self.comm.restart()
-        search_msg = attr_name + '=' + 'resvport'
+        search_msg = attr_name + ' = ' + 'resvport'
         if self.server.isUp() and self.comm.isUp():
             self.server.log_match(search_msg, starttime=started_time)
             self.comm.log_match(search_msg, starttime=started_time)
@@ -176,7 +176,7 @@ class TestVerifyLogOutput(TestFunctional):
         self.server.restart()
         self.comm.restart()
         pbs_conf = self.du.parse_pbs_config()
-        search_msg = attr_name + '=' + pbs_conf['PBS_SUPPORTED_AUTH_METHODS']
+        search_msg = attr_name + ' = ' + pbs_conf['PBS_SUPPORTED_AUTH_METHODS']
         if self.server.isUp() and self.comm.isUp():
             self.server.log_match(search_msg, starttime=started_time)
             self.comm.log_match(search_msg, starttime=started_time)
