@@ -75,27 +75,3 @@ encode_DIS_UserCred(int sock, char *user, int type, char *cred, int len)
 
 	return rc;
 }
-
-/**
- * @brief
- * 	- encode a User Migrate Batch Request
- *
- * @param[in] sock - socket descriptor
- * @param[in] tohost - the destination host to migrate users to
- *
- * @return      int
- * @retval      DIS_SUCCESS(0)  success
- * @retval      error code      error
- *
- */
-
-int
-encode_DIS_UserMigrate(int sock, char *tohost)
-{
-	int   rc;
-
-
-	rc = diswst(sock, tohost);
-
-	return rc;
-}

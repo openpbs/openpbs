@@ -53,7 +53,6 @@ extern "C" {
 #define ND_LIC_cloud_str	"c"
 
 struct license_block {
-	int  lb_trial;		/* non_zero if trial license */
 	int  lb_glob_floating;	/* number of floating licenses avail globally */
 	int  lb_aval_floating;	/* number of floating licenses avail locally  */
 	int  lb_used_floating;	/* number of floating licenses used           */
@@ -90,43 +89,37 @@ typedef enum node_topology_type ntt_t;
 	  pbs_licensing_license_location : "null" )
 
 enum licensing_backend {
-	LIC_SERVER,	/* reachable license server (to license CPUs) */
+	LIC_SERVER,	/* used to differentiate between types of licenses */
 	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
 	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
-	LIC_TRIAL,	/* nonzero number of trial license (to license CPUs) */
-	LIC_UNKNOWN  /* used to hold the value of previous lb */
+	LIC_UNKNOWN	/* used to hold the value of previous lb */
 };
 
 extern struct license_block licenses;
 extern struct attribute *pbs_float_lic;
 extern void   init_fl_license_attrs(struct license_block *);
-extern int    check_license(struct license_block *);
 extern void   log_licenses(struct license_used *pu);
 extern void   init_licensing(void);
 extern int    status_licensing(void);
-extern int    checkin_licensing(void);
 extern void   close_licensing(void);
-extern int    pbs_get_licenses(int);
 extern int    count_needed_flic(int);
 extern void   relicense_nodes_floating(int);
 extern void   update_FLic_attr(void);
 extern char   *pbs_license_location(void);
 extern void   init_socket_licenses(char *);
-extern int    sockets_available(void);
-extern int    sockets_total(void);
 extern int    sockets_consume(int);
 extern void   sockets_release(int);
-extern void   sockets_reset(void);
 extern void   inspect_license_path(void);
 extern int    licstate_is_up(enum licensing_backend);
 extern void   licstate_down(void);
 extern void   licstate_unconfigured(enum licensing_backend);
-extern int	nsockets_from_topology(char *, ntt_t);
+extern int	nsockets_from_topology(char *, ntt_t, struct pbsnode *pnode);
 extern int	check_sign(void *, void *);
 extern void	process_topology_info(void *, char *, ntt_t );
 extern void	unset_signature(void *, char *);
 extern	int	release_node_lic(void *);
 extern	int	validate_sign(char *, void *);
+extern void	clear_license_info();
 
 /* Licensing-related variables */
 extern int    ext_license_server;

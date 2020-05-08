@@ -98,7 +98,6 @@ extern "C" {
 #define ATTR_auth_u		"Authorized_Users"
 #define ATTR_auth_g		"Authorized_Groups"
 #define ATTR_auth_h		"Authorized_Hosts"
-#define ATTR_pwd		"pwd"
 #define ATTR_cred		"cred"
 #define ATTR_nodemux		"no_stdio_sockets"
 #define ATTR_umask		"umask"
@@ -296,7 +295,6 @@ extern "C" {
 #define ATTR_aclResvuser        "acl_resv_users"
 #define ATTR_NodeGroupEnable	"node_group_enable"
 #define ATTR_NodeGroupKey	"node_group_key"
-#define ATTR_ssignon_enable	"single_signon_password_enable"
 #define ATTR_dfltqdelargs	"default_qdel_arguments"
 #define ATTR_dfltqsubargs       "default_qsub_arguments"
 #define ATTR_rpp_retry		"rpp_retry"
@@ -689,6 +687,8 @@ extern int pbs_asyrunjob(int, char *, char *, char *);
 
 extern int pbs_alterjob(int, char *, struct attrl *, char *);
 
+extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
+
 extern int pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 extern int pbs_connect(char *);
@@ -771,6 +771,7 @@ extern preempt_job_info *pbs_preempt_jobs(int, char **);
 /* IFL function pointers */
 extern int (*pfn_pbs_asyrunjob)(int, char *, char *, char *);
 extern int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *);
+extern int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *);
 extern int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *);
 extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);

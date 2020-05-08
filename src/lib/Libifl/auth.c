@@ -157,7 +157,7 @@ _load_auth(char *name)
 #ifndef WIN32
 	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.so", pbs_conf.pbs_exec_path, name);
 #else
-	snprintf(libloc, MAXPATHLEN, "%slib/libauth_%s.dll", pbs_conf.pbs_exec_path, name);
+	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.dll", pbs_conf.pbs_exec_path, name);
 #endif
 	libloc[MAXPATHLEN] = '\0';
 
@@ -683,6 +683,8 @@ free_auth_config(pbs_auth_config_t *config)
  *
  * @param[in] auth_method - auth method name
  * @param[in] encrypt_method - encrypt method name
+ * @param[in] exec_path - path to PBS_EXEC
+ * @param[in] home_path - path to PBS_HOME
  * @param[in] logger - pointer to logger function for auth lib
  *
  * @return	pbs_auth_config_t *
@@ -691,7 +693,7 @@ free_auth_config(pbs_auth_config_t *config)
  *
  */
 pbs_auth_config_t *
-make_auth_config(char *auth_method, char *encrypt_method, void *logger)
+make_auth_config(char *auth_method, char *encrypt_method, char *exec_path, char *home_path, void *logger)
 {
 	pbs_auth_config_t *config = NULL;
 
@@ -710,12 +712,12 @@ make_auth_config(char *auth_method, char *encrypt_method, void *logger)
 		free_auth_config(config);
 		return NULL;
 	}
-	config->pbs_exec_path = strdup(pbs_conf.pbs_exec_path);
+	config->pbs_exec_path = strdup(exec_path);
 	if (config->pbs_exec_path == NULL) {
 		free_auth_config(config);
 		return NULL;
 	}
-	config->pbs_home_path = strdup(pbs_conf.pbs_home_path);
+	config->pbs_home_path = strdup(home_path);
 	if (config->pbs_home_path == NULL) {
 		free_auth_config(config);
 		return NULL;
@@ -742,7 +744,11 @@ int
 engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 {
 	int rc = -1;
-	pbs_auth_config_t *config = make_auth_config(pbs_conf.auth_method, pbs_conf.encrypt_method, NULL);
+	pbs_auth_config_t *config = make_auth_config(pbs_conf.auth_method,
+							pbs_conf.encrypt_method,
+							pbs_conf.pbs_exec_path,
+							pbs_conf.pbs_home_path,
+							NULL);
 
 	if (config == NULL) {
 		snprintf(ebuf, ebufsz, "Out of memory in %s!", __func__);
@@ -769,23 +775,25 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 			free_auth_config(config);
 			return -1;
 		}
+	}
 
-		rc = _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		rc = _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
 		if (rc != 0) {
 			free_auth_config(config);
 			return rc;
 		}
 	}
 
-	if (pbs_conf.encrypt_method[0] != '\0') {
+	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		if (strcmp(pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
-			rc = _handle_client_handshake(fd, hostname, pbs_conf.encrypt_method, FOR_ENCRYPT, config, ebuf, ebufsz);
+			rc = _handle_client_handshake(fd, hostname, pbs_conf.auth_method, FOR_AUTH, config, ebuf, ebufsz);
 			free_auth_config(config);
 			return rc;
 		} else {
-			transport_chan_set_ctx_status(fd, transport_chan_get_ctx_status(fd, FOR_AUTH), FOR_ENCRYPT);
-			transport_chan_set_authdef(fd, transport_chan_get_authdef(fd, FOR_AUTH), FOR_ENCRYPT);
-			transport_chan_set_authctx(fd, transport_chan_get_authctx(fd, FOR_AUTH), FOR_ENCRYPT);
+			transport_chan_set_ctx_status(fd, transport_chan_get_ctx_status(fd, FOR_ENCRYPT), FOR_AUTH);
+			transport_chan_set_authdef(fd, transport_chan_get_authdef(fd, FOR_ENCRYPT), FOR_AUTH);
+			transport_chan_set_authctx(fd, transport_chan_get_authctx(fd, FOR_ENCRYPT), FOR_AUTH);
 		}
 	}
 	free_auth_config(config);
@@ -899,11 +907,11 @@ engage_server_auth(int fd, char *hostname, char *clienthost, int for_encrypt, ch
 		transport_chan_set_authctx(fd, authctx, for_encrypt);
 	}
 
-	if (for_encrypt == FOR_AUTH) {
-		auth_def_t *encryptdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
-		if (encryptdef != NULL && encryptdef == authdef) {
-			transport_chan_set_ctx_status(fd, AUTH_STATUS_CTX_READY, FOR_ENCRYPT);
-			transport_chan_set_authctx(fd, authctx, FOR_ENCRYPT);
+	if (for_encrypt == FOR_ENCRYPT) {
+		auth_def_t *def = transport_chan_get_authdef(fd, FOR_AUTH);
+		if (def != NULL && def == authdef) {
+			transport_chan_set_ctx_status(fd, AUTH_STATUS_CTX_READY, FOR_AUTH);
+			transport_chan_set_authctx(fd, authctx, FOR_AUTH);
 		}
 	}
 	return 0;

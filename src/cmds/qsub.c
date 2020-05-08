@@ -107,9 +107,6 @@
 
 #include "credential.h"
 #include "ticket.h"
-#if defined(PBS_PASS_CREDENTIALS)
-#include <openssl/evp.h>
-#endif
 #ifdef WIN32
 #include "win_remote_shell.h"
 #endif
@@ -165,10 +162,7 @@
 
 #define DMN_REFUSE_EXIT 7 /* return code when daemon can't serve a job and exits */
 
-#ifdef NAS /* localmod 005 */
-#endif /* localmod 005 */
 extern char *msg_force_qsub_update;
-
 
 #define PBS_DPREFIX_DEFAULT "#PBS"
 #define PBS_O_ENV "PBS_O_" /* prefix for environment variables created by qsub */
@@ -190,9 +184,6 @@ static int cred_type = -1;
 static size_t cred_len = 0;
 static char *cred_buf = NULL;
 static char cred_name[32]; /* space to hold small credential name */
-#if defined(PBS_PASS_CREDENTIALS)
-static char passwd_buf[PBS_MAXPWLEN] = {'\0'};
-#endif
 
 static char *tmpdir = NULL; /* Path of temp directory in which to put the job script */
 
@@ -2287,45 +2278,6 @@ err:
 
 /* End of "Block Job" functions. */
 
-/* The following functions support the "Authentication" capability of PBS. */
-
-/**
- * @brief
- *	gets the des password and encrypts
- *
- * @return int
- * @retval 0 Success
- * @retval -1 Failure
- *
- */
-static int
-get_passwd(void)
-{
-	int ret = -1;
-#if defined(PBS_PASS_CREDENTIALS)
-	int err;
-	int i;
-	char passwdbuf[256];
-
-	for (i=0; i<3; i++) {
-		err = EVP_read_pw_string(passwdbuf, strlen(passwdbuf),
-			"Enter job's password: ", 1);
-		if (err == 0) {
-			ret = 0;
-			break;
-		}
-	}
-	if (err == 0) {
-		pbs_encrypt_pwd(passwdbuf, &cred_type, &cred_buf, &cred_len);
-		ret = 0;
-	}
-	if (ret)
-		fprintf(stderr, "qsub: could not get password\n");
-#else
-	fprintf(stderr, "qsub: DES is not supported.\n");
-#endif
-	return ret;
-}
 
 /* End of "Authentication" functions. */
 
@@ -2673,22 +2625,10 @@ process_opts(int argc, char **argv, int passet)
 #endif
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 
-#if defined(PBS_PASS_CREDENTIALS)
 				/*
-				 * Exceptional CASE: All the arguments to option 'W' are
-				 * accepted in the format of -Wattrname=value but in case
-				 * of ATTR_pwd, -Wattrname is accepted without any value.
-				 *
-				 * if parse_equal_string() returns -1 and the optarg is
-				 * is same as ATTR_pwd, then set i = 1, keyword to optarg
-				 * and valuewd to NULL.
+				 * All the arguments to option 'W' are
+				 * accepted in the format of -Wattrname=value.
 				 */
-				if ((i == -1) && (strcmp(optarg, ATTR_pwd) == 0)) {
-					i = 1;
-					keyword = optarg;
-					valuewd = NULL;
-				}
-#endif
 
 				while (i == 1) {
 					if (strcmp(keyword, ATTR_depend) == 0) {
@@ -2794,29 +2734,6 @@ process_opts(int argc, char **argv, int passet)
 							sprintf(a_value, "%ld", (long)after);
 							set_attr_error_exit(&attrib, ATTR_resv_end, a_value);
 						}
-#if defined(PBS_PASS_CREDENTIALS)
-					} else if (strcmp(keyword, ATTR_pwd) == 0) {
-						if_cmd_line(pwd_opt) {
-							pwd_opt = passet;
-							if (valuewd == NULL || *valuewd == '\0') {
-								int err = 1;
-
-								while (err) {
-									err = EVP_read_pw_string(passwd_buf,
-										sizeof(passwd_buf),
-										"Enter job's password: ", 1);
-								}
-							} else {
-								/*
-								 * Entering password in the qsub command line in
-								 * clear text is a security hole, not supported.
-								 */
-								fprintf(stderr, "%s", BAD_W);
-								errflg++;
-								break;
-							}
-						}
-#endif
 					} else if (strcmp(keyword, ATTR_cred) == 0) {
 						if_cmd_line(cred_opt) {
 							cred_opt = passet;
@@ -4405,7 +4322,6 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list, char *retmsg)
 			(strcmp(attribute->name, ATTR_tolerate_node_failures) == 0) ||
 			(strcmp(attribute->name, ATTR_resv_start) == 0) ||
 			(strcmp(attribute->name, ATTR_resv_end) == 0) ||
-			(strcmp(attribute->name, ATTR_pwd) == 0) ||
 			(strcmp(attribute->name, ATTR_umask) == 0) ||
 			(strcmp(attribute->name, ATTR_runcount) == 0) ||
 			(strcmp(attribute->name, ATTR_cred) == 0))
@@ -4552,16 +4468,6 @@ do_submit(char *retmsg)
 		snprintf(retmsg, MAXPATHLEN, "qsub: cannot send environment with the job\n");
 #endif
 		return 1;
-	}
-
-	if (cred_name[0]) {
-		if (strcmp(cred_name, PBS_CREDNAME_AES) == 0) {
-			if (get_passwd())
-				return 1;
-		} else {
-			snprintf(retmsg, MAXPATHLEN, "qsub: unknown credential type\n");
-			return 1;
-		}
 	}
 
 	/* Send submit request to the server. */
@@ -5047,9 +4953,6 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 			(recv_string(h_pipe, destination) != 0) ||
 			(recv_string(h_pipe, script_tmp) != 0) ||
 			(recv_string(h_pipe, cred_name) != 0) ||
-#if defined(PBS_PASS_CREDENTIALS)
-			(recv_string(h_pipe, passwd_buf) != 0) ||
-#endif
 			(recv_dyn_string(h_pipe, &v_value) != 0) ||
 			(recv_dyn_string(h_pipe, &basic_envlist) != 0) ||
 			(recv_dyn_string(h_pipe, &qsub_envlist) != 0) ||
@@ -5057,10 +4960,6 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 			(recv_opts(h_pipe) != 0))
 			goto error;
 
-#if defined(PBS_PASS_CREDENTIALS)
-		if (passwd_buf[0] != '\0')
-			pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_buf, &cred_len);
-#endif
 		/* set the current work directory by doing a chdir */
 		if (_chdir(qsub_cwd) != 0)
 			goto error;
@@ -5104,9 +5003,6 @@ do_daemon_stuff(char *fname, char *handle, char *server)
 			free(cred_buf);
 			cred_buf = NULL;
 		}
-#if defined(PBS_PASS_CREDENTIALS)
-		memset(passwd_buf, 0, PBS_MAXPWLEN);
-#endif
 	}
 out:
 	DisconnectNamedPipe(h_pipe);
@@ -5218,9 +5114,6 @@ again:
 				(send_string(h_file, destination) == 0) &&
 				(send_string(h_file, script_tmp) == 0) &&
 				(send_string(h_file, cred_name) == 0) &&
-#if defined(PBS_PASS_CREDENTIALS)
-				(send_string(h_file, passwd_buf) == 0) &&
-#endif
 				(send_string(h_file, v_value?v_value:"") == 0) &&
 				(send_string(h_file, basic_envlist) == 0) &&
 				(send_string(h_file, qsub_envlist?qsub_envlist:"") == 0) &&
@@ -5437,9 +5330,6 @@ do_daemon_stuff(void)
 			(recv_string(&sock, destination) != 0) ||
 			(recv_string(&sock, script_tmp) != 0) ||
 			(recv_string(&sock, cred_name) != 0) ||
-#if defined(PBS_PASS_CREDENTIALS)
-			(recv_string(&sock, passwd_buf) != 0) ||
-#endif
 			(recv_dyn_string(&sock, &v_value) != 0) ||
 			(recv_dyn_string(&sock, &basic_envlist) != 0) ||
 			(recv_dyn_string(&sock, &qsub_envlist) != 0) ||
@@ -5461,12 +5351,6 @@ do_daemon_stuff(void)
 			err_op = "send data to foreground";
 			goto error;
 		}
-
-#if defined(PBS_PASS_CREDENTIALS)
-		if (passwd_buf[0] != '\0') {
-			pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_buf, &cred_len);
-		}
-#endif
 
 		/* set the current work directory by doing a chdir */
 		if (chdir(qsub_cwd) != 0) {
@@ -5525,9 +5409,6 @@ do_daemon_stuff(void)
 		/* Exit the daemon if it can't submit the job */
 		if (rc == DMN_REFUSE_EXIT)
 			goto out;
-#if defined(PBS_PASS_CREDENTIALS)
-		memset(passwd_buf, 0, PBS_MAXPWLEN);
-#endif
 	}
 
 out:
@@ -5670,9 +5551,6 @@ again:
 			(send_string(&sock, destination) == 0) &&
 			(send_string(&sock, script_tmp) == 0) &&
 			(send_string(&sock, cred_name) == 0) &&
-#if defined(PBS_PASS_CREDENTIALS)
-			(send_string(&sock, passwd_buf) == 0) &&
-#endif
 			(send_string(&sock, v_value?v_value:"") == 0) &&
 			(send_string(&sock, basic_envlist) == 0) &&
 			(send_string(&sock, qsub_envlist?qsub_envlist:"") == 0) &&
@@ -5731,10 +5609,6 @@ regular_submit(int daemon_up)
 	rc = do_connect(server_out, retmsg);
 	if (rc == 0) {
 		if (sd_svr != -1) {
-#if defined(PBS_PASS_CREDENTIALS)
-			if (passwd_buf[0] != '\0')
-				pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_buf, &cred_len);
-#endif
 			rc = do_submit2(retmsg);
 		}
 		else

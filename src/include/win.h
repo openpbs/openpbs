@@ -262,7 +262,7 @@ struct passwd {
 extern struct passwd *getpwnam(const char *name);
 extern struct passwd *getpwuid(uid_t uid);
 extern struct passwd *logon_pw(char *username, char *credb, size_t credl,
-	int (*decrypt_func)(char *, int, size_t, char **), int use_winsta,  char msg[]);
+	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *), int use_winsta,  char msg[]);
 
 extern void cache_usertoken_and_homedir(char *user, char *pass,
 	size_t passl, int (*read_password_func)(void *, char **, size_t *),
@@ -319,7 +319,7 @@ extern BOOL impersonate_user(HANDLE hlogintoken);
 extern BOOL revert_impersonated_user();
 extern int setuser(char *username);
 extern int setuser_with_password(char *username, char *cred_buf,
-	size_t cred_len, int (*decrypt_func)(char *, int, size_t, char **));
+	size_t cred_len, int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *));
 extern HANDLE setuser_handle(void);
 extern void setuser_close_handle(void);
 extern int setuid(uid_t uid);	/* mimics UNIX call */
@@ -498,10 +498,7 @@ extern int my_fclose(MY_FILE *stream);
 
 /* Various routines related to securing PBS files */
 
-void secure_server_files();
 void secure_mom_files();
-void secure_sched_files();
-void secure_rshd_files();
 void secure_misc_files();
 void secure_exec_files();
 

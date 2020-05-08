@@ -191,7 +191,7 @@ class PTLTestData(Plugin):
             '--accounting-logs',
             '2',
             '--with-sudo'
-            ]
+        ]
         if len(add_hosts) > 0:
             cmd += ['--additional-hosts=' + ','.join(add_hosts)]
         cmd += ['-o', cur_user_dir]
@@ -216,8 +216,8 @@ class PTLTestData(Plugin):
 
         dest = os.path.join(datadir,
                             'PBS_' + server_host + '.tar.gz')
-        ret = self.du.run_copy(current_host, snap_out_dest,
-                               dest, sudo=True, level=logging.DEBUG2)
+        ret = self.du.run_copy(current_host, src=snap_out_dest,
+                               dest=dest, sudo=True, level=logging.DEBUG2)
         self.du.rm(current_host, path=snap_out_dest,
                    recursive=True, force=True, level=logging.DEBUG2)
 

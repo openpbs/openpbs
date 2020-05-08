@@ -389,23 +389,20 @@ static char exbin[][80] = {
 	/* 28 */ "bin/qsub",
 	/* 29 */ "bin/qterm",
 	/* 30 */ "bin/tracejob",
-	/* 31 */ "bin/pbs_password",
-	/* 32 */ "bin/pbs_migrate_users",
-	/* 33 */ "XXX",				/* slot available for use */
-	/* 34 */ "bin/pbs_lamboot",
-	/* 35 */ "bin/pbs_mpilam",
-	/* 36 */ "bin/pbs_mpirun",
-	/* 37 */ "bin/pbs_mpihp",
-	/* 38 */ "bin/pbs_attach",
-	/* 39 */ "bin/pbs_remsh",
-	/* 40 */ "bin/pbs_tmrsh",
-	/* 41 */ "bin/mpiexec",
-	/* 42 */ "bin/pbsrun",
-	/* 43 */ "bin/pbsrun_wrap",
-	/* 44 */ "bin/pbsrun_unwrap",
-	/* 45 */ "bin/pbs_python",
-	/* 46 */ "bin/pbs_ds_password",
-	/* 47 */ "bin/pbs_dataservice"
+	/* 31 */ "bin/pbs_lamboot",
+	/* 32 */ "bin/pbs_mpilam",
+	/* 33 */ "bin/pbs_mpirun",
+	/* 34 */ "bin/pbs_mpihp",
+	/* 35 */ "bin/pbs_attach",
+	/* 36 */ "bin/pbs_remsh",
+	/* 37 */ "bin/pbs_tmrsh",
+	/* 38 */ "bin/mpiexec",
+	/* 39 */ "bin/pbsrun",
+	/* 40 */ "bin/pbsrun_wrap",
+	/* 41 */ "bin/pbsrun_unwrap",
+	/* 42 */ "bin/pbs_python",
+	/* 43 */ "bin/pbs_ds_password",
+	/* 44 */ "bin/pbs_dataservice"
 };
 
 static char exsbin[][80] = {
@@ -581,21 +578,18 @@ static char exman8[][80] = {
 	/* 13 */ "man/man8/qterm.8B",
 	/* 14 */ "man/man8/pbs_lamboot.8B",
 	/* 15 */ "man/man8/pbs_mpilam.8B",
-	/* 16 */ "man/man8/pbs_password.8B",
-	/* 17 */ "man/man8/pbs_migrate_users.8B",
-	/* 18 */ "man/man8/pbs_mpirun.8B",
-	/* 19 */ "man/man8/XXX",		/* slot available for use */
-	/* 20 */ "man/man8/pbs_attach.8B",
-	/* 21 */ "man/man8/pbs_mkdirs.8B",
-	/* 22 */ "man/man8/pbs_hostn.8B",
-	/* 23 */ "man/man8/pbs_probe.8B",
-	/* 24 */ "man/man8/pbs-report.8B",
-	/* 25 */ "man/man8/pbs_tclsh.8B",
-	/* 26 */ "man/man8/pbs_tmrsh.8B",
-	/* 27 */ "man/man8/pbs_wish.8B",
-	/* 28 */ "man/man8/printjob.8B",
-	/* 29 */ "man/man8/pbs.8B",
-	/* 30 */ "man/man8/pbs_interactive.8B"
+	/* 16 */ "man/man8/pbs_mpirun.8B",
+	/* 17 */ "man/man8/pbs_attach.8B",
+	/* 18 */ "man/man8/pbs_mkdirs.8B",
+	/* 19 */ "man/man8/pbs_hostn.8B",
+	/* 20 */ "man/man8/pbs_probe.8B",
+	/* 21 */ "man/man8/pbs-report.8B",
+	/* 22 */ "man/man8/pbs_tclsh.8B",
+	/* 23 */ "man/man8/pbs_tmrsh.8B",
+	/* 24 */ "man/man8/pbs_wish.8B",
+	/* 25 */ "man/man8/printjob.8B",
+	/* 26 */ "man/man8/pbs.8B",
+	/* 27 */ "man/man8/pbs_interactive.8B"
 };
 
 static char extcltk[][80] = {
@@ -777,23 +771,20 @@ static MPUG	bin_mpugs[] = {
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[28], NULL }, /* qsub */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[29], NULL }, /* qterm */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[30], NULL }, /* tracejob */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[31], NULL }, /* pbs_password */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[32], NULL }, /* pbs_migrate_users */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[33], NULL }, /* slot available for use */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[34], NULL }, /* pbs_lamboot */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[35], NULL }, /* pbs_mpilam */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[36], NULL }, /* pbs_mpirun */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[37], NULL }, /* pbs_mpihp */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[38], NULL }, /* pbs_attach */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[39], NULL }, /* pbs_remsh */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[40], NULL }, /* pbs_tmrsh */
-	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[41], NULL }, /* mpiexec */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[42], NULL }, /* pbsrun */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[43], NULL }, /* pbsrun_wrap */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[44], NULL }, /* pbsrun_unwrap */
-	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[45], NULL },  /* pbs_python */
-	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[46], NULL },  /* pbs_ds_password */
-	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[47], NULL }  /* pbs_dataservice */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[31], NULL }, /* pbs_lamboot */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[32], NULL }, /* pbs_mpilam */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[33], NULL }, /* pbs_mpirun */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[34], NULL }, /* pbs_mpihp */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[35], NULL }, /* pbs_attach */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[36], NULL }, /* pbs_remsh */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[37], NULL }, /* pbs_tmrsh */
+	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[38], NULL }, /* mpiexec */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[39], NULL }, /* pbsrun */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[40], NULL }, /* pbsrun_wrap */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[41], NULL }, /* pbsrun_unwrap */
+	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[42], NULL },  /* pbs_python */
+	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[43], NULL },  /* pbs_ds_password */
+	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[44], NULL }  /* pbs_dataservice */
 };
 
 static MPUG	sbin_mpugs[] = {
@@ -999,21 +990,18 @@ static MPUG	man_mpugs[] = {
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[13], NULL }, /* qterm.8B */
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[14], NULL }, /* pbs_lamboot.8B */
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[15], NULL }, /* pbs_mpilam.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[16], NULL }, /* pbs_password.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[17], NULL }, /* pbs_migrate_users.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[18], NULL }, /* pbs_mpirun.8B */
-	{1, 1, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[19], NULL }, /* slot available for use */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[20], NULL }, /* pbs_attach.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[21], NULL }, /* pbs_mkdirs.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[22], NULL }, /* pbs_hostn.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[23], NULL }, /* pbs_probe.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[24], NULL }, /* pbs-report.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[25], NULL }, /* pbs_tclsh.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[26], NULL }, /* pbs_tmrsh.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[27], NULL }, /* pbs_wish.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[28], NULL }, /* printjob.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[29], NULL }, /* pbs.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[30], NULL } }; /* pbs_interactive.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[16], NULL }, /* pbs_mpirun.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[17], NULL }, /* pbs_attach.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[18], NULL }, /* pbs_mkdirs.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[19], NULL }, /* pbs_hostn.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[20], NULL }, /* pbs_probe.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[21], NULL }, /* pbs-report.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[22], NULL }, /* pbs_tclsh.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[23], NULL }, /* pbs_tmrsh.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[24], NULL }, /* pbs_wish.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[25], NULL }, /* printjob.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[26], NULL }, /* pbs.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[27], NULL } }; /* pbs_interactive.8B */
 
 static MPUG	tcltk_mpugs[] = {
 	/*
@@ -1528,13 +1516,13 @@ adjust_for_os(struct infrastruct *pinf)
 
 		/* Linux: pbs_lamboot, pbs_mpilam, pbs_mpirun, mpiexec, pbsrun, pbsrun_wrap, pbsrun_unwrap  */
 
-		bin_mpugs[ofs_bin + 36].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 37].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 31].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 32].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 33].notReq &= ~(0x1);
 		bin_mpugs[ofs_bin + 38].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 43].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 44].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 45].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 46].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 39].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 40].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 41].notReq &= ~(0x1);
 
 		/* Linux + /etc/sgi-compute-node_release => SGI ICE	*/
 		if (access("/etc/sgi-compute-node-release", R_OK) == 0) {

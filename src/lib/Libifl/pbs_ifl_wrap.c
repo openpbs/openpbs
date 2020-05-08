@@ -8300,7 +8300,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_auth_u",SWIG_FromCharPtr("Authorized_Users"));
   SWIG_Python_SetConstant(d, "ATTR_auth_g",SWIG_FromCharPtr("Authorized_Groups"));
   SWIG_Python_SetConstant(d, "ATTR_auth_h",SWIG_FromCharPtr("Authorized_Hosts"));
-  SWIG_Python_SetConstant(d, "ATTR_pwd",SWIG_FromCharPtr("pwd"));
   SWIG_Python_SetConstant(d, "ATTR_cred",SWIG_FromCharPtr("cred"));
   SWIG_Python_SetConstant(d, "ATTR_nodemux",SWIG_FromCharPtr("no_stdio_sockets"));
   SWIG_Python_SetConstant(d, "ATTR_umask",SWIG_FromCharPtr("umask"));
@@ -8472,7 +8471,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_aclResvuser",SWIG_FromCharPtr("acl_resv_users"));
   SWIG_Python_SetConstant(d, "ATTR_NodeGroupEnable",SWIG_FromCharPtr("node_group_enable"));
   SWIG_Python_SetConstant(d, "ATTR_NodeGroupKey",SWIG_FromCharPtr("node_group_key"));
-  SWIG_Python_SetConstant(d, "ATTR_ssignon_enable",SWIG_FromCharPtr("single_signon_password_enable"));
   SWIG_Python_SetConstant(d, "ATTR_dfltqdelargs",SWIG_FromCharPtr("default_qdel_arguments"));
   SWIG_Python_SetConstant(d, "ATTR_dfltqsubargs",SWIG_FromCharPtr("default_qsub_arguments"));
   SWIG_Python_SetConstant(d, "ATTR_rpp_retry",SWIG_FromCharPtr("rpp_retry"));
@@ -8624,8 +8622,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "LE",SWIG_From_int((int)(LE)));
   SWIG_Python_SetConstant(d, "LT",SWIG_From_int((int)(LT)));
   SWIG_Python_SetConstant(d, "DFLT",SWIG_From_int((int)(DFLT)));
-  SWIG_Python_SetConstant(d, "AUTH_RESV_PORT",SWIG_From_int((int)(AUTH_RESV_PORT)));
-  SWIG_Python_SetConstant(d, "AUTH_MUNGE",SWIG_From_int((int)(AUTH_MUNGE)));
   SWIG_Python_SetConstant(d, "SHUT_IMMEDIATE",SWIG_From_int((int)(0)));
   SWIG_Python_SetConstant(d, "SHUT_DELAY",SWIG_From_int((int)(1)));
   SWIG_Python_SetConstant(d, "SHUT_QUICK",SWIG_From_int((int)(2)));

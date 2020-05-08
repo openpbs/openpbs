@@ -552,8 +552,6 @@ struct job {
 #ifndef PBS_MOM
 	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
 #endif /* PBS_MOM */
-	int ji_licneed;			/* # of cpu licenses needed by job */
-	int		ji_licalloc;	/* actual # of cpu licenses allocated */
 #ifdef	PBS_MOM				/* MOM ONLY */
 	struct batch_request *ji_preq;	/* outstanding request */
 	struct grpcache *ji_grpcache;	/* cache of user's groups */
@@ -1235,13 +1233,6 @@ extern int   get_used_wall(job*);
 extern int   get_used_cput(job*);
 extern int   get_cput(job*);
 extern void  remove_deleted_resvs(void);
-
-extern void  clear_and_populate_svr_unlicensedjobs(void);
-extern void  relicense_svr_unlicensedjobs(void);
-extern int   set_cpu_licenses_need(job *, char *);
-extern void  allocate_cpu_licenses(job *);
-extern void  deallocate_cpu_licenses(job *);
-extern void  deallocate_cpu_licenses2(job *, int);
 
 extern void del_job_related_file(job *pjob, char *fsuffix);
 #ifdef PBS_MOM

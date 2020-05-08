@@ -125,7 +125,6 @@ enum srv_atr {
 	SRV_ATR_ReqCred,
 	SRV_ATR_NodeGroupEnable,
 	SRV_ATR_NodeGroupKey,
-	SRV_ATR_ssignon_enable,
 	SRV_ATR_dfltqdelargs,
 	SRV_ATR_dfltqsubargs,
 	SRV_ATR_rpp_retry,

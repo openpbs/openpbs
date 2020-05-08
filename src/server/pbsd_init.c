@@ -404,6 +404,8 @@ pbsd_init(int type)
 	if (setup_env(pbs_conf.pbs_environment)==-1)
 		return (-1);
 
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
+
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
 
@@ -685,28 +687,29 @@ pbsd_init(int type)
 	(void)svr_attr_def[(int)SRV_ATR_version].at_decode(
 		&server.sv_attr[(int)SRV_ATR_version], 0, 0,
 		PBS_VERSION);
-
-	if (check_license(&licenses) < 0) {
+	
+	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
-	} else {
-		if (ext_license_server) {
-			sprintf(log_buffer, "Using license server at %s",
-				PBS_LICENSE_LOCATION);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-				msg_daemonname, log_buffer);
-			printf("%s\n", log_buffer);
-		}
-		if (licenses.lb_aval_floating > 0) {
-			sprintf(log_buffer,
-				"Licenses valid for %d Floating hosts",
-				licenses.lb_aval_floating);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-				msg_daemonname, log_buffer);
-			printf("%s\n", log_buffer);
-		}
 	}
+
+	if (ext_license_server) {
+		sprintf(log_buffer, "Using license server at %s",
+			PBS_LICENSE_LOCATION);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			msg_daemonname, log_buffer);
+		printf("%s\n", log_buffer);
+	} 
+	if (licenses.lb_aval_floating > 0) {
+		sprintf(log_buffer,
+			"Licenses valid for %d Floating hosts",
+			licenses.lb_aval_floating);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			msg_daemonname, log_buffer);
+		printf("%s\n", log_buffer);
+	}
+
 	/* start a timed-event every hour to long the number of floating used */
 	if ((licenses.lb_aval_floating > 0) || ext_license_server)
 		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
@@ -946,18 +949,6 @@ pbsd_init(int type)
 	/* close transaction */
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		return (-1);
-
-	/* If we have trial licenses, we would need to immediately
-	 * license the jobs under svr_unlicensedjobs list
-	 * If we have a license server, then
-	 * relicense_svr_unlicensedjobs() is periodically called by
-	 * return_licenses() in checkkey.c.
-	 */
-
-	if( !(server.sv_attr[SRV_ATR_pbs_license_info].at_flags & ATR_VFLAG_SET) ||
-	(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] == '\0') ) {
-		relicense_svr_unlicensedjobs();
-	}
 
 	/* Now, cause any reservations marked RESV_FINISHED to be
 	 * removed and place "begin" and "end" tasks onto the

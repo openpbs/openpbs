@@ -66,6 +66,8 @@ extern "C" {
 
 #define CREDENTIAL_LIFETIME  1800
 #define CREDENTIAL_TIME_DELTA 300
+#define	ENV_AUTH_KEY	"PBS_AUTH_KEY"
+
 #ifdef	__cplusplus
 }
 #endif

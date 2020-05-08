@@ -476,7 +476,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 20
+        offset = 60
         duration = 20
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
@@ -599,7 +599,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 30
+        offset = 60
         duration = 20
         shift = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
@@ -769,7 +769,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        duration = 20
+        duration = 30
         shift = 10
         offset = 10
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
@@ -1850,6 +1850,9 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, a_duration=new_duration,
                                  check_log=False, whichMessage=0)
 
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid)
+
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), duration)
@@ -1885,6 +1888,10 @@ class TestPbsResvAlter(TestFunctional):
         ret = self.du.run_cmd(self.server.hostname, ralter_cmd)
         self.assertIn('pbs_ralter: Reservation not empty', ret['err'][0])
 
+        # Test that the reservation state is Running and not RESV_NONE
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid)
+
         t_duration, t_start, t_end = self.get_resv_time_info(rid)
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), dur)
@@ -1909,3 +1916,74 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(int(t_start), start)
         self.assertEqual(int(t_duration), new_duration_in_sec)
         self.assertEqual(int(t_end), new_end)
+
+    def test_adv_resv_dur_and_endtime_with_running_jobs(self):
+        """
+        Test that duration and end time of reservation cannot be changed
+        together if there are running jobs inside it. This will fail
+        because start time cannot be changed when there are running
+        jobs in a reservation.
+        """
+
+        offset = 10
+        duration = 20
+        new_duration = 30
+        shift = 10
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration)
+
+        self.check_resv_running(rid, offset)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        new_end = self.bu.convert_seconds_to_datetime(end + 30)
+        with self.assertRaises(PbsResvAlterError) as e:
+            attr = {'reserve_end': new_end,
+                    'reserve_duration': new_duration}
+            self.server.alterresv(rid, attr)
+        self.assertIn('pbs_ralter: Reservation not empty',
+                      e.exception.msg[0])
+
+        # Test that the reservation state is Running and not RESV_NONE
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+
+        self.assertEqual(t_end, end)
+        self.assertEqual(t_start, start)
+        self.assertEqual(t_duration, duration)
+
+    def test_standing_resv_dur_and_endtime_with_running_jobs(self):
+        """
+        Change duration and endtime of standing reservation with
+        running jobs in it. Verify that the alter fails and
+        starttime remains the same
+        """
+        offset = 10
+        duration = 20
+        new_duration = 30
+        shift = 15
+        rid, start, end = self.submit_and_confirm_reservation(offset,
+                                                              duration,
+                                                              standing=True)
+
+        jid = self.submit_job_to_resv(rid, user=TEST_USER)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid, offset=offset)
+
+        new_end = self.bu.convert_seconds_to_datetime(end + 30)
+        with self.assertRaises(PbsResvAlterError) as e:
+            attr = {'reserve_end': new_end,
+                    'reserve_duration': new_duration}
+            self.server.alterresv(rid, attr)
+        self.assertIn('pbs_ralter: Reservation not empty',
+                      e.exception.msg[0])
+
+        # Test that the reservation state is Running and not RESV_NONE
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, attrs, id=rid)
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(t_end, end)
+        self.assertEqual(t_start, start)
+        self.assertEqual(t_duration, duration)

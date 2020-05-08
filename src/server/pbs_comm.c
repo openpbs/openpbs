@@ -663,6 +663,7 @@ main(int argc, char **argv)
 	sprintf(log_buffer, "%s ready (pid=%d), Proxy Name:%s, Threads:%d", argv[0], getpid(), conf.node_name, numthreads);
 	fprintf(stdout, "%s\n", log_buffer);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 
 #ifndef DEBUG
 	pbs_close_stdfiles();

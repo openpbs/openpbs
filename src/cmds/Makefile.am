@@ -42,13 +42,11 @@ bin_PROGRAMS = \
 	pbsdsh \
 	pbsnodes \
 	pbs_attach \
-	pbs_password \
 	pbs_tmrsh \
 	pbs_ralter \
 	pbs_rdel \
 	pbs_rstat \
 	pbs_rsub \
-	pbs_migrate_users \
 	pbs_release_nodes \
 	qalter \
 	qdel \
@@ -129,10 +127,6 @@ pbs_ds_password_bin_LDADD = \
 	-lcrypto
 pbs_ds_password_bin_SOURCES = pbs_ds_password.c ${common_sources}
 
-pbs_password_CPPFLAGS = ${common_cflags}
-pbs_password_LDADD = ${common_libs}
-pbs_password_SOURCES = pbs_password.c ${common_sources}
-
 pbs_tmrsh_CPPFLAGS = ${common_cflags}
 pbs_tmrsh_LDADD = ${common_libs}
 pbs_tmrsh_SOURCES = pbs_tmrsh.c
@@ -152,10 +146,6 @@ pbs_rstat_SOURCES = pbs_rstat.c ${common_sources}
 pbs_rsub_CPPFLAGS = ${common_cflags}
 pbs_rsub_LDADD = ${common_libs}
 pbs_rsub_SOURCES = pbs_rsub.c ${common_sources}
-
-pbs_migrate_users_CPPFLAGS = ${common_cflags}
-pbs_migrate_users_LDADD = ${common_libs}
-pbs_migrate_users_SOURCES = pbs_migrate_users.c ${common_sources}
 
 pbs_release_nodes_CPPFLAGS = ${common_cflags}
 pbs_release_nodes_LDADD = ${common_libs}

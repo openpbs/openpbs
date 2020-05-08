@@ -61,6 +61,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 # A basic SWIG interface definition to wrap PBS IFL
@@ -308,11 +310,12 @@ if __name__ == '__main__':
         logging.debug(du.run_cmd(targethost, cmd))
         if srcdir != os.getcwd():
             logging.debug(du.run_copy(targethost,
-                                      os.path.join(srcdir, "pbs_ifl_wrap.c"),
-                                      workdir))
+                                      src=os.path.join(
+                                          srcdir, "pbs_ifl_wrap.c"),
+                                      dest=workdir))
             logging.debug(du.run_copy(targethost,
-                                      os.path.join(srcdir, "pbs_ifl.py"),
-                                      workdir))
+                                      src=os.path.join(srcdir, "pbs_ifl.py"),
+                                      dest=workdir))
         cmd = ['gcc', '-Wall', '-Wno-unused-variable', '-fPIC', '-shared',
                '-I' + pbsinclude]
         cmd += ['-I' + pythoninc]
@@ -326,12 +329,12 @@ if __name__ == '__main__':
     libdir = os.path.dirname(ptl.lib.__file__)
     if force or not os.path.isfile(libdir + '/_pbs_ifo.so'):
         du.run_copy(targethost,
-                    os.path.join(workdir, '_pbs_ifl.so'),
-                    os.path.join(libdir, '_pbs_ifl.so'), sudo=True)
+                    src=os.path.join(workdir, '_pbs_ifl.so'),
+                    dest=os.path.join(libdir, '_pbs_ifl.so'), sudo=True)
     if force or not os.path.isfile(os.path.join(libdir, '/pbs_ifl.py')):
         du.run_copy(targethost,
-                    os.path.join(workdir, 'pbs_ifl.py'),
-                    os.path.join(libdir, 'pbs_ifl.py'), sudo=True)
+                    src=os.path.join(workdir, 'pbs_ifl.py'),
+                    dest=os.path.join(libdir, 'pbs_ifl.py'), sudo=True)
 
     _remove_file(workdir, "pbs_ifl.py")
     _remove_file(workdir, "_pbs_ifl.so")

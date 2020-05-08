@@ -118,6 +118,7 @@ pbs_list_head svr_requests;
 extern struct server server;
 extern char      server_host[];
 extern pbs_list_head svr_newjobs;
+extern pbs_list_head svr_allconns;
 extern time_t    time_now;
 extern char  *msg_err_noqueue;
 extern char  *msg_err_malloc;
@@ -165,12 +166,8 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 			/*   ensure job's euser exists as this can be called */
 			/*   from pbs_send_job who is moving a job from a routing */
 			/*   queue which doesn't have euser set */
-			if ( ((jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		        && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) &&   \
-		     (server.sv_attr[SRV_ATR_ssignon_enable].at_flags &      \
-							   ATR_VFLAG_SET) && \
-                     (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long  \
-								      == 1) ) {
+			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
+		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
 				ret = user_read_password(
 					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
 					data, dsize);
@@ -191,58 +188,88 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 	return ret;
 }
 
-/**
- * @brief
- *      Authenticate user on successfully decoding munge key received
- *      from PBS batch request
- *
- * @param[in]  auth_data     opaque auth data that is to be verified
- * @param[out] from_svr		 1 - sender is server, 0 - sender not a server
- *
- * @return error code
- * @retval  0 - Success
- * @retval -1 - Authentication failure
- * @retval -2 - Authentication method not supported
- *
- */
-int
-authenticate_external(conn_t *conn, struct batch_request *request)
+static void
+req_authenticate(conn_t *conn, struct batch_request *request)
 {
 	auth_def_t *authdef = NULL;
 	auth_def_t *encryptdef = NULL;
+	conn_t *cp = NULL;
 
-	authdef = get_auth(request->rq_ind.rq_auth.rq_auth_method);
-	if (authdef == NULL)
-		return -2;
+	if (!is_string_in_arr(pbs_conf.supported_auth_methods, request->rq_ind.rq_auth.rq_auth_method)) {
+		req_reject(PBSE_NOSUP, 0, request);
+		close_client(conn->cn_sock);
+		return;
+	}
+
 	if (request->rq_ind.rq_auth.rq_encrypt_method[0] != '\0') {
 		encryptdef = get_auth(request->rq_ind.rq_auth.rq_encrypt_method);
-		if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL)
-			return -2;
+		if (encryptdef == NULL || encryptdef->encrypt_data == NULL || encryptdef->decrypt_data == NULL) {
+			req_reject(PBSE_NOSUP, 0, request);
+			close_client(conn->cn_sock);
+			return;
+		}
 	}
 
-	conn->cn_auth_config = make_auth_config(request->rq_ind.rq_auth.rq_auth_method,
+	if (strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) != 0) {
+		authdef = get_auth(request->rq_ind.rq_auth.rq_auth_method);
+		if (authdef == NULL) {
+			req_reject(PBSE_NOSUP, 0, request);
+			close_client(conn->cn_sock);
+			return;
+		}
+		cp = conn;
+	} else {
+		/* ensure resvport auth request is coming from priv port */
+		if ((conn->cn_authen & PBS_NET_CONN_FROM_PRIVIL) == 0) {
+			req_reject(PBSE_BADCRED, 0, request);
+			close_client(conn->cn_sock);
+			return;
+		}
+		cp = (conn_t *)GET_NEXT(svr_allconns);
+		for (; cp != NULL; cp = GET_NEXT(cp->cn_link)) {
+			if (request->rq_ind.rq_auth.rq_port == cp->cn_port && conn->cn_addr == cp->cn_addr) {
+				cp->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+				break;
+			}
+		}
+		if (cp == NULL) {
+			req_reject(PBSE_BADCRED, 0, request);
+			close_client(conn->cn_sock);
+			return;
+		}
+	}
+
+	cp->cn_auth_config = make_auth_config(request->rq_ind.rq_auth.rq_auth_method,
 						request->rq_ind.rq_auth.rq_encrypt_method,
+						pbs_conf.pbs_exec_path,
+						pbs_conf.pbs_home_path,
 						(void *)log_event);
-	if (conn->cn_auth_config == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
+	if (cp->cn_auth_config == NULL) {
+		req_reject(PBSE_SYSTEM, 0, request);
+		close_client(conn->cn_sock);
+		return;
 	}
 
-	(void) strcpy(conn->cn_username, request->rq_user);
-	(void) strcpy(conn->cn_hostname, request->rq_host);
-	conn->cn_timestamp = time_now;
+	(void) strcpy(cp->cn_username, request->rq_user);
+	(void) strcpy(cp->cn_hostname, request->rq_host);
+	cp->cn_timestamp = time_now;
 
-	authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
-	transport_chan_set_authdef(request->rq_conn, authdef, FOR_AUTH);
-	transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_AUTH);
+	if (encryptdef != NULL) {
+		encryptdef->set_config((const pbs_auth_config_t *)(cp->cn_auth_config));
+		transport_chan_set_authdef(cp->cn_sock, encryptdef, FOR_ENCRYPT);
+		transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+	}
 
-	if (encryptdef) {
+	if (authdef != NULL) {
 		if (encryptdef != authdef)
-			authdef->set_config((const pbs_auth_config_t *)(conn->cn_auth_config));
-		transport_chan_set_authdef(request->rq_conn, encryptdef, FOR_ENCRYPT);
-		transport_chan_set_ctx_status(request->rq_conn, AUTH_STATUS_CTX_ESTABLISHING, FOR_ENCRYPT);
+			authdef->set_config((const pbs_auth_config_t *)(cp->cn_auth_config));
+		transport_chan_set_authdef(cp->cn_sock, authdef, FOR_AUTH);
+		transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_ESTABLISHING, FOR_AUTH);
 	}
-	return 0;
+	if (strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) == 0) {
+		transport_chan_set_ctx_status(cp->cn_sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
+	}
+	reply_ack(request);
 }
 
 /*
@@ -345,25 +372,12 @@ process_request(int sfds)
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "", msg_request, request->rq_type, request->rq_user, request->rq_host, sfds);
 
 	if (request->rq_type == PBS_BATCH_Authenticate) {
-		if (!is_string_in_arr(pbs_conf.supported_auth_methods, request->rq_ind.rq_auth.rq_auth_method)) {
-			req_reject(PBSE_NOSUP, 0, request);
-			close_client(sfds);
-			return;
-		}
-		if (strcmp(request->rq_ind.rq_auth.rq_auth_method, AUTH_RESVPORT_NAME) != 0) {
-			rc = authenticate_external(conn, request);
-			if (rc == 0) {
-				reply_ack(request);
-				return;
-			}
-			req_reject(rc == -2 ? PBSE_NOSUP : PBSE_BADCRED, 0, request);
-			close_client(sfds);
-			return;
-		}
+		req_authenticate(conn, request);
+		return;
 	}
 
 #ifndef PBS_MOM
-	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect && request->rq_type != PBS_BATCH_Authenticate) {
+	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
 			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
 			req_reject(PBSE_BADCRED, 0, request);
@@ -532,7 +546,6 @@ process_request(int sfds)
 			case PBS_BATCH_AsyrunJob:
 			case PBS_BATCH_JobCred:
 			case PBS_BATCH_UserCred:
-			case PBS_BATCH_UserMigrate:
 			case PBS_BATCH_MoveJob:
 			case PBS_BATCH_QueueJob:
 			case PBS_BATCH_RunJob:
@@ -690,18 +703,6 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_JobCred:
-#ifndef  PBS_MOM
-
-			/* Reject if a user client (qsub -Wpwd) and not a */
-			/* server (qmove) enqueued a job with JobCredential */
-			if (!request->rq_fromsvr &&
-				(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) &&
-				(server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1)) {
-				req_reject(PBSE_SSIGNON_SET_REJECT, 0, request);
-				close_client(sfds);
-				break;
-			}
-#endif
 			if (prot == PROT_TPP)
 				request->tpp_ack = 0;
 			req_jobcredential(request);
@@ -718,19 +719,6 @@ dispatch_request(int sfds, struct batch_request *request)
 #else
 			req_usercredential(request);
 #endif
-			break;
-
-		case PBS_BATCH_UserMigrate:
-#ifdef	PBS_MOM
-#ifdef	WIN32
-			req_reject(PBSE_NOSUP, 0, request);
-#else
-			req_reject(PBSE_UNKREQ, 0, request);
-#endif	/* WIN32 */
-			close_client(sfds);
-#else
-			req_user_migrate(request);
-#endif	/* PBS_MOM */
 			break;
 
 		case PBS_BATCH_jobscript:
@@ -966,10 +954,6 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_RegistDep:
 			req_register(request);
-			break;
-
-		case PBS_BATCH_Authenticate:
-			req_authenResvPort(request);
 			break;
 
 		case PBS_BATCH_StageIn:

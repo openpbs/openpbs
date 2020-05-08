@@ -49,6 +49,8 @@ extern int __pbs_asyrunjob(int, char *, char *, char *);
 
 extern int __pbs_alterjob(int, char *, struct attrl *, char *);
 
+extern int __pbs_asyalterjob(int, char *, struct attrl *, char *);
+
 extern int __pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 extern int __pbs_connect(char *);

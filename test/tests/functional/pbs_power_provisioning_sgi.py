@@ -150,7 +150,7 @@ def NodesetDelete( nodeset_name ):
             pwr_dir = os.path.join(os.sep, "opt", "clmgr", "power-service")
             dest = os.path.join(pwr_dir, "hpe_clmgr_power_api.py")
             self.server.du.run_cmd(host, "mkdir -p " + pwr_dir, sudo=True)
-            self.server.du.run_copy(host, fn, dest, True)
+            self.server.du.run_copy(host, src=fn, dest=dest, sudo=True)
             # Set PBS_PMINAME=sgi in pbs_environment so the power hook
             # will use the SGI functionality.
             mom = self.moms[host]

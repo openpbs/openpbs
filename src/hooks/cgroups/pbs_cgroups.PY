@@ -960,9 +960,29 @@ class HookUtils(object):
         cgroup.assigned_resources = cgroup._get_assigned_cgroup_resources()
         # Create the cgroup(s) for the job
         cgroup.create_job(event.job.id, node)
+        if (cgroup.cfg['cgroup']['cpuset']['enabled']
+                and not cgroup.cfg['cgroup']['cpuset']['allow_zero_cpus']):
+            if ('ncpus' not in jobutil.assigned_resources
+                    or jobutil.assigned_resources['ncpus'] <= 0):
+                if event.job.in_ms_mom():
+                    pbs.logmsg(pbs.EVENT_ERROR,
+                               'cpuset enabled with mandatory ncpus >= 1, '
+                               'but job does not request ncpus on '
+                               'mother superior: rejecting job')
+                    event.reject('cpuset enabled with mandatory ncpus >= 1, '
+                                 'but job does not request ncpus on '
+                                 'mother superior: rejecting job')
+                else:
+                    # will be done in configure_job
+                    pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                               'cpuset enabled with mandatory ncpus >= 1, '
+                               'but job does not request ncpus on host: '
+                               'deleting cpuset cgroup')
+
         # Configure the new cgroup
         cgroup.configure_job(event.job.id, jobutil.assigned_resources,
                              node, cgroup, event.type)
+
         # Initialize resource usage for the job
         cgroup.update_job_usage(event.job.id, event.job.resources_used)
         # Write out the assigned resources
@@ -1180,6 +1200,25 @@ class HookUtils(object):
                    caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Host assigned job resources: %s' %
                    (caller_name(), jobutil.assigned_resources))
+        if (cgroup.cfg['cgroup']['cpuset']['enabled']
+                and not cgroup.cfg['cgroup']['cpuset']['allow_zero_cpus']):
+            if ('ncpus' not in jobutil.assigned_resources
+                    or jobutil.assigned_resources['ncpus'] <= 0):
+                if event.job.in_ms_mom():
+                    pbs.logmsg(pbs.EVENT_ERROR,
+                               'cpuset enabled with mandatory ncpus >= 1, '
+                               'but job does not request ncpus on '
+                               'mother superior: rejecting resize')
+                    event.reject('cpuset enabled with mandatory ncpus >= 1, '
+                                 'but job does not request ncpus on '
+                                 'mother superior: rejecting resize')
+                else:
+                    # will be done in configure_job
+                    pbs.logmsg(pbs.EVENT_ERROR,
+                               'cpuset enabled with mandatory ncpus >= 1, '
+                               'but job no longer requests ncpus on host: '
+                               'deleting cpuset cgroup')
+
         # Configure the cgroup
         cgroup.configure_job(event.job.id, jobutil.assigned_resources,
                              node, cgroup, event.type)
@@ -1479,7 +1518,8 @@ class NodeUtils(object):
             if host_resv_hpmem < 0:
                 host_resv_hpmem = 0
             node_resv_hpmem = int(math.ceil(host_resv_hpmem / num_numa_nodes))
-            node_resv_hpmem -= (node_resv_hpmem %
+            if 'Hugepagesize' in self.meminfo:
+                node_resv_hpmem -= (node_resv_hpmem %
                                 size_as_int(self.meminfo['Hugepagesize']))
             # Physical memory
             host_mem = self.get_memory_on_node(ignore_reserved=True)
@@ -1502,9 +1542,12 @@ class NodeUtils(object):
             node_swapmem -= node_swapmem % (1024 * 1024)
             # Set the NUMA node values
             for num in numa_nodes:
-                val = numa_nodes[num]['HugePages_Total']
-                val *= size_as_int(self.meminfo['Hugepagesize'])
-                val -= node_resv_hpmem
+                val = 0
+                if 'HugePages_Total' in numa_nodes[num]:
+                    val = numa_nodes[num]['HugePages_Total']
+                    if 'Hugepagesize' in self.meminfo:
+                        val *= size_as_int(self.meminfo['Hugepagesize'])
+                    val -= node_resv_hpmem
                 numa_nodes[num]['hpmem'] = val
                 val = size_as_int(numa_nodes[num]['MemTotal'])
                 # round down only svr-reported values, not internal values
@@ -1983,10 +2026,10 @@ class NodeUtils(object):
             else:
                 total = size_as_int(hpmemtotal)
         except Exception:
-            pbs.logmsg(pbs.EVENT_DEBUG,
+            pbs.logmsg(pbs.EVENT_DEBUG3,
                        '%s: Could not determine huge page availability' %
                        caller_name())
-            raise
+            total = 0
         if total <= 0:
             total = 0
             pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -2004,7 +2047,8 @@ class NodeUtils(object):
         # Calculate remaining vmem
         remaining = total - reserved
         # Round down to nearest huge page
-        remaining -= remaining % (size_as_int(self.meminfo['Hugepagesize']))
+        if 'Hugepagesize' in self.meminfo:
+            remaining -= remaining % (size_as_int(self.meminfo['Hugepagesize']))
         if remaining <= 0:
             raise ValueError('Too much reserved hpmem')
         pbs.logmsg(pbs.EVENT_DEBUG4, 'remaining hpmem: %d' % remaining)
@@ -2833,6 +2877,7 @@ class CgroupUtils(object):
         defaults['cgroup']['cpuset']['mem_fences'] = True
         defaults['cgroup']['cpuset']['mem_hardwall'] = False
         defaults['cgroup']['cpuset']['memory_spread_page'] = False
+        defaults['cgroup']['cpuset']['allow_zero_cpus'] = True
         defaults['cgroup']['devices'] = {}
         defaults['cgroup']['devices']['enabled'] = False
         defaults['cgroup']['devices']['exclude_hosts'] = []
@@ -3444,8 +3489,17 @@ class CgroupUtils(object):
             tasks_file = self._cgroup_path(subsys, 'tasks', jobid)
             if ((not os.path.exists(tasks_file))
                     and (subsys == 'cpuset')):
-                # zero CPU  job: should be attached to root pbspro cpuset
-                tasks_file = self._cgroup_path(subsys, 'tasks')
+                if (self.cfg['cgroup']['cpuset']['enabled']
+                        and not self.cfg['cgroup']['cpuset']
+                                        ['allow_zero_cpus']):
+                    pbs.logmsg(pbs.EVENT_JOB_USAGE,
+                               'No cpuset cgroup present '
+                               'and npcus==0 disallowed')
+                    pbs.event().reject('No cpuset cgroup present '
+                                       'and npcus==0 disallowed')
+                else:
+                    # zero CPU job: should be attached to root pbspro cpuset
+                    tasks_file = self._cgroup_path(subsys, 'tasks')
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: tasks file = %s' %
                        (caller_name(), tasks_file))
             try:
@@ -4495,8 +4549,8 @@ class CgroupUtils(object):
                 if mem_requested is None:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                '%s: mem not requested, '
-                               'assigning %s to cgroup' %
-                               (caller_name(), mem_limit))
+                               'assigning %s to cgroup'
+                               % (caller_name(), mem_limit))
                     hostresc['mem'] = pbs.size(mem_limit)
                 if softmem_enabled:
                     hostresc['softmem'] = pbs.size(softmem_limit)
@@ -4504,8 +4558,8 @@ class CgroupUtils(object):
                 if vmem_requested is None:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                '%s: vmem not requested, '
-                               'assigning %s to cgroup' %
-                               (caller_name(), vmem_limit))
+                               'assigning %s to cgroup'
+                               % (caller_name(), vmem_limit))
                     pbs.logmsg(pbs.EVENT_DEBUG4,
                                '%s: INFO: vmem is enabled in the hook '
                                'configuration file and should also be '
@@ -4639,23 +4693,24 @@ class CgroupUtils(object):
                         htpc = node.cpuinfo['hyperthreads_per_core']
                 self.set_limit(resc, hostresc[resc] * htpc, jobid)
             elif ((resc == "cpuset.cpus")
-                  and not hostresc['cpuset.cpus']
-                  and self.cfg['cgroup']['cpuset']['allow_zero_cpus']):
+                  and not hostresc['cpuset.cpus']):
                 # zero cpus jobs -- delete the cpuset made for the job;
                 # later allows job processes to be placed in the root cpuset.
                 # Note the set_limit in the final else should likewise
                 # be skipped.
+                # Since the advent of "resize" we may need to
+                # clean up processes in a pre-existing cpuset
+                finished = False
+                giveup_time = time.time() + self.cfg['kill_timeout']
                 path = self._cgroup_path('cpuset', '', jobid)
-                success = self._remove_cgroup(path)
-                if not success:
-                    pbs.logmsg(pbs.EVENT_DEBUG,
-                               '%s: Failed to delete cpuset %s'
-                               ' for zero cpus job %s'
-                               % (caller_name(), path, jobid))
-                    pbs.event().reject('Failed to delete cpuset'
-                                       ' for zero cpus job')
-                    # Hopefully the orphan cleaner will eventually
-                    # get rid of it
+                while not finished:
+                    success = self._remove_cgroup(path)
+                    if success:
+                        finished = True
+                    elif time.time() > giveup_time:
+                        finished = True
+                    else:
+                        time.sleep(0.2)
             else:
                 # For all the rest just pass hostresc[resc] down to set_limit
                 self.set_limit(resc, hostresc[resc], jobid)

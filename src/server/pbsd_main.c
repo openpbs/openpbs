@@ -265,7 +265,6 @@ pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */
 pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
-pbs_list_head	svr_unlicensedjobs;	/* list of jobs to be licensed */
 pbs_list_head	task_list_immed;
 pbs_list_head	task_list_timed;
 pbs_list_head	task_list_event;
@@ -680,7 +679,29 @@ tcp_pre_process(conn_t *conn)
 	char errbuf[LOG_BUF_SIZE];
 	int rc;
 
+	if (conn->cn_auth_config == NULL)
+		return 1;
+
 	DIS_tcp_funcs();
+	if (conn->cn_auth_config->encrypt_method[0] != '\0') {
+		rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
+		if (rc == (int)AUTH_STATUS_UNKNOWN)
+			return 1;
+
+
+		if (rc < (int)AUTH_STATUS_CTX_READY) {
+			errbuf[0] = '\0';
+			rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
+			if (errbuf[0] != '\0') {
+				if (rc != 0)
+					log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+				else
+					log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+			}
+			return rc;
+		}
+	}
+
 	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_AUTH);
 	if (rc == (int)AUTH_STATUS_UNKNOWN)
 		return 1;
@@ -689,23 +710,6 @@ tcp_pre_process(conn_t *conn)
 	if (rc < (int)AUTH_STATUS_CTX_READY) {
 		errbuf[0] = '\0';
 		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
-		if (errbuf[0] != '\0') {
-			if (rc != 0)
-				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
-			else
-				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
-		}
-		return rc;
-	}
-
-	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
-	if (rc == (int)AUTH_STATUS_UNKNOWN)
-		return 1;
-
-
-	if (rc < (int)AUTH_STATUS_CTX_READY) {
-		errbuf[0] = '\0';
-		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
 		if (errbuf[0] != '\0') {
 			if (rc != 0)
 				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
@@ -1061,7 +1065,6 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_allresvs);
 	CLEAR_HEAD(svr_newresvs);
 	CLEAR_HEAD(svr_deferred_req);
-	CLEAR_HEAD(svr_unlicensedjobs);
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);

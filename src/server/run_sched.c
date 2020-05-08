@@ -311,7 +311,10 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		log_err(errno, __func__, "Out of memory!");
 		return (-1);
 	}
-	conn->cn_auth_config = make_auth_config(AUTH_RESVPORT_NAME, "", (void *)log_event);
+	conn->cn_auth_config = make_auth_config(AUTH_RESVPORT_NAME, "",
+							pbs_conf.pbs_exec_path,
+							pbs_conf.pbs_home_path,
+							(void *)log_event);
 	if (conn->cn_auth_config == NULL) {
 		log_err(errno, __func__, "Out of memory!");
 		return -1;

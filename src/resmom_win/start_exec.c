@@ -71,8 +71,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <Userenv.h>
+#include <openssl/sha.h>
 
 #include "libpbs.h"
+#include "libutil.h"
 #include "list_link.h"
 
 #ifndef WIN32
@@ -130,6 +132,8 @@ extern	char		mom_host[];
 extern	char		*mom_home;
 extern	int		enable_exechost2;
 extern	long		joinjob_alarm_time;
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
 
@@ -274,6 +278,43 @@ send_update_job(job *pjob, char *old_exec_vnode)
 	(void)send_sisters_job_update(pjob);
 	pjob->ji_updated = 1;
 	return (0);
+}
+
+/**
+ * @brief
+ *     Get the hash of encrypted password
+ * 
+ * @param[in] job - for which it will read cred
+ * @param[out] token - output hash
+ * 
+ * @return  int
+ * @retval  0 on success
+ * @retval  1 on error
+ */
+
+int
+get_sha(job *pjob, char **token)
+{
+	char *hash_pwd;
+	if (read_cred(pjob, &cred_buf, &cred_len) == 0) {
+		if (cred_buf != NULL && cred_len > 0) {
+			hash_pwd = malloc((2 * SHA_DIGEST_LENGTH)+1);
+			if (hash_pwd == NULL) {
+				log_err(-1, __func__, "Unable to allocate memory");
+				return 1;
+			}
+			encode_SHA(cred_buf, cred_len, &hash_pwd);
+			*token = hash_pwd;
+		}
+	} else {
+		log_err(-1, __func__, "Unable to read password");
+		return 1;
+	}
+	if (cred_buf) {
+		free(cred_buf);
+		cred_buf = NULL;
+	}
+	return 0;
 }
 
 /**
@@ -809,7 +850,7 @@ bld_wenv_variables(char *name, char *value)
 	int	i;
 	char    str_buf[MAXPATHLEN+1] = {0};
 
-	if ((*name == '\0') || (*name == '\n'))
+	if ((!name) || (*name == '\0') || (*name == '\n'))
 		return;			/* invalid name */
 
 	if (env_array == NULL) {
@@ -1615,6 +1656,7 @@ finish_exec(job *pjob)
 	vnl_t			*vnl_good = NULL;
 	char			*old_exec_vnode = NULL;
 	char			err_msg[LOG_BUF_SIZE];
+	char 			* hash_token = NULL;
 
 	script_in = script_out = script_err = -1;
 	is_MS = pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE;
@@ -2024,6 +2066,13 @@ finish_exec(job *pjob)
 
 	/* USERNAME */
 	bld_wenv_variables(variables_else[17], pwdp->pw_name);
+
+	/* password token */
+	if (get_sha(pjob, &hash_token) == 0) {
+		bld_wenv_variables(ENV_AUTH_KEY, hash_token);
+		free(hash_token);
+		hash_token = NULL;
+	}
 
 	/*************************************************************************/
 	/*		We have a "normal" batch job, connect the standard	 */
@@ -2793,6 +2842,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	char			**env;
 	char			*p = NULL;
 	char			cmd_shell[MAX_PATH + 1] = {'\0'};
+	char			*hash_token = NULL;
 
 	/* should not be impersonated user */
 	(void)revert_impersonated_user();
@@ -3071,6 +3121,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			return PBSE_SYSTEM;
 		}
 	}
+
+	/* password token */
+	if (get_sha(pjob, &hash_token) == 0) {
+		bld_wenv_variables(ENV_AUTH_KEY, hash_token);
+		free(hash_token);
+		hash_token = NULL;
+	}
+
 	/*
 	 ** Begin a new process for the fledgling task.
 	 */
@@ -4562,7 +4620,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			}
 
 			name = NULL;
-			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name) != 0) {
+			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
 				log_err(-1, __func__, "decrypt_pwd");
 				close(fds[0]);
 			}

@@ -55,7 +55,6 @@
  * 	set_rpp_highwater()
  * 	set_sched_sock()
  * 	is_valid_resource()
- * 	ssignon_transition_okay()
  * 	deflt_chunk_action()
  * 	set_license_location()
  * 	unset_license_location()
@@ -842,82 +841,6 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 }
 
 
-/**
- * @brief
- *		The action function for the "single_signon_password_enable" server
- *		attribute, which validates transitions between "true" and "false"
- *		values.
- *
- * @param[in]	pattr	-	target "single_signon_password_enable" attribute value
- * @param[in]	pobject -	pointer to some parent object.(required but unused here)
- * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
- *
- * @return	Whether or not okay to set to new value.
- * @retval	0	: Action is okay.
- * @retval	PBSE_SSIGNON_BAD_TRANSITION1	:
- * 				single_signon_password_enable from true to false: jobs exist!
- *
- * @retval	PBSE_SSIGNON_BAD_TRANSITION2	:
- * 				single_signon_password_enable from false to true: not all jobs have a
- *      		bad password hold!
- */
-int
-ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
-{
-	job *pjob;
-
-	if (actmode == ATR_ACTION_FREE)
-		return (0);
-
-	/* from true to false */
-	if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) && \
-          (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1) && \
-	  (pattr->at_val.at_long == 0) ) {
-
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* found at least a job that is not moved or finished */
-			return (PBSE_SSIGNON_BAD_TRANSITION1);
-
-		}
-	}
-
-	/* from false to true */
-
-	if ( (!(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) ||\
-           (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 0)) && \
-	  (pattr->at_val.at_long == 1) ) {
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* any unheld job found, or if held but not */
-			/* containing password hold */
-			if (!(pjob->ji_wattr[(int)JOB_ATR_hold].at_flags &
-			ATR_VFLAG_SET) || \
-			    !(pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long \
-						         & HOLD_bad_password) )
-				return (PBSE_SSIGNON_BAD_TRANSITION2);
-		}
-
-	}
-
-	return (0);
-
-}
 
 /**
  * @brief
@@ -1098,12 +1021,8 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
 							!= '\0') ) {
 			close_licensing();	/* checkin, close connection */
-		} else { /* from no license server */
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
 
 		if (pbs_licensing_license_location)
 			free(pbs_licensing_license_location);
@@ -1119,21 +1038,6 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 			init_licensing();
 			if (license_sanity_check())
 				license_more_nodes();
-		} else {   /* no pbs_licensing_license_location */
-
-			/* get trial license */
-			if (check_license(&licenses) < 0) {
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_ALERT, msg_daemonname,
-					"One or more PBS license keys are invalid, jobs may not run");
-			} else {
-				sprintf(log_buffer,
-					"Licenses valid for %d floating hosts",
-					licenses.lb_aval_floating);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_NOTICE, msg_daemonname, log_buffer);
-				relicense_svr_unlicensedjobs();
-			}
 		}
 	}
 
@@ -1155,32 +1059,14 @@ unset_license_location(void)
 		if (pbs_licensing_license_location[0] != '\0') {
 
 			close_licensing();
-			sockets_reset();
 			unlicense_socket_licensed_nodes();
-
-		} else { /* from no license server */
+			clear_license_info();
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
+
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
 		licstate_unconfigured(LIC_SERVER);
-	}
-
-	/* try to find a trial license */
-	if (check_license(&licenses) < 0) {
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ALERT, msg_daemonname,
-			"One or more PBS license keys are invalid, jobs may not run");
-	} else {
-		sprintf(log_buffer,
-			"Licenses valid for %d floating hosts",
-			licenses.lb_aval_floating);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
-		relicense_svr_unlicensedjobs();
 	}
 
 }

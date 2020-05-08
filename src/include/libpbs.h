@@ -257,7 +257,7 @@ struct batch_reply
 #define PBS_BATCH_StatusResv		71
 #define PBS_BATCH_DeleteResv		72
 #define PBS_BATCH_UserCred		73
-#define PBS_BATCH_UserMigrate		74
+/* Unused -- #define PBS_BATCH_UserMigrate		74 */
 #define PBS_BATCH_ConfirmResv		75
 #define PBS_BATCH_DefSchReply		80
 #define PBS_BATCH_StatusSched		81
@@ -306,7 +306,6 @@ extern void advise(char *, ...);
 extern int PBSD_rdytocmt(int, char *, int, char **);
 extern int PBSD_commit(int, char *, int, char **);
 extern int PBSD_jcred(int, int, char *, int, int, char **);
-extern int PBSD_user_migrate(int, char *);
 extern int PBSD_jscript(int, char *, int, char **);
 extern int PBSD_jscript_direct(int, char *, int, char **);
 extern int PBSD_copyhookfile(int, char *, int, char **);
@@ -333,7 +332,6 @@ extern int decode_DIS_JobId(int, char *);
 extern int decode_DIS_replyCmd(int, struct batch_reply *);
 extern int encode_DIS_JobCred(int, int, char *, int);
 extern int encode_DIS_UserCred(int, char *, int, char *, int);
-extern int encode_DIS_UserMigrate(int, char *);
 extern int encode_DIS_JobFile(int, int, char *, int, char *, int);
 extern int encode_DIS_JobId(int, char *);
 extern int encode_DIS_Manage(int, int, int, char *, struct attropl *);

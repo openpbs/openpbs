@@ -356,6 +356,7 @@ extern int send_rq_cpyfile_cred(pio_handles *, struct rq_cpyfile *);
 extern int recv_pcphosts(void);
 extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
+extern void check_err(const char *func_name, char *buf, int len);
 #else
 extern void  bld_env_variables(struct var_table *, char *, char *);
 extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);

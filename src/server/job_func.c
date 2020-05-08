@@ -310,6 +310,15 @@ job_abt(job *pjob, char *text)
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
+	} else if (old_state == JOB_STATE_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
+		  (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)) {
+		(void)svr_setjobstate(pjob, JOB_STATE_HELD,
+			JOB_SUBSTATE_ABORT);
+		depend_on_term(pjob);
+		/*
+		 * Check if the history of the finished job can be saved or it needs to be purged .
+		 */
+		svr_saveorpurge_finjobhist(pjob);
 	} else {
 		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 			JOB_SUBSTATE_ABORT);
@@ -350,10 +359,6 @@ job_alloc(void)
 		return NULL;
 	}
 	(void)memset((char *)pj, (int)0, (size_t)sizeof(job));
-
-	/* explicity setting these licensing parameters just be sure */
-	pj->ji_licneed = -1;	/* indicates uninitialized, invalid value */
-	pj->ji_licalloc = 0;
 
 	CLEAR_LINK(pj->ji_alljobs);
 	CLEAR_LINK(pj->ji_jobque);

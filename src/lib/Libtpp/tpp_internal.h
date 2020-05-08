@@ -162,7 +162,8 @@ typedef struct {
 typedef struct {
 	unsigned char type;
 	unsigned int for_encrypt;
-	char auth_type[MAXAUTHNAME + 1];
+	char auth_method[MAXAUTHNAME + 1];
+	char encrypt_method[MAXAUTHNAME + 1];
 } tpp_auth_pkt_hdr_t;
 /* the authentication data follows this packet */
 
@@ -413,8 +414,13 @@ typedef struct {
 	auth_def_t *authdef;
 	void *encryptctx;
 	auth_def_t *encryptdef;
+	pbs_auth_config_t *config;
+	int conn_initiator;
+	int conn_type;
 } conn_auth_t;
 
+conn_auth_t *tpp_make_authdata(struct tpp_config *, int, char *, char *);
+int tpp_handle_auth_handshake(int, int, conn_auth_t *, int, void *, size_t);
 tpp_que_elem_t* tpp_enque(tpp_que_t *, void *);
 void *tpp_deque(tpp_que_t *);
 tpp_que_elem_t* tpp_que_del_elem(tpp_que_t *, tpp_que_elem_t *);

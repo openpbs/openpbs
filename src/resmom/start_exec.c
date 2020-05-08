@@ -134,6 +134,8 @@ struct var_table vtable;		/* for building up Job's environ */
 extern int x11_reader_go;
 extern int enable_exechost2;
 extern char *msg_err_malloc;
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 int	ptc = -1;	/* fd for master pty */
 #ifndef WIN32
@@ -1333,7 +1335,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			}
 
 			name = NULL;
-			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name) != 0) {
+			if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &name, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
 				log_joberr(-1, __func__, "decrypt_pwd", pjob->ji_qs.ji_jobid);
 				close(fds[0]);
 			} else if (writepipe(fds[1], name, cred_len) != cred_len) {
@@ -6074,6 +6076,14 @@ start_exec(job *pjob)
 	struct	sockaddr_in	saddr;
 	hnodent		*np;
 	pbs_list_head	phead;
+	mom_hook_input_t  hook_input;
+	mom_hook_output_t hook_output;
+	int hook_errcode = 0;
+	int hook_rc = 0;
+	char hook_msg[HOOK_MSG_SIZE];
+	hook *last_phook = NULL;
+	unsigned int hook_fail_action = 0;
+
 #if	MOM_BGL
 	int             job_error_code;
 #endif/* MOM_BGL */
@@ -6225,6 +6235,41 @@ start_exec(job *pjob)
 		 */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) ||
 			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ChkptMig)) {
+
+			/*
+			 * NULL value passed to hook_input.vnl means to assign
+			 * vnode list using pjob->ji_host[].
+			 */
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &hook_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+
+			switch ((hook_rc = mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
+					PBS_MOM_SERVICE_NAME, mom_host,
+					&hook_input, &hook_output,
+					hook_msg, sizeof(hook_msg), 1))) {
+				case 1:   	/* explicit accept */
+					break;
+				case 2:	/* no hook script executed - go ahead and accept event*/
+					break;
+				default:
+					/* a value of '0' means explicit reject encountered. */
+					if (hook_rc != 0) {
+						/* 
+						 * we've hit an internal error (malloc error, full disk, etc...), so
+						 * treat this now like a  hook error so hook fail_action will be 
+						 * consulted. Before, behavior of an internal error was to ignore it!
+						 */
+						hook_errcode = PBSE_HOOKERROR;
+						send_hook_fail_action(last_phook);
+					}
+					exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+					return;
+			}
 
 			if ((i = job_setup(pjob, NULL)) != JOB_EXEC_OK) {
 				exec_bail(pjob, i, NULL);

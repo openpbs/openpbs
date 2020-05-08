@@ -251,7 +251,6 @@ extern int user_read_password(char *, char **, size_t *);
 extern void req_quejob(struct batch_request *);
 extern void req_jobcredential(struct batch_request *);
 extern void req_usercredential(struct batch_request *);
-extern void req_user_migrate(struct batch_request *);
 extern void req_jobscript(struct batch_request *);
 extern void req_rdytocommit(struct batch_request *);
 extern void req_commit(struct batch_request *);

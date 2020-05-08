@@ -143,6 +143,8 @@ extern	int		update_job_launch_delay;
 extern	pbs_list_head	svr_allhooks;
 /* External Functions */
 extern int	is_direct_write(job *, enum job_file, char *, int *);
+extern unsigned char pbs_aes_key[][16];
+extern unsigned char pbs_aes_iv[][16];
 
 /* Local Data Items */
 char rcperr[MAXPATHLEN] = {'\0'};	/* file to contain rcp error */
@@ -420,7 +422,7 @@ fork_to_user(struct batch_request *preq)
 					log_err(errno, __func__, "set privilege as user");
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
-				if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &pwd_buf) != 0) {
+				if (pbs_decrypt_pwd(cred_buf, PBS_CREDTYPE_AES, cred_len, &pwd_buf, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) != 0) {
 					log_joberr(-1, __func__, "decrypt_pwd",
 						pjob->ji_qs.ji_jobid);
 					frk_err(PBSE_BADCRED, preq); /* no return */
@@ -2954,41 +2956,44 @@ req_cpyfile(struct batch_request *preq)
 	addpid(cpyinfo->pio.pi.hProcess);
 
 	snprintf(buf, sizeof(buf)-1, "path_log=%s\n", path_log);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_spool=%s\n", path_spool);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_undeliv=%s\n", path_undeliv);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "path_checkpoint=%s\n", path_checkpoint);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "pbs_jobdir=%s\n", pbs_jobdir);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "actual_homedir=%s\n",
 		(pjob ? (pjob->ji_grpcache ? pjob->ji_grpcache->gc_homedir : "") : actual_homedir));
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "mom_host=%s\n", mom_host);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "log_file=%s\n", (log_file ? log_file : ""));
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "log_event_mask=%ld\n", *log_event_mask);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	snprintf(buf, sizeof(buf)-1, "direct_write=%d\n", direct_write);
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	send_pcphosts(&cpyinfo->pio, pcphosts);
-	send_rq_cpyfile_cred(&cpyinfo->pio, rqcpf);
+
+	if (!send_rq_cpyfile_cred(&cpyinfo->pio, rqcpf)) {
+		log_err(-1, __func__, "Failed to send data");
+	}
 
 	snprintf(buf, sizeof(buf)-1, "quit\n");
-	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+	check_err(__func__, buf, win_pwrite(&cpyinfo->pio, buf, strlen(buf)));
 
 	chdir(mom_home);
 }

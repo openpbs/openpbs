@@ -360,8 +360,8 @@ class DshUtils(object):
             with open(fn, 'w') as fd:
                 for k, v in conf.items():
                     fd.write(str(k) + '=' + str(v) + '\n')
-            rv = self.run_copy(hostname, fn, fout, uid=user, gid=group,
-                               level=logging.DEBUG2, sudo=sudo)
+            rv = self.run_copy(hostname, src=fn, dest=fout, uid=user,
+                               gid=group, level=logging.DEBUG2, sudo=sudo)
             if rv['rc'] != 0:
                 raise PbsConfigError
         except BaseException:
@@ -1006,7 +1006,7 @@ class DshUtils(object):
                     # TODO: get a valid remote temporary file rather than
                     # assume that the remote host has a similar file
                     # system layout
-                    self.run_copy(hostname, _script, _script,
+                    self.run_copy(hostname, src=_script, dest=_script,
                                   runas=runas, level=level)
                     os.remove(_script)
                 runcmd = rshcmd + sudocmd + [_script]
@@ -1087,19 +1087,19 @@ class DshUtils(object):
 
         return ret
 
-    def run_copy(self, hosts=None, src=None, dest=None, sudo=False, uid=None,
-                 gid=None, mode=None, env=None, logerr=True,
-                 recursive=False, runas=None, preserve_permission=True,
-                 level=logging.INFOCLI2):
+    def run_copy(self, hosts=None, srchost=None, src=None, dest=None,
+                 sudo=False, uid=None, gid=None, mode=None, env=None,
+                 logerr=True, recursive=False, runas=None,
+                 preserve_permission=True, level=logging.INFOCLI2):
         """
         copy a file or directory to specified target hosts.
 
         :param hosts: the host(s) to which to copy the data. Can be
                       a comma-separated string or a list
         :type hosts: str or None
-        :param src: the path to the file or directory to copy. If
-                    src is remote,it must be prefixed by the
-                    hostname. ``e.g. remote1:/path,remote2:/path``
+        :param srchost: the host on which the src file resides.
+        :type srchost: str or None
+        :param src: the path to the file or directory to copy.
         :type src: str or None
         :param dest: the destination path.
         :type dest: str or None
@@ -1152,10 +1152,12 @@ class DshUtils(object):
             sudo = False
 
         runas = PbsUser.get_user(runas)
-
+        issrclocal = None
+        if srchost:
+            issrclocal = self.is_localhost(srchost)
         for targethost in hosts:
             islocal = self.is_localhost(targethost)
-            if sudo and not islocal:
+            if sudo and not islocal and not issrclocal:
                 # to avoid a file copy as root, we copy it as current user
                 # and move it remotely to the desired path/name.
                 # First, get a remote temporary filename
@@ -1182,26 +1184,40 @@ class DshUtils(object):
 
             # Remote copy if target host is remote or if source file/dir is
             # remote.
-            if ((not islocal) or (':' in src)):
+            if srchost:
+                srchost = socket.getfqdn(srchost)
+            if ((not islocal) or (srchost)):
                 copy_cmd = copy.deepcopy(self.copy_cmd)
-                if not preserve_permission:
-                    copy_cmd.remove('-p')
-                if copy_cmd[0][0] != '/':
-                    copy_cmd[0] = self.which(targethost, copy_cmd[0],
-                                             level=level)
-                cmd += copy_cmd
-                if recursive:
-                    cmd += ['-r']
-                if runas and runas.port:
-                    cmd += ['-P', runas.port]
-                cmd += [src]
-                if islocal:
+                targethost = socket.getfqdn(targethost)
+                if (srchost == targethost):
+                    cmd += [self.which(targethost, 'cp', level=level)]
+                    if preserve_permission:
+                        cmd += ['-p']
+                    if recursive:
+                        cmd += ['-r']
+                    cmd += [src]
                     cmd += [dest]
                 else:
-                    if self.get_platform() == 'shasta' and runas:
-                        cmd += [str(runas) + '@' + targethost + ':' + dest]
+                    if not preserve_permission:
+                        copy_cmd.remove('-p')
+                    if copy_cmd[0][0] != '/':
+                        copy_cmd[0] = self.which(targethost, copy_cmd[0],
+                                                 level=level)
+                    cmd += copy_cmd
+                    if recursive:
+                        cmd += ['-r']
+                    if runas and runas.port:
+                        cmd += ['-P', runas.port]
+                    if srchost:
+                        src = srchost + ':' + src
+                    cmd += [src]
+                    if islocal:
+                        cmd += [dest]
                     else:
-                        cmd += [targethost + ':' + dest]
+                        if self.get_platform() == 'shasta' and runas:
+                            cmd += [str(runas) + '@' + targethost + ':' + dest]
+                        else:
+                            cmd += [targethost + ':' + dest]
             else:
                 cmd += [self.which(targethost, 'cp', level=level)]
                 if preserve_permission:
@@ -1209,14 +1225,18 @@ class DshUtils(object):
                 if recursive:
                     cmd += ['-r']
                 cmd += [src]
-                cmd = cmd + [dest]
+                cmd += [dest]
 
-            if self.get_platform() == 'shasta':
+            if srchost == targethost:
+                ret = self.run_cmd(targethost, cmd, env=env,
+                                   runas=runas, logerr=logerr, level=level)
+            elif self.get_platform() == 'shasta':
                 ret = self.run_cmd(socket.gethostname(), cmd, env=env,
                                    logerr=logerr, level=level)
             else:
                 ret = self.run_cmd(socket.gethostname(), cmd, env=env,
                                    runas=runas, logerr=logerr, level=level)
+
             if ret['rc'] != 0:
                 self.logger.error(ret['err'])
             elif sudo_save_dest:
@@ -1267,7 +1287,7 @@ class DshUtils(object):
             dest = os.path.join(tmpdir, os.path.basename(fn))
             oldc = self.copy_cmd[:]
             self.set_copy_cmd('scp -p')
-            self.run_copy(hostname, fn, dest, mode=0o755, level=level)
+            self.run_copy(hostname, src=fn, dest=dest, mode=0o755, level=level)
             self.set_copy_cmd(' '.join(oldc))
             self.rm(None, path=fn, force=True, logerr=False)
             cmd = dest
@@ -1834,7 +1854,7 @@ class DshUtils(object):
         return True
 
     def cat(self, hostname=None, filename=None, sudo=False, runas=None,
-            logerr=True, level=logging.INFOCLI2):
+            logerr=True, level=logging.INFOCLI2, option=None):
         """
         Generic function of cat with remote host support
 
@@ -1853,7 +1873,11 @@ class DshUtils(object):
         :type logerr: boolean
         :returns: output of run_cmd
         """
-        cmd = [self.which(hostname, 'cat', level=level), filename]
+        cmd = [self.which(hostname, 'cat', level=level)]
+        if option:
+            cmd += [option, filename]
+        else:
+            cmd.append(filename)
         return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
                             runas=runas, logerr=logerr, level=level)
 
@@ -2015,11 +2039,12 @@ class DshUtils(object):
                 self.chmod(path=tmpfile, mode=0o644)
                 # copy temp file created  on local host to remote host
                 # as different user
-                self.run_copy(hostname, tmpfile, tmpfile, runas=asuser,
-                              preserve_permission=False, level=level)
+                self.run_copy(hostname, src=tmpfile, dest=tmpfile,
+                              runas=asuser, preserve_permission=False,
+                              level=level)
             else:
                 # copy temp file created on localhost to remote as current user
-                self.run_copy(hostname, tmpfile, tmpfile,
+                self.run_copy(hostname, src=tmpfile, dest=tmpfile,
                               preserve_permission=False, level=level)
                 # remove local temp file
                 os.unlink(tmpfile)
@@ -2034,7 +2059,7 @@ class DshUtils(object):
             # remove the newly created temp file
             os.unlink(tmpfile2)
             # copy the orginal temp as new temp file
-            self.run_copy(hostname, tmpfile, tmpfile2, runas=asuser,
+            self.run_copy(hostname, src=tmpfile, dest=tmpfile2, runas=asuser,
                           preserve_permission=False, level=level)
             # remove original temp file
             os.unlink(tmpfile)
@@ -2067,7 +2092,7 @@ class DshUtils(object):
         tmpdir = tempfile.mkdtemp(suffix, prefix)
         if dirname is not None:
             dirname = str(dirname)
-            self.run_copy(hostname, tmpdir, dirname, runas=asuser,
+            self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
                           recursive=True,
                           preserve_permission=False, level=level)
             tmpdir = dirname + tmpdir[4:]
@@ -2081,12 +2106,12 @@ class DshUtils(object):
                 self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on local host to remote host
                 # as different user
-                self.run_copy(hostname, tmpdir, tmpdir, runas=asuser,
+                self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
                               recursive=True,
                               preserve_permission=False, level=level)
             else:
                 # copy temp dir created on localhost to remote as current user
-                self.run_copy(hostname, tmpdir, tmpdir,
+                self.run_copy(hostname, src=tmpdir, dest=tmpdir,
                               preserve_permission=False, level=level)
             # remove local temp dir
             os.rmdir(tmpdir)
@@ -2100,7 +2125,7 @@ class DshUtils(object):
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
             os.rmdir(tmpdir2)
             # copy the orginal temp as new temp dir
-            self.run_copy(hostname, tmpdir, tmpdir2, runas=asuser,
+            self.run_copy(hostname, src=tmpdir, dest=tmpdir2, runas=asuser,
                           recursive=True,
                           preserve_permission=False, level=level)
             # remove original temp dir

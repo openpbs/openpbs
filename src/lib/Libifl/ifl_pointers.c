@@ -43,6 +43,7 @@
 
 int (*pfn_pbs_asyrunjob)(int, char *, char *, char *) = __pbs_asyrunjob;
 int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *) = __pbs_alterjob;
+int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *) = __pbs_asyalterjob;
 int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *) = __pbs_confirmresv;
 int (*pfn_pbs_connect)(char *) = __pbs_connect;
 int (*pfn_pbs_connect_extend)(char *, char *) = __pbs_connect_extend;

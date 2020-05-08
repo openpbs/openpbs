@@ -60,6 +60,9 @@ extern "C" {
 
 #define PBS_CREDNAME_AES	"aes"
 
+extern int encode_to_base64(const unsigned char* buffer, size_t buffer_len, char** ret_encoded_data);
+extern int decode_from_base64(char* buffer, unsigned char** ret_decoded_data, size_t* ret_decoded_len);
+
 #ifdef	__cplusplus
 }
 #endif
