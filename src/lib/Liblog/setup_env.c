@@ -43,7 +43,6 @@
 #include <string.h>
 #include "portability.h"
 #include "log.h"
-#include "libutil.h"
 #ifdef WIN32
 #include "win.h"
 #endif
@@ -161,7 +160,7 @@ setup_env(char *filen)
 
 /**
  * @brief
- * 	log_supported_auth_methods() - print PBS_SUPPORTED_AUTH_METHODS to the log file.
+ * 	log_supported_auth_methods() - log PBS_SUPPORTED_AUTH_METHODS
  *
  * @param[in]	supported_auth_methods = An array of supported methods
  *
@@ -169,13 +168,15 @@ setup_env(char *filen)
  */
 void
 log_supported_auth_methods(char **supported_auth_methods) {
+
 	if (supported_auth_methods) {
-		char *ret_str = join_str_list(supported_auth_methods, ",");
-		if (ret_str != NULL) {
-			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "PBS_SUPPORTED_AUTH_METHODS = %s", ret_str);
-			free(ret_str);
-		} else {
-			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "join_str_list() failed!");
+		int i;
+		char temp_buf[LOG_BUF_SIZE] = {'\0'};
+		for (i = 0; supported_auth_methods[i] != NULL; i++) {
+			strcat(temp_buf, supported_auth_methods[i]);
+			if (supported_auth_methods[i + 1] != NULL)
+				strcat(temp_buf, ",");
 		}
+		log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "PBS_SUPPORTED_AUTH_METHODS = %s", temp_buf);
 	}
 }

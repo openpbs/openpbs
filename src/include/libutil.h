@@ -245,12 +245,6 @@ lock_file(FILE *fp, int op, char *filename, int lock_retry,
  */
 char **break_comma_list(char *list);
 
-/**
- *		join_str_list - Join an array of strings using separator and returns
- *		                as a single string
- */
-char *join_str_list(char **list, char *sep);
-
 /*
  *      break_delimited_str - break apart a delimited string into an array
  *                         of strings
