@@ -1673,8 +1673,9 @@ if %s e.job.in_ms_mom():
         cput_usage = 0.0
         mem_usage = 0
         vmem_usage = 0
-        for count in range(3):
+        for count in range(10):
             # Faster systems might have expected usage after 8 seconds
+            # TH3 can take up to a minute
             time.sleep(8)
             if self.paths['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
