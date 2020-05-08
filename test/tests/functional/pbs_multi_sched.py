@@ -214,7 +214,7 @@ class TestMultipleSchedulers(TestFunctional):
         pbs_home = self.server.pbs_conf['PBS_HOME']
         self.du.run_copy(self.server.hostname,
                          src=os.path.join(pbs_home, 'sched_priv'),
-                         dest=s.path.join(pbs_home, 'sc1_new_priv'),
+                         dest=os.path.join(pbs_home, 'sc1_new_priv'),
                          recursive=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_priv': '/var/spool/pbs/sc1_new_priv'},

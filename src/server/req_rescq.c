@@ -557,11 +557,9 @@ req_confirmresv(struct batch_request *preq)
 	is_being_altered = presv->ri_alter_flags;
 	is_confirmed = (presv->ri_qs.ri_substate == RESV_CONFIRMED) ? 1 : 0;
 
-	/* Check if preq is coming from scheduler */
-	/* Increment reply count if reservation is not already confirmed*/
-	if (!is_confirmed && !is_degraded && !is_being_altered)
-		presv->rep_sched_count++;
+	presv->rep_sched_count++;
 
+	/* Check if preq is coming from scheduler */
 	if (preq->rq_extend == NULL) {
 		req_reject(PBSE_resvFail, 0, preq);
 		return;
@@ -586,7 +584,7 @@ req_confirmresv(struct batch_request *preq)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 			}
 		} else {
-			if (presv->rep_sched_count >= presv->req_sched_count && !is_confirmed) {
+			if ((presv->rep_sched_count >= presv->req_sched_count) && !is_confirmed) {
 				/* Clients waiting on an interactive request must be
 				* notified of the failure to confirm
 				*/

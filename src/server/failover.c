@@ -103,15 +103,15 @@
 
 /* Global Data Items: */
 
-extern char         *msg_daemonname;
+extern char *msg_daemonname;
 extern unsigned long hostidnum;
-extern char	    *path_priv;
-extern char	    *path_svrlive;
-extern char	    *path_secondaryact;
-extern unsigned int  pbs_server_port_dis;
-extern time_t	     secondary_delay;
-extern time_t	     time_now;
-extern char	     server_host[];
+extern char *path_priv;
+extern char *path_svrlive;
+extern char *path_secondaryact;
+extern unsigned int pbs_server_port_dis;
+extern time_t secondary_delay;
+extern time_t time_now;
+extern char server_host[];
 
 extern struct connection *svr_conn;
 extern struct batch_request *saved_takeover_req;

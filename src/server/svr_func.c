@@ -1021,12 +1021,8 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
 							!= '\0') ) {
 			close_licensing();	/* checkin, close connection */
-		} else { /* from no license server */
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
 
 		if (pbs_licensing_license_location)
 			free(pbs_licensing_license_location);
@@ -1042,21 +1038,6 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 			init_licensing();
 			if (license_sanity_check())
 				license_more_nodes();
-		} else {   /* no pbs_licensing_license_location */
-
-			/* get trial license */
-			if (check_license(&licenses) < 0) {
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_ALERT, msg_daemonname,
-					"One or more PBS license keys are invalid, jobs may not run");
-			} else {
-				sprintf(log_buffer,
-					"Licenses valid for %d floating hosts",
-					licenses.lb_aval_floating);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_NOTICE, msg_daemonname, log_buffer);
-				relicense_svr_unlicensedjobs();
-			}
 		}
 	}
 
@@ -1078,32 +1059,14 @@ unset_license_location(void)
 		if (pbs_licensing_license_location[0] != '\0') {
 
 			close_licensing();
-			sockets_reset();
 			unlicense_socket_licensed_nodes();
-
-		} else { /* from no license server */
+			clear_license_info();
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
+
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
 		licstate_unconfigured(LIC_SERVER);
-	}
-
-	/* try to find a trial license */
-	if (check_license(&licenses) < 0) {
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ALERT, msg_daemonname,
-			"One or more PBS license keys are invalid, jobs may not run");
-	} else {
-		sprintf(log_buffer,
-			"Licenses valid for %d floating hosts",
-			licenses.lb_aval_floating);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
-		relicense_svr_unlicensedjobs();
 	}
 
 }

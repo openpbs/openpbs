@@ -360,10 +360,6 @@ job_alloc(void)
 	}
 	(void)memset((char *)pj, (int)0, (size_t)sizeof(job));
 
-	/* explicity setting these licensing parameters just be sure */
-	pj->ji_licneed = -1;	/* indicates uninitialized, invalid value */
-	pj->ji_licalloc = 0;
-
 	CLEAR_LINK(pj->ji_alljobs);
 	CLEAR_LINK(pj->ji_jobque);
 	CLEAR_LINK(pj->ji_unlicjobs);

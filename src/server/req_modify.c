@@ -974,11 +974,8 @@ req_modifyReservation(struct batch_request *preq)
 		}
 	}
 
-	if (send_to_scheduler) {
-		presv->rep_sched_count = 0;
-		presv->req_sched_count = 0;
+	if (send_to_scheduler)
 		notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
-	}
 
 	(void)sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {

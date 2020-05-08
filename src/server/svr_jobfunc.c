@@ -62,12 +62,6 @@
  *      state_char2int()   - returns the state from char form to int form.
  *		uniq_nameANDfile() - creates a unique filename and file for an object
  *		remove_deleted_resvs() - remove reservations marked RESV_FINISHED
- *		set_cpu_licenses_need()- set # of cpu licenses needed by a job
- *		allocate_cpu_licenses()- assign cpu licenses to a job
- *		deallocate_cpu_licenses()     - unassign cpu licenses from a job
- *		clear_and_populate_svr_unlicensedjobs() - empties then adds entries
- *												to svr_unlicensedjobs.
- *		relicense_svr_unlicensedjobs()- relicense jobs in svr_unlicensedjobs
  *      update_eligible_time() - calc eligible time and modify accrue_type
  *		determine_accruetype() - determines accruetype
  *		alter_eligibletime() - resets sampletime of job
@@ -169,7 +163,6 @@ extern char *msg_mombadmodify;
 extern struct server server;
 extern int  pbs_mom_port;
 extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
 extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
@@ -3523,17 +3516,8 @@ Time4occurrenceFinish(resc_resv *presv)
 			set_resv_retry(presv, time_now + 120);
 	}
 
-	if (sub == RESV_DEGRADED) {
+	if (sub == RESV_DEGRADED)
 		DBPRT(("degraded_time of %s is %s", presv->ri_qs.ri_resvID, ctime(&presv->ri_degraded_time)))
-		/* If no jobs are running in this reservation, unset the scheduler name
-		 * so that the reservation can be confirmed by any scheduler
-		 */
-		if (presv->ri_qp->qu_njstate[JOB_STATE_RUNNING] + presv->ri_qp->qu_njstate[JOB_STATE_EXITING] == 0) {
-			resv_attr_def[(int)RESV_ATR_partition].at_free(&presv->ri_wattr[(int)RESV_ATR_partition]);
-			presv->rep_sched_count= 0;
-			presv->req_sched_count= 0;
-		}
-	}
 
 	/* Set the reservation state and substate */
 	resv_setResvState(presv, state, sub);
