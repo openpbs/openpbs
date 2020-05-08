@@ -366,7 +366,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '# Args are segments1 sizeMB1 sleep1 segments2 sizeMB2 sleep2\n' \
             'python -  9 25 9  8 25 300 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script2
-           
+
         self.cpuset_mem_script = """
 base='%s'
 echo "cgroups base path for cpuset is $base"
