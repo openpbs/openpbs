@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <process.h>
 #include "win.h"
+#include "log.h"
 #include "win_remote_shell.h"
 #include "pbs_ifl.h"
 
@@ -58,6 +59,7 @@ main(int argc, char *argv[])
 	char            cmd_str[PBS_CMDLINE_LENGTH] = {'\0'};
 	char            demux_hostname[PBS_MAXHOSTNAME + 1] = {'\0'};
 	char*           momjobid = NULL;
+	char            logbuff[LOG_BUF_SIZE] = { '\0' };
 	int             i = 0;
 	char            pipeName[PIPENAME_MAX_LENGTH] = {'\0'};
 	HANDLE          hPipe_cmdshell = INVALID_HANDLE_VALUE;
@@ -68,6 +70,7 @@ main(int argc, char *argv[])
 	char            cmd_shell[MAX_PATH + 1] = {'\0'};       /* path to cmd shell */
 	char            cmdline[PBS_CMDLINE_LENGTH]={'\0'};
 	DWORD           exit_code = 0;
+	DWORD	        err_code = 0;
 
 	if (argc < 4)
 		exit(1);
@@ -89,6 +92,7 @@ main(int argc, char *argv[])
 
 	/* connect to remote host's IPC$ */
 	if (!connect_remote_resource(demux_hostname, "IPC$", TRUE)) {
+		log_err(-1, __func__, "Connect to remote host's IPC failed");
 		winsock_cleanup();
 		exit(1);
 	}
@@ -96,11 +100,13 @@ main(int argc, char *argv[])
 	/* connect to job's pbs_demux at remote host. */
 	if (INVALID_HANDLE_VALUE ==
 		(hPipe_cmdshell = do_WaitNamedPipe(pipeName, NMPWAIT_WAIT_FOREVER, GENERIC_WRITE))) {
+		log_err(-1, __func__, "Failed to obtain a valid handle to the named pipe");
 		winsock_cleanup();
 		exit(1);
 	}
 
 	if (gethostname(this_host, (sizeof(this_host) - 1))) {
+		log_err(-1, __func__, "Failed to get hostname");
 		winsock_cleanup();
 		exit(1);
 	}
@@ -108,6 +114,8 @@ main(int argc, char *argv[])
 	if (!WriteFile(hPipe_cmdshell, this_host, strlen(this_host), &nBytesWrote, NULL) || nBytesWrote == 0) {
 		DWORD dwErr = GetLastError();
 		if (dwErr == ERROR_NO_DATA) {
+			sprintf(logbuff, "Write to pipe failed with error %lu", dwErr);
+			log_err(-1, __func__, logbuff);
 			winsock_cleanup();
 			exit(1);
 		}
@@ -121,12 +129,16 @@ main(int argc, char *argv[])
 	(void)strncpy_s(pipename_append, _countof(pipename_append), momjobid, _TRUNCATE);
 	(void)strncat_s(pipename_append, _countof(pipename_append), "mom_demux", _TRUNCATE);
 	(void)strncat_s(pipename_append, _countof(pipename_append), this_host, _TRUNCATE);
-	if (create_std_pipes(&si, pipename_append, 0) != 0) {
+	if ((err_code = create_std_pipes(&si, pipename_append, 0)) != 0) {
+		sprintf(logbuff, "Failed to create pipe with error %lu", err_code);
+		log_err(-1, __func__, logbuff);
 		winsock_cleanup();
 		exit(1);
 	}
-	if (connectstdpipes(&si, 0) != 0) {
+	if ((err_code = connectstdpipes(&si, 0)) != 0) {
 		/* close the standard out/err handles before returning */
+		sprintf(logbuff, "Failed to connect to std pipe with error %lu", err_code);
+		log_err(-1, __func__, logbuff);
 		close_valid_handle(si.hStdOutput);
 		close_valid_handle(si.hStdError);
 		winsock_cleanup();
@@ -138,11 +150,15 @@ main(int argc, char *argv[])
 	(void)strncat_s(cmdline, _countof(cmdline) - 1, " /c", _TRUNCATE);
 	(void)strncat_s(cmdline, _countof(cmdline) - 1, cmd_str, _TRUNCATE);
 	/* run the command, flush the file buffers */
-	if (run_command_si_blocking(&si, cmdline, &exit_code, 0, SW_HIDE, NULL) == 0) {
+	err_code = run_command_si_blocking(&si, cmdline, &exit_code, 0, SW_HIDE, NULL);
+	if (err_code == 0) {
 		if (si.hStdOutput != INVALID_HANDLE_VALUE)
 			FlushFileBuffers(si.hStdOutput);
 		if (si.hStdError != INVALID_HANDLE_VALUE)
 			FlushFileBuffers(si.hStdError);
+	} else {
+		sprintf(logbuff, "Failed to run command %s with error %lu", cmdline, err_code);
+		log_err(-1, __func__, logbuff);
 	}
 	/* disconnect all named pipes and close handles */
 	disconnect_close_pipe(si.hStdOutput);

@@ -1438,7 +1438,11 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 #ifdef WIN32
 		/* since under Windows, this is still main mom (not forked), */
 		/* need to unset the hook config environment variable. */
-		setenv(PBS_HOOK_CONFIG_FILE, NULL, 1);
+		if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
+		{
+			log_err(-1, __func__, "Failed to set PBS_HOOK_CONFIG_FILE");
+			// Why not return from here?
+		}
 #endif /* WIN32 */
 	} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
