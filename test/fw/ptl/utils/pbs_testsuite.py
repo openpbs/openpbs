@@ -1471,7 +1471,15 @@ class PBSTestSuite(unittest.TestCase):
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
-        self.server.expect(NODE, a, id=mom.shortname, interval=1)
+        if mom.is_cpuset_mom():
+            mom.log_match('pbs_cgroups.CF;copy hook-related '
+                          'file request received',
+                          starttime=self.server.ctime)
+            time.sleep(2)
+            mom.signal('-HUP')
+            self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
+        else:
+            self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
     def analyze_logs(self):

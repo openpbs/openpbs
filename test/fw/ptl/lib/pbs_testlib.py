@@ -13994,9 +13994,10 @@ class MoM(PBSService):
         Configure and enable cgroups hook
         """
         # check if cgroups subsystems including cpusets are mounted
-        with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as fd:
-            mounts = fd.read()
-        if 'cgroup' in mounts and mounts.count('cpuset') >= 2:
+        file = os.path.join(os.sep, 'proc', 'mounts')
+        mounts = self.du.cat(self.hostname, file)['out']
+        pat = 'cgroup /sys/fs/cgroup'
+        if str(mounts).count(pat) >= 6 and str(mounts).count('cpuset') >= 2:
             pbs_conf_val = self.du.parse_pbs_config(self.hostname)
             f1 = os.path.join(pbs_conf_val['PBS_EXEC'], 'lib',
                               'python', 'altair', 'pbs_hooks',
@@ -14020,7 +14021,9 @@ class MoM(PBSService):
             self.server.manager(MGR_CMD_SET, HOOK,
                                 {'enabled': 'True'}, 'pbs_cgroups')
         else:
-            self.logger.error('cgroup subsystems not mounted')
+            self.logger.error('%s: cgroup subsystems not mounted' %
+                              self.hostname)
+            raise AssertionError('cgroup subsystems not mounted')
 
 
 class Hook(PBSObject):
