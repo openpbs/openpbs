@@ -362,7 +362,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
-            'sleep 2\n' \
+            'timeout 8 md5sum </dev/urandom\n' \
             '# Args are segments1 sizeMB1 sleep1 segments2 sizeMB2 sleep2\n' \
             'python -  9 25 9  8 25 300 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script2
