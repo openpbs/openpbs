@@ -743,9 +743,7 @@ exit 3
         Deciding on their utility should be left to the check
         to see whether the nodes they occupy are useful.
         """
-        attr = {}
-        attr['type'] = 'string_array'
-        attr['flag'] = 'h'
+        attr = {'type': string_array, 'flag' = 'h'}
 
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
         self.scheduler.add_resource('app')
@@ -779,11 +777,11 @@ exit 3
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 
-        self.server.expect(JOB, {'substate': '42'}, id=jid1)
+        self.server.expect(JOB, {'state': 'R'}, id=jid1)
 
         # submit job 2
         a = {'Resource_List.select': '1:ncpus=1:app=appA', ATTR_q: 'hipri'}
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
 
-        self.server.expect(JOB, {'substate': 42}, id=jid2)
+        self.server.expect(JOB, {'state': 'R'}, id=jid2)
