@@ -4297,7 +4297,8 @@ class PBSService(PBSObject):
                                               + "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
-                            fd.write("\n".join(v))
+                            mom_config_data = "\n".join(v) + "\n"
+                            fd.write(mom_config_data)
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
