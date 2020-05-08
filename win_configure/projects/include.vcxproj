@@ -69,6 +69,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\include\acct.h" />
+    <ClInclude Include="..\..\src\include\libauth.h" />
     <ClInclude Include="..\..\src\include\auth.h" />
     <ClInclude Include="..\..\src\include\attribute.h" />
     <ClInclude Include="..\..\src\include\batch_request.h" />
