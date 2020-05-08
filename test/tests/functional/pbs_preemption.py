@@ -743,7 +743,7 @@ exit 3
         Deciding on their utility should be left to the check
         to see whether the nodes they occupy are useful.
         """
-        attr = {'type': string_array, 'flag' = 'h'}
+        attr = {'type': string_array, 'flag': 'h'}
 
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
         self.scheduler.add_resource('app')
