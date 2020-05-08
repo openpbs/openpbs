@@ -5279,6 +5279,10 @@ class CgroupUtils(object):
         try:
             with open(self.cgroup_jobs_file, 'r+') as fd:
                 jobdict = eval(fd.read())
+                if not isinstance(jobdict, dict):
+                    pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted '
+                               'cgroup_jobs; emptying it first')
+                    jobdict = dict()
                 if jobid not in jobdict:
                     jobdict[jobid] = time.time()
                     fd.seek(0)
@@ -5286,6 +5290,17 @@ class CgroupUtils(object):
         except IOError:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file')
             raise
+        except SyntaxError:
+            pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted cgroup_jobs; '
+                                        'emptying it first')
+            jobdict = dict()
+            jobdict[jobid] = time.time()
+            try:
+                with open(self.cgroup_jobs_file, 'w') as fd:
+                    fd.write(str(jobdict))
+            except Exception:
+                pbs.logsmg('Error adding jobid %s to cgroup_jobs' % jobid)
+                self.empty_cgroup_jobs_file()
 
     def remove_jobid_from_cgroup_jobs(self, jobid):
         """
@@ -5296,6 +5311,10 @@ class CgroupUtils(object):
         try:
             with open(self.cgroup_jobs_file, 'r+') as fd:
                 jobdict = eval(fd.read())
+                if not isinstance(jobdict, dict):
+                    pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted '
+                               'cgroup_jobs; emptying it')
+                    jobdict = dict()
                 if jobid in jobdict:
                     del jobdict[jobid]
                     fd.seek(0)
@@ -5304,6 +5323,10 @@ class CgroupUtils(object):
         except IOError:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file')
             raise
+        except SyntaxError:
+            pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted cgroup_jobs; '
+                                        'emptying it')
+            self.empty_cgroup_jobs_file()
 
     def read_cgroup_jobs(self):
         """
@@ -5313,11 +5336,30 @@ class CgroupUtils(object):
         try:
             with open(self.cgroup_jobs_file, 'r') as fd:
                 jobdict = eval(fd.read())
+                if not isinstance(jobdict, dict):
+                    pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted '
+                               'cgroup_jobs; emptying it')
+                    jobdict = dict()
+                    self.empty_cgroup_jobs_file()
         except IOError:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file')
             raise
+        except SyntaxError:
+            pbs.logmsg(pbs.EVENT_ERROR, 'Incompatibly formatted cgroup_jobs; '
+                                        'emptying it')
+            self.empty_cgroup_jobs_file()
+            jobdict = dict()
         cutoff = time.time() - float(self.cfg['job_setup_timeout'])
-        return {key: val for key, val in jobdict.items() if val >= cutoff}
+        result = {key: val for key, val in jobdict.items() if val >= cutoff}
+        if len(result) != len(jobdict):
+            pbs.logmsg(pbs.EVENT_DEBUG, 'Removing stale jobs from cgroup_jobs')
+            try:
+                with open(self.cgroup_jobs_file, 'w') as fd:
+                    fd.write(str(result))
+            except Exception:
+                # we tolerate even bad files
+                pass
+        return result
 
     def delete_cgroup_jobs_file(self, jobid):
         """
@@ -5480,7 +5522,7 @@ def main():
             else:
                 pbs.logmsg(loglevel, '%s: Event type is %s'
                            % (caller_name(), hooks.event_name(event.type)))
- 
+
             cgroup = CgroupUtils(hostname, vnode, cfg=cfg)
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Cgroup utility class instantiated' % caller_name())
@@ -5572,7 +5614,7 @@ if (__name__ == 'builtins') or (__name__ == '__builtin__'):
             loglevel = pbs.EVENT_DEBUG3
         else:
             loglevel = pbs.EVENT_DEBUG2
-        if hasattr(event, 'job') and hasattr(event.job, 'id'): 
+        if hasattr(event, 'job') and hasattr(event.job, 'id'):
             pbs.logmsg(loglevel, 'Hook ended: %s, job ID %s, '
                        'event_type %s (elapsed time: %0.4lf)' %
                        (pbs.event().hook_name,
@@ -5584,4 +5626,4 @@ if (__name__ == 'builtins') or (__name__ == '__builtin__'):
                        'event_type %s (elapsed time: %0.4lf)' %
                        (pbs.event().hook_name,
                         str(pbs.event().type),
-                       (time.time() - START)))
+                        (time.time() - START)))
