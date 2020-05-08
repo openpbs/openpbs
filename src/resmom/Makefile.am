@@ -116,15 +116,6 @@ pbs_mom_LDADD += @expat_lib@
 pbs_mom_SOURCES += linux/alps.c
 endif
 
-if CPUSET_ENABLED
-pbs_mom_CPPFLAGS += -DMOM_CPUSET=1 @cpuset_flags@
-pbs_mom_LDADD += -lcpuset
-if CPUSET_V4
-pbs_mom_LDADD += -lbitmask
-endif
-pbs_mom_SOURCES += linux/cpuset_misc.c
-endif
-
 EXTRA_DIST = \
 	darwin/mom_mach.c \
 	darwin/mom_mach.h \

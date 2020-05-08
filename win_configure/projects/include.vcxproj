@@ -98,7 +98,6 @@
     <ClInclude Include="..\..\src\include\pbs_internal.h" />
     <ClInclude Include="..\..\src\include\pbs_json.h" />
     <ClInclude Include="..\..\src\include\pbs_license.h" />
-    <ClInclude Include="..\..\src\include\pbs_mutex.h" />
     <ClInclude Include="..\..\src\include\pbs_nodes.h" />
     <ClInclude Include="..\..\src\include\pbs_sched.h" />
     <ClInclude Include="..\..\src\include\pbs_share.h" />

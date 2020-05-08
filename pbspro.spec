@@ -90,7 +90,6 @@ Vendor: Altair Engineering, Inc.
 Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 
 %bcond_with alps
-%bcond_with cpuset
 %bcond_with ptl
 %bcond_with pmix
 
@@ -309,9 +308,6 @@ cd build
 %endif
 %if %{with alps}
 	--enable-alps \
-%endif
-%if %{with cpuset}
-	--enable-cpuset \
 %endif
 %if %{with pmix}
 	--with-pmix \
@@ -601,6 +597,8 @@ done
 %endif
 
 %changelog
+* Wed May 6 2020 Lisa Endrjukaitis <lisa@altair.com> - 1.31
+- Remove cpusets
 * Wed Oct 9 2019 Michael Karo <mike0042@gmail.com> - 1.30
 - Update package requirements
 - Fix indentation

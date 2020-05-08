@@ -595,12 +595,6 @@ create_home() {
 				echo "*** Update this value before starting PBS Pro."
 			fi
 		fi
-		if [ -f /etc/sgi-compute-node-release ]; then
-			grep "^cpuset_create_flags" "$momconfig" >/dev/null
-			if [ $? -ne 0 ] ; then
-				echo "cpuset_create_flags 0" >>"$momconfig"
-			fi
-		fi
 		if is_cray_xt; then
 			grep "^\$vnodedef_additive" "$momconfig" >/dev/null
 			if [ $? -ne 0 ] ; then
@@ -610,10 +604,6 @@ create_home() {
 			if [ $? -ne 0 ] ; then
 				echo "\$alps_client /opt/cray/alps/default/bin/apbasil" >> $momconfig
 			fi
-		fi
-		# Remove any old CPU set remnants from previous releases
-		if [ -d /dev/cpuset/PBSPro ]; then
-			cpuset -s /PBSPro -r | tac | xargs -n 1 cpuset -x >/dev/null
 		fi
 		echo "***"
 	fi
