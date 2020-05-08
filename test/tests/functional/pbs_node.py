@@ -91,8 +91,6 @@ class TestPbsNode(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
         self.logger.error("socket.gethostname():%s", socket.gethostname())
-
-        self.logger.error("dir(self.server):%s", str(dir(self.server)))
         self.logger.error("***self.server.name:%s", str(self.server.name))
         self.logger.error("self.server.moms:%s", str(self.server.moms))
         for name, value in self.server.moms.items():
@@ -100,62 +98,16 @@ class TestPbsNode(TestFunctional):
             self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    dir(value):    %s", dir(value))
             self.logger.error("    ***stopping mom:%s", value)
             value.stop()
             self.logger.error("    ***start    mom:%s", value)
             value.start()
             self.logger.error("    ***restart  mom:%s", value)
             value.restart()
-
             self.server.log_match("Node;%s;node up" % value.fqdn,
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-
-        # ret = self.server.delete_node(name, level="DEBUG", logerr=True)
-        # # self.assertEqual(ret, 0, "Could not delete node %s" % name)
-        # # ret = self.server.create_node(name, level="DEBUG", logerr=True)
-        # # self.logger.error("type:%s val:%s" % (type(ret), ret))
-        # ret = self.server.create_node(name, level="DEBUG", logerr=True)
-        # self.logger.error("type:%s val:%s" % (type(ret), ret))
-        # self.assertEqual(ret, 0, "Could not create node %s" % name)
-        # # pkill --signal 3 pbs_mom
-        # # /opt/pbs/sbin/pbs_mom
-
-        # pbs_mom = os.path.join(self.server.pbs_conf["PBS_EXEC"],
-        #                        'sbin', 'pbs_mom')
-
-        # self.logger.error("pbs_mom:%s", pbs_mom)
-        # fpath = self.du.create_temp_file()
-        # fileobj = open(fpath)
-        # self.logger.error("dir(self):%s" % ",".join(dir(self)))
-        # ret = self.server.du.run_cmd(
-        #     self.server.hostname, [pbs_mom], stdin=fileobj, sudo=True,
-        #     logerr=True, level=logging.DEBUG)
-        # fileobj.close()
-
-        # self.logger.error("pbs_mom(ret):%s", str(pformat(ret)))
-
-
-
-        # self.logger.info("**** MOM STOP ****")
-        # self.mom.stop()
-        # self.logger.info("**** MOM START ****")
-        # self.mom.start()
-        # self.logger.info("**** MOM STOP ****")
-        # self.mom.stop()
-        # self.logger.info("**** MOM START ****")
-        # self.mom.start()
-        # self.logger.info("**** MOM STOP ****")
-        # self.mom.stop()
-        # self.logger.info("**** MOM START ****")
-        # self.mom.start()
-        # self.logger.info("**** MOM COMPLETE ****")
-
-        # self.server.log_match("Node;%s;deleted at request of" % name,
-        #     starttime=start_time)
-
         self.logger.info("---- TEST ENDED ----")
 
 
@@ -178,10 +130,7 @@ class TestPbsNode(TestFunctional):
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-
         self.logger.error("socket.gethostname():%s", socket.gethostname())
-
-        self.logger.error("dir(self.server):%s", str(dir(self.server)))
         self.logger.error("***self.server.name:%s", str(self.server.name))
         self.logger.error("self.server.moms:%s", str(self.server.moms))
         for name, value in self.server.moms.items():
@@ -189,21 +138,17 @@ class TestPbsNode(TestFunctional):
             self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    dir(value):    %s", dir(value))
             self.logger.error("    ***stopping mom:%s", value)
             value.stop()
             self.logger.error("    ***start    mom:%s", value)
             value.start()
             self.logger.error("    ***restart  mom:%s", value)
             value.restart()
-
             self.server.log_match("Node;%s;node up" % value.fqdn,
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-
             self.server.log_match(hook_msg_00, starttime=start_time)
-
         self.logger.info("---- TEST ENDED ----")
 
     @requirements(num_moms=2)
@@ -215,9 +160,7 @@ class TestPbsNode(TestFunctional):
         3.  The stopping and starting of a mom and the proper hook firing.
         """
         self.logger.info("---- TEST STARTED ----")
-
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
-
         attrs = {'event': 'node_state', 'enabled': 'True'}
         hook_name_00 = 'b1234'
         hook_msg_00 = 'running create_hook_and_delete_01'
@@ -225,15 +168,12 @@ class TestPbsNode(TestFunctional):
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-
         for name, value in self.server.moms.items():
             hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.',1)[0]
             start_time = int(time.time())
             self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    dir(value):    %s", dir(value))
-
             self.logger.error("    ***stopping mom:%s", value)
             start_time = int(time.time())
             value.stop()
@@ -241,13 +181,11 @@ class TestPbsNode(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("new_state:0x202", starttime=start_time)
             self.server.log_match("old_state:0x0", starttime=start_time)
-
             start_time = int(time.time())
             self.logger.error("    ***start    mom:%s", value)
             value.start()
             self.server.log_match("new_state:0x422", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
-
             start_time = int(time.time())
             self.logger.error("    ***restart  mom:%s", value)
             value.restart()
@@ -257,9 +195,63 @@ class TestPbsNode(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("new_state:0x0", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
-
-
             self.server.log_match(hook_msg_00, starttime=start_time)
             self.server.log_match("hostname:%s" % hostbasename, starttime=start_time)
+        self.logger.info("---- TEST ENDED ----")
 
+
+    @requirements(num_moms=2)
+    def test_pkill_moms_00(self):
+        """
+        Test:  this will test four things:
+        1.  It will pkill pbs_mom, look for the proper log messages.
+        2.  It will check the log for the proper hook messages
+        3.  It will bring up pbs_mom, look for the proper log messages.
+        4.  It will check the log for the proper hook messages
+        """
+        self.logger.info("---- TEST STARTED ----")
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+        from ptl.utils.pbs_dshutils import get_method_name
+        attrs = {'event': 'node_state', 'enabled': 'True'}
+        hook_name_00 = 'c1234'
+        hook_msg_00 = 'running %s' % get_method_name(self)
+        hook_body_00 = get_hook_body(hook_msg_00)
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        for name, value in self.server.moms.items():
+            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.',1)[0]
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    ***pkilling mom:%s", value)
+            start_time = int(time.time())
+            pkill_cmd = ['/usr/bin/pkill', '-9', 'pbs_mom']
+            fpath = self.du.create_temp_file()
+            with open(fpath) as fileobj:
+                ret = self.server.du.run_cmd(
+                    value.fqdn, pkill_cmd, stdin=fileobj, sudo=True,
+                    logerr=True, level=logging.DEBUG)
+                self.logger.error("pkill(ret):%s", str(pformat(ret)))
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("new_state:0x202", starttime=start_time)
+            self.server.log_match("old_state:0x0", starttime=start_time)
+            start_time = int(time.time())
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.server.log_match("new_state:0x422", starttime=start_time)
+            self.server.log_match("old_state:0x400", starttime=start_time)
+            start_time = int(time.time())
+            self.logger.error("    ***restart  mom:%s", value)
+            value.restart()
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("new_state:0x0", starttime=start_time)
+            self.server.log_match("old_state:0x400", starttime=start_time)
+            self.server.log_match(hook_msg_00, starttime=start_time)
+            self.server.log_match("hostname:%s" % hostbasename, starttime=start_time)
         self.logger.info("---- TEST ENDED ----")
