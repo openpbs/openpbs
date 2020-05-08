@@ -544,4 +544,8 @@ extern int access_uncpath(char *path, int mode);
 extern BOOL _log_wrap_CloseHandle(HANDLE, LPCSTR, LPCSTR, INT);
 #define CloseHandle(param) _log_wrap_CloseHandle(param, #param, __func__, __LINE__)
 
+/* wrap LocalFree to log in case of error */
+extern HLOCAL _log_wrap_LocalFree(HLOCAL , LPCSTR , LPCSTR , INT);
+#define LocalFree(param) _log_wrap_LocalFree(param, #param, __func__, __LINE__)
+
 #endif
