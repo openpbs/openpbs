@@ -43,6 +43,7 @@
 #include <string.h>
 #include "portability.h"
 #include "log.h"
+#include "libutil.h"
 #ifdef WIN32
 #include "win.h"
 #endif
@@ -168,19 +169,17 @@ setup_env(char *filen)
  */
 void
 log_supported_auth_methods(char **supported_auth_methods) {
-
-	if (supported_auth_methods != NULL) {
-		int i;
-		char temp_buf[100 + 1] = {'\0'}; //MAXAUTHNAME 100
-		char *sep = ",";
-		for (i = 0; supported_auth_methods[i] != NULL; i++) {
-			strcat(temp_buf, supported_auth_methods[i]);
-			if (supported_auth_methods[i + 1] != NULL)
-				strcat(temp_buf, sep);
+	char *ret_str;
+	char *sep = ",";
+	if (supported_auth_methods) {
+		ret_str = join_str_list(supported_auth_methods, sep);
+		if (ret_str != NULL) {
+			sprintf(log_buffer, "PBS_SUPPORTED_AUTH_METHODS=%s", ret_str);
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+			free(ret_str);
+		} else {
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname,
+					   "Failed to get PBS_SUPPORTED_AUTH_METHODS list");
 		}
-		sprintf(log_buffer, "PBS_SUPPORTED_AUTH_METHODS=%s", temp_buf);
-		log_event(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
-	} else {
-		log_event(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, "PBS_SUPPORTED_AUTH_METHODS=None");
 	}
 }

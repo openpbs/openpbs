@@ -1178,6 +1178,52 @@ break_comma_list(char *strlist)
 }
 
 /**
+ *
+ *	@brief: Join an array of strings using separator and returns as a single string
+ *
+ *	NOTE: Caller has to free the return value
+ *
+ *	@param[in] list	-	an array of string values
+ *	@param[in] sep	-	separator
+ *
+ *	@return char *
+ */
+char *
+join_str_list(char **list, char *sep)
+{
+	char *ret_string = NULL;
+	size_t ret_len = 0;
+	size_t sep_len = 0;
+	int i = 0;
+
+	if (list == NULL || sep == NULL)
+		return NULL;
+	sep_len = strlen(sep);
+
+	/* calculate the total length including separator */
+	while (list[i] != NULL) {
+		ret_len += strlen(list[i]);
+		if (list[i + 1] != NULL)
+			ret_len += sep_len;
+		i++;
+	}
+
+	ret_string = (char *)calloc(1, (ret_len + 1));
+	if (ret_string == NULL)
+		return NULL;
+
+	i = 0;
+	while (list[i] != NULL) {
+		strcat(ret_string, list[i]);
+		if (list[i + 1] != NULL)
+			strcat(ret_string, sep);
+		i++;
+	}
+	return ret_string;
+}
+
+
+/**
  * @brief
  *		Does a string exist in the given array?
  *
