@@ -1945,7 +1945,6 @@ if %s e.job.in_ms_mom():
 
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
-
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
@@ -2854,7 +2853,6 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match("Hook handler returned success for"
                                     " exechost_startup event",
                                     starttime=now)
-
         # check where cpath is once more
         # since we loaded a new cgrou config file
         cpath = None
@@ -3639,8 +3637,7 @@ sleep 300
                                      '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
-            pass
-            
+            pass            
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3737,7 +3734,6 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
-
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
@@ -3828,7 +3824,6 @@ sleep 300
             root_quota_host1 = int(root_quota_host1_str['out'][0])
         except Exception:
             pass
-
         # If that link is missing and it's only
         # mounted under the cpu/cpuacct unified directory...
         if root_quota_host1 is None:
