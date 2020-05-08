@@ -631,7 +631,7 @@ exit 3
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = ";Preempting job will escalate its priority"
         for job_id in jid_list[0:-2]:
-                self.scheduler.log_match(job_id + msg)
+            self.scheduler.log_match(job_id + msg)
 
     @skipOnCpuSet
     def test_preemption_priority_escalation_2(self):
@@ -733,3 +733,55 @@ exit 3
 
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
         self.server.expect(JOB, {'job_state=Q': 1})
+
+    def test_preempt_wrong_cull(self):
+        """
+        Test to make sure that if a preemptor cannot run because
+        it misses a non-consumable on a node, preemption candidates
+        are not incorrectly removed from consideration
+        if and because they "do not request the relevant resource".
+        Deciding on their utility should be left to the check
+        to see whether the nodes they occupy are useful.
+        """
+        attr = {'type': 'string_array', 'flag': 'h'}
+
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
+        self.scheduler.add_resource('app')
+
+        a = {'resources_available.ncpus': 1, 'resources_available.app': 'appA'}
+        self.server.create_vnodes('vna', a, num=1, mom=self.mom,
+                                  usenatvnode=False)
+        b = {'resources_available.ncpus': 1, 'resources_available.app': 'appB'}
+        self.server.create_vnodes('vnb', b, num=1, mom=self.mom,
+                                  usenatvnode=False, additive=True)
+
+        # set the preempt_order to kill/requeue only -- try old and new syntax
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
+
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "hipri")
+
+        # create normal queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 1}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "lopri")
+
+        # submit job 1
+        a = {'Resource_List.select': '1:ncpus=1:vnode=vna[0]', ATTR_q: 'lopri'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'state': 'R'}, id=jid1)
+
+        # submit job 2
+        a = {'Resource_List.select': '1:ncpus=1:app=appA', ATTR_q: 'hipri'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        self.server.expect(JOB, {'state': 'R'}, id=jid2)
