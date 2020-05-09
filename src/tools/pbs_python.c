@@ -2423,11 +2423,12 @@ main(int argc, char *argv[], char *envp[])
 				return 1;
 			}
 
-			largv[0] = argv[0];
+			largv[0] = python_path;
 			largv[2] = NULL;
 
 			rc = execve(python_path, largv, lenvp);
 		} else {
+			argv[0] = python_path;
 			rc = execve(python_path, argv, lenvp);
 		}
 #endif
