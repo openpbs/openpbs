@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 import time
+
 from tests.functional import *
 
 
@@ -117,10 +118,6 @@ time.sleep(20)
         execvnode2 = job_stat[0]['exec_vnode']
         self.logger.info("pruned exec_vnode: %s" % execvnode2)
 
-        # Check for msg in mom logs indicating the job has cpuset
-        msg = "new_cpuset:  setting altid to CPU set named /PBSPro/%s" % jid
-        self.mom.log_match(msg, starttime=stime)
-
         # Check mom logs for pruned from and pruned to messages
         self.mom.log_match("Job;%s;pruned from exec_vnode=%s" % (
             jid, execvnode1), starttime=stime)
@@ -141,10 +138,6 @@ time.sleep(20)
         stime = time.time()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, offset=20, id=jid2)
-
-        # Check for msg in mom logs indicating job has cpuset
-        msg2 = "new_cpuset:  setting altid to CPU set named /PBSPro/%s" % jid2
-        self.mom.log_match(msg2, starttime=stime)
 
         # Check if exec_vnode for job2 matches released vnode from job1
         self.server.expect(JOB, 'exec_vnode', id=jid2, op=SET)

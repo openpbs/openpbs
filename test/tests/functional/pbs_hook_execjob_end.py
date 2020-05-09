@@ -35,8 +35,9 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 import textwrap
-from tests.functional import *
+
 from ptl.utils.pbs_logutils import PBSLogUtils
+from tests.functional import *
 
 
 def get_hook_body(sleep_time):
@@ -510,8 +511,4 @@ class TestPbsExecjobEnd(TestFunctional):
         for mom_val in self.moms.values():
             if mom_val.is_cpuset_mom():
                 mom_val.restart()
-                for jobid in self.job_list:
-                    path = os.path.join('/sys/fs/cgroup/cpuset/PBSPro', jobid)
-                    self.assertFalse(self.du.isdir(hostname=mom_val.shortname,
-                                                   path=path))
         self.job_list.clear()

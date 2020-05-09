@@ -3462,7 +3462,7 @@ class CgroupUtils(object):
                     pbs.event().reject('No cpuset cgroup present '
                                        'and npcus==0 disallowed')
                 else:
-                    # zero CPU job: should be attached to root pbspro cpuset
+                    # zero CPU job: should be attached to root pbs cpuset
                     tasks_file = self._cgroup_path(subsys, 'tasks')
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: tasks file = %s' %
                        (caller_name(), tasks_file))

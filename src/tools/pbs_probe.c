@@ -615,40 +615,6 @@ static char expgsql[][80] = {
 	/* 3 */ "pgsql/share"
 };
 
-
-/* ----------- messages for stdout ------------- */
-
-#if 0
-static	char err_report_all[] = "pbsprobe found the following errors in the PBS infrastructure:";
-static	char err_report_one[] = "pbsprobe found the following errors in the PBS infrastructure on ";
-static	char err_report_noerr_all[] = "no errors were detected in the PBS infrastructure:";
-static	char err_report_noerr_one[] = "no errors were detected in the PBS infrastructure on ";
-static	char report_describe_all[] = "pbsprobe checked the following PBS infrastructure:";
-static	char report_describe_one[] = "pbsprobe checked the following PBS infrastructure on ";
-
-/* Header and print control strings for Primary Infrastructure Information */
-
-static	char report_hdr_pri_info[] = "Derivation of Primary Infrastructure Information:";
-static  char report_pri_conf[] = "PBS's config file path - used %s.";
-static  char report_pri_home[] = "PBS's home path - used %s.";
-static  char report_pri_exec[] = "PBS's exec path - used %s.";
-static  char report_pri_svr_star[] = "Value of PBS_SERVER_STARTED - used %s.";
-static  char report_pri_mom_star[] = "Value of PBS_MOM_STARTED - used %s.";
-static  char report_pri_sched_star[] = "Value of PBS_SCHED_STARTED - used %s.";
-
-/* Headers and print control strings for categories of problems found */
-
-static  char report_hdr_missing[] = "Missing Files and Directories:";
-static  char report_hdr_bad_om[] = "Files or Directories with Incorrect Ownership or Modes:";
-static  char report_hdr_unkwn[] = "Unknown Files Detected in PBS Directories:";
-static  char report_owner_modes[] = "%s %s has (uid, gid, modes)=(%s, %s, %s); needs to be (%s, %s, %s).";
-static  char report_missing[] = "%s %s is missing.";
-static  char report_unknwn[] = "%s has %s files with no, or an unrecognized, suffix.";
-#endif
-
-
-/* ----------- messages for stderr ------------- */
-
 /* -------- global static PBS variables -------- */
 
 ADJ dflt_modeadjustments = { S_IFDIR | S_IXUSR | S_IXGRP | S_IXOTH, S_IFREG };
@@ -1145,7 +1111,7 @@ typedef struct	probemsgs {
 	/*
 	 * each pointer in mtbls will point to an array of
 	 * pointers to messages.  The message pointers in each
-	 * array are pointing to output messages from pbsprobe that
+	 * array are pointing to output messages from pbs_probe that
 	 * belong to the same "category" of message - e.g. messages
 	 * about a file being "missing". (see enum msg_categories)
 	 *
@@ -1160,8 +1126,8 @@ typedef struct	probemsgs {
 
 typedef struct	infrastruct {
 
-	int	mode;		/* pbsprobe "mode" */
-	char*	phost;		/* host running pbsprobe */
+	int	mode;		/* pbs_probe "mode" */
+	char*	phost;		/* host running pbs_probe */
 
 	/* PRIMARY related MPUGS and their sources */
 
@@ -1249,7 +1215,7 @@ main(int argc, char *argv[])
 	am_i_authorized();
 
 	/*
-	 * Check that this invocation of pbsprobe is properly formed
+	 * Check that this invocation of pbs_probe is properly formed
 	 * compute the "run mode"
 	 */
 
@@ -1343,7 +1309,7 @@ main(int argc, char *argv[])
 }
 /**
  * @brief
- * 		Check whether user is authorized to use pbsprobe.
+ * 		Check whether user is authorized to use pbs_probe.
  *
  * @par MT-safe:	No
  */
@@ -1360,7 +1326,7 @@ am_i_authorized(void)
 	/*problem encountered*/
 
 	if (ppwd)
-		fprintf(stderr, "User %s not authorized to use pbsprobe\n", ppwd->pw_name);
+		fprintf(stderr, "User %s not authorized to use pbs_probe\n", ppwd->pw_name);
 	else
 		fprintf(stderr, "Problem checking user authorization for utility\n");
 	exit(1);
@@ -1370,7 +1336,7 @@ am_i_authorized(void)
  * 		configure values for various infrastructure parameters.
  *
  * @param[out]	pinf	-	 structpointer to infrastruct
- * @param[out]	mode	-	 pbsprobe "mode"
+ * @param[out]	mode	-	 pbs_probe "mode"
  */
 static void
 infrastruct_params(struct infrastruct *pinf, int mode)
@@ -2353,7 +2319,7 @@ inspect_dir_entries(struct infrastruct *pinf)
 				 * MPUG's for entries that belong to that directory.
 				 *
 				 * A pointer to an array of MPUG pointers is returned.
-				 * These are MPUGS gleened from pbsprobe's database and
+				 * These are MPUGS gleened from pbs_probe's database and
 				 * is thought of as the, "known set of MPUGS".
 				 */
 
@@ -2687,7 +2653,7 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 			continue;
 
 		/*
-		 * entry is not a known name in pbsprobe's database and none
+		 * entry is not a known name in pbs_probe's database and none
 		 * of the other mechanisms for evaluating, in so way, the
 		 * fitness of this entry were found to apply.
 		 */

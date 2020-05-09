@@ -88,8 +88,8 @@ else:
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
         test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
-        test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach)]
+        test += ['%s %s %s /bin/sleep 30\n' %
+                 (self.pbs_tmrsh, self.momB.hostname, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)
@@ -175,8 +175,8 @@ e.accept()
         test += ['#PBS -l select=vnode=%s+vnode=%s\n' %
                  (self.hostA, self.hostB)]
         test += ['%s -j $PBS_JOBID /bin/sleep 30\n' % self.pbs_attach]
-        test += ['%s %s.pbspro.com %s /bin/sleep 30\n' %
-                 (self.pbs_tmrsh, self.momB.shortname, self.pbs_attach)]
+        test += ['%s %s %s /bin/sleep 30\n' %
+                 (self.pbs_tmrsh, self.momB.hostname, self.pbs_attach)]
 
         # Submit a job
         j = Job(TEST_USER)

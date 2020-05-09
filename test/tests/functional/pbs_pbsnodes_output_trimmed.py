@@ -36,8 +36,9 @@
 # trademark licensing policies.
 
 
-from tests.functional import *
 import socket
+
+from tests.functional import *
 
 
 class TestPbsnodesOutputTrimmed(TestFunctional):
@@ -55,7 +56,7 @@ class TestPbsnodesOutputTrimmed(TestFunctional):
         self.server.manager(MGR_CMD_DELETE, NODE, None, '')
         pbsnodes = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 "bin", "pbsnodes")
-        hname = "long123456789012345678901234567890.pbspro.com"
+        hname = "long123456789012345678901234567890.pbs.com"
         a = {'resources_available.ncpus': 4}
         rc = self.server.create_vnodes(hname, a, 1, self.mom)
         command = pbsnodes + " -s " + self.server.hostname + \
