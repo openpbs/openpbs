@@ -344,17 +344,45 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '#PBS -S /bin/bash\n' \
             'sync\n' \
             'sleep 4\n' \
-            'python - 80 10 10 <<EOF\n' \
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
+            '$python_path - 80 10 10 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 200 2 10 <<EOF\n' \
+            '$python_path - 200 2 10 <<EOF\n' \
             '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 100 4 10 <<EOF\n' \
+            '$python_path - 100 4 10 <<EOF\n' \
             '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'sleep 25\n' % (self.eatmem_script, self.eatmem_script)
@@ -362,9 +390,23 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
             'timeout 8 md5sum </dev/urandom\n' \
             '# Args are segments1 sizeMB1 sleep1 segments2 sizeMB2 sleep2\n' \
-            'python -  9 25 9  8 25 300 <<EOF\n' \
+            '$python_path -  9 25 9  8 25 300 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script2
 
         self.cpuset_mem_script = """
