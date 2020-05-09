@@ -3516,8 +3516,9 @@ Time4occurrenceFinish(resc_resv *presv)
 			set_resv_retry(presv, time_now + 120);
 	}
 
-	if (sub == RESV_DEGRADED)
+	if (sub == RESV_DEGRADED) {
 		DBPRT(("degraded_time of %s is %s", presv->ri_qs.ri_resvID, ctime(&presv->ri_degraded_time)))
+	}
 
 	/* Set the reservation state and substate */
 	resv_setResvState(presv, state, sub);
