@@ -1771,6 +1771,12 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP1'
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # This test expects the job to land on CPU 0.
+        # The previous test may have qdel -Wforce its jobs, and then it takes
+        # some time for MoM to run the execjob_epilogue and execjob_end
+        # *after* the job has disappeared on the server.
+        # So wait a while before restarting MoM
+        time.sleep(10)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select':
