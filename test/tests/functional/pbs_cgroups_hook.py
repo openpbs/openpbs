@@ -1546,6 +1546,8 @@ if %s e.job.in_ms_mom():
         a = self.cfg1 % ('', '"' + self.vntypename[0] + '"',
                          '', '', self.swapctl)
         self.load_config(a)
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1593,6 +1595,8 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP9'
         mom, log = self.get_host_names(self.hosts_list[0])
         self.load_config(self.cfg1 % ('%s' % mom, '', '', '', self.swapctl))
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1636,6 +1640,8 @@ if %s e.job.in_ms_mom():
                                       '"' + self.vntypename[0] + '"',
                                       self.swapctl,
                                       '"' + self.vntypename[0] + '"'))
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1678,6 +1684,8 @@ if %s e.job.in_ms_mom():
         conf = {'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1814,6 +1822,8 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1846,6 +1856,8 @@ if %s e.job.in_ms_mom():
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(20)
@@ -1906,8 +1918,8 @@ if %s e.job.in_ms_mom():
         # occasional trouble seen on TH2
         time.sleep(5)
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
-        # make sure that the hooks are properly configured first
-        # occasional trouble seen on TH2
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         time.sleep(5)
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1993,6 +2005,11 @@ if %s e.job.in_ms_mom():
 
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
+        # Make sure to restart MOM
+        # HUP is not enough to get rid of earlier 
+        # per socket vnodes created when vnode_per_numa_node=True
+        self.mom.restart()
+        
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
@@ -2324,8 +2341,8 @@ if %s e.job.in_ms_mom():
         cput1 = qstat1[0]['resources_used.cput']
         mem1 = qstat1[0]['resources_used.mem']
         vmem1 = qstat1[0]['resources_used.vmem']
-        self.logger.info('Waiting 25 seconds for CPU time to accumulate')
-        time.sleep(25)
+        self.logger.info('Waiting 35 seconds for CPU time to accumulate')
+        time.sleep(35)
         qstat2 = self.server.status(JOB, resc_list, id=jid)
         for q in qstat2:
             self.logger.info('Q2: %s' % q)
@@ -4011,7 +4028,7 @@ sleep 300
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
         # Disable the cgroups hook
-        conf = {'enabled': 'False', 'freq': 30, 'event': events}
+        conf = {'enabled': 'False', 'freq': 10, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         # Cleanup any temp file created
         self.logger.info('Deleting temporary files %s' % self.tempfile)
