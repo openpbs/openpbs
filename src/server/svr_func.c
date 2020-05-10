@@ -91,6 +91,7 @@
 #include "libutil.h"
 #include "pbs_ecl.h"
 #include "pbs_sched.h"
+#include "liblicense.h"
 
 extern struct python_interpreter_data  svr_interp_data;
 extern pbs_list_head svr_runjob_hooks;
@@ -152,6 +153,23 @@ struct attribute attr_jobscript_max_size; /* to store default size value for job
 
 extern int do_sync_mom_hookfiles;
 extern int sync_mom_hookfiles_replies_pending;
+
+/*
+ * Added for licensing
+ */
+extern struct work_task *init_licensing_task;
+extern struct work_task *get_more_licenses_task;
+extern struct work_task *licenses_linger_time_task;
+extern void get_more_licenses(struct work_task *ptask);
+extern void return_lingering_licenses(struct work_task *ptask);
+
+/*
+ * Miscellaneous server functions
+ */
+extern void db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr);
+#ifdef NAS /* localmod 005 */
+extern int write_single_node_state(struct pbsnode *np);
+#endif /* localmod 005 */
 
 char primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 
@@ -877,10 +895,9 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 	return 0;
 }
 
-
 /**
  * @brief
- *		set_license_location - action function for the pbs_licensing_license_location
+ *	set_license_location - action function for the pbs_license_info
  * 				server attribute.
  *
  * @param[in]	pattr	-	pointer to attribute structure
@@ -893,40 +910,26 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 int
 set_license_location(attribute *pattr, void *pobject, int actmode)
 {
-
 	if (actmode == ATR_ACTION_FREE)
 		return (PBSE_NONE);
 
 	if ((actmode == ATR_ACTION_ALTER) ||
 		(actmode == ATR_ACTION_RECOV)) {
+		int delay = 5;
 
-		if( (server.sv_attr[SVR_ATR_pbs_license_info].at_flags & \
-							    ATR_VFLAG_SET) &&
-		(server.sv_attr[SVR_ATR_pbs_license_info].at_val.at_str[0] \
-							!= '\0') ) {
-			close_licensing();	/* checkin, close connection */
-			unlicense_socket_licensed_nodes();
-			clear_license_info();
-		} else /* from no license server */
-			init_fl_license_attrs(&licenses);
+		if (pbs_licensing_location)
+			free(pbs_licensing_location);
 
-		if (pbs_licensing_license_location)
-			free(pbs_licensing_license_location);
-
-		pbs_licensing_license_location = \
-			strdup(pattr->at_val.at_str?pattr->at_val.at_str:"");
-		if (pbs_licensing_license_location == NULL) {
+		pbs_licensing_location = strdup(pattr->at_val.at_str?pattr->at_val.at_str:"");
+		if (pbs_licensing_location == NULL) {
 			log_err(errno, __func__, "warning: strdup failed!");
+			return PBSE_SYSTEM;
 		}
-		if (pbs_licensing_license_location &&
-			(pbs_licensing_license_location[0] != '\0')) {
-			int delay;
-			if (actmode == ATR_ACTION_ALTER)
-				delay = 5;
-			else
-				delay = 0;
-			init_licensing(delay);
-		}
+
+		if (actmode == ATR_ACTION_RECOV)
+			delay = 0;
+
+		init_licensing_task = set_task(WORK_Timed, time_now + delay, init_licensing, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -942,21 +945,18 @@ void
 unset_license_location(void)
 {
 
-	if (pbs_licensing_license_location) {
+	if (pbs_licensing_location) {
 
-		if (pbs_licensing_license_location[0] != '\0') {
+		if (pbs_licensing_location[0] != '\0') {
+			lic_close();
+			unlicense_nodes();
+			memset(&license_counts, 0, sizeof(license_counts));
+		} else
+			reset_license_counters(&license_counts);
 
-			close_licensing();
-			unlicense_socket_licensed_nodes();
-			clear_license_info();
-		} else /* from no license server */
-			init_fl_license_attrs(&licenses);
-
-		free(pbs_licensing_license_location);
-		pbs_licensing_license_location = NULL;
-		licstate_unconfigured(LIC_SERVER);
+		free(pbs_licensing_location);
+		pbs_licensing_location = NULL;
 	}
-
 }
 
 /*
@@ -1048,11 +1048,14 @@ set_license_min(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < 0) ||
-			(pattr->at_val.at_long > pbs_max_licenses)) {
+			(pattr->at_val.at_long > licensing_control.licenses_max)) {
 			return (PBSE_LICENSE_MIN_BADVAL);
 		}
-		pbs_min_licenses = pattr->at_val.at_long;
+		licensing_control.licenses_min = pattr->at_val.at_long;
 
+		if (licensing_control.licenses_min > licensing_control.licenses_checked_out)
+			if (get_more_licenses_task == NULL)
+				get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 2, get_more_licenses, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1066,11 +1069,11 @@ set_license_min(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_min(void)
 {
-	pbs_min_licenses = PBS_MIN_LICENSING_LICENSES;
+	licensing_control.licenses_min = PBS_MIN_LICENSING_LICENSES;
 
 	sprintf(log_buffer,
 		"pbs_license_min reverting back to default val %ld",
-		pbs_min_licenses);
+		licensing_control.licenses_min);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }
@@ -1098,11 +1101,16 @@ set_license_max(attribute *pattr, void *pobject, int actmode)
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long < 0) ||
-			(pattr->at_val.at_long < pbs_min_licenses)) {
+			(pattr->at_val.at_long < licensing_control.licenses_min)) {
 			return (PBSE_LICENSE_MAX_BADVAL);
 		}
-		pbs_max_licenses = pattr->at_val.at_long;
+		licensing_control.licenses_max = pattr->at_val.at_long;
 
+		if ((licensing_control.licenses_max < licensing_control.licenses_checked_out) ||
+			((licensing_control.licenses_checked_out < licensing_control.licenses_total_needed) &&
+			 (licensing_control.licenses_checked_out < licensing_control.licenses_max)))
+			if (get_more_licenses_task == NULL)
+				get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 2, get_more_licenses, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1116,11 +1124,11 @@ set_license_max(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_max(void)
 {
-	pbs_max_licenses = PBS_MAX_LICENSING_LICENSES;
+	licensing_control.licenses_max = PBS_MAX_LICENSING_LICENSES;
 
 	sprintf(log_buffer,
 		"pbs_license_max reverting back to default val %ld",
-		pbs_max_licenses);
+		licensing_control.licenses_max);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }
@@ -1145,15 +1153,20 @@ set_license_linger(attribute *pattr, void *pobject, int actmode)
 	if (actmode == ATR_ACTION_FREE)
 		return (PBSE_NONE);
 
-
 	if ((actmode == ATR_ACTION_ALTER) ||
 		(actmode == ATR_ACTION_RECOV)) {
 
 		if ((pattr->at_val.at_long <= 0)) {
 			return (PBSE_LICENSE_LINGER_BADVAL);
 		}
-		pbs_licensing_linger = pattr->at_val.at_long;
+		licensing_control.licenses_linger_time = pattr->at_val.at_long;
 
+		if (licenses_linger_time_task)
+			delete_task(licenses_linger_time_task);
+
+		licenses_linger_time_task = set_task(WORK_Timed,
+			 licensing_control.licenses_checkout_time + licensing_control.licenses_linger_time,
+			 return_lingering_licenses, NULL);
 	}
 
 	return (PBSE_NONE);
@@ -1167,11 +1180,11 @@ set_license_linger(attribute *pattr, void *pobject, int actmode)
 void
 unset_license_linger(void)
 {
-	pbs_licensing_linger = PBS_LIC_LINGER_TIME;
+	licensing_control.licenses_linger_time = PBS_LIC_LINGER_TIME;
 
 	sprintf(log_buffer,
-		"pbs_license_linger_time reverting back to default val %d",
-		pbs_licensing_linger);
+		"pbs_license_linger_time reverting back to default val %ld",
+		licensing_control.licenses_linger_time);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }

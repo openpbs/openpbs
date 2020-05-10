@@ -89,7 +89,7 @@
 #include "pbs_license.h"
 #include "resource.h"
 #include "pbs_sched.h"
-
+#include "liblicense.h"
 
 /* Global Data Items: */
 
@@ -105,6 +105,8 @@ extern char	    *msg_init_norerun;
 extern int resc_access_perm;
 extern long svr_history_enable;
 extern pbs_list_head svr_runjob_hooks;
+
+extern pbs_license_counts license_counts;
 
 /* Extern Functions */
 
@@ -937,9 +939,11 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-			licenses.lb_glob_floating, licenses.lb_aval_floating,
-			licenses.lb_used_floating, licenses.lb_high_used_floating);
+	sprintf(buf, "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
+			license_counts.licenses_global,
+			license_counts.licenses_local,
+			license_counts.licenses_used,
+			license_counts.licenses_high_use.lu_max_forever);
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 }

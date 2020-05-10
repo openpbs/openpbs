@@ -929,40 +929,6 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
-
-	if ((sinfo->has_nonCPU_licenses == 0) &&
-		(resresv->select->total_cpus  >  sinfo->flt_lic)) {
-		char errbuf[MAX_LOG_SIZE];
-		set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
-		if (resresv->is_job && resresv->job !=NULL) {
-			snprintf(errbuf, sizeof(errbuf),
-				"Could not %s job - nodes are not licensed or unable to obtain"
-				" %d cpu licenses. avail_licenses=%d",
-				(resresv->job->is_suspended?"resume":"run"),
-				resresv->select->total_cpus, sinfo->flt_lic);
-			set_schd_error_arg(err, SPECMSG, errbuf);
-		}
-		else if (resresv->is_resv && resresv->resv !=NULL) {
-			sprintf(errbuf,
-				"Could not confirm reservation - nodes are not licensed or"
-				" unable to obtain %d cpu licenses at requested time."
-				" avail_licenses=%d", resresv->select->total_cpus, sinfo->flt_lic);
-			set_schd_error_arg(err, SPECMSG, errbuf);
-
-		}
-		else
-			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-
-		add_err(&prev_err, err);
-
-		if (!(flags & RETURN_ALL_ERR))
-			return NULL;
-
-		err = new_schd_error();
-		if(err == NULL)
-			return NULL;
-	}
-
 	if (exists_resv_event(sinfo->calendar, sinfo->server_time + resresv->hard_duration))
 		endtime = sinfo->server_time + calc_time_left(resresv, 1);
 	else

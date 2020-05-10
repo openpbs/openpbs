@@ -525,12 +525,6 @@ query_server_info(status *pol, struct batch_status *server)
 			if(strstr(limname, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
-		} else if (!strcmp(attrp->name, ATTR_FLicenses)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = -1;
-
-			sinfo->flt_lic = count;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->node_group_enable = 1;
@@ -1147,7 +1141,6 @@ new_server_info(int limallocflag)
 	sinfo->num_nodes = 0;
 	sinfo->num_resvs = 0;
 	sinfo->num_hostsets = 0;
-	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
 	sinfo->job_sort_formula = NULL;
 
@@ -2160,7 +2153,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->name = string_dup(osinfo->name);
 	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
 	nsinfo->server_time = osinfo->server_time;
-	nsinfo->flt_lic = osinfo->flt_lic;
 	nsinfo->res = dup_resource_list(osinfo->res);
 	nsinfo->alljobcounts = dup_counts_list(osinfo->alljobcounts);
 	nsinfo->group_counts = dup_counts_list(osinfo->group_counts);
