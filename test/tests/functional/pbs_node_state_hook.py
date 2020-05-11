@@ -118,7 +118,7 @@ class TestPbsNodeStateHook(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-            self.server.log_match(hook_msg_00, starttime=start_time)15011
+            self.server.log_match(hook_msg_00, starttime=start_time)
         self.logger.info("---- TEST ENDED ----")
 
     @requirements(num_moms=2)
