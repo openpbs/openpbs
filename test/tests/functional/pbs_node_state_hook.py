@@ -47,6 +47,8 @@ def get_hook_body(hook_msg):
     hook_body = """
     import pbs
     e = pbs.event()
+    for key, value in pbs.REVERSE_NODE_STATES.items():
+        pbs.logmsg(pbs.LOG_DEBUG, 'key:' + str(key) + ' value:' + str(value))
     hostname = e.node_state.hostname
     new_state = e.node_state.new_state
     old_state = e.node_state.old_state
@@ -93,7 +95,7 @@ class TestPbsNodeStateHook(TestFunctional):
 
         attrs = {'event': 'node_state', 'enabled': 'True'}
         hook_name_00 = 'a1234'
-        hook_msg_00 = 'running create_hook_and_delete_00'
+        hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
@@ -116,7 +118,7 @@ class TestPbsNodeStateHook(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-            self.server.log_match(hook_msg_00, starttime=start_time)
+            self.server.log_match(hook_msg_00, starttime=start_time)15011
         self.logger.info("---- TEST ENDED ----")
 
     @requirements(num_moms=2)
@@ -131,7 +133,7 @@ class TestPbsNodeStateHook(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         attrs = {'event': 'node_state', 'enabled': 'True'}
         hook_name_00 = 'b1234'
-        hook_msg_00 = 'running create_hook_and_delete_01'
+        hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
