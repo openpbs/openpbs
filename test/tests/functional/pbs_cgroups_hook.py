@@ -2090,6 +2090,9 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
+        # Make sure output file is gone, otherwise wait and read
+        # may pick up stale copy of earlier test
+        self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
