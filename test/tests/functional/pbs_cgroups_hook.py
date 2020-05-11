@@ -1864,8 +1864,9 @@ if %s e.job.in_ms_mom():
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         # Make sure to run on the MoM just restarted
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb/host=%s' % self.hosts_list[0], \
-             ATTR_N: name}
+        a = {ATTR_N: name}
+        a['Resource_List.select'] = \
+            '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0]
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(20)
         jid = self.server.submit(j)
