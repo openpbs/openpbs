@@ -163,10 +163,10 @@ class TestVerifyLogOutput(TestFunctional):
         # check the logs after restarting the server and comm daemon
         self.server.restart()
         self.comm.restart()
-        search_msg = attr_name + ' = ' + 'resvport'
+        resvport_msg = 'Supported authentication method: ' + 'resvport'
         if self.server.isUp() and self.comm.isUp():
-            self.server.log_match(search_msg, starttime=started_time)
-            self.comm.log_match(search_msg, starttime=started_time)
+            self.server.log_match(resvport_msg, starttime=started_time)
+            self.comm.log_match(resvport_msg, starttime=started_time)
 
         # Added an attribute PBS_SUPPORTED_AUTH_METHODS in pbs.conf file
         conf_attr = {'PBS_SUPPORTED_AUTH_METHODS': 'munge,resvport'}
@@ -175,8 +175,9 @@ class TestVerifyLogOutput(TestFunctional):
         # check the logs after restarting the server and comm daemon
         self.server.restart()
         self.comm.restart()
-        pbs_conf = self.du.parse_pbs_config()
-        search_msg = attr_name + ' = ' + pbs_conf['PBS_SUPPORTED_AUTH_METHODS']
+        munge_msg = 'Supported authentication method: ' + 'munge'
         if self.server.isUp() and self.comm.isUp():
-            self.server.log_match(search_msg, starttime=started_time)
-            self.comm.log_match(search_msg, starttime=started_time)
+            self.server.log_match(munge_msg, starttime=started_time)
+            self.comm.log_match(munge_msg, starttime=started_time)
+            self.server.log_match(resvport_msg, starttime=started_time)
+            self.comm.log_match(resvport_msg, starttime=started_time)

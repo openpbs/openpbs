@@ -84,7 +84,6 @@ noinst_HEADERS = \
 	pbs_json.h \
 	pbs_license.h \
 	pbs_mpp.h \
-	pbs_mutex.h \
 	pbs_nodes.h \
 	pbs_python.h \
 	pbs_python_private.h \

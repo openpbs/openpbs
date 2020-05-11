@@ -1588,8 +1588,6 @@ do_cray_susres_conf (job *pjob, int which)
 int
 do_susres(job *pjob, int which)
 {
-#if	defined(DEBUG) || defined(MOM_CPUSET)
-#endif	/* DEBUG || MOM_CPUSET */
 	pbs_task	*ptask;
 	int	rc = 0;
 	int     err;
@@ -1607,15 +1605,6 @@ do_susres(job *pjob, int which)
 	/* BGL partition; can't migrate "processes" */
 #endif  /* MOM_BGL */
 
-#if	MOM_CPUSET
-	if (which == RESUME) {		/* resume -- bring back cpuset */
-		if (resume_job(pjob) == -1) {
-			log_joberr(errno, __func__, log_buffer,
-				pjob->ji_qs.ji_jobid);
-			return PBSE_SYSTEM;
-		}
-	}
-#endif	/* MOM_CPUSET */
 #if MOM_ALPS
 	/* if we're trying to suspend, then ask ALPS to suspend, before
 	 * we send the signal to the processes
@@ -1642,10 +1631,6 @@ do_susres(job *pjob, int which)
 			(which == SUSPEND) ? "suspend" : "resume",
 			ptask->ti_qs.ti_task, rc))
 	}
-#if	MOM_CPUSET
-	if (rc >= 0 && which == SUSPEND)	/* suspend -- get rid of cpuset */
-		rc = suspend_job(pjob);
-#endif	/* MOM_CPUSET */
 	if (rc < 0) {
 		/* error recovery, set things back */
 		err = errno;

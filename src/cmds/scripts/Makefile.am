@@ -43,7 +43,6 @@ dist_libinit_DATA = \
 	limits.pbs_mom.compat \
 	limits.post_services \
 	limits.post_services.compat \
-	sgigenvnodelist.awk \
 	sgiICEvnode.sh \
 	sgiICEplacement.sh
 
@@ -79,7 +78,6 @@ dist_unitfile_DATA = \
 	pbs.service
 
 dist_libexec_SCRIPTS = \
-	au-nodeupdate \
 	install_db \
 	pbs_habitat \
 	pbs_init.d \

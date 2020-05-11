@@ -376,17 +376,6 @@ start_pbs() {
 	    env LD_LIBRARY_PATH=$DB2DIR/lib64:$DB2DIR/lib ${PBS_EXEC}/sbin/pbs_mom
 	    echo "PBS Blue Gene mom"
         else
-	   if using_cpuset_mom
-	   then
-	      if devcpuset_available
-	      then
-	         :
-	      else
-		 echo "using a CPU set-enabled pbs_mom on a system without CPU sets is unsupported."
-		 return 1
-	      fi
-	   fi
-
 	   if  ${PBS_EXEC}/sbin/pbs_mom
            then
 	      echo "PBS mom"
@@ -499,9 +488,8 @@ stop_pbs() {
     fi
     if [ "${PBS_START_MOM}" -gt 0 ] ; then
       if check_prog "mom" ; then
-	site_mom_cleanup
-	kill ${pbs_mom_pid}
-	echo "PBS mom - was pid: ${pbs_mom_pid}"
+        kill ${pbs_mom_pid}
+        echo "PBS mom - was pid: ${pbs_mom_pid}"
       fi
     fi
     if [ "${PBS_START_SCHED}" -gt 0 ] ; then
@@ -600,36 +588,6 @@ status_pbs() {
     fi
 }
 
-using_cpuset_mom()
-{
-	if type ldd > /dev/null 2>&1
-	then
-		ldd $PBS_EXEC/sbin/pbs_mom 2> /dev/null | grep libcpuset > /dev/null
-	else
-		return 1
-	fi
-}
-
-devcpuset_available()
-{
-	if sgi_chkfeature -qr sgi-cpuset
-	then
-	    	return 0
-	fi
-
-	if grep -q cpuset /proc/filesystems
-	then
-		if mount | grep -q /dev/cpuset
-		then
-			return 0
-		else
-			return 1
-		fi
-	else
-		return 1
-	fi
-}
-
 # find_bgl_environment:
 #
 # Finds a BGLDIR path that contains Blue Gene API include
@@ -668,103 +626,9 @@ find_bgl_environment ()
 
 }
 
-# Wrapper for SGI's chkfeature utility, q.v..  "has_chkfeature" is initialized
-# in the site_mom_startup function.
-sgi_chkfeature()
-{
-	if [ $has_chkfeature -ne 0 ]
-	then
-		chkfeature ${1+"$@"}
-		return $?
-	else
-		return 1
-	fi
-}
-
-# called when we are starting on a SGI ICE system
-# /etc/sgi-compute-node-release exists
-# Make a vnodedef file with cpuset info
-sgi_ice_startup()
-{
-	vnodedefsdir=`dirname $vnodedefs`
-	[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
-
-	sh $momscriptdir/sgiICEvnode.sh "$1"  > ${vnodedefs}.new
-
-	if [ ! -f $vnodedefs ] || ! cmp -s $vnodedefs ${vnodedefs}.new
-	then
-		/bin/cp ${vnodedefs}.new $vnodedefs
-	fi
-	/bin/rm -f ${vnodedefs}.new
-}
-
 site_mom_startup()
 {
-    vnodedefs="${PBS_MOM_HOME}/mom_priv/config.d/PBSvnodedefs"
-    momscriptdir="${pbslibdir}/init.d"
-    SGItopology="/proc/sgi_sn/sn_topology";
-    UVSGItopology="/proc/sgi_uv/topology";
-    SGIcomputenode="/etc/sgi-compute-node-release"
-    if type chkfeature > /dev/null 2>&1
-    then
-	has_chkfeature=1
-    else
-	has_chkfeature=0
-    fi
-    #	If this site is using a pbs_mom that supports CPU sets ...
-    if using_cpuset_mom
-    then
-	# and if there's an SGI topology file (Altix),
-	# generate a placement and vnode definitions file.
-	if  [ -f $SGItopology -o -f $UVSGItopology ]
-	then
-		vnodedefsdir=`dirname $vnodedefs`
-		[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
-		awk -f "$momscriptdir/sgigenvnodelist.awk" > $vnodedefs
-	elif [ -f $SGIcomputenode ]
-	then
-		sgi_ice_startup cpuset
-	fi
-    fi
     find_bgl_environment
-}
-
-#	When shutting down PBS, if no processes are left running in
-#	the /dev/cpuset/PBSPro hierarchy, tidy up by turning off the
-#	cpu_exclusive and mem_exclusive flags on the sets created by
-#	pbs_mom.cpuset.
-PBSPro_cleanup()
-{
-	CPUset_root="/dev/cpuset"
-	PBSPro_root="PBSPro"
-	tmpfile="$tmpdir/cpusetlist$$"
-
-	trap "rm -f $tmpfile" 0 1 2 3 15
-
-	[ -d "$CPUset_root/$PBSPro_root" ] || return
-	cpuset -s $PBSPro_root -r > $tmpfile
-	while read set
-	do
-		[ -n "`cpuset -p $set`" ] && return
-	done < $tmpfile
-
-	find $CPUset_root/$PBSPro_root -type d -print |
-	sed -e "s,$CPUset_root,," |
-	sort -r |
-	while read set
-	do
-		cpuset -x $set
-	done
-}
-
-site_mom_cleanup()
-{
-	CPUset_root="/dev/cpuset"
-
-	if [ -d $CPUset_root ] && using_cpuset_mom
-	then
-		PBSPro_cleanup
-	fi
 }
 
 # Check whether PBS is registered to start at boot time

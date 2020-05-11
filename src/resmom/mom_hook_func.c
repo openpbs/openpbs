@@ -3480,7 +3480,7 @@ void reply_hook_bg(job *pjob)
 		n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
 		strcpy(jobid, pjob->ji_qs.ji_jobid);
 
-		del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+		del_job_resc(pjob);	/* rm tmpdir, etc. */
 		pjob->ji_hook_running_bg_on = BG_NONE;
 		job_purge_mom(pjob);
 		dorestrict_user();
@@ -3507,7 +3507,7 @@ void reply_hook_bg(job *pjob)
 			case BG_PBS_BATCH_DeleteJob:
 			case BG_PBSE_SISCOMM:
 				if ((pjob->ji_numnodes == 1) || (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)) {
-					del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+					del_job_resc(pjob);	/* rm tmpdir, etc. */
 					pjob->ji_preq = NULL;
 					(void) kill_job(pjob, SIGKILL);
 					dorestrict_user();

@@ -170,13 +170,14 @@ def skipOnShasta(function):
 
 def skipOnCpuSet(function):
     """
-    Decorator to skip a test on a CpuSet system
+    Decorator to skip a test on a cgroup cpuset system
     """
 
     def wrapper(self, *args, **kwargs):
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                msg = 'capability not supported on Cpuset mom:' + mom.shortname
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                      mom.shortname
                 self.skipTest(reason=msg)
                 break
         else:
@@ -1466,6 +1467,8 @@ class PBSTestSuite(unittest.TestCase):
             if 'clienthost' in self.conf:
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
+            if mom.is_cpuset_mom():
+                mom.enable_cgroup_cset()
         if restart:
             mom.restart()
         else:
@@ -1474,7 +1477,15 @@ class PBSTestSuite(unittest.TestCase):
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
-        self.server.expect(NODE, a, id=mom.shortname, interval=1)
+        if mom.is_cpuset_mom():
+            mom.log_match('pbs_cgroups.CF;copy hook-related '
+                          'file request received',
+                          starttime=self.server.ctime)
+            time.sleep(2)
+            mom.signal('-HUP')
+            self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
+        else:
+            self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
     def analyze_logs(self):

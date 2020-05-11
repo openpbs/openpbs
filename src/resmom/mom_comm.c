@@ -1316,14 +1316,6 @@ receive_job_update(int stream, job *pjob)
 		hook			*last_phook;
 		unsigned int		hook_fail_action = 0;
 
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		/* preserve job's current cpuset and processes, but mark the
-		 * resources internally as free, so that a subset of them can be
-		 * re-assigned back to the job via modify_cpuset().
-		 */
-		suspend_job(pjob);
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-
 		if ((rc=job_nodes(pjob)) != 0) {
 			snprintf(log_buffer, sizeof(log_buffer),
 			   	"failed updating internal nodes data (rc=%d)", rc);
@@ -1331,13 +1323,6 @@ receive_job_update(int stream, job *pjob)
                                  pjob->ji_qs.ji_jobid, log_buffer);
 			return (-1);
 		}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		if (modify_cpuset(pjob) < 0) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, "failed to modify job's current cpuset");
-			return (-1);
-		}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 		mom_hook_input_init(&hook_input);
 		hook_input.pjob = pjob;
@@ -2943,7 +2928,6 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
  *						succeeded
  * @retval PRE_FINISH_FAIL_JOB_SETUP_SEND	action to do job_setup_send() failed
  * @retval PRE_FINISH_FAIL_JOIN_EXTRA		action to do job_join_extra() failed
- * @retval PRE_FINISH_FAIL_NEW_CPUSET		action to create new cpuset failed
  *
  */
 pre_finish_results_t
@@ -2963,12 +2947,6 @@ pre_finish_exec(job *pjob, int do_job_setup_send)
 		if (job_join_extra(pjob, &pjob->ji_hosts[0]) != 0)
 			return PRE_FINISH_FAIL_JOIN_EXTRA;
 	}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-	if (new_cpuset(pjob) < 0) {
-		return PRE_FINISH_FAIL_NEW_CPUSET;
-	}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 	/*
 	 * If there is a job_setup_send function,
@@ -3354,15 +3332,6 @@ im_request(int stream, int version)
 					goto done;
 				}
 			}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-			if (new_cpuset(pjob) < 0) {
-				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
-				mom_deljob(pjob);
-				SEND_ERR(PBSE_SYSTEM)
-				goto done;
-			}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 			(void)job_save(pjob, SAVEJOB_FULL);
 			(void)strcpy(namebuf, path_jobs);	/* job directory path */
@@ -4587,16 +4556,6 @@ join_err:
 							break;
 						  case PRE_FINISH_FAIL_JOIN_EXTRA:
 							goto done;
-						  case PRE_FINISH_FAIL_NEW_CPUSET:
-							log_joberr(PBSE_SYSTEM, __func__, "new_cpuset failed on MS", pjob->ji_qs.ji_jobid);
-							DBPRT(("%s: JOIN_JOB %s\n", __func__, pjob->ji_qs.ji_jobid))
-							/* whether or not job is node failure tolerant, we need it to bail out */
-							if (do_tolerate_node_failures(pjob))
-								/* force tolerant job to exit and rerun */
-								exec_bail(pjob, JOB_EXEC_RETRY, "create a cpuset");
-							else
-								job_start_error(pjob, PBSE_SYSTEM, mom_host, "create a cpuset");
-							goto err;
 						  case PRE_FINISH_FAIL_JOB_SETUP_SEND:
 							sprintf(log_buffer, "could not send setup");
 							goto err;
@@ -5132,16 +5091,6 @@ join_err:
 							break;
 						  case PRE_FINISH_FAIL_JOIN_EXTRA:
 							goto done;
-						  case PRE_FINISH_FAIL_NEW_CPUSET:
-							log_joberr(PBSE_SYSTEM, __func__, "new_cpuset failed on MS", pjob->ji_qs.ji_jobid);
-							DBPRT(("%s: JOIN_JOB %s\n", __func__, pjob->ji_qs.ji_jobid))
-							/* whether or not job is node failure tolerant, we need it to bail out */
-							if (do_tolerate_node_failures(pjob))
-								/* force tolerant job to exit and rerun */
-								exec_bail(pjob, JOB_EXEC_RETRY, "create a cpuset");
-							else
-								job_start_error(pjob, PBSE_SYSTEM, mom_host, "create a cpuset");
-							goto err;
 						  case PRE_FINISH_FAIL_JOB_SETUP_SEND:
 							sprintf(log_buffer, "could not send setup");
 							goto err;

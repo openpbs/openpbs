@@ -1666,7 +1666,6 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 	char		*extra_res = NULL;
 	resource	*prs;
 	resource_def	*prdefvntype;
-	resource_def	*prdefarch;
 	char		*parent_mom;
 	char		prev_noden[PBS_MAXNODENAME + 1];
 	char		*res_in_exec_vnode = NULL;
@@ -1760,7 +1759,6 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 	}
 
 	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
-	prdefarch = find_resc_def(svr_resc_def, "arch", svr_resc_size);
 	/* There's a 1:1:1 mapping among exec_vnode parenthesized
 	 * entries, exec_host, and exec_host2.
 	 */
@@ -1875,15 +1873,6 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 								goto release_nodeslist_exit;
 							}
 						}
-					} else if ((prdefarch != NULL) &&
-							(prs->rs_defin == prdefarch) &&
-							((prs->rs_value.at_flags & ATR_VFLAG_SET) != 0) &&
-							(strcmp(prs->rs_value.at_val.at_str, "linux_cpuset") == 0) ) {
-						if ((err_msg != NULL) && (err_msg_sz > 0)) {
-							snprintf(err_msg, err_msg_sz, "not currently supported on nodes whose resources are part of a cpuset: %s", noden);
-        						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, r_input->jobid, err_msg);
-						}
-						goto release_nodeslist_exit;
 					}
 				}
 			}

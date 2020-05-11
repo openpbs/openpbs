@@ -41,10 +41,6 @@
 #include	"attribute.h"
 #include	"resource.h"
 #include	"pbs_nodes.h"
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-#include	<bitmask.h>
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
-
 
 
 /*
@@ -68,13 +64,3 @@ extern void	cpuindex_free(mom_vninfo_t *, unsigned int);
 extern void	cpuindex_inuse(mom_vninfo_t *, unsigned int, job *);
 extern void	cpunum_outofservice(unsigned int);
 extern void	cpu_raresync(void);
-#if	MOM_CPUSET
-extern void	cpunum_inuse(unsigned int, job *);
-extern void	cpunum_free(unsigned int);
-#if	(CPUSET_VERSION >= 4)
-extern void	get_cpubits(struct bitmask *);
-extern void	get_membits(struct bitmask *);
-extern void	offline_job_vnodes(job *);
-extern void	requeue_job(job *);
-#endif	/* CPUSET_VERSION >= 4 */
-#endif	/* MOM_CPUSET */
