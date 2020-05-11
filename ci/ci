@@ -107,9 +107,22 @@ def commit_docker_image():
             log_error(e)
 
 
+def get_pkgs(platform):
+    build_cmd = '/src/build-pbs-packages.sh'
+    if platform != 'called':
+        try:
+            subprocess.run([pbs_dirname + '/ci', '--delete'])
+            subprocess.run([pbs_dirname + '/ci', '--start=' + platform])
+        except:
+            log_error('Failed to restart ci.')
+    log_info('The package build logs can be found in logs/pkglogs')
+    run_docker_cmd(
+        'docker-compose exec pbs-build bash -c \' ' + build_cmd + ' | tee /logs/pkglogs \' ')
+
+
 def delete_older_image(bad_images):
     '''
-    When building a newer '_ci_pbs' image this fucntion will delete any older such instance
+    When building a newer '_ci_pbs' image this function will delete any older such instance
     '''
     if bad_images[-7:] != '_ci_pbs':
         bad_images = bad_images.replace(':', '_')
@@ -247,6 +260,8 @@ if __name__ == "__main__":
                     help='start container, optionally add platform name \n ex --start="ubuntu" ', nargs='?')
     ap.add_argument('--build', const='called',
                     help='forces the container to build dependencies, use as a suboption to --start', nargs='?')
+    ap.add_argument('--build-pkgs', const='called',
+                    help='build packages for given platform optionally supply platform as argument eg --build-pkgs=\'ubuntu:16.04\'', nargs='?')
     ap.add_argument('--delete', const='called',
                     help='destroy pbs container', nargs='?')
     ap.add_argument('--local', const='called',
@@ -322,6 +337,8 @@ if __name__ == "__main__":
             cmd = "docker-compose exec pbs-build bash -c \' /src/killit.sh  \'"
             run_docker_cmd(cmd)
             log_info(" done stop ")
+        if args.build_pkgs != None:
+            get_pkgs(args.build_pkgs)
         if args.run != None:
             benchpress_opt = os.path.join(pbs_dirname, '.benchpress_opt')
             write = True

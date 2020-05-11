@@ -252,6 +252,7 @@ win_configure/projects/pbs_ifl_wrap.c
 ci/logs/
 ci/logs/prev_LOGS/
 ci/.*
+ci/packages
 
 # Generated scripts
 src/cmds/scripts/modulefile
