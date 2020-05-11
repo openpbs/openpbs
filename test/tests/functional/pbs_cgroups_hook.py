@@ -1383,6 +1383,11 @@ if %s e.job.in_ms_mom():
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
+        # In tests that use this, make sure that other hook CF
+        # copies from setup, node creations, MoM restarts etc.
+        # are all finished, so that we don't match a CF copy
+        # message in the logs from someone else!
+        time.sleep(5)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
@@ -1916,11 +1921,9 @@ if %s e.job.in_ms_mom():
         # otherwise the load_config tests to see if it's all done
         # might get confused
         # occasional trouble seen on TH2
-        time.sleep(5)
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
-        time.sleep(5)
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
