@@ -2703,7 +2703,7 @@ if %s e.job.in_ms_mom():
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         # Do not use node_list -- vnode_per_numa_node is NOW off
-        # so use the natural node. Otherwise might 'expect" stale vnode
+        # so use the natural node. Otherwise might 'expect' stale vnode
         self.server.expect(NODE, {'state': 'free'},
                            id=self.host_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
