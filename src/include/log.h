@@ -129,6 +129,7 @@ extern int  chk_file_sec2(char *path, int isdir, int sticky,
 extern char *get_script_name(char *input);
 
 extern int  setup_env(char *filename);
+extern void log_supported_auth_methods(char **);
 
 /* Event types */
 

@@ -404,15 +404,7 @@ pbsd_init(int type)
 	if (setup_env(pbs_conf.pbs_environment)==-1)
 		return (-1);
 
-	/* log supported_auth_methods */
-	if (pbs_conf.supported_auth_methods) {
-		int i = 0;
-		while (pbs_conf.supported_auth_methods[i]) {
-					log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname,
-							"Supported authentication method: %s", pbs_conf.supported_auth_methods[i]);
-					i++;
-		}
-	}
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
