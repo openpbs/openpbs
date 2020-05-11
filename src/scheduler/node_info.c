@@ -4753,7 +4753,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	char *tailptr = NULL;
 	int hp;
 	int cur_chunk_num = 0;
-	int cur_tot_chunks;
+	int cur_tot_chunks = 0;
 	int chunks_ind;
 	int num_paren = 0;
 
