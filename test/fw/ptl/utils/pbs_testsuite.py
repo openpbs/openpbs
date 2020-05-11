@@ -353,7 +353,7 @@ class PBSTestSuite(unittest.TestCase):
     :param comms: Colon-separated list of hostnames hosting a PBS Comm.
                   Comms are made accessible as a dictionary in the
                   instance variable comms.
-    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param nomom: expect no MoM on colon-separated set of hosts
     :param mode: Sets mode of operation to PBS server. Can be either
                  ``'cli'`` or ``'api'``.Defaults to API behavior.
     :param conn_timeout: set a timeout in seconds after which a pbs_connect
@@ -1476,12 +1476,9 @@ class PBSTestSuite(unittest.TestCase):
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
         if mom.is_cpuset_mom():
-            # since we're not sure whether we reconfigured the cgroup hook
-            # config file, --this is within an "if"--
-            # do not check in the logs whether the CF file was copied
-            # If we DID reconfigure above, we restarted MoM, so if the CF
-            # file was stale MoM would have requested it before running the
-            # exechost_startup hook event
+            # Checking whether the CF file was copied really belongs in code
+            # that changes the config file -- i.e. in enable_cgroup_cset called
+            # above. We're not sure it is always called, since it is in an "if"
             time.sleep(2)
             # No need to HUP. We created the node after restarting the MoM
             # earlier if necessary

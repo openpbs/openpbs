@@ -14040,6 +14040,9 @@ class MoM(PBSService):
                  'input-file': path}
             self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                 'pbs_cgroups')
+            self.log_match('pbs_cgroups.CF;copy hook-related '
+                           'file request received',
+                           starttime=self.server.ctime)
             os.remove(path)
             # enable cgroups hook
             self.server.manager(MGR_CMD_SET, HOOK,
