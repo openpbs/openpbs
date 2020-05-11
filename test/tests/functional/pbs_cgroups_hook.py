@@ -1863,7 +1863,9 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg2)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
+        # Make sure to run on the MoM just restarted
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb/host=%s' % self.hosts_list[0], \
+             ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(20)
         jid = self.server.submit(j)
@@ -2708,7 +2710,7 @@ if %s e.job.in_ms_mom():
         # Do not use node_list -- vnode_per_numa_node is NOW off
         # so use the natural node. Otherwise might 'expect' stale vnode
         self.server.expect(NODE, {'state': 'free'},
-                           id=self.host_list[0], interval=3, offset=10)
+                           id=self.hosts_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
