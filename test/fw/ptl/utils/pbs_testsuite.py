@@ -1463,6 +1463,10 @@ class PBSTestSuite(unittest.TestCase):
             mom.apply_config(conf=conf, hup=False, restart=False)
             if mom.is_cpuset_mom():
                 mom.enable_cgroup_cset()
+                # Make sure that the MoM will generate per-NUMA node vnodes
+                # when the natural node is created below
+                # HUP may not be enough if exechost_startup is
+                restart = True
         if restart:
             mom.restart()
         else:
@@ -1472,11 +1476,15 @@ class PBSTestSuite(unittest.TestCase):
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
         if mom.is_cpuset_mom():
-            mom.log_match('pbs_cgroups.CF;copy hook-related '
-                          'file request received',
-                          starttime=self.server.ctime)
+            # since we're not sure whether we reconfigured the cgroup hook
+            # config file, --this is within an "if"--
+            # do not check in the logs whether the CF file was copied
+            # If we DID reconfigure above, we restarted MoM, so if the CF
+            # file was stale MoM would have requested it before running the
+            # exechost_startup hook event
             time.sleep(2)
-            mom.signal('-HUP')
+            # No need to HUP. We created the node after restarting the MoM
+            # earlier if necessary
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
