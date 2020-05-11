@@ -989,7 +989,7 @@ revert_impersonated_user()
  * @param[in]   lineno : line number of API invocation
  *
  * @return     BOOL
- * @retval     whether CloseHandle succeded, return value of CloseHandle() API
+ * @retval     whether CloseHandle succeeded, return value of CloseHandle() API
  */
 BOOL
 _log_wrap_CloseHandle(HANDLE hObject, LPCSTR handlename, LPCSTR funcname, INT lineno)
@@ -998,6 +998,7 @@ _log_wrap_CloseHandle(HANDLE hObject, LPCSTR handlename, LPCSTR funcname, INT li
 
 #undef CloseHandle
 	rc = CloseHandle(hObject);
+#define CloseHandle(param) _log_wrap_CloseHandle(param, #param, __func__, __LINE__)
 
 	if (!rc) {
 		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, funcname,
@@ -1017,7 +1018,7 @@ _log_wrap_CloseHandle(HANDLE hObject, LPCSTR handlename, LPCSTR funcname, INT li
  * @param[in]   lineno : line number of API invocation
  *
  * @return     BOOL
- * @retval     whether CloseHandle succeded, return value of CloseHandle() API
+ * @retval     whether LocalFree succeeded, return value of LocalFree() API
  */
 HLOCAL
 _log_wrap_LocalFree(HLOCAL hObject, LPCSTR handlename, LPCSTR funcname, INT lineno)
@@ -1026,6 +1027,7 @@ _log_wrap_LocalFree(HLOCAL hObject, LPCSTR handlename, LPCSTR funcname, INT line
 
 #undef LocalFree
 	hret = LocalFree(hObject);
+#define LocalFree(param) _log_wrap_LocalFree(param, #param, __func__, __LINE__)
 
 	if (hObject && (hObject == hret)) {
 		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, funcname,
