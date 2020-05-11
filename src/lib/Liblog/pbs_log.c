@@ -449,6 +449,28 @@ log_add_debug_info()
 
 /**
  * @brief
+ *	Add supported authentication method to log
+ *
+ * @param[in]	supported_auth_methods - An array of supported authentication method
+ *
+ * @return void
+ *
+ */
+void
+log_supported_auth_methods(char **supported_auth_methods)
+{
+	if (supported_auth_methods) {
+		int i = 0;
+		while (supported_auth_methods[i]) {
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname,
+					"Supported authentication method: %s", supported_auth_methods[i]);
+			i++;
+		}
+	}
+}
+
+/**
+ * @brief
  *	Add interface information to log
  *
  * @par Side Effects:
