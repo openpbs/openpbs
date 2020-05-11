@@ -2006,10 +2006,10 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
         # Make sure to restart MOM
-        # HUP is not enough to get rid of earlier 
+        # HUP is not enough to get rid of earlier
         # per socket vnodes created when vnode_per_numa_node=True
         self.mom.restart()
-        
+
         # Submit M jobs N cpus wide, where M is the amount of physical
         # processors and N is number of 'cpu cores' per M. Expect them to run.
         njobs = phys
@@ -2700,8 +2700,12 @@ if %s e.job.in_ms_mom():
         # First try with mem_fences set to true (the default)
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.swapctl))
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
+        # Do not use node_list -- vnode_per_numa_node is NOW off
+        # so use the natural node. Otherwise might 'expect" stale vnode
         self.server.expect(NODE, {'state': 'free'},
-                           id=self.nodes_list[0], interval=3, offset=10)
+                           id=self.host_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
