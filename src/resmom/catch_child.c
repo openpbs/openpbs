@@ -1729,8 +1729,7 @@ end_loop:
 					resc_used(pjob, "mem", getsize));
 				(void)diswul(stream,
 					resc_used(pjob, "cpupercent", gettime));
-				(void)send_resc_used_to_ms(stream,
-							pjob->ji_qs.ji_jobid);
+				(void)send_resc_used_to_ms(stream, pjob);
 				(void)dis_flush(stream);
 				pjob->ji_obit = TM_NULL_EVENT;
 			}
@@ -2003,6 +2002,11 @@ init_abort_jobs(int recover)
 		/* To get homedir info */
 		pj->ji_grpcache = NULL;
 		check_pwd(pj);
+		if (tree_add_del(AVL_jobs, (void *)pj->ji_qs.ji_jobid, (void *)pj, TREE_OP_ADD) != 0) {
+			log_joberr(PBSE_INTERNAL, __func__, "Failed link job in avl-lookup tree", pj->ji_qs.ji_jobid);
+			job_free(pj);
+			continue;
+		}
 		append_link(&svr_alljobs, &pj->ji_alljobs, pj);
 		job_nodes(pj);
 		task_recov(pj);

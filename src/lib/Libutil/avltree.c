@@ -1007,6 +1007,30 @@ create_tree(int dups, int keylen)
 
 /**
  * @brief
+ *	destroy AVL tree
+ *
+ * @param[in] - tree - the AVL tree root
+ *
+ * @return void
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void
+destroy_tree(AVL_IX_DESC *tree)
+{
+	if (tree != NULL) {
+		avl_destroy_index(tree);
+		free(tree);
+		tree = NULL;
+	}
+}
+
+/**
+ * @brief
  *	Find a node from the AVL tree based on the supplied key
  *
  * @param[in] - root   - The root of the AVL tree to search

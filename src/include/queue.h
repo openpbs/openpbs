@@ -37,28 +37,15 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_QUEUE_H
-#define	_QUEUE_H
-#ifdef	__cplusplus
+#ifndef _QUEUE_H
+#define _QUEUE_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- * queue.h - struture definations for queue objects
- *
- * Include Files Requried:
- *
- *	<sys/types.h>
- *	"attribute.h"
- *	"list_link.h"
- *      "server_limits.h"
- *      "resource.h"
- *      "reservation.h"
- *
- * Queue Types
- */
+#include "avltree.h"
 
-#define QTYPE_Unset	0
+#define QTYPE_Unset 0
 #define QTYPE_Execution 1
 #define QTYPE_RoutePush 2
 #define QTYPE_RoutePull 3
@@ -69,7 +56,6 @@ extern "C" {
  *
  * The following enum defines the index into the array.
  */
-
 enum queueattr {
 	QA_ATR_QType,
 	QA_ATR_Priority,
@@ -130,58 +116,51 @@ enum queueattr {
 	QR_ATR_RouteLifeTime,
 
 #include "site_que_attr_enum.h"
-	QA_ATR_Enabled,	/* these are last for qmgr print function   */
+	QA_ATR_Enabled, /* these are last for qmgr print function   */
 	QA_ATR_Started,
 	QA_ATR_queued_jobs_threshold,
 	QA_ATR_queued_jobs_threshold_res,
 	QA_ATR_partition,
-	QA_ATR_LAST	/* WARNING: Must be the highest valued enum */
+	QA_ATR_LAST /* WARNING: Must be the highest valued enum */
 };
-
 extern attribute_def que_attr_def[];
 
-
-/* at last we come to the queue definition itself	*/
-
+/* the queue definition */
 struct pbs_queue {
-	pbs_list_link qu_link;		/* forward/backward links */
-	pbs_list_head qu_jobs;		/* jobs in this queue */
-	resc_resv *qu_resvp;		/* != NULL if que established */
-	/* to support a reservation */
-	int qu_nseldft;		/* number of elm in qu_seldft */
-	key_value_pair *qu_seldft;		/* defaults for job -l select */
+	pbs_list_link qu_link;				/* forward/backward links */
+	pbs_list_head qu_jobs;				/* jobs in this queue */
+	resc_resv *qu_resvp;				/* != NULL if que established to support a reservation */
+	int qu_nseldft;					/* number of elm in qu_seldft */
+	key_value_pair *qu_seldft;			/* defaults for job -l select */
 	struct queuefix {
-		int qu_modified;		/* != 0 => update disk file */
-		int qu_type;		/* queue type: exec, route */
-		time_t qu_ctime;		/* time queue created */
-		time_t qu_mtime;		/* time queue last modified */
-		char qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
+		int qu_modified;			/* != 0 => update disk file */
+		int qu_type;				/* queue type: exec, route */
+		time_t qu_ctime;			/* time queue created */
+		time_t qu_mtime;			/* time queue last modified */
+		char qu_name[PBS_MAXQUEUENAME + 1];	/* queue name */
 	} qu_qs;
-
-	int qu_numjobs;			/* current numb jobs in queue */
-	int qu_njstate[PBS_NUMJOBSTATE];	/* # of jobs per state */
-	char qu_jobstbuf[150];
-
-	/* the queue attributes */
-
-	attribute qu_attr[QA_ATR_LAST];
+	int qu_numjobs;					/* current numb jobs in queue */
+	int qu_njstate[PBS_NUMJOBSTATE];		/* # of jobs per state */
+	char qu_jobstbuf[150];				/* string version queue state */
+	attribute qu_attr[QA_ATR_LAST];			/* the queue attributes */
 };
 typedef struct pbs_queue pbs_queue;
 
+extern AVL_IX_DESC *AVL_queues;
 extern pbs_queue *find_queuebyname(char *);
 #ifdef NAS /* localmod 075 */
 extern pbs_queue *find_resvqueuebyname(char *);
 #endif /* localmod 075 */
 extern pbs_queue *get_dfltque(void);
 extern pbs_queue *que_alloc(char *name);
-extern void   que_free(pbs_queue *);
+extern void que_free(pbs_queue *);
 extern pbs_queue *que_recov_db(char *);
-extern int    que_save_db(pbs_queue *, int mode);
+extern int que_save_db(pbs_queue *, int mode);
 
 #define QUE_SAVE_FULL 0
-#define QUE_SAVE_NEW  1
+#define QUE_SAVE_NEW 1
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _QUEUE_H */
+#endif /* _QUEUE_H */

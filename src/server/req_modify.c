@@ -759,7 +759,6 @@ req_modifyReservation(struct batch_request *preq)
 
 	rid = preq->rq_ind.rq_modify.rq_objname;
 	presv = find_resv(rid);
-
 	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
 		return;

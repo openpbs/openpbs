@@ -550,9 +550,11 @@ req_quejob(struct batch_request *preq)
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
 			int prot = preq->prot;
-			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
-				BATCH_REPLY_CHOICE_Queue) == 0) {
+			if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
+				if (tree_add_del(AVL_jobs, (void *)pj->ji_qs.ji_jobid, (void *)pj, TREE_OP_DEL) != 0) {
+					log_joberr(PBSE_INTERNAL, __func__, "Failed to unlink checkpointed job from avl-lookup tree", pj->ji_qs.ji_jobid);
+				}
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
@@ -571,6 +573,9 @@ req_quejob(struct batch_request *preq)
 		}
 		/* unlink job from svr_alljobs since will be place on newjobs */
 		delete_link(&pj->ji_alljobs);
+		if (tree_add_del(AVL_jobs, (void *)pj->ji_qs.ji_jobid, (void *)pj, TREE_OP_DEL) != 0) {
+			log_joberr(PBSE_INTERNAL, __func__, "Failed to unlink job from avl-lookup tree", pj->ji_qs.ji_jobid);
+		}
 	} else {
 		char *namebuf;
 		char basename[MAXPATHLEN + 1] = {0};
@@ -669,7 +674,7 @@ req_quejob(struct batch_request *preq)
 		if (index == JOB_ATR_create_resv_from_job) {
 			if (qname != NULL && *qname != '\0') {
 				resc_resv *presv;
-				presv = find_resv_by_quename(qname);
+				presv = find_resv(qname);
 
 				if (presv) {
 					job_purge(pj);
@@ -1748,21 +1753,22 @@ req_mvjobfile(struct batch_request *preq)
 void
 req_commit(struct batch_request *preq)
 {
-	job			*pj;
+	job *pj;
 #ifndef	PBS_MOM
-	int			newstate;
-	int			newsub;
-	pbs_queue	*pque;
-	int			rc;
-	pbs_db_jobscr_info_t	jobscr;
-	pbs_db_obj_info_t	obj;
-	long			time_msec;
+	int rc;
+	char *newjobmsg = NULL;
+	int newstate;
+	int newsub;
+	pbs_queue *pque;
+	pbs_db_jobscr_info_t jobscr;
+	pbs_db_obj_info_t obj;
+	long time_msec;
 #ifdef	WIN32
-	struct	_timeb		tval;
+	struct _timeb tval;
 #else
-	struct timeval		tval;
+	struct timeval tval;
 #endif
-	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 #endif
 
 	pj = locate_new_job(preq, preq->rq_ind.rq_commit);
@@ -1789,12 +1795,17 @@ req_commit(struct batch_request *preq)
 	/* move job from new job list to "all" job list, set to running state */
 
 	delete_link(&pj->ji_alljobs);
+	if (tree_add_del(AVL_jobs, (void *)pj->ji_qs.ji_jobid, (void *)pj, TREE_OP_ADD) != 0) {
+		log_joberr(PBSE_INTERNAL, __func__, "Failed link job in avl-lookup tree", pj->ji_qs.ji_jobid);
+		req_reject(PBSE_INTERNAL, 0, preq);
+		job_purge(pj);
+		return;
+	}
 	append_link(&svr_alljobs, &pj->ji_alljobs, pj);
 	/*
 	 ** Set JOB_SVFLG_HERE to indicate that this is Mother Superior.
 	 */
 	pj->ji_qs.ji_svrflags |= JOB_SVFLG_HERE;
-
 	pj->ji_qs.ji_state = JOB_STATE_RUNNING;
 	pj->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
 	pj->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
@@ -1843,9 +1854,7 @@ req_commit(struct batch_request *preq)
 	}
 
 	/* remove job for the server new job list, set state, and enqueue it */
-
 	delete_link(&pj->ji_alljobs);
-
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
 	(void)svr_setjobstate(pj, newstate, newsub);
 
@@ -1895,9 +1904,7 @@ req_commit(struct batch_request *preq)
 		pj->ji_script = NULL;
 	}
 
-	/* Now, no need to save server here because server
-	   has already saved in the get_next_svr_sequence_id() */
-
+	/* Now, no need to save server here because server has already saved in the get_next_svr_sequence_id() */
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0) {
 		job_purge(pj);
 		req_reject(PBSE_SYSTEM, 0, preq);
@@ -1909,12 +1916,10 @@ req_commit(struct batch_request *preq)
 	 * try once to route it to give immediate feedback as a courtsey
 	 * to the user.
 	 */
-
 	pque = pj->ji_qhdr;
-
-	if ((preq->rq_fromsvr == 0) &&
-		(pque->qu_qs.qu_type == QTYPE_RoutePush) &&
-		(pque->qu_attr[(int)QA_ATR_Started].at_val.at_long != 0)) {
+	if (preq->rq_fromsvr == 0 &&
+		pque->qu_qs.qu_type == QTYPE_RoutePush &&
+		pque->qu_attr[(int)QA_ATR_Started].at_val.at_long != 0) {
 		if ((rc = job_route(pj)) != 0) {
 			job_purge(pj);
 			req_reject(rc, 0, preq);
@@ -1923,29 +1928,33 @@ req_commit(struct batch_request *preq)
 	}
 
 	/* need to format message first, before request goes away */
-
-	(void)snprintf(log_buffer, sizeof(log_buffer), msg_jobnew,
-		preq->rq_user, preq->rq_host,
-		pj->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
-		pj->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str,
-		pj->ji_qhdr->qu_qs.qu_name);
-
-	/* acknowledge the request with the job id */
-	if ((rc = reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit))) {
-		(void)snprintf(log_buffer, sizeof(log_buffer),
-		                "Failed to reply with Job Id, error %d", rc);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
-						pj->ji_qs.ji_jobid, log_buffer);
+	pbs_asprintf(&newjobmsg, msg_jobnew,
+			preq->rq_user, preq->rq_host,
+			pj->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+			pj->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str,
+			pj->ji_qhdr->qu_qs.qu_name);
+	if (newjobmsg == NULL) {
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, pj->ji_qs.ji_jobid,
+				"Out of memory while creating new job message", rc);
 		job_purge(pj);
 		return;
 	}
 
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pj->ji_qs.ji_jobid, log_buffer);
+	/* acknowledge the request with the job id */
+	if ((rc = reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit))) {
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, pj->ji_qs.ji_jobid,
+				"Failed to reply with Job Id, error %d", rc);
+		free(newjobmsg);
+		job_purge(pj);
+		return;
+	}
+
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, newjobmsg);
+	free(newjobmsg);
 
 	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 		issue_track(pj);	/* notify creator where job is */
-#endif		/* PBS_SERVER */
+#endif /* PBS_SERVER */
 }
 
 /**
@@ -2212,7 +2221,6 @@ req_resvSub(struct batch_request *preq)
 	 * this capability, but will have this code here
 	 */
 	presv = find_resv(rid);
-
 	if (presv != NULL) {
 
 		/* server rejects resvSub request if already exists */
@@ -2701,7 +2709,11 @@ req_resvSub(struct batch_request *preq)
 	}
 
 	/* link reservation into server's reservation list */
-	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+	if (resv_tree_op(presv, TREE_OP_ADD) != 0) {
+		resv_purge(presv);
+		req_reject(PBSE_resvFail, 0, preq);
+		return;
+	}
 	if ((is_resv_from_job) && (confirm_resv_locally(presv, preq, partition_name))) {
 		resv_purge(presv);
 		req_reject(PBSE_resvFail, 0, preq);
@@ -3172,10 +3184,8 @@ handle_qmgr_reply_to_resvQcreate(struct work_task *pwt)
 			pque->qu_resvp = presv;
 		if ((pjob = find_job(presv->ri_wattr[RESV_ATR_job].at_val.at_str)))
 			pjob->ji_myResv = presv;
-		(void)strcpy(presv->ri_qs.ri_queue,
-			presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
-		if (job_or_resv_save((void *)presv, SAVERESV_QUICK,
-			RESC_RESV_OBJECT)) {
+		(void)strcpy(presv->ri_qs.ri_queue, presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
+		if (job_or_resv_save((void *)presv, SAVERESV_QUICK, RESC_RESV_OBJECT)) {
 			resv_purge(presv);
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;

@@ -299,7 +299,9 @@ struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
-AVL_IX_DESC *AVL_jctx = NULL;
+AVL_IX_DESC *AVL_jobs = NULL;
+AVL_IX_DESC *AVL_queues = NULL;
+AVL_IX_DESC *AVL_resvs = NULL;
 sigset_t	allsigs;
 
 int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
@@ -1788,7 +1790,6 @@ try_db_again:
 		}
 
 		/* any jobs to route today */
-
 		pque = (pbs_queue *)GET_NEXT(svr_queues);
 		while (pque) {
 			if (pque->qu_qs.qu_type == QTYPE_RoutePush)
@@ -1909,15 +1910,12 @@ try_db_again:
 	tpp_shutdown();
 
 	/*
-	 * SERVER is going to be shutdown, delete AVL tree using
-	 * avl_destroy_index() which was created in pbsd_init.c
-	 * by avl_create_index().
+	 * SERVER is going to be shutdown, delete AVL trees
+	 * which was created in pbsd_init.c
 	 */
-	if (AVL_jctx != NULL) {
-		avl_destroy_index(AVL_jctx);
-		free(AVL_jctx);
-		AVL_jctx = NULL;
-	}
+	destroy_tree(AVL_jobs);
+	destroy_tree(AVL_queues);
+	destroy_tree(AVL_resvs);
 
 	{
 		int csret;

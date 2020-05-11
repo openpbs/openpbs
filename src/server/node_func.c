@@ -765,7 +765,10 @@ effective_node_delete(struct pbsnode *pnode)
 
 	/* delete the node from the node tree as well as the node array */
 	if (node_tree != NULL) {
-		tree_add_del(node_tree, pnode->nd_name, NULL, TREE_OP_DEL);
+		if (tree_add_del(node_tree, pnode->nd_name, NULL, TREE_OP_DEL) != 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR, __func__,
+					"Failed to delete node %s from node tree", pnode->nd_name);
+		}
 	}
 
 	for (iht=pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {

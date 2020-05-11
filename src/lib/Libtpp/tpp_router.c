@@ -736,7 +736,13 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * if it is a notification leaf,
 			 * then remove from this tree also
 			 */
-			tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
+			rc = tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
+			if (rc < 0) {
+				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from notify leaves due to out of memory", tfd, tpp_netaddr(&l->leaf_addrs[0]));
+				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+				tpp_unlock(&router_lock);
+				return -1;
+			}
 		}
 
 		tpp_unlock(&router_lock);
@@ -820,14 +826,19 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 					continue;
 
 				if (l->leaf_type  == TPP_LEAF_NODE_LISTEN) {
-					tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
+					rc = tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
+					if (rc < 0) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from notify leaves due to out of memory", tfd, tpp_netaddr(&l->leaf_addrs[0]));
+						tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+						tpp_unlock(&router_lock);
+						return -1;
+					}
 				}
 
 				for (i = 0; i < l->num_addrs; i++) {
 					rc = tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], NULL, TREE_OP_DEL);
 					if (rc != 0) {
-						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s",
-									tfd, tpp_netaddr(&l->leaf_addrs[i]));
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from cluster leaves", tfd, tpp_netaddr(&l->leaf_addrs[i]));
 						tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 						tpp_unlock(&router_lock);
 
@@ -931,7 +942,13 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * ie, remove from AVL_routers tree
 			 **/
 			tpp_lock(&router_lock);
-			tree_add_del(AVL_routers, &r->router_addr, NULL, TREE_OP_DEL);
+			rc = tree_add_del(AVL_routers, &r->router_addr, NULL, TREE_OP_DEL);
+			if (rc != 0) {
+				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from registered routers", tfd, tpp_netaddr(&r->router_addr));
+				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+				tpp_unlock(&router_lock);
+				return -1;
+			}
 			tpp_unlock(&router_lock);
 
 			/*

@@ -63,9 +63,9 @@
 #include <sys/param.h>
 #include <memory.h>
 #include <stdlib.h>
-#include "pbs_ifl.h"
 #include <errno.h>
 #include <string.h>
+#include "pbs_ifl.h"
 #include "list_link.h"
 #include "log.h"
 #include "attribute.h"
@@ -78,7 +78,6 @@
 #include "sched_cmds.h"
 #include "pbs_db.h"
 #include "pbs_nodes.h"
-#include <memory.h>
 #include "pbs_sched.h"
 
 
@@ -124,6 +123,12 @@ que_alloc(char *name)
 	CLEAR_LINK(pq->qu_link);
 
 	snprintf(pq->qu_qs.qu_name, sizeof(pq->qu_qs.qu_name), "%s", name);
+	if (tree_add_del(AVL_queues, (void *)pq->qu_qs.qu_name, (void *)pq, TREE_OP_ADD) != 0) {
+		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
+				"Failed to link %s queue in avl-lookup tree", name);
+		free(pq);
+		return NULL;
+	}
 	append_link(&svr_queues, &pq->qu_link, pq);
 	server.sv_qs.sv_numque++;
 
@@ -176,6 +181,10 @@ que_free(pbs_queue *pq)
 
 	server.sv_qs.sv_numque--;
 	delete_link(&pq->qu_link);
+	if (tree_add_del(AVL_queues, (void *)pq->qu_qs.qu_name, (void *)pq, TREE_OP_DEL) != 0) {
+		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
+				"Failed to unlink %s queue in avl-lookup tree", pq->qu_qs.qu_name);
+	}
 	(void)free((char *)pq);
 }
 
@@ -280,25 +289,23 @@ que_purge(pbs_queue *pque)
 pbs_queue *
 find_queuebyname(char *quename)
 {
-	char *pc;
+	char *at;
 	pbs_queue *pque;
-	char qname[PBS_MAXDEST + 1];
 
-	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] ='\0';
-	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
-	if (pc)
-		*pc = '\0';
-	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
-		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
-		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
-			break;
-	}
-	if (pc)
-		*pc = '@';	/* restore '@' server portion */
-	return (pque);
+	if (quename == NULL || quename[0] == '\0')
+		return NULL;
+
+	at = strchr(quename, (int)'@');	/* strip off server (fragment) */
+	if (at)
+		*at = '\0';
+
+	pque = (pbs_queue *)find_tree(AVL_queues, quename);
+	if (at)
+		*at = '@'; /* restore '@' server portion */
+	return pque;
 }
 
+#ifdef NAS /* localmod 075 */
 /**
  * @brief
  * 		find_resvqueuebyname() - find a queue by the name of its reservation
@@ -330,39 +337,71 @@ find_resvqueuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
+#endif /* localmod 075 */
 
 /**
  * @brief
- * 		find_resv_by_quename() - find a reservation by the name of its queue
+ * 	resv_tree_op() - add or remove resv in AVL tree and svr_allresvs list
  *
- * @param[in]	quename	- queue name.
+ * @param[in]	presv - reservation struct
+ * @param[in]	op - TREE_OP_ADD or TREE_OP_DELETE
  *
- * @return	resc_resv *
+ * @return	int
+ * @retval	1 - Failure
+ * @retval	0 - Success
  */
-
-resc_resv *
-find_resv_by_quename(char *quename)
+int
+resv_tree_op(resc_resv *presv, int op)
 {
-	char *pc;
-	resc_resv *presv = NULL;
-	char qname[PBS_MAXQUEUENAME + 1];
+	char *dot;
+	int rc = 0;
 
-	if (quename == NULL || *quename == '\0')
+	if (presv == NULL)
+		return rc;
+
+	if ((dot = strchr(presv->ri_qs.ri_resvID, (int)'.')) != 0)
+		*dot = '\0';
+	if (op == TREE_OP_ADD) {
+		if (tree_add_del(AVL_resvs, (void *)presv->ri_qs.ri_resvID, (void *)presv, TREE_OP_ADD) != 0)
+			rc = 1;
+		else
+			append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+	} else {
+		delete_link(&presv->ri_allresvs);
+		if (tree_add_del(AVL_resvs, (void *)presv->ri_qs.ri_resvID, (void *)presv, TREE_OP_DEL) != 0)
+			rc = 1;
+	}
+	if (dot)
+		*dot = '.';
+	return rc;
+}
+
+/**
+ * @brief
+ * 	find_resv() - find reservation resc_resv struct by its ID or queue name
+ *
+ *	Search list of all server resc_resv structs for one with given
+ *	reservation id or reservation queue name
+ *
+ * @param[in]	id_or_quename - reservation ID or queue name
+ *
+ * @return	pointer to resc_resv struct
+ * @retval	NULL	- not found
+ */
+resc_resv *
+find_resv(char *id_or_quename)
+{
+	char *dot;
+	resc_resv *presv;
+
+	if (id_or_quename == NULL || id_or_quename[0] == '\0')
 		return NULL;
 
-	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
-	qname[PBS_MAXQUEUENAME] = '\0';
-	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
-	if (pc)
-		*pc = '\0';
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	while (presv != NULL) {
-		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
-			break;
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-	}
-	if (pc)
-		*pc = '@';	/* restore '@' server portion */
+	if ((dot = strchr(id_or_quename, (int)'.')) != 0)
+		*dot = '\0';	/* strip of [.server[@server_name]] */
+	presv = (resc_resv *)find_tree(AVL_resvs, (void *)id_or_quename);
+	if (dot)
+		*dot = '.'; /* restore [.server[@server_name]] */
 	return (presv);
 }
 

@@ -210,19 +210,20 @@ is_file_same(char *file1, char *file2)
  *	WARNING: valid only if called when preq points to a cpyfiles structure
  *
  * @param[in] preq - pointer to batch_request structure
+ * @param[in] pjob - pointer to job structure (can be null)
  *
  * @return 	HANDLE
- * @retval
+ * @retval	!INVALID_HANDLE_VALUE - success
+ * @retval	INVALID_HANDLE_VALUE - failure
  */
 #ifdef WIN32
 static HANDLE
-fork_to_user(struct batch_request *preq)
+fork_to_user(struct batch_request *preq, job *pjob)
 {
-	struct passwd 	*pwdp = NULL;
-	struct rq_cpyfile       *rqcpf;
-	static char     buf[MAXPATHLEN+1];
-	char		lpath[MAXPATHLEN+1];
-	job		*pjob;
+	struct passwd *pwdp = NULL;
+	struct rq_cpyfile *rqcpf;
+	static char buf[MAXPATHLEN+1];
+	char lpath[MAXPATHLEN+1];
 
 	/* Need to look up the uid, gid, and home directory */
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred ||
@@ -236,23 +237,17 @@ fork_to_user(struct batch_request *preq)
 		cred_len = 0;
 	}
 
-	pjob = find_job(rqcpf->rq_jobid);
-	if (pjob) {
-		pwdp = \
-		     getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
-	}
+	if (pjob)
+		pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
 
 	/* we're trying to reuse old pw_userlogin since a mapped UNC */
 	/* path maybe hanging off it. With pbs_mom running under     */
 	/* SERVICE_ACCOUNT, we have to map drives under user session */
 	/* Only the session that mapped the drive can unmap it.      */
-	if ( ((pwdp == NULL) || (pwdp->pw_userlogin == INVALID_HANDLE_VALUE)) \
-		&& \
-		((pwdp = logon_pw(preq->rq_ind.rq_cpyfile.rq_user, cred_buf,
-		cred_len, pbs_decrypt_pwd, 0, log_buffer)) == NULL)) {
-
+	if ((pwdp == NULL || pwdp->pw_userlogin == INVALID_HANDLE_VALUE)
+		&& (pwdp = logon_pw(preq->rq_ind.rq_cpyfile.rq_user, cred_buf, cred_len, pbs_decrypt_pwd, 0, log_buffer)) == NULL) {
 		log_err(-1, __func__, log_buffer);
-		return (INVALID_HANDLE_VALUE);
+		return INVALID_HANDLE_VALUE;
 	}
 
 	if (strlen(log_buffer) > 0)
@@ -261,25 +256,22 @@ fork_to_user(struct batch_request *preq)
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(pwdp->pw_userlogin)) {
 			log_err(-1, "fork_to_user2", "ImpersonateLoggedOnUser");
-			return (INVALID_HANDLE_VALUE);
+			return INVALID_HANDLE_VALUE;
 		}
 	} else
-		return (INVALID_HANDLE_VALUE);
+		return INVALID_HANDLE_VALUE;
 
-	strncpy(lpath, save_actual_homedir(pwdp, pjob),
-		MAXPATHLEN+1);
-
+	strncpy(lpath, save_actual_homedir(pwdp, pjob), MAXPATHLEN + 1);
 	CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 	if (chdir(lpath) == -1) {
-		strcpy(lpath, set_homedir_to_local_default(pjob,
-			preq->rq_ind.rq_cpyfile.rq_user));
+		strcpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user));
 		CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 		(void)chdir(lpath);
 	}
 
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
-	return (pwdp->pw_userlogin);
+	return pwdp->pw_userlogin;
 }
 
 #else
@@ -312,26 +304,32 @@ frk_err(int err, struct batch_request *preq)
  *
  *	WARNING: valid only if called when preq points to a cpyfiles structure
  *		 or a a cpyfiles_cred structure
+ *
+ * @param[in] preq - pointer to batch_request structure
+ * @param[in] pjob - pointer to job structure (can be null)
+ *
+ * @return	pid_t
+ * @retval	>0 - success
+ * @retval	<0 - failure
  */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 static pid_t
-fork_to_user(struct batch_request *preq, struct krb_holder *ticket)
+fork_to_user(struct batch_request *preq, job *pjob, struct krb_holder *ticket)
 #else
 static pid_t
-fork_to_user(struct batch_request *preq)
+fork_to_user(struct batch_request *preq, job *pjob)
 #endif
 {
-	struct group   *grpp;
-	pid_t		pid;
-	job	       *pjob;
+	struct group *grpp;
+	pid_t pid;
 	struct passwd  *pwdp;
-	uid_t		useruid;
-	gid_t		usergid;
-	gid_t		user_rgid;
-	int		fds[2];
-	struct rq_cpyfile	*rqcpf;
-	static char	buf[MAXPATHLEN+1];
+	uid_t useruid;
+	gid_t usergid;
+	gid_t user_rgid;
+	int fds[2];
+	struct rq_cpyfile *rqcpf;
+	static char buf[MAXPATHLEN + 1];
 
 	pid = fork_me(preq->rq_conn);
 	if (pid > 0) {
@@ -352,22 +350,15 @@ fork_to_user(struct batch_request *preq)
 	/* create a PBS_EXEC env entry */
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
-	if (((pjob = find_job(rqcpf->rq_jobid)) != NULL) &&
-		(pjob->ji_grpcache != NULL)) {
-
+	if (pjob != NULL && pjob->ji_grpcache != NULL) {
 		/* used the good stuff cached in the job structure */
-
 		useruid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
 		usergid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
 		(void)chdir(pjob->ji_grpcache->gc_homedir);
 		user_rgid = pjob->ji_grpcache->gc_rgid;
-
 		/* Account ID used to be set her for Cray via acctid(). */
-
 	} else {
-
 		/* Need to look up the uid, gid, and home directory */
-
 		if ((pwdp = getpwnam(rqcpf->rq_user)) ==
 			NULL) {
 			frk_err(PBSE_BADUSER, preq); /* no return */
@@ -376,10 +367,9 @@ fork_to_user(struct batch_request *preq)
 		user_rgid = pwdp->pw_gid;
 
 		if (rqcpf->rq_group[0] == '\0') {
-			usergid = pwdp->pw_gid;	/* default to login group */
+			usergid = pwdp->pw_gid; /* default to login group */
 		} else {
-			if ((grpp = getgrnam(rqcpf->rq_group)) ==
-				NULL) {
+			if ((grpp = getgrnam(rqcpf->rq_group)) == NULL) {
 				frk_err(PBSE_BADUSER, preq); /* no return */
 			}
 			usergid = grpp->gr_gid;
@@ -448,7 +438,7 @@ fork_to_user(struct batch_request *preq)
 		}
 	}
 
-	return (pid);
+	return pid;
 }
 #endif	/* WIN32 */
 
@@ -2214,29 +2204,25 @@ delete_file(char *path, char *user, char *prmt, char **bad_list)
 /**
  * @brief
  *	delete the files in a copy files or delete files request
- *      WARNING WARNING WARNING WARNING WARNING WARNING WARNING
+ *	WARNING: fork_to_user() must be called first so that useruid/gid is set up
  *
- *      fork_to_user() must be called first so that useruid/gid is set up
- *
- * @param[in] preq	pointer to batch request structure
- * @param[out] pbadfile	pointer to bad file list
+ * @param[in] rqcpf - pointer to file list structure from request
+ * @param[in] pjob - pointer to job structure (can be null)
+ * @param[out] pbadfile - pointer to bad file list
  *
  * @return int
  * @retval 0 - success
  * @retval errno - failure.
  *
  */
-
 static int
-del_files(struct batch_request *preq, char **pbadfile)
+del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 {
 	struct rqfpair *pair = NULL;
 	int rc = 0;
 	int ret = 0;
 	char path[MAXPATHLEN+1] = {'\0'};
 	struct stat sb = {0};
-	struct rq_cpyfile *rqcpf = NULL;
-	job *pjob = NULL;
 	char dname[MAXPATHLEN+1] = {'\0'};
 	char matched[MAXPATHLEN+1] = {'\0'};
 	char rmt_file[MAXPATHLEN+1] = {'\0'};
@@ -2258,37 +2244,24 @@ del_files(struct batch_request *preq, char **pbadfile)
 	 * This is changed from the past.  We no longer delete
 	 * checkpoint files here.
 	 */
-
-	if (preq->rq_type == PBS_BATCH_DelFiles_Cred)
-		rqcpf = &preq->rq_ind.rq_cpyfile_cred.rq_copyfile;
-	else
-		rqcpf = &preq->rq_ind.rq_cpyfile;
-
 	sandbox_private = (rqcpf->rq_dir & STAGE_JOBDIR)? TRUE : FALSE;
 	/*
-	 * When sandbox=private, get info about the job so we'll know the job directory
-	 * chdir to that job directory
+	 * When sandbox=private, chdir to job directory
 	 */
 	if (sandbox_private) {
-		pjob = find_job(rqcpf->rq_jobid);
-		if (pjob) {
-			if (pjob->ji_grpcache)
-				pbs_jobdir = jobdirname(rqcpf->rq_jobid, pjob->ji_grpcache->gc_homedir);
-			else
-				pbs_jobdir = jobdirname(rqcpf->rq_jobid, NULL);
-		} else {
-			(void)sprintf(log_buffer, "%s: no job information", rqcpf->rq_jobid);
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__, log_buffer);
-			rc = -1;
-			return (rc);
+		if (!pjob) {
+			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__, "%s: no job information", rqcpf->rq_jobid);
+			return -1;
 		}
+		if (pjob->ji_grpcache)
+			pbs_jobdir = jobdirname(rqcpf->rq_jobid, pjob->ji_grpcache->gc_homedir);
+		else
+			pbs_jobdir = jobdirname(rqcpf->rq_jobid, NULL);
 		chdir(pbs_jobdir);
 	}
 
-	for (pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
-		pair;
-		pair = (struct rqfpair *)GET_NEXT(pair->fp_link)) {
-
+	pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
+	for (; pair; pair = (struct rqfpair *)GET_NEXT(pair->fp_link)) {
 		replace(pair->fp_rmt, "\\,", ",", rmt_file);
 		if (*rmt_file != '\0')
 			strcpy(prmt, rmt_file);
@@ -2336,32 +2309,23 @@ del_files(struct batch_request *preq, char **pbadfile)
 				(void)strcat(path, "/");
 				pp = strrchr(prmt, '/');
 
-				if ((pp)  && (*(pp+1) == '\0')) {
+				if (pp && *(pp + 1) == '\0') {
 					/* reduce /dir/dir/  case to /dir/dir */
 					*pp = '\0';
 					pp = strrchr(prmt, '/');
 				}
-				if (pp) {
+				if (pp)
 					++pp;
-
-				} else if ((pp = strrchr(prmt, ':')) != NULL) {
+				else if ((pp = strrchr(prmt, ':')) != NULL)
 					++pp;
-				} else {
+				else
 					pp = prmt;
-				}
-
 				(void)strcat(path, pp);
-
-
 				DBPRT(("%s: append segment to path %s\n", __func__, path))
 			}
 		} else {
-			if (errno != ENOENT) {
-				(void)sprintf(log_buffer, "cannot stat(%s): %s",
-					path, strerror(errno));
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_REQUEST,
-					LOG_INFO, __func__, log_buffer);
-			}
+			if (errno != ENOENT)
+				log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_REQUEST, LOG_INFO, __func__, "cannot stat(%s): %s", path, strerror(errno));
 		}
 
 		/*
@@ -2376,15 +2340,15 @@ del_files(struct batch_request *preq, char **pbadfile)
 		ps = strrchr(path, (int)'/');
 		if (ps) {
 			/* has prefix path, save parent directory name */
-			int	len = (int)(ps - path) + 1;
+			int len = (int)(ps - path) + 1;
 
 			strncpy(dname, path, len);
 			dname[len] = '\0';
 			ps++;
 		} else {	/* no prefix path */
 			/*
-			 ** If the wildcard "*" is given to delete every file
-			 ** in the homedir, don't do it.
+			 * If the wildcard "*" is given to delete every file
+			 * in the homedir, don't do it.
 			 */
 			if (strcmp(path, "*") == 0) {
 				DBPRT(("%s: wildcard delete of all files skipped\n", __func__))
@@ -2397,7 +2361,7 @@ del_files(struct batch_request *preq, char **pbadfile)
 		}
 
 		/* if there are no wildcards we don't need to search */
-		if ((strchr(ps, '*') == NULL) && (strchr(ps, '?') == NULL)) {
+		if (strchr(ps, '*') == NULL && strchr(ps, '?') == NULL) {
 			DBPRT(("%s: path has no wildcards\n", __func__))
 			rc = delete_file(path, rqcpf->rq_user, prmt, pbadfile);
 			if (rc != 0)
@@ -2416,13 +2380,11 @@ del_files(struct batch_request *preq, char **pbadfile)
 
 		while (errno = 0, (pdirent = readdir(dirp)) != NULL) {
 			if (pdirent->d_name[0] == '.') {
-				if ((pdirent->d_name[1] == '\0') ||
-					((pdirent->d_name[1] == '.') && (pdirent->d_name[2] == '\0')))
+				if (pdirent->d_name[1] == '\0' || (pdirent->d_name[1] == '.' && pdirent->d_name[2] == '\0'))
 					continue;
 			}
 			if (pbs_glob(pdirent->d_name, ps) != 0) {
 				/* name matches */
-
 				strcpy(matched, dname);
 				strcat(matched, pdirent->d_name);
 				DBPRT(("%s: match %s\n", __func__, matched))
@@ -2431,13 +2393,12 @@ del_files(struct batch_request *preq, char **pbadfile)
 					ret = rc;
 			}
 		}
-		if (errno != 0 && errno != ENOENT) {     /* dir cannot be read, just call delete_file */
+		if (errno != 0 && errno != ENOENT) { /* dir cannot be read, just call delete_file */
 			DBPRT(("%s: cannot read dir %s\n", __func__, dname))
 			rc = delete_file(path, rqcpf->rq_user, prmt, pbadfile);
 			if (rc != 0)
 				ret = rc;
 		}
-
 		(void)closedir(dirp);
 	}
 	return (ret);
@@ -2606,21 +2567,16 @@ post_cpyfile(struct work_task *pwt)
 		return;
 
 	cpyinfo = pwt->wt_parm1;
-	if (cpyinfo->preq == NULL)
+	if (cpyinfo->preq == NULL || cpyinfo->jobid == NULL)
 		return;
 	preq = cpyinfo->preq;
 	pio = &cpyinfo->pio;
-	if (cpyinfo->jobid == NULL)
-		return;
 	jobid = cpyinfo->jobid;
-
-	(void)snprintf(log_buffer, sizeof(log_buffer), "%s: entered %s", __func__, jobid);
-	DBPRT(("%s\n", log_buffer))
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
-
-	pjob = find_job(jobid);
-
+	pjob = cpyinfo->pjob;
 	ecode = pwt->wt_aux;
+
+	DBPRT(("%s: entered %s", __func__, jobid))
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: entered %s", __func__, jobid);
 
 	switch(ecode) {
 		case STAGEFILE_OK:
@@ -2677,9 +2633,8 @@ post_cpyfile(struct work_task *pwt)
 	}
 
 	win_pclose2(pio);
-	(void)snprintf(log_buffer, sizeof(log_buffer), "%s: done %s", __func__, jobid);
-	DBPRT(("%s\n", log_buffer))
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
+	DBPRT(("%s: done %s", __func__, jobid))
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: done %s", __func__, jobid);
 
 	delete_link(&cpyinfo->al_link);
 	free(cpyinfo->jobid);
@@ -2793,7 +2748,7 @@ req_cpyfile(struct batch_request *preq)
 	 * map_unc_path() therefore we will fork_to_user before
 	 * calling getpwnam()
 	 */
-	if (fork_to_user(preq) == INVALID_HANDLE_VALUE) {
+	if (fork_to_user(preq, pjob) == INVALID_HANDLE_VALUE) {
 		req_reject(PBSE_BADUSER, 0, preq);
 		return;
 	}
@@ -2872,7 +2827,7 @@ req_cpyfile(struct batch_request *preq)
 		req_reject(PBSE_MOMREJECT, 0, preq);
 		return;
 	}
-
+	cpyinfo->pjob = pjob;
 	cpyinfo->preq = preq;
 	proc_info.bInheritHandle = TRUE;
 	proc_info.bnowait = 0;
@@ -3037,7 +2992,7 @@ req_delfile(struct batch_request *preq)
 		}
 	}
 
-	hUser = fork_to_user(preq) ;
+	hUser = fork_to_user(preq, pjob) ;
 	if (hUser == INVALID_HANDLE_VALUE) {
 		req_reject(PBSE_BADUSER, 0, preq);
 		return;
@@ -3045,7 +3000,7 @@ req_delfile(struct batch_request *preq)
 
 	/* Child process ... delete the files */
 
-	if ((rc = del_files(preq, &bad_list)) != 0) {
+	if ((rc = del_files(rqcpf, pjob, &bad_list)) != 0) {
 		reply_text(preq, rc, bad_list);
 		if (bad_list != NULL) {
 			free(bad_list);
@@ -3261,16 +3216,15 @@ req_cpyfile(struct batch_request *preq)
 	/* Become the user */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	ticket = alloc_ticket();
-	pid = fork_to_user(preq, ticket);
+	pid = fork_to_user(preq, pjob, ticket);
 #else
-	pid = fork_to_user(preq);
+	pid = fork_to_user(preq, pjob);
 #endif
-	rc  = (int)pid;
+	rc = (int)pid;
 	if (pid > 0) {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 		free_ticket(ticket, CRED_CLOSE);
 #endif
-
 		if (pjob) {
 			/* change substate so Mom doesn't send another obit     */
 			/* do not record to disk, so Obit is resent on recovery */
@@ -3475,16 +3429,15 @@ post_delfile(job *pjob, int ev)
  */
 
 void
-req_delfile(preq)
-struct batch_request *preq;
+req_delfile(struct batch_request *preq)
 {
-	int		rc;
-	pid_t	 	pid;
-	job		*pjob;
-	char		*bad_list = NULL;
+	int rc;
+	pid_t pid;
+	job *pjob;
+	char *bad_list = NULL;
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	struct krb_holder *ticket = NULL;
-	char		*krbccname = NULL;
+	char *krbccname = NULL;
 #endif
 
 	pjob = find_job(preq->rq_ind.rq_cpyfile.rq_jobid);
@@ -3511,9 +3464,9 @@ struct batch_request *preq;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	ticket = alloc_ticket();
-	if ((pid = fork_to_user(preq, ticket)) > 0)
+	if ((pid = fork_to_user(preq, pjob, ticket)) > 0)
 #else
-	if ((pid = fork_to_user(preq)) > 0)
+	if ((pid = fork_to_user(preq, pjob)) > 0)
 #endif
 	{
 		/* parent */
@@ -3523,7 +3476,7 @@ struct batch_request *preq;
 			pjob->ji_sampletim = time(0);
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
 		}
-		return;		/* parent - continue with someother task */
+		return; /* parent - continue with someother task */
 	} else if (pid < 0) {
 		req_reject(-(int)pid, 0, preq);
 		return;
@@ -3536,8 +3489,7 @@ struct batch_request *preq;
 #endif
 
 	/* Child process ... delete the files */
-
-	rc = del_files(preq, &bad_list);
+	rc = del_files(&(preq->rq_ind.rq_cpyfile), pjob, &bad_list);
 
 	if (rc != 0) {
 		if (preq->prot == PROT_TCP) {
@@ -3546,22 +3498,13 @@ struct batch_request *preq;
 			char *token = NULL;
 			char *rest = bad_list;
 			char *save_ptr = NULL;
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				preq->rq_ind.rq_cpyfile.rq_jobid, "Job files not deleted:---->>>>");
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, preq->rq_ind.rq_cpyfile.rq_jobid, "Job files not deleted:---->>>>");
 			token = strtok_r(rest, "\n", &save_ptr);
 			while (token != NULL) {
-				char *temp_buff = NULL;
-				if ((pbs_asprintf(&temp_buff, "%s\n", token)) != -1) {
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-						preq->rq_ind.rq_cpyfile.rq_jobid, temp_buff);
-					free(temp_buff);
-					temp_buff = NULL;
-				} else
-					break;
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, preq->rq_ind.rq_cpyfile.rq_jobid, "%s\n", token);
 				token = strtok_r(NULL, "\n", &save_ptr);
 			}
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, preq->rq_ind.rq_cpyfile.rq_jobid, "---->>>>");
 		}
 	} else {
 		if (preq->prot == PROT_TCP)
@@ -3569,10 +3512,9 @@ struct batch_request *preq;
 	}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-        free_ticket(ticket, CRED_DESTROY);
+	free_ticket(ticket, CRED_DESTROY);
 #endif
-
-	exit(0);	/* remember, we are the child, exit not return */
+	exit(0); /* remember, we are the child, exit not return */
 }
 #endif	/* WIN32/UNIX ------------------------------------------------------- */
 

@@ -336,6 +336,8 @@ typedef struct kp kp;
 pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
 
+AVL_IX_DESC *AVL_jobs = NULL;
+
 unsigned long	hook_action_id = 0;
 
 pbs_list_head	svr_allhooks;
@@ -1048,8 +1050,9 @@ die(int sig)
 			"abnormal termination");
 
 	cleanup();
-	log_close(1);
+	destroy_tree(AVL_jobs);
 	unload_auths();
+	log_close(1);
 #ifdef	WIN32
 	ExitThread(1);
 #else
@@ -9069,7 +9072,10 @@ main(int argc, char *argv[])
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */
-
+	if ((AVL_jobs = create_tree(AVL_NO_DUP_KEYS, 0)) == NULL) {
+		log_err(-1, __func__, "Creating AVL tree for job-lookup failed!");
+		return (-1);
+	}
 
 	CLEAR_HEAD(svr_newjobs);
 	CLEAR_HEAD(svr_alljobs);
@@ -10041,7 +10047,8 @@ main(int argc, char *argv[])
 #ifdef PMIX
 	PMIx_server_finalize();
 #endif
-
+	destroy_tree(AVL_jobs);
+	unload_auths();
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
 	log_close(1);
@@ -10057,7 +10064,6 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_Finalize();
 #endif
-	unload_auths();
 	return (0);
 }
 
