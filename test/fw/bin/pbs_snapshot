@@ -154,8 +154,7 @@ def remotesnap_thread(logger, host):
 
     # Copy over the snapshot tar file as <hostname>_snapshot.tgz
     dest_path = os.path.join(out_dir, host + "_snapshot.tgz")
-    src_path = host + ":" + snaptarname
-    ret = du.run_copy(src=src_path, dest=dest_path)
+    ret = du.run_copy(srchost=host, src=snaptarname, dest=dest_path)
     if ret['rc'] != 0:
         logger.error("Error copying child snapshot from host %s" % (host))
 
@@ -163,8 +162,7 @@ def remotesnap_thread(logger, host):
     if map_file is not None:
         dest_path = os.path.join(out_dir, host + "_" + map_file)
         src_path = os.path.join(snap_home, map_file)
-        src_path = host + ":" + src_path
-        ret = du.run_copy(src=src_path, dest=dest_path)
+        ret = du.run_copy(srchost=host, src=src_path, dest=dest_path)
         if ret['rc'] != 0:
             logger.error("Error copying map file from host %s" % (host))
 
