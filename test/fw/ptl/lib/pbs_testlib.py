@@ -14040,6 +14040,9 @@ class MoM(PBSService):
                  'input-file': path}
             self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                 'pbs_cgroups')
+#            self.log_match('pbs_cgroups.CF;copy hook-related '
+#                           'file request received',
+#                           starttime=self.server.ctime)
             try:
                 statm = self.status(NODE, id=self.shortname)
             except:
@@ -14433,39 +14436,15 @@ class Job(ResourceResv):
         """
         if self.du is None:
             self.du = DshUtils()
-        shebang_line = '#!' + self.du.which(hostname, exe='python3')
-        body = """
-import signal
-import sys
-
-x = 0
-
-
-def receive_alarm(signum, stack):
-    sys.exit()
-
-signal.signal(signal.SIGALRM, receive_alarm)
-
-if (len(sys.argv) > 1):
-    input_time = sys.argv[1]
-    print('Terminating after %s seconds' % input_time)
-    signal.alarm(int(input_time))
-else:
-    print('Running indefinitely')
-
-while True:
-    x += 1
-"""
-        script_body = shebang_line + body
-        script_path = self.du.create_temp_file(hostname=hostname,
-                                               body=script_body,
-                                               suffix='.py')
+        script_dir = os.path.dirname(os.path.dirname(__file__))
+        script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
         if not self.du.is_localhost(hostname):
             d = pwd.getpwnam(self.username).pw_dir
             ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
                 raise AssertionError("Failed to copy file %s to %s"
                                      % (script_path, hostname))
+            script_path = os.path.join(d, "eatcpu.py")
         pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')

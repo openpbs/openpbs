@@ -1462,6 +1462,11 @@ class PBSTestSuite(unittest.TestCase):
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
             if mom.is_cpuset_mom():
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # In order to avoid intermingling CF/HK/PY file copies from the
+                # create node and those caused by the following call, wait
+                # until the dialogue between MoM and the server is complete
+                time.sleep(4)
                 mom.enable_cgroup_cset()
                 # Make sure that the MoM will generate per-NUMA node vnodes
                 # when the natural node is created below
@@ -1473,7 +1478,8 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        if not mom.is_cpuset_mom():
+            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
         if mom.is_cpuset_mom():
             # Checking whether the CF file was copied really belongs in code
