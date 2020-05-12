@@ -1470,8 +1470,8 @@ class PBSTestSuite(unittest.TestCase):
                 just_before_enable_cgroup_cset = time.time()
                 mom.enable_cgroup_cset()
                 mom.log_match('pbs_cgroups.CF;copy hook-related '
-                          'file request received',
-                          starttime=just_before_enable_cgroup_cset)
+                              'file request received',
+                              starttime=just_before_enable_cgroup_cset)
                 # Make sure that the MoM will generate per-NUMA node vnodes
                 # when the natural node is created below
                 # HUP may not be enough if exechost_startup is delayed
