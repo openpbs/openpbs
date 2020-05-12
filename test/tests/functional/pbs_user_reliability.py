@@ -44,6 +44,7 @@ class Test_user_reliability(TestFunctional):
     """
     This test suite is for testing the user reliability workflow feature.
     """
+
     def test_create_resv_from_job_using_runjob_hook(self):
         """
         This test is for creating a reservation out of a job using runjob hook.
@@ -111,7 +112,7 @@ j.create_resv_from_job=1
 
         now = time.time()
 
-        a = {ATTR_W: 'create_resv_from_job=1'}
+        a = {ATTR_W: 'create_resv_from_job=True'}
         job = Job(TEST_USER, a)
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid)
@@ -137,6 +138,12 @@ j.create_resv_from_job=1
 
         self.assertEqual(s_ncpus_before, s_ncpus_after)
         self.assertEqual(s_nodect_before, s_nodect_after)
+
+        a = {ATTR_W: 'create_resv_from_job=False'}
+        job = Job(TEST_USER, a)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid)
+        self.assertFalse(self.server.status(RESV))
 
     def test_create_resv_from_job_using_rsub(self):
         """

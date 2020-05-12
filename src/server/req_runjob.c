@@ -1000,7 +1000,8 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	if (rc != 0)
 		return rc;
 
-	if (pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_flags & ATR_VFLAG_SET)
+	if (pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_flags & ATR_VFLAG_SET && 
+	    pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_val.at_long)
 		convert_job_to_resv(pjob);
 
 	/* Move job_kill_delay attribute from Server to MOM */
