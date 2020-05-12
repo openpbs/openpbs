@@ -1488,11 +1488,10 @@ class PBSTestSuite(unittest.TestCase):
         if mom.is_cpuset_mom():
             # Checking whether the CF file was copied really belongs in code
             # that changes the config file -- i.e. after enable_cgroup_cset
-            # calleed above. We're not sure it is always called here,
+            # called above. We're not sure it is always called here,
             # since that call is in an if
             time.sleep(2)
-            # No need to HUP. We created the node after restarting the MoM
-            # earlier if necessary
+            mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
