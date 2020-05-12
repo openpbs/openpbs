@@ -511,6 +511,8 @@ class PBSTestSuite(unittest.TestCase):
             self.revert_schedulers()
             self.revert_moms()
         self.revert_comms()
+        a = {'pbs_license_min': len(self.moms)}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         self.log_end_setup()
         self.measurements = []
 

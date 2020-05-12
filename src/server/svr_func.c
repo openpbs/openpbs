@@ -1032,12 +1032,14 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		if (pbs_licensing_license_location == NULL) {
 			log_err(errno, __func__, "warning: strdup failed!");
 		}
-
 		if (pbs_licensing_license_location &&
 			(pbs_licensing_license_location[0] != '\0')) {
-			init_licensing();
-			if (license_sanity_check())
-				license_more_nodes();
+			int delay;
+			if (actmode == ATR_ACTION_ALTER)
+				delay = 5;
+			else
+				delay = 0;
+			init_licensing(delay);
 		}
 	}
 
