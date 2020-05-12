@@ -157,8 +157,10 @@ add_bad_list(char **pbl, char *newtext, int nl)
 		if (pnew)
 			*pnew = '\0';
 	}
-	if (pnew == NULL)
+	if (pnew == NULL) {
+		log_err(-1, __func__, "Failed to allocate memory");
 		return;
+	}
 
 	*pbl = pnew;
 	while (nl--)				/* prefix new-lines */
@@ -205,6 +207,7 @@ is_child_path(char *dir, char *path)
 #endif
 
 	if (dir_real == NULL || fullpath_real == NULL) {
+		log_err(-1, __func__, "Failed to allocate memory");
 		return_value = -1;
 		goto error_exit;
 	}
@@ -571,6 +574,7 @@ remtree(char *dirname)
 		replace(dirname, "\\ ", " ", unipath);
 		forward2back_slash(unipath);
 	} else {
+		log_err(-1, __func__, "Failed to remove a tree (or a single file)");
 		return -1;
 	}
 
@@ -875,10 +879,12 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 	else {		/* failure */
 
 		FILE *fp = NULL;
-
+		DWORD ecode = GetLastError();
 		DBPRT(("%s: sys_copy failed, error = %d\n", __func__, ret))
+		snprintf(log_buffer, sizeof(log_buffer), "sys_copy failed with status=%d, error=%d", ret, ecode);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, pair->fp_local, log_buffer);
 		stage_inout->bad_files = 1;
-		sprintf(log_buffer, "Unable to copy file %s %s %s",
+		snprintf(log_buffer, sizeof(log_buffer), "Unable to copy file %s %s %s",
 			(dir == STAGE_DIR_IN) ? dest : src,
 			(dir == STAGE_DIR_IN) ? "from" : "to",
 			(dir == STAGE_DIR_IN) ? src : pair->fp_rmt);
@@ -1053,8 +1059,11 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		DBPRT(("%s: simple copy, remote/stagein\n", __func__))
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
-		if (rc != 0)
+		if (rc != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "remote stagein failed for %s directory, owner=%s, src=%s ", dname, owner, source);
+			log_err(-1, __func__, log_buffer);
 			goto error;
+		}
 		return 0;
 	}
 
@@ -1063,8 +1072,12 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		DBPRT(("%s: simple copy, no wildcards\n", __func__))
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
-		if (rc != 0)
+		if (rc != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed for %s directory owner=%s, src=%s",
+					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
+			log_err(-1, __func__, log_buffer);
 			goto error;
+		}
 		return 0;
 	}
 
@@ -1073,8 +1086,12 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		DBPRT(("%s: cannot open dir %s\n", __func__, dname))
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
-		if (rc != 0)
+		if (rc != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed, cannot open %s directory owner=%s, src=%s",
+					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
+			log_err(-1, __func__, log_buffer);
 			goto error;
+		}
 		return 0;
 	}
 
@@ -1113,6 +1130,9 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			rc = copy_file(dir, rmtflag, owner, matched,
 				pair, conn, stage_inout, prmt);
 			if (rc != 0) {
+				snprintf(log_buffer, sizeof(log_buffer), "pattern matched: %s stage%s failed for %s directory owner=%s, src=%s",
+						 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
+				log_err(-1, __func__, log_buffer);
 				(void)closedir(dirp);
 				goto error;
 			}
@@ -1123,8 +1143,12 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
 		(void)closedir(dirp);
-		if (rc != 0)
+		if (rc != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed, cannot read %s directory owner=%s, src=%s",
+					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
+			log_err(-1, __func__, log_buffer);
 			goto error;
+		}
 		return 0;
 	}
 
@@ -1467,6 +1491,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 	if ((pw = getpwnam(owner)) == NULL) {
 		rc = PBSE_BADUSER;
+		snprintf(log_buffer, sizeof(log_buffer), "Failed to get user %s password", owner);
+		log_err(-1, __func__, log_buffer);
 		goto sys_copy_end;
 	}
 #endif
@@ -1759,7 +1785,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				ag1 = "-E -r";
 
 				if (CreatePipe(&readp, &writep, &sa, 0) == 0) {
-					log_err(-1, "sys_copy", "Unable to create pipe");
+					log_err(-1, __func__, "Unable to create pipe");
 					rc = 22;
 					goto sys_copy_end;
 				}
@@ -1767,19 +1793,17 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				WriteFile(writep, &cred_len, clen, &wrote, NULL);
 
 				if (wrote != clen) {
-					sprintf(log_buffer,
-						"sending cred_len: wrote %d should be %d",
-						wrote, clen);
-					log_err(-1, "sys_copy", log_buffer);
+					snprintf(log_buffer, sizeof(log_buffer), "sending cred_len: wrote %d should be %d", wrote, clen);
+					log_err(-1, __func__, log_buffer);
 					rc = 22;
 					goto sys_copy_end;
 				}
 				WriteFile(writep, cred_buf, cred_len, &wrote, NULL);
 				if (wrote != cred_len) {
-					sprintf(log_buffer,
+					snprintf(log_buffer, sizeof(log_buffer),
 						"sending cred_buf: wrote %d should be %d",
 						wrote, clen);
-					log_err(-1, "sys_copy", log_buffer);
+					log_err(-1, __func__, log_buffer);
 					rc = 22;
 					goto sys_copy_end;
 
@@ -1884,6 +1908,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 							ag0, ag1, ag2_path, ag3_path);
 					}
 				} else {
+					log_err(-1, __func__, "Failed to get UNC path");
 					rc = errno;
 					goto sys_copy_end;
 				}
@@ -1974,8 +1999,11 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					NULL, wdir, &si, &pi);
 			}
 
-			if (rc == 0)
+			if (rc == 0) {
 				errno = GetLastError();
+				snprintf(log_buffer, sizeof(log_buffer), "create process failed with status=%d, error=%d", rc, errno);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+			}
 
 			close(fd);
 			fd = -1; /* already done the close */
@@ -2000,6 +2028,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 							(original == sb.st_mtime))
 							rc = 13;
 					}
+					snprintf(log_buffer, sizeof(log_buffer), "status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 					goto sys_copy_end;
 				}
 			}
