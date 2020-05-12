@@ -240,6 +240,10 @@ class TestCgroupsHook(TestFunctional):
         self.server.manager(MGR_CMD_DELETE, NODE, None, "")
         for host in self.hosts_list:
             self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+ 
+        # Make sure that by the time we tinker with the hooks, 
+        # MoM is already talking to the server
+        time.sleep(4)
 
         self.serverA = self.servers.values()[0].name
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
@@ -2932,7 +2936,7 @@ if %s e.job.in_ms_mom():
                                     " exechost_startup event",
                                     starttime=now)
         # check where cpath is once more
-        # since we loaded a new cgrou config file
+        # since we loaded a new cgroup config file
         cpath = None
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
