@@ -1550,6 +1550,7 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_e=True, whichMessage=3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
 
+    @skipOnCpuSet
     def test_adv_resv_duration_before_start(self):
         """
         Test duration of reservation can be changed. In this case end
@@ -1586,6 +1587,7 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, temp_start)
         self.assertEqual(t_duration, new_duration2)
 
+    @skipOnCpuSet
     def test_adv_resv_dur_and_endtime_before_start(self):
         """
         Test that duration and end time of reservation can be changed together.
@@ -1622,6 +1624,7 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, t_end - t_duration)
         self.assertEqual(t_duration, new_duration2)
 
+    @skipOnCpuSet
     def test_adv_resv_dur_and_starttime_before_start(self):
         """
         Test duration and starttime of reservation can be changed together.
