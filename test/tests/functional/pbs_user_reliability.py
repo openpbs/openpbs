@@ -55,7 +55,7 @@ class Test_user_reliability(TestFunctional):
 import pbs
 e = pbs.event()
 j = e.job
-j.create_resv_from_job=1
+j.create_resv_from_job=True
 """
         hook_event = "runjob"
         hook_name = "rsub"
