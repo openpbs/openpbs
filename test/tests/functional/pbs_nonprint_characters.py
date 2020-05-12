@@ -113,7 +113,7 @@ sleep 5
         self.pbsnodes_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                          'bin', 'pbsnodes')
 
-    def create_and_submit_job(self, user=None, attribs=None, content=None,
+    def create_and_submit_job(self, attribs=None, content=None,
                               content_interactive=None, preserve_env=False,
                               set_env={}):
         """
@@ -125,7 +125,7 @@ sleep 5
             use_attribs = {}
         else:
             use_attribs = attribs
-        retjob = Job(username=user, attrs=use_attribs)
+        retjob = Job(username=PBSROOT_USER, attrs=use_attribs)
 
         if content is not None:
             retjob.create_script(body=content)
@@ -173,7 +173,7 @@ sleep 5
         qsub -v "var1='A,B,<non-printable character>,C,D'"
         and check that the value with the character is passed correctly
         """
-        uhost = PbsUser.get_user(TEST_USER).host
+        uhost = PbsUser.get_user(PBSROOT_USER).host
         for ch in self.npcat:
             self.logger.info('##### non-printable char: %s #####' % repr(ch))
             if ch in self.npch_exclude:
@@ -254,7 +254,7 @@ sleep 5
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None}
-            j = Job(TEST_USER, attrs=a)
+            j = Job(PBSROOT_USER, attrs=a)
             j.create_script(body=script)
             xval = "X%sY" % ch
             env_to_set = {"NONPRINT_VAR": xval}
@@ -278,7 +278,7 @@ sleep 5
         test exporting the character in environment variable
         when -V is in the server's default_qsub_arguments.
         """
-        user = PbsUser.get_user(TEST_USER)
+        user = PbsUser.get_user(PBSROOT_USER)
         host = user.host
         for ch in self.npcat:
             self.logger.info('##### non-printable char: %s #####' % repr(ch))
@@ -294,7 +294,7 @@ sleep 5
                                 {'default_qsub_arguments': '-V'})
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
-            j = Job(TEST_USER)
+            j = Job(PBSROOT_USER)
             j.create_script(body=script)
             xval = "X%sY" % ch
             env_to_set = {"NONPRINT_VAR": xval}
@@ -401,7 +401,7 @@ sleep 5
         job_script = ['sleep 5']
         job_script += ['env | grep VAR_IN_TERM']
         a = {self.ATTR_V: None}
-        j = Job(TEST_USER, attrs=a)
+        j = Job(PBSROOT_USER, attrs=a)
         file_n = j.create_script(body=job_script)
         env_vals = {"VAR_IN_TERM": exp}
         jid = self.server.submit(j, env=env_vals)
@@ -428,7 +428,7 @@ sleep 5
         script = ['sleep 5']
         script += ['env | grep VAR_IN_TERM']
         env_to_set = {"VAR_IN_TERM": exp}
-        j = Job(TEST_USER)
+        j = Job(PBSROOT_USER)
         j.create_script(body=script)
         jid = self.server.submit(j, env=env_to_set)
         # Check if qstat -f output contains the escaped character
@@ -510,7 +510,7 @@ sleep 5
         qsub -A "J<non-printable character>K"
         and check that the value with the character is passed correctly
         """
-        uhost = PbsUser.get_user(TEST_USER).host
+        uhost = PbsUser.get_user(PBSROOT_USER).host
         for ch in self.npcat:
             self.logger.info('##### non-printable char: %s #####' % repr(ch))
             if ch in self.npch_exclude:
@@ -520,7 +520,7 @@ sleep 5
                 a = {ATTR_A: "J%sK" % ch}
             else:
                 a = {ATTR_A: "'J%sK'" % ch}
-            j = Job(TEST_USER, a)
+            j = Job(PBSROOT_USER, a)
             jid = self.server.submit(j)
             job_stat = self.server.status(JOB, id=jid)
             acct_name = job_stat[0]['Account_Name']
@@ -548,7 +548,7 @@ sleep 5
         qsub -A "J<terminal control>K"
         and check that the value with the character is passed correctly
         """
-        j = Job(TEST_USER, {ATTR_A: "J%s%sK" % (self.bold, self.red)})
+        j = Job(PBSROOT_USER, {ATTR_A: "J%s%sK" % (self.bold, self.red)})
         jid = self.server.submit(j)
         job_stat = self.server.status(JOB, id=jid)
         acct_name = job_stat[0]['Account_Name']
@@ -701,7 +701,7 @@ sleep 5
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None, ATTR_J: '1-2'}
-            j = Job(TEST_USER, attrs=a)
+            j = Job(PBSROOT_USER, attrs=a)
             j.create_script(body=script)
             jid = self.server.submit(j, env=set_env)
             subj1 = jid.replace('[]', '[1]')
@@ -736,7 +736,7 @@ sleep 5
         script = ['sleep 5']
         script += ['env | grep NONPRINT_VAR']
         a = {self.ATTR_V: None, ATTR_J: '1-2'}
-        j = Job(TEST_USER, attrs=a)
+        j = Job(PBSROOT_USER, attrs=a)
         j.create_script(body=script)
         jid = self.server.submit(j, env=env_vals)
         subj1 = jid.replace('[]', '[1]')
@@ -1014,7 +1014,7 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         pbs_rsub -H "h<terminal control>d" and check that the escaped
         representation is displayed in pbs_rstat correctly.
         """
-        r = Reservation(TEST_USER, {"-H": "h%s%sd" % (self.bold, self.red)})
+        r = Reservation(PBSROOT_USER, {"-H": "h%s%sd" % (self.bold, self.red)})
         rid = self.server.submit(r)
         resv_stat = self.server.status(RESV, id=rid)
         auth_hname = resv_stat[0]['Authorized_Hosts']
@@ -1031,7 +1031,7 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         pbs_rsub -H "h<terminal control>d" and check that the escaped
         representation is displayed in pbs_rstat correctly.
         """
-        uhost = PbsUser.get_user(TEST_USER).host
+        uhost = PbsUser.get_user(PBSROOT_USER).host
         for ch in self.npcat:
             self.logger.info('##### non-printable char: %s #####' % repr(ch))
             if ch in self.npch_exclude:
@@ -1041,7 +1041,7 @@ e.env["LAUNCH_NONPRINT"] = "CD"
                 h = {"-H": "h%sd" % ch}
             else:
                 h = {"-H": "'h%sd'" % ch}
-            r = Reservation(TEST_USER, h)
+            r = Reservation(PBSROOT_USER, h)
             rid = self.server.submit(r)
             resv_stat = self.server.status(RESV, id=rid)
             auth_hname = resv_stat[0]['Authorized_Hosts']
