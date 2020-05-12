@@ -1467,10 +1467,14 @@ class PBSTestSuite(unittest.TestCase):
                 # create node and those caused by the following call, wait
                 # until the dialogue between MoM and the server is complete
                 time.sleep(4)
+                just_before_enable_cgroup_cset = time.time()
                 mom.enable_cgroup_cset()
+                mom.log_match('pbs_cgroups.CF;copy hook-related '
+                          'file request received',
+                          starttime=just_before_enable_cgroup_cset)
                 # Make sure that the MoM will generate per-NUMA node vnodes
                 # when the natural node is created below
-                # HUP may not be enough if exechost_startup is
+                # HUP may not be enough if exechost_startup is delayed
                 restart = True
         if restart:
             mom.restart()
