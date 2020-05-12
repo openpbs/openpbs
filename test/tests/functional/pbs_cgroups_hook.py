@@ -236,14 +236,9 @@ class TestCgroupsHook(TestFunctional):
         # library methods assume that
         self.mom = self.moms_list[0]
 
-        # Recreate the nodes
+        # Delete ALL vnodes
+        # Re-creation moved to the end *after* we correctly set up the hook
         self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        for host in self.hosts_list:
-            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
- 
-        # Make sure that by the time we tinker with the hooks, 
-        # MoM is already talking to the server
-        time.sleep(4)
 
         self.serverA = self.servers.values()[0].name
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
@@ -1215,9 +1210,25 @@ sleep 300
                                       'pbs_hooks',
                                       'pbs_cgroups.PY')
         self.load_hook(self.hook_file)
-        # HUP mom so exechost_startup hook is run for each mom
+
+        # Recreate the nodes moved to the end, after we set up
+        # the hook with its default config
+        # Make sure the load_hook is done on server first
+        time.sleep(2)
+        for host in self.hosts_list:
+            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+
+        # Make sure that by the time we send a HUP and the test
+        # actually tinkers with the hooks once more,
+        # MoM will already have gone through its initial setup
+        # after the new hello from the server
+        time.sleep(4)
+
+        # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
             mom.signal('-HUP')
+        # ...then wait for exechost_startup updates to propagate to server
+        time.sleep(4)
 
         # queuejob hook
         self.qjob_hook_body = """
