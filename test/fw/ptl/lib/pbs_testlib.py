@@ -9829,18 +9829,19 @@ class Server(PBSService):
                 cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
                                    'pbsnodes') + ' -a' + ' -Fjson'
                 cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
-                json_out = '\n'.join(cmd_out['out'])
-                pbsnodes_json = json.loads(json_out)
-                for m in pbsnodes_json['nodes'].keys():
-                    if m in self.moms:
-                        msg = "successfully sent hook file"
-                        self.log_match(
-                            msg + " %s to %s"
-                            % (hfile, m), interval=1)
-                        self.log_match(
-                            msg + " %s to %s"
-                            % (pyfile, m), interval=1)
-                        self.moms[m].log_match(logmsg, starttime=t)
+                if cmd_out['rc'] == 0:
+                    pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
+                    for m in pbsnodes_json['nodes'].keys():
+                        if m in self.moms:
+                            msg = "successfully sent hook file"
+                            self.log_match(msg + " %s to %s" %
+                                           (hfile, m), interval=1)
+                            self.log_match(msg + " %s to %s" %
+                                           (pyfile, m), interval=1)
+                            self.moms[m].log_match(logmsg, starttime=t)
+                else:
+                    return False
+
         except PtlLogMatchError:
             return False
 
