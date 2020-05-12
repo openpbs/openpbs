@@ -1209,7 +1209,10 @@ sleep 300
                                       'altair',
                                       'pbs_hooks',
                                       'pbs_cgroups.PY')
-        self.load_hook(self.hook_file)
+
+        # Load hook, but do not check MoMs
+        # since the vnodes are deleted on the server
+        self.load_hook(self.hook_file, mom_checks=False)
 
         # Recreate the nodes moved to the end, after we set up
         # the hook with its default config
@@ -1355,7 +1358,7 @@ if %s e.job.in_ms_mom():
                 return jdir
         return None
 
-    def load_hook(self, filename):
+    def load_hook(self, filename, mom_checks=True):
         """
         Import and enable a hook pointed to by the URL specified.
         """
@@ -1386,9 +1389,9 @@ if %s e.job.in_ms_mom():
         if failed:
             self.skipTest('pbs_cgroups_hook: failed to load hook')
         # Add the configuration
-        self.load_default_config()
+        self.load_default_config(mom_checks=mom_checks)
 
-    def load_config(self, cfg):
+    def load_config(self, cfg, mom_checks=True):
         """
         Create a hook configuration file with the provided contents.
         """
@@ -1404,37 +1407,42 @@ if %s e.job.in_ms_mom():
         # message in the logs from someone else!
         time.sleep(5)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
-                                    'file request received',
-                                    starttime=self.server.ctime)
+        if mom_checks:
+            self.moms_list[0].log_match('pbs_cgroups.CF;'
+                                        'copy hook-related '
+                                        'file request received',
+                                        starttime=self.server.ctime)
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
         pbs_home = self.mom.pbs_conf['PBS_HOME']
         mom_conf = os.path.join(
             os.sep, pbs_home, 'mom_priv', 'hooks', 'pbs_cgroups.CF')
-        # reload config if server and mom cfg differ up to count times
-        count = 5
-        while (count > 0):
-            r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
-            r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
-            if r1['out'] != r2['out']:
-                self.logger.info('server & mom pbs_cgroups.CF differ')
-                self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-                self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
-                                            'file request received',
-                                            starttime=self.server.ctime)
-            else:
-                self.logger.info('server & mom pbs_cgroups.CF match')
-                break
-            time.sleep(1)
-            count -= 1
-        # A HUP of each mom ensures update to hook config file is
-        # seen by the exechost_startup hook.
-        for mom in self.moms_list:
-            mom.signal('-HUP')
+        if mom_checks:
+            # reload config if server and mom cfg differ up to count times
+            count = 5
+            while (count > 0):
+                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
+                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+                if r1['out'] != r2['out']:
+                    self.logger.info('server & mom pbs_cgroups.CF differ')
+                    self.server.manager(MGR_CMD_IMPORT, HOOK, a,
+                                        self.hook_name)
+                    self.moms_list[0].log_match('pbs_cgroups.CF;'
+                                                'copy hook-related '
+                                                'file request received',
+                                                starttime=self.server.ctime)
+                else:
+                    self.logger.info('server & mom pbs_cgroups.CF match')
+                    break
+                time.sleep(1)
+                count -= 1
+            # A HUP of each mom ensures update to hook config file is
+            # seen by the exechost_startup hook.
+            for mom in self.moms_list:
+                mom.signal('-HUP')
 
-    def load_default_config(self):
+    def load_default_config(self, mom_checks=True):
         """
         Load the default pbs_cgroups hook config file
         """
@@ -1450,6 +1458,8 @@ if %s e.job.in_ms_mom():
              'content-encoding': 'default',
              'input-file': self.config_file}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
+        if not mom_checks:
+            return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
                                     starttime=now)
