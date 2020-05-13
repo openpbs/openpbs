@@ -9814,37 +9814,35 @@ class Server(PBSService):
 
         # In case of mom hooks, make sure that the hook related files
         # are successfully copied to the MoM
-        try:
-            if 'exec' in attrs['event']:
-                hook_py = name + '.PY'
-                hook_hk = name + '.HK'
-                pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                      "server_priv", "hooks", hook_py)
-                hfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                     "server_priv", "hooks", hook_hk)
-                logmsg = hook_py + ";copy hook-related file request received"
-
-                cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                                   'pbsnodes') + ' -a'
-                cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
-                if cmd_out['rc'] == 0:
-                    for i in cmd_out['out']:
-                        if re.match(r'\s+Mom = ', i):
-                            mom_names = i.split(' = ')[1].split(',')
-                            for m in mom_names:
-                                if m in self.moms:
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (hfile, m), interval=1)
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (pyfile, m), interval=1)
-                                    self.moms[m].log_match(logmsg, starttime=t)
-                else:
-                    return False
-        except PtlLogMatchError:
-            return False
-
+        events = attrs['event']
+        if not isinstance(events, (list,)):
+            events = [events]
+        events = [hk for hk in events if 'exec' in hk]
+        msg = "successfully sent hook file"
+        for hook in events:
+            hook_py = name + '.PY'
+            hook_hk = name + '.HK'
+            pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                  "server_priv", "hooks", hook_py)
+            hfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                 "server_priv", "hooks", hook_hk)
+            logmsg = hook_py + ";copy hook-related file request received"
+            cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+                               'pbsnodes') + ' -a' + ' -Fjson'
+            cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
+            if cmd_out['rc'] != 0:
+                return False
+            pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
+            for m in pbsnodes_json['nodes']:
+                if m in self.moms:
+                    try:
+                        self.log_match("%s %s to %s" %
+                                       (msg, hfile, m), interval=1)
+                        self.log_match("%s %s to %s" %
+                                       (msg, pyfile, m), interval=1)
+                        self.moms[m].log_match(logmsg, starttime=t)
+                    except PtlLogMatchError:
+                        return False
         return ret
 
     def import_hook_config(self, hook_name, hook_conf, hook_type,
