@@ -976,6 +976,11 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_c,
 			ATTR_r,
 			ATTR_depend,
+			ATTR_job_window_enabled,
+			ATTR_window_start,
+			ATTR_window_end,
+			ATTR_job_window_days,
+			ATTR_job_timezone,
 			NULL
 	};
 
