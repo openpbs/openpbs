@@ -1666,6 +1666,7 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(self.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's test setup")
+            self.du.rm(path=self.saved_file)
         self.log_end_teardown()
 
     @classmethod
@@ -1684,5 +1685,4 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(cls.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's custom setup")
-        if cls.use_cur_setup:
             cls.du.rm(path=cls.saved_file)
