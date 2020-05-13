@@ -353,7 +353,7 @@ class PBSTestSuite(unittest.TestCase):
     :param comms: Colon-separated list of hostnames hosting a PBS Comm.
                   Comms are made accessible as a dictionary in the
                   instance variable comms.
-    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param nomom: expect no MoM on colon-separated set of hosts
     :param mode: Sets mode of operation to PBS server. Can be either
                  ``'cli'`` or ``'api'``.Defaults to API behavior.
     :param conn_timeout: set a timeout in seconds after which a pbs_connect
@@ -1462,19 +1462,34 @@ class PBSTestSuite(unittest.TestCase):
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
             if mom.is_cpuset_mom():
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # In order to avoid intermingling CF/HK/PY file copies from the
+                # create node and those caused by the following call, wait
+                # until the dialogue between MoM and the server is complete
+                time.sleep(4)
+                just_before_enable_cgroup_cset = time.time()
                 mom.enable_cgroup_cset()
+                mom.log_match('pbs_cgroups.CF;copy hook-related '
+                              'file request received',
+                              starttime=just_before_enable_cgroup_cset)
+                # Make sure that the MoM will generate per-NUMA node vnodes
+                # when the natural node is created below
+                # HUP may not be enough if exechost_startup is delayed
+                restart = True
         if restart:
             mom.restart()
         else:
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        if not mom.is_cpuset_mom():
+            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
         if mom.is_cpuset_mom():
-            mom.log_match('pbs_cgroups.CF;copy hook-related '
-                          'file request received',
-                          starttime=self.server.ctime)
+            # Checking whether the CF file was copied really belongs in code
+            # that changes the config file -- i.e. after enable_cgroup_cset
+            # called above. We're not sure it is always called here,
+            # since that call is in an if
             time.sleep(2)
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
