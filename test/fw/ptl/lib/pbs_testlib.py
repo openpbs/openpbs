@@ -9832,7 +9832,7 @@ class Server(PBSService):
             if cmd_out['rc'] != 0:
                 return False
             pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
-            for m in pbsnodes_json['nodes'].keys():
+            for m in pbsnodes_json['nodes']:
                 if m in self.moms:
                     try:
                         self.log_match("%s %s to %s" %
