@@ -41,9 +41,10 @@
 extern "C" {
 #endif
 
+#include "libauth.h"
+
 #define AUTH_RESVPORT_NAME "resvport"
 #define AUTH_GSS_NAME "gss"
-#define MAXAUTHNAME 100
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
 #endif
@@ -51,45 +52,11 @@ extern "C" {
 #define FOR_AUTH 0
 #define FOR_ENCRYPT 1
 
-enum AUTH_ROLE {
-	AUTH_ROLE_UNKNOWN = 0,
-	AUTH_CLIENT,
-	AUTH_SERVER,
-	AUTH_ROLE_LAST
-};
-
-enum AUTH_CONN_TYPE {
-	AUTH_USER_CONN = 0,
-	AUTH_SERVICE_CONN
-};
-
 enum AUTH_CTX_STATUS {
 	AUTH_STATUS_UNKNOWN = 0,
 	AUTH_STATUS_CTX_ESTABLISHING,
 	AUTH_STATUS_CTX_READY
 };
-
-typedef struct pbs_auth_config {
-	/* Path to PBS_HOME directory (aka PBS_HOME in pbs.conf). This should be a null-terminated string. */
-	char *pbs_home_path;
-
-	/* Path to PBS_EXEC directory (aka PBS_EXEC in pbs.conf). This should be a null-terminated string. */
-	char *pbs_exec_path;
-
-	/* Name of authentication method (aka PBS_AUTH_METHOD in pbs.conf). This should be a null-terminated string. */
-	char *auth_method;
-
-	/* Name of encryption method (aka PBS_ENCRYPT_METHOD in pbs.conf). This should be a null-terminated string. */
-	char *encrypt_method;
-
-	/*
-	 * Function pointer to the logging method with the same signature as log_event from Liblog.
-	 * With this, the user of the authentication library can redirect logs from the authentication
-	 * library into respective log files or stderr in case no log files.
-	 * If func is set to NULL then logs will be written to stderr (if available, else no logging at all).
-	 */
-	void (*logfunc)(int type, int objclass, int severity, const char *objname, const char *text);
-} pbs_auth_config_t;
 
 typedef struct auth_def auth_def_t;
 struct auth_def {

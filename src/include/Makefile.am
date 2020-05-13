@@ -45,6 +45,7 @@ include_HEADERS = \
 
 noinst_HEADERS = \
 	acct.h \
+	libauth.h \
 	auth.h \
 	attribute.h \
 	avltree.h \
