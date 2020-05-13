@@ -2632,22 +2632,10 @@ process_opts(int argc, char **argv, int passet)
 #endif
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 
-#if defined(PBS_PASS_CREDENTIALS)
 				/*
-				 * Exceptional CASE: All the arguments to option 'W' are
-				 * accepted in the format of -Wattrname=value but in case
-				 * of ATTR_pwd, -Wattrname is accepted without any value.
-				 *
-				 * if parse_equal_string() returns -1 and the optarg is
-				 * is same as ATTR_pwd, then set i = 1, keyword to optarg
-				 * and valuewd to NULL.
+				 * All the arguments to option 'W' are
+				 * accepted in the format of -Wattrname=value
 				 */
-				if ((i == -1) && (strcmp(optarg, ATTR_pwd) == 0)) {
-					i = 1;
-					keyword = optarg;
-					valuewd = NULL;
-				}
-#endif
 
 				while (i == 1) {
 					if (strcmp(keyword, ATTR_depend) == 0) {
