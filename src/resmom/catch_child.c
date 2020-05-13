@@ -1448,11 +1448,13 @@ scan_for_exiting(void)
 	int	im_compose(int, char *, char *, int, tm_event_t, tm_task_id, int);
 	mom_hook_input_t hook_input;
 	int has_epilog = 0;
+	int update_svr = 0;
 
 #ifdef WIN32
 	/* update the latest intelligence about the running jobs; */
 	time_now = time(NULL);
 	mom_set_use_all();
+	update_svr = 1;
 #endif
 	if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0 || file_exists(path_epilog))
 		has_epilog = 1;
@@ -1859,7 +1861,7 @@ end_loop:
 		if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0) {
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
-			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, NULL, NULL, 0, 0);
+			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, NULL, NULL, 0, update_svr);
 		} else {
 			if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET) && pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long) {
 				extval = run_pelog(PE_EPILOGUE, path_epilog, pjob, PE_IO_TYPE_NULL);
