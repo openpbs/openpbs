@@ -13420,7 +13420,8 @@ class MoM(PBSService):
         self._save_config_file(conf, cf)
 
         if os.path.isdir(os.path.join(mpriv, 'config.d')):
-            for f in os.listdir(os.path.join(mpriv, 'config.d')):
+            for f in self.du.listdir(path=os.path.join(mpriv, 'config.d'),
+                                     sudo=True):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
         mconf = {self.hostname: conf}
