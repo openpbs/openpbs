@@ -475,6 +475,9 @@ class PBSTestSuite(unittest.TestCase):
                 raise Exception("Failed to save scheduler's custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
+        a = {ATTR_license_min: len(cls.moms)}
+        cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        cls.server.restart()
         cls.log_end_setup(True)
 
     def setUp(self):
@@ -511,8 +514,6 @@ class PBSTestSuite(unittest.TestCase):
             self.revert_schedulers()
             self.revert_moms()
         self.revert_comms()
-        a = {'pbs_license_min': len(self.moms)}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
         self.log_end_setup()
         self.measurements = []
 
@@ -823,6 +824,9 @@ class PBSTestSuite(unittest.TestCase):
                 conn_timeout = int(cls.conf['conn_timeout'])
                 server.set_connect_timeout(conn_timeout)
         sched_action = ExpectAction('kicksched', True, JOB,
+                                    cls.kicksched_action)
+        server.add_expect_action(action=sched_action)
+        sched_action = ExpectAction('kickresvsched', True, RESV,
                                     cls.kicksched_action)
         server.add_expect_action(action=sched_action)
         return server
