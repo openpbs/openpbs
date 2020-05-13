@@ -879,10 +879,9 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 	else {		/* failure */
 
 		FILE *fp = NULL;
-		DWORD ecode = GetLastError();
 		DBPRT(("%s: sys_copy failed, error = %d\n", __func__, ret))
-		snprintf(log_buffer, sizeof(log_buffer), "sys_copy failed with status=%d, error=%d", ret, ecode);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, pair->fp_local, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "sys_copy failed with status=%d", ret);
+		log_err(-1, __func__, log_buffer);
 		stage_inout->bad_files = 1;
 		snprintf(log_buffer, sizeof(log_buffer), "Unable to copy file %s %s %s",
 			(dir == STAGE_DIR_IN) ? dest : src,
