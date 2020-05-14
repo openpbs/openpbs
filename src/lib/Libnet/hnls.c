@@ -1,43 +1,40 @@
-/* 
+/*
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
- */
-
-/**
- * @file	hnls.c
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
 
 #include <stdio.h>
@@ -122,7 +119,7 @@ free_if_hostnames(char **names)
  *
  * @par MT-safe: Yes
  *
- * @param[in]		sockaddr - structure holding information 
+ * @param[in]		sockaddr - structure holding information
  *					about particular address
  * @param[out]		family   - holds the socket's family type
  *					"ipv4" or "ipv6"
@@ -158,7 +155,7 @@ get_sa_family(struct sockaddr *saddr, char *family)
  *
  * @par MT-safe: Yes
  *
- * @param[in]   sockaddr - structure holding information 
+ * @param[in]   sockaddr - structure holding information
  *				about addresses
  *
  * @return char**
@@ -178,7 +175,7 @@ get_if_hostnames(struct sockaddr *saddr)
 	const char *bufp = NULL;
 #ifdef WIN32
 	char host[NI_MAXHOST] = {'\0'};
-	int ret = 0;	
+	int ret = 0;
 #endif /* WIN32 */
 
 	if (!saddr)
@@ -274,7 +271,7 @@ get_if_info(char *msg)
 
 	int c, i, ret;
 	char **hostnames;
-	struct ifaddrs *ifp, *listp;	
+	struct ifaddrs *ifp, *listp;
 
 	if (!msg)
 		return NULL;
@@ -629,7 +626,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 	for (listp = ifp; listp; listp = listp->ifa_next) {
 		int hlen;
 
-		if ((listp->ifa_addr == NULL) || (listp->ifa_addr->sa_family != AF_INET)) 
+		if ((listp->ifa_addr == NULL) || (listp->ifa_addr->sa_family != AF_INET))
 			continue;
 		sprintf(buf, "%s", netaddr((struct sockaddr_in *)listp->ifa_addr));
 		if (!strcmp(buf,"unknown"))
@@ -659,7 +656,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 	freeifaddrs(ifp);
 
 #elif defined(WIN32)
-	
+
 	pIPAddrTable = (MIB_IPADDRTABLE *) malloc(sizeof (MIB_IPADDRTABLE));
 
 	if (pIPAddrTable) {
@@ -673,12 +670,12 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 		if (pIPAddrTable == NULL) {
 			strncpy(msg_buf, "Memory allocation failed for GetIpAddrTable", msg_buf_len);
 			free(nodenames);
-			return NULL;	
+			return NULL;
 		}
 	}
 	// Make a second call to GetIpAddrTable to get the
 	// actual data we want
-	if ( (dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) { 
+	if ( (dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) {
 		strncpy(msg_buf, "GetIpAddrTable failed", msg_buf_len);
 		free(pIPAddrTable);
 		free(nodenames);
@@ -712,7 +709,7 @@ get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
 		pIPAddrTable = NULL;
 	}
 
-#endif 
+#endif
 
 	return nodenames;
 }

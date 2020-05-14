@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    accounting.c
@@ -615,7 +617,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		pbs_list_head phead;
 		svrattrl *svrattrl_list;
 		CLEAR_HEAD(phead);
-		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend], 
+		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend],
 			&phead, job_attr_def[(int)JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 		nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
 		if (nd > len)
@@ -2190,11 +2192,11 @@ writeit:
  * 	plist contains the attributes and resources requested to be modified.
  * 	We only modify those because the ATTR_l encode function will encode
  * 	all resources, not just the ones we want.
- * 
+ *
  * @param[in] pjob - job to log records for.
  * @param[in] plist - list of attributes and resources to log
- * 
- * @returns void 
+ *
+ * @returns void
  */
 void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	svrattrl *cur_svr;
@@ -2282,13 +2284,13 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 
 /**
  * @brief
- * Common function to log a suspend/resume record 
+ * Common function to log a suspend/resume record
  * for suspend/resume job events respectively.
- * 
+ *
  * @param[in] pjob - job to log records for.
  * @param[in] acct_type - Accounting type flag
- * 
- * @returns void 
+ *
+ * @returns void
  */
 void
 log_suspend_resume_record(job *pjob, int acct_type)
@@ -2296,7 +2298,7 @@ log_suspend_resume_record(job *pjob, int acct_type)
 	if (acct_type == PBS_ACCT_SUSPEND) {
 		char *resc_buf;
 		int resc_buf_size = RESC_USED_BUF_SIZE;
-	
+
 		/* Allocating initial space as required by resc_used. Future space will be allocated by pbs_strcat(). */
 		resc_buf = malloc(RESC_USED_BUF_SIZE);
 		if (resc_buf == NULL)

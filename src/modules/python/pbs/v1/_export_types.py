@@ -4,37 +4,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 """
 
@@ -43,7 +46,7 @@ This module primarily exists to help the embedded interpreter import all the
 python types. All attribute names that require *special* handling are maintained
 in a dictionary as:
     Key <name> : Value <python_type>
-    
+
     where:
         name *MUST* map to either attribute_def.at_name or resource_def.rs_name
 
@@ -52,7 +55,7 @@ Motivation:
     this gives a simple way to leverage the Python Data types to pass the infor-
     mation back to the embedded python. Which, then can use the excellent C API
     to retrieve the python type.
-    
+
 """
 
 from . import _base_types as pbs_types
@@ -123,9 +126,9 @@ EXPORTED_TYPES_DICT = {
                        'state_count'        : pbs_types.state_count,
                        'server_state'       : pbs_types.server_state,
                        'route_destinations' : pbs_types.route_destinations,
-		       'Variable_List'	    : pbs_types.pbs_env,	
-		       'queue_type'	    : pbs_types.queue_type,	
-		       'job_state'	    : pbs_types.job_state,	
+		       'Variable_List'	    : pbs_types.pbs_env,
+		       'queue_type'	    : pbs_types.queue_type,
+		       'job_state'	    : pbs_types.job_state,
                        'license'            : pbs_types.pbs_str,
                        'license_info'       : pbs_types.pbs_int,
                        'attr_descriptor'    : pbs_types.PbsAttributeDescriptor,
@@ -161,7 +164,5 @@ EXPORTED_TYPES_DICT = {
                 'UnsetResourceNameError'    : UnsetResourceNameError,
                 'BadResourceValueTypeError' : BadResourceValueTypeError,
                 'BadResourceValueError'     : BadResourceValueError
-                       
+
                       }
-
-
