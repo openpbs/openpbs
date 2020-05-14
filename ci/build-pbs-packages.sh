@@ -11,7 +11,11 @@ mkdir -p ${rpm_dir}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 cp -r $pbsdir /tmp/pbs
 cd /tmp/pbs
 ./autogen.sh
-./configure --prefix=/opt/pbs --enable-ptl
+cflags="-g -O2 -Wall -Werror"
+if [ "x${ID}" == "xubuntu" ]; then
+	cflags="${cflags} -Wno-unused-result"
+fi
+./configure CFLAGS="${cflags}" --prefix=/opt/pbs --enable-ptl
 make dist
 cp pbspro-*.tar.gz ${rpm_dir}/SOURCES
 cp pbspro-rpmlintrc ${rpm_dir}/SOURCES

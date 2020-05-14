@@ -261,7 +261,7 @@ if __name__ == "__main__":
     ap.add_argument('--build', const='called',
                     help='forces the container to build dependencies, use as a suboption to --start', nargs='?')
     ap.add_argument('--build-pkgs', const='called',
-                    help='build packages for given platform optionally supply platform as argument eg --build-pkgs=\'ubuntu:16.04\'', nargs='?')
+                    help='build packages for the current platform. Optionally provide platform as argument eg --build-pkgs=\'ubuntu:16.04\'', nargs='?')
     ap.add_argument('--delete', const='called',
                     help='destroy pbs container', nargs='?')
     ap.add_argument('--local', const='called',

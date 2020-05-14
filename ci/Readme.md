@@ -88,14 +88,14 @@ Simply invoke the following command:
 ```
 
 * **./ci --build-pkgs:** Invoke this command to build pbs packages. By default it will build packages for the platform ci container is started for.
-Optionally accepts argument for new platform. The packages can be found in 'ci/packages' folder.
+Optionally accepts argument for other platform. The packages can be found in 'ci/packages' folder.
 
 ```bash
 ./ci --build-pkgs
 # Above command builds package for the platform ci was started/currently running on.
 
 ./ci --build-pkgs='ubuntu:16.04'
-# This will build packege on ubuntu:16.04 platform, it will restart ci services and build for the specified platform 
+# This will build package on ubuntu:16.04 platform, it will restart ci services and build for the specified platform 
 ```
 
 * **./ci --delete:** which will stop any ongoing build in the container for the moment and remove it build.
