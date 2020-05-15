@@ -98,7 +98,9 @@ void
 disconnect_close_pipe(HANDLE hpipe)
 {
 	if (hpipe != INVALID_HANDLE_VALUE) {
-		DisconnectNamedPipe(hpipe);
+		if (!DisconnectNamedPipe(hpipe)) {
+			log_err(-1, __func__, "Disconnect Named Pipe failed");
+		}
 		CloseHandle(hpipe);
 	}
 }
@@ -139,8 +141,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 	}
 	if (SetSecurityDescriptorDacl(&SecDesc, TRUE, NULL, FALSE) == 0) {
 		err = GetLastError();
-		sprintf(logbuff, "Failed to set DACL for security descriptor with error %lu", err);
-		log_err(-1, __func__, logbuff);
+		log_err(-1, __func__, "Failed to set DACL for security descriptor");
 		return err;
 	}
 	SecAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -269,8 +270,10 @@ do_ConnectNamedPipe(HANDLE hPipe, LPOVERLAPPED pOverlapped)
 	 */
 	if (ConnectNamedPipe(hPipe, pOverlapped) == 0) {
 		err = GetLastError();
-		if (err != ERROR_PIPE_CONNECTED)
+		if (err != ERROR_PIPE_CONNECTED) {
+			log_err(-1, __func__, "Connect to named pipe failed");
 			return err;
+		}
 	}
 	return 0;
 }
@@ -491,8 +494,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 		}
 		else {
 			err = GetLastError();
-			sprintf(logbuff, "CreateProcessAsUser failed with error %lu", err);
-			log_err(-1, __func__, logbuff);
+			log_err(-1, __func__, "CreateProcessAsUser failed");
 			return (err);
 		}
 		CloseHandle(hUserToken);
@@ -510,19 +512,25 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 		NULL,
 		psi,
 		&pi)) {
-			AssignProcessToJobObject(hJob, pi.hProcess);
+			if (!AssignProcessToJobObject(hJob, pi.hProcess)) {
+				log_err(-1, __func__, "AssignProcessToJobObject failed");
+			}
 			/* Wait for command process to exit */
-			WaitForSingleObject(pi.hProcess, INFINITE);
+			err = WaitForSingleObject(pi.hProcess, INFINITE);
+			if (err != WAIT_OBJECT_0) {
+				log_err(-1, __func__, "WaitForSingleObject failed");
+			}
 			GetExitCodeProcess(pi.hProcess, p_returncode);
 			/* Terminate all processes associated with the job object */
-			TerminateJobObject(hJob, 0);
+			if ( !TerminateJobObject(hJob, 0) ) {
+				log_err(-1, __func__, "TerminateJobObject failed");
+			}
 			close_valid_handle(&(pi.hProcess));
 			close_valid_handle(&(pi.hThread));
 		}
 		else {
 			err = GetLastError();
-			sprintf(logbuff, "CreateProcess failed with error %lu", err);
-			log_err(-1, __func__, logbuff);
+			log_err(-1, __func__, "CreateProcess failed");
 			return (err);
 		}
 	}
@@ -568,6 +576,7 @@ connect_remote_resource(const char *remote_host, const char *remote_resourcename
 	}
 
 	SetLastError(rc);
+	log_err(-1, __func__, "connect/disconnect to remote resource failed");
 	return FALSE;
 }
 /**
@@ -605,6 +614,7 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 		if (!ReadFile(hPipe_remote_std, readbuf, READBUF_SIZE, &dwRead, NULL) || dwRead == 0) {
 			dwErr = GetLastError();
 			if (dwErr == ERROR_NO_DATA) {
+				log_err(-1, __func__, "ReadFile failed with ERROR_NO_DATA");
 				return -1;
 			}
 		}
@@ -621,6 +631,7 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 	else if (dw_rc == 0) { /* PeekNamedPipe() fails */
 		dwErr = GetLastError();
 		if (dwErr == ERROR_NO_DATA || dwErr == ERROR_BROKEN_PIPE || dwErr == ERROR_PIPE_NOT_CONNECTED) {
+			log_err(-1, __func__, "PeekNamedPipe failed");
 			return -1;
 		}
 	}
@@ -671,8 +682,10 @@ listen_remote_stdinpipe_thread(void *p)
 	int rc = 0;
 
 	hconsole_input = GetStdHandle(STD_INPUT_HANDLE);
-	if (hconsole_input == INVALID_HANDLE_VALUE || p == NULL)
+	if (hconsole_input == INVALID_HANDLE_VALUE || p == NULL) {
+		log_err(-1, __func__, "GetStdHandle failed with INVALID_HANDLE_VALUE error");
 		return;
+	}
 	hpipe_remote_stdin = *((HANDLE*)p);
 
 	for (;;) {
@@ -681,10 +694,14 @@ listen_remote_stdinpipe_thread(void *p)
 			DWORD dwErr = GetLastError();
 			if (dwErr == ERROR_NO_DATA)
 				break;
+			else
+				log_err(-1, __func__, "ReadConsole failed");
 		}
 		/* Write the console input to remote stdin pipe */
-		if (!WriteFile(hpipe_remote_stdin, inputbuf, nBytesRead, &nBytesWrote, NULL) || nBytesRead != nBytesWrote)
+		if (!WriteFile(hpipe_remote_stdin, inputbuf, nBytesRead, &nBytesWrote, NULL) || nBytesRead != nBytesWrote) {
+			log_err(-1, __func__, "WrtieFile failed");
 			break;
+		}
 		/* Exit the for loop, if "exit" is typed */
 		if (!_strnicmp(inputbuf, "exit", strlen("exit")) &&
 			(inputbuf[strlen("exit")] == '\r'
@@ -711,13 +728,17 @@ void
 listen_remote_stdpipes(HANDLE *phout, HANDLE *pherror, HANDLE *phin)
 {
 	HANDLE hconsole_input_thread = INVALID_HANDLE_VALUE;
-        int wait_timeout = 5000;
+	int wait_timeout = 5000;
+	DWORD stat;
 	/* Start a thread to listen to write remote command's standard input */
 	if (phin)
 		hconsole_input_thread = _beginthread(listen_remote_stdinpipe_thread, 0, phin);
 	listen_remote_stdouterr_pipes(*phout, *pherror);
 	/* Wait upto 5 seconds for the standard input pipe thread to exit */
-        WaitForSingleObject(hconsole_input_thread, wait_timeout);
+	stat = WaitForSingleObject(hconsole_input_thread, wait_timeout);
+	if (stat != WAIT_OBJECT_0) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in WaitForSingleObject, with errno %d", stat);
+	}
 	close_valid_handle(&(hconsole_input_thread));
 }
 

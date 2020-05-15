@@ -177,8 +177,10 @@ win_alarm(unsigned int timeout_secs, void (*func)(void))
 	}
 
 	a = (struct alarm_param *)malloc(sizeof(struct alarm_param));
-	if (a == NULL)
+	if (a == NULL) {
+		log_err(errno, __func__, "Failed to allocate memory for alarm_param");
 		return (0);
+	}
 
 	if (!DuplicateHandle(
 		GetCurrentProcess(),
@@ -196,6 +198,9 @@ win_alarm(unsigned int timeout_secs, void (*func)(void))
 	a->func = func;
 
 	h = (HANDLE) _beginthreadex(0, 0,  alarm_thread, a, 0, &dwTID);
+	if (!h) {
+		log_err(errno, __func__, "_beginthreadex failed");
+	}
 
 	CloseHandle(h);
 	return (rtn_time);
