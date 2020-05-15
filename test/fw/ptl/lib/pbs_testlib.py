@@ -6868,7 +6868,7 @@ class Server(PBSService):
                         rc = tmprc
 
         if id is None and obj_type == SERVER:
-            id = self.hostname
+            id = self.pbs_conf['PBS_SERVER']
         bs_list = []
         if cmd == MGR_CMD_DELETE and oid is not None and rc == 0:
             for i in oid:
