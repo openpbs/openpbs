@@ -191,8 +191,11 @@ send_update_job(job *pjob, char *old_exec_vnode)
 	int	rc;
 	char	err_msg[LOG_BUF_SIZE];
 
-	if (pjob == NULL)
+	if (pjob == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Job not received");
 		return (1);
+	}
 
 	exec_vnode_hookset = pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_HOOK;
 	schedselect_hookset = pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_HOOK;
@@ -644,8 +647,11 @@ make_envp(void)
 	size_t	len = 0;
 	char	*envp, *cp;
 
-	if ((env_array == NULL) || (curenv == 0))
+	if ((env_array == NULL) || (curenv == 0)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "The current environment has no variables");
 		return NULL;
+	}
 
 	qsort((void *)env_array, (size_t)curenv, sizeof(char *), compare);
 
@@ -722,8 +728,11 @@ find_wenv_slot(char *name)
 	int	 i;
 	int	 len = 1;	/* one extra for '=' */
 
-	if (name == NULL)
+	if (name == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Invalid name provided");
 		return (-1);
+	}
 	for (i=0; (*(name+i) != '=') && (*(name+i) != '\0'); ++i)
 		++len;
 
@@ -731,6 +740,8 @@ find_wenv_slot(char *name)
 		if (strncmp(env_array[i], name, len) == 0)
 			return (i);
 	}
+	log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unable to find slot for environment variable");
 	return (-1);
 }
 
@@ -755,9 +766,10 @@ bld_wenv_variables(char *name, char *value)
 	int	i;
 	char    str_buf[MAXPATHLEN+1] = {0};
 
-	if ((!name) || (*name == '\0') || (*name == '\n'))
+	if ((!name) || (*name == '\0') || (*name == '\n')) {
 		log_err(-1, __func__, "The name of the env variable is invalid");
 		return;			/* invalid name */
+	}
 
 	if (env_array == NULL) {
 		numenv = 32;
@@ -973,8 +985,11 @@ char *
 save_actual_homedir(struct passwd *pwdp, job *pjob)
 {
 
-	if (pwdp == NULL)
+	if (pwdp == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Credentials not passed");
 		return ("");
+	}
 
 	if (pjob == NULL)
 		return (default_local_homedir(pwdp->pw_name,
@@ -1043,8 +1058,11 @@ set_homedir_to_local_default(job *pjob, char *username)
 
 		pp = getpwnam(username);
 
-		if ((username == NULL) || (pp == NULL))
+		if ((username == NULL) || (pp == NULL)) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Username passed is NULL");
 			return ("");
+		}
 
 		strcpy(lpath, default_local_homedir(username,
 			pp->pw_userlogin, 0));
@@ -1404,8 +1422,11 @@ conn_qsub(char *hostname, long port)
 {
 	pbs_net_t hostaddr;
 
-	if ((hostname == NULL) || ((hostaddr = get_hostaddr(hostname)) == (pbs_net_t)0))
+	if ((hostname == NULL) || ((hostaddr = get_hostaddr(hostname)) == (pbs_net_t)0)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Hostname passed is NULL");
 		return (PBS_NET_RC_FATAL);
+	}
 
 	/* Yes, the qsub is listening, but for authentication
 	 * purposes mom wants authenticate as a server - not as
@@ -1446,6 +1467,8 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 
 	if (pjob == NULL) {
 		snprintf(err_msg, err_msg_sz, "bad pjob param");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, err_msg);
 		return (-1);
 	}
 
@@ -1465,6 +1488,8 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 		if ((err_msg != NULL) && (err_msg_sz > 0)) {
 			snprintf(err_msg, err_msg_sz,
 					"cannot open %s", pbs_nodefile);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, err_msg);
 		}
 		return (-1);
 	}
@@ -4282,8 +4307,11 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 			break;
 	}
 
-	if (pjob->ji_grpcache == NULL)
+	if (pjob->ji_grpcache == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "The groups associated are cannot be NULL");
 		return ("");	/* needs to be non-NULL for figuring out homedir path; */
+	}
 
 	/* check if file is to be directly written to its final destination */
 	if (is_direct_write(pjob, which, path, &direct_write_possible)) {
@@ -4396,6 +4424,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 				name = lastname(*shell);
 				argv[i] = malloc(strlen(name) + 2);
 				if (argv[i] == NULL) {
+					log_err(-1, __func__, "argv is NULL");
 					return -1;
 				}
 				strcpy(argv[i], "-");
