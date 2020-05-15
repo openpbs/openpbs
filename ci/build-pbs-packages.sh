@@ -12,7 +12,7 @@ cp -r $pbsdir /tmp/pbs
 cd /tmp/pbs
 ./autogen.sh
 cflags="-g -O2 -Wall -Werror"
-if [ "x${ID}" == "xubuntu" ]; then
+if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
 	cflags="${cflags} -Wno-unused-result"
 fi
 ./configure CFLAGS="${cflags}" --prefix=/opt/pbs --enable-ptl
