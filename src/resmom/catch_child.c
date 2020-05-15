@@ -1816,7 +1816,7 @@ end_loop:
 		write_wkmg_record(WM_TERM, WM_TERM_EXIT, pjob);
 #endif	/* MOM_CSA */
 #endif
-		if (mock_run || !has_epilog){
+		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
 			continue;
 		}
