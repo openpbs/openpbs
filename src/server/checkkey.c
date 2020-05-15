@@ -93,7 +93,7 @@ return_licenses(struct work_task *ptask)
 }
 
 void
-init_licensing(void)
+init_licensing(int delay)
 {
 }
 

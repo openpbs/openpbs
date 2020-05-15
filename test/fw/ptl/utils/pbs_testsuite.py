@@ -475,6 +475,9 @@ class PBSTestSuite(unittest.TestCase):
                 raise Exception("Failed to save scheduler's custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
+        a = {ATTR_license_min: len(cls.moms)}
+        cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        cls.server.restart()
         cls.log_end_setup(True)
 
     def setUp(self):
