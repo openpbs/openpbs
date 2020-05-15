@@ -826,9 +826,6 @@ class PBSTestSuite(unittest.TestCase):
         sched_action = ExpectAction('kicksched', True, JOB,
                                     cls.kicksched_action)
         server.add_expect_action(action=sched_action)
-        sched_action = ExpectAction('kickresvsched', True, RESV,
-                                    cls.kicksched_action)
-        server.add_expect_action(action=sched_action)
         return server
 
     @classmethod
