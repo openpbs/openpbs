@@ -158,7 +158,7 @@ add_bad_list(char **pbl, char *newtext, int nl)
 			*pnew = '\0';
 	}
 	if (pnew == NULL) {
-		log_err(-1, __func__, "Failed to allocate memory");
+		log_err(errno, __func__, "Failed to allocate memory");
 		return;
 	}
 
@@ -207,7 +207,7 @@ is_child_path(char *dir, char *path)
 #endif
 
 	if (dir_real == NULL || fullpath_real == NULL) {
-		log_err(-1, __func__, "Failed to allocate memory");
+		log_err(errno, __func__, "Failed to allocate memory");
 		return_value = -1;
 		goto error_exit;
 	}
@@ -987,6 +987,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 
 	DBPRT(("%s: entered local %s remote %s\n", __func__, pair->fp_local, prmt))
 
+
 	/*
 	 * figure out the source path
 	 */
@@ -1059,8 +1060,8 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "remote stagein failed for %s directory, owner=%s, src=%s ", dname, owner, source);
-			log_err(-1, __func__, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "remote stagein failed for %s from %s to %s", owner, source, pair->fp_local);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
 		}
 		return 0;
@@ -1072,9 +1073,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed for %s directory owner=%s, src=%s",
-					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
-			log_err(-1, __func__, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "no wildcards:%s stage%s failed for %s from %s to %s",
+				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
 		}
 		return 0;
@@ -1086,9 +1088,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		rc = copy_file(dir, rmtflag, owner, source,
 			pair, conn, stage_inout, prmt);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed, cannot open %s directory owner=%s, src=%s",
-					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
-			log_err(-1, __func__, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "Cannot open directory:%s stage%s failed for %s from %s to %s",
+				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
 		}
 		return 0;
@@ -1129,10 +1132,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			rc = copy_file(dir, rmtflag, owner, matched,
 				pair, conn, stage_inout, prmt);
 			if (rc != 0) {
-				snprintf(log_buffer, sizeof(log_buffer), "pattern matched: %s stage%s failed for %s directory owner=%s, src=%s",
-						 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
-				log_err(-1, __func__, log_buffer);
-				(void)closedir(dirp);
+				snprintf(log_buffer, sizeof(log_buffer), "Pattern matched:%s stage%s failed for %s from %s to %s",
+					(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+					(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 				goto error;
 			}
 		}
@@ -1143,9 +1146,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			pair, conn, stage_inout, prmt);
 		(void)closedir(dirp);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "%s stage%s failed, cannot read %s directory owner=%s, src=%s",
-					 (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", dname, owner, source);
-			log_err(-1, __func__, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "Cannot read directory:%s stage%s failed for %s from %s to %s",
+				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
 		}
 		return 0;
@@ -1907,7 +1911,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 							ag0, ag1, ag2_path, ag3_path);
 					}
 				} else {
-					log_err(-1, __func__, "Failed to get UNC path");
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "Failed to get UNC path");
 					rc = errno;
 					goto sys_copy_end;
 				}
@@ -1985,14 +1989,14 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			if ((pw->pw_userlogin == INVALID_HANDLE_VALUE) && (strcmpi(owner, getlogin()) == 0)) {
 				sprintf(log_buffer, "CreateProcess(%s) under acct %s wdir=%s",
 					cmd_line, owner, wdir);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, "sys_copy", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcess(NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
 					NULL, wdir, &si, &pi);
 			} else {
-				sprintf(log_buffer, "CreateProcessAsUser(%d, %s) under acct %s wdir=%s",
+				sprintf(log_buffer, "CreateProcessAsUser(%p, %s) under acct %s wdir=%s",
 					pw->pw_userlogin, cmd_line, getlogin(), wdir);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, "sys_copy", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcessAsUser(pw->pw_userlogin, NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
 					NULL, wdir, &si, &pi);
@@ -2011,13 +2015,28 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				rc = errno + 10000;	/* error on fork (100xx), retry */
 			} else {
 				if (WaitForSingleObject(pi.hProcess,
-					INFINITE) != WAIT_OBJECT_0)
+					INFINITE) != WAIT_OBJECT_0) {
 					errno = GetLastError();
-				else if (!GetExitCodeProcess(pi.hProcess, &rc))
+					snprintf(log_buffer, sizeof(log_buffer), " WaitForSingleObject failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				}
+				else if (!GetExitCodeProcess(pi.hProcess, &rc)) {
 					errno = GetLastError();
+					snprintf(log_buffer, sizeof(log_buffer), "GetExitCodeProcess failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				}
 
-				CloseHandle(pi.hProcess);
-				CloseHandle(pi.hThread);
+				if (!CloseHandle(pi.hProcess)) {
+					errno = GetLastError();
+					snprintf(log_buffer, sizeof(log_buffer), "process CloseHandle failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				}
+
+				if (!CloseHandle(pi.hThread)) {
+					errno = GetLastError();
+					snprintf(log_buffer, sizeof(log_buffer), "thread CloseHandle failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				}
 
 				if (errno != 0) {
 					rc = (20000+errno);	/* 200xx is error on wait */
@@ -2027,8 +2046,6 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 							(original == sb.st_mtime))
 							rc = 13;
 					}
-					snprintf(log_buffer, sizeof(log_buffer), "status=%d, error=%d", rc, errno);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 					goto sys_copy_end;
 				}
 			}
@@ -2045,11 +2062,21 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 	}
 
 sys_copy_end:
-	if (readp != INVALID_HANDLE_VALUE)
-		CloseHandle(readp);
+	if (readp != INVALID_HANDLE_VALUE) {
+		if (!CloseHandle(readp)) {
+			errno = GetLastError();
+			snprintf(log_buffer, sizeof(log_buffer), "read CloseHandle failed with status=%d, error=%d", rc, errno);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+		}
+	}
 
-	if (writep != INVALID_HANDLE_VALUE)
-		CloseHandle(writep);
+	if (writep != INVALID_HANDLE_VALUE) {
+		if (!CloseHandle(writep)) {
+			errno = GetLastError();
+			snprintf(log_buffer, sizeof(log_buffer), "write CloseHandle failed with status=%d, error=%d", rc, errno);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+		}
+	}
 
 	if (fd != -1)
 		(void)close(fd);

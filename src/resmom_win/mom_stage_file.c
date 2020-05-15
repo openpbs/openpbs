@@ -129,7 +129,6 @@ main(int argc, char *argv[])
 	cpy_files stage_inout = {0};
 	char *prmt = NULL;
 	char mom_log_path[MAXPATHLEN + 1] = {'\0'};
-	int err = 0;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
@@ -295,11 +294,10 @@ main(int argc, char *argv[])
 			rmtflag = 1;
 		}
 
-		rc = stage_file(dir, rmtflag, rqcpf->rq_owner,
-			pair, 0, &stage_inout, prmt);
+		rc = stage_file(dir, rmtflag, rqcpf->rq_owner, pair, 0, &stage_inout, prmt);
 		if (rc != 0) {
-			err = 1;
-			snprintf(log_buffer, sizeof(log_buffer), "%s;stage %s failed for user =%s, owner=%s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", rqcpf->rq_user, rqcpf->rq_owner);
+			snprintf(log_buffer, sizeof(log_buffer), "%s;stage%s failed, user=%s, owner=%s, status=%d",
+				id, (dir == STAGE_DIR_OUT) ? "out" : "in", rqcpf->rq_user, rqcpf->rq_owner, rc);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, rqcpf->rq_jobid, log_buffer);
 			break;
 		}
@@ -319,7 +317,7 @@ main(int argc, char *argv[])
 	}
 
 	/* if operation is successful, log the number of files/directories copied and the time it took */
-	if (!err) {
+	if (!rc) {
 		copy_stop = copy_stop - copy_start;
 		sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
 			num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
