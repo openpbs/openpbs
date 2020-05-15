@@ -37,13 +37,43 @@
 
 from tests.interfaces import *
 
+test_code = '''
+#include <stdio.h>
+#include <string.h>
+#include <pbs_ifl.h>
+
+int main(int argc, char **argv)
+{
+    struct batch_status *status = NULL;
+    struct attrl *a;
+    int c = pbs_connect(NULL);
+
+    if (c <= 0)
+        return 1;
+    status = pbs_statserver(c, NULL, NULL);
+    if (status == NULL)
+        return 1;
+    a = status->attribs;
+    while (a != NULL) {
+        if (a->name != NULL &&
+            (!strcmp(a->name, ATTR_SvrHost) ||
+                !strcmp(a->name, ATTR_total))) {
+            printf("%s = %s\\n", a->name, a->value);
+        }
+        a = a->next;
+    }
+    pbs_statfree(status);
+    pbs_disconnect(c);
+    return 0;
+}
+'''
+
 
 class TestLibpbsLinking(TestInterfaces):
     """
     Test suite to shared libpbs library linking
     """
 
-    @tags('smoke')
     def test_libpbs(self):
         """
         Test shared libpbs library linking with test code
@@ -80,39 +110,3 @@ class TestLibpbsLinking(TestInterfaces):
         _exp = "\n".join(_exp)
         _out = "\n".join(_res['out'])
         self.assertEqual(_out, _exp)
-
-test_code = '''
-#include <stdio.h>
-#include <string.h>
-#include <pbs_ifl.h>
-
-int main(int argc, char **argv)
-{
-    struct batch_status *status = NULL;
-    struct batch_status *p;
-    struct attrl *a;
-    int c = pbs_connect(NULL);
-
-    if (c <= 0)
-        return 1;
-    status = pbs_statserver(c, NULL, NULL);
-    if (status == NULL)
-        return 1;
-    p = status;
-    while (p != NULL) {
-        a = p->attribs;
-        while (a != NULL) {
-            if (a->name != NULL &&
-                (!strcmp(a->name, ATTR_SvrHost) ||
-                    !strcmp(a->name, ATTR_total))) {
-                printf("%s = %s\\n", a->name, a->value);
-            }
-            a = a->next;
-        }
-        p = p->next;
-    }
-    pbs_statfree(status);
-    pbs_disconnect(c);
-    return 0;
-}
-'''
