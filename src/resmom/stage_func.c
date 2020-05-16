@@ -1993,6 +1993,11 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				rc = CreateProcess(NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
 					NULL, wdir, &si, &pi);
+				if (rc == 0) {
+					errno = GetLastError();
+					snprintf(log_buffer, sizeof(log_buffer), "CreateProcess failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR, LOG_DEBUG, log_buffer);
+				}
 			} else {
 				sprintf(log_buffer, "CreateProcessAsUser(%p, %s) under acct %s wdir=%s",
 					pw->pw_userlogin, cmd_line, getlogin(), wdir);
@@ -2000,12 +2005,11 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				rc = CreateProcessAsUser(pw->pw_userlogin, NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
 					NULL, wdir, &si, &pi);
-			}
-
-			if (rc == 0) {
-				errno = GetLastError();
-				snprintf(log_buffer, sizeof(log_buffer), "create process failed with status=%d, error=%d", rc, errno);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				if (rc == 0) {
+					errno = GetLastError();
+					snprintf(log_buffer, sizeof(log_buffer), "CreateProcessAsUser failed with status=%d, error=%d", rc, errno);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
+				}
 			}
 
 			close(fd);
