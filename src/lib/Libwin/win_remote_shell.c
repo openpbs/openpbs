@@ -178,6 +178,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 		&SecAttrib);
 	if (psi->hStdOutput == INVALID_HANDLE_VALUE) {
 		err = GetLastError();
+		log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdout");
 		return err;
 	}
 
@@ -207,6 +208,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 		err = GetLastError();
 		/* Close already opened output handle upon error */
 		CloseHandle(psi->hStdOutput);
+		log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stderr");
 		return err;
 	}
 
@@ -239,6 +241,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 			/* Close already opened output,error handles upon error */
 			CloseHandle(psi->hStdOutput);
 			CloseHandle(psi->hStdError);
+			log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdin");
 			return err;
 		}
 	}
