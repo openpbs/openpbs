@@ -1609,25 +1609,7 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
-        self.jdata = {
-            'test_conf': {},
-            'test_summary': {
-                'result_summary': {
-                    'run': 0,
-                    'succeeded': 0,
-                    'failed': 0,
-                    'errors': 0,
-                    'skipped': 0,
-                    'timedout': 0,
-                },
-                'tests_with_failures': [],
-                'test_suites_with_failures': [],
-            },
-            'additional_data': {},
-            'testsuites': {},
-            'tests_with_failures': [],
-            'test_suites_with_failures': [],
-            }
+        self.jdata = {}
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
