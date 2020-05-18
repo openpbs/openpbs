@@ -1058,6 +1058,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 	if (policy == NULL || sinfo == NULL || resresv == NULL || err == NULL)
 		return NULL;
+
 	if (resresv->is_job && qinfo == NULL)
 		return NULL;
 

@@ -455,12 +455,13 @@ query_server(status *pol, int pbs_sd)
 	}
 	sinfo->unordered_nodes[i] = NULL;
 
+
+	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
+
 	/* Create placement sets  after collecting jobs on nodes because
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
-
-	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
 
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
