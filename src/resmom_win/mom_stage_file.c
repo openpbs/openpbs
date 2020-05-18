@@ -149,7 +149,6 @@ main(int argc, char *argv[])
 			is_file_open = 1;
 	}
 
-
 	pbs_client_thread_set_single_threaded_mode();
 	/* disable attribute verification */
 	set_no_attribute_verification();
@@ -296,9 +295,9 @@ main(int argc, char *argv[])
 
 		rc = stage_file(dir, rmtflag, rqcpf->rq_owner, pair, 0, &stage_inout, prmt);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "%s;stage%s failed, user=%s, owner=%s, status=%d",
-				id, (dir == STAGE_DIR_OUT) ? "out" : "in", rqcpf->rq_user, rqcpf->rq_owner, rc);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, rqcpf->rq_jobid, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "%s;%s stage%s failed, user=%s, owner=%s, status=%d",
+				id, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", rqcpf->rq_user, rqcpf->rq_owner, rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 			break;
 		}
 	}
@@ -322,13 +321,13 @@ main(int argc, char *argv[])
 		sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
 			num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 			copy_stop/3600, (copy_stop%3600)/60, copy_stop%60);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, rqcpf->rq_jobid, log_buffer);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 	}
 
 	if ((stage_inout.bad_files) || (stage_inout.sandbox_private && stage_inout.stageout_failed)) {
 		if (stage_inout.bad_files) {
-			sprintf(log_buffer, "%s;stage %s failed for file %s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", stage_inout.bad_list);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, rqcpf->rq_jobid, log_buffer);
+			sprintf(log_buffer, "%s;stage %s failed for the file %s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", stage_inout.bad_list);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 		}
 		unmap_unc_path(actual_homedir);
 		log_close(0);	/* silent close */
