@@ -592,6 +592,7 @@ class TestAdminSuspend(TestFunctional):
 
         # submit a job
         j = Job(TEST_USER)
+        j.set_sleep_time(300)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
 
