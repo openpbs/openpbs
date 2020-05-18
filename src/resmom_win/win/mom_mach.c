@@ -195,7 +195,8 @@ open_profile(PDH_profile *prof)
 	__except(EXCEPTION_EXECUTE_HANDLER) {
 		ret = FALSE;
 	}
-
+	if (ret == FALSE)
+		log_err(-1, __func__, "PdhOpenQuery failed");
 	return (ret);
 }
 
@@ -228,7 +229,8 @@ close_profile(PDH_profile *prof)
 	__except(EXCEPTION_EXECUTE_HANDLER) {
 		ret = FALSE;
 	}
-
+	if (ret == FALSE)
+		log_err(-1, __func__, "PdhOpenQuery failed");
 	return (ret);
 }
 
@@ -260,7 +262,11 @@ collect_profile(PDH_profile *prof)
 					prof->value = counter_val.longValue;
 					ret = TRUE;
 				}
+			} else {
+				log_err(-1, __func__, "PdhGetFormattedCounterValue failed");
 			}
+		} else {
+			log_err(-1, __func__, "PdhCollectQueryData failed");
 		}
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) {
@@ -296,9 +302,12 @@ init_profile(LPTSTR counter_name, PDH_profile *prof)
 			if (PdhValidatePath(counter_name) == ERROR_SUCCESS)
 				ret = (PdhAddCounter(prof->hQuery, counter_name, 0,
 					&(prof->hCounter)) == ERROR_SUCCESS);
-			else
+			else {
+				log_err(-1, __func__, "PdhAddCounter failed");
 				ret = FALSE;
+			}
 		} else {
+			log_err(-1, __func__, "PdhValidatePath failed");
 			ret = FALSE;
 		}
 	}
@@ -327,9 +336,12 @@ destroy_profile(PDH_profile *prof)
 	BOOL ret = TRUE;
 	__try {
 		if (prof->hCounter != NULL)
-			ret = (PdhRemoveCounter(prof->hCounter) == ERROR_SUCCESS);
-		if (!close_profile(prof))
+			if ((ret = PdhRemoveCounter(prof->hCounter)) != ERROR_SUCCESS)
+				log_err(-1, __func__, "PdhRemoveCounter failed");
+		if (!close_profile(prof)) {
+			log_err(-1, __func__, "close_profile failed");
 			ret = FALSE;
+		}
 	}
 	__except(EXCEPTION_EXECUTE_HANDLER) {
 		ret = FALSE;
@@ -360,6 +372,8 @@ get_profile(PDH_profile *prof)
 	__except(EXCEPTION_EXECUTE_HANDLER) {
 		ret = FALSE;
 	}
+	if (ret == FALSE)
+		log_err(-1, __func__, "collect_profile failed");
 	return (ret);
 }
 
@@ -400,6 +414,7 @@ end_proc()
 	wait_time = SAMPLE_DELTA;
 
 	if (!get_profile(&mom_prof)) {
+		log_err(-1, __func__, "get_profile failed");
 		return;
 	}
 	nrun = mom_prof.value + num_acpus + nrun_factor;
@@ -436,7 +451,7 @@ dep_initialize()
 	page_size = si.dwPageSize;
 
 	if (!init_profile("\\System\\Processor Queue Length", &mom_prof)) {
-		log_err(-1, "dep_initialize", "init_profile failed!");
+		log_err(-1, __func__, "init_profile failed!");
 		return;
 	}
 
@@ -457,7 +472,7 @@ dep_cleanup()
 	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "dependent cleanup");
 
 	if (!destroy_profile(&mom_prof)) {
-		log_err(-1, "dep_cleanup", "destroy_profile failed!");
+		log_err(-1, __func__, "destroy_profile failed!");
 		return;
 	}
 }
@@ -497,15 +512,19 @@ mem_sum(job *pjob)
 	JOBOBJECT_BASIC_ACCOUNTING_INFORMATION	ji;
 	pbs_task                *ptask = NULL;
 	BOOL                    is_process_in_job = FALSE;
+	BOOL			ret;
 
 	/* Get the system info */
 	GetSystemInfo(&si);
 
 	/* Get the number of processes embedded in the job */
-	if (pjob->ji_hJob != NULL &&
-		QueryInformationJobObject(pjob->ji_hJob,
-		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL)) {
+	if (!(ret = QueryInformationJobObject(pjob->ji_hJob,
+			JobObjectBasicAccountingInformation,
+			&ji, sizeof(ji), NULL))) {
+		log_err(-1, __func__, "QueryInformationJobObject failed to get number of processes");
+	}
+
+	if ((pjob->ji_hJob != NULL) && ret) {
 		nps = ji.TotalProcesses;
 	}
 
@@ -529,11 +548,13 @@ mem_sum(job *pjob)
 	pProcessList->NumberOfProcessIdsInList = 0;
 
 	/* Get the pid list */
-	if (pjob->ji_hJob != NULL)
-		QueryInformationJobObject(pjob->ji_hJob,
+	if (pjob->ji_hJob != NULL) {
+		ret = QueryInformationJobObject(pjob->ji_hJob,
 			JobObjectBasicProcessIdList,
 			pProcessList, pidlistsize, NULL);
-
+		if (!ret)
+			log_err(-1, __func__, "QueryInformationJobObject failed to get pid list");
+	}
 	/*
 	 * Traverse through each process and find the
 	 * memory used by that process during its execution.
@@ -546,7 +567,9 @@ mem_sum(job *pjob)
 			(void)QueryWorkingSet(hProcess, &nwspages, sizeof(nwspages));
 			mem += nwspages * (si.dwPageSize >> 10);
 			CloseHandle(hProcess);
-
+		} else {
+			sprintf(log_buffer, "OpenProcess failed for pid %d", pProcessList->ProcessIdList[i]);
+			log_err(-1, __func__, log_buffer);
 		}
 	}
 	free(pProcessList);
@@ -590,12 +613,16 @@ cput_sum(job *pjob)
 	BOOL                                    is_process_in_job = FALSE;
 	__int64                                 *pkerneltime;
 	__int64                                 *pusertime;
+	BOOL                                    ret;
 
 	cputime = 0.0;
-	if (pjob->ji_hJob != NULL &&
-		QueryInformationJobObject(pjob->ji_hJob,
+	if (!(ret = QueryInformationJobObject(pjob->ji_hJob,
 		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL)) {
+		&ji, sizeof(ji), NULL))) {
+		log_err(-1, __func__, "QueryInformationJobObject failed to get number of processes");
+	}
+
+	if ((pjob->ji_hJob != NULL) && ret) {
 		cputime = (double)(ji.TotalUserTime.QuadPart +
 			ji.TotalKernelTime.QuadPart);
 		nps = ji.TotalProcesses;
@@ -745,8 +772,8 @@ mom_set_limits(job *pjob, int set_mode)
 			JobObjectBasicLimitInformation,
 			&jl, sizeof(jl)) == 0) {
 			sprintf(log_buffer,
-				"warning: unable to set limits for job %s error=%d",
-				pjob->ji_qs.ji_jobid, GetLastError());
+				"warning: unable to set limits for job %s",
+				pjob->ji_qs.ji_jobid);
 			log_err(-1, __func__, log_buffer);
 		}
 	}
@@ -976,13 +1003,16 @@ kill_task(task *ptask, int sig, int dir)
 	int	rc;
 	int     terminate = 1;	/* terminate process by default */
 
-	if (hProc == NULL)
+	if (hProc == NULL) {
+		log_err(-1, __func__, "Invalid handle");
 		return 0;
+	}
 
 	if (sig == suspend_signal) {
 		rc = signal_task(ptask, 1);
 		terminate = 0;
-	} else if (sig == resume_signal) {
+	}
+	else if (sig == resume_signal) {
 		rc = signal_task(ptask, 0);
 		terminate = 0;
 	}
@@ -994,7 +1024,12 @@ kill_task(task *ptask, int sig, int dir)
 	/* Normal process termination, top command shell termination will result in exit codes < 256.     */
 	/* To differentiate a process termination by signals, add BASE_SIGEXIT_CODE to sig, and the       */
 	/* value (BASE_SIGEXIT_CODE + sig) will be assigned as the exit code for that terminated process. */
-	processtree_op_by_handle(hProc, TERMINATE, BASE_SIGEXIT_CODE + sig);
+	rc = processtree_op_by_handle(hProc, TERMINATE, BASE_SIGEXIT_CODE + sig);
+	if (rc == -1) {
+		sprintf(log_buffer, "processtree_op_by_handle failed to terminate process with pid=%ld", GetProcessId(hProc));
+		log_err(-1, __func__, log_buffer);
+		return 0;
+	}
 	return 1;
 }
 
@@ -1078,13 +1113,15 @@ cput_job(char *jobid)
 	hjob = OpenJobObject(JOB_OBJECT_QUERY, 0, jobid);
 	if (hjob == NULL) {
 		rm_errno = RM_ERR_EXIST;
+		sprintf(log_buffer, "OpenJobObject failed for job %s", jobid);
+		log_err(-1, __func__, log_buffer);
 		return NULL;
 	}
 
 	if (!QueryInformationJobObject(hjob,
 		JobObjectBasicAccountingInformation,
 		&ji, sizeof(ji), NULL)) {
-		log_err(-1, __func__, "QueryJob");
+		log_err(-1, __func__, "QueryInformationJobObject failed");
 		cputime = 0.0;
 	}
 	else {
@@ -1311,8 +1348,10 @@ int
 dep_procinfo(pid_t pid, pid_t *psid, uid_t *puid, char *puname, size_t uname_len, char *comm, size_t comm_len)
 {
 
-	if (puname == NULL)
+	if (puname == NULL) {
+		log_err(-1, __func__, "Can not enumerate process or get the process info");
 		return TM_ENOPROC;
+	}
 
 	(void)get_processowner(pid, puid, puname, uname_len, comm, comm_len);
 
@@ -1353,12 +1392,16 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 
 	pe32.dwSize = sizeof(pe32);
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, ppid);
-	if (hProcessSnap == INVALID_HANDLE_VALUE)
+	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+		sprintf(log_buffer, "CreateToolhelp32Snapshot failed for process %ld", (long)ppid);
+		log_err(-1, __func__, log_buffer);
 		return 0;
-
+	}
 	for (p_ok=Process32First(hProcessSnap, &pe32); p_ok; p_ok=Process32Next(hProcessSnap, &pe32)) {
 		if (ppid == pe32.th32ParentProcessID) {
 			if (!dep_attach_child(pjob, parentjobid, pe32.th32ProcessID)) {
+				sprintf(log_buffer, "dep_attach_child failed for process %ld", (long)ppid);
+				log_err(-1, __func__, log_buffer);
 				close_valid_handle(&(hProcessSnap));
 				return 0;
 			}
@@ -1373,13 +1416,14 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 	}
 
 	if ((hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, (DWORD)ppid)) == NULL) {
-		sprintf(log_buffer, "%s: OpenProcess Failed for pid %d with error %d", __func__, ppid, GetLastError());
+		sprintf(log_buffer, "OpenProcess Failed for process with pid %ld", (long)ppid);
+		log_err(-1, __func__, log_buffer);
 		return 0;
 	}
 
 	ptask = momtask_create(pjob);
 	if (ptask == NULL) {
-		sprintf(log_buffer, "%s: task create failed for pid %d", __func__, ppid);
+		sprintf(log_buffer, "momtask_create failed for process with pid %ld", (long)ppid);
 		close_valid_handle(&(hProcess));
 		return 0;
 	}
@@ -1416,8 +1460,10 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 int
 dep_attach(task *ptask)
 {
-	if (!dep_attach_child(ptask->ti_job, ptask->ti_job->ji_qs.ji_jobid, ptask->ti_qs.ti_sid))
+	if (!dep_attach_child(ptask->ti_job, ptask->ti_job->ji_qs.ji_jobid, ptask->ti_qs.ti_sid)) {
+		log_err(-1, __func__, "dep_attach_child failed");
 		return TM_ENOPROC;
+	}
 	return TM_OKAY;
 }
 
