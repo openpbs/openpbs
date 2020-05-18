@@ -73,6 +73,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "log.h"
 #include "pbs_ifl.h"
@@ -136,6 +137,8 @@ static unsigned int locallog = 0;
 static unsigned int syslogfac = 0;
 static unsigned int syslogsvr = 3;
 static unsigned int pbs_log_highres_timestamp = 0;
+
+extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 void
 set_log_conf(char *leafname, char *nodename,
@@ -725,7 +728,7 @@ log_err(int errnum, const char *routine, const char *text)
 		LPVOID	lpMsgBuf;
 		DWORD	err = GetLastError();
 		int		len;
-		snprintf(buf, LOG_BUF_SIZE, "Error code: %lu. ", err);
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -765,6 +768,48 @@ log_err(int errnum, const char *routine, const char *text)
 
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_ERR, msg_daemonname, buf);
+}
+
+/**
+ * @brief
+ * 	log_errf - a combination of log_err() and printf()
+ *	The error is recorded to the pbs log file and to syslogd if it is
+ *	available.  If the error file has not been opened and if syslog is
+ *	not defined, then the console is opened.
+ *
+ * @param[in] errnum - error number
+ * @param[in] routine - error in which routine
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string * 
+ *
+ */
+
+void
+log_errf(int errnum, const char *routine, const char *fmt, ...)
+{
+    va_list args;
+	int len;
+	char logbuf[LOG_BUF_SIZE];
+	char *buf;
+
+	va_start(args, fmt);
+
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+
+	if (len >= sizeof(logbuf)) {
+		buf = pbs_asprintf_format(len, fmt, args);
+		if (buf == NULL) {
+			va_end(args);
+			return;
+		}
+	} else
+		buf = logbuf;
+	
+	log_err(errnum, routine, buf);
+	
+	if (len >= sizeof(logbuf))
+		free(buf);
+	va_end(args);
 }
 
 /**
