@@ -1537,7 +1537,7 @@ run_hook_exit:
 		} else if ((GetExitCodeProcess(pio.pi.hProcess,
 			&run_exit) == 0) ||
 			(run_exit == STILL_ACTIVE)) {
-			log_err(-1, __func__, "GetExitCodeProcess");
+			log_err(-1, __func__, "GetExitCodeProcess failed");
 			run_exit = 255;
 		}
 		win_pclose(&pio);
@@ -2889,8 +2889,10 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 {
 	struct hook_job_action *phja;
 
-	if (pjob == NULL)
+	if (pjob == NULL) {
+		log_err(PBSE_SYSTEM, "new_job_action_req", "Job received is NULL");
 		return;
+	}
 	phja = malloc(sizeof(struct hook_job_action));
 	if (phja == NULL) {
 		log_err(PBSE_SYSTEM, "new_job_action_req", msg_err_malloc);
@@ -3059,6 +3061,8 @@ void send_hook_fail_action(hook *phook)
 	int	vret = -1;
 
 	if ((phook == NULL) || (phook->hook_name == NULL)) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, "", "Hook received is NULL");
 		return;
 	}
 
@@ -3148,10 +3152,19 @@ record_job_last_hook_executed(unsigned int hook_event,
 	char chr_save = '\0';
 	char *p_dir = NULL;
 
-	if ((hook_name == NULL) || (pjob == NULL)) {
+	if (pjob == NULL) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, "", "Job not received");
+		return;
+	} 
+
+	if (hook_name == NULL) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, "", "Hook not received");
 		return;
 	}
 	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
+		// Why are we returning here?
 		return;
 	}
 
@@ -3334,6 +3347,7 @@ post_run_hook(struct work_task *ptask)
 			vna_list_free(vnl_changes);
 			if(php->parent_wait)
 				return -1;
+				// Ask Riyaz
 			hook_error_flag = 1;
 		}
 	}
@@ -4267,8 +4281,10 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 void
 mom_hook_input_init(mom_hook_input_t *hook_input)
 {
-	if (hook_input == NULL)
+	if (hook_input == NULL) {
+		log_err(PBSE_HOOKERROR, "mom_hook_input_init", "Hook input is NULL");
 		return;
+	}
 
 	hook_input->pjob = NULL;
 	hook_input->progname = NULL;
@@ -4292,8 +4308,10 @@ mom_hook_input_init(mom_hook_input_t *hook_input)
 void
 mom_hook_output_init(mom_hook_output_t *hook_output)
 {
-	if (hook_output == NULL)
+	if (hook_output == NULL) {
+		log_err(PBSE_HOOKERROR, "mom_hook_output_init", "Hook output is NULL");
 		return;
+	}
 
 	hook_output->reject_errcode = NULL;
 	hook_output->last_phook = NULL;

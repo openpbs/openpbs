@@ -1056,11 +1056,17 @@ set_homedir_to_local_default(job *pjob, char *username)
 	if (pjob == NULL) {
 		struct  passwd *pp = NULL;
 
-		pp = getpwnam(username);
-
-		if ((username == NULL) || (pp == NULL)) {
+		if (username == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, "Username passed is NULL");
+			return ("");
+		}
+
+		pp = getpwnam(username);
+
+		if (pp == NULL) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Username could not be found");
 			return ("");
 		}
 
@@ -1187,11 +1193,11 @@ becomeuser(job *pjob)
 	}
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(pwdp->pw_userlogin)) {
-			log_err(-1, __func__, "ImpersonateLoggedOnUser");
+			log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser");
 			return -1;
 		}
 	}else{
-		log_err(-1, __func__, "ImpersonateLoggedOnUser");
+		log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser");
 		return -1;
 	}
 
@@ -1514,10 +1520,11 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	if (fclose(nhow) != 0)
 		log_err(-1, __func__, "Unable to close the nodefile");
 
-
-	secure_file2(pbs_nodefile,
+	if (secure_file2(pbs_nodefile,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-		"\\Everyone", READS_MASK | READ_CONTROL);
+		"\\Everyone", READS_MASK | READ_CONTROL) == 0 ) {
+			log_err(-1, __func__, "Unable to change ownership of the file");
+	}
 
 
 	if ((nodefile != NULL) && (nodefile_sz > 0)) {
@@ -1879,6 +1886,8 @@ finish_exec(job *pjob)
 			envbuf, ENV_BUFSIZE) <= ENV_BUFSIZE) &&
 			strncmp("%ComSpec%", envbuf, 9))
 			bld_wenv_variables("ComSpec", envbuf);
+		else
+			log_err(-1, __func__, "ExpandEnvironmentStrings failed");
 	}
 
 	/*
@@ -1906,8 +1915,14 @@ finish_exec(job *pjob)
 					if ((ExpandEnvironmentStringsForUser(hLogin, "%PATH%",
 						envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 						bld_wenv_variables("PATH", envbuf);
+					else
+						log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
 				}
+				else
+					log_err(-1, __func__, "DuplicateTokenEx failed");
 			}
+			else 
+				log_err(-1, __func__, "OpenProcessToken failed");
 
 			if (hLogin != INVALID_HANDLE_VALUE && hLogin != NULL)
 				CloseHandle(hLogin);
@@ -1920,6 +1935,8 @@ finish_exec(job *pjob)
 			if ((ExpandEnvironmentStringsForUser(pwdp->pw_userlogin , "%PATH%",
 				envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 				bld_wenv_variables("PATH", envbuf);
+			else
+				log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
 		}
 	}
 
@@ -2924,6 +2941,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 					if ((ExpandEnvironmentStringsForUser(hLogin, "%PATH%",
 						envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 						bld_wenv_variables("PATH", envbuf);
+					else
+						log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
 				}
 			}
 
@@ -2938,6 +2957,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			if ((ExpandEnvironmentStringsForUser(pwdp->pw_userlogin , "%PATH%",
 				envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 				bld_wenv_variables("PATH", envbuf);
+			else
+				log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
 		}
 	}
 

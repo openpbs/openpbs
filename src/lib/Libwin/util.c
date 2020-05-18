@@ -977,7 +977,6 @@ revert_impersonated_user()
 			is_user_impersonated = FALSE;
 		else
 			errno = GetLastError();
-			log_err(-1, __func__, "Unable to revert impersonation");
 	}
 	return result;
 }
