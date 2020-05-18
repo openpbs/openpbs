@@ -1393,14 +1393,14 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 	pe32.dwSize = sizeof(pe32);
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, ppid);
 	if (hProcessSnap == INVALID_HANDLE_VALUE) {
-		sprintf(log_buffer, "CreateToolhelp32Snapshot failed for process %ld", (long)ppid);
+		sprintf(log_buffer, "CreateToolhelp32Snapshot failed for process %d", ppid);
 		log_err(-1, __func__, log_buffer);
 		return 0;
 	}
 	for (p_ok=Process32First(hProcessSnap, &pe32); p_ok; p_ok=Process32Next(hProcessSnap, &pe32)) {
 		if (ppid == pe32.th32ParentProcessID) {
 			if (!dep_attach_child(pjob, parentjobid, pe32.th32ProcessID)) {
-				sprintf(log_buffer, "dep_attach_child failed for process %ld", (long)ppid);
+				sprintf(log_buffer, "dep_attach_child failed for process %d", ppid);
 				log_err(-1, __func__, log_buffer);
 				close_valid_handle(&(hProcessSnap));
 				return 0;
@@ -1416,14 +1416,14 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 	}
 
 	if ((hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, (DWORD)ppid)) == NULL) {
-		sprintf(log_buffer, "OpenProcess Failed for process with pid %ld", (long)ppid);
+		sprintf(log_buffer, "OpenProcess Failed for process with pid %d", ppid);
 		log_err(-1, __func__, log_buffer);
 		return 0;
 	}
 
 	ptask = momtask_create(pjob);
 	if (ptask == NULL) {
-		sprintf(log_buffer, "momtask_create failed for process with pid %ld", (long)ppid);
+		sprintf(log_buffer, "momtask_create failed for process with pid %d", ppid);
 		close_valid_handle(&(hProcess));
 		return 0;
 	}

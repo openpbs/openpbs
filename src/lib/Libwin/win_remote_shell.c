@@ -207,8 +207,8 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 	if (psi->hStdError == INVALID_HANDLE_VALUE) {
 		err = GetLastError();
 		/* Close already opened output handle upon error */
-		CloseHandle(psi->hStdOutput);
 		log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stderr");
+		CloseHandle(psi->hStdOutput);
 		return err;
 	}
 
@@ -239,9 +239,9 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 		if (psi->hStdInput == INVALID_HANDLE_VALUE) {
 			err = GetLastError();
 			/* Close already opened output,error handles upon error */
+			log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdin");
 			CloseHandle(psi->hStdOutput);
 			CloseHandle(psi->hStdError);
-			log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdin");
 			return err;
 		}
 	}
@@ -486,19 +486,27 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 			NULL,
 			psi,
 			&pi)) {
-				AssignProcessToJobObject(hJob, pi.hProcess);
+				if (!AssignProcessToJobObject(hJob, pi.hProcess)) {
+					log_err(-1, __func__, "AssignProcessToJobObject failed");
+				}
 				/* Wait for command process to exit */
-				WaitForSingleObject(pi.hProcess, INFINITE);
-				GetExitCodeProcess(pi.hProcess, p_returncode);
+				if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0) {
+					log_err(-1, __func__, "WaitForSingleObject failed");
+				}
+				if (!GetExitCodeProcess(pi.hProcess, p_returncode)) {
+					log_err(-1, __func__, "GetExitCodeProcess failed");
+				}
 				/* Terminate all processes associated with the job object */
-				TerminateJobObject(hJob, 0);
+				if (!TerminateJobObject(hJob, 0)) {
+					log_err(-1, __func__, "TerminateJobObject failed");
+				}
+
 				close_valid_handle(&(pi.hProcess));
 				close_valid_handle(&(pi.hThread));
 		}
 		else {
-			err = GetLastError();
 			log_err(-1, __func__, "CreateProcessAsUser failed");
-			return (err);
+			return (GetLastError());
 		}
 		CloseHandle(hUserToken);
 	}
@@ -519,11 +527,12 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 				log_err(-1, __func__, "AssignProcessToJobObject failed");
 			}
 			/* Wait for command process to exit */
-			err = WaitForSingleObject(pi.hProcess, INFINITE);
-			if (err != WAIT_OBJECT_0) {
+			if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0) {
 				log_err(-1, __func__, "WaitForSingleObject failed");
 			}
-			GetExitCodeProcess(pi.hProcess, p_returncode);
+			if (!GetExitCodeProcess(pi.hProcess, p_returncode)) {
+				log_err(-1, __func__, "GetExitCodeProcess failed");
+			}
 			/* Terminate all processes associated with the job object */
 			if ( !TerminateJobObject(hJob, 0) ) {
 				log_err(-1, __func__, "TerminateJobObject failed");
@@ -532,9 +541,9 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 			close_valid_handle(&(pi.hThread));
 		}
 		else {
-			err = GetLastError();
+
 			log_err(-1, __func__, "CreateProcess failed");
-			return (err);
+			return (GetLastError());
 		}
 	}
 	return 0;
@@ -740,7 +749,7 @@ listen_remote_stdpipes(HANDLE *phout, HANDLE *pherror, HANDLE *phin)
 	/* Wait upto 5 seconds for the standard input pipe thread to exit */
 	stat = WaitForSingleObject(hconsole_input_thread, wait_timeout);
 	if (stat != WAIT_OBJECT_0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "failed in WaitForSingleObject, with errno %d", stat);
+		log_err(-1, __func__, "WaitForSingleObject failed");
 	}
 	close_valid_handle(&(hconsole_input_thread));
 }
@@ -765,7 +774,7 @@ execute_remote_shell_command(char *remote_host, char *pipename_append, BOOL conn
 	char stdin_pipe[PIPENAME_MAX_LENGTH] = {0};
 	char stderr_pipe[PIPENAME_MAX_LENGTH] = {0};
 	int retry = 0;
-    int max_retry = 10;
+	int max_retry = 10;
 	int retry_interval = 1000; /* interval between each retry */
 	HANDLE hPipe_remote_stdout = INVALID_HANDLE_VALUE;
 	HANDLE hPipe_remote_stdin = INVALID_HANDLE_VALUE;
