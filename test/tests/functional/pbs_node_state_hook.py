@@ -41,22 +41,35 @@ import logging
 import textwrap
 from pprint import pformat
 from tests.functional import *
+from ptl.utils.pbs_dshutils import get_method_name
 
 
 def get_hook_body(hook_msg):
     hook_body = """
     import pbs
-    e = pbs.event()
-    for key, value in pbs.REVERSE_NODE_STATES.items():
-        pbs.logmsg(pbs.LOG_DEBUG, 'key:' + str(key) + ' value:' + str(value))
-    hostname = e.node_state.hostname
-    new_state = e.node_state.new_state
-    old_state = e.node_state.old_state
-    pbs.logmsg(pbs.LOG_DEBUG, 'hostname:' + hostname)
-    pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
-    pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
-    pbs.logmsg(pbs.LOG_DEBUG, '%s')
-    e.accept()
+    import sys, os
+    from pprint import pformat
+    pbs.logmsg("pbs.__file__:" + pbs.__file__)
+    pbs.logmsg("print(help('modules')):" + str(help('modules')))
+    try:
+        e = pbs.event()
+        pbs.logmsg(pbs.LOG_DEBUG, str(pformat(pbs.REVERSE_NODE_STATES)))
+        for key, value in pbs.REVERSE_NODE_STATES.items():
+            pbs.logmsg(pbs.LOG_DEBUG, 'k:' + str(key) + ' v:' + str(value))
+        hostname = e.node_state.hostname
+        new_state = e.node_state.new_state
+        old_state = e.node_state.old_state
+        pbs.logmsg(pbs.LOG_DEBUG, 'hostname:' + hostname)
+        pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
+        pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
+        pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    except Exception as err:
+        ty, _, tb = sys.exc_info()
+        pbs.logmsg(pbs.LOG_DEBUG, str(ty) + str(tb.tb_frame.f_code.co_filename)
+                   + str(tb.tb_lineno))
+        e.reject()
+    else:
+        e.accept()
     """ % hook_msg
     hook_body = textwrap.dedent(hook_body)
     return hook_body
@@ -80,6 +93,43 @@ class TestPbsNodeStateHook(TestFunctional):
         # Delete managers and operators if added
         attrib = ['operators', 'managers']
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
+
+    def test_check_node_state_lookup(self):
+        """
+        This test checks for the existance and values of the
+        pbs.REVERSE_NODE_STATES dictionary.
+        """
+        print(help('modules'))
+        #import ptl.lib.pbs_ifl as ptl
+        #import ptl.lib.pbs_ifl_mock as ptl
+        #print(dir(ptl))
+
+        #from _pbs_v1 import REVERSE_NODE_STATES
+
+        # correct_dct = {0: 'NODE_STATE_FREE',
+        #                1: 'NODE_STATE_OFFLINE',
+        #                2: 'NODE_STATE_DOWN',
+        #                4: 'NODE_STATE_DELETED',
+        #                8: 'NODE_STATE_UNRESOLVABLE',
+        #                16: 'NODE_STATE_JOB',
+        #                32: 'NODE_STATE_STALE',
+        #                64: 'NODE_STATE_JOBEXCL',
+        #                128: 'NODE_STATE_BUSY',
+        #                256: 'NODE_STATE_UNKNOWN',
+        #                512: 'NODE_STATE_NEEDS_HELLO_PING',
+        #                1024: 'NODE_STATE_INIT',
+        #                2048: 'NODE_STATE_PROV',
+        #                4096: 'NODE_STATE_WAIT_PROV',
+        #                8192: 'NODE_STATE_RESVEXCL',
+        #                8400: 'NODE_STATE_VNODE_AVAILABLE',
+        #                16384: 'NODE_STATE_OFFLINE_BY_MOM',
+        #                32768: 'NODE_STATE_MARKEDDOWN',
+        #                65536: 'NODE_STATE_NEED_ADDRS',
+        #                131072: 'NODE_STATE_MAINTENANCE',
+        #                262144: 'NODE_STATE_SLEEP',
+        #                409903: 'NODE_STATE_VNODE_UNAVAILABLE',
+        #                524288: 'NODE_STATE_NEED_CREDENTIALS'}
+        # self.assertEqual(REVERSE_NODE_STATES, correct_dct)
 
     @requirements(num_moms=2)
     def test_create_hook_and_delete_00(self):
@@ -105,7 +155,8 @@ class TestPbsNodeStateHook(TestFunctional):
         self.logger.error("self.server.moms:%s", str(self.server.moms))
         for name, value in self.server.moms.items():
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:%s, type:%s", name, value,
+                              type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
             self.logger.error("    ***stopping mom:%s", value)
@@ -139,9 +190,10 @@ class TestPbsNodeStateHook(TestFunctional):
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
         for name, value in self.server.moms.items():
-            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.',1)[0]
+            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.', 1)[0]
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:%s, type:%s", name, value,
+                              type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
             self.logger.error("    ***stopping mom:%s", value)
@@ -166,7 +218,8 @@ class TestPbsNodeStateHook(TestFunctional):
             self.server.log_match("new_state:0x0", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
             self.server.log_match(hook_msg_00, starttime=start_time)
-            self.server.log_match("hostname:%s" % hostbasename, starttime=start_time)
+            self.server.log_match("hostname:%s" % hostbasename,
+                                  starttime=start_time)
         self.logger.info("---- TEST ENDED ----")
 
 
@@ -181,7 +234,6 @@ class TestPbsNodeStateHook(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
-        from ptl.utils.pbs_dshutils import get_method_name
         attrs = {'event': 'node_state', 'enabled': 'True'}
         hook_name_00 = 'c1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
@@ -190,7 +242,7 @@ class TestPbsNodeStateHook(TestFunctional):
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
         for name, value in self.server.moms.items():
-            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.',1)[0]
+            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.', 1)[0]
             start_time = int(time.time())
             self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
@@ -223,5 +275,6 @@ class TestPbsNodeStateHook(TestFunctional):
             self.server.log_match("new_state:0x0", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
             self.server.log_match(hook_msg_00, starttime=start_time)
-            self.server.log_match("hostname:%s" % hostbasename, starttime=start_time)
+            self.server.log_match("hostname:%s" % hostbasename,
+                                  starttime=start_time)
         self.logger.info("---- TEST ENDED ----")
