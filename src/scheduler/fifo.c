@@ -1680,13 +1680,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			int sort_nodepart = 0;
 			for (i = 0; ns[i] != NULL; i++) {
 				int j;
-				te_list *te;
-				for (te = ns[i]->ninfo->node_events; te != NULL; te = te->next) {
-					/*
-					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name,
-						   "Node: %s Event %s, time %ld", ns[i]->ninfo->name, te->event->name, te->event->event_time);
-					*/
-				}
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
 					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {

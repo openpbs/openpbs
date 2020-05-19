@@ -681,7 +681,7 @@ class TestNodeBuckets(TestFunctional):
         r = Reservation(attrs=a)
         rid = self.server.submit(r)
         self.server.expect(RESV, {'reserve_state':
-                                  (MATCH_RE, 'RESV_CONFIRME|2')}, id=rid)
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
 
         a = {'Resource_List.select': '1430:ncpus=1',
              'Resource_List.place': 'scatter:excl',
@@ -698,7 +698,7 @@ class TestNodeBuckets(TestFunctional):
         s = [x['resources_available.shape']
              for x in n if x['id'] in nodes]
         self.assertEqual(len(set(s)), 1,
-                         "Job1 will run in more than one placement set")
+                         "Job will run in more than one placement set")
 
     @skipOnCpuSet
     def test_place_group(self):
