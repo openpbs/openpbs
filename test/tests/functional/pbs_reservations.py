@@ -359,6 +359,7 @@ class TestReservations(TestFunctional):
                            id=rid, offset=offset)
         st = self.server.status(RESV, 'resv_nodes', id=rid)[0]
         nds2 = st['resv_nodes']
+        self.assertEqual(len(sp), len(nds2.split('+')))
         self.assertNotEqual(nds1, nds2)
         self.assertEquals(sc, nds1.split('+')[0])
 

@@ -4835,9 +4835,8 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 				nspec_arr[i]->chk = sel->chunks[chunks_ind];
 				nspec_arr[i]->seq_num = nspec_arr[i]->chk->seq_num;
 			}
-			if (i == num_chunk - 1) {
-				if (!in_superchunk || hp < 0)
-					nspec_arr[i]->end_of_chunk = 1;
+			if (!in_superchunk || hp < 0) {
+				nspec_arr[i]->end_of_chunk = 1;
 				if (sel != NULL) {
 					cur_chunk_num++;
 					if (cur_chunk_num == cur_tot_chunks)

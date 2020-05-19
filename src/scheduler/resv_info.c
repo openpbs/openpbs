@@ -1801,6 +1801,8 @@ check_vnodes_unavailable(resource_resv *resv)
 		}
 	}
 
+	free(chunks_to_remove);
+
 	return has_down_node;
 }
 
