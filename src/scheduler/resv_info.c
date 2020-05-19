@@ -1667,12 +1667,16 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
  * @retval 0 no unavailable nodes, no running jobs
  * @retval -1 unavailable nodes, but no running jobs on the chunk
  * @retval -2 unavilable nodes, running jobs within the chunk
+ * @retval -3 error
  * 
  */
 int check_down_running(resource_resv *resv, int chunk_ind)
 {
 	int i, j, k;
 	int ret = 0;
+
+	if (resv == NULL || chunk_ind < 0 || !resv->is_resv)
+		return -3;
 
 	for(i = chunk_ind; resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
 		nspec *ns = resv->orig_nspec_arr[i];

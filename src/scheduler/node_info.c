@@ -4756,6 +4756,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	int cur_tot_chunks = 0;
 	int chunks_ind;
 	int num_paren = 0;
+	int in_superchunk = 0;
 
 	if (execvnode == NULL || sinfo == NULL)
 		return NULL;
@@ -4787,6 +4788,8 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 		return NULL;
 
 	simplespec = parse_plus_spec_r(excvndup, &tailptr, &hp);
+	if (hp > 0) /* simplespec starts with '(' but doesn't close */
+		in_superchunk = 1;
 
 	if (simplespec == NULL)
 		invalid = 1;
@@ -4833,7 +4836,8 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 				nspec_arr[i]->seq_num = nspec_arr[i]->chk->seq_num;
 			}
 			if (i == num_chunk - 1) {
-				nspec_arr[i]->end_of_chunk = 1;
+				if (!in_superchunk || hp < 0)
+					nspec_arr[i]->end_of_chunk = 1;
 				if (sel != NULL) {
 					cur_chunk_num++;
 					if (cur_chunk_num == cur_tot_chunks)
@@ -4848,6 +4852,12 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 			simplespec = parse_plus_spec_r(tailptr, &tailptr, &hp);
 			if (simplespec != NULL) {
 				int ret;
+
+				if (hp > 0) /* simplespec starts with '(' but doesn't end with ')' */
+					in_superchunk = 1;
+				else if (hp < 0) /* simplespec ends with ')' but does not start with '(' */
+					in_superchunk = 0;
+				/* hp == 0 simplespec either starts and ends with '(' ')' or has neither */
 
 				ret = parse_node_resc_r(simplespec, &node_name, &num_el, &nlkv, &kv);
 				if (ret < 0)
