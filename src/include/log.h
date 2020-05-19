@@ -106,6 +106,7 @@ extern void free_if_info(struct log_net_info *ni);
 
 extern void log_close(int close_msg);
 extern void log_err(int err, const char *func, const char *text);
+extern void log_errf(int errnum, const char *routine, const char *fmt, ...);
 extern void log_joberr(int err, const char *func, const char *text, const char *pjid);
 extern void log_event(int type, int objclass, int severity, const char *objname, const char *text);
 extern void log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...);
