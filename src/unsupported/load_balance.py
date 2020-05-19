@@ -38,10 +38,6 @@
 # subject to Altair's trademark licensing policies.
 
 # This is a periodic hook script that monitors the load average on the local
-
-import os
-import re
-
 # host, and offlines or frees the vnode representing the host depending the
 # cpu load.
 #
@@ -57,6 +53,10 @@ import re
 # To instantiate this hook, specify the following:
 #    qmgr -c "create hook load_balance event=exechost_periodic,freq=10"
 #    qmgr -c "import hook load_balance application/x-python default load_balance.py"
+
+import os
+import re
+
 import pbs
 
 ideal_load=1.5
