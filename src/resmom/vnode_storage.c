@@ -87,7 +87,8 @@ create_vmap(void **ctxp)
 			return (0);
 		} else
 			*ctxp = pix;
-		avl_create_index(pix, AVL_NO_DUP_KEYS, 0);
+		if (avl_create_index(pix, AVL_NO_DUP_KEYS, 0))
+			log_event(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Failed to create vnode map");
 	}
 
 	return (1);
@@ -164,23 +165,16 @@ add_vmapent_byID(void *ctx, const char *vnid, void *data)
 		(void) strncpy(pe->key, vnid, PBS_MAXNODENAME);
 		pe->recptr = data;
 		if (avl_add_key(pe, ctx) == AVL_IX_OK) {
-#ifdef	DEBUG
-			(void) sprintf(log_buffer, "avl_add_key IX_OK");
-			log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
-#endif	/* DEBUG */
-			free (pe);
-			return (1);
-		} else {
-#ifdef	DEBUG
-			(void) sprintf(log_buffer, "avl_add_key not IX_OK");
-			log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, log_buffer);
-#endif	/* DEBUG */
-			free (pe);
+			free(pe);
 			return (0);
+		} else {
+			log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "avl_add_key failed");
+			free(pe);
+			return (1);
 		}
 	} else
 		log_err(errno, __func__, "malloc pe failed");
 
-	return (0);
+	return (1);
 }
 #endif	/* PBS_MOM */
