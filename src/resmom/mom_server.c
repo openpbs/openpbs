@@ -226,6 +226,8 @@ addrinsert(const u_long key)
 			msg_daemonname, log_buffer);
 #endif /* localmod 094 */
 
+	} else {
+		log_err(errno, __func__, "Failed to allocate memory for new node in tree");
 	}
 	return;
 }
