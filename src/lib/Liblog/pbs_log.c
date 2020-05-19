@@ -138,8 +138,6 @@ static unsigned int syslogfac = 0;
 static unsigned int syslogsvr = 3;
 static unsigned int pbs_log_highres_timestamp = 0;
 
-extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
-
 void
 set_log_conf(char *leafname, char *nodename,
 		unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
@@ -787,7 +785,7 @@ log_err(int errnum, const char *routine, const char *text)
 void
 log_errf(int errnum, const char *routine, const char *fmt, ...)
 {
-    va_list args;
+	va_list args;
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
