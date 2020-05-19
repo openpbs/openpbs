@@ -271,11 +271,20 @@ libpbs_la_SOURCES = \
 	../Libifl/tm.c \
 	../Libifl/xml_encode_decode.c \
 	../Liblog/pbs_messages.c \
+	../Liblog/pbs_log.c \
+	../Liblog/log_event.c \
 	../Libsec/cs_standard.c \
+	../Libutil/avltree.c \
+	../Libutil/get_hostname.c \
 	../Libutil/misc_utils.c \
 	../Libutil/pbs_secrets.c \
 	../Libutil/pbs_aes_encrypt.c \
 	../Libnet/hnls.c \
+	../Libtpp/tpp_client.c \
+	../Libtpp/tpp_em.c \
+	../Libtpp/tpp_platform.c \
+	../Libtpp/tpp_transport.c \
+	../Libtpp/tpp_util.c \
 	ecl_job_attr_def.c \
 	ecl_svr_attr_def.c \
 	ecl_sched_attr_def.c \
