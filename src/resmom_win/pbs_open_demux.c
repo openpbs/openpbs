@@ -59,7 +59,6 @@ main(int argc, char *argv[])
 	char            cmd_str[PBS_CMDLINE_LENGTH] = {'\0'};
 	char            demux_hostname[PBS_MAXHOSTNAME + 1] = {'\0'};
 	char*           momjobid = NULL;
-	char            logbuff[LOG_BUF_SIZE] = { '\0' };
 	int             i = 0;
 	char            pipeName[PIPENAME_MAX_LENGTH] = {'\0'};
 	HANDLE          hPipe_cmdshell = INVALID_HANDLE_VALUE;
@@ -70,7 +69,6 @@ main(int argc, char *argv[])
 	char            cmd_shell[MAX_PATH + 1] = {'\0'};       /* path to cmd shell */
 	char            cmdline[PBS_CMDLINE_LENGTH]={'\0'};
 	DWORD           exit_code = 0;
-	DWORD	        err_code = 0;
 
 	if (argc < 4)
 		exit(1);
@@ -114,8 +112,7 @@ main(int argc, char *argv[])
 	if (!WriteFile(hPipe_cmdshell, this_host, strlen(this_host), &nBytesWrote, NULL) || nBytesWrote == 0) {
 		DWORD dwErr = GetLastError();
 		if (dwErr == ERROR_NO_DATA) {
-			sprintf(logbuff, "Write to pipe failed with error %lu", dwErr);
-			log_err(-1, __func__, logbuff);
+			log_err(-1, __func__, "Write to pipe failed");
 			winsock_cleanup();
 			exit(1);
 		}
@@ -129,16 +126,14 @@ main(int argc, char *argv[])
 	(void)strncpy_s(pipename_append, _countof(pipename_append), momjobid, _TRUNCATE);
 	(void)strncat_s(pipename_append, _countof(pipename_append), "mom_demux", _TRUNCATE);
 	(void)strncat_s(pipename_append, _countof(pipename_append), this_host, _TRUNCATE);
-	if ((err_code = create_std_pipes(&si, pipename_append, 0)) != 0) {
-		sprintf(logbuff, "Failed to create pipe with error %lu", err_code);
-		log_err(-1, __func__, logbuff);
+	if (create_std_pipes(&si, pipename_append, 0) != 0) {
+		log_err(-1, __func__, "Failed to create pipe");
 		winsock_cleanup();
 		exit(1);
 	}
-	if ((err_code = connectstdpipes(&si, 0)) != 0) {
+	if (connectstdpipes(&si, 0) != 0) {
 		/* close the standard out/err handles before returning */
-		sprintf(logbuff, "Failed to connect to std pipe with error %lu", err_code);
-		log_err(-1, __func__, logbuff);
+		log_err(-1, __func__, "Failed to connect to std pipe");
 		close_valid_handle(si.hStdOutput);
 		close_valid_handle(si.hStdError);
 		winsock_cleanup();
@@ -150,15 +145,14 @@ main(int argc, char *argv[])
 	(void)strncat_s(cmdline, _countof(cmdline) - 1, " /c", _TRUNCATE);
 	(void)strncat_s(cmdline, _countof(cmdline) - 1, cmd_str, _TRUNCATE);
 	/* run the command, flush the file buffers */
-	err_code = run_command_si_blocking(&si, cmdline, &exit_code, 0, SW_HIDE, NULL);
-	if (err_code == 0) {
+	if (run_command_si_blocking(&si, cmdline, &exit_code, 0, SW_HIDE, NULL) == 0) {
 		if (si.hStdOutput != INVALID_HANDLE_VALUE)
 			FlushFileBuffers(si.hStdOutput);
 		if (si.hStdError != INVALID_HANDLE_VALUE)
 			FlushFileBuffers(si.hStdError);
 	} else {
-		sprintf(logbuff, "Failed to run command %s with error %lu", cmdline, err_code);
-		log_err(-1, __func__, logbuff);
+		sprintf(log_buffer, "Failed to run command %s", cmdline);
+		log_err(-1, __func__, log_buffer);
 	}
 	/* disconnect all named pipes and close handles */
 	disconnect_close_pipe(si.hStdOutput);
