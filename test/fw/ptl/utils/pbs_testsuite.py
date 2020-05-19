@@ -1361,7 +1361,7 @@ class PBSTestSuite(unittest.TestCase):
                 cls.server.manager(MGR_CMD_UNSET, SERVER, 'operators',
                                    sudo=True)
             except PbsManagerError as e:
-                self.logger.error(e.msg)
+                cls.logger.error(e.msg)
         attr = {}
         current_user = pwd.getpwuid(os.getuid())[0] + '@*'
         mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
