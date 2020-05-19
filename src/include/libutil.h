@@ -200,8 +200,8 @@ char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 /*
  * Internal asprintf() implementation for use on all platforms
  */
-int pbs_asprintf(char **dest, const char *fmt, ...);
-char *pbs_asprintf_format(int len, const char *fmt, va_list args);
+extern int pbs_asprintf(char **dest, const char *fmt, ...);
+extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 /*
  * calculate the number of digits to the right of the decimal point in
