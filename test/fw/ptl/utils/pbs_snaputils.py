@@ -531,7 +531,7 @@ class ObfuscateSnapshot(object):
                     if printjob is not None:
                         cmd = [printjob, fpath]
                         ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
-                                                as_script=True)
+                                              as_script=True)
                     self.du.rm(path=fpath)
                     if ret is not None and ret["out"] is not None:
                         jbcontent[name] = "\n".join(ret["out"])
