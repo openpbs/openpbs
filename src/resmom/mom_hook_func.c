@@ -1175,8 +1175,9 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		}
 
 #ifdef	WIN32
-		secure_file(hook_inputfile, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+		if(secure_file(hook_inputfile, "Administrators",
+			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+			log_err(-1, __func__, "Failed to change hook input file permissions");
 #endif
 		/* Still need to chdir() here. A periodic hook may be */
 		/* running the hook periodically and may no longer in the */
@@ -1513,8 +1514,10 @@ run_hook_exit:
 				event_type == HOOK_EVENT_EXECJOB_PRETERM) {
 			int ret = 0;
 			ret = hook_env_setup(pjob, phook);
-			if ( ret != 0 )
+			if ( ret != 0 ) {
+				log_err(-1, __func__, "Unable to set the environment for the job");
 				goto run_hook_exit;
+			}
 		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
 		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
@@ -1703,8 +1706,9 @@ run_hook_exit:
 	}
 
 #ifdef WIN32
-	secure_file(file_out, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+	if(secure_file(file_out, "Administrators",
+		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) 
+		log_err(-1, __func__, "Failed to change permissions of the hook output file");
 #endif
 
 
