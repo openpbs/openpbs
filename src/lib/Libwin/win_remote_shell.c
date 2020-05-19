@@ -637,6 +637,7 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 		}
 		/* When ReadFile returns with broken pipe, valid data may still be returned so break only after handling any data */
 		if (dwErr == ERROR_BROKEN_PIPE || dwErr == ERROR_PIPE_NOT_CONNECTED) {
+			log_err(-1, __func__, "ReadFile failed as pipe is broken or not connected");
 			return -1;
 		}
 	}
@@ -825,10 +826,14 @@ execute_remote_shell_command(char *remote_host, char *pipename_append, BOOL conn
 		Sleep(retry_interval);
 	}
 
-	if (hPipe_remote_stdout == INVALID_HANDLE_VALUE || hPipe_remote_stderr == INVALID_HANDLE_VALUE)
+	if (hPipe_remote_stdout == INVALID_HANDLE_VALUE || hPipe_remote_stderr == INVALID_HANDLE_VALUE) {
+		log_err(-1, __func__, "do_WaitNamedPipe returned invalid stdout or stderr handle");
 		return FALSE;
-	if (connect_stdin && hPipe_remote_stdin == INVALID_HANDLE_VALUE)
+	}
+	if (connect_stdin && hPipe_remote_stdin == INVALID_HANDLE_VALUE) {
+		log_err(-1, __func__, "do_WaitNamedPipe returned invalid stdin handle");
 		return FALSE;
+	}
 	/*
 	 * Listen to these pipes.
 	 * Read the redirected stdout and write to the stdout.
