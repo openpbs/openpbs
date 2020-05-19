@@ -284,7 +284,7 @@ functionality of PBS Professional®.
 %if 0%{?opensuse_bs}
 # Do not specify debug_package for OBS builds.
 %else
-%if %{defined suse_version}
+%if 0%{?suse_version} || x%{?_vendor_id} == xdebian || x%{?_vendor_id} == xubuntu
 %debug_package
 %endif
 %endif

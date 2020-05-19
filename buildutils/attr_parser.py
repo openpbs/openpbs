@@ -35,18 +35,18 @@
 # trademark licensing policies.
 
 """
-    attr_parser.py will parse xml files also called master attribute files 
-containing all the members of both server and ecl files,and will generate 
-two corresponding files one for server and one for ecl 
+    attr_parser.py will parse xml files also called master attribute files
+containing all the members of both server and ecl files,and will generate
+two corresponding files one for server and one for ecl
 """
-import sys
-import os
-import re
 import getopt
-import string
-import xml.parsers.expat
-import xml.dom.minidom
+import os
 import pdb
+import re
+import string
+import sys
+import xml.dom.minidom
+import xml.parsers.expat
 
 list_ecl = []
 list_svr = []
@@ -75,7 +75,6 @@ class switch(object):
     def __iter__(self):
         """Return the match method once, then stop"""
         yield self.match
-        raise StopIteration
 
     def match(self, *args):
         """Indicate whether or not to enter a case suite"""
@@ -107,7 +106,7 @@ def fileappend(line):
 
 
 def getText(efl, sfl):
-    """ 
+    """
     getText function - (writes the data stored in lists to file)
     """
     buff1 = "".join(list_svr)
@@ -136,8 +135,8 @@ def add_comma(string):
 
 def attr(masterf, svrf, eclf):
     """
-    attr function - (opens the files reads them and using minidom filters relevant 
-    data to individual lists) 
+    attr function - (opens the files reads them and using minidom filters relevant
+    data to individual lists)
     """
     from xml.dom import minidom
 
@@ -156,7 +155,7 @@ def attr(masterf, svrf, eclf):
             list_ecl.append(
                 "/*Disclaimer: This is a machine generated file.*/" + '\n')
             list_ecl.append(
-                "/*For modifying any attribute change corresponding XML file */" + '\n') 
+                "/*For modifying any attribute change corresponding XML file */" + '\n')
             blist = a.getElementsByTagName('SVR')
             blist_ecl = a.getElementsByTagName('ECL')
             for s in blist:
@@ -184,9 +183,9 @@ def attr(masterf, svrf, eclf):
                 s_flag = 0
             attr_list = attr_list.strip(' \t')
             fileappend(attr_list)
-            h = None 
-            s_mem = None 
-            e_mem = None 
+            h = None
+            s_mem = None
+            e_mem = None
             mem_list1 = i.getElementsByTagName('member_name')
             if mem_list1:
                 bot = mem_list1[0].getElementsByTagName('both')
@@ -228,10 +227,10 @@ def attr(masterf, svrf, eclf):
                 elif e_mem:
                     tmp = e_mem
                 else:
-                    tmp = i.childNodes[0].nodeValue  
+                    tmp = i.childNodes[0].nodeValue
                 sys.exit(
                     "member_at_decode <Tag> does not exist! for Attribute -> " + tmp)
-                 
+
 
             mem_list3 = i.getElementsByTagName('member_at_encode')
             if mem_list3:
@@ -250,7 +249,7 @@ def attr(masterf, svrf, eclf):
                 elif e_mem:
                     tmp = e_mem
                 else:
-                    tmp = i.childNodes[0].nodeValue 
+                    tmp = i.childNodes[0].nodeValue
                 sys.exit(
                     "member_at_encode <Tag> does not exist! for Attribute -> " + tmp)
 
@@ -274,7 +273,7 @@ def attr(masterf, svrf, eclf):
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
                     "member_at_set <Tag> does not exist! for Attribute -> " + tmp)
-            
+
             mem_list5 = i.getElementsByTagName('member_at_comp')
             s_flag = 1
             if mem_list5:
@@ -295,7 +294,7 @@ def attr(masterf, svrf, eclf):
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
                     "member_at_comp <Tag> does not exist! for Attribute -> " + tmp)
-           
+
             mem_list6 = i.getElementsByTagName('member_at_free')
             s_flag = 1
             if mem_list6:
@@ -450,7 +449,7 @@ def attr(masterf, svrf, eclf):
             tail_value = t.childNodes[0].nodeValue
             if tail_value == None:
                 pass
-            fileappend('\n') 
+            fileappend('\n')
             tail_both = t.getElementsByTagName('both')
             tail_svr = t.getElementsByTagName('SVR')
             tail_ecl = t.getElementsByTagName('ECL')
@@ -473,8 +472,8 @@ def attr(masterf, svrf, eclf):
 
 def resc_attr(masterf, svrf, eclf):
     """
-    resc_attr function - (opens the resc_def file reads them and using minidom 
-    filters relevant data to individual lists) 
+    resc_attr function - (opens the resc_def file reads them and using minidom
+    filters relevant data to individual lists)
     """
     from xml.dom import minidom
 
@@ -492,11 +491,11 @@ def resc_attr(masterf, svrf, eclf):
         for a in alist:
             list_svr.append (
                 "/*Disclaimer: This is a machine generated file.*/" + '\n')
-            list_svr.append(                                                                 
-                  "/*For modifying any attribute change corresponding XML file */" + '\n')            
-            list_ecl.append(                                                                 
-                  "/*Disclaimer: This is a machine generated file.*/" + '\n')                         
-            list_ecl.append(                                                                 
+            list_svr.append(
+                  "/*For modifying any attribute change corresponding XML file */" + '\n')
+            list_ecl.append(
+                  "/*Disclaimer: This is a machine generated file.*/" + '\n')
+            list_ecl.append(
                   "/*For modifying any attribute change corresponding XML file */" + '\n')
             blist = a.getElementsByTagName('SVR')
             blist_ecl = a.getElementsByTagName('ECL')
@@ -604,7 +603,7 @@ def resc_attr(masterf, svrf, eclf):
                 else:
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
-                    "member_at_encode <Tag> does not exist! for Attribute -> " + tmp)  
+                    "member_at_encode <Tag> does not exist! for Attribute -> " + tmp)
 
             mem_list4 = i.getElementsByTagName('member_at_set')
             if mem_list4:
@@ -624,7 +623,7 @@ def resc_attr(masterf, svrf, eclf):
                 else:
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
-                    "member_at_set <Tag> does not exist! for Attribute -> " + tmp) 
+                    "member_at_set <Tag> does not exist! for Attribute -> " + tmp)
 
             mem_list5 = i.getElementsByTagName('member_at_comp')
             if mem_list5:
@@ -684,7 +683,7 @@ def resc_attr(masterf, svrf, eclf):
                 else:
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
-                    "member_at_action <Tag> does not exist! for Attribute -> " + tmp) 
+                    "member_at_action <Tag> does not exist! for Attribute -> " + tmp)
             e_flag = 0
             s_flag = 0
 
@@ -758,7 +757,7 @@ def resc_attr(masterf, svrf, eclf):
                 else:
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
-                    "member_at_type <Tag> does not exist! for Attribute -> " + tmp) 
+                    "member_at_type <Tag> does not exist! for Attribute -> " + tmp)
             e_flag = 0
             s_flag = 0
 
@@ -777,7 +776,7 @@ def resc_attr(masterf, svrf, eclf):
                 else:
                     tmp = i.childNodes[0].nodeValue
                 sys.exit(
-                    "member_at_entlim <Tag> does not exist! for Attribute -> " + tmp)  
+                    "member_at_entlim <Tag> does not exist! for Attribute -> " + tmp)
 
             mem_list11 = i.getElementsByTagName('member_at_struct')
             if mem_list11:
@@ -828,7 +827,7 @@ def resc_attr(masterf, svrf, eclf):
             tail_value = t.childNodes[0].nodeValue
             if tail_value == None:
                 pass
-            fileappend('\n') 
+            fileappend('\n')
             tail_both = t.getElementsByTagName('both')
             tail_svr = t.getElementsByTagName('SVR')
             tail_ecl = t.getElementsByTagName('ECL')
@@ -945,4 +944,3 @@ def usage():
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-

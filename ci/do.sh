@@ -64,7 +64,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql postgresql-contrib python3-pip sudo man-db git
+                        swig expat postgresql postgresql-contrib python3-pip sudo \
+                        man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
@@ -75,7 +76,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql python3-pip sudo man-db git
+                        swig expat postgresql python3-pip sudo man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   else
     echo "Unknown platform..."
