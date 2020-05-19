@@ -203,6 +203,8 @@ send_update_job(job *pjob, char *old_exec_vnode)
 	exec_host2_hookset = pjob->ji_wattr[JOB_ATR_exec_host2].at_flags & ATR_VFLAG_HOOK;
 	if (!exec_vnode_hookset || !schedselect_hookset ||
 	   (!exec_host_hookset && !exec_host2_hookset)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Execution host not set for job");
 		return (1);
 	}
 
@@ -883,10 +885,11 @@ mktmpdir(char *jobid, char *username)
 		log_err(errno, __func__, log_buffer);
 		return JOB_EXEC_FAIL1;
 	}
-	secure_file2(tmpdir,
+	if(secure_file2(tmpdir,
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+		log_err(-1, __func__, "Unable to change ownership of the file");
 	return 0;
 }
 
@@ -940,10 +943,11 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 	if(is_network_drive_path(jobdir) && login_handle != INVALID_HANDLE_VALUE)
 		(void)revert_impersonated_user();
 
-	secure_file2(jobdir,
+	if(secure_file2(jobdir,
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+		log_err(-1, __func__, "Unable to change ownership of the file");
 
 	/* success! log a message showing the name of the staging and execution dir */
 	sprintf(log_buffer, "created the job directory %s", jobdir);
@@ -1197,7 +1201,7 @@ becomeuser(job *pjob)
 			return -1;
 		}
 	}else{
-		log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser");
+		log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser. Got an invalid value for handle");
 		return -1;
 	}
 
@@ -2231,13 +2235,13 @@ finish_exec(job *pjob)
 		if (script_out != -1) {
 			si.hStdOutput = (HANDLE)_get_osfhandle(script_out);
 			if (si.hStdOutput == -1) {
-				log_err(-1, __func__, "Unable to get handle for the script input file");
+				log_err(-1, __func__, "Unable to get handle for the script output file");
 			}
 		}
 		if (script_err != -1) {
 			si.hStdError = (HANDLE)_get_osfhandle(script_err);
 			if (si.hStdError == -1) {
-				log_err(-1, __func__, "Unable to get handle for the script input file");
+				log_err(-1, __func__, "Unable to get handle for the script error file");
 			}
 		}
 		/* turn off echoing if cmd.exe */
@@ -2280,11 +2284,12 @@ finish_exec(job *pjob)
 						pjob->ji_wattr[(int)JOB_ATR_executable].at_val.at_str);
 				}
 			} else if (CopyFile(script_path, script_bat, FALSE) != 0) {
-				secure_file2(script_bat,
+				if(secure_file2(script_bat,
 					pwdp->pw_name,
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 					"Administrators",
-					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+					log_err(-1, __func__, "Unable to change ownership of the file");
 
 				sprintf(cmdline, "%s /Q /C \"%s\"", shell, script_bat);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3382,10 +3387,11 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			became_admin =1;
 		}
 
-		secure_file2(path,
+		if(secure_file2(path,
 			pjob->ji_user->pw_name,
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+			log_err(-1, __func__, "Unable to change ownership of the file");
 
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {

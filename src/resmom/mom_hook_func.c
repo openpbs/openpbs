@@ -1439,10 +1439,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		/* since under Windows, this is still main mom (not forked), */
 		/* need to unset the hook config environment variable. */
 		if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
-		{
-			log_err(-1, __func__, "Failed to set PBS_HOOK_CONFIG_FILE");
-			// Why not return from here?
-		}
+			log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
 #endif /* WIN32 */
 	} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
@@ -3164,7 +3161,6 @@ record_job_last_hook_executed(unsigned int hook_event,
 		return;
 	}
 	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
-		// Why are we returning here?
 		return;
 	}
 
@@ -3347,7 +3343,6 @@ post_run_hook(struct work_task *ptask)
 			vna_list_free(vnl_changes);
 			if(php->parent_wait)
 				return -1;
-				// Ask Riyaz
 			hook_error_flag = 1;
 		}
 	}
