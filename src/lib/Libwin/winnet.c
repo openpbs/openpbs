@@ -55,13 +55,14 @@ int
 winsock_init()
 {	
 	WSADATA	data;
+	int ret;
 
 	save_env(); 	/* need certain environment variables set in order */
 	/* make network calls like socket() or gethostbyname()*/
-
-	if (WSAStartup(MAKEWORD(2, 2), &data)) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "winsock_init failed with errno %d",
-				WSAGetLastError());
+	ret = WSAStartup(MAKEWORD(2, 2), &data);
+	if (ret) {
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "winsock_init failed with errno %d",
+				ret);
 		return 1;
 	}
 	return 0;
@@ -76,7 +77,7 @@ void
 winsock_cleanup()
 {
 	if (WSACleanup()) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__, "winsock_cleanup failed with errrno %d", 
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "winsock_cleanup failed with errrno %d", 
 				WSAGetLastError());
 	}
 }

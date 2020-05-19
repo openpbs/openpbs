@@ -148,7 +148,7 @@ gethostid(void)
 	sz = sizeof(cname);
 
 	if (GetComputerName(cname, &sz) == 0) {
-		log_err(-1, __func__, "failed in GetComputerName");
+		log_errf(-1, __func__, "failed in GetComputerName for %s", cname);
 		return (ret);
 	}
 

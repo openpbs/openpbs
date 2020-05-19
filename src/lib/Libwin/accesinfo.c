@@ -60,9 +60,9 @@
  * 	This also will add the 'owner_sid' to this permission list giving it
  * 	Full Control
  *
- * @param[in]  path - the target file/directory
  * @param[in]  user - the username to assign ownership
  * @param[in]  mask - the file permission mask to assign
+ * @param[in]  owner_sid - session sid
  *
  * @return	ACL*
  * @retval	pointer to ACL list	success
@@ -87,7 +87,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 	if ((k < _MAX_GROUPS) && (owner_sid != NULL)) {
 		grp[k] = sid_dup(owner_sid);
 		if (grp[k] == NULL) {
-			log_event(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to copy owner_sid");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to copy owner_sid");
 			return NULL;
 		}
 		k++;
@@ -105,7 +105,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 				k++;
 			}
 		} else {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to get group and user sid");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to get group and user sid for %s", user);
 		}
 	} 
 
@@ -140,13 +140,13 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 
 		if (user != NULL && mask != 0 && i == (k-1)) {
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION, mask | 0x00100000, grp[i]) == 0) {
-				log_errf(-1, __func__, "AddAccessAllowedAce failed to add %d to %s", mask, name);
+				log_errf(-1, __func__, "AddAccessAllowedAce failed to add %s to %s", print_mask(mask), name);
 			}
 
 		} else {
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 				READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL, grp[i]) == 0) {
-				log_err(-1, __func__, "failed to add mask in AddAccessAllowedAce");
+				log_errf(-1, __func__, "failed to add mask in AddAccessAllowedAce for %s", name);
 			}
 		}
 		(void)free(name);
@@ -182,30 +182,30 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 	char	*gname = NULL;
 
 	if (path == NULL || *path == '\0') {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "invalid path");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "invalid path");
 		return (0);
 	}
 
 	if (lstat(path, &sbuf) == -1) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Path don't exists");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Path %s don't exists", path);
 		return (0);	/* ignore non-existent files! */
 	}
 
 	if (!has_privilege(SE_RESTORE_NAME)) {
 		if (ena_privilege(SE_RESTORE_NAME) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to enable privilege: SE_RESTORE_NAME");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to enable privilege: SE_RESTORE_NAME");
 		}
 	}
 
 	if (!has_privilege(SE_TAKE_OWNERSHIP_NAME)) {
 		if (ena_privilege(SE_TAKE_OWNERSHIP_NAME) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to enable privilege: SE_TAKE_OWNERSHIP_NAME");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to enable privilege: SE_TAKE_OWNERSHIP_NAME");
 		}
 	}
 
 	if (!has_privilege(SE_SECURITY_NAME)) {
 		if (ena_privilege(SE_SECURITY_NAME) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to enable privilege: SE_SECURITY_NAME");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to enable privilege: SE_SECURITY_NAME");
 		}
 	}
 
@@ -235,7 +235,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 			return (0);
 		}
 		if (InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION)==0 ) {
-			log_err(-1, __func__, "failed in InitializeSecurityDescriptor");
+			log_err(-1, __func__, "failed in InitializeSecurityDescriptor for usid");
 		}
 		si = 0;
 
@@ -262,7 +262,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 
 	pdacl = create_secure_dacl(user, mask, usid);
 	if (pdacl == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to create secure dacl for file %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to create secure dacl for file %s", path);
 		if (usid) LocalFree(usid);
 		if (gsid) LocalFree(gsid);
 		return (0);
@@ -338,7 +338,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 	if ((k < _MAX_GROUPS) && (owner_sid != NULL)) {
 		grp[k] = sid_dup(owner_sid);
 		if (grp[k] == NULL) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to copy owner sid");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to copy owner sid");
 			return NULL;
 		}
 		k++;
@@ -358,7 +358,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 				k++;
 			}
 		} else {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to get group and user sid");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to get group and user sid for user: %s", user);
 		}
 	}
 	if (user2 != NULL && mask2 != 0) {
@@ -373,7 +373,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 				k++;
 			}
 		} else {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to get group and user sid for %s user", user2);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to get group and user sid for user2: %s", user2);
 		}
 	}
 
@@ -408,17 +408,17 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 
 		if (user != NULL && mask != 0 && i == (k-2)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask | 0x00100000, grp[i]) == 0) {
-				log_err(-1, __func__, "failed in AddAccessAllowedAceEx");
+				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user: %s, mask: %s, name: %s", user, print_mask(mask), name);
 			}
 
 		} else if (user2 != NULL && mask2 != 0 && i == (k-1)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask2 | 0x00100000, grp[i]) == 0) {
-				log_err(-1, __func__, "failed in AddAccessAllowedAceEx (user2)");
+				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user2: %s, mask: %s, name: %s", user2, print_mask(mask2), name);
 			}
 		} else {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE,
 				READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL, grp[i]) == 0) {
-				log_err(-1, __func__, "failed in AddAccessAllowedAceEx (mask)");
+				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for name: %s and mask: READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL", name);
 			}
 		}
 		(void)free(name);
@@ -457,24 +457,24 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 	char	*gname = NULL;
 
 	if (path == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Invalid path");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Invalid path");
 		return (0);
 	}
 
 	if (lstat(path, &sbuf) == -1) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Path don't exists");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Path %s don't exists", path);
 		return (0);	/* ignore non-existent files! */
 	}
 
 	if (!has_privilege(SE_RESTORE_NAME)) {
 		if (ena_privilege(SE_RESTORE_NAME) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to enable privilege: SE_RESTORE_NAME");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to enable privilege: SE_RESTORE_NAME");
 		}
 	}
 
 	if (!has_privilege(SE_TAKE_OWNERSHIP_NAME)) {
 		if (ena_privilege(SE_TAKE_OWNERSHIP_NAME) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to enable privilege: SE_TAKE_OWNERSHIP_NAME");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to enable privilege: SE_TAKE_OWNERSHIP_NAME");
 		}
 	}
 
@@ -504,7 +504,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 		}
 
 		if (InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION) == 0) {
-			log_err(-1, __func__, "failed in InitializeSecurityDescriptor");
+			log_err(-1, __func__, "failed in InitializeSecurityDescriptor for usid");
 		}
 		si = 0;
 	}
@@ -518,7 +518,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 	}
 	if (gsid) {
 		if (SetSecurityDescriptorGroup(&sd, gsid, FALSE) == 0) {
-			log_err(-1, __func__, "failed in SetSecurityDescriptorGroup for %s", path);
+			log_errf(-1, __func__, "failed in SetSecurityDescriptorGroup for %s", path);
 			if (usid) LocalFree(usid);
 			LocalFree(gsid);
 			return (0);
@@ -529,7 +529,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 
 	pdacl = create_secure_dacl2(user, mask, user2, mask2, usid);
 	if (pdacl == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "failed to create secure dacl for file %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed to create secure dacl for file %s", path);
 		if (usid) LocalFree(usid);
 		if (gsid) LocalFree(gsid);
 		return (0);
@@ -837,7 +837,7 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 			rc = EPERM;
 			sprintf(errmsg, "File %s not owned by user %s or an admin-type user!",
 				path, owner);
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, errmsg);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errmsg);
 			goto chkerr;
 		}
 	}
@@ -857,7 +857,7 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 	if (allowed == NULL || denied == NULL) {
 		rc = errno;
 		strcpy(errmsg, "malloc of allowed or denied struct failed!");
-		log_err(errno, __func__, errmsg);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errmsg);
 		goto chkerr;
 	}
 
@@ -912,7 +912,7 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 		sprintf(errmsg, "File %s has following disallowed perm masks: ",
 			path);
 		strcat(errmsg, accessinfo_values(allowed, sizeInfo.AceCount));
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, errmsg);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errmsg);
 		goto chkerr;
 	}
 
@@ -972,7 +972,7 @@ create_dir_everyone_readwrite(char *path)
 			"created %s for everyone to read/write", path);
 	} else {
 		if (GetLastError()  != ERROR_ALREADY_EXISTS) {
-			log_err(-1, __func__, "Unable to create new directory");
+			log_errf(-1, __func__, "Unable to create new directory %s", path);
 		}
 	}
 	log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__,
@@ -980,7 +980,7 @@ create_dir_everyone_readwrite(char *path)
 	if (secure_file2(path,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Failed to secure %s", path);	
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Failed to secure %s", path);
 	}
 }
 
@@ -1007,7 +1007,7 @@ make_dir_files_everyone_read(char *path)
 	/* Secure the item that path refers to. */
 	if (secure_file2(path, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK|READ_CONTROL) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure %s", path);	
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure %s", path);
 		return;
 	}
 
@@ -1015,7 +1015,7 @@ make_dir_files_everyone_read(char *path)
 		"securing %s for read access by Everyone", path);
 	/* If the item is not a directory, we are done. */
 	if (stat(path, &sb) == -1) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "\"%s\" does not exist", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "\"%s\" does not exist", path);
 		return;
 	}
 	if (!S_ISDIR(sb.st_mode)) {
@@ -1025,7 +1025,7 @@ make_dir_files_everyone_read(char *path)
 
 	dir = opendir(path);
 	if (dir == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "opendir failed for %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "opendir failed for %s", path);
 		return;
 	}
 	/* Recurse into the directory. */
@@ -1044,7 +1044,7 @@ make_dir_files_everyone_read(char *path)
 		make_dir_files_everyone_read(dirfile);
 	}
 	if (errno != 0 && errno != ENOENT) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "readdir error; %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "readdir error; %s", path);
 	}
 	(void)closedir(dir);
 }
@@ -1071,13 +1071,13 @@ make_dir_files_service_account_read(char *path)
 	if (username == "" || username == NULL) {
 		if (secure_file(path, "Administrators",
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", path);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", path);
 		}
 	} else {
 		if (secure_file2(path, "Administrators",
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s for Administrators and %s", path, username);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s for Administrators and %s", path, username);
 		}
 	}
 
@@ -1096,7 +1096,7 @@ make_dir_files_service_account_read(char *path)
 		if (secure_file2(dirfile, "Administrators",
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", dirfile);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", dirfile);
 		}
 #ifdef DEBUG
 		printf("securing file %s: full access to admin and %s \n", dirfile, username);
@@ -1153,7 +1153,7 @@ secure_mom_files(void)
 	char    *username = NULL;
 
 	if (pbs_conf.pbs_home_path == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "no home_path!");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "no home_path!");
 		return;
 	}
         username = getlogin_full();
@@ -1181,13 +1181,13 @@ secure_mom_files(void)
 					if (secure_file2(fpath, "Administrators",
 						READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 						"\\Everyone", READS_MASK|READ_CONTROL) == 0) {
-							log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", fpath);
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", fpath);
 					}
 				}
 			}
 		}
 		if (errno != 0 && errno != ENOENT) {
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "readdir error; %s", path);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "readdir error; %s", path);
 		}
 		(void)closedir(dir);
 	}
@@ -1203,14 +1203,14 @@ secure_mom_files(void)
 		CloseHandle(hfile);
 
 	} else {
-		log_err(-1, __func__, "failed in CreateFile");
+		log_errf(-1, __func__, "failed in CreateFile for %s", path);
 	}
 	log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__,
 		"securing %s for admin-only access", path);
 	if (secure_file2(path, "Administrators",
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", path);
 	}
 
 	sprintf(path, "%s/mom_logs", pbs_conf.pbs_home_path);
@@ -1240,14 +1240,14 @@ secure_misc_files()
 	HANDLE	hfile;
 
 	if (pbs_conf.pbs_home_path == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "no home_path!");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "no home_path!");
 		return;
 	}
 
 	if (secure_file2(pbs_conf.pbs_home_path,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"\\Everyone", READS_MASK | READ_CONTROL) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", pbs_conf.pbs_home_path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", pbs_conf.pbs_home_path);
 	}
 	log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__,
 		"securing %s for read access by Everyone", pbs_conf.pbs_home_path );
@@ -1260,7 +1260,7 @@ secure_misc_files()
 	if (secure_file2(path,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"\\Everyone", READS_MASK|READ_CONTROL) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_DEBUG, __func__,  "Unable to secure file %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,  "Unable to secure file %s", path);
 	}
 
 	sprintf(path, "%s/undelivered", pbs_conf.pbs_home_path);
@@ -1276,14 +1276,14 @@ secure_misc_files()
 			"created file %s", path);
 		CloseHandle(hfile);
 	} else {
-		log_err(-1, __func__, "failed in CreateFile");
+		log_errf(-1, __func__, "failed in CreateFile for %s", path);
 	}
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__,
 		"securing file %s: full access to admin and read to Everyone", path);
 	if (secure_file2(path,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"\\Everyone", READS_MASK|READ_CONTROL) == 0) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Unable to secure file %s", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure file %s", path);
 	}
 
 	sprintf(path, "%s/auxiliary", pbs_conf.pbs_home_path);
@@ -1307,7 +1307,7 @@ secure_exec_files()
 	char	path[MAXPATHLEN+1];
 
 	if (pbs_conf.pbs_exec_path == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "no exec_path!");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "no exec_path!");
 		return;
 	}
 

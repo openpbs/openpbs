@@ -138,8 +138,6 @@ static unsigned int syslogfac = 0;
 static unsigned int syslogsvr = 3;
 static unsigned int pbs_log_highres_timestamp = 0;
 
-extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
-
 void
 set_log_conf(char *leafname, char *nodename,
 		unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
@@ -718,8 +716,7 @@ log_open_main(char *filename, char *directory, int silent)
 void
 log_err(int errnum, const char *routine, const char *text)
 {
-	char buf[LOG_BUF_SIZE] =  {'\0'};
-	char *errmsg;
+	char buf[LOG_BUF_SIZE], *errmsg;
 	int  i;
 
 	if (errnum == -1) {
@@ -728,6 +725,7 @@ log_err(int errnum, const char *routine, const char *text)
 		LPVOID	lpMsgBuf;
 		DWORD	err = GetLastError();
 		int		len;
+
 		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
@@ -787,7 +785,7 @@ log_err(int errnum, const char *routine, const char *text)
 void
 log_errf(int errnum, const char *routine, const char *fmt, ...)
 {
-    va_list args;
+	va_list args;
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
@@ -804,9 +802,9 @@ log_errf(int errnum, const char *routine, const char *fmt, ...)
 		}
 	} else
 		buf = logbuf;
-	
+
 	log_err(errnum, routine, buf);
-	
+
 	if (len >= sizeof(logbuf))
 		free(buf);
 	va_end(args);

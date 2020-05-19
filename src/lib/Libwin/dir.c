@@ -73,7 +73,7 @@ opendir(const char *name)
 
 	hdir = FindFirstFile(search, &data);
 	if (hdir == INVALID_HANDLE_VALUE) {
-		log_err(-1, __func__, "failed in FindFirstFile");
+		log_errf(-1, __func__, "failed in FindFirstFile for %s", search);
 		return NULL;
 	}
 	dir = (DIR *)malloc(sizeof(DIR));
@@ -129,6 +129,8 @@ readdir(DIR *dir)
 
 	if (rval == 0) {
 		dir->pos = DIR_END;
+		if (GetLastError() != ERROR_NO_MORE_FILES)
+			log_err(-1, __func__, "failed in FindNextFile");
 		return NULL;
 	}
 
