@@ -62,6 +62,7 @@
 #include "list_link.h"
 #include "attribute.h"
 #include "server.h"
+#include "libutil.h"
 
 /* private data */
 
@@ -75,8 +76,6 @@ PBSEVENT_RESV;
 
 extern char *path_home;
 long	    *log_event_mask = &log_event_lvl_priv;
-
-extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 /**
  * @brief

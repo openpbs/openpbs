@@ -125,12 +125,6 @@
 #include <pwd.h>
 #include "mom_func.h"
 
-#if IRIX6_CPUSET == 1
-/* Mutual exclusion to avoid race conditions while a job is starting up. */
-#include "pbs_mutex.h"
-extern volatile pbs_mutex       *pbs_commit_ptr;
-#endif /* IRIX6_CPUSET */
-
 #endif /* WIN32 */
 
 extern	char mom_host[PBS_MAXHOSTNAME+1];
@@ -1810,13 +1804,6 @@ req_commit(struct batch_request *preq)
 
 #ifdef PBS_MOM	/* MOM only */
 
-#if IRIX6_CPUSET == 1
-	/*
-	 * Grab a mutex to allow machine dependent code to block while the
-	 * job state is being set up.
-	 */
-	ACQUIRE_LOCK(*pbs_commit_ptr);
-#endif  /* IRIX6_CPUSET */
 	/* move job from new job list to "all" job list, set to running state */
 
 	delete_link(&pj->ji_alljobs);
@@ -1858,12 +1845,6 @@ req_commit(struct batch_request *preq)
 	 * an attribute is modified. Several of these are also set in
 	 * record_finish_exec().
 	 */
-
-#if IRIX6_CPUSET == 1
-	(void)mom_get_sample();         /* Setup for sampling. */
-
-	RELEASE_LOCK(*pbs_commit_ptr);  /* Release the lock. */
-#endif /* IRIX6_CPUSET */
 
 #else	/* PBS_SERVER */
 	if (svr_authorize_jobreq(preq, pj) == -1) {

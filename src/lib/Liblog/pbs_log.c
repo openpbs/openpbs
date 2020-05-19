@@ -73,6 +73,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "log.h"
 #include "pbs_ifl.h"
@@ -449,6 +450,28 @@ log_add_debug_info()
 
 /**
  * @brief
+ *	Add supported authentication method to log
+ *
+ * @param[in]	supported_auth_methods - An array of supported authentication method
+ *
+ * @return void
+ *
+ */
+void
+log_supported_auth_methods(char **supported_auth_methods)
+{
+	if (supported_auth_methods) {
+		int i = 0;
+		while (supported_auth_methods[i]) {
+			log_eventf(PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname,
+					"Supported authentication method: %s", supported_auth_methods[i]);
+			i++;
+		}
+	}
+}
+
+/**
+ * @brief
  *	Add interface information to log
  *
  * @par Side Effects:
@@ -700,9 +723,10 @@ log_err(int errnum, const char *routine, const char *text)
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
 
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -710,7 +734,7 @@ log_err(int errnum, const char *routine, const char *text)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);
@@ -746,6 +770,48 @@ log_err(int errnum, const char *routine, const char *text)
 
 /**
  * @brief
+ * 	log_errf - a combination of log_err() and printf()
+ *	The error is recorded to the pbs log file and to syslogd if it is
+ *	available.  If the error file has not been opened and if syslog is
+ *	not defined, then the console is opened.
+ *
+ * @param[in] errnum - error number
+ * @param[in] routine - error in which routine
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string * 
+ *
+ */
+
+void
+log_errf(int errnum, const char *routine, const char *fmt, ...)
+{
+	va_list args;
+	int len;
+	char logbuf[LOG_BUF_SIZE];
+	char *buf;
+
+	va_start(args, fmt);
+
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+
+	if (len >= sizeof(logbuf)) {
+		buf = pbs_asprintf_format(len, fmt, args);
+		if (buf == NULL) {
+			va_end(args);
+			return;
+		}
+	} else
+		buf = logbuf;
+
+	log_err(errnum, routine, buf);
+
+	if (len >= sizeof(logbuf))
+		free(buf);
+	va_end(args);
+}
+
+/**
+ * @brief
  * 	log_joberr- log an internal, job-related error
  *	The error is recorded to the pbs log file and to syslogd if it is
  *	available.  If the error file has not been opened and if syslog is
@@ -771,9 +837,9 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
-
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -781,7 +847,7 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);

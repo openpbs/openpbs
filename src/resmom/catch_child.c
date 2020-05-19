@@ -1098,7 +1098,7 @@ void
 update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 {
 	struct resc_used_update rused;
-		
+
 	/* pass user-client privilege to encode_resc() */
 
 	resc_access_perm = ATR_DFLAG_MGRD;
@@ -1447,12 +1447,17 @@ scan_for_exiting(void)
 	u_long	getsize(resource *pres);
 	int	im_compose(int, char *, char *, int, tm_event_t, tm_task_id, int);
 	mom_hook_input_t hook_input;
+	int has_epilog = 0;
+	int update_svr = 0;
 
 #ifdef WIN32
 	/* update the latest intelligence about the running jobs; */
 	time_now = time(NULL);
 	mom_set_use_all();
+	update_svr = 1;
 #endif
+	if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0 || file_exists(path_epilog))
+		has_epilog = 1;
 
 	/*
 	 ** Look through the jobs.  Each one has it's tasks examined
@@ -1517,26 +1522,13 @@ scan_for_exiting(void)
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO,
 					pjob->ji_qs.ji_jobid, "Terminated");
-#if IRIX6_CPUSET == 1
-				/* KLUDGE - we need this fix when a job */
-				/* was restarted from a restart (checkpoint) */
-				/* MOM won't own the recreated processes */
-				/* so it cannot be tracked by */
-				/* scan_for_terminated() which calls */
-				/* clear_cpuset(), but only here */
-
-				/* THIS IS NO LONGER SUPPORTED and should */
-				/* be removed */
-
-				clear_cpuset(pjob);
-#endif
 #if	MOM_BGL
 				(void)job_bgl_delete(pjob);
 #endif	/* MOM_BGL */
 
 				/*
-				 ** Other places where clear_cpuset or
-				 ** job_bgl_delete are called, the
+				 ** Other places where
+				 ** job_bgl_delete is called, the
 				 ** function job_clean_extra would
 				 ** also be called.  That is not done
 				 ** here because the cleanup would
@@ -1808,43 +1800,7 @@ end_loop:
 				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		}
 
-#ifdef WIN32 /* WIN32 --------------------------------------------- */
-		/* change to the user's home directory and */
-		/* run the epilogue script */
-		/* if sandbox=PRIVATE, then run the epilogue script */
-		/* in staging and execution directory */
-		if (pjob->ji_grpcache) {
-			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-				/* in "sandbox=PRIVATE" mode, so run epilogue */
-				/* in PBS_JOBDIR */
-				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid,
-					pjob->ji_grpcache->gc_homedir));
-			} else {
-				(void)chdir(pjob->ji_grpcache->gc_homedir);
-			}
-		}
-		i = 0;
-		mom_hook_input_init(&hook_input);
-		hook_input.pjob = pjob;
-
-		if (mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE,
-			PBS_MOM_SERVICE_NAME, mom_host, &hook_input, NULL,
-			NULL, 0, 1) == 2) {
-			i = run_pelog(PE_EPILOGUE, path_epilog, pjob,
-				PE_IO_TYPE_STD);
-			if ((i == 2) &&
-				(pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT))
-			pjob->ji_qs.ji_un.ji_momt.ji_exitstat = \
-								JOB_EXEC_QUERST;
-			else
-				i = 0;
-		}
-		send_obit(pjob, i);
-
-		/* restore MOM's home since in Windows, we're in main mom */
-		(void)chdir(mom_home);
-#else	     /* UNIX  --------------------------------------------- */
-
+#ifndef WIN32
 		/*
 		 ** Do dependent end of job processing if it needs to be
 		 ** done.
@@ -1859,79 +1815,71 @@ end_loop:
 
 		write_wkmg_record(WM_TERM, WM_TERM_EXIT, pjob);
 #endif	/* MOM_CSA */
-
-		if (mock_run) {
+#endif
+		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
 			continue;
 		}
 
+#ifndef WIN32
 		/*
 		 * Parent:
 		 *  +  fork child process to run epilogue,
 		 *  +  look for more terminated jobs.
 		 * Child:
-		 *  +  Run the epilogue script (if one)
+		 *  +  Run the epilogue script
 		 */
 
 		cpid = fork_me(-1);
 		if (cpid > 0) {
-			/* parent = mark that it is being sent */
-			pjob->ji_sampletim = 0;	/* will be set in send_obit */
+			pjob->ji_sampletim = 0;
 			pjob->ji_momsubt = cpid;
 			pjob->ji_actalarm = 0;
 			pjob->ji_mompost = send_obit;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNEPILOG;
 
-			if (found_one++ < 5) {
-				continue;	/* look for more */
+			if (found_one++ < 20) {
+				continue; /* look for more exiting jobs */
 			} else {
-				break;	/* five at a time is our limit */
+				break; /* 20 exiting jobs at a time is our limit */
 			}
 		} else if (cpid < 0)
-			continue;	/* curses, foiled again */
-
-		/* child: change to the user's home directory or PBS_JOBDIR */
-		/* and run the epilogue script				    */
+			continue; /* curses, failed again */
+#endif
 
 		if (pjob->ji_grpcache) {
 			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-				/* in "sandbox=PRIVATE" mode so run epilogue */
-				/* in PBS_JOBDIR */
-				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid,
-					pjob->ji_grpcache->gc_homedir));
-
+				/* in "sandbox=PRIVATE" mode so run epilogue in PBS_JOBDIR */
+				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			} else {
-
 				/* else run in usr's home */
 				(void)chdir(pjob->ji_grpcache->gc_homedir);
 			}
 		}
 
 		extval = 0;
-
 		if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0) {
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
-			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE,
-				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-				NULL, NULL, 0, 0);
+			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, NULL, NULL, 0, update_svr);
 		} else {
-
 			if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET) && pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long) {
-
-				extval = run_pelog(PE_EPILOGUE, path_epilog,
-					pjob, PE_IO_TYPE_NULL);
+				extval = run_pelog(PE_EPILOGUE, path_epilog, pjob, PE_IO_TYPE_NULL);
 			} else {
-				extval = run_pelog(PE_EPILOGUE, path_epilog,
-					pjob, PE_IO_TYPE_STD);
+				extval = run_pelog(PE_EPILOGUE, path_epilog, pjob, PE_IO_TYPE_STD);
 			}
 		}
-
 		if (extval != 2)
 			extval = 0;
-		exit(extval);
-#endif	/* WIN32/UNIX */
 
+#ifndef WIN32
+		/* In *nix we are child so exit and parent will do send_obit() */
+		exit(extval);
+#else
+		send_obit(pjob, i);
+		/* restore MOM's home since in Windows, we're in main mom */
+		(void)chdir(mom_home);
+#endif
 	}
 	if (pjob == NULL)
 		exiting_tasks = 0;	/* went through all jobs */
@@ -2266,7 +2214,7 @@ post_alps_cancel_resv(struct work_task *ptask)
 
 /**
  * @brief
- * 	del_job_hw	delete job/hardware related resources such as cpusets, ...
+ * 	del_job_hw	delete job/hardware related resources such as ALPS reservations, ...
  *
  *	Used by del_job_resc() and exec_bail()
  *	Most items here are platform dependent.
@@ -2292,10 +2240,6 @@ del_job_hw(job *pjob)
 	int	sconn = -1;
 	struct work_task *wtask = NULL;
 #endif
-
-#if	MOM_CPUSET
-	clear_cpuset(pjob);
-#endif	/* MOM_CPUSET */
 
 #if	MOM_BGL
 	(void)job_bgl_delete(pjob);
@@ -2470,7 +2414,7 @@ void
 mom_deljob(job *pjob)
 {
 
-	del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+	del_job_resc(pjob);	/* rm tmpdir, etc. */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)	/* MS */
 		(void)send_sisters(pjob, IM_DELETE_JOB, NULL);
@@ -2502,7 +2446,7 @@ mom_deljob_wait(job *pjob)
 {
 	int	i;
 
-	del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+	del_job_resc(pjob);	/* rm tmpdir, etc. */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {	/* MS */
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_DELJOB;

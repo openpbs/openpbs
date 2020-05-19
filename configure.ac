@@ -339,7 +339,6 @@ PBS_AC_WITH_MIN_STACK_LIMIT
 PBS_AC_DISABLE_SHELL_PIPE
 PBS_AC_DISABLE_SYSLOG
 PBS_AC_ENABLE_ALPS
-PBS_AC_ENABLE_CPUSET
 PBS_AC_WITH_LIBZ
 PBS_AC_ENABLE_PTL
 PBS_AC_SYSTEMD_UNITDIR
@@ -368,7 +367,6 @@ AC_CONFIG_FILES([
 	src/cmds/pbsrun_wrap
 	src/cmds/pbsrun
 	src/cmds/scripts/Makefile
-	src/cmds/scripts/au-nodeupdate
 	src/cmds/scripts/modulefile
 	src/cmds/scripts/pbs_habitat
 	src/cmds/scripts/pbs_init.d

@@ -612,13 +612,6 @@ sgimpirun()
 	# command among its command line arguments.
 	export MPI_IGNORE_PBS=1
 
-	if [ -f "/proc/self/cpuset" ] && [ "`cat /proc/self/cpuset`" != "/" ]
-	then
-		# assert exclusive use of the resources in the assigned CPU set
-		PBS_CPUSET_DEDICATED="YES"
-		export PBS_CPUSET_DEDICATED
-	fi
-
 	a_opt=''
 	if [ -n "$PBS_MPI_SGIARRAY" ]
 	then

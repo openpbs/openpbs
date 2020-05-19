@@ -69,6 +69,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\include\acct.h" />
+    <ClInclude Include="..\..\src\include\libauth.h" />
     <ClInclude Include="..\..\src\include\auth.h" />
     <ClInclude Include="..\..\src\include\attribute.h" />
     <ClInclude Include="..\..\src\include\batch_request.h" />
@@ -98,7 +99,6 @@
     <ClInclude Include="..\..\src\include\pbs_internal.h" />
     <ClInclude Include="..\..\src\include\pbs_json.h" />
     <ClInclude Include="..\..\src\include\pbs_license.h" />
-    <ClInclude Include="..\..\src\include\pbs_mutex.h" />
     <ClInclude Include="..\..\src\include\pbs_nodes.h" />
     <ClInclude Include="..\..\src\include\pbs_sched.h" />
     <ClInclude Include="..\..\src\include\pbs_share.h" />

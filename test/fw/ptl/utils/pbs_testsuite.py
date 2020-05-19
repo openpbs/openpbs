@@ -170,13 +170,14 @@ def skipOnShasta(function):
 
 def skipOnCpuSet(function):
     """
-    Decorator to skip a test on a CpuSet system
+    Decorator to skip a test on a cgroup cpuset system
     """
 
     def wrapper(self, *args, **kwargs):
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                msg = 'capability not supported on Cpuset mom:' + mom.shortname
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                      mom.shortname
                 self.skipTest(reason=msg)
                 break
         else:
@@ -352,7 +353,7 @@ class PBSTestSuite(unittest.TestCase):
     :param comms: Colon-separated list of hostnames hosting a PBS Comm.
                   Comms are made accessible as a dictionary in the
                   instance variable comms.
-    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param nomom: expect no MoM on colon-separated set of hosts
     :param mode: Sets mode of operation to PBS server. Can be either
                  ``'cli'`` or ``'api'``.Defaults to API behavior.
     :param conn_timeout: set a timeout in seconds after which a pbs_connect
@@ -474,6 +475,9 @@ class PBSTestSuite(unittest.TestCase):
                 raise Exception("Failed to save scheduler's custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
+        a = {ATTR_license_min: len(cls.moms)}
+        cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        cls.server.restart()
         cls.log_end_setup(True)
 
     def setUp(self):
@@ -1460,15 +1464,40 @@ class PBSTestSuite(unittest.TestCase):
             if 'clienthost' in self.conf:
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
+            if mom.is_cpuset_mom():
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # In order to avoid intermingling CF/HK/PY file copies from the
+                # create node and those caused by the following call, wait
+                # until the dialogue between MoM and the server is complete
+                time.sleep(4)
+                just_before_enable_cgroup_cset = time.time()
+                mom.enable_cgroup_cset()
+                mom.log_match('pbs_cgroups.CF;copy hook-related '
+                              'file request received',
+                              starttime=just_before_enable_cgroup_cset)
+                # Make sure that the MoM will generate per-NUMA node vnodes
+                # when the natural node is created below
+                # HUP may not be enough if exechost_startup is delayed
+                restart = True
         if restart:
             mom.restart()
         else:
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        if not mom.is_cpuset_mom():
+            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
-        self.server.expect(NODE, a, id=mom.shortname, interval=1)
+        if mom.is_cpuset_mom():
+            # Checking whether the CF file was copied really belongs in code
+            # that changes the config file -- i.e. after enable_cgroup_cset
+            # called above. We're not sure it is always called here,
+            # since that call is in an if
+            time.sleep(2)
+            mom.signal('-HUP')
+            self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
+        else:
+            self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
     def analyze_logs(self):
@@ -1640,6 +1669,7 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(self.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's test setup")
+            self.du.rm(path=self.saved_file)
         self.log_end_teardown()
 
     @classmethod
@@ -1658,5 +1688,4 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(cls.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's custom setup")
-        if cls.use_cur_setup:
             cls.du.rm(path=cls.saved_file)

@@ -100,8 +100,11 @@ addpid(HANDLE pid)
 	/* array filled up. Let's extend... */
 	hpids = (HANDLE *)realloc(pid_handles, (pids_cnt*2)*sizeof(HANDLE));
 
-	if (hpids == NULL)
+	if (hpids == NULL) {
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "realloc(%p, %u) failed, errno = %d",
+			pid_handles, (pids_cnt*2)*sizeof(HANDLE), errno);
 		return 0;
+	}
 
 	pid_handles = hpids;
 	pids_cnt *= 2;
@@ -111,55 +114,6 @@ addpid(HANDLE pid)
 		pid_handles[i] = INVALID_HANDLE_VALUE;
 	}
 	return (1);
-}
-
-/**
- * @brief	closepid
- *		Close process handle and remove it from the process handle table
- *
- * @param[in]	pid - HANDLE of process
- *
- * @return	int
- *
- * @return	int
- * @retval	1 	- Successful
- * @retval	0 	- if no pid is found in pids table
- */
-int
-closepid(HANDLE pid)
-{
-	int i = 0;
-
-	for (i = 0; i < pids_cnt; i++) {
-		if (pid_handles[i] == pid) {
-			close_valid_handle(&pid);
-			pid_handles[i] = INVALID_HANDLE_VALUE;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/**
- * @brief
- *	close and free process handle.
- *
- */
-void
-destroypids(void)
-{
-	int	i;
-
-	for (i=0; i < pids_cnt; i++) {
-		if (pid_handles[i] != INVALID_HANDLE_VALUE) {
-			CloseHandle(pid_handles[i]);
-			pid_handles[i] = INVALID_HANDLE_VALUE;
-		}
-	}
-	(void)free(pid_handles);
-	pid_handles = NULL;
-	pids_cnt = 0;
-	pids_nextidx = 0;
 }
 
 /**
@@ -173,7 +127,7 @@ printpids(void)
 	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	for (i=0; i < pids_cnt; i++) {
-		sprintf(logb, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
+		sprintf(logb, "printpids: pid_handles[%d] = %p", i, pid_handles[i]);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
 	}
 
@@ -242,10 +196,12 @@ waitpid(HANDLE pid, int *statp, int opt)
 			if (ret == WAIT_TIMEOUT)
 				rval = 0;
 			else if (ret == WAIT_FAILED) { /* notion of an abnormal exit */
+				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "WaitForSingleObject(%p, %d) failed with errno %d, i[%d]",
+					pid_handles[i], timeout, GetLastError(), i);
 				rval = (HANDLE)-1;
 				*statp = -1;
 			} else {
-				sprintf(logb,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
+				sprintf(logb,"found pid_handles[%d]=%p to have exited", i, pid_handles[i]);
 				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
 				GetExitCodeProcess(pid_handles[i], (DWORD *)statp);
 				sprintf(logb,"status=%d", *statp);
@@ -290,7 +246,6 @@ kill(HANDLE pid, UINT sig)
 	ret = processtree_op_by_handle(pid, TERMINATE, sig);
 
 	if (ret == -1) {
-		errno = GetLastError();
 		return (-1);
 	}
 	return (0);
@@ -321,14 +276,21 @@ processtree_op_by_handle(HANDLE hProcess, enum operation op, int exitcode)
 	if (hProcess == INVALID_HANDLE_VALUE || hProcess == NULL)
 		return -1;
 
-	if (!GetExitCodeProcess(hProcess, &rc))
+	if (!GetExitCodeProcess(hProcess, &rc)) {
+		errno = GetLastError();
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetExitCodeProcess(%p,) failed with errno %d",
+			hProcess, errno);
 		return -1;
+	}
 
 	if (rc != STILL_ACTIVE)
 		return 0;
 
-	if ((processId = GetProcessId(hProcess)) <= 0)
+	if ((processId = GetProcessId(hProcess)) <= 0) {
+		errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetProcessId(%p,) failed", hProcess);
 		return -1;
+	}
 
 	return (processtree_op_by_id(processId, op, exitcode));
 }
@@ -370,10 +332,17 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 		return -1;
 
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, processId);
-	if (hProcessSnap == INVALID_HANDLE_VALUE)
+	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+		errno = GetLastError();
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "CreateToolhelp32Snapshot(SNAPPROCESS, %ld) failed with errno %d",
+			processId, errno);
 		return -1;
+	}
 
 	if (!Process32First(hProcessSnap, &pe32)) {
+		errno = GetLastError();
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Process32First(%p,) failed with errno %d",
+			hProcessSnap, errno);
 		CloseHandle(hProcessSnap);
 		return -1;
 	}
@@ -401,30 +370,50 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 	 */
 	if (op == TERMINATE) {
 		hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, processId);
+		if (!hProcess) {
+			errno = GetLastError();
+			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "OpenProcess(PROCESS_ALL_ACCESS, TRUE, %ld) failed with errno %d",
+				processId, errno);
+			return -1;
+		}
 		/*
 		 * OpenProcess() may return a handle to next lower process Id
 		 * if given process id doesn't exist. It will be disastorous
 		 * if we kill this arbitrary process, thus always make sure that the handle returned
 		 * belongs to intended process id by calling GetProcessId() on returned handle.
 		 */
-		if ((hProcess != NULL) && (hProcess != INVALID_HANDLE_VALUE) &&(GetProcessId(hProcess) == processId)) {
+		if (GetProcessId(hProcess) == processId) {
 			ret = TerminateProcess(hProcess, exitcode);
-			CloseHandle(hProcess);
 			if (ret) {
+				CloseHandle(hProcess);
 				return (++process_count);
 			} else {
+				errno = GetLastError();
+				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "TerminateProcess(%p, %d) failed with errno %d",
+					hProcess, exitcode, errno);
+				CloseHandle(hProcess);
 				return -1;
 			}
 		} else {
+			errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
+			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetProcessId(%p) != ld error",
+				hProcess, processId);
 			return -1;
 		}
 	}
 
 	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId);
-	if (hThreadSnap == INVALID_HANDLE_VALUE)
+	if (hThreadSnap == INVALID_HANDLE_VALUE) {
+		errno = GetLastError();
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "CreateToolhelp32Snapshot(SNAPTHREAD, %ld) failed with errno %d",
+			processId, errno);
 		return -1;
+	}
 
 	if (!Thread32First(hThreadSnap, &te32)) {
+		errno = GetLastError();
+		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Thread32First(%p,) failed with errno %d",
+			hThreadSnap, errno);
 		CloseHandle(hThreadSnap);
 		return -1;
 	}
@@ -432,20 +421,31 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 	do {
 		if (te32.th32OwnerProcessID == processId) {
 			hThread = OpenThread(THREAD_SUSPEND_RESUME, TRUE, te32.th32ThreadID);
-			if ((hThread != NULL) && (hThread != INVALID_HANDLE_VALUE)) {
-				if (op == SUSPEND) { /* Suspend Thread */
-					ret = SuspendThread(hThread);
-				} else if (op == RESUME) { /* Resume Thread */
-					ret = ResumeThread(hThread);
-				}
-				CloseHandle(hThread);
-				if (ret == -1) {
-					CloseHandle(hThreadSnap);
-					return -1;
-				}
-			} else {
-				CloseHandle(hThreadSnap);
+			if (!hThread) {
+				errno = GetLastError();
+				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "OpenThread(THREAD_SUSPEND_RESUME, TRUE, %ld) failed with errno %d",
+					te32.th32ThreadID, errno);
 				return -1;
+			} else {
+				if (op == SUSPEND) { /* Suspend Thread */
+					if (SuspendThread(hThread) == -1) {
+						errno = GetLastError();
+						log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "SuspendThread(%p) failed with errno %d",
+							hThread, errno);
+						CloseHandle(hThread);
+						CloseHandle(hThreadSnap);
+						return -1;
+					}
+				} else if (op == RESUME) { /* Resume Thread */
+					if (ResumeThread(hThread) == -1) {
+						errno = GetLastError();
+						log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "ResumeThread(%p) failed with errno %d",
+							hThread, errno);
+						CloseHandle(hThread);
+						CloseHandle(hThreadSnap);
+						return -1;
+					}
+				}
 			}
 		}
 	} while (Thread32Next(hThreadSnap, &te32));

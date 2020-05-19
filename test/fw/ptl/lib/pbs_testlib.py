@@ -4329,7 +4329,8 @@ class PBSService(PBSObject):
                                               + "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
-                            fd.write("\n".join(v))
+                            mom_config_data = "\n".join(v) + "\n"
+                            fd.write(mom_config_data)
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
@@ -5228,7 +5229,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
         ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
         ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
-        ignore_attrs += [ATTR_operators]
+        ignore_attrs += [ATTR_operators, ATTR_license_min]
         ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
         unsetlist = []
         self.cleanup_jobs_and_reservations()
@@ -9813,37 +9814,35 @@ class Server(PBSService):
 
         # In case of mom hooks, make sure that the hook related files
         # are successfully copied to the MoM
-        try:
-            if 'exec' in attrs['event']:
-                hook_py = name + '.PY'
-                hook_hk = name + '.HK'
-                pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                      "server_priv", "hooks", hook_py)
-                hfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                     "server_priv", "hooks", hook_hk)
-                logmsg = hook_py + ";copy hook-related file request received"
-
-                cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                                   'pbsnodes') + ' -a'
-                cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
-                if cmd_out['rc'] == 0:
-                    for i in cmd_out['out']:
-                        if re.match(r'\s+Mom = ', i):
-                            mom_names = i.split(' = ')[1].split(',')
-                            for m in mom_names:
-                                if m in self.moms:
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (hfile, m), interval=1)
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (pyfile, m), interval=1)
-                                    self.moms[m].log_match(logmsg, starttime=t)
-                else:
-                    return False
-        except PtlLogMatchError:
-            return False
-
+        events = attrs['event']
+        if not isinstance(events, (list,)):
+            events = [events]
+        events = [hk for hk in events if 'exec' in hk]
+        msg = "successfully sent hook file"
+        for hook in events:
+            hook_py = name + '.PY'
+            hook_hk = name + '.HK'
+            pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                  "server_priv", "hooks", hook_py)
+            hfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                 "server_priv", "hooks", hook_hk)
+            logmsg = hook_py + ";copy hook-related file request received"
+            cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+                               'pbsnodes') + ' -a' + ' -Fjson'
+            cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
+            if cmd_out['rc'] != 0:
+                return False
+            pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
+            for m in pbsnodes_json['nodes']:
+                if m in self.moms:
+                    try:
+                        self.log_match("%s %s to %s" %
+                                       (msg, hfile, m), interval=1)
+                        self.log_match("%s %s to %s" %
+                                       (msg, pyfile, m), interval=1)
+                        self.moms[m].log_match(logmsg, starttime=t)
+                    except PtlLogMatchError:
+                        return False
         return ret
 
     def import_hook_config(self, hook_name, hook_conf, hook_type,
@@ -13419,7 +13418,8 @@ class MoM(PBSService):
         self._save_config_file(conf, cf)
 
         if os.path.isdir(os.path.join(mpriv, 'config.d')):
-            for f in os.listdir(os.path.join(mpriv, 'config.d')):
+            for f in self.du.listdir(path=os.path.join(mpriv, 'config.d'),
+                                     sudo=True):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
         mconf = {self.hostname: conf}
@@ -13465,28 +13465,15 @@ class MoM(PBSService):
 
     def is_cpuset_mom(self):
         """
-        Check for cpuset mom
+        Check for cgroup cpuset enabled system
         """
         if self._is_cpuset_mom is not None:
             return self._is_cpuset_mom
-        a = {'state': 'free'}
-        try:
-            self.server.expect(NODE, a, id=self.shortname, interval=1)
-        except PtlExpectError:
-            return False
-        raa = ATTR_rescavail + '.arch'
-        a = {raa: None}
-        try:
-            rv = self.server.status(NODE, a, id=self.shortname)
-        except PbsStatusError:
-            try:
-                rv = self.server.status(NODE, a, id=self.hostname)
-            except PbsStatusError as e:
-                if e.msg[0].endswith('Server has no node list'):
-                    return False
-                else:
-                    raise e
-        if len(rv) > 0 and raa in rv[0] and rv[0][raa] == 'linux_cpuset':
+        hpe_file1 = "/etc/sgi-compute-node-release"
+        hpe_file2 = "/etc/sgi-known-distributions"
+        ret1 = self.du.isfile(self.hostname, path=hpe_file1)
+        ret2 = self.du.isfile(self.hostname, path=hpe_file2)
+        if ret1 or ret2:
             self._is_cpuset_mom = True
         else:
             self._is_cpuset_mom = False
@@ -14025,6 +14012,42 @@ class MoM(PBSService):
         self.add_config(a)
         return res_file
 
+    def enable_cgroup_cset(self):
+        """
+        Configure and enable cgroups hook
+        """
+        # check if cgroups subsystems including cpusets are mounted
+        file = os.path.join(os.sep, 'proc', 'mounts')
+        mounts = self.du.cat(self.hostname, file)['out']
+        pat = 'cgroup /sys/fs/cgroup'
+        if str(mounts).count(pat) >= 6 and str(mounts).count('cpuset') >= 2:
+            pbs_conf_val = self.du.parse_pbs_config(self.hostname)
+            f1 = os.path.join(pbs_conf_val['PBS_EXEC'], 'lib',
+                              'python', 'altair', 'pbs_hooks',
+                              'pbs_cgroups.CF')
+            # set vnode_per_numa_node = true, use_hyperthreads = true
+            with open(f1, "r") as cfg:
+                cfg_dict = json.load(cfg)
+            cfg_dict['vnode_per_numa_node'] = 'true'
+            cfg_dict['use_hyperthreads'] = 'true'
+            _, path = tempfile.mkstemp(prefix="cfg", suffix=".json")
+            with open(path, "w") as cfg1:
+                json.dump(cfg_dict, cfg1, indent=4)
+            # read in the cgroup hook configuration
+            a = {'content-type': 'application/x-config',
+                 'content-encoding': 'default',
+                 'input-file': path}
+            self.server.manager(MGR_CMD_IMPORT, HOOK, a,
+                                'pbs_cgroups')
+            os.remove(path)
+            # enable cgroups hook
+            self.server.manager(MGR_CMD_SET, HOOK,
+                                {'enabled': 'True'}, 'pbs_cgroups')
+        else:
+            self.logger.error('%s: cgroup subsystems not mounted' %
+                              self.hostname)
+            raise AssertionError('cgroup subsystems not mounted')
+
 
 class Hook(PBSObject):
 
@@ -14401,15 +14424,39 @@ class Job(ResourceResv):
         """
         if self.du is None:
             self.du = DshUtils()
-        script_dir = os.path.dirname(os.path.dirname(__file__))
-        script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
+        shebang_line = '#!' + self.du.which(hostname, exe='python3')
+        body = """
+import signal
+import sys
+
+x = 0
+
+
+def receive_alarm(signum, stack):
+    sys.exit()
+
+signal.signal(signal.SIGALRM, receive_alarm)
+
+if (len(sys.argv) > 1):
+    input_time = sys.argv[1]
+    print('Terminating after %s seconds' % input_time)
+    signal.alarm(int(input_time))
+else:
+    print('Running indefinitely')
+
+while True:
+    x += 1
+"""
+        script_body = shebang_line + body
+        script_path = self.du.create_temp_file(hostname=hostname,
+                                               body=script_body,
+                                               suffix='.py')
         if not self.du.is_localhost(hostname):
             d = pwd.getpwnam(self.username).pw_dir
             ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
             if ret is None or ret['rc'] != 0:
                 raise AssertionError("Failed to copy file %s to %s"
                                      % (script_path, hostname))
-            script_path = os.path.join(d, "eatcpu.py")
         pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')

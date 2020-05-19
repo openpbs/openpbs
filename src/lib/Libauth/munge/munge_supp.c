@@ -46,9 +46,8 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #include <grp.h>
-#include "auth.h"
+#include "libauth.h"
 #include "pbs_ifl.h"
-#include "log.h"
 
 static pthread_once_t munge_init_once = PTHREAD_ONCE_INIT;
 
