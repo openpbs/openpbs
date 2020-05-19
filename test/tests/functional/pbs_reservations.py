@@ -2254,11 +2254,8 @@ class TestReservations(TestFunctional):
         self.server.expect(RESV,
                            {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
                            id=rid)
-
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         a = {'Resource_List.ncpus': 4,
-             'Resource_List.walltime': 60}
+             'Resource_List.walltime': 50}
         J = Job(TEST_USER, attrs=a)
         jid = self.server.submit(J)
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
