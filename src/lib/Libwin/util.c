@@ -1001,7 +1001,7 @@ _log_wrap_CloseHandle(HANDLE hObject, LPCSTR handlename, LPCSTR funcname, INT li
 #define CloseHandle(param) _log_wrap_CloseHandle(param, #param, __func__, __LINE__)
 
 	if (!rc) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, funcname,
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, funcname,
 			"CloseHandle(%s) at line %d failed with error %d, Handle[%x]",
 			handlename, lineno, GetLastError(), hObject);
 	}
@@ -1030,7 +1030,7 @@ _log_wrap_LocalFree(HLOCAL hObject, LPCSTR handlename, LPCSTR funcname, INT line
 #define LocalFree(param) _log_wrap_LocalFree(param, #param, __func__, __LINE__)
 
 	if (hObject && (hObject == hret)) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, funcname,
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, funcname,
 			"LocalFree(%s) at line %d failed with error %d, Handle[%x]",
 			handlename, lineno, GetLastError(), hObject);
 	}
