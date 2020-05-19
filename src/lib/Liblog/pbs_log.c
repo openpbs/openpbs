@@ -837,9 +837,9 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
-
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -847,7 +847,7 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);
