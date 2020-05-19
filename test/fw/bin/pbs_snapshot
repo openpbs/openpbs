@@ -160,7 +160,8 @@ def remotesnap_thread(logger, host):
 
     # Copy over map file if any as 'host_<map filename>'
     if map_file is not None:
-        dest_path = os.path.join(out_dir, host + "_" + map_file)
+        mfilename = os.path.basename(map_file)
+        dest_path = os.path.join(out_dir, host + "_" + mfilename)
         src_path = os.path.join(snap_home, map_file)
         ret = du.run_copy(srchost=host, src=src_path, dest=dest_path)
         if ret['rc'] != 0:
