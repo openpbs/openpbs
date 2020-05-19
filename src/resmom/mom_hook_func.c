@@ -1818,7 +1818,7 @@ run_periodic_hook_bg(hook *phook)
 	mom_hook_input_t hook_input;
 
 	if (phook == NULL) {
-		log_err(-1, "run_periodic_hook_bg", "bad input parameter");
+		log_err(-1, __func__, "bad input parameter");
 		return;
 	}
 
@@ -2863,7 +2863,7 @@ do_reboot(char *reboot_cmd)
 		snprintf(log_buffer, sizeof(log_buffer),
 			"reboot failed exit code=%d", rcode);
 		log_event(PBSEVENT_DEBUG2, 0,
-			LOG_ERR, "do_reboot", log_buffer);
+			LOG_ERR, __func__, log_buffer);
 	}
 }
 
@@ -2887,12 +2887,12 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	struct hook_job_action *phja;
 
 	if (pjob == NULL) {
-		log_err(PBSE_SYSTEM, "new_job_action_req", "Job received is NULL");
+		log_err(PBSE_SYSTEM, __func__, "Job received is NULL");
 		return;
 	}
 	phja = malloc(sizeof(struct hook_job_action));
 	if (phja == NULL) {
-		log_err(PBSE_SYSTEM, "new_job_action_req", msg_err_malloc);
+		log_err(PBSE_SYSTEM, __func__, msg_err_malloc);
 		return;
 	}
 	CLEAR_LINK(phja->hja_link);
@@ -4277,7 +4277,7 @@ void
 mom_hook_input_init(mom_hook_input_t *hook_input)
 {
 	if (hook_input == NULL) {
-		log_err(PBSE_HOOKERROR, "mom_hook_input_init", "Hook input is NULL");
+		log_err(PBSE_HOOKERROR, __func__, "Hook input is NULL");
 		return;
 	}
 
@@ -4304,7 +4304,7 @@ void
 mom_hook_output_init(mom_hook_output_t *hook_output)
 {
 	if (hook_output == NULL) {
-		log_err(PBSE_HOOKERROR, "mom_hook_output_init", "Hook output is NULL");
+		log_err(PBSE_HOOKERROR, __func__, "Hook output is NULL");
 		return;
 	}
 
