@@ -424,9 +424,14 @@ e.accept()
         job = Job(attrs=a)
         j4 = self.server.submit(job)
 
+        a = {ATTR_depend: "afternotok:" + j1}
+        job = Job(attrs=a)
+        j5 = self.server.submit(job)
+
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=j4)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=j5)
         self.server.delete(j1)
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j2, extend='x',
@@ -436,7 +441,9 @@ e.accept()
                            max_attempts=3)
         self.check_depend_delete_msg(j2, j3)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=j4)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j5)
         self.server.delete(j4)
+        self.server.delete(j5)
 
         # repeat the steps for array job
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})

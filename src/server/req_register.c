@@ -1085,9 +1085,13 @@ depend_on_term(job *pjob)
 				break;
 		}
 		if (op != -1) {
-			/* Check if the job is being deleted. If so, delete the dependency chain */
-			if (pjob->ji_terminated == 1)
-				op = JOB_DEPEND_OP_DELETE;
+			/* Check if the job is being deleted. If so, delete the dependency chain only for beforeok dependency */
+			if (pjob->ji_terminated == 1) {
+				if (type == JOB_DEPEND_TYPE_BEFORENOTOK || type == JOB_DEPEND_TYPE_BEFOREANY)
+					op = JOB_DEPEND_OP_RELEASE;
+				else
+					op = JOB_DEPEND_OP_DELETE;
+			}
 			/* This function is also called from job_abt when the job is in held state and abort substate.
 			 * In case of a held job, release the dependency chain.
 			 */
