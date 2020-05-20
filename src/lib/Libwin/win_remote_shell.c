@@ -345,11 +345,16 @@ do_WaitNamedPipe(char *pipename, DWORD timeout, DWORD readwrite_accessflags)
 					OPEN_EXISTING,
 					FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING,
 					NULL);
-				err = GetLastError();
-				if ((ERROR_PIPE_NOT_CONNECTED) == err) {
-					j++;
-					Sleep(1000);
-					continue;
+				if (hpipe_cmdshell == INVALID_HANDLE_VALUE) {
+					err = GetLastError();
+					log_errf(-1, __func__, "(%d/%d) CreateFile failed for %s %x", j + 1, retry2, pipename, readwrite_accessflags);
+					if (ERROR_PIPE_NOT_CONNECTED == err && (++j < retry2)) {
+						Sleep(1000);
+						continue;
+					}
+					else {
+						break;
+					}
 				}
 				else
 					break;
@@ -357,9 +362,12 @@ do_WaitNamedPipe(char *pipename, DWORD timeout, DWORD readwrite_accessflags)
 			break;
 		}
 		/* Wait untill the pipe gets available */
-		else if (GetLastError() == ERROR_FILE_NOT_FOUND) {
-			Sleep(1000);
-			continue;
+		else {
+			err = GetLastError();
+			log_errf(-1, __func__, "(%d/%d) WaitNamedPipe failed for %s %lu", i, retry, pipename, timeout);
+			if ((err == ERROR_FILE_NOT_FOUND) && (i < retry)) {
+				Sleep(1000);
+			}
 		}
 	}
 	return hpipe_cmdshell;
@@ -427,7 +435,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 {
 	PROCESS_INFORMATION pi;
 	HANDLE	hJob = INVALID_HANDLE_VALUE;
-	DWORD err = 0;
+	DWORD stat = 0;
 	char logbuff[LOG_BUF_SIZE] = { '\0' };
 
 	if (command == NULL || p_returncode == NULL || psi == NULL)
@@ -490,8 +498,12 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 					log_err(-1, __func__, "AssignProcessToJobObject failed");
 				}
 				/* Wait for command process to exit */
-				if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0) {
-					log_err(-1, __func__, "WaitForSingleObject failed");
+				stat = WaitForSingleObject(pi.hProcess, INFINITE);
+				if (stat != WAIT_OBJECT_0) {
+					if (stat != WAIT_FAILED)
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", stat);
+					else
+						log_err(-1, __func__, "WaitForSingleObject failed");
 				}
 				if (!GetExitCodeProcess(pi.hProcess, p_returncode)) {
 					log_err(-1, __func__, "GetExitCodeProcess failed");
@@ -505,7 +517,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 				close_valid_handle(&(pi.hThread));
 		}
 		else {
-			log_err(-1, __func__, "CreateProcessAsUser failed");
+			log_errf(-1, __func__, "CreateProcessAsUser failed for command %s", command);
 			return (GetLastError());
 		}
 		CloseHandle(hUserToken);
@@ -527,8 +539,12 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 				log_err(-1, __func__, "AssignProcessToJobObject failed");
 			}
 			/* Wait for command process to exit */
-			if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0) {
-				log_err(-1, __func__, "WaitForSingleObject failed");
+			stat = WaitForSingleObject(pi.hProcess, INFINITE);
+			if (stat != WAIT_OBJECT_0) {
+				if (stat != WAIT_FAILED)
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", stat);
+				else
+					log_err(-1, __func__, "WaitForSingleObject failed");
 			}
 			if (!GetExitCodeProcess(pi.hProcess, p_returncode)) {
 				log_err(-1, __func__, "GetExitCodeProcess failed");
@@ -541,8 +557,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 			close_valid_handle(&(pi.hThread));
 		}
 		else {
-
-			log_err(-1, __func__, "CreateProcess failed");
+			log_errf(-1, __func__, "CreateProcess failed for command %s", command);
 			return (GetLastError());
 		}
 	}
@@ -748,9 +763,13 @@ listen_remote_stdpipes(HANDLE *phout, HANDLE *pherror, HANDLE *phin)
 		hconsole_input_thread = _beginthread(listen_remote_stdinpipe_thread, 0, phin);
 	listen_remote_stdouterr_pipes(*phout, *pherror);
 	/* Wait upto 5 seconds for the standard input pipe thread to exit */
+
 	stat = WaitForSingleObject(hconsole_input_thread, wait_timeout);
 	if (stat != WAIT_OBJECT_0) {
-		log_err(-1, __func__, "WaitForSingleObject failed");
+		if (stat != WAIT_FAILED)
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", stat);
+		else
+			log_err(-1, __func__, "WaitForSingleObject failed");
 	}
 	close_valid_handle(&(hconsole_input_thread));
 }
