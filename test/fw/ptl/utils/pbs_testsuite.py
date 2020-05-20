@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import calendar
 import grp
@@ -353,7 +356,7 @@ class PBSTestSuite(unittest.TestCase):
     :param comms: Colon-separated list of hostnames hosting a PBS Comm.
                   Comms are made accessible as a dictionary in the
                   instance variable comms.
-    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param nomom: expect no MoM on colon-separated set of hosts
     :param mode: Sets mode of operation to PBS server. Can be either
                  ``'cli'`` or ``'api'``.Defaults to API behavior.
     :param conn_timeout: set a timeout in seconds after which a pbs_connect
@@ -475,6 +478,9 @@ class PBSTestSuite(unittest.TestCase):
                 raise Exception("Failed to save scheduler's custom setup")
             cls.add_mgrs_opers()
         cls.init_comms()
+        a = {ATTR_license_min: len(cls.moms)}
+        cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        cls.server.restart()
         cls.log_end_setup(True)
 
     def setUp(self):
@@ -1462,19 +1468,34 @@ class PBSTestSuite(unittest.TestCase):
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
             if mom.is_cpuset_mom():
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # In order to avoid intermingling CF/HK/PY file copies from the
+                # create node and those caused by the following call, wait
+                # until the dialogue between MoM and the server is complete
+                time.sleep(4)
+                just_before_enable_cgroup_cset = time.time()
                 mom.enable_cgroup_cset()
+                mom.log_match('pbs_cgroups.CF;copy hook-related '
+                              'file request received',
+                              starttime=just_before_enable_cgroup_cset)
+                # Make sure that the MoM will generate per-NUMA node vnodes
+                # when the natural node is created below
+                # HUP may not be enough if exechost_startup is delayed
+                restart = True
         if restart:
             mom.restart()
         else:
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        if not mom.is_cpuset_mom():
+            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
         if mom.is_cpuset_mom():
-            mom.log_match('pbs_cgroups.CF;copy hook-related '
-                          'file request received',
-                          starttime=self.server.ctime)
+            # Checking whether the CF file was copied really belongs in code
+            # that changes the config file -- i.e. after enable_cgroup_cset
+            # called above. We're not sure it is always called here,
+            # since that call is in an if
             time.sleep(2)
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
@@ -1651,6 +1672,7 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(self.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's test setup")
+            self.du.rm(path=self.saved_file)
         self.log_end_teardown()
 
     @classmethod
@@ -1669,5 +1691,4 @@ class PBSTestSuite(unittest.TestCase):
                 ret = mom.load_configuration(cls.saved_file)
                 if not ret:
                     raise Exception("Failed to load mom's custom setup")
-        if cls.use_cur_setup:
             cls.du.rm(path=cls.saved_file)

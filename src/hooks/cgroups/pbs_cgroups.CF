@@ -1,5 +1,5 @@
 {
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs_jobs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],

@@ -3,42 +3,48 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
+
+import ast
+import base64
 import collections
 import copy
 import datetime
 import grp
+import json
 import logging
 import os
 import pickle
@@ -52,9 +58,6 @@ import tempfile
 import threading
 import time
 import traceback
-import json
-import base64
-import ast
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from operator import itemgetter
@@ -5229,7 +5232,7 @@ class Server(PBSService):
         ignore_attrs += [ATTR_status, ATTR_total, ATTR_count]
         ignore_attrs += [ATTR_rescassn, ATTR_FLicenses, ATTR_SvrHost]
         ignore_attrs += [ATTR_license_count, ATTR_version, ATTR_managers]
-        ignore_attrs += [ATTR_operators]
+        ignore_attrs += [ATTR_operators, ATTR_license_min]
         ignore_attrs += [ATTR_pbs_license_info, ATTR_power_provisioning]
         unsetlist = []
         self.cleanup_jobs_and_reservations()
@@ -5894,7 +5897,7 @@ class Server(PBSService):
             elif obj_type == SCHED:
                 bs = pbs_statsched(c, a, extend)
             elif obj_type == RSC:
-                # up to PBSPro 12.3 pbs_statrsc was not in pbs_ifl.h
+                # up to PBS 12.3 pbs_statrsc was not in pbs_ifl.h
                 bs = pbs_statrsc(c, id, a, extend)
             elif obj_type in (HOOK, PBS_HOOK):
                 if os.getuid() != 0:
@@ -9814,37 +9817,35 @@ class Server(PBSService):
 
         # In case of mom hooks, make sure that the hook related files
         # are successfully copied to the MoM
-        try:
-            if 'exec' in attrs['event']:
-                hook_py = name + '.PY'
-                hook_hk = name + '.HK'
-                pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                      "server_priv", "hooks", hook_py)
-                hfile = os.path.join(self.pbs_conf['PBS_HOME'],
-                                     "server_priv", "hooks", hook_hk)
-                logmsg = hook_py + ";copy hook-related file request received"
-
-                cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
-                                   'pbsnodes') + ' -a'
-                cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
-                if cmd_out['rc'] == 0:
-                    for i in cmd_out['out']:
-                        if re.match(r'\s+Mom = ', i):
-                            mom_names = i.split(' = ')[1].split(',')
-                            for m in mom_names:
-                                if m in self.moms:
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (hfile, m), interval=1)
-                                    self.log_match(
-                                        "successfully sent hook file %s to %s"
-                                        % (pyfile, m), interval=1)
-                                    self.moms[m].log_match(logmsg, starttime=t)
-                else:
-                    return False
-        except PtlLogMatchError:
-            return False
-
+        events = attrs['event']
+        if not isinstance(events, (list,)):
+            events = [events]
+        events = [hk for hk in events if 'exec' in hk]
+        msg = "successfully sent hook file"
+        for hook in events:
+            hook_py = name + '.PY'
+            hook_hk = name + '.HK'
+            pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                  "server_priv", "hooks", hook_py)
+            hfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                 "server_priv", "hooks", hook_hk)
+            logmsg = hook_py + ";copy hook-related file request received"
+            cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+                               'pbsnodes') + ' -a' + ' -Fjson'
+            cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
+            if cmd_out['rc'] != 0:
+                return False
+            pbsnodes_json = json.loads('\n'.join(cmd_out['out']))
+            for m in pbsnodes_json['nodes']:
+                if m in self.moms:
+                    try:
+                        self.log_match("%s %s to %s" %
+                                       (msg, hfile, m), interval=1)
+                        self.log_match("%s %s to %s" %
+                                       (msg, pyfile, m), interval=1)
+                        self.moms[m].log_match(logmsg, starttime=t)
+                    except PtlLogMatchError:
+                        return False
         return ret
 
     def import_hook_config(self, hook_name, hook_conf, hook_type,
@@ -12592,7 +12593,7 @@ class Scheduler(PBSService):
                     pname = None
                 # if an entity has a negative cgroup it should belong
                 # to the unknown resource, we work around the fact that
-                # PBS Pro (up to 13.0) sets this cgroup id to -1 by
+                # PBS (up to 13.0) sets this cgroup id to -1 by
                 # reassigning it to 0
                 # TODO: cleanup once PBS code is updated
                 if cgrp < 0:
@@ -13420,7 +13421,8 @@ class MoM(PBSService):
         self._save_config_file(conf, cf)
 
         if os.path.isdir(os.path.join(mpriv, 'config.d')):
-            for f in os.listdir(os.path.join(mpriv, 'config.d')):
+            for f in self.du.listdir(path=os.path.join(mpriv, 'config.d'),
+                                     sudo=True):
                 self._save_config_file(conf,
                                        os.path.join(mpriv, 'config.d', f))
         mconf = {self.hostname: conf}

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	log_event.c
  * @brief
@@ -62,6 +64,7 @@
 #include "list_link.h"
 #include "attribute.h"
 #include "server.h"
+#include "libutil.h"
 
 /* private data */
 
@@ -75,8 +78,6 @@ PBSEVENT_RESV;
 
 extern char *path_home;
 long	    *log_event_mask = &log_event_lvl_priv;
-
-extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 /**
  * @brief
@@ -110,7 +111,7 @@ will_log_event(int eventtype)
  *	is to contain "continuation lines".
  *
  * @param[in] eventtype - event type
- * @param[in] objclass - event object class 
+ * @param[in] objclass - event object class
  * @param[in] sev - indication for whether to syslogging enabled or not
  * @param[in] objname - object name stating log msg related to which object
  * @param[in] text - log msg to be logged.
@@ -129,14 +130,14 @@ log_event(int eventtype, int objclass, int sev, const char *objname, const char 
 /**
  * @brief
  * 	log_eventf - a combination of log_event() and printf()
- * 
+ *
  * @param[in] eventtype - event type
- * @param[in] objclass - event object class 
+ * @param[in] objclass - event object class
  * @param[in] sev - indication for whether to syslogging enabled or not
  * @param[in] objname - object name stating log msg related to which object
  * @param[in] fmt - format string
  * @param[in] ... - arguments to format string
- * 
+ *
  * @return void
  */
 void
@@ -146,7 +147,7 @@ log_eventf(int eventtype, int objclass, int sev, const char *objname, const char
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
-	
+
 	if (will_log_event(eventtype) == 0)
 		return;
 
@@ -163,9 +164,9 @@ log_eventf(int eventtype, int objclass, int sev, const char *objname, const char
 	}
 	else
 		buf = logbuf;
-	
+
 	log_record(eventtype, objclass, sev, objname, buf);
-	
+
 	if (len >= sizeof(logbuf))
 		free(buf);
 	va_end(args);

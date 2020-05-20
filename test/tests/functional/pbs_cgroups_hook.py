@@ -3,40 +3,91 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+
+import glob
 
 from tests.functional import *
-import glob
+
+
+#
+# FUNCTION convert_size
+#
+def convert_size(value, units='b'):
+    """
+    Convert a string containing a size specification (e.g. "1m") to a
+    string using different units (e.g. "1024k").
+
+    This function only interprets a decimal number at the start of the string,
+    stopping at any unrecognized character and ignoring the rest of the string.
+
+    When down-converting (e.g. MB to KB), all calculations involve integers and
+    the result returned is exact. When up-converting (e.g. KB to MB) floating
+    point numbers are involved. The result is rounded up. For example:
+
+    1023MB -> GB yields 1g
+    1024MB -> GB yields 1g
+    1025MB -> GB yields 2g  <-- This value was rounded up
+
+    Pattern matching or conversion may result in exceptions.
+    """
+    logs = {'b': 0, 'k': 10, 'm': 20, 'g': 30,
+            't': 40, 'p': 50, 'e': 60, 'z': 70, 'y': 80}
+    try:
+        new = units[0].lower()
+        if new not in logs:
+            raise ValueError('Invalid unit value')
+        result = re.match(r'([-+]?\d+)([bkmgtpezy]?)',
+                          str(value).lower())
+        if not result:
+            raise ValueError('Unrecognized value')
+        val, old = result.groups()
+        if int(val) < 0:
+            raise ValueError('Value may not be negative')
+        if old not in logs:
+            old = 'b'
+        factor = logs[old] - logs[new]
+        val = float(val)
+        val *= 2 ** factor
+        if (val - int(val)) > 0.0:
+            val += 1.0
+        val = int(val)
+        return str(val) + units.lower()
+    except Exception:
+        return None
 
 
 def have_swap():
@@ -189,10 +240,9 @@ class TestCgroupsHook(TestFunctional):
         # library methods assume that
         self.mom = self.moms_list[0]
 
-        # Recreate the nodes
+        # Delete ALL vnodes
+        # Re-creation moved to the end *after* we correctly set up the hook
         self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        for host in self.hosts_list:
-            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
 
         self.serverA = self.servers.values()[0].name
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
@@ -230,22 +280,112 @@ for i in range(iterations):
 if sleeptime > 0:
     time.sleep(sleeptime)
 """
+        self.eatmem_script2 = """
+import sys
+import time
+MB = 2 ** 20
+
+iterations1 = 1
+chunkSizeMb1 = 1
+sleeptime1 = 0
+if (len(sys.argv) > 1):
+    iterations1 = int(sys.argv[1])
+if (len(sys.argv) > 2):
+    chunkSizeMb1 = int(sys.argv[2])
+if (len(sys.argv) > 3):
+    sleeptime1 = int(sys.argv[3])
+if (iterations1 < 1):
+    print('Iteration count must be greater than zero.')
+    exit(1)
+if (chunkSizeMb1 < 1):
+    print('Chunk size must be greater than zero.')
+    exit(1)
+totalSizeMb1 = chunkSizeMb1 * iterations1
+print('Allocating %d chunk(s) of size %dMB. (%dMB total)' %
+      (iterations1, chunkSizeMb1, totalSizeMb1))
+start_time1 = time.time()
+buf = ''
+for i in range(iterations1):
+    print('allocating %dMB' % ((i + 1) * chunkSizeMb1))
+    buf += ('#' * MB * chunkSizeMb1)
+end_time1 = time.time()
+if sleeptime1 > 0 and (end_time1 - start_time1) < sleeptime1 :
+    time.sleep(sleeptime1 - end_time1 + start_time1)
+
+if len(sys.argv) <= 4:
+    exit(0)
+
+iterations2 = 1
+chunkSizeMb2 = 1
+sleeptime2 = 0
+if (len(sys.argv) > 4):
+    iterations2 = int(sys.argv[4])
+if (len(sys.argv) > 5):
+    chunkSizeMb2 = int(sys.argv[5])
+if (len(sys.argv) > 6):
+    sleeptime2 = int(sys.argv[6])
+if (iterations2 < 1):
+    print('Iteration count must be greater than zero.')
+    exit(1)
+if (chunkSizeMb2 < 1):
+    print('Chunk size must be greater than zero.')
+    exit(1)
+totalSizeMb2 = chunkSizeMb2 * iterations2
+print('Allocating %d chunk(s) of size %dMB. (%dMB total)' %
+      (iterations2, chunkSizeMb2, totalSizeMb2))
+start_time2 = time.time()
+# Do not reinitialize buf!!
+for i in range(iterations2):
+    print('allocating %dMB' % ((i + 1) * chunkSizeMb2))
+    buf += ('#' * MB * chunkSizeMb2)
+end_time2 = time.time()
+if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
+    time.sleep(sleeptime2 - end_time2 + start_time2)
+"""
         self.eatmem_job1 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
             'sleep 4\n' \
-            'python - 80 10 10 <<EOF\n' \
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
+            '$python_path - 80 10 10 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 200 2 10 <<EOF\n' \
+            '$python_path - 200 2 10 <<EOF\n' \
             '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 100 4 10 <<EOF\n' \
+            '$python_path - 100 4 10 <<EOF\n' \
             '%s\nEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'sleep 25\n' % (self.eatmem_script, self.eatmem_script)
@@ -253,10 +393,24 @@ if sleeptime > 0:
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
-            'sleep 2\n' \
-            'let i=0; while [ $i -lt 500000 ]; do let i+=1 ; done\n' \
-            'python - 90 5 30 <<EOF\n' \
-            '%s\nEOF\n' % self.eatmem_script
+            'python_path=`which python 2>/dev/null`\n' \
+            'python3_path=`which python3 2>/dev/null`\n' \
+            'python2_path=`which python2 2>/dev/null`\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    if [ -n "$python3_path" ]; then\n' \
+            '        python_path=$python3_path\n' \
+            '    else\n' \
+            '        python_path=$python2_path\n' \
+            '    fi\n' \
+            'fi\n' \
+            'if [ -z "$python_path" ]; then\n' \
+            '    echo Exiting -- no python found\n' \
+            '    exit 1\n' \
+            'fi\n' \
+            'timeout 8 md5sum </dev/urandom\n' \
+            '# Args are segments1 sizeMB1 sleep1 segments2 sizeMB2 sleep2\n' \
+            '$python_path -  9 25 9  8 25 300 <<EOF\n' \
+            '%s\nEOF\n' % self.eatmem_script2
 
         self.cpuset_mem_script = """
 base='%s'
@@ -294,19 +448,23 @@ if [ "${mbase}" != "None" ] ; then
     fi
 fi
 """
-
+# no need to cater for cgroup_prefix options, it is obviously sbp here
         self.check_dirs_script = """
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
 devices_base='%s'
-if [ -d "$devices_base/propbs" ]; then
-    if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
-        devices_job="$devices_base/propbs/$PBS_JOBID"
+if [ -d "$devices_base/sbp" ]; then
+    if [ -d "$devices_base/sbp/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp/$PBS_JOBID"
+    elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
     else
-        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+        devices_job="$devices_base/sbp/sbp-${jobnum}.*.slice"
     fi
+elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
 sleep 10
@@ -323,14 +481,17 @@ fi
 
 jobnum=${PBS_JOBID%%.*}
 devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
-if [ -d "$devices_base/propbs" ]; then
-    devices_job="$devices_base/propbs/$PBS_JOBID"
+if [ -d "$devices_base/sbp" ]; then
+    if [ -d "$devices_base/sbp/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp/$PBS_JOBID"
+    elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
+        devices_job="$devices_base/sbp/sbp-${jobnum}.*.slice"
+    fi
+elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-device_list=`cat $devices_job/devices.list`
-grep "195" $devices_job/devices.list
-echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 sleep 10
 """
         self.cpu_controller_script = """
@@ -391,7 +552,7 @@ cat $PBS_NODEFILE
 sleep 300
 """
         self.cfg0 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -422,7 +583,7 @@ sleep 300
 }
 """
         self.cfg1 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [%s],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [%s],
@@ -475,7 +636,7 @@ sleep 300
 }
 """
         self.cfg2 = """{
-    "cgroup_prefix"         : "propbs",
+    "cgroup_prefix"         : "sbp",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -522,7 +683,7 @@ sleep 300
 }
 """
         self.cfg3 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -572,7 +733,7 @@ sleep 300
 }
 """
         self.cfg4 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -661,7 +822,7 @@ sleep 300
 }
 """
         self.cfg7 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -705,7 +866,7 @@ sleep 300
 }
 """
         self.cfg8 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -756,7 +917,7 @@ sleep 300
 }
 """
         self.cfg9 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -800,7 +961,7 @@ sleep 300
 }
 """
         self.cfg10 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -855,7 +1016,7 @@ sleep 300
 }
 """
         self.cfg11 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -912,7 +1073,7 @@ sleep 300
 }
 """
         self.cfg12 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -968,7 +1129,7 @@ sleep 300
 }
 """
         self.cfg13 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1047,10 +1208,29 @@ sleep 300
                                       'altair',
                                       'pbs_hooks',
                                       'pbs_cgroups.PY')
-        self.load_hook(self.hook_file)
-        # HUP mom so exechost_startup hook is run for each mom
+
+        # Load hook, but do not check MoMs
+        # since the vnodes are deleted on the server
+        self.load_hook(self.hook_file, mom_checks=False)
+
+        # Recreate the nodes moved to the end, after we set up
+        # the hook with its default config
+        # Make sure the load_hook is done on server first
+        time.sleep(2)
+        for host in self.hosts_list:
+            self.server.manager(MGR_CMD_CREATE, NODE, id=host)
+
+        # Make sure that by the time we send a HUP and the test
+        # actually tinkers with the hooks once more,
+        # MoM will already have gone through its initial setup
+        # after the new hello from the server
+        time.sleep(4)
+
+        # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
             mom.signal('-HUP')
+        # ...then wait for exechost_startup updates to propagate to server
+        time.sleep(4)
 
         # queuejob hook
         self.qjob_hook_body = """
@@ -1163,16 +1343,21 @@ if %s e.job.in_ms_mom():
         """
         basedir = self.paths[subsys]
         # one of these should exist depending on platform
-        jobdirs = [os.path.join(basedir, 'pbspro', jobid),
-                   os.path.join(basedir, 'pbspro.slice',
-                                'pbspro-%s.slice' % systemd_escape(jobid)),
-                   os.path.join(basedir, 'pbspro',
-                                'pbspro-%s.slice' % systemd_escape(jobid))]
+        # That last option should never exist, but let us
+        # leave it in there
+        jobdirs = [os.path.join(basedir, 'pbs', jobid),
+                   os.path.join(basedir, 'pbs.service/jobid', jobid),
+                   os.path.join(basedir, 'pbs_jobs.service/jobid', jobid),
+                   os.path.join(basedir, 'pbs.slice',
+                                'pbs-%s.slice' % systemd_escape(jobid)),
+                   os.path.join(basedir, 'pbs',
+                                'pbs-%s.slice' % systemd_escape(jobid))]
         for jdir in jobdirs:
             if self.du.isdir(hostname=host, path=jdir):
                 return jdir
+        return None
 
-    def load_hook(self, filename):
+    def load_hook(self, filename, mom_checks=True):
         """
         Import and enable a hook pointed to by the URL specified.
         """
@@ -1203,9 +1388,9 @@ if %s e.job.in_ms_mom():
         if failed:
             self.skipTest('pbs_cgroups_hook: failed to load hook')
         # Add the configuration
-        self.load_default_config()
+        self.load_default_config(mom_checks=mom_checks)
 
-    def load_config(self, cfg):
+    def load_config(self, cfg, mom_checks=True):
         """
         Create a hook configuration file with the provided contents.
         """
@@ -1215,38 +1400,48 @@ if %s e.job.in_ms_mom():
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
+        # In tests that use this, make sure that other hook CF
+        # copies from setup, node creations, MoM restarts etc.
+        # are all finished, so that we don't match a CF copy
+        # message in the logs from someone else!
+        time.sleep(5)
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
-                                    'file request received',
-                                    starttime=self.server.ctime)
+        if mom_checks:
+            self.moms_list[0].log_match('pbs_cgroups.CF;'
+                                        'copy hook-related '
+                                        'file request received',
+                                        starttime=self.server.ctime)
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
         pbs_home = self.mom.pbs_conf['PBS_HOME']
         mom_conf = os.path.join(
             os.sep, pbs_home, 'mom_priv', 'hooks', 'pbs_cgroups.CF')
-        # reload config if server and mom cfg differ up to count times
-        count = 5
-        while (count > 0):
-            r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
-            r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
-            if r1['out'] != r2['out']:
-                self.logger.info('server & mom pbs_cgroups.CF differ')
-                self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-                self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
-                                            'file request received',
-                                            starttime=self.server.ctime)
-            else:
-                self.logger.info('server & mom pbs_cgroups.CF match')
-                break
-            time.sleep(1)
-            count -= 1
-        # A HUP of each mom ensures update to hook config file is
-        # seen by the exechost_startup hook.
-        for mom in self.moms_list:
-            mom.signal('-HUP')
+        if mom_checks:
+            # reload config if server and mom cfg differ up to count times
+            count = 5
+            while (count > 0):
+                r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
+                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+                if r1['out'] != r2['out']:
+                    self.logger.info('server & mom pbs_cgroups.CF differ')
+                    self.server.manager(MGR_CMD_IMPORT, HOOK, a,
+                                        self.hook_name)
+                    self.moms_list[0].log_match('pbs_cgroups.CF;'
+                                                'copy hook-related '
+                                                'file request received',
+                                                starttime=self.server.ctime)
+                else:
+                    self.logger.info('server & mom pbs_cgroups.CF match')
+                    break
+                time.sleep(1)
+                count -= 1
+            # A HUP of each mom ensures update to hook config file is
+            # seen by the exechost_startup hook.
+            for mom in self.moms_list:
+                mom.signal('-HUP')
 
-    def load_default_config(self):
+    def load_default_config(self, mom_checks=True):
         """
         Load the default pbs_cgroups hook config file
         """
@@ -1262,6 +1457,8 @@ if %s e.job.in_ms_mom():
              'content-encoding': 'default',
              'input-file': self.config_file}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
+        if not mom_checks:
+            return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
                                     starttime=now)
@@ -1378,6 +1575,8 @@ if %s e.job.in_ms_mom():
         a = self.cfg1 % ('', '"' + self.vntypename[0] + '"',
                          '', '', self.swapctl)
         self.load_config(a)
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1425,6 +1624,8 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP9'
         mom, log = self.get_host_names(self.hosts_list[0])
         self.load_config(self.cfg1 % ('%s' % mom, '', '', '', self.swapctl))
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1468,6 +1669,8 @@ if %s e.job.in_ms_mom():
                                       '"' + self.vntypename[0] + '"',
                                       self.swapctl,
                                       '"' + self.vntypename[0] + '"'))
+        for m in self.moms.values():
+            m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s'
              % self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1510,6 +1713,8 @@ if %s e.job.in_ms_mom():
         conf = {'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1525,13 +1730,13 @@ if %s e.job.in_ms_mom():
         if self.swapctl == 'true':
             resc_list.append('resources_used.vmem')
         qstat = self.server.status(JOB, resc_list, id=jid)
-        mem = qstat[0]['resources_used.mem']
+        mem = convert_size(qstat[0]['resources_used.mem'], 'kb')
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
         usage = int(match.groups()[0])
         self.assertGreater(300000, usage)
         if self.swapctl == 'true':
-            vmem = qstat[0]['resources_used.vmem']
+            vmem = convert_size(qstat[0]['resources_used.vmem'], 'kb')
             match = re.match(r'(\d+)kb', vmem)
             self.assertFalse(match is None)
             usage = int(match.groups()[0])
@@ -1547,8 +1752,9 @@ if %s e.job.in_ms_mom():
         cput_usage = 0.0
         mem_usage = 0
         vmem_usage = 0
-        for count in range(3):
+        for count in range(10):
             # Faster systems might have expected usage after 8 seconds
+            # TH3 can take up to a minute
             time.sleep(8)
             if self.paths['cpuacct'] and cput_usage <= 1.0:
                 lines = self.moms_list[0].log_match(
@@ -1602,6 +1808,12 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP1'
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # This test expects the job to land on CPU 0.
+        # The previous test may have qdel -Wforce its jobs, and then it takes
+        # some time for MoM to run the execjob_epilogue and execjob_end
+        # *after* the job has disappeared on the server.
+        # So wait a while before restarting MoM
+        time.sleep(10)
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select':
@@ -1639,6 +1851,8 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP2'
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1664,14 +1878,19 @@ if %s e.job.in_ms_mom():
 
     def test_cgroup_prefix_and_devices(self):
         """
-        Test to verify that the cgroup prefix is set to propbs and that
+        Test to verify that the cgroup prefix is set to "sbp" and that
         the devices subsystem exists with the correct devices allowed
         """
         if not self.paths['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
+        # Make sure to run on the MoM just restarted
+        a = {ATTR_N: name}
+        a['Resource_List.select'] = \
+            '1:ncpus=1:mem=300mb:host=%s' % self.hosts_list[0]
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(20)
         jid = self.server.submit(j)
@@ -1684,11 +1903,29 @@ if %s e.job.in_ms_mom():
             as_script=True)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
+        # the config file named entries must be translated to major/minor
+        # containers will make them different!!
+        # self.du.run_cmd returns a list of one-line strings
+        # the console awk command produces major and minor on separate lines
+        console_results = \
+            self.du.run_cmd(cmd=['ls -al /dev/console'
+                                 '| awk \'BEGIN {FS=" |,"} '
+                                 '{print $5} {print $7}\''],
+                            as_script=True)
+        (console_major, console_minor) = console_results['out']
+        # only one line here
+        tty0_major_results = \
+            self.du.run_cmd(cmd=['ls -al /dev/tty0'
+                                 '| awk \'BEGIN {FS=" |,"} '
+                                 '{print $5}\''],
+                            as_script=True)
+        tty0_major = tty0_major_results['out'][0]
         check_devices = ['b *:* rwm',
-                         'c 5:1 rwm',
-                         'c 4:* rwm',
+                         'c %s:%s rwm' % (console_major, console_minor),
+                         'c %s:* rwm' % (tty0_major),
                          'c 1:* rwm',
                          'c 10:* rwm']
+
         for device in check_devices:
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
@@ -1706,7 +1943,14 @@ if %s e.job.in_ms_mom():
         if pcpus < 2:
             self.skipTest('Test requires at least two physical CPUs')
         name = 'CGROUP4'
+        # since we do not configure vnodes ourselves wait for the setup
+        # of this test to propagate all hooks etc.
+        # otherwise the load_config tests to see if it's all done
+        # might get confused
+        # occasional trouble seen on TH2
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        # Restart mom for changes made by cgroups hook to take effect
+        self.mom.restart()
         # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'a'}
@@ -1757,12 +2001,16 @@ if %s e.job.in_ms_mom():
         Test to verify that correct number of jobs run on a hyperthread
         enabled system when ncpus_are_cores is set to true.
         """
-        # Check that system has hyperthreading enabled and has two processors
+        # Check that system has hyperthreading enabled and has
+        # at least two threads ("pcpus")
+        # WARNING: do not assume that physical CPUs are numbered from 0
+        # and that all processors from a physical ID are contiguous
+        # count the number of different physical IDs with a set!
         pcpus = 0
         sibs = 0
         cores = 0
         pval = 0
-        phys = {}
+        phys_set = set()
         with open('/proc/cpuinfo', 'r') as desc:
             for line in desc:
                 if re.match('^processor', line):
@@ -1776,33 +2024,50 @@ if %s e.job.in_ms_mom():
                     cores = int(cores_match.groups()[0])
                 if phys_match:
                     pval = int(phys_match.groups()[0])
-                    phys[pval] = 1
+                    phys_set.add(pval)
+        phys = len(phys_set)
         if (sibs == 0 or cores == 0):
             self.skipTest('Insufficient information about the processors.')
         if pcpus < 2:
             self.skipTest('This test requires at least two processors.')
         if sibs / cores == 1:
             self.skipTest('This test requires hyperthreading to be enabled.')
+
         name = 'CGROUP18'
         self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
-        # Submit M*N jobs, where M is the amount of physical processors and
-        # N is number of 'cpu cores' per M. Expect them to run.
-        njobs = len(phys) * cores
+        # Make sure to restart MOM
+        # HUP is not enough to get rid of earlier
+        # per socket vnodes created when vnode_per_numa_node=True
+        self.mom.restart()
+
+        # Submit M jobs N cpus wide, where M is the amount of physical
+        # processors and N is number of 'cpu cores' per M. Expect them to run.
+        njobs = phys
         if njobs > 64:
             self.skipTest("too many jobs (%d) to submit" % njobs)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.hosts_list[0], ATTR_N: name + 'a'}
+        a = {'Resource_List.select': '1:ncpus=%s:mem=300mb:host=%s' %
+             (cores, self.hosts_list[0]), ATTR_N: name + 'a'}
         for _ in range(njobs):
             j = Job(TEST_USER, attrs=a)
+            # make sure this stays around for an hour
+            # (or until deleted in teardown)
+            j.set_sleep_time(3600)
             jid = self.server.submit(j)
             a1 = {'job_state': 'R'}
-            self.server.expect(JOB, a1, jid, max_attempts=10)
-        # Submit another job, expect in Q state
+            # give the scheduler, server and MoM some time
+            # it's not a luxury on containers with few CPU resources
+            time.sleep(2)
+            self.server.expect(JOB, a1, jid, max_attempts=20)
+        # Submit another job, expect in Q state -- this one with only 1 CPU
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
         jid2 = self.server.submit(j2)
         b1 = {'job_state': 'Q'}
+        # Make sure to give the scheduler ample time here:
+        # we want to make sure jid2 doesn't run because it can't,
+        # not because the scheduler has not yet gotten to it
+        time.sleep(30)
         self.server.expect(JOB, b1, jid2, max_attempts=10)
 
     def test_cgroup_enforce_memory(self):
@@ -1849,6 +2114,9 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
+        # Make sure output file is gone, otherwise wait and read
+        # may pick up stale copy of earlier test
+        self.du.rm(runas=TEST_USER, path='~/' + name + '.*', as_script=True)
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.hosts_list[0],
@@ -2106,8 +2374,8 @@ if %s e.job.in_ms_mom():
         cput1 = qstat1[0]['resources_used.cput']
         mem1 = qstat1[0]['resources_used.mem']
         vmem1 = qstat1[0]['resources_used.vmem']
-        self.logger.info('Waiting 25 seconds for CPU time to accumulate')
-        time.sleep(25)
+        self.logger.info('Waiting 35 seconds for CPU time to accumulate')
+        time.sleep(35)
         qstat2 = self.server.status(JOB, resc_list, id=jid)
         for q in qstat2:
             self.logger.info('Q2: %s' % q)
@@ -2276,8 +2544,16 @@ if %s e.job.in_ms_mom():
         self.server.delete(id=subj2, extend='force')
         self.server.expect(JOB, {'job_state': 'X'}, subj2)
         # Adding extra sleep for file to clean up
-        time.sleep(2)
+        # since qdel -Wforce changed state of subjob
+        # without waiting for MoM
+        # retry 10 times (for 20 seconds max. in total)
+        # if the directory is still there...
         cpath = self.get_cgroup_job_dir('memory', subj2, ehost1)
+        for trial in range(0, 10):
+            time.sleep(2)
+            if not self.is_dir(cpath, ehost1):
+                # we're done
+                break
         self.assertFalse(self.is_dir(cpath, ehost1))
 
     @requirements(num_moms=2)
@@ -2333,7 +2609,17 @@ if %s e.job.in_ms_mom():
             if (any([x in subsys for x in enabled_subsys])):
                 continue
             if path:
-                filename = os.path.join(path, 'pbspro', str(jid))
+                # Apparently cgroup_prefix for this test is pbs
+                filename = os.path.join(path, 'pbs', str(jid))
+                self.logger.info('Checking that file %s should not exist'
+                                 % filename)
+                self.assertFalse(os.path.isfile(filename))
+                filename = os.path.join(path, 'pbs.slice', 'pbs-%s.slice'
+                                        % systemd_escape(jid))
+                self.logger.info('Checking that file %s should not exist'
+                                 % filename)
+                self.assertFalse(os.path.isfile(filename))
+                filename = os.path.join(path, 'pbs.service', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
@@ -2447,8 +2733,12 @@ if %s e.job.in_ms_mom():
         # First try with mem_fences set to true (the default)
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.swapctl))
+        # Restart mom for cgroups hook changes to take effect
+        self.mom.restart()
+        # Do not use node_list -- vnode_per_numa_node is NOW off
+        # so use the natural node. Otherwise might 'expect' stale vnode
         self.server.expect(NODE, {'state': 'free'},
-                           id=self.nodes_list[0], interval=3, offset=10)
+                           id=self.hosts_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
         j = Job(TEST_USER, attrs=a)
@@ -2641,16 +2931,22 @@ if %s e.job.in_ms_mom():
         """
         now = time.time()
         # Remove PBS directories from memory subsystem
+        cpath = None
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
             if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbspro')
+                cpath = os.path.join(cdir, 'pbs')
                 if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbspro.slice')
+                    cpath = os.path.join(cdir, 'pbs.slice')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs.service/jobid')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         else:
             self.skipTest(
                 "memory subsystem is not enabled for cgroups")
-        cmd = ["rmdir", cpath]
+        if cpath is not None:
+            cmd = ["rmdir", cpath]
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.swapctl))
@@ -2659,6 +2955,19 @@ if %s e.job.in_ms_mom():
         self.moms_list[0].log_match("Hook handler returned success for"
                                     " exechost_startup event",
                                     starttime=now)
+        # check where cpath is once more
+        # since we loaded a new cgroup config file
+        cpath = None
+        if 'memory' in self.paths and self.paths['memory']:
+            cdir = self.paths['memory']
+            if os.path.isdir(cdir):
+                cpath = os.path.join(cdir, 'pbs')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs.slice')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs.service/jobid')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
@@ -2874,6 +3183,7 @@ event.accept()
             hook_name, a, self.resize_hook_body % ('not'))
         # Submit a job that requires 2 nodes
         j = Job(TEST_USER)
+        # Note mother superior is mom[1] not mom[0]
         j.create_script(self.job_scr2 % (self.hosts_list[1]))
         stime = time.time()
         jid = self.server.submit(j)
@@ -2903,7 +3213,8 @@ event.accept()
             jid, execvnode1), starttime=stime)
         self.moms_list[1].log_match("Job;%s;pruned to exec_vnode=%s" % (
             jid, execvnode2), starttime=stime)
-        # Check that the sister mom failed to update the job
+        # Check that MS saw that the sister mom failed to update the job
+        # This message is on MS mom[1] but mentions sismom mom[0]
         self.moms_list[1].log_match(
             "Job;%s;sister node %s.* failed to update job"
             % (jid, self.hosts_list[0]),
@@ -2951,7 +3262,7 @@ event.accept()
         execvnode1 = job_stat[0]['exec_vnode']
         self.logger.info("initial exec_vnode: %s" % execvnode1)
         initial_vnodes = execvnode1.split('+')
-        # Check the exec_resize hook reject message in mom superior logs
+        # Check the exec_resize hook reject message in MS log
         self.moms_list[1].log_match(
             "Job;%s;Cannot resize the job" % (jid),
             starttime=stime, interval=2)
@@ -3212,10 +3523,15 @@ exit 0
 
         # submit multi-node job
         a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': 'scatter:exclhost'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # to work around a scheduling race, check for substate 42
+        # if you test for R then a slow job startup might update
+        # resources_assigned late and make scheduler overcommit nodes
+        # and run both jobs
+        self.server.expect(JOB, {'substate': '42'}, id=jid1)
 
         # Submit an express queue job requesting needing also 2 nodes
         a[ATTR_q] = 'express'
@@ -3263,12 +3579,16 @@ sleep 300
 
         # submit multi-node job
         a = {'Resource_List.select': '2:ncpus=1',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': 'scatter:excl'}
         j1 = Job(TEST_USER, attrs=a)
         j1.set_sleep_time(300)
         jid1 = self.server.submit(j1)
+        # to work around a scheduling race, check for substate 42
+        # if you test for R then a slow job startup might update
+        # resources_assigned late and make scheduler overcommit nodes
+        # and run both jobs
+        self.server.expect(JOB, {'substate': '42'}, id=jid1)
         time.sleep(5)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
@@ -3279,9 +3599,9 @@ sleep 300
         j2 = Job(TEST_USER, attrs=a)
         j2.set_sleep_time(300)
         jid2 = self.server.submit(j2)
-        time.sleep(5)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'substate': '42'}, id=jid2)
+        time.sleep(5)
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
@@ -3289,12 +3609,17 @@ sleep 300
 
         # delete express queue job
         self.server.delete(jid2)
-        time.sleep(5)
+        # wait until the preempted job is sent to MoM again
+        # the checkpointing script hangs, so it stays in substate 41
         self.server.expect(JOB, {'job_state': 'R', 'substate': 41}, id=jid1)
+        # we need to give the hooks some time here...
+        time.sleep(10)
+        # check the cpusets for the deleted preemptor are gone
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[1])
         self.assertFalse(self.is_dir(cpath, self.hosts_list[1]))
+        # check the cpusets for the restarted formerly-preempted are there
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[0])
         self.assertTrue(self.is_dir(cpath, self.hosts_list[0]))
         cpath = self.get_cgroup_job_dir('cpuset', jid1, self.hosts_list[1])
@@ -3306,6 +3631,47 @@ sleep 300
         using default (non-specified) values of cfs_period_us, and
         cfs_quota_fudge_factor.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         self.load_config(self.cfg10)
         default_cfs_period_us = 100000
@@ -3365,6 +3731,47 @@ sleep 300
               cfs_quota_fudge_factor
         in config file 'cfg11'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
@@ -3420,6 +3827,47 @@ sleep 300
               zero_cpus_shares_fraction
               zero_cpus_quota_fraction
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
+
         name = 'CGROUP1'
         # config file 'cfg12' has 'allow_zero_cpus=true' under cpuset, to allow
         # zero-cpu jobs.
@@ -3469,6 +3917,46 @@ sleep 300
               zero_cpus_quota_fraction
         in config file 'cfg13'.
         """
+        root_quota_host1 = None
+        try:
+            root_quota_host1_str = \
+                self.du.run_cmd(hosts=self.hosts_list[0],
+                                cmd=['cat',
+                                     '/sys/fs/cgroup/cpu/cpu.cfs_quota_us'])
+            root_quota_host1 = int(root_quota_host1_str['out'][0])
+        except Exception:
+            pass
+        # If that link is missing and it's only
+        # mounted under the cpu/cpuacct unified directory...
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/'
+                                         'cpu,cpuacct/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+        # If still not found, try to see if it is in a unified cgroup mount
+        # as in cgroup v2
+        if root_quota_host1 is None:
+            try:
+                root_quota_host1_str = \
+                    self.du.run_cmd(hosts=self.hosts_list[0],
+                                    cmd=['cat',
+                                         '/sys/fs/cgroup/cpu.cfs_quota_us'])
+                root_quota_host1 = int(root_quota_host1_str['out'][0])
+            except Exception:
+                pass
+
+        if root_quota_host1 is None:
+            self.skipTest('cpu group controller test: '
+                          'could not determine root cfs_quota_us')
+        elif root_quota_host1 != -1:
+            self.skipTest('cpu group controller test: '
+                          'root cfs_quota_us is not unlimited, cannot test '
+                          'cgroup hook CPU quotas in this environment')
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
@@ -3577,7 +4065,7 @@ sleep 300
                   'execjob_epilogue', 'execjob_end', 'exechost_startup',
                   'exechost_periodic', 'execjob_resize', 'execjob_abort']
         # Disable the cgroups hook
-        conf = {'enabled': 'False', 'freq': 30, 'event': events}
+        conf = {'enabled': 'False', 'freq': 10, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         # Cleanup any temp file created
         self.logger.info('Deleting temporary files %s' % self.tempfile)
@@ -3619,9 +4107,13 @@ sleep 300
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[subsys]
                 if os.path.isdir(cdir):
-                    cpath = os.path.join(cdir, 'pbspro')
+                    cpath = os.path.join(cdir, 'pbs')
                     if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbspro.slice')
+                        cpath = os.path.join(cdir, 'pbs.slice')
+                    if not os.path.isdir(cpath):
+                        cpath = os.path.join(cdir, 'pbs.service/jobid')
+                    if not os.path.isdir(cpath):
+                        cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
                     if os.path.isdir(cpath):
                         for jdir in glob.glob(os.path.join(cpath, '*', '')):
                             if not os.path.isdir(jdir):

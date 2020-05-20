@@ -124,9 +124,7 @@ own class, for example
                 PBSTestSuite.setUp(self)
                 # create custom nodes, server/sched config, etc...
 
-For detailed test directory structure one can refer to below link:
-
-https://pbspro.atlassian.net/wiki/display/DG/PTL+Directory+Structure+and+Naming+Conventions
+For detailed test directory structure please check document.
 
 Writing a test suite
 --------------------

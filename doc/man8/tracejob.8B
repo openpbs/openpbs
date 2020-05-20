@@ -1,45 +1,49 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH tracejob 8B "11 January 2018" Local "PBS Professional"
+
+.TH tracejob 8B "11 January 2018" Local "PBS"
 .SH NAME
-.B tracejob 
+.B tracejob
 \- extract and print log messages for a PBS job
 .SH SYNOPSIS
-.B tracejob 
-[-a] [-c <count>] [-f <filter>] [-l] [-m] [-n <days>] 
+.B tracejob
+[-a] [-c <count>] [-f <filter>] [-l] [-m] [-n <days>]
 .RS 9
 [-p <path>] [-s] [-v] [-w <cols>] [-z] <job ID>
 .RE
@@ -48,47 +52,47 @@
 .SH DESCRIPTION
 The
 .B tracejob
-command extracts log messages for a given 
-.I job ID 
+command extracts log messages for a given
+.I job ID
 and  prints them in chronological order.
 .LP
-The 
+The
 .B tracejob
 command extracts information from the server, scheduler, accounting, and MoM logs.
 Server logs contain information such as when a job was queued or modified.
 Scheduler logs contain clues as to why a job is not running.  Accounting
 logs contain accounting records for when a job was queued, started, ended,
 or deleted.  MoM logs contain information about what happened to a job
-while it was running.  
+while it was running.
 .LP
-To get MoM log messages for a job, 
-.B tracejob 
+To get MoM log messages for a job,
+.B tracejob
 must be run on the machine on which the job ran.  If the job ran on multiple
-hosts, you must run 
+hosts, you must run
 .B tracejob
 on each of those hosts.
 .LP
-Some log messages appear many times.  In order to make the output of 
+Some log messages appear many times.  In order to make the output of
 .B tracejob
-more readable, messages that appear over a certain number of times (see option 
-.I -c 
+more readable, messages that appear over a certain number of times (see option
+.I -c
 below) are restricted to only the most recent message.
 
 .B Using tracejob on Job Arrays
 .br
-If 
-.B tracejob 
+If
+.B tracejob
 is run on a job array, the information returned is about
 the job array itself, and not its subjobs.  Job arrays do not have associated
-MoM log messages.  If 
-.B tracejob 
-is run on a subjob, the same types of log 
-messages are available as for a job.  Certain log messages that occur for 
+MoM log messages.  If
+.B tracejob
+is run on a subjob, the same types of log
+messages are available as for a job.  Certain log messages that occur for
 a regular job will not occur for a subjob.
 
 .B Required Privilege
-.br 
-All users have access to server, scheduler, and MoM information. Only 
+.br
+All users have access to server, scheduler, and MoM information. Only
 Administrator or root can access accounting information.
 .LP
 
@@ -96,30 +100,30 @@ Administrator or root can access accounting information.
 .IP "-a" 8
 Do not report accounting information.
 .IP "-c <count>" 8
-Set excessive message limit to 
+Set excessive message limit to
 .I count.
-If a message is logged 
-at least 
+If a message is logged
+at least
 .I count
 times, only the most recent message is printed.
-The default for 
+The default for
 .I count
 is 15.
 
 .IP "-f <filter>" 8
-Do not include log events of type 
+Do not include log events of type
 .I filter.
-The 
-.B -f 
-option can be used 
-more than once on the command line.  
+The
+.B -f
+option can be used
+more than once on the command line.
 The following table shows each filter with its hex value and category:
 
 .nf
-Filter      Hex Value  Message Category                   
+Filter      Hex Value  Message Category
 ---------------------------------------------------
 error       0001       Internal errors
-system      0002       System errors 
+system      0002       System errors
 admin       0004       Administrative events
 job         0008       Job-related events
 job_usage   0010       Job accounting info
@@ -134,38 +138,38 @@ debug4      0800       Less common than debug3
 .RE
 
 .IP "-l" 8
-Do not report scheduler information.            
+Do not report scheduler information.
 
 .IP "-m" 8
 Do not report MoM information.
 
 .IP "-n <days>" 8
-Report information from up to 
-.I days 
-days in the past.  Default number of days: 
-.I 1 
+Report information from up to
+.I days
+days in the past.  Default number of days:
+.I 1
 = today
 
 .IP "-p <path>" 8
-Use 
-.I path 
+Use
+.I path
 as path to PBS_HOME on machine being queried.
 
 .IP "-s"   8
 Do not report server information.
 
 .IP "-w <cols>" 8
-Width of current terminal.  If 
-.I cols 
-is not specified, 
-.B tracejob 
-queries OS to get terminal width.  If OS doesn't 
-return anything, defaults to 
+Width of current terminal.  If
+.I cols
+is not specified,
+.B tracejob
+queries OS to get terminal width.  If OS doesn't
+return anything, defaults to
 .I 80.
 
 .IP "-v" 8
-Verbose.  Report more of 
-.B tracejob's 
+Verbose.  Report more of
+.B tracejob's
 errors than default.
 
 .IP "-z" 8
@@ -174,17 +178,17 @@ Suppresses printing of duplicate messages.
 .RE
 .LP
 .IP "--version" 8
-The 
+The
 .B tracejob
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH Operands
-The tracejob command accepts one 
-.I job ID 
-operand. 
+The tracejob command accepts one
+.I job ID
+operand.
 .br
-For a job, this has the form: 
+For a job, this has the form:
 .br
 .I <sequence number>[.<server name>][@<server name>]
 .br
@@ -192,7 +196,7 @@ For a job array, the form is:
 .br
 .I <sequence number>[][.<server name>][@<server name>]
 .br
-For a subjob, the form is: 
+For a subjob, the form is:
 .br
 .I <sequence number>[<index>][.<server name>][@<server name>]
 .br
@@ -204,11 +208,11 @@ Note that some shells require that you enclose a job array identifier in double 
 upon successful processing of all options
 .IP "Greater than zero" 8
 If
-.B tracejob 
+.B tracejob
 is unable to process any options
 
 .SH SEE ALSO
-The 
+The
 .I PBS  Professional Administrator's Guide
 .LP
 pbs_server(8B), pbs_sched(8B), pbs_mom(8B)
