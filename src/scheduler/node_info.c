@@ -4935,7 +4935,7 @@ node_state_to_str(node_info *ninfo)
  * @brief
  *		combine_nspec_array - find and combine any nspec's for the same node
  *		in an nspec array.  Because nspecs no longer map to the original chunks
- *		they came from, seq_num and chk longer have meaning.  They are cleared.
+ *		they came from, seq_num and chk no longer have meaning.  They are cleared.
  *
  * @param[in,out]	nspec_arr	-	array to combine
  *
