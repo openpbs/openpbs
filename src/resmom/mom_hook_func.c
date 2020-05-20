@@ -1733,6 +1733,9 @@ python_script_free(struct python_script *py_script)
 			free(py_script->path);
 		}
 	}
+	else
+		log_err(PBSE_HOOKERROR, __func__, "Python Script is NULL");
+	
 }
 
 /**
@@ -3154,14 +3157,14 @@ record_job_last_hook_executed(unsigned int hook_event,
 	char *p_dir = NULL;
 
 	if (pjob == NULL) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, "", "Job not received");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, __func__, "Job not received");
 		return;
 	} 
 
 	if (hook_name == NULL) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, "", "Hook not received");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, __func__, "Hook not received");
 		return;
 	}
 	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
@@ -3176,6 +3179,9 @@ record_job_last_hook_executed(unsigned int hook_event,
 			*p = '\0';
 			p_dir = filepath;
 		}
+	} else {
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, __func__, "Hook not received");
 	}
 
 	snprintf(hook_job_outfile, MAXPATHLEN,
