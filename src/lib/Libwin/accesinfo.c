@@ -55,7 +55,7 @@
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 
-
+static char *print_mask(int mask);
 /**
  * @brief
  *	Basically, create a dacl allowing only access to Administrators-type groups
