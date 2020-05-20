@@ -1,42 +1,46 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
 
-.TH pbs_deljob 3B "15 November 2019" Local "PBS Professional"
+
+.TH pbs_deljob 3B "15 November 2019" Local "PBS"
 .SH NAME
-.B pbs_deljob 
+.B pbs_deljob
 \- delete a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -46,11 +50,11 @@
 .B int pbs_deljob(int connect, char *jobID, char *extend)
 
 .SH DESCRIPTION
-Issues a batch request to delete a batch job.  
+Issues a batch request to delete a batch job.
 
-This function generates a 
-.I Delete Job 
-(6) batch request and sends it to the server over the connection specified by 
+This function generates a
+.I Delete Job
+(6) batch request and sends it to the server over the connection specified by
 .I connect.
 
 If the batch job is running, the MoM sends the SIGTERM signal followed
@@ -61,12 +65,12 @@ sends mail to the job owner.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of 
-.B pbs_connect().  
+Return value of
+.B pbs_connect().
 Specifies connection over which to send batch request to server.
 
 .IP jobID 8
-ID of job, job array, subjob, or range of subjobs to be deleted.  
+ID of job, job array, subjob, or range of subjobs to be deleted.
 .br
 Format for a job:
 .br
@@ -92,7 +96,7 @@ null, it is appended to the message mailed to the job owner.
 The routine returns 0 (zero) on success.
 
 On error, the routine returns a non-zero exit value, and the error
-number is available in the global integer 
+number is available in the global integer
 .I pbs_errno.
 
 .SH SEE ALSO

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    limits.c
  *
@@ -654,7 +656,7 @@ lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
 		case LIM_OLD:
 			return (lim_setoldlimits(a, lip));
 		default:
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"attribute %s not a limit attribute", a->name);
 			return (1);
 	}
@@ -1295,8 +1297,8 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, user, NULL, NULL, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s user %s max_*user_run (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s user %s max_*user_run (%d, %d), used %d",
 		rr->name, user, max_user_run, max_genuser_run, used);
 
 	if (max_user_run != SCHD_INFINITY) {
@@ -1365,8 +1367,8 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s group %s max_*group_run (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s group %s max_*group_run (%d, %d), used %d",
 		rr->name, group, max_group_run, max_gengroup_run, used);
 
 	if (max_group_run != SCHD_INFINITY) {
@@ -1419,7 +1421,7 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	ret = check_max_user_res(rr, cts, &rdef,
 		LI2RESCTX(si->liminfo));
-	if (ret != 0) 
+	if (ret != 0)
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 			   "%s check_max_user_res returned %d", rr->name, ret);
 	switch (ret) {
@@ -1547,7 +1549,7 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts,  user, NULL, NULL, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 		"%s user %s max_*user_run (%d, %d), used %d",
 		rr->name, user, max_user_run, max_genuser_run, used);
 
@@ -1616,7 +1618,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, group, NULL, NULL, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 		"%s group %s max_*group_run (%d, %d), used %d",
 		rr->name, group, max_group_run, max_gengroup_run, used);
 
@@ -1727,7 +1729,7 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	ret = check_max_group_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0)
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 			"%s check_max_group_res returned %d", rr->name, ret);
 
 	switch (ret) {
@@ -1809,7 +1811,7 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		else
 			used = used_res->amount;
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 			"%s max_res.%s %.1lf, used %.1lf", rr->name, res->name, max_res, used);
 		if (used + req->amount > max_res) {
 			schderr_args_q_res(qi->name, NULL, NULL, err);
@@ -1883,7 +1885,7 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		else
 			used = used_res->amount;
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
 			"%s max_res.%s %.1lf, used %.1lf", rr->name, res->name, max_res, used);
 		if (used + req->amount > max_res) {
 			err->rdef = res->def;
@@ -2101,8 +2103,8 @@ check_queue_max_user_run_soft(server_info *si, queue_info *qi, resource_resv *rr
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(qi->user_counts, user, NULL, &cnt, NULL);
 
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s user %s max_*user_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s user %s max_*user_run_soft (%d, %d), used %d",
 		rr->name, user, max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
@@ -2173,8 +2175,8 @@ check_queue_max_group_run_soft(server_info *si, queue_info *qi,
 		return (0);
 
 	used = find_counts_elm(qi->group_counts, group, NULL, &cnt, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s group %s max_*group_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s group %s max_*group_run_soft (%d, %d), used %d",
 		rr->name, group, max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
@@ -2354,8 +2356,8 @@ check_server_max_user_run_soft(server_info *si, queue_info *qi,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->user_counts, user, NULL, &cnt, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s user %s max_*user_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s user %s max_*user_run_soft (%d, %d), used %d",
 		rr->name, user, max_user_run_soft, max_genuser_run_soft, used);
 
 	if (max_user_run_soft != SCHD_INFINITY) {
@@ -2428,8 +2430,8 @@ check_server_max_group_run_soft(server_info *si, queue_info *qi,
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->group_counts, group, NULL, &cnt, NULL);
 
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s group %s max_*group_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s group %s max_*group_run_soft (%d, %d), used %d",
 		rr->name, group, max_group_run_soft, max_gengroup_run_soft, used);
 
 	if (max_group_run_soft != SCHD_INFINITY) {
@@ -2564,8 +2566,8 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		else
 			used = used_res->amount;
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s max_res_soft.%s %.1lf, used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s max_res_soft.%s %.1lf, used %.1lf",
 			rr->name, res->name, max_res_soft, used);
 
 		if (max_res_soft < used) {
@@ -2633,8 +2635,8 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 		else
 			used = used_res->amount;
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s max_res_soft.%s %.1lf, used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s max_res_soft.%s %.1lf, used %.1lf",
 			rr->name, res->name, max_res_soft, used);
 
 		if (max_res_soft < used) {
@@ -2709,8 +2711,8 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->def, NULL, NULL);
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s group %s max_*group_res.%s (%.1lf, %.1lf), used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s group %s max_*group_res.%s (%.1lf, %.1lf), used %.1lf",
 			rr->name, group, res->name, max_group_res, max_gengroup_res, used);
 
 		if (max_group_res != SCHD_INFINITY) {
@@ -2787,8 +2789,8 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, in
 		rescts = NULL;
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, group, res->def, NULL, &rescts);
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s group %s max_*group_res_soft.%s (%.1lf, %.1lf), used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s group %s max_*group_res_soft.%s (%.1lf, %.1lf), used %.1lf",
 			rr->name, group, res->name, max_group_res_soft, max_gengroup_res_soft, used);
 
 		if (max_group_res_soft != SCHD_INFINITY) {
@@ -2873,8 +2875,8 @@ check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->def, NULL, NULL);
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s user %s max_*user_res.%s (%.1lf, %.1lf), used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s user %s max_*user_res.%s (%.1lf, %.1lf), used %.1lf",
 			rr->name, user, res->name, max_user_res, max_genuser_res, used);
 
 		if (max_user_res != SCHD_INFINITY) {
@@ -2954,8 +2956,8 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, user, res->def, NULL, &rescts);
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s user %s max_*user_res_soft (%.1lf, %.1lf), used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s user %s max_*user_res_soft (%.1lf, %.1lf), used %.1lf",
 			rr->name, user, max_user_res_soft, max_genuser_res_soft, used);
 
 		if (max_user_res_soft != SCHD_INFINITY) {
@@ -3011,7 +3013,7 @@ lim_setreslimits(const struct attrl *a, void *ctx)
 	if (entlim_parse(a->value, a->resource, ctx, lim_callback) == 0)
 		return (0);
 	else {
-		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 			"entlim_parse(%s, %s) failed", a->value, a->resource);
 		return (1);
 	}
@@ -3323,30 +3325,30 @@ lim_callback(void *ctx, enum lim_keytypes kt, char *param, char *namestring,
 	else
 		key = entlim_mk_runkey(kt, namestring);
 	if (key == NULL) {
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			"key construction %d %s failed", (int) kt, namestring);
 		return (-1);
 	}
 
 	if ((v = strdup(val)) == NULL) {
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			"strdup %s %s %s failed", key, res, val);
 		free(key);
 		return (-1);
 	}
 
 	if (entlim_add(key, v, ctx) != 0) {
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			"limit set %s %s %s failed", key, res, val);
 		free(v);
 		free(key);
 		return (-1);
 	} else {
 		if (res != NULL)
-			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 				"limit set %s %s %s", key, res, val);
 		else
-			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, 
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 				"limit set %s NULL %s", key, val);
 		free(key);
 		return (0);
@@ -3507,8 +3509,8 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->def, NULL, NULL);
 
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-			"%s project %s max_*project_res.%s (%.1lf, %.1lf), used %.1lf", 
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+			"%s project %s max_*project_res.%s (%.1lf, %.1lf), used %.1lf",
 			rr->name, project, res->name, max_project_res, max_genproject_res, used);
 
 		if (max_project_res != SCHD_INFINITY) {
@@ -3587,7 +3589,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
 		/* at this point, we know a generic or individual limit is set */
 		used = find_counts_elm(cts_list, project, res->def, NULL, &rescts);
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
-			"%s project %s max_*project_res_soft.%s (%.1lf, %.1lf), used %.1lf", 
+			"%s project %s max_*project_res_soft.%s (%.1lf, %.1lf), used %.1lf",
 			rr->name, project, res->name, max_project_res_soft, max_genproject_res_soft, used);
 
 		if (max_project_res_soft != SCHD_INFINITY) {
@@ -3729,8 +3731,8 @@ check_server_max_project_run_soft(server_info *si, queue_info *qi,
 
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(si->project_counts, project, NULL, &cnt, NULL);
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s project %s max_*project_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s project %s max_*project_run_soft (%d, %d), used %d",
 		rr->name, project, max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
@@ -3895,8 +3897,8 @@ check_queue_max_project_run_soft(server_info *si, queue_info *qi,
 
 	used = find_counts_elm(qi->project_counts, project, NULL, &cnt, NULL);
 
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s project %s max_*project_run_soft (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s project %s max_*project_run_soft (%d, %d), used %d",
 		rr->name, project, max_project_run_soft, max_genproject_run_soft, used);
 
 	if (max_project_run_soft != SCHD_INFINITY) {
@@ -4012,8 +4014,8 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, project, NULL, NULL, NULL);
 
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s project %s max_*project_run (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s project %s max_*project_run (%d, %d), used %d",
 		rr->name, project, max_project_run, max_genproject_run, used);
 
 	if (max_project_run != SCHD_INFINITY) {
@@ -4089,8 +4091,8 @@ check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	/* at this point, we know a generic or individual limit is set */
 	used = find_counts_elm(cts, project, NULL, NULL, NULL);
 
-	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, 
-		"%s project %s max_*project_run (%d, %d), used %d", 
+	log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,
+		"%s project %s max_*project_run (%d, %d), used %d",
 		rr->name, project, max_project_run, max_genproject_run, used);
 
 	if (max_project_run != SCHD_INFINITY) {

@@ -129,7 +129,7 @@
 
  - **Cleanup:** Returned user, host, and realm should be freed using free() when no more required, as it will be allocated heap memory.
 
- - **Example:** This example shows what will be the value of the user, host, and realm. Let's take an example of GSS/Kerberos authentication, where auth client hostname is "xyz.abc.com", the username is "test" and in Kerberos configuration domain realm is "PBSPRO" so when this auth client authenticates to server using Kerberos authentication method, it will be authenticated as "test@PBSPRO" and this API will return user = test, host = xyz.abc.com, and realm = PBSPRO.
+ - **Example:** This example shows what will be the value of the user, host, and realm. Let's take an example of GSS/Kerberos authentication, where auth client hostname is "xyz.abc.com", the username is "test" and in Kerberos configuration domain realm is "PBS" so when this auth client authenticates to server using Kerberos authentication method, it will be authenticated as "test@PBS" and this API will return user = test, host = xyz.abc.com, and realm = PBS.
 
 # pbs_auth_process_handshake_data
  - **Synopsis:** int pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **data_out, size_t *len_out, int *is_handshake_done)

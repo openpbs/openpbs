@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    win_remote_shell.c
  *
@@ -408,7 +410,7 @@ connectstdpipes(STARTUPINFO* psi, int is_interactive)
 DWORD
 run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, int is_gui_command , int show_window, char *username)
 {
-	PROCESS_INFORMATION pi;	
+	PROCESS_INFORMATION pi;
 	HANDLE	hJob = INVALID_HANDLE_VALUE;
 
 	if (command == NULL || p_returncode == NULL || psi == NULL)
@@ -416,17 +418,17 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 
 	*p_returncode = 0;
 	psi->wShowWindow = show_window;
-	
+
 	if(is_gui_command) {
 		/* Launch GUI application in active user session */
 		HANDLE hUserToken = INVALID_HANDLE_VALUE;
 		static int activesessionid = 0;
 		static char * active_user = NULL;
-		
+
 		/* Launch the process on interactive desktop */
 		psi->lpDesktop = "winsta0\\default";
 		ZeroMemory(&pi, sizeof(pi));
-		
+
 		/* Get current active user session id */
 		activesessionid = get_activesessionid(0, username);
 		if (activesessionid == -1) {
@@ -445,7 +447,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 		if (hUserToken == INVALID_HANDLE_VALUE) {
 			return 1;
 		}
-		/* 
+		/*
 		** GUI jobs are launched in different user session and thus can not be part of the same job object.
 		** Create a new job object for the new session.
 		*/
@@ -539,7 +541,7 @@ connect_remote_resource(const char *remote_host, const char *remote_resourcename
 		rc = WNetCancelConnection2(remote_resource_path, 0, TRUE);/* Disconnect resource */
 		if(rc == NO_ERROR || rc == ERROR_NOT_CONNECTED)
 			return TRUE;
-	}	
+	}
 
 	SetLastError(rc);
 	return FALSE;

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    node_info.c
@@ -359,7 +361,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 		for (nidx = 0; ninfo_arr[nidx] != NULL; nidx++)
 			ninfo_arr[nidx]->rank = get_sched_rank();
-		
+
 		ninfo_arr[nidx] = NULL;
 	} else {
 		if ((ninfo_arr = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
@@ -434,7 +436,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	}
 
 	if (nidx == 0) {
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, 
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 			"No nodes found in partitions serviced by scheduler");
 		pbs_statfree(nodes);
 		free(ninfo_arr);
@@ -558,7 +560,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_NODE_Sharing)) {
 			ninfo->sharing = str_to_vnode_sharing(attrp->value);
 			if (ninfo->sharing == VNS_UNSET) {
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name, 
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
 					"Unknown sharing type: %s using default shared", attrp->value);
 				ninfo->sharing = VNS_DFLT_SHARED;
 			}
@@ -750,7 +752,7 @@ new_node_info()
 
 	new->svr_node = NULL;
 	new->hostset = NULL;
-	
+
 	new->node_events = NULL;
 	new->bucket_ind = -1;
 	new->node_ind = -1;
@@ -945,7 +947,7 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
-		
+
 		if(ninfo->node_events != NULL)
 			free_te_list(ninfo->node_events);
 
@@ -1747,7 +1749,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 
 	nnode->bucket_ind = onode->bucket_ind;
 	nnode->node_ind = onode->node_ind;
-	
+
 	nnode->nscr = onode->nscr;
 
 	if (onode->partition != NULL) {
@@ -1918,8 +1920,8 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					 * recalculated later.
 					 */
 					ninfo_arr[i]->has_ghost_job = 1;
-					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name, 
-						"Job %s reported running on node no longer exists or is not in running state", 
+					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name,
+						"Job %s reported running on node no longer exists or is not in running state",
 						ninfo_arr[i]->jobs[j]);
 				}
 
@@ -2207,7 +2209,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 							res = res->indirect_res;
 						res->assigned -= resreq->amount;
 						if (res->assigned < 0) {
-							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name, 
+							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
 								"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 							res->assigned = 0;
 						}
@@ -2648,7 +2650,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	for (i = 0; nodepart[i] != NULL && rc == 0; i++) {
 		clear_schd_error(err);
 		if (resresv_can_fit_nodepart(policy, nodepart[i], resresv, flags, err)) {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Evaluating placement set: %s", nodepart[i]->name);
 			if (nodepart[i]->ok_break)
 				pass_flags |= EVAL_OKBREAK;
@@ -2674,7 +2676,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		}
 		else {
 			translate_fail_code(err, NULL, reason);
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Placement set %s is too small: %s", nodepart[i]->name, reason);
 			set_schd_error_codes(err, NOT_RUN, SET_TOO_SMALL);
 			set_schd_error_arg(err, ARG1, "Placement");
@@ -2855,7 +2857,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			}
 
 			rc = any_succ_rc = 0;
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				resresv->name, "Evaluating host %s", hostsets[i]->res_val);
 
 			/* Pack on One Host Placement:
@@ -2941,7 +2943,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 							resresv->name, "Insufficient host-level resources %s", reason);
 
 						/* don't be so specific in the comment since it's only for a single host */
@@ -3012,7 +3014,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 							resresv->name, "Insufficient host-level resources %s", reason);
 
 						/* don't be so specific in the comment since it's only for a single host */
@@ -3144,8 +3146,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				free_nodes(dup_ninfo_arr);
 			}
 			else {
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name, 
-					"Unexpected Placement: not %s, %s, %s, or %s", 
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name,
+					"Unexpected Placement: not %s, %s, %s, or %s",
 					PLACE_Scatter, PLACE_VScatter, PLACE_Pack, PLACE_Free);
 			}
 		}
@@ -3629,7 +3631,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		nsa[i] = NULL;
 	}
 
-	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name, 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, resresv->name,
 		"Failed to satisfy subchunk: %s", chk->str_chunk);
 
 	/* If the last node we looked at was fine, err would be empty.
@@ -3945,7 +3947,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 						if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1)
 							set_current_aoe(node, resresv->aoename);
 						if (resresv->is_job) {
-							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name, 
+							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name,
 								"Vnode %s selected for provisioning with AOE %s", node->name, resresv->aoename);
 						}
 					}
@@ -3961,7 +3963,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 							set_current_eoe(node, resresv->eoename);
 
 						if (resresv->is_job)
-							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name, 
+							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_NOTICE, resresv->name,
 								"Vnode %s selected for power with EOE %s", node->name, resresv->eoename);
 					}
 
@@ -4000,7 +4002,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					/* use tmpreq to wrap the amount so we can use res_to_str */
 					tmpreq.amount = amount;
 
-					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name, 
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name,
 						"vnode allocated %s=%s", req->name, res_to_str(&tmpreq, RF_REQUEST));
 
 					allocated = 1;
@@ -4217,7 +4219,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 				}
 				else {
 					ns = NULL;
-					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name, 
+					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, resresv->name,
 						"Event %s is a run/end event w/o nspec array, ignoring event", event->name);
 				}
 
@@ -4878,7 +4880,7 @@ node_state_to_str(node_info *ninfo)
 
 	if (ninfo->is_sleeping)
 		return ND_sleep;
-	
+
 	if (ninfo->is_maintenance)
 		return ND_maintenance;
 
@@ -5100,7 +5102,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 			cmp_aoename = string_dup(resresv->aoename);
 			qsort(nptr, nsize, sizeof(node_info *), cmp_aoe);
 
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Re-sorted the nodes on aoe %s, since aoe was requested", resresv->aoename);
 
 			return nptr;
@@ -5799,7 +5801,7 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 				ninfo_arr[j] = NULL;
 			}
 			else
-				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, 
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 					"Node %s not found in list.", strnodes[i]);
 		}
 	}
@@ -5820,13 +5822,13 @@ find_node_ind(node_info **ninfo_arr, int rank) {
 	int i;
 	if(ninfo_arr == NULL)
 		return -1;
-	
+
 	for (i = 0; ninfo_arr[i] != NULL && ninfo_arr[i]->rank != rank; i++)
 		;
 
 	if(ninfo_arr[i] == NULL)
 		return -1;
-	
+
 	return i;
 }
 
@@ -5869,10 +5871,10 @@ find_node_by_rank(node_info **ninfo_arr, int rank)
 node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank) {
 	if(ninfo_arr == NULL || *ninfo_arr == NULL)
 		return NULL;
-	
+
 	if(ninfo_arr[0] == NULL || ninfo_arr[0]->server == NULL || ninfo_arr[0]->server->unordered_nodes == NULL || ind == -1)
 		return find_node_by_rank(ninfo_arr, rank);
-	
+
 	return ninfo_arr[0]->server->unordered_nodes[ind];
 }
 
@@ -6354,6 +6356,6 @@ int add_node_events(timed_event *te, void *arg1, void *arg2) {
 		if (add_event_to_nodes(te, nspecs) == 0)
 			return -1;
 	}
-	
+
 	return 0;
 }

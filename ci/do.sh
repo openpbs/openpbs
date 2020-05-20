@@ -1,5 +1,42 @@
 #!/bin/bash -xe
 
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 if [ $(id -u) -ne 0 ]; then
   echo "This script must be run by root user"
   exit 1
@@ -64,7 +101,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql postgresql-contrib python3-pip sudo man-db git
+                        swig expat postgresql postgresql-contrib python3-pip sudo \
+                        man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
@@ -75,7 +113,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql python3-pip sudo man-db git
+                        swig expat postgresql python3-pip sudo man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   else
     echo "Unknown platform..."

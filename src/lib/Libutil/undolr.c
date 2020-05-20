@@ -2,47 +2,49 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	undolr.c
  * @brief
- *	The Undo Recording API calls to integrate with PBSPro.
+ *	The Undo Recording API calls to integrate with PBS.
  *	It allows our daemons to create an Undo Recording of itself running, which can
  *	then be opened using the Undo Debugger/Player (UndoDB).
- * 
+ *
  */
 
 #include <signal.h>
@@ -77,7 +79,7 @@ catch_sigusr1(int sig)
 
 /**
  * @brief
- *	mk_recording_path - make the recording name and path used by deamons 
+ *	mk_recording_path - make the recording name and path used by deamons
  *	based on the date and time: <deamon_name>_yyyymmddHHMM.undo
  *
  * @param[in] fpath - buffer to hold the live recording file path
@@ -86,14 +88,14 @@ catch_sigusr1(int sig)
  *          1 - Failure
  *
  */
-static void mk_recording_path(char * fpath) 
+static void mk_recording_path(char * fpath)
 {
 	struct tm ltm;
 	struct tm *ptm;
 	time_t time_now;
 
 	if (pbs_loadconf(1) == 0)
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, 
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname,
 				"%s: Could not load pbs configuration, will use it's default value", __func__);
 
 	time_now = time(NULL);
@@ -112,10 +114,10 @@ static void mk_recording_path(char * fpath)
 }
 
 /**
- * @brief 
+ * @brief
  *	undolr - call respective Undo Live Recorder APIs
  *	to start and stop the recordings.
- * @return  void 
+ * @return  void
  */
 void undolr()
 {
@@ -127,7 +129,7 @@ void undolr()
 	if (!recording) {
 		mk_recording_path(recording_file);
 		log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE,
-				PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, 
+				PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname,
 				"Undo live recording started, will save to %s", recording_file);
 
 		/**
@@ -137,7 +139,7 @@ void undolr()
 		e = undolr_start(&err);
 		if (e) {
 			log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-				LOG_ALERT, msg_daemonname, 
+				LOG_ALERT, msg_daemonname,
 				"Unable to start undo recording, error=%i errno=%i\n", e, errno);
 			return;
 		}
@@ -146,7 +148,7 @@ void undolr()
 		e = undolr_save_on_termination(recording_file);
 		if (e) {
 			log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-				LOG_ERR, msg_daemonname, 
+				LOG_ERR, msg_daemonname,
 				"undolr_save_on_termination() failed: error=%i errno=%i\n", e, errno);
 			return;
 		}
@@ -159,25 +161,25 @@ void undolr()
 		e = undolr_stop(&lr_ctx);
 		if (e) {
 			log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-				LOG_ERR, msg_daemonname, 
+				LOG_ERR, msg_daemonname,
 				"undolr_stop() failed: errno=%i\n", errno);
 			return;
 		}
 		recording = 0;
 		log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, msg_daemonname, 
+			LOG_INFO, msg_daemonname,
 			"Stopped Undo live recording");
 
 		/* Undo API call to save recording. */
 		e = undolr_save_async(lr_ctx, recording_file);
 		if (e) {
 			log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-				LOG_ERR, msg_daemonname, 
+				LOG_ERR, msg_daemonname,
 				"undolr_save_async() failed: errno=%i\n", errno);
 			return;
 		}
 		log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, msg_daemonname, 
+			LOG_INFO, msg_daemonname,
 			"Have created Undo live recording at: %s\n", recording_file);
 
 		/**

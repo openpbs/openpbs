@@ -1,41 +1,45 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_relnodesjob 3B "15 November 2019" Local "PBS Professional"
+
+.TH pbs_relnodesjob 3B "15 November 2019" Local "PBS"
 .SH NAME
-.B pbs_relnodesjob 
+.B pbs_relnodesjob
 \- release some or all of the non-primary-execution-host vnodes assigned to a PBS job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -43,16 +47,16 @@
 #include <pbs_ifl.h>
 .sp
 .nf
-.B int pbs_relnodesjob (int connect, char *jobID, char *vnode_list, 
+.B int pbs_relnodesjob (int connect, char *jobID, char *vnode_list,
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 .SH DESCRIPTION
 
 Issues a batch request to release some or all of the vnodes of a batch job.
 
-Generates a 
-.I RelnodesJob 
-(90) batch request and sends it to the server over the connection specified by 
+Generates a
+.I RelnodesJob
+(90) batch request and sends it to the server over the connection specified by
 .I connect.
 
 You cannot release vnodes on the primary execution host.
@@ -61,12 +65,12 @@ You can use this on jobs and subjobs, but not on job arrays or ranges of subjobs
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of 
-.B pbs_connect().  
+Return value of
+.B pbs_connect().
 Specifies connection handle over which to send batch request to server.
 
 .IP jobID 8
-ID of job or subjob whose vnodes are to be released.  
+ID of job or subjob whose vnodes are to be released.
 .br
 Format for a job:
 .br
@@ -79,8 +83,8 @@ Format for a subjob:
 .IP vnode_list 8
 List of vnode names separated by plus signs ("+").
 
-If 
-.I vnode_list 
+If
+.I vnode_list
 is a null pointer, this specifies that all the vnodes assigned to the
 job that are not on the primary execution host are to be released.
 
@@ -91,6 +95,5 @@ Character string for extensions to command.  Not currently used.
 The routine returns 0 (zero) on success.
 
 If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer 
+the error number is available in the global integer
 .I pbs_errno.
-

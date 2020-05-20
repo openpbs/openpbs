@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	pbs_log.c
  * @brief
@@ -73,6 +75,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "log.h"
 #include "pbs_ifl.h"
@@ -722,9 +725,10 @@ log_err(int errnum, const char *routine, const char *text)
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
 
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -732,7 +736,7 @@ log_err(int errnum, const char *routine, const char *text)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);
@@ -768,6 +772,48 @@ log_err(int errnum, const char *routine, const char *text)
 
 /**
  * @brief
+ * 	log_errf - a combination of log_err() and printf()
+ *	The error is recorded to the pbs log file and to syslogd if it is
+ *	available.  If the error file has not been opened and if syslog is
+ *	not defined, then the console is opened.
+ *
+ * @param[in] errnum - error number
+ * @param[in] routine - error in which routine
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string * 
+ *
+ */
+
+void
+log_errf(int errnum, const char *routine, const char *fmt, ...)
+{
+	va_list args;
+	int len;
+	char logbuf[LOG_BUF_SIZE];
+	char *buf;
+
+	va_start(args, fmt);
+
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+
+	if (len >= sizeof(logbuf)) {
+		buf = pbs_asprintf_format(len, fmt, args);
+		if (buf == NULL) {
+			va_end(args);
+			return;
+		}
+	} else
+		buf = logbuf;
+
+	log_err(errnum, routine, buf);
+
+	if (len >= sizeof(logbuf))
+		free(buf);
+	va_end(args);
+}
+
+/**
+ * @brief
  * 	log_joberr- log an internal, job-related error
  *	The error is recorded to the pbs log file and to syslogd if it is
  *	available.  If the error file has not been opened and if syslog is
@@ -793,9 +839,9 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 
 #ifdef WIN32
 		LPVOID	lpMsgBuf;
-		int	err = GetLastError();
+		DWORD	err = GetLastError();
 		int		len;
-
+		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -803,7 +849,7 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 			NULL, err,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 			(LPTSTR)&lpMsgBuf, 0, NULL);
-		strncpy(buf, lpMsgBuf, sizeof(buf));
+		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
 		buf[sizeof(buf)-1] = '\0';
 		len = strlen(buf);

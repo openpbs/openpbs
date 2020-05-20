@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file tracejob.c
  *
@@ -274,7 +276,7 @@ main(int argc, char *argv[])
 			"   -v : verbose mode - show more error messages\n");
 
 		printf("\n       %s --version\n", strip_path(argv[0]));
-		printf("   --version : display PBSPro version only\n\n");
+		printf("   --version : display version only\n\n");
 
 		printf("default prefix path = %s\n", pbs_conf.pbs_home_path);
 #if defined(FILTER_EXCESSIVE)
@@ -495,8 +497,8 @@ parse_log(FILE *fp, char *job, int ind)
 				log_lines[ll_cur_amm].date = strdup(tmp.date);
 				if ((ind != IND_ACCT) && (strchr(tmp.date, '.'))) {
 					/* Parse time string looking for high res logging.  If we don't parse 7 fields, we have a invalid log time. */
-					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d.%ld", &tms.tm_mon, 
-					    &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min, 
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d.%ld", &tms.tm_mon,
+					    &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min,
 					    &tms.tm_sec, &(log_lines[ll_cur_amm].highres)) != 7) {
 						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
 						log_lines[ll_cur_amm].highres = NO_HIGH_RES_TIMESTAMP;
@@ -504,14 +506,14 @@ parse_log(FILE *fp, char *job, int ind)
 						has_high_res_timestamp = 1;
 						if (tms.tm_year > 1900)
 							tms.tm_year -= 1900;
-						/* The number of months since January, 
+						/* The number of months since January,
  						 * in the range 0 to 11 for mktime()
  						 */
 						tms.tm_mon--;
 						log_lines[ll_cur_amm].date_time = mktime(&tms);
 					}
 				} else { /* Normal time string */
-					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday, 
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday,
 					    &tms.tm_year, &tms.tm_hour, &tms.tm_min, &tms.tm_sec) != 6) {
 						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
 					} else { /* We found all 6 fields, correctly formed time string */
@@ -904,4 +906,3 @@ filter_excess(int threshold)
 		}
 	}
 }
-

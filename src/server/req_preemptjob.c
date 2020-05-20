@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /*
  * @file	svr_preemptjob.c
  *
@@ -86,7 +88,7 @@ const static char *preempt_methods[] = {
  * @param[in] job_id - the job to mark as failed
  * @return void
  */
-static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id) 
+static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id)
 {
 	int preempt_index = preempt_preq->rq_reply.brp_un.brp_preempt_jobs.count;
 	preempt_job_info *preempt_jobs_list = preempt_preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list;
@@ -103,13 +105,13 @@ static void job_preempt_fail(struct batch_request *preempt_preq, char *job_id)
  * @param[in] job_id - the job to create the request for
  * @return batch_request *
  * @retval new batch_request for suspend
- */ 
-static struct batch_request *create_suspend_request(char *job_id) 
+ */
+static struct batch_request *create_suspend_request(char *job_id)
 {
 	struct batch_request *newreq;
 
 	newreq = alloc_br(PBS_BATCH_SignalJob);
-	if (newreq == NULL) 
+	if (newreq == NULL)
 		return NULL;
 	snprintf(newreq->rq_ind.rq_signal.rq_jid, sizeof(newreq->rq_ind.rq_signal.rq_jid), "%s", job_id);
 	snprintf(newreq->rq_ind.rq_signal.rq_signame, sizeof(newreq->rq_ind.rq_signal.rq_signame), "%s", SIG_SUSPEND);
@@ -123,7 +125,7 @@ static struct batch_request *create_suspend_request(char *job_id)
  * @retval new batch_request for holdjob (checkpoint)
  */
 
-static struct batch_request *create_ckpt_request(char *job_id) 
+static struct batch_request *create_ckpt_request(char *job_id)
 {
 	int hold_name_size;
 	int hold_val_size = 2; /* 2 for 's' and '\0' */
@@ -156,7 +158,7 @@ static struct batch_request *create_ckpt_request(char *job_id)
  * @retval new batch_request for rerun (requeue)
  */
 
-static struct batch_request *create_requeue_request(char *job_id) 
+static struct batch_request *create_requeue_request(char *job_id)
 {
 	struct batch_request *newreq;
 
@@ -380,7 +382,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] == PREEMPT_METHOD_CHECKPOINT)
 			clear_preempt_hold(pjob);
-		
+
 		pjob->preempt_order_index++;
 		if (pjob->preempt_order[0].order[pjob->preempt_order_index] != PREEMPT_METHOD_LOW) {
 			if (issue_preempt_request((int)pjob->preempt_order[0].order[pjob->preempt_order_index], pjob, preq)) {
@@ -389,9 +391,9 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 			} else {
 				/* reply_preempt_jobs_request() is somewhat recursive.  If a preemption method fails, one call will issue the next
 				 * preemptiom method request.  The next preemption method request immediately is rejected, it will call
-				 * reply_preempt_jobs_request() again before the first call ends.  A reject like this is considered a successful 
-				 * call to issue_Drequest().  If pjob->ji_pmt_preq has been NULLed, it means the last preemption method has failed.  
-				 * If this is the last job in the preemption list, the call to reply_preempt_job_request() will have replied to 
+				 * reply_preempt_jobs_request() again before the first call ends.  A reject like this is considered a successful
+				 * call to issue_Drequest().  If pjob->ji_pmt_preq has been NULLed, it means the last preemption method has failed.
+				 * If this is the last job in the preemption list, the call to reply_preempt_job_request() will have replied to
 				 * the scheduler.  In this case, we do not want to reply a second time.
 				 */
 				if (pjob->ji_pmt_preq == NULL)
