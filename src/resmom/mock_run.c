@@ -130,7 +130,7 @@ mock_run_end_job_task(struct work_task *ptask)
 	job *pjob;
 
 	if (ptask == NULL) {
-		log_err(PBSE_UNKJOBID, "mock_run_end_job_task", "Job not received");
+		log_err(PBSE_UNKJOBID, __func__, "Job not received");
 		return;
 	}
 
@@ -177,7 +177,7 @@ mock_run_mom_set_use(job *pjob)
 	if (rd == NULL) {
 		rd = malloc(5 * sizeof(resource_def *));
 		if (rd  == NULL) {
-			log_err(PBSE_SYSTEM, "mock_run_mom_set_use", "Unable to allocate memory");
+			log_err(PBSE_SYSTEM, __func__, "Unable to allocate memory");
 			return PBSE_SYSTEM;
 		}
 
