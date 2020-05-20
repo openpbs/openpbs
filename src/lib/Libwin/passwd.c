@@ -66,6 +66,7 @@
 #endif
 #include <Security.h>
 
+char    winlog_buffer[WINLOG_BUF_SIZE] = {'\0'};
 
 #define DESKTOP_ALL (	DESKTOP_CREATEMENU      | DESKTOP_CREATEWINDOW  | \
 			DESKTOP_ENUMERATE       | DESKTOP_HOOKCONTROL   | \
@@ -5105,6 +5106,7 @@ cache_usertoken_and_homedir(char *user,
  * 	correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE by
  * 	executing the call in the context of the user.
  *
+ * @par	NOTE: uses 'winlog_buffer" for logging messages.
  */
 NET_API_STATUS
 wrap_NetUserGetGroups(LPCWSTR servername,
@@ -5116,6 +5118,7 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 	LPDWORD totalentries)
 {
 	NET_API_STATUS	netst;
+	winlog_buffer[0] = '\0';
 	netst = NetUserGetGroups(servername, username, level, bufptr,
 		prefmaxlen, entriesread, totalentries);
 
@@ -5139,7 +5142,8 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 			}
 		}
 		if (!found) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "No user token found for %s", user_name);
+			sprintf(winlog_buffer, "No user token found for %s", user_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 
 		}
@@ -5154,12 +5158,13 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 
 				(void)revert_impersonated_user();
 			} else {
-				log_errf(-1, __func__, "Failed to impersonate user %s", user_name);
+				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 		}
 	} else {
 		if (netst != NERR_Success) {
@@ -5178,6 +5183,7 @@ wrap_NetUserGetGroups(LPCWSTR servername,
  *	to correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE
  *	by executing the call in the context of the user.
  *
+ * @par	NOTE: uses 'winlog_buffer' for logging messages
  */
 NET_API_STATUS
 wrap_NetUserGetLocalGroups(LPCWSTR servername,
@@ -5190,6 +5196,7 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 	LPDWORD totalentries)
 {
 	NET_API_STATUS	netst;
+	winlog_buffer[0] = '\0';
 
 	netst = NetUserGetLocalGroups(servername, username, level, flags,
 		bufptr, prefmaxlen, entriesread, totalentries);
@@ -5213,7 +5220,8 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 			}
 		}
 		if (!found) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "No user token found for %s", user_name);
+			sprintf(winlog_buffer, "No user token found for %s", user_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 		}
 
@@ -5226,12 +5234,13 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 					prefmaxlen, entriesread, totalentries);
 				(void)revert_impersonated_user();
 			} else {
-				log_errf(-1, __func__, "Failed to impersonate user %s", user_name);
+				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-				"Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 		}
 	} else {
 		if (netst != NERR_Success) {
@@ -5251,6 +5260,7 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
  *	by executing the call in the context of the user.
  *
  */
+/* NOTE: uses 'winlog_buffer' for logging messages */
 
 NET_API_STATUS
 wrap_NetUserGetInfo(LPCWSTR servername,
@@ -5260,7 +5270,7 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 {
 	NET_API_STATUS	netst;
 	netst = NetUserGetInfo(servername, username, level, bufptr);
-
+	winlog_buffer[0] = '\0';
 
 	if ((netst == ERROR_LOGON_FAILURE) || (netst == ERROR_ACCESS_DENIED)) {
 		struct passwd *pw = NULL;
@@ -5282,7 +5292,8 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 			}
 		}
 		if (!found) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "No user token found for %s", user_name);
+			sprintf(winlog_buffer, "No user token found for %s", user_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 			return (netst);
 		}
 
@@ -5293,12 +5304,13 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 					username, level, bufptr);
 				(void)revert_impersonated_user();
 			} else {
-				log_errf(-1, __func__, "Failed to impersonate user %s", user_name);
+				sprintf(winlog_buffer, "Failed to impersonate user %s error %d", user_name, GetLastError());
+				log_err(-1, __func__, winlog_buffer);
 			}
 
 		} else {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-				"Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			sprintf(winlog_buffer, "Did not find a security token for user %s, perhaps no cached password found!", user_name);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 		}
 
 	}
@@ -5404,7 +5416,8 @@ has_read_access_domain_users_end:
  * @retval	1 	if (a) is not satisfied,
  * @retval	2 	if (b) is not satisfied, and
  * @retval	3	if (c) is not satisfied.
- *	     		and will log the output to some log file.
+ *	     		and 'winlog_buffer" will be filled with the
+ *           	message that can be used to output to some log file
  * Idea is based on return value, execution of PBS service account would
  * either proceed or abort.
  */
@@ -5423,6 +5436,7 @@ check_executor(void)
 	if(TRUE == isLocalSystem())
 		return 0;
 
+	winlog_buffer[0] = '\0';
 	strcpy(exec_unamef, getlogin_full());
 	strcpy(exec_uname, exec_unamef);
 	strcpy(exec_dname, ".");
@@ -5441,15 +5455,17 @@ check_executor(void)
 
 
 		if (stricmp(exec_dname, dname) != 0) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-				"Executing user %s must be a domain account in domain %s", exec_uname, dname);
+			sprintf(winlog_buffer,
+				"Executing user %s must be a domain account in domain %s", __func__, exec_uname, dname);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 			return (2);
 		}
 
 		/* this test must occur first before the "read access" test */
 		if (!isAdminPrivilege(exec_uname)) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-				"executing user %s should be an admin account", exec_uname);
+			sprintf(winlog_buffer,
+				"%s: executing user %s should be an admin account", __func__, exec_uname);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 			return (1);
 		}
 
@@ -5460,13 +5476,16 @@ check_executor(void)
 		mbstowcs(dctrlw, dctrl, PBS_MAXHOSTNAME);
 
 		if (!has_read_access_domain_users(dctrlw)) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-				"executing user %s cannot read all users info in %s (DC is %S)", exec_uname, dname, dctrlw);
+			sprintf(winlog_buffer,
+				"%s: executing user %s cannot read all users info in %s (DC is %S)", __func__, exec_uname, dname, dctrlw);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 			return (3);
 		}
 	} else {
 		if (!isAdminPrivilege(exec_uname)) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "executing user %s should be an admin account", exec_uname);
+			sprintf(winlog_buffer,
+				"%s: executing user %s should be an admin account", __func__, exec_uname);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 			return (1);
 		}
 	}

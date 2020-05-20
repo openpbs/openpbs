@@ -128,7 +128,6 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 	}
 	if (InitializeAcl(ndacl, cbAcl, ACL_REVISION) == 0) {
 		log_err(-1, __func__, "failed in InitializeAcl");
-		return NULL;
 	}
 
 	for (i=0; i < k; i++) {
@@ -396,7 +395,6 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 	}
 	if (InitializeAcl(ndacl, cbAcl, ACL_REVISION) == 0) {
 		log_err(-1, __func__, "failed in InitializeAcl");
-		return NULL;
 	}
 
 	for (i=0; i < k; i++) {
