@@ -831,15 +831,6 @@ $cputmult 0.75
 .RE
 .IP
 
-.IP "$dce_refresh_delta <delta>" 5
-Defines the number of seconds between successive refreshings of a job's
-DCE login context.
-For example:
-.RS 9
-$dce_refresh_delta 18000
-.RE
-.IP
-
 .IP "$enforce <limit>" 5
 MoM will enforce the given
 .I limit.
