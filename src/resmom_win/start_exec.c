@@ -1095,6 +1095,7 @@ set_homedir_to_local_default(job *pjob, char *username)
 		strcpy(pjob->ji_grpcache->gc_homedir, lpath);
 		return (lpath);
 	} else {
+		log_err(-1, __func__, "realloc failed");
 		pjob->ji_grpcache = g;	/* restore */
 		strcpy(pjob->ji_grpcache->gc_homedir, "");
 		return ("");
