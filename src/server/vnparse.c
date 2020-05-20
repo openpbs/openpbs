@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    vnparse.c
@@ -1203,7 +1205,7 @@ return_missing_resources(char *chunk, char *res_list)
  * @retval == NULL	if error encountered.
  *
  * @note
- *	The returned string can have duplicate resource 
+ *	The returned string can have duplicate resource
  *	names in them.
  *	The returned string points to a malloced area that
  *	must be freed when not needed.
@@ -1222,7 +1224,7 @@ resources_seen(char *exec_vnode)
 	char		*res_list = NULL;
 	char		*noden = NULL;
 	size_t		ssize = 0;
-	size_t		slen = 0;	
+	size_t		slen = 0;
 
 	if (exec_vnode == NULL) {
 		log_err(-1, __func__, "bad params passed");
@@ -1302,7 +1304,7 @@ find_ms_full_host_and_port(char *exec_host, char *exec_host2, int *port)
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
 			return (NULL);
-			
+
 		}
 		if ((p = strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
@@ -1310,10 +1312,10 @@ find_ms_full_host_and_port(char *exec_host, char *exec_host2, int *port)
 		if ((p = strchr(ms_exec_host, ':')) != NULL) {
 			char *endp;
 			long pnum;
-				
+
 			pnum = (int)strtol(p + 1, &endp, 10);
 			if ((*endp != '\0') || (pnum == LONG_MIN) || (pnum == LONG_MAX)) {
-				log_err(errno, __func__, "strtoul error"); 
+				log_err(errno, __func__, "strtoul error");
 				return (NULL);
 			}
 			*p = '\0';
@@ -1324,7 +1326,7 @@ find_ms_full_host_and_port(char *exec_host, char *exec_host2, int *port)
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
 			return (NULL);
-			
+
 		}
 		if ((p = strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
@@ -1341,7 +1343,7 @@ find_ms_full_host_and_port(char *exec_host, char *exec_host2, int *port)
  *		2:ncpus=1:mem=3gb:mpiprocs=5
  *	this expands to:
  *	   ncpus=1:mem=3gb:mpiprocs=5+ncpus=1:mem=3gb:mpiprocs=5
- * @param[in]	select_str - the select/schedselect specification 
+ * @param[in]	select_str - the select/schedselect specification
  *
  * @return char *
  * @retval	!= NULL - the expanded select string
@@ -1352,7 +1354,7 @@ find_ms_full_host_and_port(char *exec_host, char *exec_host2, int *port)
  *	outside after use.
  */
 static char *
-expand_select_spec(char *select_str) 
+expand_select_spec(char *select_str)
 {
 	char		*selbuf = NULL;
 	int		hasprn3;
@@ -1408,16 +1410,16 @@ expand_select_spec(char *select_str)
 					if (pbs_strcat(&new_sel, &ns_malloced, "+") == NULL) {
 						if (ns_malloced > 0)
 							free(new_sel);
-						log_err(errno, __func__, "pbs_strcat failed");	
+						log_err(errno, __func__, "pbs_strcat failed");
 						free(selbuf);
 						return (NULL);
 					}
-				
+
 				}
 				if (pbs_strcat(&new_sel, &ns_malloced, buf) == NULL) {
 					if (ns_malloced > 0)
 						free(new_sel);
-					log_err(errno, __func__, "pbs_strcat failed");	
+					log_err(errno, __func__, "pbs_strcat failed");
 					free(selbuf);
 					return (NULL);
 				}
@@ -1453,7 +1455,7 @@ enum resc_sum_action {
  *			  must be non-NULL if 'action' is 'RESC_SUM_ADD'.
  * @param[out]	err_msg	- error message buffer filled in if there's an error executing
  *			  this function.
- * @param[in]	err_msg_sz - size of 'err_msg' buffer.  
+ * @param[in]	err_msg_sz - size of 'err_msg' buffer.
  *
  * @return 	char *
  * @retval	<string> If 'action' is RESC_SUM_ADD, then this returns the 'keyw' to
@@ -1495,12 +1497,12 @@ manage_resc_sum_values(enum resc_sum_action action, resource_def *resc_def, char
 		int	r;
 		struct	resc_sum *tmp_rs;
 		int	found_match = 0;
-		struct	attribute tmpatr;	
+		struct	attribute tmpatr;
 
-		found_match = 0; 
+		found_match = 0;
 		for (k = 0; k < resc_sum_values_size; k++) {
 			rs = resc_sum_values;
-			if (rs[k].rs_def == NULL) 
+			if (rs[k].rs_def == NULL)
 				break;
 
 			if (strcmp(rs[k].rs_def->rs_name, keyw) == 0) {
@@ -1511,11 +1513,11 @@ manage_resc_sum_values(enum resc_sum_action action, resource_def *resc_def, char
 				break;
 			}
 		}
-	
+
 		if (k == resc_sum_values_size) {
 			int t;
 			/* add a new entry */
-	
+
 			t = resc_sum_values_size + 5;
 			tmp_rs = (struct resc_sum *)realloc(resc_sum_values,
 				  		t * sizeof(struct resc_sum));
@@ -1533,7 +1535,7 @@ manage_resc_sum_values(enum resc_sum_action action, resource_def *resc_def, char
 			k = resc_sum_values_size;
 			resc_sum_values_size = t;
 		}
-	
+
 		if (!found_match) {
 			rs = resc_sum_values;
 			rs[k].rs_def = resc_def;
@@ -1584,7 +1586,7 @@ manage_resc_sum_values(enum resc_sum_action action, resource_def *resc_def, char
 			rs[k].rs_def = NULL;
 			memset(&rs[k].rs_attr, 0, sizeof(struct attribute));
 		}
-		return (buf);	
+		return (buf);
 	}
 	return (NULL);
 }
@@ -1794,7 +1796,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 					parent_mom = vn_vmap->mvm_hostn;
 				else
 					parent_mom = vn_vmap->mvm_name;
-			}	
+			}
 
 			if (parent_mom == NULL) { /* should not happen */
 
@@ -1828,7 +1830,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 			} else {
 				/* see if previous entry already matches this */
 
-				if ((pnode == NULL) || 
+				if ((pnode == NULL) ||
 					(strcmp(pnode->nd_name, noden) != 0)) {
 					pnode = find_nodebyname(noden);
 				}
@@ -1844,7 +1846,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 #endif
 
 			if (is_parent_host_of_node(pnode, parent_mom, ms_fullhost, ms_port) &&
-			     (r_input2->vnodelist != NULL) &&	
+			     (r_input2->vnodelist != NULL) &&
 			      in_string_list(noden, '+', r_input2->vnodelist)) {
 				if ((err_msg != NULL) && (err_msg_sz > 0)) {
         				snprintf(err_msg, err_msg_sz,
@@ -1941,7 +1943,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 											__func__, err_msg);
 						goto release_nodeslist_exit;
-						
+
 					}
 
 					snprintf(buf, sizeof(buf),
@@ -1950,7 +1952,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 				}
 
 				if (paren == 0) { /* have all chunks for current host */
-			
+
 					if (found_paren) {
 						strcat(new_exec_vnode, ")");
 						found_paren = 0;
@@ -1960,7 +1962,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 						strcat(deallocated_execvnode, ")");
 						found_paren_dealloc = 0;
 					}
-		
+
 
 					buf_sum = manage_resc_sum_values(RESC_SUM_GET_CLEAR,
 							NULL, NULL, NULL, err_msg, err_msg_sz);
@@ -1981,7 +1983,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 								&new_select,
 								&ns_malloced,
 								"+") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 						}
@@ -1995,11 +1997,11 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 						}
 						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
 							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 							if (pbs_strcat(&new_select, &ns_malloced, extra_res) == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 						}
@@ -2033,13 +2035,13 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 							strcat(new_exec_vnode, ")");
 							found_paren = 0;
 						}
-			
+
 						if (found_paren_dealloc) {
 							strcat(deallocated_execvnode, ")");
 							found_paren_dealloc = 0;
 						}
 					}
-		
+
 				}
 
 				if (hasprn < 0) {
@@ -2065,11 +2067,11 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 					if (buf_sum[0] != '\0') {
 						extra_res = return_missing_resources(chunk3,
 								res_in_exec_vnode);
-				
+
 						if (sel_entry > 0) {
 							/* there's already previous select/schedselect entry */
 							if (pbs_strcat(&new_select, &ns_malloced, "+") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 						}
@@ -2083,18 +2085,18 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 						}
 						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
 							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 							if (pbs_strcat(&new_select, &ns_malloced, extra_res) == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto release_nodeslist_exit;
 							}
 						}
 						sel_entry++;
 
 					}
-		
+
 				}
 			}
 		} else {
@@ -2154,7 +2156,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 		}
 	}
 
-	/* output message about nodes to be freed but no part of job */	
+	/* output message about nodes to be freed but no part of job */
 	if ((r_input2->vnodelist != NULL) && (err_msg != NULL) &&
 					(err_msg_sz > 0)) {
 		char	*tmpbuf;
@@ -2183,7 +2185,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 				}
 				if (pc1 == NULL) {
 					if (tmpbuf2[0] != '\0')
-						strcat(tmpbuf2, " ");	
+						strcat(tmpbuf2, " ");
 					strcat(tmpbuf2, pc);
 				}
 				pc = strtok_r(NULL, "+", &save_ptr);
@@ -2321,7 +2323,7 @@ reliable_job_node_free(pbs_list_head *node_list)
  *
  * @retval <reliable_nob_node entry>	- if one found.
  * @retval NULL  			- if no entry found.
- * 
+ *
  */
 reliable_job_node *
 reliable_job_node_find(pbs_list_head *node_list, char *nname)
@@ -2351,7 +2353,7 @@ reliable_job_node_find(pbs_list_head *node_list, char *nname)
  * @retval 0	- success
  * @retval -1	- error encountered
  *
- * @return none 
+ * @return none
  */
 int
 reliable_job_node_add(pbs_list_head *node_list, char *nname)
@@ -2360,7 +2362,7 @@ reliable_job_node_add(pbs_list_head *node_list, char *nname)
 
 	if ((node_list == NULL) || (nname == NULL) || (nname[0] == '\0')) {
 		log_err(-1, __func__, "unexpected input");
-		return (-1);	
+		return (-1);
 	}
 
 	if (reliable_job_node_find(node_list, nname) != NULL) {
@@ -2391,7 +2393,7 @@ reliable_job_node_add(pbs_list_head *node_list, char *nname)
  * @param[in]	node_list	- the PBS node list
  * @param[in]	nname		- node hostname to delete
  *
- * @return none 
+ * @return none
  */
 void
 reliable_job_node_delete(pbs_list_head *node_list, char *nname)
@@ -2428,7 +2430,7 @@ reliable_job_node_delete(pbs_list_head *node_list, char *nname)
  *
  * @retval <reliable_nob_node entry>	- the updated/added node entry
  * @retval NULL  			- if an error occurred.
- * 
+ *
  */
 reliable_job_node *
 reliable_job_node_set_prologue_hook_success(pbs_list_head *node_list, char *nname)
@@ -2464,7 +2466,7 @@ reliable_job_node_set_prologue_hook_success(pbs_list_head *node_list, char *nnam
 /* Functions and structure in support of releasing node resources to satisfy
  * a new select spec.
  */
- 
+
 typedef struct resc_limit_entry {
 	pbs_list_link	rl_link;
 	resc_limit_t	*resc;
@@ -2615,8 +2617,8 @@ resc_limit_list_cmp_val(resc_limit_t *left, resc_limit_t *right)
  * @param[in]		resc - the resource limit to add.
  *
  * @return int
- * @retval 0	- successful operation.	
- * @retval 1	- unsuccessful operation.	
+ * @retval 0	- successful operation.
+ * @retval 1	- unsuccessful operation.
  * 0 for successfully added; 1 otherwise.
  */
 static int
@@ -2700,8 +2702,8 @@ add_to_resc_limit_list_sorted(pbs_list_head *phead, resc_limit_t *resc)
  * @param[in]		resc - the resource limit to add as head.
  *
  * @return int
- * @retval 0	- successful operation.	
- * @retval 1	- unsuccessful operation.	
+ * @retval 0	- successful operation.
+ * @retval 1	- unsuccessful operation.
  */
 static int
 add_to_resc_limit_list_as_head(pbs_list_head *phead, resc_limit_t *resc)
@@ -3006,7 +3008,7 @@ resc_limit_list_print(char *header_str, pbs_list_head *res_list, int logtype)
  * 	where <resource_name> and <resource_val> maps 'have_resc',
  *	'have_val'  against map_need value. <resource_value> must be of type int.
  *
- * @param[out]		buf - the buffer to fill 
+ * @param[out]		buf - the buffer to fill
  * @param[in]		buf_sz - the size of 'buf'.
  * @param[in]		have_resc 	- the resource name being matched.
  * @param[in]		have_val	- the resource value available.
@@ -3034,13 +3036,13 @@ intmap_need_to_have_resources(char *buf, size_t buf_sz,
 
 	have_int = (int)strtol(have_val, &endp, 10);
 	if (*endp != '\0') {
-		log_err(errno, __func__, "strtoul error"); 
+		log_err(errno, __func__, "strtoul error");
 		return;
 	}
 
 	if (have_int > *map_need_val) {
 		snprintf(buf, buf_sz, ":%s=%d", have_resc, *map_need_val);
-		*map_need_val = 0; 
+		*map_need_val = 0;
 	} else {
 	 	*map_need_val -= have_int;
 		snprintf(buf, buf_sz, ":%s=%s", have_resc, have_val);
@@ -3054,10 +3056,10 @@ intmap_need_to_have_resources(char *buf, size_t buf_sz,
  *		<resource_name>=<resource_value>kb
  *
  * 	where <resource_name> and <resource_val> maps 'have_resc',
- *	'have_val'  against map_neeed value. <resource_value> must be of size 
+ *	'have_val'  against map_neeed value. <resource_value> must be of size
  *	value.
  *
- * @param[out]		buf - the buffer to fill 
+ * @param[out]		buf - the buffer to fill
  * @param[in]		buf_sz - the size of 'buf'.
  * @param[in]		have_resc 	- the resource name being matched.
  * @param[in]		have_val	- the resource value we have in stock.
@@ -3102,7 +3104,7 @@ sizemap_need_to_have_resources(char *buf, size_t buf_sz, char *have_resc, char *
  * 	where <resource_name> and <resource_val> map 'have_resc',
  *	'have_val' against the resc_limit 'need' value.
  *
- * @param[out]		buf - the buffer to fill 
+ * @param[out]		buf - the buffer to fill
  * @param[in]		buf_sz - the size of 'buf'.
  * @param[in]		have_resc 	- the resource name being matched.
  * @param[in]		have_val	- the resource value we have in stock.
@@ -3214,7 +3216,7 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 	snprintf(buf, sizeof(buf), "resources_assigned.%s", keyw);
 
 	snprintf(buf_val, sizeof(buf_val), "%s", keyval);
-		
+
 	attr_val = vn_exist(*vnlp, noden, buf);
 	if (attr_val != NULL) {
 
@@ -3226,9 +3228,9 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 
 			size1 = to_kbsize(attr_val);
 			size2 = to_kbsize(keyval);
-		
+
 			snprintf(buf_val, sizeof(buf_val), "%lldkb", size1 + size2);
-				
+
 		} else {
 			int	val1;
 			int	val2;
@@ -3252,7 +3254,7 @@ add_to_vnl(vnl_t **vnlp, char *noden, char *keyw, char *keyval)
 }
 
 #if !(defined(PBS_MOM) || defined(PBS_PYTHON))
-/** 
+/**
  * @brief
  *	Check if other resources in 'have' satisfy the remaining
  *	 resources from 'need'.
@@ -3501,21 +3503,21 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			int	vnode_in = 0;
-	
+
 			if (((hasprn > 0) && (paren > 0)) || ((hasprn == 0) && (paren == 0))) {
 				/* at the beginning of chunk for current host */
 				if (!found_paren) {
 					strcat(ret_chunkstr, "(");
 					found_paren = 1;
-	
+
 				}
 				for (j = 0; j < nelem; ++j) {
 
 					buf[0] = '\0';
 					map_need_to_have_resources(buf,
 						sizeof(buf) - 1, pkvp[j].kv_keyw, pkvp[j].kv_val, &map_need);
-				
-					if (buf[0] != '\0') {	
+
+					if (buf[0] != '\0') {
 						if (!vnode_in) {
 							if (entry > 0) {
 								strcat(ret_chunkstr, "+");
@@ -3530,25 +3532,25 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 				}
 
 				if (paren == 0) { /* have all chunks for current host */
-			
+
 					if (found_paren) {
 						strcat(ret_chunkstr, ")");
 						found_paren = 0;
 					}
-		
-	
+
+
 				}
 			} else {
-	
+
 				if (!found_paren) {
 					strcat(ret_chunkstr, "(");
 					found_paren = 1;
-	
+
 				}
 				for (j = 0; j < nelem; ++j) {
 					buf[0] = '\0';
 					map_need_to_have_resources(buf, sizeof(buf) - 1, pkvp[j].kv_keyw, pkvp[j].kv_val, &map_need);
-				
+
 					if (buf[0] != '\0') {
 						if (!vnode_in) {
 							if (entry > 0) {
@@ -3563,15 +3565,15 @@ satisfy_chunk_need(resc_limit_t *need, resc_limit_t *have, vnl_t **vnlp)
 					}
 				}
 			}
-	
+
 			if (paren == 0) { /* have all chunks for current host */
-		
+
 				if (found_paren) {
 					strcat(ret_chunkstr, ")");
 					found_paren = 0;
 				}
 			}
-	
+
 		} else {
 			log_err(errno, __func__, "parse_node_resc_error");
 			free(chunkstr);
@@ -3703,7 +3705,7 @@ return_available_vnodes(char *e_vnode, vnl_t *vnl_good)
 				if (pbs_strcat(&ebuf, &ebuf_size, pc) == NULL) {
 					free(tmpbuf);
 					return NULL;
-				}	
+				}
 			} else {
 				*p = ':';
 			}
@@ -3920,7 +3922,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				} else {
 					parent_mom = vn_vmap->mvm_name;
 				}
-			}	
+			}
 
 			if (parent_mom == NULL) { /* should not happen */
 
@@ -3949,7 +3951,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				strncpy(prev_noden, noden, PBS_MAXNODENAME);
 			} else {
 				/* see if previous entry already matches this */
-				if ((pnode == NULL) || 
+				if ((pnode == NULL) ||
 					(strcmp(pnode->nd_name, noden) != 0)) {
 					pnode = find_nodebyname(noden);
 				}
@@ -4115,7 +4117,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				}
 
 				if (paren == 0) { /* have all chunks for current host */
-			
+
 					if (found_paren) {
 						if (pbs_strcat(&have->chunkstr, &have->chunkstr_sz, ")") == NULL)
 							goto release_nodes_exit;
@@ -4169,7 +4171,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 							goto release_nodes_exit;
 						found_paren = 0;
 					}
-			
+
 				}
 				/* only save in 'failed_nodes' those nodes that are non in good mom_List but in failed_mom_list */
 				if ((r_input2->failed_vnodes != NULL) && (reliable_job_node_find(r_input2->failed_mom_list, parent_mom) != NULL)) {
@@ -4179,7 +4181,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 						}
 					}
 				}
-		
+
 			}
 
 			if (hasprn < 0) {
@@ -4229,7 +4231,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	if (have0 != NULL) {
 		if (add_to_resc_limit_list_as_head(&resc_limit_list, have0) == 0) {
 			have0 = NULL; /* already saved in listl  */
-		}	
+		}
 	}
 
 	new_exec_vnode = (char *) calloc(1, strlen(r_input->execvnode)+1);
@@ -4272,7 +4274,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 	if (selbuf == NULL) {
 		log_err(-1, __func__, "strdup failed");
 		goto release_nodes_exit;
-	}	
+	}
 	resc_limit_list_print("HAVE", &resc_limit_list, PBSEVENT_DEBUG4);
 	reliable_job_node_print("job failed_mom_list", r_input2->failed_mom_list, PBSEVENT_DEBUG4);
 	reliable_job_node_print("job succeeded_mom_list", r_input2->succeeded_mom_list, PBSEVENT_DEBUG4);
@@ -4430,7 +4432,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				snprintf(log_buffer, sizeof(log_buffer), "HAVE chunks from job's exec_vnode: %s", have_exec_vnode ? have_exec_vnode : "none");
         			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, r_input->jobid, log_buffer);
 				resc_limit_list_print("HAVE", &resc_limit_list, PBSEVENT_DEBUG3);
-				
+
 				reliable_job_node_print("job failed_mom_list", r_input2->failed_mom_list, PBSEVENT_DEBUG3);
 				reliable_job_node_print("job succeeded_mom_list", r_input2->succeeded_mom_list, PBSEVENT_DEBUG3);
 				rc = 1;
@@ -4731,7 +4733,7 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 						if (presc_in_err != NULL) {
 							if ((*presc_in_err = strdup(pkvp[j].kv_keyw)) == NULL)
 								return PBSE_SYSTEM;
-						}	
+						}
 						return PBSE_INVALSELECTRESC;
 					}
 				} else if (validate_resource_exist) {
@@ -4876,4 +4878,3 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 	*p_sched_select = outbuf;
 	return 0;
 }
-

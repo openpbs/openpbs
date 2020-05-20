@@ -60,7 +60,7 @@ To unset attributes in alterjob, set the attribute value to '' (two single
 quotes) in order to escape special quote handling in Popen.
 
 Example::
- 
+
  obj.unset_attributes([ATTR_Arglist])
 
 Stat'ing objects via db-access
@@ -77,7 +77,7 @@ reverted only if it was specifically parsed, either by calling parse_holidays
 or by calling set_prime_time, to the contents of the file first parsed. In
 other words, if the contents of the file were updated outside PbsTestLab, and
 edited in PbsTestLab, the file will be reverted to that version rather than
-the vanilla file that ships with PBS Pro.
+the vanilla file that ships with PBS.
 
 Interactive Jobs
 ----------------
@@ -97,7 +97,7 @@ the expected returned data.
 .. topic:: Implementation details:
 
   The submission of an interactive job requires passing in job attributes,
-  the command to execute (i.e. path to qsub -I), the hostname and a 
+  the command to execute (i.e. path to qsub -I), the hostname and a
   user-to-password map, details follow:
 
   On Linux/Unix:
@@ -112,4 +112,3 @@ the expected returned data.
 
       pexpect spawns sudo -u <user> qsub -I. The rest is as described in
       non-impersonating mode.
-

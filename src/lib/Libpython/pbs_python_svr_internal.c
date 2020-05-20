@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 
 /**
@@ -5092,7 +5094,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_vnodelist = NULL;
 	PyObject *py_vnodelist_fail = NULL;
 	PyObject *py_joblist = NULL;
-	PyObject *py_resvlist = NULL;	
+	PyObject *py_resvlist = NULL;
 	PyObject *py_exec_vnode = NULL;
 	PyObject *py_vnode	   = NULL;
 	PyObject *py_aoe	   = NULL;
@@ -5899,7 +5901,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list,
 					perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -5910,7 +5912,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			py_vnodelist_fail = create_hook_vnode_list_param(py_event_param,
 						PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    			(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
-					
+
 			if (py_vnodelist_fail == NULL) {
 				rc = -1;
 				goto event_set_exit;
@@ -5994,7 +5996,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			   create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list, perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -6004,7 +6006,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			   create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    	(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
-					
+
 		if (py_vnodelist_fail == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -6236,7 +6238,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list,
 			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -6324,7 +6326,7 @@ _pbs_python_event_unset(void)
  */
 static int
 populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
-					pbs_list_head *vnlist) 
+					pbs_list_head *vnlist)
 {
 	PyObject *py_vnlist = NULL;
 	PyObject *py_attr_keys = NULL;
@@ -6447,7 +6449,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	PyObject 		*py_vnode = NULL;
 	PyObject 		*py_vnodelist = NULL;
 	PyObject 		*py_joblist = NULL;
-	PyObject 		*py_resvlist = NULL;	
+	PyObject 		*py_resvlist = NULL;
 	PyObject 		*py_job_o = NULL;
 	PyObject 		*py_resv = NULL;
 	char			*queue;
@@ -11989,7 +11991,7 @@ const char pbsv1mod_meth_get_pbs_conf_doc[] =
 \n\
   returns:\n\
          Returns a dictionary containing the entries to pbs conf file, which is by default\n\
-         /etc/pbs.conf in Linux/Unix or 'C:\\Program Files\\PBS Pro\\pbs.conf'.\n\
+         /etc/pbs.conf in Linux/Unix or 'C:\\Program Files (x86)\\PBS\\pbs.conf'.\n\
 ";
 
 /**
@@ -12192,7 +12194,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	char	*new_exec_host = NULL;
 	char	*new_exec_host2 = NULL;
 	char	*new_schedselect = NULL;
-	char	*tmpstr = NULL;	
+	char	*tmpstr = NULL;
 	PyObject *py_return = Py_None;
 	int	hook_set_mode_orig;
 	char	*jobid = NULL;
@@ -12240,7 +12242,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_err(errno, __func__, "malloc failure");
 			goto release_nodes_exit;
 		}
-	
+
 		vnodelist[0] = '\0';
 
 		num_attrs = PyList_Size(py_attr_keys);
@@ -12259,7 +12261,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 					goto release_nodes_exit;
 				}
 			}
-		
+
 			if (pbs_strcat(&vnodelist, &vnodelist_sz, vn_name) == NULL) {
 				log_err(errno, __func__, "pbs_strcat failure");
 				free(vn_name);
@@ -12281,7 +12283,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_err(-1, __func__, "strdup keep_select failed");
 			goto release_nodes_exit;
 		}
-	
+
 		/* populate failed_mom_list used to decide which nodes to release */
 		if (PyObject_HasAttrString(py_job, PY_JOB_FAILED_MOM_LIST)) {
 			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_FAILED_MOM_LIST);
@@ -12300,7 +12302,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 		/* populate succeeded_mom_list used to decide which nodes to keep */
 		if (PyObject_HasAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST)) {
 			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST); /* NEW */
-	
+
 			if (py_nodes != NULL) {
 				if (PyList_Check(py_nodes)) {
 					if (py_strlist_to_reliable_job_node_list(py_nodes, &succeeded_mom_list) == -1) {

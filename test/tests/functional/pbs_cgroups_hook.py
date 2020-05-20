@@ -3,40 +3,44 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+
+import glob
 
 from tests.functional import *
-import glob
 
 
 #
@@ -444,23 +448,23 @@ if [ "${mbase}" != "None" ] ; then
     fi
 fi
 """
-# no need to cater for cgroup_prefix options, it is obviously propbs here
+# no need to cater for cgroup_prefix options, it is obviously sbp here
         self.check_dirs_script = """
 PBS_JOBID='%s'
 jobnum=${PBS_JOBID%%.*}
 devices_base='%s'
-if [ -d "$devices_base/propbs" ]; then
-    if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
-        devices_job="$devices_base/propbs/$PBS_JOBID"
-    elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
-        devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+if [ -d "$devices_base/sbp" ]; then
+    if [ -d "$devices_base/sbp/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp/$PBS_JOBID"
+    elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
     else
-        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+        devices_job="$devices_base/sbp/sbp-${jobnum}.*.slice"
     fi
-elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
-    devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 fi
 echo "devices_job: $devices_job"
 sleep 10
@@ -477,22 +481,17 @@ fi
 
 jobnum=${PBS_JOBID%%.*}
 devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
-if [ -d "$devices_base/propbs" ]; then
-    if [ -d "$devices_base/propbs/$PBS_JOBID" ]; then
-        devices_job="$devices_base/propbs/$PBS_JOBID"
-    elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
-        devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
-    else
-        devices_job="$devices_base/propbs/propbs-${jobnum}.*.slice"
+if [ -d "$devices_base/sbp" ]; then
+    if [ -d "$devices_base/sbp/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp/$PBS_JOBID"
+    elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+        devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
+        devices_job="$devices_base/sbp/sbp-${jobnum}.*.slice"
     fi
-elif [ -d "$devices_base/propbs.service/jobid/$PBS_JOBID" ]; then
-    devices_job="$devices_base/propbs.service/jobid/$PBS_JOBID"
+elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
+    devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
 else
-    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
-fi
-device_list=`cat $devices_job/devices.list`
-grep "195" $devices_job/devices.list
-echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
+    devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
 sleep 10
 """
         self.cpu_controller_script = """
@@ -553,7 +552,7 @@ cat $PBS_NODEFILE
 sleep 300
 """
         self.cfg0 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -584,7 +583,7 @@ sleep 300
 }
 """
         self.cfg1 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [%s],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [%s],
@@ -637,7 +636,7 @@ sleep 300
 }
 """
         self.cfg2 = """{
-    "cgroup_prefix"         : "propbs",
+    "cgroup_prefix"         : "sbp",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -684,7 +683,7 @@ sleep 300
 }
 """
         self.cfg3 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -734,7 +733,7 @@ sleep 300
 }
 """
         self.cfg4 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -823,7 +822,7 @@ sleep 300
 }
 """
         self.cfg7 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -867,7 +866,7 @@ sleep 300
 }
 """
         self.cfg8 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -918,7 +917,7 @@ sleep 300
 }
 """
         self.cfg9 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -962,7 +961,7 @@ sleep 300
 }
 """
         self.cfg10 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1017,7 +1016,7 @@ sleep 300
 }
 """
         self.cfg11 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1074,7 +1073,7 @@ sleep 300
 }
 """
         self.cfg12 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1130,7 +1129,7 @@ sleep 300
 }
 """
         self.cfg13 = """{
-    "cgroup_prefix"         : "pbspro",
+    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1346,13 +1345,13 @@ if %s e.job.in_ms_mom():
         # one of these should exist depending on platform
         # That last option should never exist, but let us
         # leave it in there
-        jobdirs = [os.path.join(basedir, 'pbspro', jobid),
-                   os.path.join(basedir, 'pbspro.service/jobid', jobid),
+        jobdirs = [os.path.join(basedir, 'pbs', jobid),
+                   os.path.join(basedir, 'pbs.service/jobid', jobid),
                    os.path.join(basedir, 'pbs_jobs.service/jobid', jobid),
-                   os.path.join(basedir, 'pbspro.slice',
-                                'pbspro-%s.slice' % systemd_escape(jobid)),
-                   os.path.join(basedir, 'pbspro',
-                                'pbspro-%s.slice' % systemd_escape(jobid))]
+                   os.path.join(basedir, 'pbs.slice',
+                                'pbs-%s.slice' % systemd_escape(jobid)),
+                   os.path.join(basedir, 'pbs',
+                                'pbs-%s.slice' % systemd_escape(jobid))]
         for jdir in jobdirs:
             if self.du.isdir(hostname=host, path=jdir):
                 return jdir
@@ -1879,7 +1878,7 @@ if %s e.job.in_ms_mom():
 
     def test_cgroup_prefix_and_devices(self):
         """
-        Test to verify that the cgroup prefix is set to propbs and that
+        Test to verify that the cgroup prefix is set to "sbp" and that
         the devices subsystem exists with the correct devices allowed
         """
         if not self.paths['devices']:
@@ -2610,17 +2609,17 @@ if %s e.job.in_ms_mom():
             if (any([x in subsys for x in enabled_subsys])):
                 continue
             if path:
-                # Apparently cgroup_prefix for this test is pbspro
-                filename = os.path.join(path, 'pbspro', str(jid))
+                # Apparently cgroup_prefix for this test is pbs
+                filename = os.path.join(path, 'pbs', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
-                filename = os.path.join(path, 'pbspro.slice', 'pbspro-%s.slice'
+                filename = os.path.join(path, 'pbs.slice', 'pbs-%s.slice'
                                         % systemd_escape(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
-                filename = os.path.join(path, 'pbspro.service', str(jid))
+                filename = os.path.join(path, 'pbs.service', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
@@ -2936,11 +2935,11 @@ if %s e.job.in_ms_mom():
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
             if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbspro')
+                cpath = os.path.join(cdir, 'pbs')
                 if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbspro.slice')
+                    cpath = os.path.join(cdir, 'pbs.slice')
                 if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                    cpath = os.path.join(cdir, 'pbs.service/jobid')
                 if not os.path.isdir(cpath):
                     cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         else:
@@ -2962,11 +2961,11 @@ if %s e.job.in_ms_mom():
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
             if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbspro')
+                cpath = os.path.join(cdir, 'pbs')
                 if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbspro.slice')
+                    cpath = os.path.join(cdir, 'pbs.slice')
                 if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                    cpath = os.path.join(cdir, 'pbs.service/jobid')
                 if not os.path.isdir(cpath):
                     cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
         # Verify that memory.use_hierarchy is enabled
@@ -4108,11 +4107,11 @@ sleep 300
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[subsys]
                 if os.path.isdir(cdir):
-                    cpath = os.path.join(cdir, 'pbspro')
+                    cpath = os.path.join(cdir, 'pbs')
                     if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbspro.slice')
+                        cpath = os.path.join(cdir, 'pbs.slice')
                     if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbspro.service/jobid')
+                        cpath = os.path.join(cdir, 'pbs.service/jobid')
                     if not os.path.isdir(cpath):
                         cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
                     if os.path.isdir(cpath):

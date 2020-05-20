@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 
 /**
@@ -338,7 +340,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 								}
 								else {
 #ifdef NAS /* localmod 031 */
-									log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name, 
+									log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
 										"Job has been assigned a node that doesn't exist in its reservation: %s", ns->ninfo->name);
 #else
 									log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, rjob->name,
@@ -541,7 +543,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						free_schd_error(err);
 						return NULL;
 					}
-					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name, 
+					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name,
 						"Occurrence %d/%d,%s", occr_idx, count, start_time);
 				}
 				/* The parent reservation has already been added so move on to handling
@@ -1382,7 +1384,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * are, then resources allocated to this reservation are released and the
 		 * reconfirmation proceeds.
 		 */
-		if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT || 
+		if (nresv->resv->resv_substate == RESV_DEGRADED || nresv->resv->resv_substate == RESV_IN_CONFLICT ||
 			nresv->resv->resv_state == RESV_BEING_ALTERED) {
 			/* determine the number of vnodes associated to the reservation that are
 			 * unavailable. If none, then this reservation or occurrence does not
@@ -1398,7 +1400,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			} else if (nresv->resv->is_standing && nresv->resv->resv_state == RESV_DELETING_JOBS) {
 				snprintf(logmsg, sizeof(logmsg), "Occurrence is ending, will try later");
 				rconf = RESV_CONFIRM_FAIL;
-			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT || 
+			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT ||
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
 				if (nresv->resv->resv_state == RESV_RUNNING) {
 					char *sel;
@@ -1456,7 +1458,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			/* unconfirm the reservation to let the process of confirmation go on */
 			nresv->resv->resv_state = RESV_UNCONFIRMED;
 		}
-		
+
 		if (nresv->resv->req_start == PBS_RESV_FUTURE_SCH) { /* ASAP Resv */
 			resv_start_time = calc_run_time(nresv->name, nsinfo, NO_FLAGS);
 			/* Update occr_start_arr used to update the real sinfo structure */
@@ -1578,20 +1580,20 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * translated error code. Otherwise, use the error message from the server.
 		 */
 		if (rconf == RESV_CONFIRM_FAIL)
-			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 				"PBS Failed to confirm resv: %s", logmsg);
 		else {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
 				errmsg = "";
-			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+			log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 				"PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
 			rconf = RESV_CONFIRM_RETRY;
 		}
 
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
 			if (vnodes_down >= 0)
-				log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, 
+				log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 					"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
 					vnodes_down, tot_vnodes, names_of_down_vnodes);
 
@@ -1812,10 +1814,10 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 /**
  * @brief end a running reservation on its nodes.  This is used so we can assign
  * 		them back to a running reservation when reconfirming it.
- * 
+ *
  * @param[in] resv - the reservation
  * @param[in] all_nodes - The server's nodes list
- * 
+ *
  * @return void
  */
 void
@@ -1840,7 +1842,7 @@ end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
  * @param[in] all_nodes - array of server's nodes
  *
  * @par - The altering process of a running reservation requires us to keep
- * 	the same nodes for the reservation.  When we call check_nodes(), we 
+ * 	the same nodes for the reservation.  When we call check_nodes(), we
  * 	will attempt to reassign the same nodes to the reservation.  For this
  * 	to be successful, they need to be free.
  */

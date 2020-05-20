@@ -1,49 +1,48 @@
 # coding: utf-8
-"""
 
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+"""
 run_pelog_shell.py - PBS hook that runs the classic shell script prologue or
 epilogue, if it exists, while still being able to use execjob_prologue or
 execjob_epilogue hooks. Also adds the capability of running parallel prologue
 or epilogue shell scripts and Torque compatibility.
 
-Copyright (C) 1994-2020 Altair Engineering, Inc.
-For more information, contact Altair at www.altair.com.
-
-This file is part of the PBS Professional ("PBS Pro") software.
-
-Open Source License Information:
-
-PBS Pro is free software. You can redistribute it and/or modify it under the
-terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version.
-
-PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.
-See the GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-Commercial License Information:
-
-For a copy of the commercial license terms and conditions,
-go to: (http://www.pbspro.com/UserArea/agreement.html)
-or contact the Altair Legal Department.
-
-Altair’s dual-license business model allows companies, individuals, and
-organizations to create proprietary derivative works of PBS Pro and
-distribute them - whether embedded or bundled with other software -
-under a commercial license agreement.
-
-Use of Altair’s trademarks, including but not limited to "PBS™",
-"PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-trademark licensing policies.
-
-"""
-
-"""
 On the primary execution host (the first host listed in PBS_NODEFILE), the
 standard naming convention of 'prologue' and 'epilogue' apply. Parallel
 prologues and epilogues use the naming conventions 'pprologue' and 'pepilogue',
@@ -57,7 +56,7 @@ Parallel epilogues will not run unless the prologue ran successfully on the
 primary execution host. Only the primary execution host will have a value for
 resources_used in epilogue argument $7.
 
-We assume the same requirements as listed in PBS Professional 13.0
+We assume the same requirements as listed in PBS 13.0
 Administrator's Guide 11.5.4 for running all types of prologue and epilogue
 shell scripts:
     - The script must be in the PBS_HOME/mom_priv directory
@@ -114,19 +113,16 @@ import hook run_prologue_shell application/x-config default run_pelog_shell.ini
 import hook run_epilogue_shell application/x-config default run_pelog_shell.ini
 EOF
 
-"""
-
-"""
-
 Direct modifications to this hook are not recommended.
 Proceed at your own risk.
-
 """
 
-import sys
 import os
+import sys
 import time
+
 import pbs
+
 RERUN = 14
 DELETE = 6
 
@@ -173,12 +169,12 @@ def trace_hook(**kwargs):
         trace_in_reject = False
 
     # Associate hook events with the appropriate PBS constant. This is a list
-    # of all hook events as of PBS Pro 13.0. If the event does not exist, it is
+    # of all hook events as of PBS 13.0. If the event does not exist, it is
     # removed from the list.
     hook_events=['queuejob', 'modifyjob', 'movejob', 'runjob', 'execjob_begin',
-                 'execjob_prologue', 'execjob_launch', 'execjob_attach', 
-                 'execjob_preterm', 'execjob_epilogue', 'execjob_end', 
-                 'resvsub', 'provision', 'exechost_periodic', 
+                 'execjob_prologue', 'execjob_launch', 'execjob_attach',
+                 'execjob_preterm', 'execjob_epilogue', 'execjob_end',
+                 'resvsub', 'provision', 'exechost_periodic',
                  'exechost_startup', 'execjob_resize', 'execjob_abort',
                  'execjob_postsuspend', 'execjob_preresume']
 
@@ -312,7 +308,7 @@ def pbs_conf(pbs_key=None):
             program_files = os.environ['ProgramFiles(x86)']
         else:
             program_files = os.environ['ProgramFiles']
-        pbs_conf_file = '%s\\PBS Pro\\pbs.conf' % program_files
+        pbs_conf_file = '%s\\PBS\\pbs.conf' % program_files
     else:
         pbs_conf_file = '/etc/pbs.conf'
 
@@ -646,7 +642,7 @@ try:
     else:
         rejectjob("The %s does not have the correct " % (p + event) +
                   'permissions. See the section entitled, ' +
-                  '"Prologue and Epilogue Requirements" in the PBS Pro ' +
+                  '"Prologue and Epilogue Requirements" in the PBS ' +
                   "Administrator's Guide.", RERUN)
 
 except SystemExit:

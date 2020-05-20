@@ -4,37 +4,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 """
 __doc__ = """
@@ -153,7 +156,7 @@ class PbsAttributeDescriptor():
     #: m(__init__)
 
     def __get__(self, obj, cls=None):
-        """__get__ 
+        """__get__
         """
 
         #: if accessing from class then return self
@@ -547,7 +550,7 @@ class size(_size):
 class duration(int):
     """
     Represents an interval or elapsed time object in number of seconds. This is
-    actually derived from a Python int type. 
+    actually derived from a Python int type.
 
     pbs.duration([[intHours:]intMinutes:]intSeconds[.intMilliseconds])
     pbs.duration(int)
@@ -584,7 +587,7 @@ def replace_char_not_before(str, chr, repl_substr, chr_after_list):
                 "ab\,c\\d\'\\e\"\\f\\"
         Here are sample transformations:
 
-         str= ab\,c\d\'\e\"\f\ 
+         str= ab\,c\d\'\e\"\f\
         rstr= ab\,c\\d\'\\e\"\\f\\
 
          str= \ab\,c\d\'\e\"\f\
@@ -909,7 +912,7 @@ class job_state(int):
 
 class acl(_generic_attr):
     """
-    Represents a PBS ACL type. 
+    Represents a PBS ACL type.
     Format: pbs.acl("[+|-]<entity>][,...]")
     """
     _derived_types = (_generic_attr,)
@@ -999,7 +1002,7 @@ class select(_generic_attr):
             where no increase (0) for chunk 1, additional 4
             chunks for chunk 2, 50% increase for chunk 3 resulting in
             3.
-        
+
             Given:
                 sel=pbs.select("5:ncpus=3:mem=1gb+1:ncpus=2:mem=2gb+2:ncpus=1:mem=3gb")
 
@@ -1027,7 +1030,7 @@ class select(_generic_attr):
             increment_dict = increment_spec
         else:
             raise ValueError("bad increment specs")
-  
+
         ret_str = ""
         i = 0 # index to each chunk in the + separated spec
         for chunk in str(self).split("+"):
@@ -1096,7 +1099,7 @@ class place(_generic_attr):
                         [sharing] can be shared, excl, and
                         [group] can be of the form group=<resource>.
                         [arrangement], [sharing], and [group] can be given
-                        in any order or combination. 
+                        in any order or combination.
     Ex.	pl = pbs.place("pack:excl")
         s = repr(pl)	 or s = `pl`
         print pl[0]  returns p
@@ -1145,8 +1148,8 @@ class exec_host(_generic_attr):
 class checkpoint(_generic_attr):
     """
     Represents a job's checkpoint attribute.
-    Format: pbs.checkpoint( <chkpnt_string> )	
-                where <chkpnt_string> must be one of "n", "s", "c", or "c=mmm" 
+    Format: pbs.checkpoint( <chkpnt_string> )
+                where <chkpnt_string> must be one of "n", "s", "c", or "c=mmm"
 
     """
     _derived_types = (_generic_attr,)
@@ -1250,7 +1253,7 @@ class project(_generic_attr):
 class join_path(_generic_attr):
     """
     Represents how the output and error files are merged.
-    Format: pbs.join_path({oe|eo|n}) 
+    Format: pbs.join_path({oe|eo|n})
     """
     _derived_types = (_generic_attr,)
 
@@ -1378,7 +1381,7 @@ class staging_list(_generic_attr):
     Represents a list of file stagein or stageout parameters.
     Format: pbs.staging_list("<filespec>[,<filespec>,...]")
                 Creates a file staging parameters list object.
-                where <filespec> is 
+                where <filespec> is
                         <local_path>@<remote_host>:<remote_path>
     """
     _derived_types = (_generic_attr,)
@@ -1725,12 +1728,12 @@ class exec_vnode(_generic_attr):
             ev.chunks returns an array of pbs.vchunk job objects representing
             that will show:
             ev.chunks[0].vnode_name = 'vnodeA'
-            ev.chunks[0].vnode_resources = {  'ncpus' : N, 'mem' : pbs.size('X') } 
+            ev.chunks[0].vnode_resources = {  'ncpus' : N, 'mem' : pbs.size('X') }
 
             ev.chunks[1].vnode_name = 'vnodeB'
-            ev.chunks[1].vnode_resources = {  'ncpus' : P, 'mem' : pbs.size('Y') } 
+            ev.chunks[1].vnode_resources = {  'ncpus' : P, 'mem' : pbs.size('Y') }
             ev.chunks[1].vnode_name = 'vnodeC'
-            ev.chunks[1].vnode_resources = {  'mem' : pbs.size('Z') } 
+            ev.chunks[1].vnode_resources = {  'mem' : pbs.size('Z') }
 
     """
     _derived_types = (_generic_attr,)

@@ -1,47 +1,51 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_python 1B "23 October 2017" Local "PBS Professional"
+
+.TH pbs_python 1B "23 October 2017" Local "PBS"
 .SH NAME
-.B pbs_python 
+.B pbs_python
 \- Python interpreter for debugging a hook script from the command line
 .SH SYNOPSIS
 .B pbs_python
---hook  [-e <log event mask>] [-i <event input file>] 
+--hook  [-e <log event mask>] [-i <event input file>]
 .RS 11
-[-L <log dir>] [-l <log file>] [-o <hook execution record>] 
+[-L <log dir>] [-l <log file>] [-o <hook execution record>]
 .br
 [-r <resourcedef file>] [-s <site data file>] [<Python script>]
 .RE
@@ -53,38 +57,38 @@
 --version
 
 .SH DESCRIPTION
-The PBS Python interpreter, 
+The PBS Python interpreter,
 .B pbs_python,
-is a wrapper for Python.  
+is a wrapper for Python.
 
-You can use the 
+You can use the
 .B pbs_python
 wrapper that is shipped with PBS to debug hooks.  Either:
 .RS 5
-Use the 
-.I --hook 
-option to 
+Use the
+.I --hook
+option to
 .B pbs_python
-to run 
+to run
 .B pbs_python
-as a wrapper to Python, employing the 
-.B pbs_python 
-options.  With the 
-.I --hook 
+as a wrapper to Python, employing the
+.B pbs_python
+options.  With the
+.I --hook
 option, you cannot use the standard Python options.  The rest of this
-man page covers how to use 
+man page covers how to use
 .B pbs_python
-with the 
+with the
 .I --hook
 option.
 
-Do not use the 
+Do not use the
 .I --hook
-option, so 
+option, so
 .B pbs_python
 runs the Python interpreter, with the standard Python options, and without access to
-the 
-.B pbs_python 
+the
+.B pbs_python
 options.
 .RE
 
@@ -92,47 +96,47 @@ options.
 .br
 You can get each hook to write out debugging files, and then modify the files
 and use them as debugging input to
-.B pbs_python.  
-Alternatively, you can write them yourself.  
+.B pbs_python.
+Alternatively, you can write them yourself.
 
-Debugging files can contain information about the event, about the site, and 
+Debugging files can contain information about the event, about the site, and
 about what the hook changed.  You can use these as inputs to a hook when debugging.
 
 For a complete description of using
 .B pbs_python
-with debugging files, see "Debugging Hooks" in the PBS Professional Hooks Guide.
+with debugging files, see "Debugging Hooks" in the PBS Hooks Guide.
 
 .SH Options to pbs_python
 .IP "--hook" 6
 This option is a switch.  When you use this option, you can use the
 PBS Python module (via "import pbs"), and the other options described
 here are available.  When you use this option, you cannot use the
-standard Python options.  This option is useful for debugging.  
+standard Python options.  This option is useful for debugging.
 
 When you do not use this option, you cannot use
-the other options listed here, but you can use the standard 
+the other options listed here, but you can use the standard
 Python options.
 
 .IP "-e <log event mask>" 6
 Sets the mask that determines which event types are logged by
-.B pbs_python. 
+.B pbs_python.
 To see only debug messages, set the value to 0xd80. To
 see all messages, set the value to 0xffff.
 .br
-The 
-.B pbs_python 
+The
+.B pbs_python
 interpreter uses the same set of mask values that are
-used for the 
-.I $logevent <mask> 
-entry in the 
-.B pbs_mom 
+used for the
+.I $logevent <mask>
+entry in the
+.B pbs_mom
 configuration file.
-See the pbs_mom.8B man page.  Available only when 
-.I --hook 
+See the pbs_mom.8B man page.  Available only when
+.I --hook
 option is used.
 
 .IP "-i <event input file>" 6
-Text file containing data to populate pbs.event() objects.  
+Text file containing data to populate pbs.event() objects.
 
 Each line specifies an attribute value or a resource value.  Syntax of
 each input line is one of the following:
@@ -144,7 +148,7 @@ each input line is one of the following:
 .IP
 Where
 .RS 10
-<object name> is a PBS object name which can refer to its sub-objects.  Examples:  
+<object name> is a PBS object name which can refer to its sub-objects.  Examples:
 "pbs.event()", "pbs.event().job", "pbs.event().vnode_list["<vnode name>"]".
 .RE
 .IP
@@ -177,27 +181,27 @@ pbs.event().vnode_list["host1"].resources_available["mem"] = 300gb
 .RE
 
 .IP
-Available only when 
-.I --hook 
+Available only when
+.I --hook
 option is used.
 
 
 .IP "-L <log dir>" 6
 Directory holding the log file where pbs.logmsg() and pbs.logjobmsg()
-write their output.  Default is current working directory where 
+write their output.  Default is current working directory where
 .B pbs_python
 is executed.
-Available only when 
-.I --hook 
+Available only when
+.I --hook
 option is used.
 
 .IP "-l <log file>" 6
 Log file where pbs.logmsg() and pbs.logjobmsg() write their output.
-Default file name is current date in 
-.I yyyymmdd 
+Default file name is current date in
+.I yyyymmdd
 format.
-Available only when 
-.I --hook 
+Available only when
+.I --hook
 option is used.
 
 .IP "-o <hook execution record>" 6
@@ -221,51 +225,51 @@ pbs.event().job.Account_Name=account2
 .br
 pbs.event().reject=True
 .br
-pbs.event().reject_msg=No way! 
+pbs.event().reject_msg=No way!
 .RE
 
-.IP 
+.IP
 Without this option, output goes to stdout.
 
 .IP
-Available only when 
-.I --hook 
+Available only when
+.I --hook
 option is used.
 
 .IP "-r <resourcedef file>" 6
 File/path name containing a resource definition specifying a custom
-resource whose Python type is 
+resource whose Python type is
 .I pbs.resource.
-.br 
-Format: 
+.br
+Format:
 .br
 .I <resource name> type=<typename> [flag=<value>]
 .br
 This file has the same format as the PBS_HOME/server_priv/resourcedef
-file.  Available only when 
-.I --hook 
+file.  Available only when
+.I --hook
 option is used.
 
 .IP "-s <site data file>" 6
 The site data file can contain any relevant information about the
-server, queues, vnodes, and jobs at the server.  This file 
-can be written by a hook or by the administrator.  
+server, queues, vnodes, and jobs at the server.  This file
+can be written by a hook or by the administrator.
 .br
 When the hook writes it, this file contains the values that populate
 the server, queues, vnodes, reservations, and jobs, with all
 attributes and resources for which there are values.
-.br 
-The site data file is named 
-.I hook_<event type>_<hook name>_<random integer>.data.  
-Available only when 
-.I --hook 
+.br
+The site data file is named
+.I hook_<event type>_<hook name>_<random integer>.data.
+Available only when
+.I --hook
 option is used.
 
 .IP "--version" 6
-The 
-.B pbs_python 
+The
+.B pbs_python
 command prints its version information and exits.  This option
-can only be used alone.  
+can only be used alone.
 
 .SH ARGUMENTS
 .IP "<Python script>" 6
@@ -275,8 +279,8 @@ We recommend importing the PBS Python module at the start of the script:
 import pbs
 .RE
 .IP
-If you do not specify 
-.I Python script, 
+If you do not specify
+.I Python script,
 you can perform interactive
 debugging.  If you type the following:
 .RS 9
@@ -300,4 +304,3 @@ You can type your Python lines at the prompt:
 .br
 ...
 .RE
-
