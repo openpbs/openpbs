@@ -848,7 +848,6 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 	if (GetAclInformation(pdacl, &sizeInfo, sizeof(sizeInfo),
 		AclSizeInformation) == 0) {
 		log_err(-1, __func__, "failed in GetAclInformation");
-		goto chkerr;
 	}
 
 	allowed = (struct accessinfo *)malloc(sizeof(struct accessinfo)*sizeInfo.AceCount);
@@ -1008,7 +1007,6 @@ make_dir_files_everyone_read(char *path)
 	if (secure_file2(path, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK|READ_CONTROL) == 0) {
 		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to secure %s", path);
-		return;
 	}
 
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__,
