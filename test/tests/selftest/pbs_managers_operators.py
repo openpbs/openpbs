@@ -79,3 +79,15 @@ class TestManagersOperators(TestSelf):
         svr_opr = self.server.status(SERVER, 'operators')[0].get('operators')
         opr_usr = str(OPER_USER) + '@*'
         self.assertEqual(opr_usr, svr_opr)
+
+    def test_add_mgr_opr_fail(self):
+        """
+        Check that if unset mgr/ opr in add_mgr_opr fails, error is logged.
+        There was a bug where self.logger.error() was used instead
+        of cls.logger.error().
+        """
+        self.server.stop()
+        with self.assertRaises(PbsStatusError) as e:
+            self.add_mgrs_opers()
+        self.assertIn('Connection refused', e.exception.msg[0])
+        self.server.start()
