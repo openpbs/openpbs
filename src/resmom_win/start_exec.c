@@ -235,11 +235,13 @@ send_update_job(job *pjob, char *old_exec_vnode)
 
 	if ((rc = job_nodes(pjob)) != 0) {
 		snprintf(err_msg, LOG_BUF_SIZE, "failed updating internal nodes data (rc=%d)", rc);
-		log_err(-1, __func__, err_msg);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, err_msg);
 		return (1);
 	}
 	if (generate_pbs_nodefile(pjob, NULL, 0, err_msg, LOG_BUF_SIZE) != 0) {
-		log_err(-1, __func__, err_msg);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, err_msg);
 		return (1);
 	}
 
@@ -274,14 +276,15 @@ get_sha(job *pjob, char **token)
 		if (cred_buf != NULL && cred_len > 0) {
 			hash_pwd = malloc((2 * SHA_DIGEST_LENGTH)+1);
 			if (hash_pwd == NULL) {
-				log_err(-1, __func__, "Unable to allocate memory");
+				log_err(errno, __func__, "Unable to allocate memory");
 				return 1;
 			}
 			encode_SHA(cred_buf, cred_len, &hash_pwd);
 			*token = hash_pwd;
 		}
 	} else {
-		log_err(-1, __func__, "Unable to read password");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unable to read password");
 		return 1;
 	}
 	if (cred_buf) {
@@ -397,6 +400,7 @@ open_demux(u_long addr, int port)
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
 	{
 		sprintf(log_buffer, "%s: socket %s", __func__, netaddr(&remote));
+		errno = WSAGetLastError();
 		log_err(errno, __func__, log_buffer);
 		return -1;
 	}
@@ -408,15 +412,15 @@ open_demux(u_long addr, int port)
 
 		switch (errno) {
 
-		case WSAEINTR:
-		case WSAEADDRINUSE:
-		case WSAETIMEDOUT:
-		case WSAECONNREFUSED:
-			Sleep(2000);
-			continue;
+			case WSAEINTR:
+			case WSAEADDRINUSE:
+			case WSAETIMEDOUT:
+			case WSAECONNREFUSED:
+				Sleep(2000);
+				continue;
 
-		default:
-			break;
+			default:
+				break;
 		}
 		break;
 	}
@@ -663,7 +667,7 @@ make_envp(void)
 
 	envp = cp = (char *)malloc(len);
 	if (cp == NULL) {
-		log_err(-1, __func__, "Unable to allocate memory");
+		log_err(errno, __func__, "Unable to allocate memory");
 		return NULL;
 	}
 	for (i=0; i<curenv; i++) {
@@ -692,7 +696,7 @@ add_envp(char **envp)
 	int	i;
 
 	if (envp == NULL) {
-		log_err(-1, __func__, "unexpected input");
+		log_err(PBSE_BADATVAL, __func__, "unexpected input");
 		return;
 	}
 	i = 0;
@@ -732,7 +736,7 @@ find_wenv_slot(char *name)
 
 	if (name == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "Invalid name provided");
+			__func__, "Name is NULL");
 		return (-1);
 	}
 	for (i=0; (*(name+i) != '=') && (*(name+i) != '\0'); ++i)
@@ -769,7 +773,8 @@ bld_wenv_variables(char *name, char *value)
 	char    str_buf[MAXPATHLEN+1] = {0};
 
 	if ((!name) || (*name == '\0') || (*name == '\n')) {
-		log_err(-1, __func__, "The name of the env variable is invalid");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "The name of the env variable is invalid");
 		return;			/* invalid name */
 	}
 
@@ -889,7 +894,8 @@ mktmpdir(char *jobid, char *username)
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-		log_err(-1, __func__, "Unable to change ownership of the file");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unable to change ownership of the file");
 	return 0;
 }
 
@@ -947,7 +953,8 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-		log_err(-1, __func__, "Unable to change ownership of the file");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unable to change ownership of the file");
 
 	/* success! log a message showing the name of the staging and execution dir */
 	sprintf(log_buffer, "created the job directory %s", jobdir);
@@ -1095,7 +1102,7 @@ set_homedir_to_local_default(job *pjob, char *username)
 		strcpy(pjob->ji_grpcache->gc_homedir, lpath);
 		return (lpath);
 	} else {
-		log_err(-1, __func__, "realloc failed");
+		log_err(errno, __func__, "realloc failed");
 		pjob->ji_grpcache = g;	/* restore */
 		strcpy(pjob->ji_grpcache->gc_homedir, "");
 		return ("");
@@ -1120,8 +1127,11 @@ check_pwd(job *pjob)
 	cred_buf = NULL;
 	cred_len = 0;
 	if (pjob) {
-		if(read_cred(pjob, &cred_buf, &cred_len) != 0) 
-			log_err(-1, __func__, "Unable to fetch password");
+		if(read_cred(pjob, &cred_buf, &cred_len) != 0) {
+			sprintf(log_buffer, "Unable to get credentials for user: %s", pjob->ji_user);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
+		}
 	}
 
 	if (pwdp == NULL) {
@@ -1134,7 +1144,8 @@ check_pwd(job *pjob)
 				cred_buf = NULL;
 			}
 
-			log_err(-1, __func__, log_buffer);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			return NULL;
 		}
 
@@ -1193,16 +1204,25 @@ becomeuser(job *pjob)
 	struct passwd *pwdp;
 
 	if ((pwdp = check_pwd(pjob)) == NULL) {
-		log_err(-1, __func__, "check_pwd failed");
+		sprintf(log_buffer, "check_pwd failed for job: %s and user: %s", 
+			pjob->ji_qs.ji_jobid, pjob->ji_user);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 		return -1;
 	}
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(pwdp->pw_userlogin)) {
-			log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser");
+			sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser job: %s and user: %s", 
+				pjob->ji_qs.ji_jobid, pjob->ji_user);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			return -1;
 		}
 	}else{
-		log_err(-1, __func__, "Failed to ImpersonateLoggedOnUser. Got an invalid value for handle");
+		sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser. Got an invalid value for handle. job: %s and user: %s", 
+			pjob->ji_qs.ji_jobid, pjob->ji_user);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 		return -1;
 	}
 
@@ -1226,21 +1246,21 @@ proc_bail(task *ptask)
 	if (script_in != -1) {
 		ret = close(script_in);
 		if (ret != 0) {
-			log_err(-1, __func__, "_close err");
+			log_err(-1, __func__, "Failed to close script input file");
 		}
 		script_in = -1;
 	}
 	if (script_out != -1) {
 		ret = close(script_out);
 		if (ret != 0) {
-			log_err(-1, __func__, "_close err");
+			log_err(-1, __func__, "Failed to close script output file");
 		}
 		script_out = -1;
 	}
 	if (script_err != -1) {
 		ret = close(script_err);
 		if (ret != 0) {
-			log_err(-1, __func__, "_close err");
+			log_err(-1, __func__, "Failed to close script error file");
 		}
 		script_err = -1;
 	}
@@ -1496,12 +1516,10 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	/* This change is needed for proper parsing of nodes file by     */
 	/* applications like  MPI. */
 	if ((nhow = fopen(pbs_nodefile, "wt")) == NULL) {
-		if ((err_msg != NULL) && (err_msg_sz > 0)) {
-			snprintf(err_msg, err_msg_sz,
+		snprintf(err_msg, err_msg_sz,
 					"cannot open %s", pbs_nodefile);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, err_msg);
-		}
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, err_msg);
 		return (-1);
 	}
 
@@ -1528,7 +1546,8 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	if (secure_file2(pbs_nodefile,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK | READ_CONTROL) == 0 ) {
-			log_err(-1, __func__, "Unable to change ownership of the file");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Unable to change ownership of the file");
 	}
 
 
@@ -1753,12 +1772,15 @@ finish_exec(job *pjob)
 	 */
 
 
-	if (CreateDirectory(pjob->ji_grpcache->gc_homedir, 0) == 0)
-		log_err(-1, __func__, "Unable to create user's home directory; Trying again");
+	if (CreateDirectory(pjob->ji_grpcache->gc_homedir, 0) == 0) {
+		errno = GetLastError();
+		if (errno != ERROR_ALREADY_EXISTS)
+			log_err(-1, __func__, "Unable to create user's home directory; Trying again");
+	}
 	if (chdir(pjob->ji_grpcache->gc_homedir) == -1) {
 		set_homedir_to_local_default(pjob, NULL);
 		if (CreateDirectory(pjob->ji_grpcache->gc_homedir, 0) == 0)
-			log_err(-1, __func__, "Unable to create user's home directory");
+			log_errf(-1, __func__, "Unable to create user's home directory: %s", pjob->ji_grpcache->gc_homedir);
 		if (chdir(pjob->ji_grpcache->gc_homedir) == -1) {
 			sprintf(log_buffer,
 				"Could not chdir to Home directory=%s",
@@ -1827,6 +1849,7 @@ finish_exec(job *pjob)
 
 		if (send(qsub_sock, pjob->ji_qs.ji_jobid, PBS_MAXSVRJOBID+1, 0) !=
 			PBS_MAXSVRJOBID+1) {
+			errno = WSAGetLastError();
 			log_err(errno, __func__ , "cannot write jobid");
 			exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 			(void)revert_impersonated_user();
@@ -1834,7 +1857,8 @@ finish_exec(job *pjob)
 		}
 		/* make sure qsub gets EOF */
 		if (shutdown(qsub_sock, 2) != 0) {
-			log_err(-1, __func__, "shutdown failed");
+			errno = WSAGetLastError();
+			log_err(errno, __func__, "shutdown failed");
 		}
 	}
 	else {
@@ -1892,7 +1916,7 @@ finish_exec(job *pjob)
 			strncmp("%ComSpec%", envbuf, 9))
 			bld_wenv_variables("ComSpec", envbuf);
 		else
-			log_err(-1, __func__, "ExpandEnvironmentStrings failed");
+			log_errf(-1, __func__, "ExpandEnvironmentStrings failed for ComSpec : envbuf=%s", envbuf);
 	}
 
 	/*
@@ -1921,12 +1945,10 @@ finish_exec(job *pjob)
 						envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 						bld_wenv_variables("PATH", envbuf);
 					else
-						log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
-				}
-				else
+						log_errf(-1, __func__, "ExpandEnvironmentStringsForUser failed for PATH : envbuf=%s", envbuf);
+				} else
 					log_err(-1, __func__, "DuplicateTokenEx failed");
-			}
-			else 
+			} else 
 				log_err(-1, __func__, "OpenProcessToken failed");
 
 			if (hLogin != INVALID_HANDLE_VALUE && hLogin != NULL)
@@ -1941,7 +1963,7 @@ finish_exec(job *pjob)
 				envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 				bld_wenv_variables("PATH", envbuf);
 			else
-				log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
+				log_errf(-1, __func__, "ExpandEnvironmentStringsForUser failed for PATH : envbuf=%s", envbuf);
 		}
 	}
 
@@ -2043,6 +2065,10 @@ finish_exec(job *pjob)
 		bld_wenv_variables(ENV_AUTH_KEY, hash_token);
 		free(hash_token);
 		hash_token = NULL;
+	} else {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Failed to export job hash to the environment");
+		return NULL;
 	}
 
 	/*************************************************************************/
@@ -2112,7 +2138,8 @@ finish_exec(job *pjob)
 					"warning: %s: IM_EXEC_PROLOGUE requests "
 					"could not reach some sister moms",
 					pjob->ji_qs.ji_jobid);
-				log_err(-1, __func__, log_buffer);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, log_buffer);
 			}
 			if (do_tolerate_node_failures(pjob))
 				send_update_job(pjob, old_exec_vnode);
@@ -2147,6 +2174,8 @@ finish_exec(job *pjob)
 						"could not reach some sister moms",
 						pjob->ji_qs.ji_jobid);
 					log_err(-1, __func__, log_buffer);
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+						__func__, log_buffer);
 				}
 				if (do_tolerate_node_failures(pjob))
 					send_update_job(pjob,old_exec_vnode);
@@ -2162,7 +2191,7 @@ finish_exec(job *pjob)
 	 */
 	hjob = CreateJobObject(NULL, pjob->ji_qs.ji_jobid);
 	if (hjob == NULL) {
-		log_err(-1, __func__, "Unable to get handle. CreateJobObject failed");
+		log_errf(-1, __func__, "Unable to get handle. CreateJobObject failed for jobid %s", pjob->ji_qs.ji_jobid);
 		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 		if (env_block)
 			free(env_block);
@@ -2209,7 +2238,7 @@ finish_exec(job *pjob)
 		if (script_in != -1)
 			si.hStdInput = (HANDLE)_get_osfhandle(script_in);
 			if (si.hStdInput == -1) {
-				log_err(-1, __func__, "Unable to get handle for the script input file");
+				log_err(errno, __func__, "Unable to get handle for the script input file");
 			}
 		else {
 			/*
@@ -2227,8 +2256,7 @@ finish_exec(job *pjob)
 			sa.lpSecurityDescriptor = NULL;
 			sa.bInheritHandle = TRUE;
 			if (CreatePipe(&hReadPipe_dummy, &hWritePipe_dummy, &sa, 0) == 0) {
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
-					pjob->ji_qs.ji_jobid, "Creation of pipe failed. No valid input handle for the job.");
+				log_err(-1, __func__, "Creation of pipe failed. No valid input handle for the job.");
 				return;
 			}
 			si.hStdInput = hReadPipe_dummy;
@@ -2236,13 +2264,13 @@ finish_exec(job *pjob)
 		if (script_out != -1) {
 			si.hStdOutput = (HANDLE)_get_osfhandle(script_out);
 			if (si.hStdOutput == -1) {
-				log_err(-1, __func__, "Unable to get handle for the script output file");
+				log_err(errno, __func__, "Unable to get handle for the script output file");
 			}
 		}
 		if (script_err != -1) {
 			si.hStdError = (HANDLE)_get_osfhandle(script_err);
 			if (si.hStdError == -1) {
-				log_err(-1, __func__, "Unable to get handle for the script error file");
+				log_err(errno, __func__, "Unable to get handle for the script error file");
 			}
 		}
 		/* turn off echoing if cmd.exe */
@@ -2290,7 +2318,8 @@ finish_exec(job *pjob)
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 					"Administrators",
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-					log_err(-1, __func__, "Unable to change ownership of the file");
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+						__func__, "Unable to change ownership of the file");
 
 				sprintf(cmdline, "%s /Q /C \"%s\"", shell, script_bat);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -2643,8 +2672,8 @@ finish_exec(job *pjob)
 		free(env_block);
 
 	if (!rc) {
-		sprintf(log_buffer, "CreateProcess(AsUser) error=%d",
-			GetLastError());
+		sprintf(log_buffer, "CreateProcess(AsUser) for command=%s error=%d",
+			cmdline, GetLastError());
 		exec_bail(pjob, JOB_EXEC_FAIL1, log_buffer);
 		return;
 	}
@@ -2859,7 +2888,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		if ((ap = tpp_getaddr(i)) == NULL) {
 			sprintf(log_buffer, "job %s has no stream to MS",
 				pjob->ji_qs.ji_jobid);
-			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			return PBSE_SYSTEM;
 		}
 		ipaddr = ap->sin_addr.s_addr;
@@ -2935,6 +2965,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		if (pwdp->pw_userlogin == INVALID_HANDLE_VALUE) {
 			HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
 			/* Obtain access token for current process.*/
+			if (hProcess == NULL)
+				log_err(-1, __func__, "OpenProcess Failed");
 
 			if (OpenProcessToken(hProcess, MAXIMUM_ALLOWED, &hToken)) {
 				if (DuplicateTokenEx(
@@ -2948,7 +2980,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 						envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 						bld_wenv_variables("PATH", envbuf);
 					else
-						log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
+						log_errf(-1, __func__, "ExpandEnvironmentStringsForUser failed for PATH : envbuf=%s", envbuf);
 				}
 			}
 
@@ -2964,7 +2996,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				envbuf, ENV_BUFSIZE) != 0) && strncmp("%PATH%", envbuf, 6))
 				bld_wenv_variables("PATH", envbuf);
 			else
-				log_err(-1, __func__, "ExpandEnvironmentStringsForUser failed");
+				log_errf(-1, __func__, "ExpandEnvironmentStringsForUser failed for PATH : envbuf=%s", envbuf);
 		}
 	}
 
@@ -3011,7 +3043,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	/* Add TMPDIR to environment */
 	j = mktmpdir(pjob->ji_qs.ji_jobid, pjob->ji_user->pw_name);
 	if (j != 0) {
-		log_err(errno, __func__, "cannot create TMPDIR");
+		log_errf(errno, __func__, "cannot create TMPDIR for job: %s and user: %s", pjob->ji_qs.ji_jobid, pjob->ji_user->pw_name);
 		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 		return PBSE_SYSTEM;
 	}
@@ -3045,7 +3077,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	if (pjob->ji_hJob == NULL) {
 		hjob = CreateJobObject(NULL, pjob->ji_qs.ji_jobid);
 		if (hjob == NULL) {
-			log_err(-1, __func__, "CreateJobObject failed");
+			log_errf(-1, __func__, "CreateJobObject failed for job: %s", pjob->ji_qs.ji_jobid);
 			exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 			return PBSE_SYSTEM;
 		}
@@ -3069,6 +3101,10 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		free(hash_token);
 		hash_token = NULL;
 	}
+	else {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Failed to export job hash to the environment");
+	}
 
 	/*
 	 ** Begin a new process for the fledgling task.
@@ -3089,8 +3125,17 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		si.hStdError = INVALID_HANDLE_VALUE;
 	} else { /* no mom_open_demux, write straight to job's output and error files */
 		si.dwFlags = STARTF_USESTDHANDLES;
+
 		si.hStdOutput = (HANDLE)_get_osfhandle(script_out);
+		if (si.hStdOutput == NULL)
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
+				__func__, "Failed to get handle for stdout file");
+
 		si.hStdError = (HANDLE)_get_osfhandle(script_err);
+		if (si.hStdError == NULL)
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
+				__func__, "Failed to get handle for stderr file");
+
 		/* set stdout and stderr to append mode */
 		if (SetFilePointer(si.hStdOutput, (LONG)NULL,
 			(PLONG)NULL, FILE_END) == INVALID_SET_FILE_POINTER)
@@ -3300,7 +3345,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		free(env_block);
 
 	if (!rc) {
-		sprintf(log_buffer, "CreateProcess(AsUser) err=%d", GetLastError());
+		sprintf(log_buffer, "CreateProcess(AsUser) err=%d, for command cmd=%s", GetLastError(), cmdline);
 		log_err(-1, __func__, log_buffer);
 		proc_bail(ptask);
 		return PBSE_PERM;
@@ -3377,7 +3422,11 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	path = std_file_name(pjob, which, &keeping);
 
 	fds = open(path, mode, _S_IWRITE | _S_IREAD);
-
+	if (fds == -1) {
+		sprintf(log_buffer, "Unable to open stdfile %s", path);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
+	}
 	if (pjob->ji_user && pjob->ji_user->pw_name) {
 
 		if ((strcmpi(getlogin(), pjob->ji_user->pw_name) == 0) &&
@@ -3392,7 +3441,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			pjob->ji_user->pw_name,
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-			log_err(-1, __func__, "Unable to change ownership of the file");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Unable to change ownership of the file");
 
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
@@ -3599,15 +3649,19 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	/* make sure parsing buffers are long enought */
 	if ((i = strlen(execvnode)) >= ebuf_len) {
 		tpc = (char *)realloc(ebuf, i+100);
-		if (tpc == NULL)
+		if (tpc == NULL) {
+			log_err(errno, __func__, "realloc failed for ebuf");
 			return (PBSE_SYSTEM);
+		}
 		ebuf = tpc;
 		ebuf_len = i + 100;
 	}
 	if ((i = strlen(schedselect)) >= sbuf_len) {
 		tpc = (char *)realloc(sbuf, i+100);
-		if (tpc == NULL)
+		if (tpc == NULL) {
+			log_err(errno, __func__, "realloc failed for sbuf")
 			return (PBSE_SYSTEM);
+		}
 		sbuf = tpc;
 		sbuf_len = i + 100;
 	}
@@ -4337,7 +4391,7 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 
 	if (pjob->ji_grpcache == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "The groups associated are cannot be NULL");
+			__func__, "The associated group cache cannot be NULL");
 		return ("");	/* needs to be non-NULL for figuring out homedir path; */
 	}
 
@@ -4382,6 +4436,23 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 		*(path + len) = '\0';
 		*keeping = 1;
 	} else {
+#ifdef NO_SPOOL_OUTPUT
+		/* sandbox=PRIVATE mode puts output in job staging and execution directory */
+		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags&ATR_VFLAG_SET) &&
+			(strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		} else {        /* force all output to user's HOME */
+			(void)strcpy(path, pjob->ji_grpcache->gc_homedir);
+		}
+
+#ifdef WIN32
+		(void)strcat(path, "\\");
+#else
+		(void)strcat(path, "/");
+#endif
+
+		*keeping = 1;
+#else	/* NO_SPOOL_OUTPUT */
 		/* sandbox=PRIVATE mode puts output in job staging and execution directory */
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags&ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
@@ -4391,6 +4462,7 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 			strcpy(path, path_spool);
 		}
 		*keeping = 0;
+#endif	/* NO_SPOOL_OUTPUT */
 		if (*pjob->ji_qs.ji_fileprefix != '\0')
 			(void)strcat(path, pjob->ji_qs.ji_fileprefix);
 		else
@@ -4452,7 +4524,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 				name = lastname(*shell);
 				argv[i] = malloc(strlen(name) + 2);
 				if (argv[i] == NULL) {
-					log_err(-1, __func__, "argv is NULL");
+					log_err(errno, __func__, "Failed to malloc for argv");
 					return -1;
 				}
 				strcpy(argv[i], "-");
@@ -4465,8 +4537,12 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			argv = (char **)calloc(2+num, sizeof(char *));
 			assert(argv != NULL);
 
-			if (read_cred(pjob, &cred_buf, &cred_len) != 0)
+			if (read_cred(pjob, &cred_buf, &cred_len) != 0) {
+				sprintf(log_buffer, "Unable to get credentials for user: %s", pjob->ji_user);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, log_buffer);
 				break;
+			}
 
 			ret = becomeuser(pjob);
 			if (pipe(fds) == -1) {
