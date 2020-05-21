@@ -81,6 +81,7 @@ class TestTPP(TestFunctional):
         :type conf_param: Dictionary
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
+        print("================>pbsconfpath", pbsconfpath)
         self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
                                confs=conf_param)
         self.pbs_restart(host_name)
@@ -381,6 +382,35 @@ class TestTPP(TestFunctional):
         """
         This function has common configuration which is used in some tests
         """
+        i = 0 
+        for mom in self.moms.values():
+            if mom.shortname == self.server.shortname:
+                self.momA = mom
+                self.hostA = self.momA.shortname
+                del mom_list[i]
+            i += 1
+        y = 0
+        for comm in self.comms.values():
+            if comm.shortname == self.server.shortname:
+                del comm_list[y]
+            y += 1
+        if len(self.moms.values()) == 2 and len(self.comms.values()) == 2:
+            self.momB = mom_list[0]
+            self.hostB = self.momB.shortname
+            self.comm2 = comm_list[0]
+            self.hostC = self.comm2.shortname
+            nodes = [self.hostA, self.hostB, self.hostC]
+        elif len(self.moms.values()) == 3 and len(self.comms.values()) == 3:
+            self.momB = mom_list[0]
+            self.hostB = self.momB.shortname
+            self.momC = mom_list[1]
+            self.hostC = self.momC.shortname
+            self.comm2 = comm_list[0]
+            self.hostD = self.comm2.shortname
+            self.comm3 = comm_list[1]
+            self.hostE = self.comm3.shortname
+            nodes = [self.hostA, self.hostB, self.hostC, self.hostD, self.hostE]
+        """
         if self.moms.values()[0].shortname == self.server.shortname:
             self.momA = self.moms.values()[0]
             self.momB = self.moms.values()[1]
@@ -395,8 +425,9 @@ class TestTPP(TestFunctional):
         self.hostB = self.momB.shortname
         self.hostC = self.comm2.shortname
         nodes = [self.hostA, self.hostB, self.hostC]
+        """
         self.node_list.extend(nodes)
-
+        
     @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
         """
@@ -438,7 +469,7 @@ class TestTPP(TestFunctional):
             self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
         self.server.expect(RESV, resv_exp_attrib, rid)
         self.server.expect(JOB, job_exp_attrib, id=jid)
-
+  
     @requirements(num_moms=2, num_comms=2)
     def test_comm_failover_with_multiple_PBS_LEAF_ROUTERS(self):
         """
@@ -466,7 +497,7 @@ class TestTPP(TestFunctional):
         """
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
-        with pbs_comm failover when values of PBS_LEAF_ROUTERS
+        with pbs_comm failover when values of PBS_LEAF_ROUTERS 
         in pbs.conf are invalid
         Configuration:
         Node 1 : Server, Sched, Mom, Comm
@@ -487,7 +518,7 @@ class TestTPP(TestFunctional):
         self.server.expect(NODE, {'state': 'down'}, id=self.hostB)
         exp_msg = ["Error 99 while connecting to %s:17001" % invalid_val,
                    "Error -2 resolving %s" % invalid_val
-                   ]
+                  ]
         for msg in exp_msg:
             self.momB.log_match(msg)
         # set a invalid PBS_LEAF_ROUTERS value for primary comm
@@ -495,12 +526,10 @@ class TestTPP(TestFunctional):
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostA, conf_param=b)
         self.comm.stop('-KILL')
-        self.server.expect(NODE,
-                           {'state': 'state-unknown,down'},
-                           id=self.hostA)
+        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostA)
         for msg in exp_msg:
             self.momB.log_match(msg)
-
+       
     @requirements(num_moms=2, num_comms=2)
     def test_comm_failover_with_ipaddress(self):
         """
@@ -532,7 +561,7 @@ class TestTPP(TestFunctional):
         """
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
-        with pbs_comm failover when PBS_LEAF_ROUTERS has ipaddress
+        with pbs_comm failover when PBS_LEAF_ROUTERS has ipaddress 
         and hostname as values
         Configuration:
         Node 1 : Server, Sched, Mom, Comm
@@ -589,8 +618,7 @@ class TestTPP(TestFunctional):
         self.new_conf_path = os.path.join(tmp_dir, "pbs.conf")
 
         # Copy pbs.conf file to temporary location
-        cmd = "cp %s %s" % (self.pbs_conf_path, self.new_conf_path)
-        rc = self.du.run_cmd(hosts=self.server.hostname, cmd=cmd)
+        rc = self.du.run_copy(src=self.pbs_conf_path, dest=self.new_conf_path)
         msg = "Cannot copy %s " % self.pbs_conf_path
         msg += "%s, error: %s" % (self.new_conf_path, rc['err'])
         self.assertEqual(rc['rc'], 0, msg)
@@ -610,14 +638,25 @@ class TestTPP(TestFunctional):
         between mom when multiple pbs_comm are present in cluster
         with pbs_comm failover when PBS_LEAF_ROUTERS has ipaddress,
         port number and hostname as values and pbs.conf is in
-        non default lcoation
+        non default location
         Configuration:
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
         """
+        self.common_setup()
+        hostA_ip = socket.gethostbyname(self.hostA)
+        hostC_ip = socket.gethostbyname(self.hostC)
+        a = {'PBS_COMM_ROUTERS': self.hostA}
+        self.set_pbs_conf(host_name=self.hostC, conf_param=a)
+        leaf_val = self.hostA + ":17001" + "," + self.hostC
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostA, conf_param=b)
+        leaf_val = hostC_ip + "," + self.hostA + ":17001"
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostB, conf_param=b)
         self.copy_pbs_conf_to_non_default_path()
-        self.test_comm_failover_with_ipaddress_hostnames_port()
+        self.common_steps_for_comm_failover()
 
     @requirements(num_moms=3, num_comms=3)
     def test_PBS_COMM_ROUTERS_with_hostname(self):
@@ -630,22 +669,11 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom
+        Node 4 : Mom 
         Node 5 : Comm
         Node 6 : Mom
         """
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
-        self.momC = self.moms.values()[2]
-        self.comm1 = self.comms.values()[1]
-        self.comm2 = self.comms.values()[2]
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
-        self.hostC = self.comm1.shortname
-        self.hostD = self.momC.shortname
-        self.hostE = self.comm2.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD, self.hostE]
-        self.node_list.extend(nodes)
+        self.common_setup()
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         comm_val = self.hostA + "," + self.hostC
@@ -666,10 +694,10 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
                           job=True, interactive=True, resv=True,
                           resv_job=True)
-
+        
     @requirements(num_moms=3, num_comms=3)
     def test_PBS_COMM_ROUTERS_with_ipaddress(self):
         """
@@ -681,22 +709,11 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom
+        Node 4 : Mom 
         Node 5 : Comm
         Node 6 : Mom
         """
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
-        self.momC = self.moms.values()[2]
-        self.comm1 = self.comms.values()[1]
-        self.comm2 = self.comms.values()[2]
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
-        self.hostC = self.comm1.shortname
-        self.hostD = self.momC.shortname
-        self.hostE = self.comm2.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD, self.hostE]
-        self.node_list.extend(nodes)
+        self.common_setup()
         hostA_ip = socket.gethostbyname(self.hostA)
         hostC_ip = socket.gethostbyname(self.hostC)
         a = {'PBS_COMM_ROUTERS': hostA_ip}
@@ -719,7 +736,7 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
                           job=True, interactive=True, resv=True,
                           resv_job=True)
 
@@ -734,27 +751,16 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom
+        Node 4 : Mom 
         Node 5 : Comm
         Node 6 : Mom
         """
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
-        self.momC = self.moms.values()[2]
-        self.comm1 = self.comms.values()[1]
-        self.comm2 = self.comms.values()[2]
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
-        self.hostC = self.comm1.shortname
-        self.hostD = self.momC.shortname
-        self.hostE = self.comm2.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD, self.hostE]
-        self.node_list.extend(nodes)
+        self.common_setup()
         hostA_ip = socket.gethostbyname(self.hostA)
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
-        comm_val = hostA_ip + ":17001" + "," + self.hostC
+        comm_val = hostA_ip + ":17001" + ","  + self.hostC
         a = {'PBS_COMM_ROUTERS': comm_val}
         self.set_pbs_conf(host_name=self.hostE, conf_param=a)
         leaf_val = self.hostA + "," + self.hostC + "," + self.hostE
@@ -772,16 +778,57 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
+                          job=True, interactive=True, resv=True,
+                          resv_job=True)
+        
+    @requirements(num_moms=2, num_comms=2)
+    def test_COMM_ROUTERS_with_nondefault_pbs_conf(self):
+        """
+        This test verifies communication between server-mom and
+        between mom when multiple pbs_comm are present in cluster
+        when PBS_COMM_ROUTERS has ipaddress, port number and hostname
+        as values and pbs.conf is in non default location
+        Configuration:
+        Node 1 : Server, Sched, Mom, Comm
+        Node 2 : Mom
+        Node 3 : Comm
+        """
+        self.common_setup()
+        hostA_ip = socket.gethostbyname(self.hostA)
+        comm_val = self.hostA + ":17001"
+        a = {'PBS_COMM_ROUTERS': self.hostA}
+        self.set_pbs_conf(host_name=self.hostC, conf_param=a)
+        comm_val = hostA_ip + ":17001" + ","  + self.hostC
+        a = {'PBS_COMM_ROUTERS': comm_val}
+        self.set_pbs_conf(host_name=self.hostE, conf_param=a)
+        leaf_val = self.hostA + "," + self.hostC + "," + self.hostE
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostA, conf_param=b)
+        leaf_val = self.hostC + "," + self.hostA + "," + self.hostE
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostB, conf_param=b)
+        leaf_val = self.hostE + "," + self.hostC + "," + self.hostA
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostD, conf_param=b)
+        self.copy_pbs_conf_to_non_default_path()
+        set_attr = {'Resource_List.select': '3:ncpus=1',
+                    ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
+        resv_set_attr = {'Resource_List.select': '3:ncpus=1',
+                         ATTR_l + '.place': 'scatter',
+                         'reserve_start': int(time.time()) + 30,
+                         'reserve_end': int(time.time()) + 120}
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
                           job=True, interactive=True, resv=True,
                           resv_job=True)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
+        os.environ['PBS_CONF_FILE'] = self.pbs_conf_path
+        self.logger.info("Successfully exported PBS_CONF_FILE variable")
         conf_param = ['PBS_LEAF_ROUTERS', 'PBS_COMM_ROUTERS']
         for host in self.node_list:
             self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
         self.server.client = self.default_client
-        os.environ['PBS_CONF_FILE'] = self.pbs_conf_path
-        self.logger.info("Successfully exported PBS_CONF_FILE variable")
+
