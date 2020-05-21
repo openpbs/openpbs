@@ -8078,7 +8078,7 @@ time_delta(int mode)
 {
 	static int delta = 1;
 	static int cnt = 1;
-	int max_delta_mask = 0x3F;	/* max interval will be 64s */
+	int max_delta = 1 << 6;	/* max interval will be 64s */
 
 	DBPRT(("time_delta: mode: %d, delta: %d, cnt: %d", mode, delta, cnt))
 
@@ -8089,14 +8089,13 @@ time_delta(int mode)
 	}
 
 	if (cnt == 0) {
-		if (delta & ~max_delta_mask) {
+		if (delta == max_delta)
 			return delta;
-		}
+
 		delta <<= 1;
 		cnt = delta << 1;
-	} else {
+	} else
 		cnt--;
-	}
 
 	return delta;
 }

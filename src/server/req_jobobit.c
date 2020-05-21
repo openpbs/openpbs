@@ -1761,6 +1761,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			/* tell mom to trash job		    */
 			DBPRT(("%s: job %s not in exiting state!\n",
 				__func__, pruu->ru_pjobid))
+			pjob->ji_discarding = 0;
 			reject_obit(stream, pruu->ru_pjobid);
 
 			(void)sprintf(log_buffer, "%s", msg_obitnotrun);

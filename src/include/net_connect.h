@@ -107,8 +107,6 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_ACKOBIT		10
 #define IS_REGISTERMOM		13
 #define IS_UPDATE2		14
-#define IS_RECVD_VMAP		17
-#define IS_MOM_READY		17	/* alias for IS_RECD_VMAP */
 #define IS_DISCARD_JOB		19
 #define IS_DISCARD_DONE		21
 #define	IS_CLUSTER_ADDRS2	23

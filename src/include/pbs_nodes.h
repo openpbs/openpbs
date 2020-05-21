@@ -314,24 +314,25 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_UNRESOLVABLE	 0x08	/* Node not reachable */
 #define	INUSE_JOB	 0x10	/* VP   in used by a job (normal use)	*/
 /* Node all VPs in use by jobs		*/
-#define INUSE_STALE	0x20	/* Vnode not reported by Mom            */
-#define INUSE_JOBEXCL	0x40	/* Node is used by one job (exclusive)	*/
-#define INUSE_BUSY	0x80	/* Node is busy (high loadave)		*/
-#define INUSE_UNKNOWN	0x100	/* Node has not been heard from yet	*/
-#define INUSE_INIT	0x200	/* Node getting vnode map info		*/
-#define INUSE_PROV	0x400	/* Node is being provisioned		*/
-#define INUSE_WAIT_PROV	0x800	/* Node is being provisioned		*/
+#define INUSE_STALE	 0x20	/* Vnode not reported by Mom            */
+#define INUSE_JOBEXCL	 0x40	/* Node is used by one job (exclusive)	*/
+#define	INUSE_BUSY	 0x80	/* Node is busy (high loadave)		*/
+#define INUSE_UNKNOWN	 0x100	/* Node has not been heard from yet	*/
+#define INUSE_NEEDS_HELLOSVR	0x200	/* Fresh hello sequence needs to be initiated */
+#define INUSE_INIT	 0x400	/* Node getting vnode map info		*/
+#define INUSE_PROV	 0x800	/* Node is being provisioned		*/
+#define INUSE_WAIT_PROV	 0x1000	/* Node is being provisioned		*/
 /* INUSE_WAIT_PROV is 0x1000 - this should not clash with MOM_STATE_BUSYKB
  * since INUSE_WAIT_PROV is used as part of the node_state and MOM_STATE_BUSYKB
  * is used inside mom for variable internal_state
  */
-#define INUSE_RESVEXCL		0x1000	/* Node is exclusive to a reservation	*/
-#define INUSE_OFFLINE_BY_MOM	0x2000 /* Node is offlined by mom */
-#define INUSE_MARKEDDOWN	0x4000 /* TPP layer marked node down */
-#define INUSE_NEED_ADDRS	0x8000	/* Needs to be sent IP addrs */
-#define INUSE_MAINTENANCE	0x10000 /* Node has a job in the admin suspended state */
-#define INUSE_SLEEP		0x20000 /* Node is sleeping */
-#define INUSE_NEED_CREDENTIALS	0x40000 /* Needs to be sent credentials */
+#define INUSE_RESVEXCL	0x2000	/* Node is exclusive to a reservation	*/
+#define INUSE_OFFLINE_BY_MOM 0x4000 /* Node is offlined by mom */
+#define INUSE_MARKEDDOWN 0x8000 /* TPP layer marked node down */
+#define INUSE_NEED_ADDRS	0x10000	/* Needs to be sent IP addrs */
+#define INUSE_MAINTENANCE	0x20000 /* Node has a job in the admin suspended state */
+#define INUSE_SLEEP             0x40000 /* Node is sleeping */
+#define INUSE_NEED_CREDENTIALS	0x80000 /* Needs to be sent credentials */
 
 #define VNODE_AVAILABLE (INUSE_FREE | INUSE_JOB | INUSE_JOBEXCL | \
 			 INUSE_RESVEXCL | INUSE_BUSY)

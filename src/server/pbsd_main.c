@@ -259,7 +259,6 @@ long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
 int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
-int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
 pbs_list_head	svr_deferred_req;
 pbs_list_head	svr_queues;            /* list of queues                   */
 pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
@@ -1317,13 +1316,6 @@ try_db_again:
 #endif	/* DEBUG is defined */
 		try_db ++;
 	}
-
-    /* determine the rate of calling the ping_nodes functionality based on server_init_type */
-    if (server_init_type == RECOV_HOT) {
-            /* rapid ping rate while hot restart */
-            ping_nodes_rate = HOT_START_PING_RATE < svr_ping_rate ? HOT_START_PING_RATE : svr_ping_rate;
-    } else
-            ping_nodes_rate = svr_ping_rate; /* normal ping rate for normal run */
 
 	if (!pbs_conf.pbs_data_service_host) {
 		/*

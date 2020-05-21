@@ -187,6 +187,7 @@ int		 svr_chngNodesfile = 0;	/* 1 signals want nodes file update */
 int		 is_called_by_job_purge = 0;
 
 static int mtfd_replyhello = -1;
+static int mtfd_replyhello_noinv = -1;
 
 struct pbsnode **pbsndlist = NULL;
 
@@ -3038,6 +3039,43 @@ add_mom_mcast(mominfo_t *pmom, int *mtfd)
 
 /**
  * @brief
+ * 		Mom multicast function to close all failed streams and close them
+ * 
+ * @param[in]	stm	- multi-cast stream where broadcast is attempted
+ * @param[in]	ret	- failure return code
+ * 
+ * @return	void
+ */
+void
+close_streams(int stm, int ret)
+{
+	int		*strms;
+	int		count = 0;
+	int		i;
+	mominfo_t	*pmom;
+	mom_svrinfo_t	*psvrmom;
+	struct	sockaddr_in  *addr;
+
+	if (stm < 0)
+		return;
+
+	strms = tpp_mcast_members(stm, &count);
+
+	for(i = 0; i < count; i++) {
+		if ((pmom = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
+			psvrmom = (mom_svrinfo_t *) (pmom->mi_data);
+			/* find the respective mom from the stream */
+			addr = tpp_getaddr(psvrmom->msr_stream);
+			snprintf(log_buffer, sizeof(log_buffer), "%s %d to %s(%s)",
+				dis_emsg[ret], errno, pmom->mi_host, netaddr(addr));
+			log_err(-1, __func__, log_buffer);
+			stream_eof(psvrmom->msr_stream, ret, "ping no ack");
+		}
+	}	
+}
+
+/**
+ * @brief
  * 		Mom multicast functions to broadcast a single command to all the moms.
  * 
  * @param[in]	ptask	- work task structure
@@ -3047,13 +3085,9 @@ add_mom_mcast(mominfo_t *pmom, int *mtfd)
 void
 mcast_moms(struct work_task *ptask)
 {
-	int		i;
-	int		*strms;
-	mominfo_t	*pmom;
 	mom_svrinfo_t	*psvrmom;
-	struct	sockaddr_in  *addr;
-	int		ret = 0;
-	int		count = 0;
+	int i;
+	int ret;
 
 	if (!ptask)
 		return;
@@ -3071,7 +3105,8 @@ mcast_moms(struct work_task *ptask)
 				add_mom_mcast(mominfo_array[i], &mtfd);
 			}
 		}
-		ret = send_ISNULL(mtfd, 0);
+		if ((ret = send_ISNULL(mtfd, 0)) != DIS_SUCCESS)
+			close_streams(mtfd, ret);
 		break;
 
 	case IS_CLUSTER_ADDRS2:
@@ -3079,7 +3114,7 @@ mcast_moms(struct work_task *ptask)
 			if (!mominfo_array[i])
 				continue;
 			psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
-			if (psvrmom->msr_state & INUSE_NEED_ADDRS) {
+			if ((psvrmom->msr_state & INUSE_NEED_ADDRS) && ((mom_svrinfo_t *)(mominfo_array[i]->mi_data))->msr_stream >= 0) {
 				add_mom_mcast(mominfo_array[i], &mtfd);
 				if (psvrmom->msr_state & INUSE_MARKEDDOWN)
 					psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
@@ -3087,39 +3122,28 @@ mcast_moms(struct work_task *ptask)
 									NULL, Set_All_State_Regardless);
 			}
 		}
-		ret = send_ip_addrs_to_mom(mtfd, 0);
+		if ((ret = send_ip_addrs_to_mom(mtfd, 0)) != DIS_SUCCESS)
+			close_streams(mtfd, ret);
 		break;
 
 	case IS_REPLYHELLO:
-		ret = reply_hellosvr(mtfd_replyhello, 1);
+		if (mtfd_replyhello != -1)
+			if ((ret = reply_hellosvr(mtfd_replyhello, 1)) != DIS_SUCCESS)
+				close_streams(mtfd_replyhello, ret);
+		if (mtfd_replyhello_noinv != -1)
+			if ((ret = reply_hellosvr(mtfd_replyhello_noinv, 0)) != DIS_SUCCESS)
+				close_streams(mtfd_replyhello_noinv, ret);
 		break;
 	
 	default:
 		break;
 	}
 
-	/* Close all the failure mom streams */
-	if (ret != DIS_SUCCESS) {
-		if (cmd == IS_REPLYHELLO)
-			strms = tpp_mcast_members(mtfd_replyhello, &count);
-		else
-			strms = tpp_mcast_members(mtfd, &count);
-
-		for(i = 0; i < count; i++) {
-			if ((pmom = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
-				psvrmom = (mom_svrinfo_t *) (pmom->mi_data);
-				/* find the respective mom from the stream */
-				addr = tpp_getaddr(psvrmom->msr_stream);
-				snprintf(log_buffer, sizeof(log_buffer), "%s %d to %s(%s)",
-					dis_emsg[ret], errno, pmom->mi_host, netaddr(addr));
-				log_err(-1, __func__, log_buffer);
-				stream_eof(psvrmom->msr_stream, ret, "ping no ack");
-			}
-		}
-	}
 	if (cmd == IS_REPLYHELLO) {
 		tpp_mcast_close(mtfd_replyhello);
+		tpp_mcast_close(mtfd_replyhello_noinv);
 		mtfd_replyhello = -1;
+		mtfd_replyhello_noinv = -1;
 	} else {
 		tpp_mcast_close(mtfd);
 	}
@@ -4142,7 +4166,7 @@ mom_running_jobs(int stream)
 					exec_host_name[exec_host_hostlen]='\0';
 				}
 
-				if (!strcmp(exec_host_name,mom_name)) {
+				if (!strcmp(exec_host_name, mom_name)) {
 					/* natural vnode of MOM at end of stream matches exec_host first entry */
 
 					snprintf(log_buffer, sizeof(log_buffer), "run_version %ld for job recovered from MOM with vnode %s; exec_host %s", runver, mom_name, exec_host_name);
@@ -4247,6 +4271,7 @@ is_request(int stream, int version)
 {
 	int			check_other_moms_time = 0;
 	int			command = 0;
+	int			command_orig = 0;
 	int			cr_node;
 	int			ret = DIS_SUCCESS;
 	int			i, j;
@@ -4311,7 +4336,7 @@ is_request(int stream, int version)
 			goto badcon;
 
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, pmom->mi_host, "Mom sent hellosvr on host");
+			LOG_NOTICE, pmom->mi_host, "Received IS_HELLOSVR from Mom");
 
 		psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 		psvrmom->msr_state |= INUSE_UNKNOWN;
@@ -4355,7 +4380,8 @@ is_request(int stream, int version)
 
 		/* we save this stream for future communications */
 		psvrmom->msr_stream = stream;
-		psvrmom->msr_state &= ~INUSE_INIT;
+		psvrmom->msr_state |= INUSE_INIT;
+		psvrmom->msr_state &= ~INUSE_NEEDS_HELLOSVR;
 #ifdef NAS /* localmod 005 */
 		tinsert2((u_long)stream, 0ul, pmom, &streams);
 #else
@@ -4363,26 +4389,25 @@ is_request(int stream, int version)
 #endif /* localmod 005 */
 
 		tpp_eom(stream);
-		if (psvrmom->msr_vnode_pool <= 0 || psvrmom->reporting_mom) {
-			static int reply_send_tm = 0;
 
-			/* mcast reply togethor */
+		static int reply_send_tm = 0;
+
+		/* mcast reply togethor */
+		if (psvrmom->msr_vnode_pool <= 0 || psvrmom->reporting_mom)
 			add_mom_mcast(pmom, &mtfd_replyhello);
-			if (reply_send_tm <= time_now) {
-				struct work_task *ptask;
+		else
+			add_mom_mcast(pmom, &mtfd_replyhello_noinv);
+		
+		if (reply_send_tm <= time_now) {
+			struct work_task *ptask;
 
-				/* time to wait depends on the no of moms server knows */
-				reply_send_tm = time_now + (mominfo_array_size > 1024 ? 2 : 0);
-				ptask = set_task(WORK_Timed, reply_send_tm, mcast_moms, NULL);
-				ptask->wt_aux = IS_REPLYHELLO;
-			}
-		} else {
-			/* reply immediately if the server does not need inventory.
-		   	only Cray XC support this */
-			if ((ret = reply_hellosvr(psvrmom->msr_stream, 0)) != DIS_SUCCESS)
-				goto err;
+			/* time to wait depends on the no of moms server knows */
+			reply_send_tm = time_now + (mominfo_array_size > 1024 ? 2 : 0);
+			ptask = set_task(WORK_Timed, reply_send_tm, mcast_moms, NULL);
+			ptask->wt_aux = IS_REPLYHELLO;
 		}
 		return;
+		
 	} else {
 		/* check that machine is known */
 		DBPRT(("%s: connect from %s\n", __func__, netaddr(addr)))
@@ -4428,15 +4453,16 @@ found:
 			 * respond to HELLO from Mom by sending her optional vmap and
 			 * all addresses of all Moms
 			 */
-
+			command_orig = command;
+			if (psvrmom->msr_vnode_pool <= 0 || psvrmom->reporting_mom)
+				command = IS_UPDATE2;
+			else
+				command = IS_UPDATE;
 			/* fall into IS_UPDATE */
+
 
 		case IS_UPDATE:
 		case IS_UPDATE2:
-			if (command == IS_REGISTERMOM)
-				command = disrui(stream, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
 
 			if (psvrmom->msr_vnode_pool != 0) {
 				sprintf(log_buffer, "POOL: IS_UPDATE%c received",
@@ -4835,17 +4861,15 @@ found:
 			if (made_new_vnodes || cr_node) {
 				save_nodes_db(1, pmom); /* update the node database */
 			}
-		/* Fall into IS_MOM_READY */
 
-		case IS_MOM_READY:
+		if (command_orig == IS_REGISTERMOM) {
 			/* Mom is acknowledging the info sent by the Server */
 			/* Mark the Mom and associated vnodes as up */
 			oldstate = psvrmom->msr_state;
 			if (psvrmom->msr_state & INUSE_MARKEDDOWN)
 				psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
 
-			set_all_state(pmom, 0, INUSE_DOWN|INUSE_UNKNOWN|
-				INUSE_INIT|INUSE_NEED_ADDRS,
+			set_all_state(pmom, 0, INUSE_DOWN| INUSE_INIT,
 				NULL, Set_All_State_Regardless);
 
 			/* log a node up message only if it was not marked
@@ -4871,6 +4895,7 @@ found:
 				psvrmom->msr_state &= ~INUSE_NEED_CREDENTIALS;
 			}
 #endif
+		}
 			break;
 
 		case IS_RESCUSED:
@@ -4994,7 +5019,7 @@ found:
 				/* tell Mom we got this one, reply with the type of */
 				/* action requested and the sequence number         */
 
-				if (is_compose(stream, IS_HOOK_ACTION_ACK) !=DIS_SUCCESS)
+				if (is_compose(stream, IS_HOOK_ACTION_ACK) != DIS_SUCCESS)
 					goto err;
 
 				if (ret != DIS_SUCCESS)

@@ -169,7 +169,7 @@ vnode_state_to_str(int state_bit)
 
 	/* Now clear any internal states */
 	if (state_bit_tmp != 0)
-		state_bit_tmp &= ~(INUSE_DELETED|INUSE_INIT);
+		state_bit_tmp &= ~(INUSE_DELETED|INUSE_NEEDS_HELLOSVR|INUSE_INIT);
 
 	if (state_bit_tmp != 0)
 		return ("");	/* found an unknown state bit set! */

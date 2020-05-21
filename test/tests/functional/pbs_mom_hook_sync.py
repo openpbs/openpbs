@@ -275,7 +275,7 @@ class TestMomHookSync(TestFunctional):
         # outcome, as send action occurs after the delete action.
         self.server.log_match(
             'Node;%s.*;' % (self.momB.hostname,) +
-            'Mom restarted on host',
+            'Received IS_HELLOSVR from Mom',
             starttime=now, max_attempts=10, regexp=True)
 
         # Put another sleep delay so log_match() can see all the matches

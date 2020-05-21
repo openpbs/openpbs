@@ -1241,10 +1241,11 @@ int
 state_to_server(int what_to_update, int combine_msg)
 {
 	int			i, ret;
-	int			use_UPDATE2;
 	extern const char *dis_emsg[];
 	extern vnl_t		*vnlp;				/* vnode list */
 	char			*pv;
+	int			use_UPDATE2 = 0;
+	int			cmd = IS_UPDATE;
 
 	if (internal_state_update == 0)
 		return 0;
@@ -1263,24 +1264,14 @@ state_to_server(int what_to_update, int combine_msg)
 
 	DBPRT(("updating state 0x%x to server\n", i))
 
-	if ((vnlp != NULL) && (what_to_update == UPDATE_VNODES))
+	if ((vnlp != NULL) && (what_to_update == UPDATE_VNODES)) {
 		use_UPDATE2 = 1;
-	else
-		use_UPDATE2 = 0;
-
-	if (!combine_msg) {
-		if (use_UPDATE2)
-			ret = is_compose(server_stream, IS_UPDATE2);
-		else
-			ret = is_compose(server_stream, IS_UPDATE);
-	} else {
-		if (use_UPDATE2)
-			ret = diswui(server_stream, IS_UPDATE2);
-		else
-			ret = diswui(server_stream, IS_UPDATE);
+		cmd = IS_UPDATE2;
 	}
-	if (ret != DIS_SUCCESS)
-		goto err;
+
+	if (!combine_msg)
+		if ((ret = is_compose(server_stream, cmd)) != DIS_SUCCESS)
+			goto err;
 
 	if ((ret = diswui(server_stream, i)) != DIS_SUCCESS)		/* node state */
 		goto err;

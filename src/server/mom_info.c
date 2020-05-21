@@ -362,7 +362,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		return NULL;
 	}
 
-	psvrmom->msr_state =INUSE_UNKNOWN | INUSE_DOWN;
+	psvrmom->msr_state =INUSE_UNKNOWN | INUSE_DOWN | INUSE_NEEDS_HELLOSVR;
 	psvrmom->msr_pcpus = 0;
 	psvrmom->msr_acpus = 0;
 	psvrmom->msr_pmem  = 0;
@@ -415,16 +415,15 @@ open_momstream(mominfo_t *pmom)
 	mom_svrinfo_t *psvrmom;
 
 	psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	if (psvrmom->msr_stream >= 0) {
+	if (psvrmom->msr_stream >= 0 || !(psvrmom->msr_state & INUSE_NEEDS_HELLOSVR))
 		return -1;
-	}
 
-	stream = tpp_open(pmom->mi_host, pmom->mi_rmport);
-	psvrmom->msr_stream = stream;
-	if (stream >= 0) {
+	if ((stream = tpp_open(pmom->mi_host, pmom->mi_rmport)) >= 0) {
+		psvrmom->msr_stream = stream;
 		psvrmom->msr_state &= ~(INUSE_UNKNOWN | INUSE_DOWN);
 		tinsert2((u_long)stream, 0, pmom, &streams);
 	}
+
 	return stream;
 }
 
