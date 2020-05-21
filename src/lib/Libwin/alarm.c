@@ -74,12 +74,15 @@ alarm_thread(void *pv)
 	/* child waiting for an event, and clearing the event
 	 object must be MUTEXED, to synchronize with parent
 	 */
-	if (WaitForSingleObject(g_hMutex,
-		timeout*1000) == WAIT_OBJECT_0) {
-		DWORD dw;
-
-		dw = WaitForSingleObject(g_hEvent, timeout*1000);
-
+	DWORD dw = WaitForSingleObject(g_hMutex, timeout*1000);
+	if (dw == WAIT_OBJECT_0) {
+		DWORD dw1 = WaitForSingleObject(g_hEvent, timeout*1000);
+		if (dw1 != WAIT_OBJECT_0) {
+			if (dw1 != WAIT_FAILED)
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", dw1);
+			else
+				log_err(-1, __func__, "WaitForSingleObject failed");
+		}
 		CloseHandle(g_hEvent);
 		g_hEvent = NULL;
 		if ( !ReleaseMutex(g_hMutex) ) {
@@ -92,6 +95,10 @@ alarm_thread(void *pv)
 				func();
 		}
 
+	} else if (dw != WAIT_FAILED) {
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", dw);
+	} else {
+		log_err(-1, __func__, "WaitForSingleObject failed");
 	}
 
 	return (0);
