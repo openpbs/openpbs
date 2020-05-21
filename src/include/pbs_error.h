@@ -247,6 +247,7 @@ extern "C" {
 
 #define PBSE_RESV_FROM_RESVJOB	     15181 /* Job already in a reservation used to create a reservation */
 #define PBSE_RESV_FROM_ARRJOB	     15182 /* Array job used to create a reservation */
+#define PBSE_SELECT_NOT_SUBSET	     15183 /* ralter select spec is not a smaller subset of the original */
 /*
  ** 	Resource monitor specific
  */

@@ -695,6 +695,8 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			advresv->resv->count = atoi(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_partition)) {
 			advresv->resv->partition = strdup(attrp->value);
+		} else if (!strcmp(attrp->name, ATTR_SchedSelect_orig)) {
+			advresv->resv->select_orig = parse_selspec(attrp->value);
 		}
 		attrp = attrp->next;
 	}
@@ -729,7 +731,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	if (advresv->resv->resv_state == RESV_UNCONFIRMED &&
 		get_num_occurrences(advresv->resv->rrule,
 		advresv->resv->req_start,
-		advresv->resv->timezone) ==0)
+		advresv->resv->timezone) == 0)
 		advresv->is_invalid = 1;
 
 	/* When a reservation is recognized as DEGRADED, it is converted into
@@ -1356,8 +1358,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					break;
 				}
 				nresv = nresv_copy;
-			}
-			else {
+			} else {
 				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL, err);
 
 				if (nresv_copy == NULL) {

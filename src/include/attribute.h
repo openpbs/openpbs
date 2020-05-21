@@ -253,6 +253,9 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 #define ATR_VFLAG_HOOK		0x40	/* value set by a hook script   */
 #define ATR_VFLAG_IN_EXECVNODE_FLAG	0x80	/* resource key value pair was found in execvnode */
 
+/* These 3 flags are commonly set together, this is a helpful macro */
+#define ATR_SET_MOD_MCACHE ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE
+
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/
 
