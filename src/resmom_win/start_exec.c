@@ -4644,13 +4644,6 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			}
 			close(fds[1]);
 
-			/* construct argv array */
-			sprintf(buf, "%s/sbin/pbs_dcelogin", pbs_conf.pbs_exec_path);
-			prog = buf;
-			name = (shell == NULL) ? prog : lastname(prog);
-			argv[i++] = name;
-			argv[i++] = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-
 			break;
 
 		default:
