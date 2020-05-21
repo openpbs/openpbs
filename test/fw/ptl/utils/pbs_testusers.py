@@ -40,6 +40,7 @@
 
 import grp
 import pwd
+import copy
 
 
 class PbsGroup(object):
@@ -226,6 +227,12 @@ ADMIN_USER = PbsUser('pbsadmin', uid=4357, groups=[TSTGRP0, TSTGRP2, GRP_PBS,
 PBSROOT_USER = PbsUser('pbsroot', uid=4371, groups=[TSTGRP0, TSTGRP2])
 ROOT_USER = PbsUser('root', uid=0, groups=[ROOT_GRP])
 
+# This is so pbs_config --make-ug will create a daemon user
+# However, the default is to use root as the daemon user
+DAEMON_USER = PbsUser('pbsdaemon', uid=4373, groups=[GRP_PBS])
+# This will let users edit the daemon user without changing ROOT_USER
+DAEMON_SERVICE_USER = copy.deepcopy(ROOT_USER)
+
 PBS_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
              TEST_USER5, TEST_USER6, TEST_USER7, OTHER_USER, PBSTEST_USER,
              TST_USR, TST_USR1)
@@ -243,7 +250,10 @@ PBS_ROOT_USERS = (PBSROOT_USER, ROOT_USER)
 
 PBS_BUILD_USERS = (BUILD_USER,)
 
+PBS_DAEMON_SERVICE_USERS = (DAEMON_SERVICE_USER,)
+
 REQUIRED_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3)
 
 PBS_ALL_USERS = (PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS +
-                 PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS)
+                 PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS +
+                 PBS_DAEMON_SERVICE_USERS)

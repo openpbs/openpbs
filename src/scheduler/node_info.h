@@ -537,20 +537,6 @@ int
 set_res_on_host(char *res_name, char *res_value,
 	char *host, node_info *exclude, node_info **ninfo_arr);
 
-/*
- *	update_mom_resources - update resources set via mom_reources so all
- *			       vnodes on a host indirectly point to the
- *			       natural vnode
- *
- *	ASSUMPTION: only the 'natural' vnodes talk with mom
- *		    'natural' vnodes are vnodes whose host resource is the
- *		    same as its vnode name
- *
- *	  ninfo_arr - node array to update
- *
- *	returns 1 on success 0 on error
- */
-int update_mom_resources(node_info **ninfo_arr);
 
 /*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list

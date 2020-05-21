@@ -2762,8 +2762,8 @@ parse_sched_obj(struct batch_status *status)
 		if (validate_priv_dir) {
 			int c = -1;
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				c  = chk_file_sec(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1);
-				c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
+				c  = chk_file_sec_user(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1, getuid());
+				c |= chk_file_sec_user(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0, getuid());
 				if (c != 0) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);

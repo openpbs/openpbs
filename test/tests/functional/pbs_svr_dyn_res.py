@@ -596,7 +596,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.add_resource('foo')
 
         scr_body = ['echo "10"', 'exit 0']
-        home_dir = os.path.expanduser("~")
+        home_dir = os.path.join('/', 'tmp')
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=home_dir,
                                                validate=False)
@@ -615,17 +615,17 @@ class TestServerDynRes(TestFunctional):
 
         # give write permission to user only
         self.du.chmod(path=fp, mode=0o744, sudo=True)
-        if os.getuid() != 0:
-            self.check_access_log(fp, exist=True)
-        else:
-            self.check_access_log(fp, exist=False)
+        self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
-        dir_temp = self.du.create_temp_dir(mode=0o766, dirname=home_dir,
-                                           suffix=' tmp')
+        dir_temp = self.du.create_temp_dir(mode=0o766,
+                                           dirname=home_dir,
+                                           suffix=' tmp',
+                                           sudo=True)
+        self.du.chown(path=dir_temp, sudo=True, uid=self.scheduler.user)
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=dir_temp,
                                                validate=False)
@@ -651,7 +651,7 @@ class TestServerDynRes(TestFunctional):
 
         # Create dynamic resource script in PBS_HOME directory and check
         # file permissions
-        # self.scheduler.add_mom_dyn_res by default creates the script in
+        # self.scheduler.add_server_dyn_res by default creates the script in
         # PBS_HOME as root
         fp = self.scheduler.add_server_dyn_res("foo", scr_body, perm=0o766,
                                                validate=False)

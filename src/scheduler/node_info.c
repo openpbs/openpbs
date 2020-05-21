@@ -54,7 +54,6 @@
  * 	set_node_info_state()
  * 	remove_node_state()
  * 	add_node_state()
- * 	talk_with_mom()
  * 	node_filter()
  * 	find_node_info()
  * 	find_node_by_host()
@@ -65,7 +64,6 @@
  * 	collect_jobs_on_nodes()
  * 	update_node_on_run()
  * 	update_node_on_end()
- * 	should_talk_with_mom()
  * 	check_rescspec()
  * 	search_for_rescspec()
  * 	new_nspec()
@@ -96,7 +94,6 @@
  * 	is_excl()
  * 	alloc_rest_nodepart()
  * 	set_res_on_host()
- * 	update_mom_resources()
  * 	can_fit_on_vnode()
  * 	is_aoe_avail_on_vnode()
  * 	is_provisionable()
@@ -131,7 +128,6 @@
 #include <time.h>
 #include <pbs_ifl.h>
 #include <log.h>
-#include <rm.h>
 #include <grunt.h>
 #include <libutil.h>
 #include <pbs_internal.h>
@@ -162,8 +158,6 @@
 
 /* name of the last node a job ran on - used in smp_dist = round robin */
 static char last_node_name[PBS_MAXSVRJOBID];
-
-int first_talk_with_mom = 1;
 
 void
 query_node_info_chunk(th_data_query_ninfo *data)
@@ -205,23 +199,6 @@ query_node_info_chunk(th_data_query_ninfo *data)
 		}
 
 		if (node_in_partition(ninfo, sc_attrs.partition)) {
-			if (first_talk_with_mom) {	/* need to acquire a lock for talk_with_mom the first time */
-				pthread_mutex_lock(&general_lock);
-				if (!first_talk_with_mom)
-					pthread_mutex_unlock(&general_lock);
-			}
-			/* get node info from mom */
-			if (talk_with_mom(ninfo)) {
-				/* failed to get information from node, mark it not free for this cycle */
-				ninfo->is_free = 0;
-				ninfo->is_offline = 1;
-				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
-						"Failed to talk with mom, marking node offline");
-			}
-			if (first_talk_with_mom) {
-				first_talk_with_mom = 0;
-				pthread_mutex_unlock(&general_lock);
-			}
 			ninfo_arr[nidx++] = ninfo;
 		} else
 			free_node_info(ninfo);
@@ -230,6 +207,8 @@ query_node_info_chunk(th_data_query_ninfo *data)
 
 	data->oarr = ninfo_arr;
 }
+
+
 
 /**
  * @brief	Allocates th_data_query_ninfo for multi-threading of query_nodes
@@ -440,12 +419,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			"No nodes found in partitions serviced by scheduler");
 		pbs_statfree(nodes);
 		free(ninfo_arr);
-		return NULL;
-	}
-
-	if (update_mom_resources(ninfo_arr) == 0) {
-		pbs_statfree(nodes);
-		free_nodes(ninfo_arr);
 		return NULL;
 	}
 
@@ -1172,135 +1145,6 @@ add_node_state(node_info *ninfo, char *state)
 		ninfo->is_free = 0;
 
 	return 0;
-}
-
-/**
- * @brief
- *      talk_with_mom - talk to mom and get resources
- *
- * @param[in,out]	ninfo	-	the node to to talk to its mom
- *
- * @return	int
- * @return	1	: on error
- * @return	0	: on success
- *
- */
-int
-talk_with_mom(node_info *ninfo)
-{
-	int mom_sd;			/* connection descriptor to mom */
-	int ret = 0;			/* return code of this function */
-	char *mom_ans = NULL;		/* the answer from mom - getreq() */
-	char *endp;			/* used with strtol() */
-	double testd;			/* used to convert string->double */
-	schd_resource *res;                /* used for dynamic resources from mom */
-	int ncpus = 1;		/* used as a default for loads */
-	int i;
-
-	if (!should_talk_with_mom(ninfo))
-		return 0;
-
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
-		"Initiating communication with mom");
-	if ((mom_sd = openrm(ninfo->mom, ninfo->port)) < 0) {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
-			"Cannot open connection to mom");
-		return 1;
-	}
-
-	for (i = 0; i < num_resget; i++)
-		addreq(mom_sd, (char *) res_to_get[i]);
-
-	if (conf.dyn_res_to_get) {
-		for (i = 0; conf.dyn_res_to_get[i]; i++)
-			addreq(mom_sd, (char *) conf.dyn_res_to_get[i]);
-	}
-
-	if ((res = find_resource(ninfo->res, getallres(RES_NCPUS))))
-		ncpus = res->avail;
-
-	for (i = 0; i < num_resget && (mom_ans = getreq(mom_sd)); i++) {
-		if (!strcmp(res_to_get[i], "max_load")) {
-			testd = strtod(mom_ans, &endp);
-			if (*endp == '\0')
-				ninfo->max_load = testd;
-			else
-				ninfo->max_load = ncpus;
-		}
-		else if (!strcmp(res_to_get[i], "ideal_load")) {
-			testd = strtod(mom_ans, &endp);
-			if (*endp == '\0')
-				ninfo->ideal_load = testd;
-			else
-				ninfo->ideal_load = ncpus;
-		}
-		else if (!strcmp(res_to_get[i], "loadave")) {
-			testd = strtod(mom_ans, &endp);
-			if (*endp == '\0')
-				ninfo->loadave = testd;
-			else
-				ninfo->loadave = -1.0;
-		}
-		else
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
-				ninfo->name, "Unknown resource value[%d]: %s", i, mom_ans);
-
-		free(mom_ans);
-		mom_ans = NULL;
-	}
-
-	/* getreq() returned NULL and we bailed out of the loop */
-	if (i < num_resget) {
-		ret = 1;
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
-			"Communications problem talking with mom.");
-	}
-
-	if (mom_ans)
-		free(mom_ans);
-	mom_ans = NULL;
-
-	if (ret == 0 && conf.dyn_res_to_get) {
-		for (i = 0; conf.dyn_res_to_get[i] && (mom_ans = getreq(mom_sd));  i++) {
-			res = find_alloc_resource_by_str(ninfo->res, conf.dyn_res_to_get[i]);
-			if (res != NULL) {
-				char resstr[MAX_LOG_SIZE];
-
-				if (mom_ans[0] != '?') {
-					if (set_resource(res, mom_ans, RF_AVAIL) == 0) {
-						ret = 1;
-						break;
-					}
-				}
-				else if (res->avail == SCHD_INFINITY_RES)
-					res->avail = 0;
-
-				res_to_str_r(res, RF_AVAIL, resstr, sizeof(resstr));
-				if (resstr[0] == '\0') {
-					ret = 1;
-					break;
-				}
-				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-						"mom_resources", "%s = %s (\"%s\")",
-						res->name, res_to_str(res, RF_AVAIL), mom_ans);
-			}
-			free(mom_ans);
-			mom_ans = NULL;
-		}
-		if (conf.dyn_res_to_get[i]) {
-			ret = 1;
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_INFO, ninfo->name,
-				"Communications problem talking with mom.");
-		}
-	}
-	if (mom_ans)
-		free(mom_ans);
-	mom_ans = NULL;
-
-	closerm(mom_sd);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
-		"Ended communication with mom");
-	return (ret);
 }
 
 /**
@@ -5415,49 +5259,6 @@ set_res_on_host(char *res_name, char *res_value,
 	return rc;
 }
 
-/**
- * @brief
- *		update_mom_resources - update resources set via mom_resources so all
- *		vnodes on a host indirectly point to the
- *		natural vnode
- *
- * @note
- *		ASSUMPTION: only the 'natural' vnodes talk with mom
- *		'natural' vnodes are vnodes whose host resource is the
- *		same as its vnode name
- *
- * @param[in]	ninfo_arr	-	node array to update
- *
- * @return	int
- * @retval	1	: on success
- * @retval	0	: on error
- *
- */
-int
-update_mom_resources(node_info **ninfo_arr)
-{
-	char buf[PBS_MAXHOSTNAME + 2];	/* used to store '@<host>' */
-	int i, j;
-	int rc = 1;
-
-	if (ninfo_arr == NULL)
-		return 0;
-
-	/* if there are no mom_resources, we have nothing to do */
-	if (conf.dyn_res_to_get == NULL)
-		return 1;
-
-	for (i = 0; ninfo_arr[i] != NULL && rc; i++) {
-		if (should_talk_with_mom(ninfo_arr[i])) {
-			sprintf(buf, "@%s", ninfo_arr[i]->name);
-			for (j = 0; conf.dyn_res_to_get[j] && rc; j++) {
-				rc = set_res_on_host(conf.dyn_res_to_get[j], buf,
-					ninfo_arr[i]->name, ninfo_arr[i], ninfo_arr);
-			}
-		}
-	}
-	return rc;
-}
 
 /**
  * @brief

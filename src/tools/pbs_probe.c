@@ -273,22 +273,25 @@ static char mhp[][20] = {
 
 /* ---- default values for uid/gid, user names, group names ----*/
 
-static	int	pbsdata[] = {-1, -1};		  /* PBS datastore */
-static	int	pbsu[] = {0, -1};		  /* PBS UID, default */
-static	int	du[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1}; /* non-PBS UIDs, default */
+static int pbsdata[] = {-1, -1};		  /* PBS datastore */
+static int pbsservice[] = {0, -1}; /* PBS daemon service user */
+static int pbsu[] = {0, -1};		  /* PBS UID, default */
+static int du[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1}; /* non-PBS UIDs, default */
 
-static	char	*pbs_dataname[] =  {"pbsdata", NULL}; /* PBS data name, default */
-static	char	*pbs_unames[] =  {"root", NULL}; /* PBS user name, default */
-static	char	*pbs_gnames[] =  {NULL}; /* PBS group name, default*/
+static char *pbs_dataname[] = {"pbsdata", NULL}; /* PBS data name, default */
+static char *pbs_servicename[] = {"root", NULL}; /* PBS daemon service name, default */
+static char *pbs_unames[] = {"root", NULL}; /* PBS user name, default */
+static char *pbs_gnames[] = {NULL}; /* PBS group name, default*/
 
 static	int	dg[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1}; /* non-PBS GIDs, default */
 
 
 /* ---------- default VLD_UG structures, PBS and non-PBS -----------*/
 
-static	VLD_UG	dflt_pbs_data = { pbsdata, dg, &pbs_dataname[0], &pbs_gnames[0] };
-static	VLD_UG	dflt_pbs_ug = { pbsu, dg, &pbs_unames[0], &pbs_gnames[0] };
-static	VLD_UG	dflt_ext_ug = { du, dg, &pbs_unames[0], &pbs_gnames[0] };
+static VLD_UG dflt_pbs_data = { pbsdata, dg, &pbs_dataname[0], &pbs_gnames[0] };
+static VLD_UG dflt_pbs_service = { pbsservice, dg, &pbs_servicename[0], &pbs_gnames[0] };
+static VLD_UG dflt_pbs_ug = { pbsu, dg, &pbs_unames[0], &pbs_gnames[0] };
+static VLD_UG dflt_ext_ug = { du, dg, &pbs_unames[0], &pbs_gnames[0] };
 
 /* ============  PBS path names ============ */
 
@@ -767,7 +770,7 @@ static MPUG	sbin_mpugs[] = {
 	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* slot available for use */
 	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 6], NULL }, /* slot available for use */
 	{1, 2, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 7], NULL }, /* pbs_rcp */
-	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_sched */
+	{1, 6, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_sched */
 	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 9], NULL }, /* pbs_server */
 	{1, 6, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[10], NULL }, /* pbsfs */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[11], NULL }, /* pbs_probe */
@@ -1069,14 +1072,14 @@ static MPUG	sched_mpugs[] = {
 	 * dir, chkfull, required and disallowed modes, pointer
 	 * to "valid users, valid groups", path, realpath
 	 */
-	{2, 0, 0, drwxrxrx,    tgwow, &dflt_pbs_ug, schedhome[0], NULL}, /* sched_logs */
-	{2, 0, 0, drwxrxo,   tgworwx, &dflt_pbs_ug, schedhome[1], NULL}, /* sched_priv */
-	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[2], NULL}, /* dedicated_time */
-	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[3], NULL}, /* holidays */
-	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[4], NULL}, /* sched_config */
-	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[5], NULL}, /* resource_group */
-	{0, 1, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[6], NULL}, /* sched.lock */
-	{2, 1, 0, frwrr,   xsgswxowx, &dflt_pbs_ug, schedhome[7], NULL} }; /* sched_out */
+	{2, 0, 0, drwxrxrx,    tgwow, &dflt_pbs_service, schedhome[0], NULL}, /* sched_logs */
+	{2, 0, 0, drwxrxo,   tgworwx, &dflt_pbs_service, schedhome[1], NULL}, /* sched_priv */
+	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[2], NULL}, /* dedicated_time */
+	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[3], NULL}, /* holidays */
+	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[4], NULL}, /* sched_config */
+	{2, 0, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[5], NULL}, /* resource_group */
+	{0, 1, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[6], NULL}, /* sched.lock */
+	{2, 1, 0, frwrr,   xsgswxowx, &dflt_pbs_service, schedhome[7], NULL} }; /* sched_out */
 
 
 
@@ -3217,6 +3220,20 @@ conf4primary(FILE *fp, struct infrastruct *pinf)
 				pinf->pri.pbs_mpug[PBS_exec].path = strdup(conf_value);
 				pinf->pri.src_path.exec = SRC_CONF;
 			}
+			else if (!strcmp(conf_name, "PBS_DAEMON_SERVICE_USER")) {
+				struct passwd *pw;
+				pw = getpwnam(conf_value);
+				if (pw != NULL) {
+					pbs_servicename[0] = strdup(conf_value);
+					pbsservice[0] = pw->pw_uid;
+				}
+				else {
+					char * msgbuf;
+					pbs_asprintf(&msgbuf, "Service user %s does not exist\n", conf_value);
+					put_msg_in_table(NULL, SRC_CONF, MSG_real, msgbuf);
+					free(msgbuf);
+				}
+			}
 
 		} else {
 			/* ignore comment lines (# in column 1) */
@@ -3277,6 +3294,22 @@ env4primary(struct infrastruct *pinf)
 	if ((gvalue = getenv("PBS_CONF_DATA_SERVICE_HOST")) != NULL) {
 		nonlocaldata = 1;
 	}
+	if ((gvalue = getenv("PBS_DAEMON_SERVICE_USER")) != NULL) {
+		struct passwd *pw;
+		pw = getpwnam(gvalue);
+		if (pw != NULL) {
+			pbs_servicename[0] = strdup(gvalue);
+			pbsservice[0] = pw->pw_uid;
+		}
+		else {
+			char * msgbuf;
+			pbs_asprintf(&msgbuf, "Service user %s does not exist\n", gvalue);
+			put_msg_in_table(NULL, SRC_CONF, MSG_real, msgbuf);
+			free(msgbuf);
+		}
+	}
+
+
 	return (0);
 }
 

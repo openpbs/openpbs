@@ -933,7 +933,7 @@ class TestMultipleSchedulers(TestFunctional):
         sched_name = 'foo'
         pbsfs_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                  'sbin', 'pbsfs') + ' -I ' + sched_name
-        ret = self.du.run_cmd(cmd=pbsfs_cmd, sudo=True)
+        ret = self.du.run_cmd(cmd=pbsfs_cmd, runas=self.scheduler.user)
         err_msg = 'Scheduler %s does not exist' % sched_name
         self.assertEqual(err_msg, ret['err'][0])
 
@@ -1333,7 +1333,7 @@ class TestMultipleSchedulers(TestFunctional):
                             'do_not_span_psets': 't'}, id='sc2')
         self.server.manager(MGR_CMD_SET, SCHED, {
                             'scheduling': 't'}, id='sc2')
-        a = {'Resource_List.select': '4:ncpus=2',  ATTR_queue: 'wq2'}
+        a = {'Resource_List.select': '4:ncpus=2', ATTR_queue: 'wq2'}
         j = Job(TEST_USER, attrs=a)
         j1id = self.server.submit(j)
         self.server.expect(
@@ -1597,6 +1597,8 @@ class TestMultipleSchedulers(TestFunctional):
                        sudo=True, force=True)
 
         self.du.mkdir(path=new_sched_log, sudo=True)
+        self.du.chown(path=new_sched_log, recursive=True,
+                      uid=self.scheds['sc3'].user, sudo=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_log': new_sched_log}, id="sc3")
 

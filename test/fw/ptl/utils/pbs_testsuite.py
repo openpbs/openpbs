@@ -626,7 +626,8 @@ class PBSTestSuite(unittest.TestCase):
                      ('mgr-users', PBS_MGR_USERS),
                      ('data-users', PBS_DATA_USERS),
                      ('root-users', PBS_ROOT_USERS),
-                     ('build-users', PBS_BUILD_USERS)]
+                     ('build-users', PBS_BUILD_USERS),
+                     ('daemon-users', PBS_DAEMON_SERVICE_USERS)]
         for k, v in users_map:
             cls._set_user(k, v)
 
@@ -785,6 +786,7 @@ class PBSTestSuite(unittest.TestCase):
                                         func=init_sched_func)
 
         for sched in cls.scheds.values():
+            # sched.pi.restart_sched(sched.hostname)
             if sched.server.name in cls.schedulers:
                 continue
             else:
@@ -805,6 +807,12 @@ class PBSTestSuite(unittest.TestCase):
                                       func=init_mom_func)
         if cls.moms:
             cls.mom = cls.moms.values()[0]
+
+        for mom in cls.moms.values():
+            if not mom.isUp():
+                cls.logger.error('mom ' + mom.hostname + ' is down')
+                mom.pi.start_mom(mom.hostname)
+
         cls.server.moms = cls.moms
 
     @classmethod
@@ -970,6 +978,12 @@ class PBSTestSuite(unittest.TestCase):
                 return socket.gethostname()
             else:
                 return None
+        elif conf == "PBS_DAEMON_SERVICE_USER":
+            # Only set if scheduler user is not default
+            if DAEMON_SERVICE_USER.name == 'root':
+                return None
+            else:
+                return DAEMON_SERVICE_USER.name
 
         return None
 
@@ -1007,9 +1021,9 @@ class PBSTestSuite(unittest.TestCase):
                                                     primary_server.hostname,
                                                     "comm", comm)
                     if val is None:
-                        self.logger.error("Couldn't revert %s in pbs.conf"
-                                          " to its default value" %
-                                          (conf))
+                        self.logger.info("Couldn't revert %s in pbs.conf"
+                                         " to its default value" %
+                                         (conf))
                         keys_to_delete.append(conf)
                     else:
                         new_pbsconf[conf] = val
@@ -1228,7 +1242,15 @@ class PBSTestSuite(unittest.TestCase):
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
                 restart_pbs = True
-
+            if DAEMON_SERVICE_USER.name == 'root':
+                if "PBS_DAEMON_SERVICE_USER" in new_pbsconf:
+                    del(new_pbsconf['PBS_DAEMON_SERVICE_USER'])
+                    restart_pbs = True
+            elif (new_pbsconf["PBS_DAEMON_SERVICE_USER"] !=
+                  DAEMON_SERVICE_USER.name):
+                new_pbsconf["PBS_DAEMON_SERVICE_USER"] = \
+                    DAEMON_SERVICE_USER.name
+                restart_pbs = True
             # if shasta, set PBS_PUBLIC_HOST_NAME
             if server.platform == 'shasta':
                 localhost = socket.gethostname()
@@ -1319,6 +1341,7 @@ class PBSTestSuite(unittest.TestCase):
 
         server_vals_to_set = copy.deepcopy(vals_to_set)
 
+        server_vals_to_set["PBS_DAEMON_SERVICE_USER"] = None
         if primary_server.platform == 'shasta':
             server_vals_to_set["PBS_PUBLIC_HOST_NAME"] = None
 

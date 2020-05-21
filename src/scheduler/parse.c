@@ -619,7 +619,7 @@ parse_config(char *fname)
 									error = 1;
 								else {
 									int err;
-									err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 									if (err != 0) {
 										snprintf(errbuf, sizeof(errbuf),
 											"error: %s file has a non-secure file access, errno: %d", filename, err);

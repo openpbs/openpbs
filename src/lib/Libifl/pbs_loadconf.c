@@ -125,7 +125,8 @@ struct pbs_config pbs_conf = {
 	NULL,					/* mom short name override */
 	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
-	0					/* number of scheduler threads */
+	0,					/* number of scheduler threads */
+	NULL				/* default scheduler user */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
@@ -607,6 +608,10 @@ __pbs_loadconf(int reload)
 				}
 				free(value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
+				free(pbs_conf.pbs_daemon_service_user);
+				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
+			}
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
 		fclose(fp);
@@ -821,6 +826,11 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_SCHED_THREADS)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_sched_threads = uvalue;
+	}
+
+	if ((gvalue = getenv(PBS_CONF_DAEMON_SERVICE_USER)) != NULL) {
+		free(pbs_conf.pbs_daemon_service_user);
+		pbs_conf.pbs_daemon_service_user = strdup(gvalue);
 	}
 
 #ifdef WIN32

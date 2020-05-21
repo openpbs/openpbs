@@ -277,6 +277,10 @@ load_auths(int mode)
 	if (loaded_auths != NULL)
 		return 0;
 
+	if (pbs_conf.auth_method[0] == '\0' && pbs_conf.encrypt_method[0] == '\0') {
+		return 0;
+	}
+
 	if (strcmp(pbs_conf.auth_method, AUTH_RESVPORT_NAME) != 0) {
 		auth_def_t *auth = _load_auth(pbs_conf.auth_method);
 		if (auth == NULL) {
