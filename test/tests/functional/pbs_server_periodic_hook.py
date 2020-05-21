@@ -110,7 +110,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                 time_logged = self.get_timestamp(msg[1])
                 if alarm != 0:
                         self.assertLessEqual(time_logged - time_expected,
-                                        alarm - hook_run_time)
+                                             alarm - hook_run_time)
                 else:
                         self.assertLessEqual(time_logged - time_expected, 1)
 
