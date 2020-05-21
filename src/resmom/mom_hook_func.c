@@ -572,7 +572,8 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		log_err(errno, __func__, log_buffer);
+		log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
+			pjob->ji_user->pw_name, dest_file, log_buffer);
 		(void)unlink(dest_file);
 		return -1;
 	}
@@ -1058,7 +1059,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
+				pjob->ji_user->pw_name, script_file, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -1100,7 +1102,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
+				pjob->ji_user->pw_name, hook_inputfile, log_buffer);
 			goto run_hook_exit;
 
 		}
@@ -1122,7 +1125,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
+				pjob->ji_user->pw_name, log_file, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -1177,7 +1181,9 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 #ifdef	WIN32
 		if(secure_file(hook_inputfile, "Administrators",
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-			log_err(-1, __func__, "Failed to change hook input file permissions");
+			snprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", hook_inputfile);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 #endif
 		/* Still need to chdir() here. A periodic hook may be */
 		/* running the hook periodically and may no longer in the */
@@ -1515,7 +1521,10 @@ run_hook_exit:
 			int ret = 0;
 			ret = hook_env_setup(pjob, phook);
 			if ( ret != 0 ) {
-				log_err(-1, __func__, "Unable to set the environment for the job");
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+					pjob->ji_qs.ji_jobid);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, log_buffer);
 				goto run_hook_exit;
 			}
 		}
@@ -2894,7 +2903,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	struct hook_job_action *phja;
 
 	if (pjob == NULL) {
-		log_err(PBSE_SYSTEM, __func__, "Job received is NULL");
+		log_err(PBSE_INTERNAL, __func__, "Job received is NULL");
 		return;
 	}
 	phja = malloc(sizeof(struct hook_job_action));
@@ -3157,14 +3166,14 @@ record_job_last_hook_executed(unsigned int hook_event,
 	char *p_dir = NULL;
 
 	if (pjob == NULL) {
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, __func__, "Job not received");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Job not received");
 		return;
 	} 
 
 	if (hook_name == NULL) {
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, __func__, "Hook not received");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook not received");
 		return;
 	}
 	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
@@ -3180,8 +3189,8 @@ record_job_last_hook_executed(unsigned int hook_event,
 			p_dir = filepath;
 		}
 	} else {
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, __func__, "Hook not received");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook not received");
 	}
 
 	snprintf(hook_job_outfile, MAXPATHLEN,
