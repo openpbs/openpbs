@@ -326,7 +326,7 @@ main(int argc, char *argv[])
 
 	if ((stage_inout.bad_files) || (stage_inout.sandbox_private && stage_inout.stageout_failed)) {
 		if (stage_inout.bad_files) {
-			sprintf(log_buffer, "%s;stage %s failed for the file %s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", stage_inout.bad_list);
+			sprintf(log_buffer, "%s;stage%s failed for the file %s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", stage_inout.bad_list);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 		}
 		unmap_unc_path(actual_homedir);

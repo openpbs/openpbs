@@ -881,7 +881,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 		FILE *fp = NULL;
 		DBPRT(("%s: sys_copy failed, error = %d\n", __func__, ret))
 		snprintf(log_buffer, sizeof(log_buffer), "sys_copy failed with status=%d", ret);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 		stage_inout->bad_files = 1;
 		snprintf(log_buffer, sizeof(log_buffer), "Unable to copy file %s %s %s",
 			(dir == STAGE_DIR_IN) ? dest : src,
@@ -916,7 +916,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			fclose(fp);
 			add_bad_list(&(stage_inout->bad_list), ">>> end error output", 1);
 		} else {
-			log_errf(-1, __func__, "Failed to open %s file", rcperr);
+			log_errf(errno, __func__, "Failed to open %s file", rcperr);
 		}
 
 		if (dir == STAGE_DIR_IN)
@@ -1787,7 +1787,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			char ag0_cpy[MAXPATHLEN + 1] = { '\0' };
 			strncpy(ag0_cpy, ag0, sizeof(ag0_cpy));
 			if (stat_uncpath(ag0_cpy, &local_sb) == -1) {
-				log_errf(-1, __func__, "%s", ag0_cpy);
+				log_errf(errno, __func__, "%s", ag0_cpy);
 				/* let's try to copy using pbs_rcp now */
 				continue;
 			}
@@ -1840,7 +1840,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 		/* redirect stderr to make error from rcp available to MOM */
 		if ((fd = open(rcperr, O_RDWR | O_CREAT, 0644)) < 0) {
-			log_errf(-1, __func__,  "can't open %s", rcperr);
+			log_errf(errno, __func__,  "can't open %s", rcperr);
 			rc = 12;
 		} else {
 			errno = 0;
@@ -1917,7 +1917,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 							ag0, ag1, ag2_path, ag3_path);
 					}
 				} else {
-					log_errf(-1, __func__,  "%s", ag2);
+					log_errf(errno, __func__,  "%s", ag2);
 					rc = errno;
 					goto sys_copy_end;
 				}
@@ -1935,9 +1935,9 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				if (ag2[1] == ':') {	/* has drive info */
 
 					sprintf(wdir, "%c:\\", toupper(ag2[0]));
-					_getdcwd(toupper(ag2[0]) - 'A' + 1, wdir,
-						sizeof(wdir));
-
+					if(_getdcwd(toupper(ag2[0]) - 'A' + 1, wdir, sizeof(wdir)) == NULL) {
+						log_errf(errno, __func__, "Failed to get the full path of the current working directory on the specified drive %s", wdir);
+					}
 					strcpy(ag2_path, replace_space(ag2+2, ""));
 					forward2back_slash(ag2_path);
 				} else if (strchr(ag2, ':')) {
@@ -2022,11 +2022,15 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			if (errno != 0) {
 				rc = errno + 10000;	/* error on fork (100xx), retry */
 			} else {
-				if (WaitForSingleObject(pi.hProcess,
-					INFINITE) != WAIT_OBJECT_0) {
-					log_errf(-1, __func__, "WaitForSingleObject failed with status=%d", rc);
+				int ret = 0;
+				ret = WaitForSingleObject(pi.hProcess, INFINITE);
+				if (ret != WAIT_OBJECT_0) {
+					if (ret != WAIT_FAILED)
+						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, "WaitForSingleObject failed with status=%d", ret);
+					else
+						log_errf(-1, __func__, "WaitForSingleObject failed with status=%d", ret);
 				}
-				else if (!GetExitCodeProcess(pi.hProcess, &rc)) {
+				if (!GetExitCodeProcess(pi.hProcess, &rc)) {
 					log_errf(-1, __func__, "GetExitCodeProcess failed with status=%d", rc);
 				}
 
