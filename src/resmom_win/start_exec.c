@@ -3659,7 +3659,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	if ((i = strlen(schedselect)) >= sbuf_len) {
 		tpc = (char *)realloc(sbuf, i+100);
 		if (tpc == NULL) {
-			log_err(errno, __func__, "realloc failed for sbuf")
+			log_err(errno, __func__, "realloc failed for sbuf");
 			return (PBSE_SYSTEM);
 		}
 		sbuf = tpc;
