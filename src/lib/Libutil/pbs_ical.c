@@ -648,7 +648,7 @@ calculate_window_times(char *rrule, long *start, long *end, long *duration, char
 #ifdef LIBICAL
 	int i;
 	icaltimezone *clientzone;
-	struct icalrecurrencetype rt;
+	struct icalrecurrencetype rt = {0};
 	struct icaltimetype ical_start;
 	struct icaltimetype ical_now;
 	time_t client_now_t;
@@ -692,13 +692,12 @@ calculate_window_times(char *rrule, long *start, long *end, long *duration, char
 		 * the first item in the array of by_* rule
 		 * determines whether the item exists or not.
 		 */
-		for (i = 0; rt.by_day[i] < 8; i++) {
-			if (rt.by_day[i] <= 0) {
-				*err_code = PBSE_BAD_RRULE_SYNTAX;
-				return 1;
-			} else
-				window_days[rt.by_day[i]] = '1';
+		if (rt.by_day[0] > 8) {
+			*err_code = PBSE_BAD_RRULE_SYNTAX;
+			return 1;
 		}
+		for (i = 0; rt.by_day[i] < 8; i++)
+			window_days[rt.by_day[i]] = '1';
 	} else
 		for (i = 1; i < 8; i++)
 			window_days[i] = '1';
