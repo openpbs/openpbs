@@ -918,19 +918,20 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 int
 check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server_info *sinfo)
 {
-	int		count = 0;	/* new reservation count */
-	int		pbsrc = 0;	/* return code from pbs_confirmresv() */
+	int count = 0;	/* new reservation count */
+	int pbsrc = 0;	/* return code from pbs_confirmresv() */
 
-	server_info	*nsinfo = NULL;
-	resource_resv	*nresv = NULL;
-	resource_resv	*nresv_copy = NULL;
-	resource_resv	**tmp_resresv = NULL;
+	server_info *nsinfo = NULL;
+	resource_resv *nresv = NULL;
+	resource_resv *nresv_copy = NULL;
+	resource_resv **tmp_resresv = NULL;
 
-	char		**occr_execvnodes_arr = NULL;
-	char		**tofree = NULL;
-	int		occr_count =1;
-	int		i;
-	int		j;
+	char **occr_execvnodes_arr = NULL;
+	char **tofree = NULL;
+	int occr_count =1;
+	int have_alter_request = 0;
+	int i;
+	int j;
 	schd_error *err;
 
 	if (sinfo == NULL)
@@ -1177,6 +1178,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			/* Clean up simulated server info */
 			free_server(nsinfo);
 		}
+		if (sinfo->resvs[i]->resv->resv_state == RESV_BEING_ALTERED)
+			have_alter_request = 1;
+
 		/* Something went wrong with reservation confirmation, retry later */
 		if (pbsrc == RESV_CONFIRM_RETRY) {
 			free_schd_error(err);
@@ -1184,6 +1188,13 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 		}
 	}
 	free_schd_error(err);
+	/* If a reservation is being altered, its attributes are the new altered attributes.
+	 * If the alter fails, we can't continue with a cycle because the reservation 
+	 * reverted back to its pre-altered state, but the copy we have is as if the alter succeeded.
+	 * If no reservations have been confirmed, we will run a normal cycle.
+	*/
+	if (have_alter_request && count == 0)
+		return -1;
 	return count;
 }
 
