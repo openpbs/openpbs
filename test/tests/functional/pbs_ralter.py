@@ -1684,7 +1684,8 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_duration, new_duration)
 
         time.sleep(5)
-        attr = {'reserve_duration': 5}
+        new_duration = int(time.time()) - int(t_start) - 1
+        attr = {'reserve_duration': new_duration}
         self.server.alterresv(rid, attr)
         self.server.log_match(rid + ";Reservation alter denied",
                               id=rid, interval=2)
