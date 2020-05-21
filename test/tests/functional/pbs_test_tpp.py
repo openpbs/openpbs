@@ -382,6 +382,8 @@ class TestTPP(TestFunctional):
         """
         This function has common configuration which is used in some tests
         """
+        mom_list = copy.copy(self.moms.values())
+        comm_list = copy.copy(self.comms.values())
         i = 0 
         for mom in self.moms.values():
             if mom.shortname == self.server.shortname:
@@ -513,7 +515,21 @@ class TestTPP(TestFunctional):
         self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostA)
         for msg in exp_msg:
             self.momB.log_match(msg)
+        # set a invalid port value for PBS_LEAF_ROUTERS
+        invalid_val = self.hostA + ":1700"
+        leaf_val = self.hostC + "," + invalid_val
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostB, conf_param=b)
+        self.comm2.stop('-KILL')
+        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostB)
        
+        # set same value for secondary comm as primary in PBS_LEAF_ROUTERS
+        leaf_val = self.hostC + "," + self.hostC
+        b = {'PBS_LEAF_ROUTERS': leaf_val}
+        self.set_pbs_conf(host_name=self.hostB, conf_param=b)
+        self.comm2.stop('-KILL')
+        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostB)
+
     @requirements(num_moms=2, num_comms=2)
     def test_comm_failover_with_ipaddress(self):
         """
