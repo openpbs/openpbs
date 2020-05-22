@@ -8785,15 +8785,14 @@ main(int argc, char *argv[])
 			LOG_WARNING, msg_daemonname, winlog_buffer);
 	}
 #endif
+
 	/*
-	 * Set mom_host to PBS_MOM_NODE_NAME if it is defined.
-	 * Otherwise, set mom_host with a call to gethostname().
+	 * Query the hostname.
+	 * Set mom_host temporarily with a call to gethostname().
 	 */
-	c = 0;
-	if (pbs_conf.pbs_mom_node_name) {
-		/* Hostname was defined by PBS_MOM_NODE_NAME */
-		(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
-		mom_host[(sizeof(mom_host) - 1)] = '\0';
+	c = gethostname(mom_host, (sizeof(mom_host) - 1));
+	if (c != 0) {
+		c = 0;
 		ptr = mom_host;
 		/* First character must be alpha-numeric */
 		if (isalnum((int)*ptr)) {
@@ -8810,20 +8809,30 @@ main(int argc, char *argv[])
 		} else {
 			c = -1;
 		}
-	} else {
-		/* Query the hostname. */
-		c = gethostname(mom_host, (sizeof(mom_host) - 1));
 	}
 	if (c != 0) {
 		log_err(-1, msg_daemonname, "Unable to obtain my host name");
 		return (-1);
 	}
-	(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
-	mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	is_mom_host_ip = inet_pton(AF_INET, mom_host, &(check_ip.sin_addr));
-	if (!(is_mom_host_ip > 0))
-		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
-			*ptr = '\0';  /* terminate shortname at first dot */
+	/*
+	 * Set mom_short_name to PBS_MOM_NODE_NAME if it is defined.
+	 * Otherwise, set mom_short_name to the return value of
+	 * gethostname(), truncated to first dot.
+	 */
+	if (pbs_conf.pbs_mom_node_name) {
+		/* mom_short_name was specified explicitly using PBS_MOM_NODE_NAME */
+		(void)strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
+		mom_short_name[(sizeof(mom_host) - 1)] = '\0';
+	} else {
+		/* use gethostname() truncated to first dot, unless it is an ip address*/
+		(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
+		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
+		is_mom_host_ip = inet_pton(AF_INET, mom_host, &(check_ip.sin_addr));
+		if (is_mom_host_ip <= 0)
+			if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
+				*ptr = '\0';  /* terminate shortname at first dot */
+	}
+
 	/*
 	 * Now get mom_host, which determines resources_available.host
 	 * and also the interface used to register to pbs_comm if
