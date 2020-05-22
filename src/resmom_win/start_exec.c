@@ -1087,8 +1087,7 @@ set_homedir_to_local_default(job *pjob, char *username)
 			return ("");
 		}
 
-		home_dir = default_local_homedir(username,
-			pp->pw_userlogin, 0);
+		home_dir = default_local_homedir(username, pp->pw_userlogin, 0);
 		if(home_dir != NULL) {
 			strcpy(lpath, home_dir);
 			return (lpath);
