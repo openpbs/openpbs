@@ -145,7 +145,9 @@ main(int argc, char *argv[])
 			GetLastError());
 	}
 
-	ResumeThread(pi_demux.hThread);
+	rc = ResumeThread(pi_demux.hThread);
+	if (rc == (DWORD)-1)
+		log_err(-1, __func__, "ResumeThread failed");
 
 	/*
 	 * Initialize the interactive command shell
@@ -172,9 +174,11 @@ main(int argc, char *argv[])
 	rc = run_command_si_blocking(&si, cmdline, &exit_code, is_gui_job, show_window, user_name);
 	if (rc == 0) {
 		if (si.hStdOutput != INVALID_HANDLE_VALUE)
-			FlushFileBuffers(si.hStdOutput);
+			if (!FlushFileBuffers(si.hStdOutput))
+				log_err(-1, __func__, "FlushFileBuffers failed for stdout");
 		if (si.hStdError != INVALID_HANDLE_VALUE)
-			FlushFileBuffers(si.hStdError);
+			if(!FlushFileBuffers(si.hStdError))
+				log_err(-1, __func__, "FlushFileBuffers failed for stderr");
 	} else
 		fprintf(stderr, "mom_shell: Failed to run interactive shell command %s with error %lu", cmdline, rc);
 

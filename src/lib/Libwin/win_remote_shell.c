@@ -178,7 +178,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 		&SecAttrib);
 	if (psi->hStdOutput == INVALID_HANDLE_VALUE) {
 		err = GetLastError();
-		log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdout");
+		log_errf(-1, __func__, "CreateNamedPipe failed while creating pipe for stdout pipe %s", stdoutpipe);
 		return err;
 	}
 
@@ -207,7 +207,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 	if (psi->hStdError == INVALID_HANDLE_VALUE) {
 		err = GetLastError();
 		/* Close already opened output handle upon error */
-		log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stderr");
+		log_errf(-1, __func__, "CreateNamedPipe failed while creating pipe for stderr pipe %s", stderrpipe);
 		CloseHandle(psi->hStdOutput);
 		return err;
 	}
@@ -239,7 +239,7 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 		if (psi->hStdInput == INVALID_HANDLE_VALUE) {
 			err = GetLastError();
 			/* Close already opened output,error handles upon error */
-			log_err(-1, __func__, "CreateNamedPipe failed while creating pipe for stdin");
+			log_errf(-1, __func__, "CreateNamedPipe failed while creating pipe for stdin pipe %s", stdinpipe);
 			CloseHandle(psi->hStdOutput);
 			CloseHandle(psi->hStdError);
 			return err;
@@ -517,7 +517,7 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 				close_valid_handle(&(pi.hThread));
 		}
 		else {
-			log_errf(-1, __func__, "CreateProcessAsUser failed for command %s", command);
+			log_errf(-1, __func__, "CreateProcessAsUser %s failed for command %s", active_user, command);
 			return (GetLastError());
 		}
 		CloseHandle(hUserToken);
@@ -603,7 +603,7 @@ connect_remote_resource(const char *remote_host, const char *remote_resourcename
 	}
 
 	SetLastError(rc);
-	log_err(-1, __func__, "connect/disconnect to remote resource failed");
+	log_errf(-1, __func__, "connect/disconnect to remote resource %s failed", remote_resource_path);
 	return FALSE;
 }
 /**
@@ -846,11 +846,11 @@ execute_remote_shell_command(char *remote_host, char *pipename_append, BOOL conn
 	}
 
 	if (hPipe_remote_stdout == INVALID_HANDLE_VALUE || hPipe_remote_stderr == INVALID_HANDLE_VALUE) {
-		log_err(-1, __func__, "do_WaitNamedPipe returned invalid stdout or stderr handle");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "do_WaitNamedPipe returned invalid stdout or stderr handle");
 		return FALSE;
 	}
 	if (connect_stdin && hPipe_remote_stdin == INVALID_HANDLE_VALUE) {
-		log_err(-1, __func__, "do_WaitNamedPipe returned invalid stdin handle");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "do_WaitNamedPipe returned invalid stdin handle");
 		return FALSE;
 	}
 	/*

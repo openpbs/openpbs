@@ -167,7 +167,10 @@ win_alarm(unsigned int timeout_secs, void (*func)(void))
 			still exits\nWaitForSingleObject failed");
 			return (0);
 		} else if ( dwWaitResult != WAIT_OBJECT_0) {
-			log_err(-1, __func__, "WaitForSingleObject failed");
+			if (dwWaitResult != WAIT_FAILED)
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "WaitForSingleObject failed with errno %d", dwWaitResult);
+			else
+				log_err(-1, __func__, "WaitForSingleObject failed");
 		}
 		if ( !ReleaseMutex(g_hMutex) ) {
 			log_err(-1, __func__, "ReleaseMutex failed");
