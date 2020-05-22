@@ -4626,7 +4626,8 @@ use_window_station_desktop(SID *usid)
 
 	ret = 0;
 
-	end:  	if (hwin)
+end: 
+	if (hwin)
 		CloseWindowStation(hwin);
 
 	if (hdesk)
