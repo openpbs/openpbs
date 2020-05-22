@@ -2283,3 +2283,27 @@ class TestReservations(TestFunctional):
         jid = self.server.submit(J)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+    @skipOnCpuSet
+    def test_resv_job_hard_walltime(self):
+        """
+        Test that a job with hard walltime will not conflict with
+        reservtion if hard walltime is less that reservation start time.
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        now = int(time.time())
+
+        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 65,
+             'reserve_end': now + 240}
+        R = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(R)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid)
+        a = {'Resource_List.ncpus': 4,
+             'Resource_List.walltime': 50}
+        J = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
