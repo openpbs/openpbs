@@ -125,15 +125,14 @@ void
 printpids(void)
 {
 	int	i;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	for (i=0; i < pids_cnt; i++) {
-		sprintf(logb, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+		sprintf(log_buffer, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 	}
 
-	sprintf(logb, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+	sprintf(log_buffer, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 }
 
 /**
@@ -165,7 +164,6 @@ waitpid(HANDLE pid, int *statp, int opt)
 	int	i;
 	int	ref_idx;
 	int	pass;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (opt == WNOHANG)
 		timeout = 1000;		/* default 1 second timeout */
@@ -201,12 +199,12 @@ waitpid(HANDLE pid, int *statp, int opt)
 				rval = (HANDLE)-1;
 				*statp = -1;
 			} else {
-				sprintf(logb,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+				sprintf(log_buffer,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 				if (!GetExitCodeProcess(pid_handles[i], (DWORD *)statp))
 					log_errf(-1, __func__, "GetExitCodeProcess failed for handle[%d], i[%d/%d]", pid_handles[i], i, pids_cnt);
-				sprintf(logb,"status=%d", *statp);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+				sprintf(log_buffer,"status=%d", *statp);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 				rval = pid_handles[i];
 			}
 			/* The following is iffy - should we close the handle or do it outside ? */
