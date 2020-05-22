@@ -1068,6 +1068,7 @@ set_homedir_to_local_default(job *pjob, char *username)
 	size_t  lsize;
 	static  char	lpath[MAXPATHLEN+1];
 	struct grpcache *g;
+	char* home_dir = NULL;
 
 	if (pjob == NULL) {
 		struct  passwd *pp = NULL;
@@ -1086,10 +1087,10 @@ set_homedir_to_local_default(job *pjob, char *username)
 			return ("");
 		}
 
-		if(default_local_homedir(username,
-			pp->pw_userlogin, 0) != NULL) {
-			strcpy(lpath, default_local_homedir(username,
-				pp->pw_userlogin, 0));
+		home_dir = default_local_homedir(username,
+			pp->pw_userlogin, 0);
+		if(home_dir != NULL) {
+			strcpy(lpath, home_dir);
 			return (lpath);
 		} else {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
@@ -1098,8 +1099,9 @@ set_homedir_to_local_default(job *pjob, char *username)
 		
 	}
 	
-	if(default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0) != NULL)
-		strcpy(lpath, default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0));
+	home_dir = default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0);
+	if(home_dir != NULL)
+		strcpy(lpath, home_dir);
 	else {
 		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, "Home directory was not found for user %s and job: %s", pjob->ji_user->pw_userlogin, pjob->ji_qs.ji_jobid);
