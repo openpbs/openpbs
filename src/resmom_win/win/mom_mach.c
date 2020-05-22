@@ -1030,15 +1030,14 @@ kill_task(task *ptask, int sig, int dir)
 	int     terminate = 1;	/* terminate process by default */
 
 	if (hProc == NULL) {
-		log_err(-1, __func__, "Invalid handle");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Invalid handle");
 		return 0;
 	}
 
 	if (sig == suspend_signal) {
 		rc = signal_task(ptask, 1);
 		terminate = 0;
-	}
-	else if (sig == resume_signal) {
+	} else if (sig == resume_signal) {
 		rc = signal_task(ptask, 0);
 		terminate = 0;
 	}
