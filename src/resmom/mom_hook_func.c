@@ -524,8 +524,9 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		case 0:
 			break;
 		case COPY_FILE_BAD_INPUT:
-			log_err(errno, __func__,
-				"copy_file_internal: bad input parameter");
+			log_errf(errno, __func__,
+				"copy_file_internal: bad input parameter src_file: %s; dest_file: %s",
+				src_file, dest_file);
 			return -1;
 		case COPY_FILE_BAD_SOURCE:
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -549,8 +550,8 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		default:
 			snprintf(log_buffer,
 				sizeof(log_buffer),
-				"Unknown copy_file_internal return %d",
-				st);
+				"Unknown copy_file_internal return %d; src_file: %s; dest_file: %s",
+				st, src_file, dest_file);
 			log_err(errno, __func__, log_buffer);
 			return -1;
 	}
@@ -1725,7 +1726,9 @@ run_hook_exit:
 #ifdef WIN32
 	if(secure_file(file_out, "Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) 
-		log_err(-1, __func__, "Failed to change permissions of the hook output file");
+		sprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", file_out);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 #endif
 
 
@@ -2886,7 +2889,7 @@ do_reboot(char *reboot_cmd)
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"reboot failed exit code=%d", rcode);
-		log_event(PBSEVENT_DEBUG2, 0,
+		log_event(PBSEVENT_ERROR, 0,
 			LOG_ERR, __func__, log_buffer);
 	}
 }
@@ -3083,8 +3086,8 @@ void send_hook_fail_action(hook *phook)
 	int	vret = -1;
 
 	if ((phook == NULL) || (phook->hook_name == NULL)) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			  LOG_INFO, "", "Hook received is NULL");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook received is NULL");
 		return;
 	}
 
@@ -3262,17 +3265,20 @@ post_run_hook(struct work_task *ptask)
 	mom_process_hooks_params_t *php = NULL;
 
 	if (ptask == NULL) {
-		log_err(-1, __func__, "missing ptask argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing ptask argument to event");
 		return -1;
 	}
 
 	if ((phook = (hook *)ptask->wt_parm1) == NULL) {
-		log_err(-1, __func__, "missing hook phook argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing hook phook argument to event");
 		return -1;
 	}
 
 	if ((php = (mom_process_hooks_params_t *) ptask->wt_parm2) == NULL) {
-		log_err(-1, __func__, "missing hook params argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing hook params argument to event");
 		return -1;
 	}
 
@@ -3283,7 +3289,8 @@ post_run_hook(struct work_task *ptask)
 	}
 
 	if ((hook_input = (mom_hook_input_t *) php->hook_input) == NULL) {
-		log_err(-1, __func__, "missing input argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing input argument to event");
 		return -1;
 	}
 

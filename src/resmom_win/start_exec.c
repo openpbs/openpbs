@@ -283,8 +283,10 @@ get_sha(job *pjob, char **token)
 			*token = hash_pwd;
 		}
 	} else {
+		sprintf(log_buffer, "Unable to read password for user: %s; job: %s",
+			pjob->ji_user->pw_name, pjob->ji_qs.ji_jobid);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "Unable to read password");
+			__func__, log_buffer);
 		return 1;
 	}
 	if (cred_buf) {
@@ -696,7 +698,8 @@ add_envp(char **envp)
 	int	i;
 
 	if (envp == NULL) {
-		log_err(PBSE_BADATVAL, __func__, "unexpected input");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unexpected input");
 		return;
 	}
 	i = 0;
@@ -894,8 +897,8 @@ mktmpdir(char *jobid, char *username)
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "Unable to change ownership of the file");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unable to change ownership of the file: %s", tmpdir);
 	return 0;
 }
 
@@ -1083,12 +1086,24 @@ set_homedir_to_local_default(job *pjob, char *username)
 			return ("");
 		}
 
-		strcpy(lpath, default_local_homedir(username,
-			pp->pw_userlogin, 0));
-		return (lpath);
+		if(default_local_homedir(username,
+			pp->pw_userlogin, 0) != NULL) {
+			strcpy(lpath, default_local_homedir(username,
+				pp->pw_userlogin, 0));
+			return (lpath);
+		} else {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Home directory was not found, job passed is NULL");
+		}
+		
 	}
-
-	strcpy(lpath, default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0));
+	
+	if(default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0) != NULL)
+		strcpy(lpath, default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0));
+	else {
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Home directory was not found for user %s and job: %s", pjob->ji_user->pw_userlogin, pjob->ji_qs.ji_jobid);
+	}
 
 	lsize = sizeof(struct grpcache) + strlen(lpath) + 1;
 
@@ -1548,8 +1563,8 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	if (secure_file2(pbs_nodefile,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK | READ_CONTROL) == 0 ) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, "Unable to change ownership of the file");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Unable to change ownership of the file; %s", pbs_nodefile);
 	}
 
 
@@ -1777,7 +1792,7 @@ finish_exec(job *pjob)
 	if (CreateDirectory(pjob->ji_grpcache->gc_homedir, 0) == 0) {
 		errno = GetLastError();
 		if (errno != ERROR_ALREADY_EXISTS)
-			log_err(-1, __func__, "Unable to create user's home directory; Trying again");
+			log_errf(-1, __func__, "Unable to create user home directory; Trying again; path: %s", pjob->ji_grpcache->gc_homedir);
 	}
 	if (chdir(pjob->ji_grpcache->gc_homedir) == -1) {
 		set_homedir_to_local_default(pjob, NULL);
@@ -1930,7 +1945,6 @@ finish_exec(job *pjob)
 		if (pwdp->pw_userlogin == INVALID_HANDLE_VALUE) {
 			HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
 			if (hProcess == NULL) {
-				// Unable to obtain handle
 				log_err(-1, __func__, "OpenProcess failed");
 			}
 			/* Obtain access token for current process...*/
@@ -2068,9 +2082,8 @@ finish_exec(job *pjob)
 		free(hash_token);
 		hash_token = NULL;
 	} else {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "Failed to export job hash to the environment");
-		return NULL;
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Failed to export job hash to the environment for job id; %s", pjob->ji_qs.ji_jobid);
 	}
 
 	/*************************************************************************/
@@ -2258,7 +2271,7 @@ finish_exec(job *pjob)
 			sa.lpSecurityDescriptor = NULL;
 			sa.bInheritHandle = TRUE;
 			if (CreatePipe(&hReadPipe_dummy, &hWritePipe_dummy, &sa, 0) == 0) {
-				log_err(-1, __func__, "Creation of pipe failed. No valid input handle for the job.");
+				log_errf(-1, __func__, "Creation of pipe failed. No valid input handle for the job. job id: %s", pjob->ji_qs.ji_jobid);
 				return;
 			}
 			si.hStdInput = hReadPipe_dummy;
@@ -2320,8 +2333,8 @@ finish_exec(job *pjob)
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 					"Administrators",
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-						__func__, "Unable to change ownership of the file");
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+						__func__, "Unable to change ownership of the file: %s", script_bat);
 
 				sprintf(cmdline, "%s /Q /C \"%s\"", shell, script_bat);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3134,12 +3147,12 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 		si.hStdOutput = (HANDLE)_get_osfhandle(script_out);
 		if (si.hStdOutput == NULL)
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, "Failed to get handle for stdout file");
 
 		si.hStdError = (HANDLE)_get_osfhandle(script_err);
 		if (si.hStdError == NULL)
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, "Failed to get handle for stderr file");
 
 		/* set stdout and stderr to append mode */
@@ -3447,8 +3460,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			pjob->ji_user->pw_name,
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, "Unable to change ownership of the file");
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, "Unable to change ownership of the file: %s", path);
 
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
@@ -4451,11 +4464,7 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 			(void)strcpy(path, pjob->ji_grpcache->gc_homedir);
 		}
 
-#ifdef WIN32
 		(void)strcat(path, "\\");
-#else
-		(void)strcat(path, "/");
-#endif
 
 		*keeping = 1;
 #else	/* NO_SPOOL_OUTPUT */
