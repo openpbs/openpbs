@@ -574,7 +574,7 @@ remtree(char *dirname)
 		replace(dirname, "\\ ", " ", unipath);
 		forward2back_slash(unipath);
 	} else {
-		log_err(-1, __func__, "Failed to remove a tree (or a single file)");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, "File not found");
 		return -1;
 	}
 
