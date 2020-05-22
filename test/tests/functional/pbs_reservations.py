@@ -322,6 +322,51 @@ class TestReservations(TestFunctional):
             start=t + 25, end=t + 625, run=True)
 
     @skipOnCpuSet
+    def test_degraded_advanced_reservation_superchunk(self):
+        """
+        Verify that an advanced reservation requesting a superchunk is
+        correctly reconfirmed on other nodes
+        """
+        retry = 15
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, num=6, mom=self.mom)
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': retry})
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1+1:ncpus=3',
+             'reserve_start': now + 60, 'reserve_end': now + 240}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
+        st = self.server.status(RESV, 'resv_nodes', id=rid)[0]
+        nds1 = st['resv_nodes']
+        # Should have 4 nodes.  Nodes 2-4 are the superchunk.  Choose the
+        # middle node to avoid the '(' and ')' of the superchunk.
+        sp = nds1.split('+')
+        sn = sp[2].split(':')[0]
+
+        # Keep the first chunk's node around to confirm it is still the same
+        sc = sp[0]
+
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'}, id=sn)
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_DEGRADED|10')}, id=rid)
+
+        retry_time = t + retry
+        offset = retry_time - int(time.time())
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid, offset=offset)
+        st = self.server.status(RESV, 'resv_nodes', id=rid)[0]
+        nds2 = st['resv_nodes']
+        self.assertEqual(len(sp), len(nds2.split('+')))
+        self.assertNotEqual(nds1, nds2)
+        self.assertEquals(sc, nds1.split('+')[0])
+
+    @skipOnCpuSet
     def test_standing_reservation_occurrence_two_not_degraded(self):
         """
         Test that when a standing reservation's occurrence 1 is on an offline

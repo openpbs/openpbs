@@ -174,7 +174,7 @@ void **dup_array(void *ptr);
  *	returns non-zero if the ptr was successfully removed from the array
  *		zero if the array has not been modified
  */
-int remove_ptr_from_array(void **arr, void *ptr);
+int remove_ptr_from_array(void *arr, void *ptr);
 
 /*
  *	remove_str_from_array - remove a string from a ptr list and move

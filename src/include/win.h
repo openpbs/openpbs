@@ -532,4 +532,13 @@ extern void get_uncpath(char *path);
 extern int get_localpath(char *unc_path, char *map_drive);
 extern int stat_uncpath(char *path, struct stat *sb);
 extern int access_uncpath(char *path, int mode);
+
+/* wrap CloseHandle to log in case of error */
+extern BOOL _log_wrap_CloseHandle(HANDLE, LPCSTR, LPCSTR, INT);
+#define CloseHandle(param) _log_wrap_CloseHandle(param, #param, __func__, __LINE__)
+
+/* wrap LocalFree to log in case of error */
+extern HLOCAL _log_wrap_LocalFree(HLOCAL , LPCSTR , LPCSTR , INT);
+#define LocalFree(param) _log_wrap_LocalFree(param, #param, __func__, __LINE__)
+
 #endif

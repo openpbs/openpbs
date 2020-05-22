@@ -2001,7 +2001,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 #endif /* localmod 068 */
 			if (bjob->nspec_arr != NULL)
 				free_nspecs(bjob->nspec_arr);
-			bjob->nspec_arr = parse_execvnode(exec, sinfo);
+			bjob->nspec_arr = parse_execvnode(exec, sinfo, NULL);
 			if (bjob->nspec_arr != NULL) {
 				char *selectspec;
 				if (bjob->ninfo_arr != NULL)

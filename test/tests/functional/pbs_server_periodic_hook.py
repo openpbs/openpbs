@@ -56,8 +56,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         """
         function to create a hook script.
         It accepts 2 arguments
-        - accept	If set to true, then hook will accept else reject
-        - sleep_time	Number of seconds we want the hook to sleep
+        - accept        If set to true, then hook will accept else reject
+        - sleep_time        Number of seconds we want the hook to sleep
         """
         hook_action = "e.accept()"
         if accept is False:
@@ -73,17 +73,19 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         return int(a[1])
 
     def check_next_occurances(self, count, freq,
-                              hook_run_time, check_for_hook_end):
+                              hook_run_time, check_for_hook_end, alarm=0):
         """
         Helper function to check the occurances of hook by matching their
         logs in server logs.
         It needs 4 arguments:
-        - count			to know how many times to repeat
-                                checking these logs
-        - freq			is the frequency set in pbs server to run this hook
-        - hook_run_time		is the amount of time hook takes to run.
-        - check_for_hook_end	If it is true then the functions checks for
-                                hook end messages.
+        - count                     to know how many times to repeat
+                                    checking these logs
+        - freq                      is the frequency set in pbs server to run
+                                    this hook
+        - hook_run_time             is the amount of time hook takes to run.
+        - check_for_hook_end        If it is true then the functions checks for
+                                    hook end messages.
+        - alarm                     hook alarm
         """
         occurance = 0
         # time after which we want to start matching log
@@ -109,7 +111,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                                             interval=(hook_run_time + 1),
                                             starttime=search_after)
                 time_logged = self.get_timestamp(msg[1])
-                self.assertFalse((time_logged - time_expected) > 1)
+                if alarm != 0:
+                        self.assertLessEqual(time_logged - time_expected,
+                                             alarm - hook_run_time)
+                else:
+                        self.assertLessEqual(time_logged - time_expected, 1)
 
                 if hook_run_time <= freq:
                     intr = freq - hook_run_time
@@ -293,7 +299,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         attrs = {'event': 'periodic', 'alarm': 15, 'freq': 5}
         self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
         self.check_next_occurances(2, freq=5, hook_run_time=10,
-                                   check_for_hook_end=True)
+                                   check_for_hook_end=True, alarm=15)
 
     def test_check_for_negative_freq(self):
         """

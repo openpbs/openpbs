@@ -3827,6 +3827,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 		return (1);
 	}
 	err_msg[0] = '\0';
+	resc_limit_init(&need);
 	exec_vnode = strdup(r_input->execvnode);
 	if (exec_vnode == NULL) {
 		log_err(errno, __func__, "strdup error");

@@ -1140,7 +1140,7 @@ class TestMultipleSchedulers(TestFunctional):
         # Six equivalence classes. Two for the resource eating job in
         # different partitions and one for each user per partition.
         self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
-                                     max_attempts=10, starttime=t)
+                                     starttime=t)
 
     def test_list_multi_sched(self):
         """
@@ -1831,7 +1831,7 @@ class TestMultipleSchedulers(TestFunctional):
         # it has free nodes
         t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
-             'reserve_end': t + 15}
+             'reserve_end': t + 35}
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
@@ -2124,6 +2124,8 @@ e.accept()
         else:
             resv_state = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
 
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
         ret = self.server.status(RESV, 'partition', id=rid)
         a = {'state': 'offline'}
         self.server.manager(MGR_CMD_SET, NODE, a, id=resv_node)
@@ -2131,6 +2133,9 @@ e.accept()
         a = {'reserve_substate': 10}
         a.update(resv_state)
         self.server.expect(RESV, a, id=rid)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id="sc1")
 
         other_node = "vnode[1]"
         if resv_node == "vnode[1]":
@@ -2144,7 +2149,7 @@ e.accept()
 
         self.server.expect(RESV, a, id=rid, interval=1)
 
-    def test_advance_confimred_resv_reconfirm(self):
+    def test_advance_confirmed_resv_reconfirm(self):
         """
         Test degraded reservation gets reconfirmed on a different
         node of the same partition in multi-sched environment
