@@ -384,7 +384,7 @@ class TestTPP(TestFunctional):
         """
         mom_list = copy.copy(self.moms.values())
         comm_list = copy.copy(self.comms.values())
-        i = 0 
+        i = 0
         for mom in self.moms.values():
             if mom.shortname == self.server.shortname:
                 self.momA = mom
@@ -411,9 +411,14 @@ class TestTPP(TestFunctional):
             self.hostD = self.comm2.shortname
             self.comm3 = comm_list[1]
             self.hostE = self.comm3.shortname
-            nodes = [self.hostA, self.hostB, self.hostC, self.hostD, self.hostE]
+            nodes = [
+                self.hostA,
+                self.hostB,
+                self.hostC,
+                self.hostD,
+                self.hostE]
         self.node_list.extend(nodes)
-        
+
     @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
         """
@@ -455,7 +460,7 @@ class TestTPP(TestFunctional):
             self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
         self.server.expect(RESV, resv_exp_attrib, rid)
         self.server.expect(JOB, job_exp_attrib, id=jid)
-  
+
     @requirements(num_moms=2, num_comms=2)
     def test_comm_failover_with_multiple_PBS_LEAF_ROUTERS(self):
         """
@@ -483,7 +488,7 @@ class TestTPP(TestFunctional):
         """
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
-        with pbs_comm failover when values of PBS_LEAF_ROUTERS 
+        with pbs_comm failover when values of PBS_LEAF_ROUTERS
         in pbs.conf are invalid
         Configuration:
         Node 1 : Server, Sched, Mom, Comm
@@ -504,7 +509,7 @@ class TestTPP(TestFunctional):
         self.server.expect(NODE, {'state': 'down'}, id=self.hostB)
         exp_msg = ["Error 99 while connecting to %s:17001" % invalid_val,
                    "Error -2 resolving %s" % invalid_val
-                  ]
+                   ]
         for msg in exp_msg:
             self.momB.log_match(msg)
         # set a invalid PBS_LEAF_ROUTERS value for primary comm
@@ -512,7 +517,9 @@ class TestTPP(TestFunctional):
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostA, conf_param=b)
         self.comm.stop('-KILL')
-        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostA)
+        self.server.expect(NODE,
+                           {'state': 'state-unknown,down'},
+                           id=self.hostA)
         for msg in exp_msg:
             self.momB.log_match(msg)
         # set a invalid port value for PBS_LEAF_ROUTERS
@@ -521,14 +528,18 @@ class TestTPP(TestFunctional):
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostB, conf_param=b)
         self.comm2.stop('-KILL')
-        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostB)
-       
+        self.server.expect(NODE,
+                           {'state': 'state-unknown,down'},
+                           id=self.hostB)
+
         # set same value for secondary comm as primary in PBS_LEAF_ROUTERS
         leaf_val = self.hostC + "," + self.hostC
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostB, conf_param=b)
         self.comm2.stop('-KILL')
-        self.server.expect(NODE, {'state': 'state-unknown,down'}, id=self.hostB)
+        self.server.expect(NODE,
+                           {'state': 'state-unknown,down'},
+                           id=self.hostB)
 
     @requirements(num_moms=2, num_comms=2)
     def test_comm_failover_with_ipaddress(self):
@@ -561,7 +572,7 @@ class TestTPP(TestFunctional):
         """
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
-        with pbs_comm failover when PBS_LEAF_ROUTERS has ipaddress 
+        with pbs_comm failover when PBS_LEAF_ROUTERS has ipaddress
         and hostname as values
         Configuration:
         Node 1 : Server, Sched, Mom, Comm
@@ -669,7 +680,7 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom 
+        Node 4 : Mom
         Node 5 : Comm
         Node 6 : Mom
         """
@@ -694,10 +705,10 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
                           job=True, interactive=True, resv=True,
                           resv_job=True)
-        
+
     @requirements(num_moms=3, num_comms=3)
     def test_PBS_COMM_ROUTERS_with_ipaddress(self):
         """
@@ -709,7 +720,7 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom 
+        Node 4 : Mom
         Node 5 : Comm
         Node 6 : Mom
         """
@@ -736,7 +747,7 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
                           job=True, interactive=True, resv=True,
                           resv_job=True)
 
@@ -751,7 +762,7 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         Node 3 : Comm
-        Node 4 : Mom 
+        Node 4 : Mom
         Node 5 : Comm
         Node 6 : Mom
         """
@@ -760,7 +771,7 @@ class TestTPP(TestFunctional):
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
-        comm_val = hostA_ip + ":17001" + ","  + self.hostC
+        comm_val = hostA_ip + ":17001" + "," + self.hostC
         a = {'PBS_COMM_ROUTERS': comm_val}
         self.set_pbs_conf(host_name=self.hostE, conf_param=a)
         leaf_val = self.hostA + "," + self.hostC + "," + self.hostE
@@ -778,10 +789,10 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
                           job=True, interactive=True, resv=True,
                           resv_job=True)
-        
+
     @requirements(num_moms=2, num_comms=2)
     def test_COMM_ROUTERS_with_nondefault_pbs_conf(self):
         """
@@ -799,7 +810,7 @@ class TestTPP(TestFunctional):
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
-        comm_val = hostA_ip + ":17001" + ","  + self.hostC
+        comm_val = hostA_ip + ":17001" + "," + self.hostC
         a = {'PBS_COMM_ROUTERS': comm_val}
         self.set_pbs_conf(host_name=self.hostE, conf_param=a)
         leaf_val = self.hostA + "," + self.hostC + "," + self.hostE
@@ -818,7 +829,7 @@ class TestTPP(TestFunctional):
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
-        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr, 
+        self.common_steps(set_attr=set_attr, resv_set_attr=resv_set_attr,
                           job=True, interactive=True, resv=True,
                           resv_job=True)
 
@@ -831,4 +842,3 @@ class TestTPP(TestFunctional):
             self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
         self.server.client = self.default_client
-
