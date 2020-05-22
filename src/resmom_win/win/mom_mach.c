@@ -1144,7 +1144,7 @@ cput_job(char *jobid)
 	BOOL                                    is_process_in_job = FALSE;
 	__int64                                 *pkerneltime;
 	__int64                                 *pusertime;
-	BOOL                             ret;
+	BOOL                                    ret;
 
 	hjob = OpenJobObject(JOB_OBJECT_QUERY, 0, jobid);
 	if (hjob == NULL) {
