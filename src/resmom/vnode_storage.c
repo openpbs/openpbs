@@ -88,7 +88,7 @@ create_vmap(void **ctxp)
 		} else
 			*ctxp = pix;
 		if (avl_create_index(pix, AVL_NO_DUP_KEYS, 0))
-			log_event(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Failed to create vnode map");
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Failed to create vnode map");
 	}
 
 	return (1);
@@ -167,7 +167,7 @@ add_vmapent_byID(void *ctx, const char *vnid, void *data)
 		pe->recptr = data;
 		if (avl_add_key(pe, ctx) != AVL_IX_OK) {
 			rc = 1;
-			log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, __func__, "avl_add_key failed");
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "avl_add_key failed");
 		}
 	} else {
 		rc = 1;

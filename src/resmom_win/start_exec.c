@@ -943,8 +943,8 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_buffer);
 			return 0;
 		}
-		sprintf(log_buffer, "%s: mkdir: %s: errno %d",
-			jobid, jobdir, errno);
+		sprintf(log_buffer, "%s: mkdir: %s:",
+			jobid, jobdir);
 		log_err(errno, __func__, log_buffer);
 		return JOB_EXEC_FAIL1;
 	}
@@ -1559,7 +1559,7 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 			fprintf(nhow, "%s\n", pjob->ji_vnods[j].vn_hname);
 	}
 	if (fclose(nhow) != 0)
-		log_err(-1, __func__, "Unable to close the nodefile");
+		log_err(errno, __func__, "Unable to close the nodefile");
 
 	if (secure_file2(pbs_nodefile,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
@@ -1793,7 +1793,7 @@ finish_exec(job *pjob)
 	if (CreateDirectory(pjob->ji_grpcache->gc_homedir, 0) == 0) {
 		errno = GetLastError();
 		if (errno != ERROR_ALREADY_EXISTS)
-			log_errf(-1, __func__, "Unable to create user home directory; Trying again; path: %s", pjob->ji_grpcache->gc_homedir);
+			log_errf(errno, __func__, "Unable to create user home directory; Trying again; path: %s", pjob->ji_grpcache->gc_homedir);
 	}
 	if (chdir(pjob->ji_grpcache->gc_homedir) == -1) {
 		set_homedir_to_local_default(pjob, NULL);
@@ -2189,7 +2189,6 @@ finish_exec(job *pjob)
 						"warning: %s: IM_EXEC_PROLOGUE requests "
 						"could not reach some sister moms",
 						pjob->ji_qs.ji_jobid);
-					log_err(-1, __func__, log_buffer);
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 						__func__, log_buffer);
 				}
@@ -3443,7 +3442,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 
 	fds = open(path, mode, _S_IWRITE | _S_IREAD);
 	if (fds == -1) {
-		sprintf(log_buffer, "Unable to open stdfile %s", path);
+		sprintf(log_buffer, "Unable to open stdfile %s with error: %d", path, errno);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, log_buffer);
 	}

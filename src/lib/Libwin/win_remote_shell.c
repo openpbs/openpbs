@@ -128,7 +128,6 @@ create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive)
 	SECURITY_ATTRIBUTES SecAttrib = {0};
 	SECURITY_DESCRIPTOR SecDesc;
 	DWORD err = 0;
-	char logbuff[LOG_BUF_SIZE] = { '\0' };
 
 	if (psi == NULL || pipename_append == NULL)
 		return ERROR_INVALID_PARAMETER;
@@ -347,7 +346,6 @@ do_WaitNamedPipe(char *pipename, DWORD timeout, DWORD readwrite_accessflags)
 					NULL);
 				if (hpipe_cmdshell == INVALID_HANDLE_VALUE) {
 					err = GetLastError();
-					log_errf(-1, __func__, "(%d/%d) CreateFile failed for %s %x", j + 1, retry2, pipename, readwrite_accessflags);
 					if (ERROR_PIPE_NOT_CONNECTED == err && (++j < retry2)) {
 						Sleep(1000);
 						continue;
@@ -364,12 +362,15 @@ do_WaitNamedPipe(char *pipename, DWORD timeout, DWORD readwrite_accessflags)
 		/* Wait untill the pipe gets available */
 		else {
 			err = GetLastError();
-			log_errf(-1, __func__, "(%d/%d) WaitNamedPipe failed for %s %lu", i, retry, pipename, timeout);
 			if ((err == ERROR_FILE_NOT_FOUND) && (i < retry)) {
 				Sleep(1000);
 			}
 		}
 	}
+	if (i > retry) {
+		log_err(-1, __func__, "do_WaitNamedPipe has failed");
+	}
+	
 	return hpipe_cmdshell;
 }
 /**
@@ -436,7 +437,6 @@ run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *p_returncode, in
 	PROCESS_INFORMATION pi;
 	HANDLE	hJob = INVALID_HANDLE_VALUE;
 	DWORD stat = 0;
-	char logbuff[LOG_BUF_SIZE] = { '\0' };
 
 	if (command == NULL || p_returncode == NULL || psi == NULL)
 		return ERROR_INVALID_PARAMETER;
@@ -602,8 +602,8 @@ connect_remote_resource(const char *remote_host, const char *remote_resourcename
 			return TRUE;
 	}
 
-	SetLastError(rc);
 	log_errf(-1, __func__, "connect/disconnect to remote resource %s failed", remote_resource_path);
+	SetLastError(rc);
 	return FALSE;
 }
 /**
@@ -641,7 +641,8 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 		if (!ReadFile(hPipe_remote_std, readbuf, READBUF_SIZE, &dwRead, NULL) || dwRead == 0) {
 			dwErr = GetLastError();
 			if (dwErr == ERROR_NO_DATA) {
-				log_err(-1, __func__, "ReadFile failed with ERROR_NO_DATA");
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
+					__func__, "ReadFile failed with ERROR_NO_DATA (%lu)", dwErr);
 				return -1;
 			}
 		}
@@ -890,7 +891,8 @@ remote_shell_command(char *remote_host, char *pipename_append, BOOL connect_stdi
 	/* Set console title */
 	sprintf(console_title, "Connecting to %s...", remote_host);
 	if (!SetConsoleTitle(console_title)) {
-		fprintf(stderr, "SetConsoleTitle failed on %s\n", remote_host);
+		fprintf(stderr, "SetConsoleTitle failed on %s with error %d \n", 
+			remote_host, GetLastError());
 		return -1;
 	}
 

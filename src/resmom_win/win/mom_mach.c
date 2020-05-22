@@ -411,7 +411,7 @@ print_profile(PDH_profile *prof,char * hdr)
 {
 	sprintf(log_buffer, "%s prof: query=%d counter=%d value=%d", hdr,
 		prof->hQuery, prof->hCounter, prof->value);
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 }
 /**
  * @brief
@@ -494,7 +494,7 @@ dep_cleanup()
 	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "dependent cleanup");
 
 	if (!destroy_profile(&mom_prof)) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "destroy_profile failed!");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "destroy_profile failed!");
 		return;
 	}
 }
@@ -1191,8 +1191,8 @@ cput_job(char *jobid)
 					log_errf(-1, __func__, "GetProcessTimes failed for process %d", ptask->ti_hProc);
 				}
 			}
-			ptask = (task *)GET_NEXT(ptask->ti_jobtask);
 		}
+		ptask = (task *)GET_NEXT(ptask->ti_jobtask);
 	}
 	sprintf(ret_string, "%.2f", (cputime/10000000.0) * cputfactor);
 	CloseHandle(hjob);
@@ -1468,7 +1468,8 @@ dep_attach_child(job *pjob, char *parentjobid, pid_t ppid)
 	ptask = momtask_create(pjob);
 	if (ptask == NULL) {
 		sprintf(log_buffer, "momtask_create failed for process with pid %d", ppid);
-		log_err(-1, __func__, log_buffer);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
+			__func__, log_buffer);
 		close_valid_handle(&(hProcess));
 		return 0;
 	}
