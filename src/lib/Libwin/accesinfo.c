@@ -141,7 +141,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 
 		if (user != NULL && mask != 0 && i == (k-1)) {
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION, mask | 0x00100000, grp[i]) == 0) {
-				log_errf(-1, __func__, "AddAccessAllowedAce failed to add %s to %s", print_mask(mask), name);
+				log_errf(-1, __func__, "AddAccessAllowedAce failed to add %s to %s", print_mask(mask | 0x00100000), name);
 			}
 
 		} else {
@@ -408,12 +408,12 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 
 		if (user != NULL && mask != 0 && i == (k-2)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask | 0x00100000, grp[i]) == 0) {
-				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user: %s, mask: %s, name: %s", user, print_mask(mask), name);
+				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user: %s, mask: %s, name: %s", user, print_mask(mask | 0x00100000), name);
 			}
 
 		} else if (user2 != NULL && mask2 != 0 && i == (k-1)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask2 | 0x00100000, grp[i]) == 0) {
-				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user2: %s, mask: %s, name: %s", user2, print_mask(mask2), name);
+				log_errf(-1, __func__, "failed in AddAccessAllowedAceEx for user2: %s, mask: %s, name: %s", user2, print_mask(mask2 | 0x00100000), name);
 			}
 		} else {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE,
@@ -815,14 +815,15 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 	int			mask;
 	char			*name;
 	SID			*esid = getusersid("Everyone");
+	DWORD ret;
 
-	if (GetNamedSecurityInfo(path, SE_FILE_OBJECT,
+	ret = GetNamedSecurityInfo(path, SE_FILE_OBJECT,
 		OWNER_SECURITY_INFORMATION|DACL_SECURITY_INFORMATION,
-		&powner, 0, &pdacl, 0, &psd) != ERROR_SUCCESS) {
-		errno = GetLastError();
-		rc = errno;
-		sprintf(errmsg, "GetNameSecurityInfo on file %s failed", path);
-		log_err(-1, __func__, errmsg);
+		&powner, 0, &pdacl, 0, &psd);
+	if (ret != ERROR_SUCCESS) {
+		rc = ret;
+		sprintf(errmsg, "GetNameSecurityInfo on file %s failed with errno %lu", path, ret);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errmsg);
 		goto chkerr;
 	}
 

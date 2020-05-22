@@ -433,7 +433,7 @@ create_administrators_sid(void)
 {
 	SID_IDENTIFIER_AUTHORITY	sid_auth = SECURITY_NT_AUTHORITY;
 	SID				*sid = NULL;
-	SID             *sid_tmp = NULL;
+	SID				*sid_tmp = NULL;
 
 	if (AllocateAndInitializeSid(&sid_auth, 2, SECURITY_BUILTIN_DOMAIN_RID,
 		DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0) {
@@ -514,7 +514,7 @@ create_domain_users_sid(void)
 
 	usid = getusersid(getlogin());
 	if (usid == NULL) {
-		log_err(-1, __func__, "Unable to find user sid");
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Unable to find user sid");
 		return NULL;
 	}
 
@@ -665,14 +665,14 @@ GetComputerDomainName(char domain_name[PBS_MAXHOSTNAME+1])
 	strcpy(local_name, "");
 	local_sz = sizeof(local_name);
 	if (GetComputerName(local_name, &local_sz) == 0) {
-		log_errf(-1, __func__, "failed in GetComputerName for %s", local_name);
+		log_err(-1, __func__, "failed in GetComputerName");
 	}
 	strncpy(domain_name, local_name, PBS_MAXHOSTNAME);
 
 	ZeroMemory(&obj_attrs, sizeof(obj_attrs));
 	lsa_stat = LsaOpenPolicy(NULL, &obj_attrs, POLICY_VIEW_LOCAL_INFORMATION, &h_policy);
 	if ( lsa_stat != ERROR_SUCCESS ) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaOpenPolicy, with errno %d", LsaNtStatusToWinError(lsa_stat));
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaOpenPolicy, with errno %lu", lsa_stat);
 		goto get_computer_domain_name_end;
 	}
 
@@ -703,8 +703,8 @@ GetComputerDomainName(char domain_name[PBS_MAXHOSTNAME+1])
 		wcstombs(domain_name, name, PBS_MAXHOSTNAME);
 		rval = 1;
 	} else {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaQueryInformationPolicy, with errno %d",
-				LsaNtStatusToWinError(ntsResult));
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaQueryInformationPolicy, with errno %lu",
+				ntsResult);
 	}
 
 get_computer_domain_name_end:
@@ -717,8 +717,8 @@ get_computer_domain_name_end:
 	if (h_policy != INVALID_HANDLE_VALUE) {
 		lsa_stat = LsaClose(h_policy);
 		if ( lsa_stat != ERROR_SUCCESS) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaClose, with errno %d",
-				LsaNtStatusToWinError(lsa_stat));
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaClose, with errno %lu",
+				lsa_stat);
 		}
 	}
 
@@ -966,7 +966,7 @@ getusersid2(char *uname,
 	DWORD		dwBufferSize = 0;
 	PTOKEN_USER	pTokenUser = NULL;
 	char		*login_full = NULL;
-	int			ret = 0;
+	int		ret = 0;
 
 	if (uname == NULL)
 		return NULL;
@@ -1615,7 +1615,7 @@ isLocalAdminMember(char *user)
 				MAX_PREFERRED_LENGTH, &nread, &totentries, NULL);
 	if (status != NERR_Success) {
 		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
-			"failed in NetLocalGroupGetMembers (for %s), with errno %d", gname,	status);
+			"failed in NetLocalGroupGetMembers (for %s), with errno %d", gname, status);
 		goto isLocalAdminMember_end;
 	}
 
@@ -2402,7 +2402,7 @@ getgids(char *user, SID *grp[], DWORD rids[])
 		}
 		nBufferStat = NetApiBufferFree(groups);
 		if (nBufferStat != NERR_Success) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in NetApiBufferFree (global groups), with errno %d", nBufferStat);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in NetApiBufferFree (global groups), with errno %d", nBufferStat);
 		}
 		groups = NULL;
 	}
@@ -2540,7 +2540,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 
 		if (GetUserProfileDirectory(userlogin, profilepath,
 				&profsz) == 0) {
-			log_errf(-1, __func__, "failed in GetUserProfileDirectory for profilepath: %s and user: %s", profilepath, username);
+			log_errf(-1, __func__, "failed in GetUserProfileDirectory for user: %s", username);
 			goto default_local_homedir_end;
 		}
 	}
@@ -2559,7 +2559,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	res = SHGetFolderPath(NULL, CSIDL_PERSONAL, userlogin,
 			SHGFP_TYPE_DEFAULT, personal_path);
 	if (res != S_OK) {
-		log_errf(-1, __func__, "failed in SHGetFolderPath for %s (HRESULT errno: %x)", username, res);
+		log_eventf(-1, __func__, "failed in SHGetFolderPath for %s (HRESULT errno: %lu)", username, res);
 	}
 
 	sprintf(homestr, "%s\\PBS", personal_path);
@@ -3194,8 +3194,8 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	/* get user rights and add to list of user token privileges */
 	lsa_stat = LsaEnumerateAccountRights(hLsa, usid, &lsaRights, &numRights);
 	if (lsa_stat != ERROR_SUCCESS) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaEnumerateAccountRights, with errno %d",
-			LsaNtStatusToWinError(lsa_stat));
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaEnumerateAccountRights, with errno %lu",
+			lsa_stat);
 	}
 	len = sizeof(TOKEN_PRIVILEGES) + \
 		((numRights-ANYSIZE_ARRAY)*sizeof(LUID_AND_ATTRIBUTES));
@@ -3219,8 +3219,8 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 
 	lsa_stat = LsaFreeMemory(lsaRights);
 	if ( lsa_stat != ERROR_SUCCESS) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaFreeMemory, with errno %d",
-			LsaNtStatusToWinError(lsa_stat));
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaFreeMemory, with errno %lu",
+			lsa_stat);
 	}
 
 	return (token_privs);
@@ -3294,8 +3294,8 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 		}
 		lsa_stat = LsaFreeMemory(lsaRights);
 		if ( lsa_stat != ERROR_SUCCESS) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaFreeMemory, with errno %d",
-				LsaNtStatusToWinError(lsa_stat));
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaFreeMemory, with errno %lu",
+				lsa_stat);
 		}
 	}
 	len = sizeof(TOKEN_PRIVILEGES) + \
@@ -3866,8 +3866,8 @@ LogonUserNoPass(char *user)
 	}
 	lsa_stat = LsaOpenPolicy(NULL, &lsa, POLICY_ALL_ACCESS, &hLsa);
 	if (lsa_stat != ERROR_SUCCESS) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaOpenPolicy, with errno %d",
-				LsaNtStatusToWinError(lsa_stat));
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaOpenPolicy, with errno %lu",
+				lsa_stat);
 		goto end;
 	}
 
@@ -4008,8 +4008,8 @@ end:
 	if (hLsa != INVALID_HANDLE_VALUE) {
 		lsa_stat = LsaClose(hLsa);
 		if (lsa_stat != ERROR_SUCCESS) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaClose, with errno %d",
-				LsaNtStatusToWinError(lsa_stat));
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LsaClose, with errno %lu",
+				lsa_stat);
 		}
 	}
 
@@ -4626,8 +4626,7 @@ use_window_station_desktop(SID *usid)
 
 	ret = 0;
 
-	end:  	
-	if (hwin)
+	end:  	if (hwin)
 		CloseWindowStation(hwin);
 
 	if (hdesk)
@@ -5293,7 +5292,7 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 		}
 		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s", user_name);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, winlog_buffer);
 			return (netst);
 		}
 

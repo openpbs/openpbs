@@ -80,7 +80,7 @@ win_popen(char	*cmd, const char *type, struct pio_handles *pio, struct proc_ctrl
 	char	                current_dir[MAX_PATH + 1] = {'\0'};
 	char	                *temp_dir = NULL;
 	int                     changed_dir = 0;
-	int						return_code = 0;
+	int                     return_code = 0;
 
 	sa.nLength = sizeof(sa);
 	sa.lpSecurityDescriptor = NULL;
