@@ -1033,8 +1033,10 @@ save_actual_homedir(struct passwd *pwdp, job *pjob)
 		/* save cache copy */
 		pjob->ji_grpcache = malloc(sizeof(struct grpcache) +
 			strlen(lpath) + 1);
-		if (pjob->ji_grpcache == NULL)
+		if (pjob->ji_grpcache == NULL) {
+			log_err(errno, __func__, "Failed to allocate memory for job grpcache");
 			return ("");
+		}
 		strcpy(pjob->ji_grpcache->gc_homedir, lpath);
 	}
 
@@ -2981,7 +2983,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 						bld_wenv_variables("PATH", envbuf);
 					else
 						log_errf(-1, __func__, "ExpandEnvironmentStringsForUser failed for PATH : envbuf=%s", envbuf);
+				} else {
+					log_err(-1, __func__, "DuplicateTokenEx failed");
 				}
+			} else {
+				log_err(-1, __func__, "OpenProcessToken failed");
 			}
 
 			if (hLogin != INVALID_HANDLE_VALUE && hLogin != NULL)

@@ -572,8 +572,10 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
-			pjob->ji_user->pw_name, dest_file, log_buffer);
+		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s", 
+			pjob->ji_user->pw_name, dest_file);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 		(void)unlink(dest_file);
 		return -1;
 	}
@@ -1059,8 +1061,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
-				pjob->ji_user->pw_name, script_file, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the script file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, script_file);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -1102,8 +1106,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
-				pjob->ji_user->pw_name, hook_inputfile, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the hook input file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, hook_inputfile);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 
 		}
@@ -1125,8 +1131,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_errf(errno, __func__, "Unable to change permissions of the file for user: %s, file: %s with error: %s", 
-				pjob->ji_user->pw_name, log_file, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the log file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, log_file);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -2903,7 +2911,8 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	struct hook_job_action *phja;
 
 	if (pjob == NULL) {
-		log_err(PBSE_INTERNAL, __func__, "Job received is NULL");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Job received is NULL");
 		return;
 	}
 	phja = malloc(sizeof(struct hook_job_action));
