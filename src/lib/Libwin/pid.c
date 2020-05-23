@@ -103,8 +103,7 @@ addpid(HANDLE pid)
 	hpids = (HANDLE *)realloc(pid_handles, (pids_cnt*2)*sizeof(HANDLE));
 
 	if (hpids == NULL) {
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "realloc(%p, %u) failed, errno = %d",
-			pid_handles, (pids_cnt*2)*sizeof(HANDLE), errno);
+		log_errf(errno, __func__, "realloc failed for pid_handles, size (%u)", (pids_cnt*2)*sizeof(HANDLE));
 		return 0;
 	}
 
@@ -126,15 +125,14 @@ void
 printpids(void)
 {
 	int	i;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	for (i=0; i < pids_cnt; i++) {
-		sprintf(logb, "printpids: pid_handles[%d] = %p", i, pid_handles[i]);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+		sprintf(log_buffer, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 	}
 
-	sprintf(logb, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+	sprintf(log_buffer, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 }
 
 /**
@@ -166,7 +164,6 @@ waitpid(HANDLE pid, int *statp, int opt)
 	int	i;
 	int	ref_idx;
 	int	pass;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (opt == WNOHANG)
 		timeout = 1000;		/* default 1 second timeout */
@@ -198,16 +195,16 @@ waitpid(HANDLE pid, int *statp, int opt)
 			if (ret == WAIT_TIMEOUT)
 				rval = 0;
 			else if (ret == WAIT_FAILED) { /* notion of an abnormal exit */
-				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "WaitForSingleObject(%p, %d) failed with errno %d, i[%d]",
-					pid_handles[i], timeout, GetLastError(), i);
+				log_errf(-1, __func__, "WaitForSingleObject(%d, %d) failed i[%d/%d]", pid_handles[i], timeout, i, pids_cnt);
 				rval = (HANDLE)-1;
 				*statp = -1;
 			} else {
-				sprintf(logb,"found pid_handles[%d]=%p to have exited", i, pid_handles[i]);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
-				GetExitCodeProcess(pid_handles[i], (DWORD *)statp);
-				sprintf(logb,"status=%d", *statp);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+				sprintf(log_buffer,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
+				if (!GetExitCodeProcess(pid_handles[i], (DWORD *)statp))
+					log_errf(-1, __func__, "GetExitCodeProcess failed for handle[%d], i[%d/%d]", pid_handles[i], i, pids_cnt);
+				sprintf(log_buffer,"status=%d", *statp);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 				rval = pid_handles[i];
 			}
 			/* The following is iffy - should we close the handle or do it outside ? */
@@ -279,9 +276,7 @@ processtree_op_by_handle(HANDLE hProcess, enum operation op, int exitcode)
 		return -1;
 
 	if (!GetExitCodeProcess(hProcess, &rc)) {
-		errno = GetLastError();
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetExitCodeProcess(%p,) failed with errno %d",
-			hProcess, errno);
+		log_errf(-1, __func__, "GetExitCodeProcess(%d,) failed", hProcess);
 		return -1;
 	}
 
@@ -290,7 +285,7 @@ processtree_op_by_handle(HANDLE hProcess, enum operation op, int exitcode)
 
 	if ((processId = GetProcessId(hProcess)) <= 0) {
 		errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetProcessId(%p,) failed", hProcess);
+		log_errf(errno, __func__, "GetProcessId(%d,) failed", hProcess);
 		return -1;
 	}
 
@@ -335,16 +330,12 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, processId);
 	if (hProcessSnap == INVALID_HANDLE_VALUE) {
-		errno = GetLastError();
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "CreateToolhelp32Snapshot(SNAPPROCESS, %ld) failed with errno %d",
-			processId, errno);
+		log_errf(-1, __func__, "CreateToolhelp32Snapshot(SNAPPROCESS, %ld) failed", processId);
 		return -1;
 	}
 
 	if (!Process32First(hProcessSnap, &pe32)) {
-		errno = GetLastError();
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Process32First(%p,) failed with errno %d",
-			hProcessSnap, errno);
+		log_errf(-1, __func__, "Process32First(%d) failed", hProcessSnap);
 		CloseHandle(hProcessSnap);
 		return -1;
 	}
@@ -373,9 +364,7 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 	if (op == TERMINATE) {
 		hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, processId);
 		if (!hProcess) {
-			errno = GetLastError();
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "OpenProcess(PROCESS_ALL_ACCESS, TRUE, %ld) failed with errno %d",
-				processId, errno);
+			log_errf(-1, __func__, "OpenProcess(PROCESS_ALL_ACCESS, TRUE, %ld) failed", processId);
 			return -1;
 		}
 		/*
@@ -390,32 +379,25 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 				CloseHandle(hProcess);
 				return (++process_count);
 			} else {
-				errno = GetLastError();
-				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "TerminateProcess(%p, %d) failed with errno %d",
-					hProcess, exitcode, errno);
+				log_errf(-1, __func__, "TerminateProcess(%d, %d) failed", hProcess, exitcode);
 				CloseHandle(hProcess);
 				return -1;
 			}
 		} else {
 			errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
-			log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "GetProcessId(%p) != ld error",
-				hProcess, processId);
+			log_errf(errno, __func__, "GetProcessId(%d) != %ld", hProcess, processId);
 			return -1;
 		}
 	}
 
 	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId);
 	if (hThreadSnap == INVALID_HANDLE_VALUE) {
-		errno = GetLastError();
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "CreateToolhelp32Snapshot(SNAPTHREAD, %ld) failed with errno %d",
-			processId, errno);
+		log_errf(-1, __func__, "CreateToolhelp32Snapshot(SNAPTHREAD, %ld) failed", processId);
 		return -1;
 	}
 
 	if (!Thread32First(hThreadSnap, &te32)) {
-		errno = GetLastError();
-		log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "Thread32First(%p,) failed with errno %d",
-			hThreadSnap, errno);
+		log_errf(-1, __func__, "Thread32First(%d) failed", hThreadSnap);
 		CloseHandle(hThreadSnap);
 		return -1;
 	}
@@ -424,30 +406,26 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 		if (te32.th32OwnerProcessID == processId) {
 			hThread = OpenThread(THREAD_SUSPEND_RESUME, TRUE, te32.th32ThreadID);
 			if (!hThread) {
-				errno = GetLastError();
-				log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "OpenThread(THREAD_SUSPEND_RESUME, TRUE, %ld) failed with errno %d",
-					te32.th32ThreadID, errno);
+				log_errf(-1, __func__, "OpenThread(THREAD_SUSPEND_RESUME, TRUE, %ld) failed", te32.th32ThreadID);
+				CloseHandle(hThreadSnap);
 				return -1;
 			} else {
 				if (op == SUSPEND) { /* Suspend Thread */
 					if (SuspendThread(hThread) == -1) {
-						errno = GetLastError();
-						log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "SuspendThread(%p) failed with errno %d",
-							hThread, errno);
+						log_errf(-1, __func__, "SuspendThread(%d) failed", hThread);
 						CloseHandle(hThread);
 						CloseHandle(hThreadSnap);
 						return -1;
 					}
 				} else if (op == RESUME) { /* Resume Thread */
 					if (ResumeThread(hThread) == -1) {
-						errno = GetLastError();
-						log_eventf(PBSEVENT_ERROR, 0, LOG_ERR, __func__, "ResumeThread(%p) failed with errno %d",
-							hThread, errno);
+						log_errf(-1, __func__, "ResumeThread(%d) failed", hThread);
 						CloseHandle(hThread);
 						CloseHandle(hThreadSnap);
 						return -1;
 					}
 				}
+				CloseHandle(hThread);
 			}
 		}
 	} while (Thread32Next(hThreadSnap, &te32));
