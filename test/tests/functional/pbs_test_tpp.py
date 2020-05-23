@@ -81,7 +81,6 @@ class TestTPP(TestFunctional):
         :type conf_param: Dictionary
         """
         pbsconfpath = self.du.get_pbs_conf_file(hostname=host_name)
-        print("================>pbsconfpath", pbsconfpath)
         self.du.set_pbs_config(hostname=host_name, fin=pbsconfpath,
                                confs=conf_param)
         self.pbs_restart(host_name)
@@ -110,7 +109,7 @@ class TestTPP(TestFunctional):
         """
         r = Reservation(TEST_USER)
         if resv_set_attr is None:
-            resv_set_attr = {'Resource_List.select': '2:ncpus=1',
+            resv_set_attr = {ATTR_l + '.select': '2:ncpus=1',
                              ATTR_l + '.place': 'scatter',
                              'reserve_start': int(time.time() + 10),
                              'reserve_end': int(time.time() + 120)}
@@ -146,7 +145,7 @@ class TestTPP(TestFunctional):
         j = Job(TEST_USER)
         offset = 1
         if set_attr is None:
-            set_attr = {'Resource_List.select': '2:ncpus=1',
+            set_attr = {ATTR_l + '.select': '2:ncpus=1',
                         ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
         if job:
             j.set_attributes(set_attr)
@@ -347,7 +346,6 @@ class TestTPP(TestFunctional):
         self.hostB = self.momB.shortname
         nodes = [self.hostA, self.hostB]
         self.node_list.extend(nodes)
-        msg = "Requires mom which is running on non server host"
         self.common_steps(job=True, resv=True,
                           resv_job=True, client=self.hostA)
         self.common_steps(job=True, interactive=True,
@@ -365,7 +363,7 @@ class TestTPP(TestFunctional):
             vnode_val = "vnode=%s:ncpus=1" % self.server.status(NODE)[1]['id']
             vnode_val += "+vnode=%s:ncpus=1" % self.server.status(NODE)[
                 2]['id']
-        set_attr = {'Resource_List.select': vnode_val,
+        set_attr = {ATTR_l + '.select': vnode_val,
                     ATTR_k: 'oe'}
         self.common_steps(job=True, set_attr=set_attr)
         self.comm.stop('-KILL')
@@ -384,18 +382,22 @@ class TestTPP(TestFunctional):
         """
         mom_list = copy.copy(self.moms.values())
         comm_list = copy.copy(self.comms.values())
-        i = 0
-        for mom in self.moms.values():
+        _server = self.server.shortname
+        skip_test = [False if _server == mom.shortname else
+                     True for mom in self.moms.values()] and \
+                    [False if _server == comm.shortname else True for
+                     comm in self.comms.values()]
+        if skip_test[0]:
+            self.skipTest("Mom and Comm should be on server host")
+        for i, mom in enumerate(self.moms.values()):
             if mom.shortname == self.server.shortname:
                 self.momA = mom
                 self.hostA = self.momA.shortname
                 del mom_list[i]
-            i += 1
-        y = 0
-        for comm in self.comms.values():
+                break
+        for j, comm in enumerate(self.comms.values()):
             if comm.shortname == self.server.shortname:
-                del comm_list[y]
-            y += 1
+                del comm_list[j]
         if len(self.moms.values()) == 2 and len(self.comms.values()) == 2:
             self.momB = mom_list[0]
             self.hostB = self.momB.shortname
@@ -462,7 +464,7 @@ class TestTPP(TestFunctional):
         self.server.expect(JOB, job_exp_attrib, id=jid)
 
     @requirements(num_moms=2, num_comms=2)
-    def test_comm_failover_with_multiple_PBS_LEAF_ROUTERS(self):
+    def test_comm_failover(self):
         """
         This test verifies communication between server-mom and
         between mom when multiple pbs_comm are present in cluster
@@ -555,8 +557,6 @@ class TestTPP(TestFunctional):
         self.common_setup()
         hostA_ip = socket.gethostbyname(self.hostA)
         hostC_ip = socket.gethostbyname(self.hostC)
-        for mom in self.moms.values():
-            ip = socket.gethostbyname(mom.shortname)
         a = {'PBS_COMM_ROUTERS': hostA_ip}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         leaf_val = hostA_ip + "," + hostC_ip
@@ -699,9 +699,9 @@ class TestTPP(TestFunctional):
         leaf_val = self.hostE + "," + self.hostC + "," + self.hostA
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostD, conf_param=b)
-        set_attr = {'Resource_List.select': '3:ncpus=1',
+        set_attr = {ATTR_l + '.select': '3:ncpus=1',
                     ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-        resv_set_attr = {'Resource_List.select': '3:ncpus=1',
+        resv_set_attr = {ATTR_l + '.select': '3:ncpus=1',
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
@@ -741,9 +741,9 @@ class TestTPP(TestFunctional):
         leaf_val = self.hostE + "," + self.hostC + "," + self.hostA
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostD, conf_param=b)
-        set_attr = {'Resource_List.select': '3:ncpus=1',
+        set_attr = {ATTR_l + '.select': '3:ncpus=1',
                     ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-        resv_set_attr = {'Resource_List.select': '3:ncpus=1',
+        resv_set_attr = {ATTR_l + '.select': '3:ncpus=1',
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
@@ -783,9 +783,9 @@ class TestTPP(TestFunctional):
         leaf_val = self.hostE + "," + self.hostC + "," + self.hostA
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostD, conf_param=b)
-        set_attr = {'Resource_List.select': '3:ncpus=1',
+        set_attr = {ATTR_l + '.select': '3:ncpus=1',
                     ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-        resv_set_attr = {'Resource_List.select': '3:ncpus=1',
+        resv_set_attr = {ATTR_l + '.select': '3:ncpus=1',
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
@@ -823,9 +823,9 @@ class TestTPP(TestFunctional):
         b = {'PBS_LEAF_ROUTERS': leaf_val}
         self.set_pbs_conf(host_name=self.hostD, conf_param=b)
         self.copy_pbs_conf_to_non_default_path()
-        set_attr = {'Resource_List.select': '3:ncpus=1',
+        set_attr = {ATTR_l + '.select': '3:ncpus=1',
                     ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
-        resv_set_attr = {'Resource_List.select': '3:ncpus=1',
+        resv_set_attr = {ATTR_l + '.select': '3:ncpus=1',
                          ATTR_l + '.place': 'scatter',
                          'reserve_start': int(time.time()) + 30,
                          'reserve_end': int(time.time()) + 120}
