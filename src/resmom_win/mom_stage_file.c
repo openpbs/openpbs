@@ -101,7 +101,7 @@ print_or_log_err(char *err_msg)
 	if (is_file_open)
 		log_err(-1, id, err_msg);
 	else
-		printf("%s:%s\n", id, err_msg);
+		fprintf(stderr, "%s:%s\n", id, err_msg);
 }
 
 /**
