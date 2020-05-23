@@ -1023,6 +1023,8 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
 							!= '\0') ) {
 			close_licensing();	/* checkin, close connection */
+			unlicense_socket_licensed_nodes();
+			clear_license_info();
 		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
 
