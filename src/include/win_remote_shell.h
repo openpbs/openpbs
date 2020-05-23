@@ -52,10 +52,10 @@
 extern void std_output(char *buf);
 extern void std_error(char *buf);
 extern void disconnect_close_pipe(HANDLE hPipe);
-extern int create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive);
-extern int do_ConnectNamedPipe(HANDLE hPipe, LPOVERLAPPED pOverlapped);
+extern DWORD create_std_pipes(STARTUPINFO* psi, char *pipename_append, int is_interactive);
+extern DWORD do_ConnectNamedPipe(HANDLE hPipe, LPOVERLAPPED pOverlapped);
 extern HANDLE do_WaitNamedPipe(char *szPipeName, DWORD nTimeOut, DWORD readwrite_accessflags);
-extern int connectstdpipes(STARTUPINFO* psi, int is_interactive);
+extern DWORD connectstdpipes(STARTUPINFO* psi, int is_interactive);
 extern DWORD run_command_si_blocking(STARTUPINFO *psi, char *command, DWORD *pReturnCode, int is_gui, int show_window, char *username);
 extern BOOL connect_remote_resource(const char *remote_host, const char *remote_resourcename, BOOL bEstablish);
 extern int handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*));
