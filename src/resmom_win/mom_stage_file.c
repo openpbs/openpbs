@@ -84,6 +84,25 @@ size_t cred_len = 0;
 char mom_host[PBS_MAXHOSTNAME+1] = {'\0'};
 struct cphosts *pcphosts = 0;
 int cphosts_num = 0;
+static int is_file_open;
+static char id[] = "pbs_stage_file";
+
+/**
+ * @brief
+ * 	print_or_log_err - log/print error messages
+ *
+ *  @param[in]	err_msg	 - error message to log
+ *
+ * @return	void
+ */
+void
+print_or_log_err(char *err_msg)
+{
+	if (is_file_open)
+		log_err(-1, id, err_msg);
+	else
+		fprintf(stderr, "%s:%s\n", id, err_msg);
+}
 
 /**
  * @brief
@@ -92,7 +111,6 @@ int cphosts_num = 0;
 int
 main(int argc, char *argv[])
 {
-	static char id[] = "pbs_stage_file";
 	char buf[CPY_PIPE_BUFSIZE] = {'\0'};
 	char *param_name = NULL;
 	char *param_val = NULL;
@@ -111,7 +129,6 @@ main(int argc, char *argv[])
 	cpy_files stage_inout = {0};
 	char *prmt = NULL;
 	char mom_log_path[MAXPATHLEN + 1] = {'\0'};
-	int is_file_open = 0;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
@@ -128,10 +145,9 @@ main(int argc, char *argv[])
 
 	if (pbs_conf.pbs_home_path != NULL) {
 		snprintf(mom_log_path, sizeof(mom_log_path), "%s\\mom_logs", pbs_conf.pbs_home_path);
-		(void)log_open_main(NULL, mom_log_path, 1); /* silent open */
-		is_file_open = 1;
+		if ((log_open_main(NULL, mom_log_path, 1)) == 0) /* silent open */
+			is_file_open = 1;
 	}
-
 
 	pbs_client_thread_set_single_threaded_mode();
 	/* disable attribute verification */
@@ -139,11 +155,12 @@ main(int argc, char *argv[])
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
-		log_err(-1, id, "Unable to initialize thread context");
+		print_or_log_err("Unable to initialize thread context");
 		exit(STAGEFILE_FATAL);
 	}
 
 	if (winsock_init()) {
+		print_or_log_err("winsock_init failed!");
 		return 1;
 	}
 
@@ -183,7 +200,7 @@ main(int argc, char *argv[])
 			stage_inout.direct_write = atoi(param_val);
 		} else if (strcmp(param_name, "pcphosts") == 0) {
 			if (!recv_pcphosts()) {
-				log_err(-1, id, "error while receiving pcphosts");
+				print_or_log_err("error while receiving pcphosts");
 				if (actual_homedir)
 					unmap_unc_path(actual_homedir);
 				net_close(-1);
@@ -191,14 +208,14 @@ main(int argc, char *argv[])
 			}
 		} else if (strcmp(param_name, "rq_cpyfile") == 0) {
 			if (!recv_rq_cpyfile_cred(rqcpf)) {
-				log_err(-1, id, "error while receiving rq_cpyfile info and cred");
+				print_or_log_err("error while receiving rq_cpyfile info and cred");
 				if (actual_homedir)
 					unmap_unc_path(actual_homedir);
 				net_close(-1);
 				exit(STAGEFILE_FATAL);
 			}
 		} else {
-			log_err(-1, id, "unrecognized parameter");
+			print_or_log_err("unrecognized parameter");
 			exit(STAGEFILE_FATAL);
 		}
 	}
@@ -206,7 +223,7 @@ main(int argc, char *argv[])
 	if ((path_log == NULL) || (path_spool == NULL) || (path_undeliv == NULL) ||
 		(path_checkpoint == NULL) || (pbs_jobdir == NULL) || (actual_homedir == NULL) ||
 		(*mom_host == '\0') || (log_file == NULL)) {
-		log_err(-1, id, "error in one or more the parameters");
+		print_or_log_err("error in one or more parameters");
 		if (actual_homedir)
 			unmap_unc_path(actual_homedir);
 		net_close(-1);
@@ -276,10 +293,13 @@ main(int argc, char *argv[])
 			rmtflag = 1;
 		}
 
-		rc = stage_file(dir, rmtflag, rqcpf->rq_owner,
-			pair, 0, &stage_inout, prmt);
-		if (rc != 0)
+		rc = stage_file(dir, rmtflag, rqcpf->rq_owner, pair, 0, &stage_inout, prmt);
+		if (rc != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "%s;%s stage%s failed, user=%s, owner=%s, status=%d",
+				id, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", rqcpf->rq_user, rqcpf->rq_owner, rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 			break;
+		}
 	}
 	copy_stop = time(0);
 
@@ -295,16 +315,19 @@ main(int argc, char *argv[])
 		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, NULL, NULL);
 	}
 
-	/* log the number of files/directories copied and the time it took */
-	copy_stop = copy_stop - copy_start;
-	sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
-		copy_stop/3600, (copy_stop%3600)/60, copy_stop%60);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-		rqcpf->rq_jobid, log_buffer);
+	/* if operation is successful, log the number of files/directories copied and the time it took */
+	if (!rc) {
+		copy_stop = copy_stop - copy_start;
+		sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
+			num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+			copy_stop/3600, (copy_stop%3600)/60, copy_stop%60);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
+	}
+
 	if ((stage_inout.bad_files) || (stage_inout.sandbox_private && stage_inout.stageout_failed)) {
 		if (stage_inout.bad_files) {
-			printf("%s\n", stage_inout.bad_list);
+			sprintf(log_buffer, "%s;stage%s failed for the file %s", id, (dir == STAGE_DIR_OUT) ? "out" : "in", stage_inout.bad_list);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, rqcpf->rq_jobid, log_buffer);
 		}
 		unmap_unc_path(actual_homedir);
 		log_close(0);	/* silent close */
