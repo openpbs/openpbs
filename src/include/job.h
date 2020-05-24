@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_PBS_JOB_H
 #define	_PBS_JOB_H
 #ifdef	__cplusplus
@@ -57,7 +59,7 @@ extern "C" {
 #ifndef	_SERVER_LIMITS_H
 #include "server_limits.h"
 #endif
-
+#include "work_task.h"
 /*
  * Dependent Job Structures
  *
@@ -76,6 +78,7 @@ struct depend {
 	short	  dp_numexp;	/* num jobs expected (on or syncct only) */
 	short	  dp_numreg;	/* num jobs registered (syncct only)     */
 	short	  dp_released;	/* This job released to run (syncwith)   */
+	short	  dp_numrun;    /* num jobs supposed to run		 */
 	pbs_list_head dp_jobs;	/* list of related jobs  (all)           */
 };
 
@@ -105,6 +108,7 @@ struct depend_job {
 #define JOB_DEPEND_TYPE_BEFORENOTOK	 6
 #define JOB_DEPEND_TYPE_BEFOREANY	 7
 #define JOB_DEPEND_TYPE_ON		 8
+#define JOB_DEPEND_TYPE_RUNONE		 9
 #define JOB_DEPEND_NUMBER_TYPES		11
 
 #define JOB_DEPEND_OP_REGISTER		1
@@ -282,6 +286,7 @@ enum job_atr {
 	JOB_ATR_submit_host,
 	JOB_ATR_cred_id,
 	JOB_ATR_cred_validity,
+	JOB_ATR_create_resv_from_job,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -514,7 +519,7 @@ struct block_job_reply {
  */
 
 
-#define	JSVERSION_18	800	/* 18 denotes the PBSPro version and it covers the job structure from >= 13.x to <= 18.x */
+#define	JSVERSION_18	800	/* 18 denotes the PBS version and it covers the job structure from >= 13.x to <= 18.x */
 #define	JSVERSION	1900	/* 1900 denotes the 19.x.x version */
 #define	ji_taskid	ji_extended.ji_ext.ji_taskidx
 #define	ji_nodeid	ji_extended.ji_ext.ji_nodeidx
@@ -525,12 +530,14 @@ enum bg_hook_request {
 	BG_PBS_BATCH_DeleteJob,
 	BG_PBSE_SISCOMM,
 	BG_IM_DELETE_JOB_REPLY,
-	BG_IM_DELETE_JOB
+	BG_IM_DELETE_JOB,
+	BG_IM_DELETE_JOB2,
+	BG_CHECKPOINT_ABORT
 };
 
 struct job {
 
-	/* 
+	/*
 	 * Note: these members, upto ji_qs, are not saved to disk
 	 * IMPORTANT: if adding to this are, see create_subjob()
 	 * in array_func.c; add the copy of the required elements
@@ -542,13 +549,11 @@ struct job {
 	pbs_list_link	ji_unlicjobs;	/* links to unlicensed jobs */
 	int		ji_modified;	/* struct changed, needs to be saved */
 	int		ji_momhandle;	/* open connection handle to MOM */
-	int		ji_mom_prot;	/* rpp or tcp */
+	int		ji_mom_prot;	/* PROT_TCP or PROT_TPP */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
 #ifndef PBS_MOM
 	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
 #endif /* PBS_MOM */
-	int ji_licneed;			/* # of cpu licenses needed by job */
-	int		ji_licalloc;	/* actual # of cpu licenses allocated */
 #ifdef	PBS_MOM				/* MOM ONLY */
 	struct batch_request *ji_preq;	/* outstanding request */
 	struct grpcache *ji_grpcache;	/* cache of user's groups */
@@ -659,7 +664,7 @@ struct job {
 	int             ji_etlimit_decr_queued;
 
 	struct preempt_ordering	*preempt_order;
-	int			preempt_order_index;
+	int preempt_order_index;
 
 #endif					/* END SERVER ONLY */
 
@@ -737,11 +742,6 @@ struct job {
 			unsigned long long	ji_pagg;
 			/* ALPS process aggregate ID */
 #endif	/* MOM_ALPS */
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-			int32_t	ji_pag;		/* afs token group id */
-#endif
-#endif
 #endif /* PBS_MOM */
 		} ji_ext;
 	} ji_extended;
@@ -967,8 +967,7 @@ task_find	(job		*pjob,
 #define JOB_STDERR_SUFFIX  ".ER"	/* job standard error */
 #define JOB_CKPT_SUFFIX    ".CK"	/* job checkpoint file */
 #define JOB_TASKDIR_SUFFIX ".TK"	/* job task directory */
-#define JOB_CPUSET_SUFFIX  ".CS"	/* job cpuset */
-#define JOB_BAD_SUFFIX	   ".BD"	/* save bad job file */
+#define JOB_BAD_SUFFIX     ".BD"	/* save bad job file */
 
 /*
  * Job states are defined by POSIX as:
@@ -1114,7 +1113,14 @@ task_find	(job		*pjob,
 extern void  add_dest(job *);
 extern int   depend_on_que(attribute *, void *, int);
 extern int   depend_on_exec(job *);
+extern int   depend_runone_remove_dependency(job *);
+extern int   depend_runone_hold_all(job *);
+extern int   depend_runone_release_all(job *);
 extern int   depend_on_term(job *);
+extern struct depend *find_depend(int type, attribute *pattr);
+extern struct depend_job *find_dependjob(struct depend *pdep, char *name);
+extern int send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int schedhint, void (*postfunc)(struct work_task *));
+extern void post_runone(struct work_task *pwt);
 extern job  *find_job(char *);
 extern char *get_egroup(job *);
 extern char *get_variable(job *, char *);
@@ -1229,12 +1235,12 @@ extern int   get_used_cput(job*);
 extern int   get_cput(job*);
 extern void  remove_deleted_resvs(void);
 
-extern void  clear_and_populate_svr_unlicensedjobs(void);
-extern void  relicense_svr_unlicensedjobs(void);
-extern int   set_cpu_licenses_need(job *, char *);
-extern void  allocate_cpu_licenses(job *);
-extern void  deallocate_cpu_licenses(job *);
-extern void  deallocate_cpu_licenses2(job *, int);
+extern void del_job_related_file(job *pjob, char *fsuffix);
+#ifdef PBS_MOM
+extern void del_job_dirs(job *pjob);
+extern void del_chkpt_files(job *pjob);
+#endif
+
 #ifdef	__cplusplus
 }
 #endif

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	req_signaljob.c
  *
@@ -71,6 +73,7 @@
 #include "svrfunc.h"
 #include "sched_cmds.h"
 #include "pbs_sched.h"
+#include "acct.h"
 
 
 /* Private Function local to this file */
@@ -442,7 +445,7 @@ post_signal_req(struct work_task *pwt)
 	int			suspend = 0;
 	int			resume = 0;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
 
 	preq = pwt->wt_parm1;
@@ -497,6 +500,7 @@ post_signal_req(struct work_task *pwt)
 				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
+				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
 				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
 				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().
 				 * Otherwise, set_admin_suspend will move the node to maintenance state and
@@ -518,6 +522,7 @@ post_signal_req(struct work_task *pwt)
 			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
 
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
+			log_suspend_resume_record(pjob, PBS_ACCT_RESUME);
 
 			set_attr_svr(&(pjob->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment],
 				form_attr_comment("Job run at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
@@ -527,7 +532,7 @@ post_signal_req(struct work_task *pwt)
 			pjob = find_job(preq->rq_ind.rq_signal.rq_jid);
 		if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_SUSPEND, pjob);
-		
+
 		reply_ack(preq);
 	}
 }

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #include <stdio.h>
 #include <errno.h>
 #include "log.h"
@@ -50,11 +52,11 @@ static int	pids_nextidx = 0;
  */
 /**
  * @brief
- * 	initializes the pid_handles table. 
+ * 	initializes the pid_handles table.
  *
  * @return	int
- * @retval	1 	on success 
- * @retval	0 	on error. 
+ * @retval	1 	on success
+ * @retval	0 	on error.
  *
  */
 int
@@ -75,14 +77,14 @@ initpids(void)
 }
 
 /**
- * @brief 
- *	Aaddpid: adds the process handle to pid_handles table. 
+ * @brief
+ *	Aaddpid: adds the process handle to pid_handles table.
  *
  * @param[in] pid - process id
  *
  * @return	int
- * @retval	1 	if successful; 
- * @retval	0 	otherwise 
+ * @retval	1 	if successful;
+ * @retval	0 	otherwise
  *
  */
 int
@@ -100,8 +102,10 @@ addpid(HANDLE pid)
 	/* array filled up. Let's extend... */
 	hpids = (HANDLE *)realloc(pid_handles, (pids_cnt*2)*sizeof(HANDLE));
 
-	if (hpids == NULL)
+	if (hpids == NULL) {
+		log_errf(errno, __func__, "realloc failed for pid_handles, size (%u)", (pids_cnt*2)*sizeof(HANDLE));
 		return 0;
+	}
 
 	pid_handles = hpids;
 	pids_cnt *= 2;
@@ -114,55 +118,6 @@ addpid(HANDLE pid)
 }
 
 /**
- * @brief	closepid
- *		Close process handle and remove it from the process handle table
- *
- * @param[in]	pid - HANDLE of process
- *
- * @return	int
- *
- * @return	int
- * @retval	1 	- Successful
- * @retval	0 	- if no pid is found in pids table
- */
-int
-closepid(HANDLE pid)
-{
-	int i = 0;
-
-	for (i = 0; i < pids_cnt; i++) {
-		if (pid_handles[i] == pid) {
-			close_valid_handle(&pid);
-			pid_handles[i] = INVALID_HANDLE_VALUE;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/**
- * @brief
- *	close and free process handle.
- *
- */
-void
-destroypids(void)
-{
-	int	i;
-
-	for (i=0; i < pids_cnt; i++) {
-		if (pid_handles[i] != INVALID_HANDLE_VALUE) {
-			CloseHandle(pid_handles[i]);
-			pid_handles[i] = INVALID_HANDLE_VALUE;
-		}
-	}
-	(void)free(pid_handles);
-	pid_handles = NULL;
-	pids_cnt = 0;
-	pids_nextidx = 0;
-}
-
-/**
  * @brief
  *	print the process ids.
  */
@@ -170,15 +125,14 @@ void
 printpids(void)
 {
 	int	i;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	for (i=0; i < pids_cnt; i++) {
-		sprintf(logb, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+		sprintf(log_buffer, "printpids: pid_handles[%d] = %d", i, pid_handles[i]);
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 	}
 
-	sprintf(logb, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+	sprintf(log_buffer, "printpids: pids_cnt=%d pids_nextidx=%d", pids_cnt, pids_nextidx);
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 }
 
 /**
@@ -190,10 +144,10 @@ printpids(void)
  * @param[in] pid - process id
  * @param[in] statp - status of process
  * @param[in] opt - option
- * 
- * @par	NOTE: If no more child processes, then this returns -1 with errno set to ECHILD 
- * 	NOTE: If waiting on child process returned WAIT_FAILED, then *statp is set -1 
- * 	NOTE: This closes the pid to complete termination. 
+ *
+ * @par	NOTE: If no more child processes, then this returns -1 with errno set to ECHILD
+ * 	NOTE: If waiting on child process returned WAIT_FAILED, then *statp is set -1
+ * 	NOTE: This closes the pid to complete termination.
  *
  * @return	HANDLE
  * @retval	pid handle of the child that exited	success
@@ -210,7 +164,6 @@ waitpid(HANDLE pid, int *statp, int opt)
 	int	i;
 	int	ref_idx;
 	int	pass;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (opt == WNOHANG)
 		timeout = 1000;		/* default 1 second timeout */
@@ -242,14 +195,16 @@ waitpid(HANDLE pid, int *statp, int opt)
 			if (ret == WAIT_TIMEOUT)
 				rval = 0;
 			else if (ret == WAIT_FAILED) { /* notion of an abnormal exit */
+				log_errf(-1, __func__, "WaitForSingleObject(%d, %d) failed i[%d/%d]", pid_handles[i], timeout, i, pids_cnt);
 				rval = (HANDLE)-1;
 				*statp = -1;
 			} else {
-				sprintf(logb,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
-				GetExitCodeProcess(pid_handles[i], (DWORD *)statp);
-				sprintf(logb,"status=%d", *statp);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
+				sprintf(log_buffer,"found pid_handles[%d]=%d to have exited", i, pid_handles[i]);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
+				if (!GetExitCodeProcess(pid_handles[i], (DWORD *)statp))
+					log_errf(-1, __func__, "GetExitCodeProcess failed for handle[%d], i[%d/%d]", pid_handles[i], i, pids_cnt);
+				sprintf(log_buffer,"status=%d", *statp);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", log_buffer);
 				rval = pid_handles[i];
 			}
 			/* The following is iffy - should we close the handle or do it outside ? */
@@ -290,7 +245,6 @@ kill(HANDLE pid, UINT sig)
 	ret = processtree_op_by_handle(pid, TERMINATE, sig);
 
 	if (ret == -1) {
-		errno = GetLastError();
 		return (-1);
 	}
 	return (0);
@@ -321,14 +275,19 @@ processtree_op_by_handle(HANDLE hProcess, enum operation op, int exitcode)
 	if (hProcess == INVALID_HANDLE_VALUE || hProcess == NULL)
 		return -1;
 
-	if (!GetExitCodeProcess(hProcess, &rc))
+	if (!GetExitCodeProcess(hProcess, &rc)) {
+		log_errf(-1, __func__, "GetExitCodeProcess(%d,) failed", hProcess);
 		return -1;
+	}
 
 	if (rc != STILL_ACTIVE)
 		return 0;
 
-	if ((processId = GetProcessId(hProcess)) <= 0)
+	if ((processId = GetProcessId(hProcess)) <= 0) {
+		errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
+		log_errf(errno, __func__, "GetProcessId(%d,) failed", hProcess);
 		return -1;
+	}
 
 	return (processtree_op_by_id(processId, op, exitcode));
 }
@@ -370,10 +329,13 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 		return -1;
 
 	hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, processId);
-	if (hProcessSnap == INVALID_HANDLE_VALUE)
+	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+		log_errf(-1, __func__, "CreateToolhelp32Snapshot(SNAPPROCESS, %ld) failed", processId);
 		return -1;
+	}
 
 	if (!Process32First(hProcessSnap, &pe32)) {
+		log_errf(-1, __func__, "Process32First(%d) failed", hProcessSnap);
 		CloseHandle(hProcessSnap);
 		return -1;
 	}
@@ -401,30 +363,41 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 	 */
 	if (op == TERMINATE) {
 		hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, processId);
+		if (!hProcess) {
+			log_errf(-1, __func__, "OpenProcess(PROCESS_ALL_ACCESS, TRUE, %ld) failed", processId);
+			return -1;
+		}
 		/*
 		 * OpenProcess() may return a handle to next lower process Id
 		 * if given process id doesn't exist. It will be disastorous
 		 * if we kill this arbitrary process, thus always make sure that the handle returned
 		 * belongs to intended process id by calling GetProcessId() on returned handle.
 		 */
-		if ((hProcess != NULL) && (hProcess != INVALID_HANDLE_VALUE) &&(GetProcessId(hProcess) == processId)) {
+		if (GetProcessId(hProcess) == processId) {
 			ret = TerminateProcess(hProcess, exitcode);
-			CloseHandle(hProcess);
 			if (ret) {
+				CloseHandle(hProcess);
 				return (++process_count);
 			} else {
+				log_errf(-1, __func__, "TerminateProcess(%d, %d) failed", hProcess, exitcode);
+				CloseHandle(hProcess);
 				return -1;
 			}
 		} else {
+			errno = EINVAL; /* using EINVAL as GetProcessId() does not set SetLastError */
+			log_errf(errno, __func__, "GetProcessId(%d) != %ld", hProcess, processId);
 			return -1;
 		}
 	}
 
 	hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId);
-	if (hThreadSnap == INVALID_HANDLE_VALUE)
+	if (hThreadSnap == INVALID_HANDLE_VALUE) {
+		log_errf(-1, __func__, "CreateToolhelp32Snapshot(SNAPTHREAD, %ld) failed", processId);
 		return -1;
+	}
 
 	if (!Thread32First(hThreadSnap, &te32)) {
+		log_errf(-1, __func__, "Thread32First(%d) failed", hThreadSnap);
 		CloseHandle(hThreadSnap);
 		return -1;
 	}
@@ -432,20 +405,27 @@ processtree_op_by_id(DWORD processId, enum operation op, int exitcode)
 	do {
 		if (te32.th32OwnerProcessID == processId) {
 			hThread = OpenThread(THREAD_SUSPEND_RESUME, TRUE, te32.th32ThreadID);
-			if ((hThread != NULL) && (hThread != INVALID_HANDLE_VALUE)) {
-				if (op == SUSPEND) { /* Suspend Thread */
-					ret = SuspendThread(hThread);
-				} else if (op == RESUME) { /* Resume Thread */
-					ret = ResumeThread(hThread);
-				}
-				CloseHandle(hThread);
-				if (ret == -1) {
-					CloseHandle(hThreadSnap);
-					return -1;
-				}
-			} else {
+			if (!hThread) {
+				log_errf(-1, __func__, "OpenThread(THREAD_SUSPEND_RESUME, TRUE, %ld) failed", te32.th32ThreadID);
 				CloseHandle(hThreadSnap);
 				return -1;
+			} else {
+				if (op == SUSPEND) { /* Suspend Thread */
+					if (SuspendThread(hThread) == -1) {
+						log_errf(-1, __func__, "SuspendThread(%d) failed", hThread);
+						CloseHandle(hThread);
+						CloseHandle(hThreadSnap);
+						return -1;
+					}
+				} else if (op == RESUME) { /* Resume Thread */
+					if (ResumeThread(hThread) == -1) {
+						log_errf(-1, __func__, "ResumeThread(%d) failed", hThread);
+						CloseHandle(hThread);
+						CloseHandle(hThreadSnap);
+						return -1;
+					}
+				}
+				CloseHandle(hThread);
 			}
 		}
 	} while (Thread32Next(hThreadSnap, &te32));

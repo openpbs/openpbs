@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	req_stat.c
  *
@@ -332,7 +334,7 @@ void req_stat_job(struct batch_request *preq)
 		type = 1;
 		rc = PBSE_UNKJOBID;
 
-	} else if ( isalpha((int)*name) ) {
+	} else if (isalpha((int)*name) ) {
 		pque = find_queuebyname(name)	/* status jobs in a queue */;
 #ifdef NAS /* localmod 075 */
 		if (pque == NULL)
@@ -876,42 +878,6 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf)
 
 /**
  * @brief
- * 		print_license_ct - update the # of licenses (counters) in buffer
- *		corresponding to the licensing backend.
- *
- * @param[in]	lb	-	licensing backend
- * @param[out]	buf	-	string buffer
- */
-
-void
-print_license_ct(enum licensing_backend lb, char *buf)
-{
-	switch(lb) {
-		case LIC_SERVER:
-			sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-				licenses.lb_glob_floating, licenses.lb_aval_floating,
-				licenses.lb_used_floating, licenses.lb_high_used_floating);
-			break;
-		case LIC_NODES:
-			sprintf(buf, "Avail_Nodes:%d Unused_Nodes:%d",
-				sockets_total(), sockets_available());
-				break;
-		case LIC_SOCKETS:
-			sprintf(buf, "Avail_Sockets:%d Unused_Sockets:%d",
-				sockets_total(), sockets_available());
-			break;
-		case LIC_TRIAL:
-			sprintf(buf, "Avail_Local:%d Used:%d High_Use:%d",
-				licenses.lb_aval_floating, licenses.lb_used_floating,
-				licenses.lb_high_used_floating);
-			break;
-		default:
-			sprintf(buf, "Avail_Nodes:%d Unused_Nodes:%d", 0, 0);
-	}
-}
-
-/**
- * @brief
  * 		update_license_ct - update the # of licenses (counters) in 'license_count'
  *			server attribute.
  *
@@ -923,17 +889,9 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	if (licstate_is_up(LIC_SERVER))
-		print_license_ct(LIC_SERVER, buf);
-	else if (licstate_is_up(LIC_NODES))
-		print_license_ct(LIC_NODES, buf);
-	else if (licstate_is_up(LIC_SOCKETS))
-		print_license_ct(LIC_SOCKETS, buf);
-	else if (licenses.lb_trial == 1)
-		print_license_ct(LIC_TRIAL, buf);
-	else
-		print_license_ct(last_valid_attempt, buf);
-
+	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
+			licenses.lb_glob_floating, licenses.lb_aval_floating,
+			licenses.lb_used_floating, licenses.lb_high_used_floating);
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 }
@@ -1210,4 +1168,3 @@ req_stat_resc(struct batch_request *preq)
 		(void)reply_send(preq);
 	}
 }
-

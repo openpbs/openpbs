@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file
  *		pbs_python.c
@@ -140,6 +142,7 @@ pbs_list_head	svr_modifyjob_hooks;
 pbs_list_head	svr_resvsub_hooks;
 pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
+pbs_list_head	svr_management_hooks;
 pbs_list_head	svr_provision_hooks;
 pbs_list_head	svr_periodic_hooks;
 pbs_list_head	svr_resv_end_hooks;
@@ -303,15 +306,6 @@ int	   actmode;
 }
 
 int
-set_sched_throughput_mode(pattr, pobj, actmode)
-attribute *pattr;
-void      *pobj;
-int	   actmode;
-{
-	return PBSE_NONE;
-}
-
-int
 action_sched_port(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;
@@ -405,13 +399,6 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 {
 
 	return PBSE_NONE;
-}
-
-int
-ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
-{
-	return (0);
-
 }
 
 int
@@ -2274,9 +2261,6 @@ argv_list_to_str(pbs_list_head *argv_list)
 int
 main(int argc, char *argv[], char *envp[])
 {
-	char python_path[MAXPATHLEN + 1] = {'\0'};
-	char *p_python_path = python_path;
-
 #ifndef WIN32
 	char dirname[MAXPATHLEN + 1];
 	int  env_len = 0;
@@ -2314,6 +2298,10 @@ main(int argc, char *argv[], char *envp[])
 		return 1;
 	}
 
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
+
 	/* by default, server_name is what is set in /etc/pbs.conf */
 	(void)strcpy(server_name, pbs_conf.pbs_server_name);
 
@@ -2337,12 +2325,12 @@ main(int argc, char *argv[], char *envp[])
 		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
 	/* last entry is left with null pointer */
 
-	if (get_py_progname(&p_python_path, MAXPATHLEN)) {
-		log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
-		return -1;
-	}
-
 	if ((argv[1] == NULL) || (strcmp(argv[1], HOOK_MODE) != 0)) {
+		char *python_path = NULL;
+		if (get_py_progname(&python_path)) {
+			log_err(-1, PBS_PYTHON_PROGRAM, "Failed to find python binary path!");
+			return -1;
+		}
 #ifdef WIN32
 		/* unset PYTHONHOME if any */
 		SetEnvironmentVariable(PYHOME, NULL);
@@ -2437,14 +2425,16 @@ main(int argc, char *argv[], char *envp[])
 				return 1;
 			}
 
-			largv[0] = argv[0];
+			largv[0] = python_path;
 			largv[2] = NULL;
 
 			rc = execve(python_path, largv, lenvp);
 		} else {
+			argv[0] = python_path;
 			rc = execve(python_path, argv, lenvp);
 		}
 #endif
+		free(python_path);
 	} else { /* hook mode */
 
 		char 	**argv2 = NULL;

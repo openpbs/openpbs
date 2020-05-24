@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	disrf.c
  *
@@ -90,7 +92,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 		return (DIS_PROTO);
 
 	/* dis_umaxd would be initialized by prior call to dis_init_tables */
-	switch (c = (*dis_getc)(stream)) {
+	switch (c = dis_getc(stream)) {
 		case '-':
 		case '+':
 			negate = c == '-';
@@ -99,7 +101,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			*ndigs = count;
 			*dval = 0.0;
 			do {
-				if ((c = (*dis_getc)(stream)) < '0' || c > '9') {
+				if ((c = dis_getc(stream)) < '0' || c > '9') {
 					if (c < 0)
 						return (DIS_EOD);
 					return (DIS_NONDIGIT);
@@ -108,7 +110,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			} while (--count);
 			if ((count = *nskips) > 0) {
 				count--;
-				switch ((*dis_getc)(stream)) {
+				switch (dis_getc(stream)) {
 					case '5':
 						if (count == 0)
 							break;
@@ -123,7 +125,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 					case '3':
 					case '4':
 						if (count > 0 &&
-							(*disr_skip)(stream, (size_t)count) < 0)
+							disr_skip(stream, (size_t)count) < 0)
 							return (DIS_EOD);
 						break;
 					default:
@@ -147,7 +149,7 @@ disrd_(int stream, unsigned count, unsigned *ndigs, unsigned *nskips, double *dv
 			if (count > 1) {
 				if (count > dis_umaxd)
 					break;
-				if ((*dis_gets)(stream, dis_buffer + 1, count - 1) !=
+				if (dis_gets(stream, dis_buffer + 1, count - 1) !=
 					count - 1)
 					return (DIS_EOD);
 				cp = dis_buffer;
@@ -206,10 +208,6 @@ disrf(int stream, int *retval)
 
 	assert(retval != NULL);
 	assert(stream >= 0);
-	assert(dis_getc != NULL);
-	assert(dis_gets != NULL);
-	assert(disr_skip != NULL);
-	assert(disr_commit != NULL);
 
 	dval = 0.0;
 	if ((locret = disrd_(stream, 1, &ndigs, &nskips, &dval, 0)) == DIS_SUCCESS) {
@@ -239,7 +237,7 @@ disrf(int stream, int *retval)
 			}
 		}
 	}
-	if ((*disr_commit)(stream, locret == DIS_SUCCESS) < 0)
+	if (disr_commit(stream, locret == DIS_SUCCESS) < 0)
 		locret = DIS_NOCOMMIT;
 	*retval = locret;
 	return (dval);

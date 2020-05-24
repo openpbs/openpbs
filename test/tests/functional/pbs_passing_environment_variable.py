@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -112,10 +115,13 @@ exit 0
                 n = m.split('=')[0]
                 break
         # Adjustments in bash due to ShellShock malware fix in various OS
-        os.environ[n] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
-        script = ['#PBS -V']
-        script += ['env | grep -A 3 foo\n']
-        script += ['foo\n']
+        script = """#!/bin/bash
+foo() { if [ /bin/true ]; then\necho hello;\nfi\n}
+export -f foo
+#PBS -V
+env | grep -A 3 foo\n
+foo\n
+"""
         # Submit a job without hooks in the system
         jid = self.create_and_submit_job(user=TEST_USER, content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
@@ -124,7 +130,7 @@ exit 0
         job_output = ""
         ret = self.du.cat(self.server.client, filename=job_outfile,
                           runas=TEST_USER, logerr=False)
-        job_output = (' '.join(ret['out'])).strip()
+        job_output = ('\n'.join(ret['out'])).strip()
         match = n + \
             '=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
         self.assertEqual(job_output, match,
@@ -180,3 +186,24 @@ exit 0
         self.server.expect(JOB, {'Variable_List': (MATCH_RE,
                                                    'SET_IN_SUBMISSION=false')},
                            id=jid1)
+
+    def test_passing_env_special_char_via_qsub(self):
+        """
+        Submit a job with -v ENV_TEST=N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii
+        and check that the value is passed correctly
+
+        NOTE: As per the Guide 5.2.4.7 Special Characters
+        in Variable_List Job Attribute
+        Python requires that double quotes
+        and backslashes also be escaped with a backslash
+        """
+        a = {ATTR_v: 'ENV_TEST="N:\\aa\\bb\\cc\\dd\\ee\\ff\\gg\\hh\\ii"'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        qstat = self.server.status(JOB, ATTR_v, id=jid2)
+        job_outfile = qstat[0]['Variable_List']
+        var_list = job_outfile.split(",")
+        exp_string = 'ENV_TEST=N:\\\\\\\\aa\\\\\\\\bb\\\\\\\\cc\\\\\\\\dd'
+        exp_string += '\\\\\\\\ee\\\\\\\\ff\\\\\\\\gg\\\\\\\\hh\\\\\\\\ii'
+        self.assertIn(exp_string, var_list)

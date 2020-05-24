@@ -3,46 +3,48 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
+
+import array
+import fcntl
+import socket
+import struct
+import sys
 
 from tests.functional import *
-
-import sys
-import socket
-import fcntl
-import struct
-import array
 
 
 class TestVerifyLogOutput(TestFunctional):
@@ -84,6 +86,7 @@ class TestVerifyLogOutput(TestFunctional):
         Test for hostname presence in log files
         """
         log_val = socket.gethostname()
+        momname = self.mom.shortname
         self.scheduler.log_match(
             log_val,
             regexp=False,
@@ -97,7 +100,7 @@ class TestVerifyLogOutput(TestFunctional):
             max_attempts=5,
             interval=2)
         self.mom.log_match(
-            log_val,
+            momname,
             regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
@@ -151,3 +154,32 @@ class TestVerifyLogOutput(TestFunctional):
                                          starttime=started_time)
             except PtlLogMatchError:
                 self.assertFalse(True)
+
+    def test_supported_auth_method_msgs(self):
+        """
+        Test to verify PBS_SUPPORTED_AUTH_METHODS is logged in server
+        and comm daemon logs after start or restart
+        """
+        attr_name = 'PBS_SUPPORTED_AUTH_METHODS'
+        started_time = time.time()
+        # check the logs after restarting the server and comm daemon
+        self.server.restart()
+        self.comm.restart()
+        resvport_msg = 'Supported authentication method: ' + 'resvport'
+        if self.server.isUp() and self.comm.isUp():
+            self.server.log_match(resvport_msg, starttime=started_time)
+            self.comm.log_match(resvport_msg, starttime=started_time)
+
+        # Added an attribute PBS_SUPPORTED_AUTH_METHODS in pbs.conf file
+        conf_attr = {'PBS_SUPPORTED_AUTH_METHODS': 'munge,resvport'}
+        self.du.set_pbs_config(confs=conf_attr)
+        started_time = time.time()
+        # check the logs after restarting the server and comm daemon
+        self.server.restart()
+        self.comm.restart()
+        munge_msg = 'Supported authentication method: ' + 'munge'
+        if self.server.isUp() and self.comm.isUp():
+            self.server.log_match(munge_msg, starttime=started_time)
+            self.comm.log_match(munge_msg, starttime=started_time)
+            self.server.log_match(resvport_msg, starttime=started_time)
+            self.comm.log_match(resvport_msg, starttime=started_time)

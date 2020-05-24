@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    sched_func.c
@@ -452,6 +454,33 @@ find_sched(char *sched_name)
 }
 
 /**
+ * @brief find a scheduler from partition name
+ *
+ * @param[in]	partition - partition name
+ *
+ * @return	pbs_sched *
+ */
+
+pbs_sched *
+find_sched_from_partition(char *partition)
+{
+	pbs_sched *psched = NULL;
+	attribute *part_attr;
+	if (!partition)
+		return NULL;
+
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+		if (part_attr->at_flags & ATR_VFLAG_SET) {
+			if ((part_attr->at_val.at_str != NULL)
+			    && (!strcmp(partition, part_attr->at_val.at_str)))
+				return psched;
+		}
+	}
+	return NULL;
+}
+
+/**
  * @brief free sched structure
  *
  * @param[in]	psched	- The pointer to the sched to free
@@ -607,7 +636,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 		}
 	}
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER)
-		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 	return PBSE_NONE;
 }
 
@@ -648,7 +677,7 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 		}
 	}
 	if (actmode != ATR_ACTION_RECOV)
-		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 	return PBSE_NONE;
 }
 
@@ -886,7 +915,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
  *
   */
 void
-set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
+set_sched_default(pbs_sched *psched, int from_scheduler)
 {
 	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
@@ -899,7 +928,7 @@ set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_cycle_len]), &sched_attr_def[(int) SCHED_ATR_sched_cycle_len],
 			TOSTR(PBS_SCHED_CYCLE_LEN_DEFAULT));
 	}
-	if (!unset_flag && (psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
 		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_schediteration]), &sched_attr_def[(int) SCHED_ATR_schediteration],
 			TOSTR(PBS_SCHEDULE_CYCLE));
 	}
@@ -956,7 +985,7 @@ set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
 		flag = 1;
 	}
-	if (!unset_flag && !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
+	if ( !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_val.at_str = strdup(PBS_PREEMPT_SORT_DEFAULT);
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
 		flag = 1;
@@ -994,32 +1023,26 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 	pbs_sched* psched;
 	pbs_sched* pin_sched;
 	attribute *part_attr;
-	int i;
-	int k;
+
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
 	if (pobj == dflt_scheduler)
 		return PBSE_SCHED_OP_NOT_PERMITTED;
-	pin_sched = (pbs_sched *) pobj;
-
-	for (i = 0; i < pattr->at_val.at_arst->as_usedptr; ++i) {
-		if (pattr->at_val.at_arst->as_string[i] == NULL)
+	pin_sched = (pbs_sched*)pobj;
+	if (pattr->at_val.at_str == NULL)
+		return PBSE_NONE;
+	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
+		return PBSE_DEFAULT_PARTITION;
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		if (psched == pobj)
 			continue;
-		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-			if (psched == pobj) {
-				continue;
-			}
-			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-			if (part_attr->at_flags & ATR_VFLAG_SET) {
-				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
-					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(pattr->at_val.at_arst->as_string[i],
-									part_attr->at_val.at_arst->as_string[k])))
-						return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
-				}
-			}
-		}
+		part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+		if (part_attr->at_flags & ATR_VFLAG_SET && (!strcmp(pattr->at_val.at_str, part_attr->at_val.at_str)))
+			return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
 	}
 	if (actmode != ATR_ACTION_RECOV)
-		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, pin_sched->pbs_scheduler_addr, pin_sched->pbs_scheduler_port);
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, pin_sched);
 	return PBSE_NONE;
 }
 

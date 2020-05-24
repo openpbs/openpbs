@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    run_sched.c
  *
@@ -141,7 +143,7 @@ put_sched_cmd(int sock, int cmd, char *jobid)
 {
 	int   ret;
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	if ((ret = diswsi(sock, cmd)) != DIS_SUCCESS)
 		goto err;
 
@@ -150,7 +152,7 @@ put_sched_cmd(int sock, int cmd, char *jobid)
 			goto err;
 	}
 
-	(void)DIS_tcp_wflush(sock);
+	(void)dis_flush(sock);
 	return 0;
 
 err:
@@ -213,17 +215,16 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 
 	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
 		attribute *part_attr;
+		if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, DEFAULT_PARTITION) == 0) {
+			*target_sched = dflt_scheduler;
+			return 1;
+		}
 		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
 			if (part_attr->at_flags & ATR_VFLAG_SET) {
-				int k;
-				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
-					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
-									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
-						*target_sched = psched;
-						return 1;
-					}
+				if(!strcmp(part_attr->at_val.at_str, pq->qu_attr[QA_ATR_partition].at_val.at_str)) {
+					*target_sched = psched;
+					return 1;
 				}
 			}
 		}
@@ -288,7 +289,7 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 	alarm(SCHEDULER_ALARM_TIME);
 
 	/* This function does a timeout wait on the non-blocking socket */
-	sock = client_to_svr(pbs_scheduler_addr, pbs_scheduler_port, 1); /* scheduler connection still uses resv-ports */
+	sock = client_to_svr(pbs_scheduler_addr, pbs_scheduler_port, B_RESERVED); /* scheduler connection still uses resv-ports */
 	if (pbs_errno == PBSE_NOLOOPBACKIF)
 		log_err(PBSE_NOLOOPBACKIF, "client_to_svr" , msg_noloopbackif);
 
@@ -305,9 +306,23 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 		log_err(errno, __func__, "could not find sock in connection table");
 		return (-1);
 	}
-	conn->cn_authen |=
-		PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
-
+	conn->cn_authen |= PBS_NET_CONN_TO_SCHED | PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
+	strcpy(conn->cn_username, PBS_SCHED_DAEMON_NAME);
+	conn->cn_credid = strdup(PBS_SCHED_DAEMON_NAME);
+	if (conn->cn_credid == NULL) {
+		log_err(errno, __func__, "Out of memory!");
+		return (-1);
+	}
+	conn->cn_auth_config = make_auth_config(AUTH_RESVPORT_NAME, "",
+							pbs_conf.pbs_exec_path,
+							pbs_conf.pbs_home_path,
+							(void *)log_event);
+	if (conn->cn_auth_config == NULL) {
+		log_err(errno, __func__, "Out of memory!");
+		return -1;
+	}
+	DIS_tcp_funcs();
+	transport_chan_set_ctx_status(sock, AUTH_STATUS_CTX_READY, FOR_AUTH);
 	net_add_close_func(sock, scheduler_close);
 
 	if (set_nodelay(sock) == -1) {
@@ -506,7 +521,7 @@ scheduler_close(int sock)
 	 *	dealing with the job.  Tell qrun it failed if the qrun connection
 	 *	is still there.
 	 *      If any qrun request is pending in the deffered list, set svr_unsent_qrun_req so
-	 * 	they are sent when the Scheduler completes this cycle 
+	 * 	they are sent when the Scheduler completes this cycle
 	 */
 	pdefr = (struct deferred_request *)GET_NEXT(svr_deferred_req);
 	while (pdefr) {
@@ -576,7 +591,7 @@ was_job_alteredmoved(job *pjob)
  * 		set_scheduler_flag - set the flag to call the Scheduler
  *		certain flag values should not be overwritten
  *
- * @param[in]	flag	-	pointer to job in question.
+ * @param[in]	flag	-	scheduler command.
  * @parm[in] psched -   pointer to sched object. Then set the flag only for this object.
  *                                     NULL. Then set the flag for all the scheduler objects.
  */

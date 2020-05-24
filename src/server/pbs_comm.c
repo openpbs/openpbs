@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	pbs_comm.c
@@ -61,7 +63,6 @@
  * 	hup_me()
  * 	lock_out()
  * 	set_limits()
- * 	log_tppmsg()
  * 	pbs_close_stdfiles()
  * 	go_to_background()
  * 	main_thread()
@@ -84,11 +85,11 @@
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 #include "log.h"
-#include "rpp.h"
-#include "tpp_common.h"
+#include "tpp.h"
 #include "server_limits.h"
 #include "pbs_version.h"
 #include "pbs_undolr.h"
+#include "auth.h"
 
 char daemonname[PBS_MAXHOSTNAME+8];
 extern char	*msg_corelimit;
@@ -96,8 +97,6 @@ extern char	*msg_init_chdir;
 int lockfds;
 int already_forked = 0;
 #define PBS_COMM_LOGDIR "comm_logs"
-
-static void log_tppmsg(int level, const char *id, char *mess);
 
 char	        server_host[PBS_MAXHOSTNAME+1];   /* host_name of server */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
@@ -389,35 +388,6 @@ set_limits()
 #endif	/* !RLIM64_INFINITY */
 }
 
-/**
- * @brief
- *		This is the log handler for tpp implemented in the daemon. The pointer to
- *		this function is used by the Libtpp layer when it needs to log something to
- *		the daemon logs
- *
- * @param[in] level   - Logging level
- * @param[in] objname - Name of the object about which logging is being done
- * @param[in] messa   - The log message
- *
- * @return	void
- */
-static void
-log_tppmsg(int level, const char *objname, char *mess)
-{
-	char id[2*PBS_MAXHOSTNAME];
-	int thrd_index;
-	int etype = log_level_2_etype(level);
-
-	thrd_index = tpp_get_thrd_index();
-	if (thrd_index == -1)
-		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL)? objname : msg_daemonname);
-	else
-		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL)? objname : msg_daemonname, thrd_index);
-
-	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
-	DBPRT(("%s\n", mess));
-}
-
 #ifndef DEBUG
 /**
  * @brief
@@ -493,7 +463,7 @@ main(int argc, char **argv)
 {
 	char *name = NULL;
 	struct tpp_config conf;
-	int rpp_fd;
+	int tpp_fd;
 	char *pc;
 	int numthreads;
 	char lockfile[MAXPATHLEN + 1];
@@ -534,6 +504,10 @@ main(int argc, char **argv)
 		fprintf(stderr, "%s: Configuration error\n", argv[0]);
 		return (1);
 	}
+
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	umask(022);
 
@@ -629,9 +603,6 @@ main(int argc, char **argv)
 	/* set pbs_comm's process limits */
 	set_limits(); /* set_limits can call log_record, so call only after opening log file */
 
-	/* set tcp function pointers */
-	set_tpp_funcs(log_tppmsg);
-
 	(void) snprintf(svr_home, sizeof(svr_home), "%s/%s", pbs_conf.pbs_home_path, PBS_SVR_PRIVATE);
 	if (chdir(svr_home) != 0) {
 		(void) sprintf(log_buffer, msg_init_chdir, svr_home);
@@ -660,15 +631,8 @@ main(int argc, char **argv)
 		return (1);
 	}
 
-	rc = 0;
-	if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
-		rc = set_tpp_config(&pbs_conf, &conf, host, port, routers, pbs_conf.pbs_use_compression,
-				TPP_AUTH_RESV_PORT, NULL, NULL);
-	} else {
-		/* for all non-resv-port based authentication use a callback from TPP */
-		rc = set_tpp_config(&pbs_conf, &conf, host, port, routers, pbs_conf.pbs_use_compression,
-				TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
-	}
+	/* set tpp config */
+	rc = set_tpp_config(NULL, &pbs_conf, &conf, host, port, routers);
 	if (rc == -1) {
 		(void) sprintf(log_buffer, "Error setting TPP config");
 		log_err(-1, __func__, log_buffer);
@@ -701,6 +665,7 @@ main(int argc, char **argv)
 	sprintf(log_buffer, "%s ready (pid=%d), Proxy Name:%s, Threads:%d", argv[0], getpid(), conf.node_name, numthreads);
 	fprintf(stdout, "%s\n", log_buffer);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
 
 #ifndef DEBUG
 	pbs_close_stdfiles();
@@ -742,7 +707,7 @@ main(int argc, char **argv)
 		log_err(errno, __func__, "sigaction for USR2");
 		return (2);
 	}
-#ifdef PBS_UNDOLR_ENABLED	
+#ifdef PBS_UNDOLR_ENABLED
 	act.sa_handler = catch_sigusr1;
 #endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
@@ -750,10 +715,15 @@ main(int argc, char **argv)
 		return (2);
 	}
 
+	if (load_auths(AUTH_SERVER)) {
+		log_err(-1, "pbs_comm", "Failed to load auth lib");
+		return 2;
+	}
+
 	conf.node_type = TPP_ROUTER_NODE;
 	conf.numthreads = numthreads;
 
-	if ((rpp_fd = tpp_init_router(&conf)) == -1) {
+	if ((tpp_fd = tpp_init_router(&conf)) == -1) {
 		log_err(-1, __func__, "tpp init failed\n");
 		return 1;
 	}
@@ -772,17 +742,22 @@ main(int argc, char **argv)
 			memcpy(&pbs_conf_bak, &pbs_conf, sizeof(struct pbs_config));
 
 			if (pbs_loadconf(1) == 0) {
-				log_tppmsg(LOG_CRIT, NULL, "Configuration error, ignoring");
+				if (tpp_log_func)
+					tpp_log_func(LOG_CRIT, NULL, "Configuration error, ignoring");
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 			} else {
 				/* restore old pbs.conf */
 				new_logevent = pbs_conf.pbs_comm_log_events;
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 				pbs_conf.pbs_comm_log_events = new_logevent;
-				log_tppmsg(LOG_INFO, NULL, "Processed SIGHUP");
+				if (tpp_log_func)
+					tpp_log_func(LOG_INFO, NULL, "Processed SIGHUP");
 
 				log_event_mask = &pbs_conf.pbs_comm_log_events;
 				tpp_set_logmask(*log_event_mask);
+				set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+						pbs_conf.locallog, pbs_conf.syslogfac,
+						pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 			}
 		}
 #ifdef PBS_UNDOLR_ENABLED
@@ -801,6 +776,7 @@ main(int argc, char **argv)
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
 	(void)unlink(lockfile);
+	unload_auths();
 
 	return 0;
 }

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_RESERVATION_H
 #define	_RESERVATION_H
 #ifdef	__cplusplus
@@ -63,6 +65,8 @@ extern "C" {
 
 #define RESV_START_TIME_MODIFIED	0x1
 #define RESV_END_TIME_MODIFIED		0x2
+#define RESV_DURATION_MODIFIED		0x4
+
 
 /*
  * The following resv_atr enum provide an index into the array of
@@ -117,7 +121,10 @@ enum resv_atr {
 	RESV_ATR_resv_execvnodes,
 	RESV_ATR_resv_timezone,
 	RESV_ATR_retry,
+	RESV_ATR_del_idle_time,
+	RESV_ATR_job,
 	RESV_ATR_node_set,
+	RESV_ATR_partition,
 	RESV_ATR_UNKN,
 	RESV_ATR_LAST
 };
@@ -231,6 +238,13 @@ struct resc_resv {
 	/* Reservation start and end tasks */
 	struct work_task	*resv_start_task;
 	struct work_task	*resv_end_task;
+	int resv_from_job;
+
+	/* A count to keep track of how many schedulers have been requested and
+	 * responsed to this reservation request
+	 */
+	int			req_sched_count;
+	int			rep_sched_count;
 
 	/*
 	 * fixed size internal data - maintained via "quick save"
@@ -304,6 +318,7 @@ struct resc_resv {
 #define RESV_UNION_TYPE_NEW	0
 
 #define RESV_RETRY_DELAY	10  /* for degraded standing reservation retries */
+#define RESV_ASAP_IDLE_TIME	600 /* default delete_idle_time for ASAP reservations */
 
 /* reservation hold (internal) types */
 
@@ -345,9 +360,10 @@ extern	void tickle_for_reply(void);
 extern	void remove_deleted_resvs();
 extern	void add_resv_beginEnd_tasks();
 extern	void resv_retry_handler(struct work_task *);
-#endif	/* _WORK_TASK_H */
+extern void set_idle_delete_task(resc_resv *presv);
+#endif /* _WORK_TASK_H */
 
-extern  int  change_enableORstart(resc_resv *, int, char *);
+extern int change_enableORstart(resc_resv *, int, char *);
 extern	void unset_resv_retry(resc_resv *);
 extern	void set_resv_retry(resc_resv *, long);
 extern	void eval_resvState(resc_resv *, enum resvState_discrim, int, int *,

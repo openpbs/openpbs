@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    queue_func.c
  *
@@ -278,26 +280,24 @@ que_purge(pbs_queue *pque)
 pbs_queue *
 find_queuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
 	qname[PBS_MAXDEST] ='\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#ifdef NAS /* localmod 075 */
 
 /**
  * @brief
@@ -311,27 +311,60 @@ find_queuebyname(char *quename)
 pbs_queue *
 find_resvqueuebyname(char *quename)
 {
-	char  *pc;
+	char *pc;
 	pbs_queue *pque;
-	char   qname[PBS_MAXDEST + 1];
+	char qname[PBS_MAXDEST + 1];
 
 	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] ='\0';
+	qname[PBS_MAXDEST] = '\0';
 	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
 	if (pc)
 		*pc = '\0';
-	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != NULL) {
+	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
+		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
 			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
 			break;
-		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 	if (pc)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
-#endif /* localmod 075 */
+
+/**
+ * @brief
+ * 		find_resv_by_quename() - find a reservation by the name of its queue
+ *
+ * @param[in]	quename	- queue name.
+ *
+ * @return	resc_resv *
+ */
+
+resc_resv *
+find_resv_by_quename(char *quename)
+{
+	char *pc;
+	resc_resv *presv = NULL;
+	char qname[PBS_MAXQUEUENAME + 1];
+
+	if (quename == NULL || *quename == '\0')
+		return NULL;
+
+	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
+	qname[PBS_MAXQUEUENAME] = '\0';
+	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
+	if (pc)
+		*pc = '\0';
+	presv = (resc_resv *)GET_NEXT(svr_allresvs);
+	while (presv != NULL) {
+		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
+			break;
+		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	}
+	if (pc)
+		*pc = '@';	/* restore '@' server portion */
+	return (presv);
+}
 
 /**
  * @brief
@@ -448,8 +481,14 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 {
 	int i;
 
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
 	if (((pbs_queue *)pobj)->qu_qs.qu_type  == QTYPE_RoutePush)
 		return PBSE_ROUTE_QUE_NO_PARTITION;
+
+	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
+		return PBSE_DEFAULT_PARTITION;
 
 	for (i=0; i < svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
@@ -465,5 +504,3 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 
 	return PBSE_NONE;
 }
-
-

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    svr_jobfunc.c
  *
@@ -62,12 +64,6 @@
  *      state_char2int()   - returns the state from char form to int form.
  *		uniq_nameANDfile() - creates a unique filename and file for an object
  *		remove_deleted_resvs() - remove reservations marked RESV_FINISHED
- *		set_cpu_licenses_need()- set # of cpu licenses needed by a job
- *		allocate_cpu_licenses()- assign cpu licenses to a job
- *		deallocate_cpu_licenses()     - unassign cpu licenses from a job
- *		clear_and_populate_svr_unlicensedjobs() - empties then adds entries
- *												to svr_unlicensedjobs.
- *		relicense_svr_unlicensedjobs()- relicense jobs in svr_unlicensedjobs
  *      update_eligible_time() - calc eligible time and modify accrue_type
  *		determine_accruetype() - determines accruetype
  *		alter_eligibletime() - resets sampletime of job
@@ -169,7 +165,6 @@ extern char *msg_mombadmodify;
 extern struct server server;
 extern int  pbs_mom_port;
 extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
 extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
@@ -1554,7 +1549,7 @@ check_block_wt(struct work_task *ptask)
 	**	All ready to talk... now send the info.
 	*/
 
-	DIS_tcp_setup(blockj->fd);
+	DIS_tcp_funcs();
 	ret = diswsi(blockj->fd, 1);		/* version */
 	if (ret != DIS_SUCCESS)
 		goto err;
@@ -1571,11 +1566,12 @@ check_block_wt(struct work_task *ptask)
 	ret = diswsi(blockj->fd, blockj->exitstat);
 	if (ret != DIS_SUCCESS)
 		goto err;
-	(void)DIS_tcp_wflush(blockj->fd);
+	(void)dis_flush(blockj->fd);
 
 	sprintf(log_buffer, "%s: Write successful to client %s for job %s ", __func__,
 	blockj->client, blockj->jobid);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_NOTICE, blockj->jobid, log_buffer);
+	dis_destroy_chan(blockj->fd);
 	CS_close_socket(blockj->fd);
 	goto end;
 
@@ -1588,6 +1584,8 @@ retry:
 		blockj->client, blockj->jobid);
 	}
 err:
+	DIS_tcp_funcs();
+	dis_destroy_chan(blockj->fd);
 	if (ret != DIS_SUCCESS) {
 		sprintf(log_buffer, "DIS error while replying to client %s for job %s",
 		blockj->client, blockj->jobid);
@@ -2010,7 +2008,7 @@ get_hostPart(char *from)
  *
  * @par MT-safe:	No.
  */
-static int
+int
 set_select_and_place(int objtype, void *pobj, attribute *patr)
 {
 	pbs_list_head     collectresc;
@@ -2056,7 +2054,7 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 
 		/* Have a nodes spec, use it  to make select and place */
 
-		if ((rc=cvt_nodespec_to_select(ndspec, &cvt, &cvt_len, patr)) != 0)
+		if ((rc = cvt_nodespec_to_select(ndspec, &cvt, &cvt_len, patr)) != 0)
 			return rc;
 
 		if ((rc = prdefsl->rs_decode(&prescsl->rs_value, NULL, "select", cvt)) != 0)
@@ -2321,7 +2319,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 
 extern int resc_access_perm;
 
-static int
+int
 make_schedselect(attribute *patrl, resource *pselect,
 	pbs_queue *pque, attribute *psched)
 {
@@ -2489,14 +2487,14 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
 	presc   = find_resc_entry(pdest, prdefsl);
 	/* if not set, set select/place */
-	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET)==0))
+	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0))
 		if ((rc = set_select_and_place(objtype, pobj, pdest)) != 0)
 			return rc;
 
 	prdefpc = find_resc_def(svr_resc_def, "place", svr_resc_size);
 	presc = find_resc_entry(pdest, prdefpc);
 	/* if "place" still not set, force to "free" */
-	if ((presc == NULL) || ((presc->rs_value.at_flags&ATR_VFLAG_SET)==0)) {
+	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0)) {
 		presc = add_resource_entry(pdest, prdefpc);
 		if (presc == NULL)
 			return PBSE_SYSTEM;
@@ -2671,10 +2669,10 @@ correct_ct(pbs_queue *pqj)
 /**
  * @brief
  * 		Update_Resvstate_if_resv - function checks if the job is
- *      a reservation-job and, if so, the reservation "state"
+ * 		a reservation-job and, if so, the reservation "state"
  *		is computed based on:
- *	    current "job state", "job substate", "reservation state"
- *	    and, the "reserve_start"/"reserve_end" times vs current time.
+ *		current "job state", "job substate", "reservation state"
+ *		and, the "reserve_start"/"reserve_end" times vs current time.
  * @par
  *		The assumption that's made is that "reserve_start",
  *		and "reserve_end" have been computed prior to the calling
@@ -3064,15 +3062,15 @@ Time4resv(struct work_task *ptask)
 		 *indicate that in the future resources have to be returned
 		 *and, setup so that the scheduler gets notified
 		 */
-		set_resc_assigned((void *)presv, 1, INCR);
+		if (!presv->resv_from_job)
+			set_resc_assigned((void *)presv, 1, INCR);
 		presv->ri_giveback = 1;
 
 		resv_exclusive_handler(presv);
-
-		set_scheduler_flag(SCH_SCHEDULE_JOBRESV,dflt_scheduler);
+		notify_scheds_about_resv(SCH_SCHEDULE_JOBRESV, presv);
 
 		/*notify the relevant persons that the reservation time has arrived*/
-		if(presv->ri_qs.ri_tactive == time_now){
+		if (presv->ri_qs.ri_tactive == time_now){
 			svr_mailownerResv(presv, MAIL_BEGIN, MAIL_NORMAL, "");
 			account_resvstart(presv);
 		}
@@ -3088,6 +3086,11 @@ Time4resv(struct work_task *ptask)
 
 			append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		}
+	}
+
+	if (presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET) {
+		/* Catch the idle case where the reservation never has any jobs in it */
+		set_idle_delete_task(presv);
 	}
 }
 
@@ -3169,7 +3172,7 @@ Time4resvFinish(struct work_task *ptask)
 	 * 2) Delete all Running Jobs and Keep Queued Jobs
 	 * 3) Once all Obits are received (see running_jobs_count):
 	 *    3.a) Determine if occurrences were missed
-	 *    3.b) Add the next occurrence start and end event on the work task 	 *
+	 *    3.b) Add the next occurrence start and end event on the work task
 	 */
 	presv->resv_end_task = NULL;
 	if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1) {
@@ -3179,7 +3182,8 @@ Time4resvFinish(struct work_task *ptask)
 		DBPRT(("reached end of occurrence %d/%d\n", ridx, rcount))
 
 		/* When recovering past the last occurrence the standing reservation is purged
-		 * in a manner similar to an advance reservation  */
+		 * in a manner similar to an advance reservation
+		 */
 		if (ridx < rcount) {
 			/*
 			 * Invoke the reservation end hook for every occurrence
@@ -3200,7 +3204,7 @@ Time4resvFinish(struct work_task *ptask)
 			 * state of the reservation queue
 			 */
 			change_enableORstart(presv, Q_CHNG_START, "FALSE");
-			(void)resv_setResvState(presv, RESV_DELETING_JOBS, RESV_DELETING_JOBS);
+			resv_setResvState(presv, RESV_DELETING_JOBS, presv->ri_qs.ri_substate);
 
 			/* 2) Issue delete messages to jobs in running state and keep jobs in
 			 * Queued state. Server periodically monitors the reservation queue
@@ -3242,16 +3246,15 @@ Time4resvFinish(struct work_task *ptask)
 		strcpy(preq->rq_ind.rq_delete.rq_objname,
 			presv->ri_qs.ri_resvID);
 
-		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
-			resvFinishReply, NULL, 0);
-
 		/*notify relevant parties that the reservation's
 		 *ending time has arrived and reservation is being deleted
 		 */
 		svr_mailownerResv(presv, MAIL_END, MAIL_NORMAL, "");
 
-		tickle_for_reply();
 		set_last_used_time_node(presv, 1);
+		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
+			resvFinishReply, NULL, 0);
+		tickle_for_reply();
 	}
 }
 
@@ -3273,31 +3276,32 @@ Time4resvFinish(struct work_task *ptask)
 static void
 Time4occurrenceFinish(resc_resv *presv)
 {
-	time_t			newend;
-	time_t			newstart;
-	int			state = 0;
-	int			sub = 0;
-	int			rc = 0;
-	int			rcount_adjusted = 0;
-	char			*execvnodes = NULL;
-	char			*newxc = NULL;
-	char			**short_xc = NULL;
-	char			**tofree = NULL;
-	time_t			dtstart;
-	time_t			dtend;
-	time_t			next;
-	time_t			now;
-	struct work_task	*ptask = NULL;
-	pbsnode_list_t		*pl = NULL;
-	char			start_time[9] = {0};	/* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
-	resource_def		*rscdef = NULL;
-	resource		*prsc = NULL;
-	attribute		atemp = {0};
-	int			j = 2;
-	int			ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-	int			rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
-	char			*rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
-	char			*tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
+	time_t newend;
+	time_t newstart;
+	int state = 0;
+	int sub = 0;
+	int rc = 0;
+	int rcount_adjusted = 0;
+	char *execvnodes = NULL;
+	char *newxc = NULL;
+	char **short_xc = NULL;
+	char **tofree = NULL;
+	time_t dtstart;
+	time_t dtend;
+	time_t next;
+	time_t now;
+	struct work_task *ptask = NULL;
+	pbsnode_list_t *pl = NULL;
+	char start_time[9] = {0}; /* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
+	resource_def *rscdef = NULL;
+	resource *prsc = NULL;
+	attribute atemp = {0};
+	int j = 2;
+	int occurrence_ended_early = 0;
+	int ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
+	int rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
+	char *rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
+	char *tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
 
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
@@ -3315,11 +3319,19 @@ Time4occurrenceFinish(resc_resv *presv)
 	next = dtstart;
 	now = time(NULL);
 
-	/* Add next occurrence and account for missed occurrences..
-	 * A missed occurrence is one that had its reservation end time in the past.
-	 * next can be -1 if it exceeds the end date of Unix time in 2038.
+	/* Add next occurrence and account for missed occurrences.
+	 * There are three ways we can get into this function:
+	 * 1) When the server is initializating.  We need to account for all occurrences we have missed.
+	 * 2) The end of an occurrence.  We need to move onto the next.
+	 * 3) If an occurrence ends early.  We need to move onto the next.
 	 */
-	while (dtend <= now && next != -1) {
+	if (presv->ri_qs.ri_substate == RESV_RUNNING && next < now)
+		occurrence_ended_early = 1;
+	while (occurrence_ended_early || dtend <= now) {
+		/* We may loop and skip several occurrences for different reasons,
+		 * if an occurrence ended early, it can only be the one we are in
+		 */
+		occurrence_ended_early = 0;
 		/* get occurrence that is "j" numbers away from dtstart. */
 		next = get_occurrence(rrule, dtstart, tz, j);
 		if (presv->ri_alter_standing_reservation_duration) {
@@ -3328,7 +3340,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		}
 		dtend = next + presv->ri_qs.ri_duration;
 
-		/* Index of next occurrence from dtstart*/
+		/* Index of next occurrence from dtstart */
 		j++;
 
 		/* Log information notifying of missed occurrences. An occurrence is
@@ -3341,7 +3353,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		 * missed occurrences that are noted in the log file. */
 		if (j > 3 || presv->ri_giveback == 0) {
 			if (strftime(start_time, sizeof(start_time),
-				"%H:%M:%S", localtime(&dtstart))) {
+				     "%H:%M:%S", localtime(&dtstart))) {
 				sprintf(log_buffer,
 					"reservation occurrence %d/%d "
 					"scheduled at %s was skipped because "
@@ -3351,11 +3363,12 @@ Time4occurrenceFinish(resc_resv *presv)
 				sprintf(log_buffer,
 					"reservation occurrence %d/%d was "
 					"skipped because its end time is in "
-					"the past", ridx, rcount);
+					"the past",
+					ridx, rcount);
 			}
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
-				LOG_NOTICE, presv->ri_qs.ri_resvID,
-				log_buffer);
+				  LOG_NOTICE, presv->ri_qs.ri_resvID,
+				  log_buffer);
 		}
 
 		/* The reservation index is incremented */
@@ -3376,7 +3389,6 @@ Time4occurrenceFinish(resc_resv *presv)
 
 		DBPRT(("stdg_resv: next occurrence start = %s", ctime(&next)))
 		DBPRT(("stdg_resv: next occurrence end   = %s", ctime(&dtend)))
-
 	}
 	DBPRT(("stdg_resv: execvnodes sequence   = %s\n", presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str))
 	execvnodes = strdup(presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str);
@@ -3389,7 +3401,8 @@ Time4occurrenceFinish(resc_resv *presv)
 	rcount_adjusted = rcount - get_execvnodes_count(execvnodes);
 
 	/* The reservation index starts at 1 but the short_xc array at 0. Occurrence 1
-	 * is therefore given by array element 0. */
+	 * is therefore given by array element 0.
+	 */
 	newxc = strdup(short_xc[ridx - rcount_adjusted - 1]);
 
 	/* clean up helper variables */
@@ -3410,7 +3423,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Reservation Nodes are freed and a -possibly- new set assigned */
 	free_resvNodes(presv);
-	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might 
+	/* set ri_vnodes_down to 0 because the previous occurrences downed nodes might
 	 * not exist in the following occurrence.  The new occurrence's ri_vnodes_down
 	 * will be set properly in set_nodes()
 	 */
@@ -3458,7 +3471,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		return;
 	}
 
-	/*place "Time4resv" task on "task_list_timed"*/
+	/* place "Time4resv" task on "task_list_timed" */
 	if ((rc = gen_task_Time4resv(presv)) != 0) {
 		sprintf(log_buffer, "problem generating task Time for occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
@@ -3467,7 +3480,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* add task to handle the end of the next occurrence */
 	if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 		(void)resv_purge(presv);
-		sprintf(log_buffer, " problem generating reservation end task for occurrence (%d)", rc);
+		sprintf(log_buffer, "problem generating reservation end task for occurrence (%d)", rc);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 		return;
 	}
@@ -3490,19 +3503,19 @@ Time4occurrenceFinish(resc_resv *presv)
 		}
 	}
 
+	/* All nodes of this occurrence are up, mark reservation confirmed */
+	if (pl == NULL)
+		state = RESV_CONFIRMED;
+
 	/* If the reservation already has a retry time set then its substate is
-	 * marked degraded
+	 * marked degraded.  If all degraded occurrences are in the past, the
+	 * scheduler will fix this on the next retry attempt.
 	 */
-	if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > time_now) {
+	if (presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) {
 		sub = RESV_DEGRADED;
-	}
-	/* otherwise, if degraded, default to setting a retry time in a
-	 * "reasonable" time in the future
-	 */
-	else if ((presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) &&
-		presv->ri_wattr[RESV_ATR_retry].at_val.at_long > 0 &&
-		presv->ri_wattr[RESV_ATR_retry].at_val.at_long <= time_now) {
-		set_resv_retry(presv, time_now + 120);
+		if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > 0 &&
+		    presv->ri_wattr[RESV_ATR_retry].at_val.at_long <= time_now)
+			set_resv_retry(presv, time_now + 120);
 	}
 
 	if (sub == RESV_DEGRADED) {
@@ -3847,16 +3860,12 @@ resv_setResvState(resc_resv *presv, int state, int sub)
 	presv->ri_qs.ri_state = state;
 	presv->ri_qs.ri_substate = sub;
 
-	presv->ri_wattr[(int)RESV_ATR_state]
-	.at_val.at_long = state;
-	presv->ri_wattr[(int)RESV_ATR_state]
-	.at_flags |= ATR_VFLAG_SET |
+	presv->ri_wattr[(int)RESV_ATR_state].at_val.at_long = state;
+	presv->ri_wattr[(int)RESV_ATR_state].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
-	presv->ri_wattr[(int)RESV_ATR_substate]
-	.at_val.at_long = sub;
-	presv->ri_wattr[(int)RESV_ATR_substate]
-	.at_flags |= ATR_VFLAG_SET |
+	presv->ri_wattr[(int)RESV_ATR_substate].at_val.at_long = sub;
+	presv->ri_wattr[(int)RESV_ATR_substate].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	presv->ri_modified = 1;
 	return;
@@ -3885,7 +3894,7 @@ resv_retry_handler(struct work_task *ptask)
 		return;
 
 	/* Notify scheduler that a reservation needs to be reconfirmed */
-	set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
+	notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
 }
 
 /**
@@ -4358,10 +4367,10 @@ remove_deleted_resvs(void)
 
 /**
  * @brief
- * 		add_resv_beginEnd_tasks - for each reservation not in state
- *      RESV_FINISHED add to "task_list_timed" the "begin" and
- *      "end" reservation tasks as appropriate.  Function used
- *		in "pbsd_init" code
+ * 	add_resv_beginEnd_tasks - for each reservation not in state
+ *	RESV_FINISHED add to "task_list_timed" the "begin" and
+ *	"end" reservation tasks as appropriate.  Function used
+ *	in "pbsd_init" code
  *
  * @return	none
  */
@@ -4375,12 +4384,11 @@ add_resv_beginEnd_tasks(void)
 
 	presv = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (presv) {
-
 		rc = 0;
 		if (presv->ri_qs.ri_state == RESV_CONFIRMED ||
 			presv->ri_qs.ri_state == RESV_RUNNING) {
 
-			/*add "begin" and "end" tasks onto "task_list_timed"*/
+			/* add "begin" and "end" tasks onto "task_list_timed" */
 
 			if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 				sprintf(txt, "%s : EndResvWindow task creation failed",
@@ -4394,7 +4402,7 @@ add_resv_beginEnd_tasks(void)
 			}
 		} else if (presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
 
-			/*add "end" task onto "task_list_timed"*/
+			/* add "end" task onto "task_list_timed" */
 
 			if ((rc = gen_task_EndResvWindow(presv)) != 0) {
 				sprintf(txt, "%s : EndResvWindow task creation failed",
@@ -4472,7 +4480,7 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
 /**
  * @brief
  *		start_end_dur_wall - This function handles both "resc_resv"
- *		objects or "job" objects.   If it is passed a reservation
+ *		objects or "job" objects.  If it is passed a reservation
  *		of some type, it considers the information specified for
  *		start_time, end_time, duration and walltime.  Using what was
  *		specified, it computes those unspecified values that are
@@ -4514,6 +4522,7 @@ start_end_dur_wall(void *pobj, int objtype)
 
 	int	swcode = 0;	/*"switch code"*/
 	int	rc = 0;		/*return code, assume success*/
+	short	check_start = 1;
 
 	if (pobj == 0)
 		return (-1);
@@ -4551,6 +4560,7 @@ start_end_dur_wall(void *pobj, int objtype)
 		pattr = &presv->ri_wattr[RESV_ATR_resource];
 		prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource],
 			rscdef);
+		check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
 	} else if (objtype == RESV_JOB_OBJECT) {
 		pjob = (job *)pobj;
 		presv = pjob->ji_resvp;
@@ -4578,42 +4588,48 @@ start_end_dur_wall(void *pobj, int objtype)
 			swcode += 8;			/*have walltime*/
 		else if (!(prsc = add_resource_entry(pattr, rscdef)))
 			return (-1);
-	}
-	else {
-		swcode = 3;
+	} else {
+		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED)
+			swcode += 4;
+		if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
+			swcode += 2; /*calcualte start time*/
+		if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
+			swcode += 1; /*calculate end time*/
+		if (presv->ri_alter_flags == RESV_START_TIME_MODIFIED || presv->ri_alter_flags == RESV_END_TIME_MODIFIED) {
+			swcode = 3;
+		}
 	}
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
 		case  3:	/*start, end*/
-			if (((pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
+			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
-
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
-
 				(void)pddef->at_set(pduration, &atemp, SET);
 				(void)rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
+		case  4:
 		case  5:	/*start, duration*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start && pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
 				petime->at_flags |= ATR_VFLAG_SET |
 					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
-					presv->ri_qs.ri_duration;
+					pduration->at_val.at_long;
 			}
 			break;
 
 		case  7:	/*start, end, duration*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
 				((petime->at_val.at_long - pstime->at_val.at_long) !=
@@ -4621,6 +4637,7 @@ start_end_dur_wall(void *pobj, int objtype)
 				rc = -1;
 			break;
 
+		case  6:
 		case  8:	/* end, duration */
 			if ((pduration->at_val.at_long <= 0) ||
 				(petime->at_val.at_long - pduration->at_val.at_long <
@@ -4636,7 +4653,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case  9:	/*start, wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0))
 				rc = -1;
 			else {
@@ -4668,7 +4685,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 11:	/*start, end, wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0) ||
 				(petime->at_val.at_long - pstime->at_val.at_long !=
 					prsc->rs_value.at_val.at_long))
@@ -4681,7 +4698,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 13:	/*start, duration & wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
@@ -4694,7 +4711,7 @@ start_end_dur_wall(void *pobj, int objtype)
 			break;
 
 		case 15:	/*start, end, duration & wall*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((check_start) || (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
 				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
@@ -5096,6 +5113,9 @@ void
 svr_saveorpurge_finjobhist(job *pjob)
 {
 	int flag = 0;
+	resc_resv *presv;
+
+	presv = pjob->ji_myResv;
 
 	flag = svr_chk_history_conf();
 	if (flag && !pjob->ji_deletehistory) {
@@ -5103,13 +5123,13 @@ svr_saveorpurge_finjobhist(job *pjob)
 		if (pjob->ji_ajtrk)
 			pjob->ji_ajtrk->tkm_flags &= ~TKMFLG_CHK_ARRAY;
 		if (pjob->ji_terminated && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-				pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
+		    pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
 			pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
 	} else {
 		if (pjob->ji_deletehistory && flag) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				msg_also_deleted_job_history);
+				  LOG_INFO, pjob->ji_qs.ji_jobid,
+				  msg_also_deleted_job_history);
 		}
 		/* For an array subjob if exit status is non-zero mark sub state
 		 * as JOB_SUBSTATE_FAILED. Otherwise set to JOB_SUBSTATE_FINISHED
@@ -5118,9 +5138,9 @@ svr_saveorpurge_finjobhist(job *pjob)
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 			if (pjob->ji_terminated)
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_TERMINATED;
-			else if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
-				ATR_VFLAG_SET) {
-				if (pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long)
+			else if ((pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags) &
+				 ATR_VFLAG_SET) {
+				if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long)
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FAILED;
 				else if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_EXITED)
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FINISHED;
@@ -5128,6 +5148,7 @@ svr_saveorpurge_finjobhist(job *pjob)
 		}
 		job_purge(pjob);
 	}
+	set_idle_delete_task(presv);
 }
 /**
  * @brief
@@ -5587,7 +5608,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 /**
  * @brief
  * 		svr_chk_histjob - check whether job is a history job: called from
- * 		       req_stat_job() if type = 1;
+ * 			req_stat_job() if type = 1;
  *
  * @param[in]	pjob	-	job structure to be checked
  *
@@ -5770,7 +5791,7 @@ post_send_job_exec_update_req(struct work_task *pwt)
 	if (pwt == NULL)
 		return;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	mom_preq = pwt->wt_parm1;
 	mom_preq->rq_conn = mom_preq->rq_orgconn;  /* restore socket to client */

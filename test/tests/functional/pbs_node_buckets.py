@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -113,7 +116,7 @@ class TestNodeBuckets(TestFunctional):
 
         self.server.delete(jid, wait=True)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_basic(self):
         """
         Request nodes of a specific color and make sure they are correctly
@@ -134,7 +137,7 @@ class TestNodeBuckets(TestFunctional):
             self.assertTrue('yellow' in
                             n[0]['resources_available.color'])
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_multi_bucket(self):
         """
         Request two different chunk types which need to be allocated from
@@ -159,7 +162,7 @@ class TestNodeBuckets(TestFunctional):
             n = self.server.status(NODE, id=nodes[i])
             self.assertTrue('blue' in n[0]['resources_available.color'])
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_multi_bucket2(self):
         """
         Request nodes from all 7 different buckets and see them allocated
@@ -187,7 +190,7 @@ class TestNodeBuckets(TestFunctional):
             self.assertTrue(self.colors[i] in
                             n[0]['resources_available.color'])
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_not_run(self):
         """
         Request more nodes of one color that is available to make sure
@@ -203,7 +206,7 @@ class TestNodeBuckets(TestFunctional):
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid)
         self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_calendaring1(self):
         """
         Test to see that nodes that are used in the future for
@@ -249,7 +252,7 @@ class TestNodeBuckets(TestFunctional):
         self.server.expect(JOB, 'comment', op=SET, id=jid4, interval=1)
         self.scheduler.log_match(jid4 + ';Chunk: ' + chunk3, n=10000)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_calendaring2(self):
         """
         Test that nodes that a reservation calendared on them later on
@@ -283,7 +286,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertTrue('vnode[2865]' in n, msg)
         self.assertTrue('vnode[2870]' in n, msg)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_calendaring3(self):
         """
         Test that a future reservation's nodes are used first for a job
@@ -326,7 +329,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertTrue('vnode[2865]' in n, msg)
         self.assertTrue('vnode[2870]' in n, msg)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_buckets_and_non(self):
         """
         Test that jobs requesting buckets and not requesting buckets
@@ -359,7 +362,7 @@ class TestNodeBuckets(TestFunctional):
         for n in nodes2:
             self.assertNotEqual(n, nodes1[0], msg)
 
-    @timeout(600)
+    @skipOnCpuSet
     def test_not_buckets(self):
         """
         Test to make sure the jobs that should use the standard node searching
@@ -485,7 +488,7 @@ class TestNodeBuckets(TestFunctional):
                                   sharednode=False, vnodes_per_host=4)
         self.check_normal_path(sel='2:ncpus=8')
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_multi_vnode_resv(self):
         """
         Test that node buckets do not get in the way of running jobs on
@@ -530,7 +533,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job1 ran in more than one placement set")
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_bucket_sort(self):
         """
         Test if buckets are sorted properly: all of the yellow bucket
@@ -558,7 +561,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(c1, 'yellow', "Job didn't run on yellow nodes")
         self.assertEqual(c2, 'yellow', "Job didn't run on yellow nodes")
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_psets(self):
         """
         Test placement sets with node buckets
@@ -603,7 +606,7 @@ class TestNodeBuckets(TestFunctional):
         for node in used_nodes1:
             self.assertNotIn(node, used_nodes2, 'Jobs share nodes: ' + node)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_psets_calendaring(self):
         """
         Test that jobs in the calendar fit within a placement set
@@ -663,7 +666,44 @@ class TestNodeBuckets(TestFunctional):
             self.assertNotIn(node, used_nodes3,
                              'Jobs will share nodes: ' + node)
 
-    @timeout(450)
+    @skipOnCpuSet
+    def test_psets_calendaring_resv(self):
+        """
+        Test that jobs do not run into a reservation and will correctly
+        be added to the calendar on the correct vnodes with placement sets
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': True})
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'shape',
+                                                  'node_group_enable': True})
+
+        now = int(time.time())
+        a = {'Resource_List.select': '10010:ncpus=1',
+             'Resource_List.place': 'scatter:excl',
+             'reserve_start': now + 600, 'reserve_end': now + 3600}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
+
+        a = {'Resource_List.select': '1430:ncpus=1',
+             'Resource_List.place': 'scatter:excl',
+             'Resource_List.walltime': '1:00:00'}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, 'estimated.exec_vnode', id=jid, op=SET)
+
+        n = self.server.status(NODE, 'resources_available.shape')
+        st = self.server.status(JOB, 'estimated.exec_vnode', id=jid)[0]
+        nodes = j.get_vnodes(st['estimated.exec_vnode'])
+
+        s = [x['resources_available.shape']
+             for x in n if x['id'] in nodes]
+        self.assertEqual(len(set(s)), 1,
+                         "Job will run in more than one placement set")
+
+    @skipOnCpuSet
     def test_place_group(self):
         """
         Test node buckets with place=group
@@ -686,7 +726,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job ran in more than one placement set")
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_psets_spanning(self):
         """
         Request more nodes than available in one placement set and see
@@ -735,7 +775,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertGreater(len(set(s)), 1,
                            "Job did not span properly")
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_psets_queue(self):
         """
         Test that placement sets work for nodes associated with queues
@@ -796,7 +836,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertGreater(len(set(s)), 1,
                            "Job did not span properly")
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_free(self):
         """
         Test that free placement works with the bucket code path
@@ -832,7 +872,7 @@ class TestNodeBuckets(TestFunctional):
         for node in n1:
             self.assertTrue(node not in n2, 'Jobs share nodes: ' + node)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_queue_nodes(self):
         """
         Test that buckets work with nodes associated to a queue
@@ -872,7 +912,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertIn(v1, ev, msg)
         self.assertIn(v2, ev, msg)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_booleans(self):
         """
         Test that booleans are correctly handled if not in the sched_config
@@ -908,7 +948,7 @@ class TestNodeBuckets(TestFunctional):
             self.server.expect(
                 NODE, 'resources_available.bool', op=UNSET, id=n)
 
-    @timeout(450)
+    @skipOnCpuSet
     def test_last_pset_can_never_run(self):
         """
         Test that the job does not retain the error value of last placement

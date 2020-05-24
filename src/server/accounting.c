@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    accounting.c
@@ -312,6 +314,55 @@ cpy_quote_value(char *pb, char *value)
 /* start attributes */
 #define ACCTBUF_TIMES_NEED	72
 
+/**
+ * @brief
+ * Get the resources_used job attribute
+ *
+ * @param[in]	pjob	- pointer to job structure
+ * @param[in]	resc_used - pointer to resources used string
+ * @param[in]	resc_used_size - size of resources used string
+ *
+ * @return	int
+ * @retval	0 upon success
+ * @retval	-1	if error encountered.
+ *
+ */
+static int
+get_resc_used(job *pjob, char **resc_used, int *resc_used_size)
+{
+	struct svrattrl *patlist = NULL;
+	pbs_list_head temp_head;
+	CLEAR_HEAD(temp_head);
+
+	if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded != NULL)
+		patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded;
+	else if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded != NULL)
+		patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded;
+	else
+		encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
+		&temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
+		NULL, ATR_ENCODE_CLIENT, &patlist);
+	/*
+	 * NOTE:
+	 * Following code for constructing resources used information is same as job_obit()
+	 * with minor different that to traverse patlist in this code
+	 * we have to use patlist->al_sister since it is encoded information in job struct
+	 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
+	 * request.
+	 * ji_acctrec is lost on server restart.  Recreate it here if needed.
+	 */
+	while (patlist) {
+		/* log to accounting_logs only if there's a value */
+		if (strlen(patlist->al_value) > 0) {
+			if (concat_rescused_to_buffer(resc_used, resc_used_size, patlist, " ", NULL) != 0) {
+				return -1;
+			}
+		}
+		patlist = patlist->al_sister;
+	}
+	free_attrlist(&temp_head);
+	return 0;
+}
 
 /**
  * @brief
@@ -566,7 +617,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		pbs_list_head phead;
 		svrattrl *svrattrl_list;
 		CLEAR_HEAD(phead);
-		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend], 
+		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend],
 			&phead, job_attr_def[(int)JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 		nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
 		if (nd > len)
@@ -1194,12 +1245,9 @@ account_jobend(job *pjob, char *used, int type)
 	int i = 0;
 	int len = 0;
 	char *pb = NULL;
-	struct svrattrl *patlist = NULL;
 	char *resc_used;
 	int resc_used_size = 0;
-	pbs_list_head temp_head;
 
-	CLEAR_HEAD(temp_head);
 	/* pack in general information about the job */
 
 	pb = acct_job(pjob, type, acct_buf, acct_bufsize);
@@ -1264,14 +1312,6 @@ account_jobend(job *pjob, char *used, int type)
 			 * So we try to derive the resource usage information from resources_used attribute of
 			 * the job and then reconstruct the resources usage information into resc_used buffer.
 			 */
-			if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded != NULL)
-				patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded;
-			else if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded != NULL)
-				patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded;
-			else
-				encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
-					    &temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
-					    NULL, ATR_ENCODE_CLIENT, &patlist);
 
 			/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
 			resc_used = malloc(RESC_USED_BUF_SIZE);
@@ -1284,33 +1324,14 @@ account_jobend(job *pjob, char *used, int type)
 			(void) snprintf(resc_used, resc_used_size, msg_job_end_stat,
 					pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 
-			/*
-			 * NOTE:
-			 * Following code for constructing resources used information is same as job_obit()
-			 * with minor different that to traverse patlist in this code
-			 * we have to use patlist->al_sister since it is encoded information in job struct
-			 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
-			 * request.
-			 * ji_acctrec is lost on server restart.  Recreate it here if needed.
-			 */
-
-			while(patlist) {
-				/* log to accounting_logs only if there's a value */
-				if (strlen(patlist->al_value) > 0) {
-					if (concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ", NULL) != 0) {
-						free(resc_used);
-						goto writeit;
-					}
-
-				}
-
-				patlist = patlist->al_sister;
+			if (get_resc_used(pjob, &resc_used, &resc_used_size) == -1) {
+				free(resc_used);
+				goto writeit;
 			}
 
 			used = resc_used;
 			free(pjob->ji_acctrec);
 			pjob->ji_acctrec = used;
-			free_attrlist(&temp_head);
 		}
 	}
 
@@ -2171,11 +2192,11 @@ writeit:
  * 	plist contains the attributes and resources requested to be modified.
  * 	We only modify those because the ATTR_l encode function will encode
  * 	all resources, not just the ones we want.
- * 
+ *
  * @param[in] pjob - job to log records for.
  * @param[in] plist - list of attributes and resources to log
- * 
- * @returns void 
+ *
+ * @returns void
  */
 void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	svrattrl *cur_svr;
@@ -2258,4 +2279,57 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 	}
 	if (entire_record[0] != '\0')
 		account_record(PBS_ACCT_ALTER, pjob, entire_record);
+}
+
+
+/**
+ * @brief
+ * Common function to log a suspend/resume record
+ * for suspend/resume job events respectively.
+ *
+ * @param[in] pjob - job to log records for.
+ * @param[in] acct_type - Accounting type flag
+ *
+ * @returns void
+ */
+void
+log_suspend_resume_record(job *pjob, int acct_type)
+{
+	if (acct_type == PBS_ACCT_SUSPEND) {
+		char *resc_buf;
+		int resc_buf_size = RESC_USED_BUF_SIZE;
+
+		/* Allocating initial space as required by resc_used. Future space will be allocated by pbs_strcat(). */
+		resc_buf = malloc(RESC_USED_BUF_SIZE);
+		if (resc_buf == NULL)
+			return;
+
+		resc_buf[0] = '\0';
+
+		if (get_resc_used(pjob, &resc_buf, &resc_buf_size) == -1) {
+			write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
+			free(resc_buf);
+			return;
+		}
+
+		if (pjob->ji_wattr[JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
+			char *ret;
+			ret = pbs_strcat(&resc_buf, &resc_buf_size, " resources_released=");
+			if (ret == NULL) {
+				free(resc_buf);
+				return;
+			}
+
+			ret = pbs_strcat(&resc_buf, &resc_buf_size, pjob->ji_wattr[JOB_ATR_resc_released].at_val.at_str);
+			if (ret == NULL) {
+				free(resc_buf);
+				return;
+			}
+		}
+		write_account_record(acct_type, pjob->ji_qs.ji_jobid, resc_buf + 1);
+		free(resc_buf);
+		return;
+	}
+
+	write_account_record(acct_type, pjob->ji_qs.ji_jobid, NULL);
 }

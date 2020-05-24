@@ -3,41 +3,44 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
+
+import os
 
 from tests.functional import *
-import os
 
 
 @tags('cray', 'mom')
@@ -74,7 +77,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test the log when apstat is not present in the
         expected/default location, it indicates a Cray system issue.
         """
-        now = int(time.time())
+        now = time.time()
         if self.platform == "craysim":
             if os.path.exists("/opt/cray/alps/default/bin/stat"):
                 # The file to be renamed is conflicting with existing file
@@ -101,7 +104,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test when hook attempts to read the /etc/xthostname file to
         determine Cray hostname, but the hostname file is missing.
         """
-        now = int(time.time())
+        now = time.time()
         if self.platform == "craysim":
             if os.path.exists("/etc/xt"):
                 # The file to be renamed is conflicting with existing file
@@ -122,7 +125,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
         Test log at the start of hook processing.
         """
-        now = int(time.time())
+        now = time.time()
         self.mom.log_match(
             "Processing ALPS inventory for crayhost %s" % self.crayhostname,
             starttime=now,
@@ -133,7 +136,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
         Test log when no nodes with vntype 'cray_login' are present.
         """
-        now = int(time.time())
+        now = time.time()
         mc = self.mom.parse_config()
         save = mc["$alps_client"]
         del mc["$alps_client"]
@@ -158,7 +161,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         location (PBS_HOME), indicating a PBS installation issue.
         """
         if self.platform == "craysim":
-            now = int(time.time())
+            now = time.time()
             pbs_conf = self.du.parse_pbs_config(self.server.shortname)
             save = pbs_conf['PBS_HOME']
             self.du.set_pbs_config(
@@ -184,7 +187,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         Test log when both PBS and ALPS are in sync i.e. they report the
         same number of compute nodes in the Cray cluster.
         """
-        now = int(time.time())
+        now = time.time()
         self.mom.log_match(
             "ALPS Inventory Check: PBS and ALPS are in sync",
             starttime=now,
@@ -195,7 +198,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         """
          Test the log when PBS and ALPS are out of sync
         """
-        now = int(time.time())
+        now = time.time()
         self.delete_cray_compute_node()
         self.mom.log_match(
             "ALPS Inventory Check: Compute " +
@@ -210,7 +213,7 @@ class TestAlpsInventoryCheckHook(TestFunctional):
         refresh nodes.
         """
         if self.platform == "craysim":
-            now = int(time.time())
+            now = time.time()
             pbs_conf = self.du.parse_pbs_config(self.server.shortname)
             save = pbs_conf['PBS_HOME']
             self.du.set_pbs_config(

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    hook_func.c
  *
@@ -80,14 +82,11 @@
  * has_pending_mom_action_delete
  * sync_mom_hookfiles_count
  * collapse_hook_tr
- * sync_mom_hookfiles
  * mk_deferred_hook_info
- * post_sendhookRPP
+ * post_sendhookTPP
  * check_add_hook_mcast_info
  * del_deferred_hook_cmds
- * sync_mom_hookfilesRPP
- * kill_sync_hook_process
- * post_sync_mom_hookfiles
+ * sync_mom_hookfilesTPP
  * bg_sync_mom_hookfiles
  * add_pending_mom_allhooks_action
  * next_sync_mom_hookfiles
@@ -139,7 +138,7 @@
 #include "hook_func.h"
 #include "net_connect.h"
 #include "sched_cmds.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "reservation.h"
 #include "cmds.h"
 #include "server.h"
@@ -169,8 +168,6 @@ static  int g_hook_replies_expected = 0; /* used only in TPP mode */
 static  int g_hook_replies_recvd = 0; /* used only in TPP mode */
 static	time_t	g_sync_hook_time = 0; /* time when mom hook files were last sent */
 static	long long int g_sync_hook_tid = 0LL; /* identifies the latest group of hook updates to send out */
-static	pid_t	g_sync_hook_pid = -1;	/* pid of the child sync_mom_hookfiles() process (non-TPP only) */
-					/* process sending out mom hook files */
 static	unsigned long	hook_rescdef_checksum = 0;
 
 /* mom hook action(s) to keep track */
@@ -210,6 +207,7 @@ extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -285,7 +283,7 @@ hook_action_tid_set(long long int newval)
  *		Returns the value of the global 'hook_action_tid' variable.
  *
  * @see
- *		sync_mom_hookfilesRPP and bg_sync_mom_hookfiles.
+ *		sync_mom_hookfilesTPP and bg_sync_mom_hookfiles.
  *
  * @return long long int	- the 'hook_action_tid' value.
  */
@@ -445,7 +443,7 @@ hook_track_save(void *minfo, int k)
  *		send_rescdef	- checks if server's resourcedef file has a newer timestamp than the
  *		resourcedef file currently known to hooks, and if so sets up the
  *		necessary mom hook actions to send the resourcedef file to each of the
- *		mom hosts on the next sync_mom_hookfiles() call.
+ *		mom hosts on the next sync_mom_hookfilesTPP() call.
  *
  * @param[in]	force - if set to '1', means to skip checking for timetamps
  * 			and just force setting up the mom hook actions to
@@ -731,29 +729,6 @@ hook_track_recov(void)
 			(void)add_mom_hook_action(&minfo->mi_action,
 				&minfo->mi_num_action, hook_name, action, 1,
 				hook_tid);
-#ifdef WIN32
-			/* Below is only for pbs_send_hooks.exe on Windows and */
-			/* it is not for the main server. So the main server */
-			/* would not recreate a mom entry for a mom that got */
-			/* deleted. pbs_send_hooks is a "pseudo-server" where */
-			/* it doesn't have the mom entries initially */
-		} else if ((msg_daemonname != NULL) &&
-			((strcmp(msg_daemonname, "PBS_send_hooks") == 0) ||
-			(strcmp(msg_daemonname, "PBS_start_provision") == 0))) {
-			/* a pseudo server on Windows where the mom entry */
-			/* needs to be recreated. */
-			minfo = create_mom_entry(mom_name, port_num);
-			if (minfo == NULL) {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"warning: failed to create mom entry to (%s,%s) errno %d",
-					mom_name, port_num, errno);
-				log_err(PBSE_SYSTEM, __func__, log_buffer);
-				continue;
-			}
-			(void)add_mom_hook_action(&minfo->mi_action,
-				&minfo->mi_num_action, hook_name, action, 1,
-				hook_tid);
-#endif
 		}
 
 	}
@@ -1020,7 +995,7 @@ mgr_hook_delete(struct batch_request *preq)
 		disable_svr_prov();
 
 	if (phook->event & HOOK_EVENT_PERIODIC)
-		(void)delete_task_by_parm1(phook, DELETE_ALL);
+		delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 
 	if (phook->event & MOM_EVENTS) {
 
@@ -1463,10 +1438,13 @@ mgr_hook_import(struct batch_request *preq)
 		set_srv_pwr_prov_attribute(); /* check and set power attributes */
 		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
 			/* Search and delete all already existing periodic hook task */
-			delete_task_by_parm1 (phook, DELETE_ALL);
+			delete_task_by_parm1_func (phook, NULL, DELETE_ALL);
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 		}
 	}
+
+	add_to_svrattrl_list(&preq->rq_ind.rq_manager.rq_attr, OUTPUT_FILE_PARAM,
+		NULL, output_path, 0, NULL);
 	return;
 
 mgr_hook_import_error:
@@ -1812,7 +1790,7 @@ mgr_hook_set(struct batch_request *preq)
 					 *  1 - related to running the next occurance
 					 *  2 - related to running the post processing function
 					 */
-					delete_task_by_parm1(phook, DELETE_ALL);
+					delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 					if ((phook->freq > 0) && (phook->script != NULL))
 						(void)set_task(WORK_Timed, time_now + phook->freq,
 								run_periodic_hook, phook);
@@ -1827,7 +1805,7 @@ mgr_hook_set(struct batch_request *preq)
 				}
 				else
 					/* Delete any existing work task */
-					delete_task_by_parm1(phook, DELETE_ALL);
+					delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
 			}
 			num_set++;
 		} else if (strcasecmp(plx->al_name, HOOKATT_DEBUG) == 0) {
@@ -3353,6 +3331,7 @@ struct attribute_jobmap runjob_accept_attrlist[] = {
 	{	JOB_ATR_errpath,	{0} },
 	{	JOB_ATR_resource,	{0} },
 	{	JOB_ATR_variables,	{0} },
+	{	JOB_ATR_create_resv_from_job, {0} },
 	{	(enum job_atr) -1,	{0} }
 };
 
@@ -3412,6 +3391,7 @@ do_runjob_accept_actions(job *pjob, char *hook_name, char *msg, int msg_len)
 				return (1);
 			}
 		} else if ((strcmp(attr_name, ATTR_o) == 0) ||
+			(strcmp(attr_name, ATTR_create_resv_from_job) == 0) ||
 			(strcmp(attr_name, ATTR_e) == 0)) {
 			new_attrval_str =
 				pbs_python_event_job_getval_hookset(attr_name,
@@ -3879,6 +3859,14 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				"Did not find a job tied to runjob request!");
 			return (-1);
 		}
+	} else if (preq->rq_type == PBS_BATCH_Manager) {
+		hook_event = HOOK_EVENT_MANAGEMENT;
+		preq->rq_ind.rq_management.rq_reply = &preq->rq_reply;
+		preq->rq_ind.rq_management.rq_time = preq->rq_time;
+		/* Copying the pointer to rq_management below is safe since
+		req_manager() bumps the reference count on preq */
+		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_management;
+		head_ptr = &svr_management_hooks;
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
@@ -3908,6 +3896,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_movejob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
+		} else if (preq->rq_type == PBS_BATCH_Manager) {
+			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
@@ -4004,19 +3994,19 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pbs_list_head 		event_resv;
 	char			perf_label[MAXBUFLEN];
 
+	if (phook == NULL) {
+		log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_ERR,
+			__func__, "no associated hook");
+		return -1;
+	}
+
 	if (req_ptr == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"warning: empty hook input param!");
 		log_event(PBSEVENT_DEBUG3,
 			PBS_EVENTCLASS_HOOK, LOG_ERR,
 			phook->hook_name, log_buffer);
-		return -1;
-	}
-
-	if (phook == NULL) {
-		log_event(PBSEVENT_DEBUG3,
-			PBS_EVENTCLASS_HOOK, LOG_ERR,
-			phook->hook_name, "no associated hook");
 		return -1;
 	}
 
@@ -4238,8 +4228,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			rc = -1;
 			goto server_process_hooks_exit;
 		}
-	}	
-	
+	}
+
 	set_alarm(phook->alarm, pyinter_func);
 
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4280,7 +4270,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		}
 	}
 
-	rc=pbs_python_check_and_compile_script(&svr_interp_data,
+	rc = pbs_python_check_and_compile_script(&svr_interp_data,
 		phook->script);
 
 	/* reset global flag to allow modification of */
@@ -4553,6 +4543,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			char	*new_hold_types_str = NULL;
 			char	*new_project_str = NULL;
 			char	*new_depend_str = NULL;
+			char	*new_conv_str = NULL;
 			char	hold_opval[HOOK_BUF_SIZE];
 			char	hold_delval[HOOK_BUF_SIZE];
 			int	job_modified = 0;
@@ -4613,6 +4604,16 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
 
 				}
+			}
+
+			if (job_modified != 1) {
+				new_conv_str =
+					pbs_python_event_job_getval_hookset(
+						ATTR_create_resv_from_job, NULL, 0, NULL, 0);
+
+				if (new_conv_str != NULL)
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name,
+						"Found job " ATTR_create_resv_from_job " attribute flagged to be set");
 			}
 
 			vnode_modified = pbs_python_has_vnode_set();
@@ -4709,7 +4710,7 @@ recreate_request(struct batch_request *preq)
 	hook_output_param_t req_params;
 	FILE *fp_debug = NULL;
 	char *hook_outfile = NULL;
-	char perf_label[MAXBUFLEN];		
+	char perf_label[MAXBUFLEN];
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4929,7 +4930,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 	/* If hook action added is for PBS_RESCDEF, then we need to sort the */
 	/* mom hook action array so that this resourcedef 		     */
 	/* entry appear before regular mom hooks. This allows 		     */
-	/* sync_mom_hookfiles() to send out resourcedef files first before   */
+	/* sync_mom_hookfilesTPP() to send out resourcedef files first before   */
 	/* the mom hook files, for the latter could be depending on the      */
 	/* former. */
 	if (strcmp(hookname, PBS_RESCDEF) == 0) {
@@ -5264,20 +5265,13 @@ sync_mom_hookfiles_count(void *minfo)
  * 		the tracking file.
  *
  * @see
- * 		post_sendhookRPP, post_sync_mom_hookfiles and next_sync_mom_hookfiles.
+ * 		post_sendhookTPP and next_sync_mom_hookfiles.
  */
 static void
 collapse_hook_tr()
 {
 	hook			*phook;
 	hook			*phook_current;
-
-	if (pbs_conf.pbs_use_tcp == 0) {
-		/* recover what was written by child process (non-TPP mode only) */
-		/* hook_action_tid value gets reset here to the highest */
-		/* value found in the hooks tracking file. */
-		hook_track_recov();
-	}
 
 	/* purge deleted hooks */
 	phook = (hook *)GET_NEXT(svr_allhooks);
@@ -5298,437 +5292,6 @@ collapse_hook_tr()
 	/* hook_track_recov() could cause the hook_action_tid to */
 	/* reset back to 0, which is what we want. */
 	hook_track_save(NULL, -1);
-}
-
-/**
- * @brief
- *		Performs actions such as send hook attributes/scripts, and also
- *		resourcedef file to a particular mom, or to all the moms in the
- *		system.
- *
- * @param[in]	minfo	- particular mom information to send hook request, or
- *			 			if NULL, then hook action request sent to all the
- *						moms in the system.
- * @Note
- *		If sending or deleting a hook to a mom has been rejected because
- *		mom is not acceping root remote scripts for security reasons, then
- *		this will be considered still a successful send.
- *
- * @return enum sync_hookfiles_result
- * @retval	SYNC_HOOKFILES_NONE	      if there are no mom hook actions
- *					      needed to be done.
- * @retval	SYNC_HOOKFILES_SUCCESS_ALL    if all mom hook actions were done
- *					      and no failures have been
- *					      encountered along the way.
- * @retval	SYNC_HOOKFILES_SUCCESS_PARTIAL if not all mom hook actions were
- *					      successfully done, but
- *					      at least 1 action was successfully
- *					      done.
- * @retval	SYNC_HOOKFILES_FAIL	      if all mom hook actions expected
- *					      to be done failed.
- */
-enum sync_hookfiles_result
-sync_mom_hookfiles(void *minfo)
-{
-	int		i, j, k;
-	pbs_net_t	momaddr;
-	unsigned int	momport;
-	int		conn = -1;	/* a client style connection handle */
-	char		hookfile[MAXPATHLEN+1];
-	mominfo_t	**minfo_array = NULL;
-	int		minfo_array_size;
-	mominfo_t	*minfo_array_tmp[1];
-	mom_hook_action_t *pact;
-	int		action_done = 0;
-	int		action_expected = 0;
-	int		ret;
-
-	if (minfo == NULL) {
-		minfo_array = mominfo_array;
-		minfo_array_size = mominfo_array_size;
-	} else {
-		minfo_array_tmp[0] = minfo;
-		minfo_array = (mominfo_t **)minfo_array_tmp;
-		minfo_array_size = 1;
-
-	}
-
-	for (i=0; i < minfo_array_size; i++) {
-
-		if (minfo_array[i] == NULL)
-			continue;
-
-		momaddr = get_hostaddr(minfo_array[i]->mi_host);
-		if (momaddr == 0)
-			continue;
-		momport =minfo_array[i]->mi_port;
-
-		pbs_errno = 0;
-		for (j = 0; j < minfo_array[i]->mi_num_action; j++) {
-			char *msgbuf;
-			hook *phook;
-
-			pact = minfo_array[i]->mi_action[j];
-			if ((pact == NULL) ||
-				(pact->action == MOM_HOOK_ACTION_NONE))
-				continue;
-			if (pact->action & MOM_HOOK_ACTION_DELETE)
-				action_expected++;
-			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS)
-				action_expected++;
-			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT)
-				action_expected++;
-			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG)
-				action_expected++;
-			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF)
-				action_expected++;
-			else if (pact->action & MOM_HOOK_ACTION_SEND_RESCDEF)
-				action_expected++;
-
-			if (action_expected == 0)
-				continue;
-
-			/* optimization: connect only if there's at least */
-			/* 1 hook action to communicate to mom. */
-
-			/* connect to receiving mom with retries */
-			k = 0;
-			do {
-
-				if (conn >= 0)
-					break;
-
-				conn = svr_connect(momaddr, momport, NULL,
-					ToServerDIS, PROT_TCP);
-				if (conn >= 0) {
-					break; /* good connection */
-				} else if (conn == PBS_NET_RC_FATAL) {
-					snprintf(log_buffer, sizeof(log_buffer),
-						"connect to host %s port %d got fatal error (pbs_errno=%d)",
-						minfo_array[i]->mi_host, momport,
-						pbs_errno);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						__func__, log_buffer);
-					break;
-				} else if ((conn == PBS_NET_RC_RETRY) &&
-					(should_retry_route(pbs_errno) == -1)) {
-
-					snprintf(log_buffer, sizeof(log_buffer),
-						"couldn't retry connecting to host %s %d",
-						minfo_array[i]->mi_host, momport);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						__func__, log_buffer);
-					break;
-				}
-
-				sprintf(log_buffer, "retrying after sleeping for %d seconds", (1<<k));
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-					LOG_ERR, __func__, log_buffer);
-				sleep(1<<k);
-				k++;
-			} while (k <= CONN_RETRY);
-
-			if (conn < 0) {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"%s %s:%d", msg_norelytomom,
-					minfo_array[i]->mi_host,
-					minfo_array[i]->mi_port);
-				log_event(PBSEVENT_DEBUG3,
-					PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-					__func__, log_buffer);
-				break;
-			}
-
-			/* delete or send resourcedef file, which does not */
-			/* have a suffix */
-			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF) {
-
-				snprintf(hookfile, sizeof(hookfile), "%s", pact->hookname);
-
-				if (PBSD_delhookfile(conn, hookfile, 0, NULL) != 0) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to delete rescdef file %s from %s",
-						pbs_errno, hookfile, minfo_array[i]->mi_host);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					pbs_asprintf(&msgbuf,
-						"successfully deleted rescdef file %s from %s:%d",
-						hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_REQUEST, LOG_INFO,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-					/* Delete all SEND_RESCDEF action */
-					/* so it doesn't get retried for this */
-					/* "deleted" resourcdef. */
-					pact->action &= ~(MOM_HOOK_ACTION_DELETE_RESCDEF|MOM_HOOK_ACTION_SEND_RESCDEF);
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-
-			} else if (pact->action & MOM_HOOK_ACTION_SEND_RESCDEF) {
-
-				snprintf(hookfile, sizeof(hookfile), "%s%.*s", path_hooks,
-					(int)(sizeof(hookfile) - strlen(path_hooks)), pact->hookname);
-
-				if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to copy rescdef file %s to %s:%d",
-						pbs_errno, hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-						pbs_asprintf(&msgbuf,
-							"successfully sent rescdef file %s to %s:%d",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					} else {
-						snprintf(log_buffer, sizeof(log_buffer),
-							"warning: sending resourcedef to %s:%d got rejected (mom's reject_root_scripts=1)",
-							minfo_array[i]->mi_host,
-							minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, log_buffer);
-					}
-					pact->action &= ~(MOM_HOOK_ACTION_SEND_RESCDEF);
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-			} /* resourcedef else */
-
-			/* execute delete action before the send actions */
-			if (pact->do_delete_action_first && (pact->action & MOM_HOOK_ACTION_DELETE)) {
-				/* delete a hook - overrides other hook actions */
-				snprintf(hookfile, sizeof(hookfile), "%.*s%s",
-					(int)(sizeof(hookfile) - strlen(HOOK_FILE_SUFFIX) - 1),
-					pact->hookname, HOOK_FILE_SUFFIX);
-
-				if (PBSD_delhookfile(conn, hookfile, 0, NULL) != 0) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to delete hook file %s from %s",
-						pbs_errno, hookfile, minfo_array[i]->mi_host);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					pbs_asprintf(&msgbuf,
-						"successfully deleted hook file %s from %s:%d",
-						hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_REQUEST, LOG_INFO,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-
-					/* Delete also any other hook-related actions */
-					/* so they don't get erroneously retried */
-					pact->action &= ~MOM_HOOK_ACTION_DELETE;
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-			}
-
-			phook = find_hook(pact->hookname);
-			/* send with suffix if a regular hook file
-			 * NOTE: There could be a hook named <resourcedef>
-			 * and it's not the special <resourcedef> file
-			 * that gets the special *RESCDEF aflags. In this
-			 * case, the <resourcedef>.{HK,PY} would be sent
-			 * instead send hook control file
-			 */
-			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-
-				snprintf(hookfile, sizeof(hookfile), "%.*s%.*s%s",
-					(int)(sizeof(hookfile) - PBS_HOOK_NAME_SIZE - strlen(HOOK_FILE_SUFFIX)),
-					path_hooks, PBS_HOOK_NAME_SIZE, pact->hookname, HOOK_FILE_SUFFIX);
-				if (!phook || (phook->event & MOM_EVENTS) == 0) {
-					pact->action &= ~MOM_HOOK_ACTION_SEND_ATTRS;
-				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to copy hook file %s to %s:%d",
-						pbs_errno, hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-						pbs_asprintf(&msgbuf,
-							"successfully sent hook file %s to %s:%d",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					} else {
-						pbs_asprintf(&msgbuf,
-							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					}
-					pact->action &= ~(MOM_HOOK_ACTION_SEND_ATTRS);
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-			} /* send_attrs */
-
-			/* send hook config */
-			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
-
-				snprintf(hookfile, sizeof(hookfile), "%.*s%.*s%s",
-					(int)(sizeof(hookfile) - PBS_HOOK_NAME_SIZE - strlen(HOOK_CONFIG_SUFFIX)),
-					path_hooks, PBS_HOOK_NAME_SIZE, pact->hookname, HOOK_CONFIG_SUFFIX);
-
-				if (!phook || (phook->event & MOM_EVENTS) == 0) {
-					pact->action &= ~MOM_HOOK_ACTION_SEND_CONFIG;
-				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to copy hook file %s to %s:%d",
-						pbs_errno, hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-						pbs_asprintf(&msgbuf,
-							"successfully sent hook file %s to %s:%d",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					} else {
-						pbs_asprintf(&msgbuf,
-							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					}
-					pact->action &= ~(MOM_HOOK_ACTION_SEND_CONFIG);
-					hook_track_save((mominfo_t *)minfo_array[i],
-						j);
-					action_done++;
-				}
-			} /* send config */
-
-			/* send hook content */
-			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
-
-				snprintf(hookfile, sizeof(hookfile), "%.*s%.*s%s",
-					(int)(sizeof(hookfile) - PBS_HOOK_NAME_SIZE - strlen(HOOK_SCRIPT_SUFFIX)),
-					path_hooks, PBS_HOOK_NAME_SIZE, pact->hookname, HOOK_SCRIPT_SUFFIX);
-
-				if (!phook || (phook->event & MOM_EVENTS) == 0) {
-					pact->action &= ~MOM_HOOK_ACTION_SEND_SCRIPT;
-				} if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to copy hook file %s to %s:%d",
-						pbs_errno, hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-						pbs_asprintf(&msgbuf,
-							"successfully sent hook file %s to %s:%d",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					} else {
-						pbs_asprintf(&msgbuf,
-							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-							hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							msg_daemonname, msgbuf);
-						free(msgbuf);
-					}
-					pact->action &= ~(MOM_HOOK_ACTION_SEND_SCRIPT);
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-			} /* send script */
-
-			/* execute send actions above first, and then this delete action */
-			if (!pact->do_delete_action_first && (pact->action & MOM_HOOK_ACTION_DELETE)) {
-				/* delete a hook - overrides other hook actions */
-				snprintf(hookfile, sizeof(hookfile), "%.*s%s",
-					(int)(sizeof(hookfile) - strlen(HOOK_FILE_SUFFIX) - 1),
-					pact->hookname, HOOK_FILE_SUFFIX);
-
-				if (PBSD_delhookfile(conn, hookfile, 0, NULL) != 0) {
-					pbs_asprintf(&msgbuf,
-						"errno %d: failed to delete hook file %s from %s",
-						pbs_errno, hookfile, minfo_array[i]->mi_host);
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-				} else {
-					pbs_asprintf(&msgbuf,
-						"successfully deleted hook file %s from %s:%d",
-						hookfile, minfo_array[i]->mi_host, minfo_array[i]->mi_port);
-					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_REQUEST, LOG_INFO,
-						msg_daemonname, msgbuf);
-					free(msgbuf);
-
-					/* Delete also any other hook-related actions */
-					/* so they don't get erroneously retried */
-					pact->action &= ~MOM_HOOK_ACTION_DELETE;
-					hook_track_save((mominfo_t *)minfo_array[i], j);
-					action_done++;
-				}
-			}
-
-		} /* j-loop */
-		if (conn >= 0) {
-			svr_disconnect_with_wait_option(conn, 1);
-			conn = -1;
-		}
-	} /* i-loop */
-
-	if (action_expected == 0) {
-		ret = SYNC_HOOKFILES_NONE;
-	} else if (action_expected == action_done) {
-		ret = SYNC_HOOKFILES_SUCCESS_ALL;
-	} else if (action_done > 0) {
-		ret = SYNC_HOOKFILES_SUCCESS_PARTIAL;
-	} else {
-		ret = SYNC_HOOKFILES_FAIL;
-	}
-
-	if ((ret == SYNC_HOOKFILES_FAIL) ||
-		(ret == SYNC_HOOKFILES_SUCCESS_PARTIAL))
-		do_sync_mom_hookfiles = 1;
-
-	return (ret);
-
 }
 
 /**
@@ -5768,7 +5331,7 @@ mk_deferred_hook_info(int index, int event, long long int tid)
 
 /**
  * @brief
- *		Call back for the hook deferred requests over RPP.
+ *		Call back for the hook deferred requests over TPP stream
  *		parm1 points to the mominfo_t
  *		parm2 points to more information about the hook cmd
  *		wt_aux has the reply code from mom
@@ -5789,7 +5352,7 @@ mk_deferred_hook_info(int index, int event, long long int tid)
  * @return void
  */
 void
-post_sendhookRPP(struct work_task *pwt)
+post_sendhookTPP(struct work_task *pwt)
 {
 	mominfo_t	*minfo = pwt->wt_parm1;
 	mom_hook_action_t *pact;
@@ -5812,11 +5375,9 @@ post_sendhookRPP(struct work_task *pwt)
 
 	if (tid != g_sync_hook_tid) {
 		snprintf(log_buffer, sizeof(log_buffer),
-			"sendhookRPP reply (tid=%lld) not from current "
-			"batch of hook updates (tid=%lld) from mhost=%s",
-			tid, g_sync_hook_tid, minfo->mi_host ? minfo->mi_host : "");
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			"post_sendhookRPP", log_buffer);
+			"%s reply (tid=%lld) not from current " "batch of hook updates (tid=%lld) from mhost=%s",
+			__func__, tid, g_sync_hook_tid, minfo->mi_host ? minfo->mi_host : "");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 		return;	/* return now as info->index no longer valid */
 	}
 
@@ -6005,7 +5566,7 @@ post_sendhookRPP(struct work_task *pwt)
  *		static helper function to check and add a hook command to a mom
  *		to a list of multicast commands.
  *
- *		A RPP multicast command consists of the same command to be sent to
+ *		A TPP multicast command consists of the same command to be sent to
  *		a groups of target moms.
  *
  * @param[in] conn      - The stream to the mom
@@ -6041,7 +5602,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 			return NULL;
 		}
 
-		if (add_mom_deferred_list(conn, minfo, post_sendhookRPP,
+		if (add_mom_deferred_list(conn, minfo, post_sendhookTPP,
 					dup_msgid, minfo, info) == NULL) {
 			free(info);
 			free(dup_msgid);
@@ -6079,7 +5640,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 					g_sync_hook_tid)) == NULL)
 		return NULL;
 
-	if (add_mom_deferred_list(conn, minfo, post_sendhookRPP,
+	if (add_mom_deferred_list(conn, minfo, post_sendhookTPP,
 				strdup(g_hook_mcast_array[i].msgid), minfo, info) == NULL) {
 		free(info);
 		return NULL;
@@ -6113,7 +5674,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
  *		tracked by index.
  *
  * @see
- * 		sync_mom_hookfilesRPP
+ * 		sync_mom_hookfilesTPP
  *
  * @param[in]	index - The index in the g_hook_mcast_array
  *
@@ -6184,7 +5745,7 @@ del_deferred_hook_cmds(int index)
  * @brief
  *		Performs actions such as send hook attributes/scripts, and also
  *		resourcedef file to a particular mom, or to all the moms in the
- *		system (this function performs this using RPP deferred requests).
+ *		system (this function performs this using deferred requests on TPP stream)
  *
  * @see
  * 		bg_sync_mom_hookfiles and bg_delete_mom_hooks
@@ -6199,7 +5760,7 @@ del_deferred_hook_cmds(int index)
  * @retval	SYNC_HOOKFILES_PARTAIL	if some (not all) mom hook actions failed to be sent.
  */
 enum sync_hookfiles_result
-sync_mom_hookfilesRPP(void *minfo)
+sync_mom_hookfilesTPP(void *minfo)
 {
 	int		i, j;
 	int		conn = -1;	/* a client style connection handle */
@@ -6243,7 +5804,7 @@ sync_mom_hookfilesRPP(void *minfo)
 			continue;
 		}
 
-		rpp_add_close_func(conn, process_DreplyRPP); /* register a close handler */
+		tpp_add_close_func(conn, process_DreplyTPP); /* register a close handler */
 
 		pbs_errno = 0;
 		for (j = 0; j < minfo_array[i]->mi_num_action; j++) {
@@ -6415,248 +5976,25 @@ sync_mom_hookfilesRPP(void *minfo)
 
 /**
  * @brief
- * 	 	Kill the sync_mom_hookfiles() process.
- *
- * @note
- * 		Kills the pid value found in the global variable 'g_sync_hook_pid',
- * 		and resets the values to -1.
- *
- * @see
- * 		next_sync_mom_hookfiles
- *
- * @return void
- */
-static void
-kill_sync_hook_process(void)
-{
-#ifdef WIN32
-	HANDLE h_pid;
-#endif
-
-	if (g_sync_hook_pid <= 0)
-		return;
-
-#ifdef WIN32
-	h_pid = OpenProcess(PROCESS_ALL_ACCESS, TRUE, g_sync_hook_pid);
-	if (h_pid != NULL) {
-		kill((HANDLE) h_pid, SIGTERM);
-		CloseHandle(h_pid);
-	}
-#else
-	if (kill(g_sync_hook_pid, SIGKILL) == -1) {
-		log_err(errno, __func__, "error killing pid");
-		return;
-	}
-#endif
-	g_sync_hook_pid = -1;
-}
-
-/**
- * @brief
- * 		This function is called by the main process when child process
- *		finishes executing sync_mom_hookfiles().
- *
- * @par Functionality
- *		If exit status of the previous sync_mom_hookfiles() is either
- *		SYNC_HOOKFILES_SUCCESS_ALL or SYNC_HOOKFILES_SUCCESS_PARTIAL, then
- *		reload the hooks tracking data file into
- *		mominfo_array[]->mi_action[], since the previous process
- *		has updated that file. Then purge "pending to delete" hooks where a
- *		"delete hook files" request has been successfully sent to all the
- *		moms.
- *
- * 		If exit status is SYNC_HOOKFILES_SUCCESS_PARTIAL or SYNC_HOOKFILES_FAIL,
- *		then continue to tell pbs_server to call sync_mom_hookfiles()
- *		by setting the do_sync_mom_hookfiles to 1.
- *
- * @see
- * 		bg_sync_mom_hookfiles
- *
- * @param[in]	pwt - pointer to the work task entry.
- *
- * @return void
- */
-static void
-post_sync_mom_hookfiles(struct work_task *pwt)
-{
-	int	 		r;
-	int	 		stat = pwt->wt_aux;
-
-	sync_mom_hookfiles_proc_running = 0; /* reaped the process that was */
-	/* running sync_mom_hookfiles() */
-
-	if (WIFEXITED(stat)) {
-
-		r = WEXITSTATUS(stat);
-	} else {
-		r = 3;
-		(void)sprintf(log_buffer, msg_badexit, stat);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			__func__, log_buffer);
-	}
-
-	if ((r == SYNC_HOOKFILES_SUCCESS_ALL) ||
-		(r == SYNC_HOOKFILES_SUCCESS_PARTIAL)) {
-		collapse_hook_tr();
-	}
-
-	if ((r == SYNC_HOOKFILES_SUCCESS_PARTIAL) ||
-		(r == SYNC_HOOKFILES_FAIL)) {
-		do_sync_mom_hookfiles = 1;
-	}
-	/* else: let's not reset do_sync_mom_hookfiles to 0 here since */
-	/* it might have been set to 1 elsewhere */
-
-}
-
-/**
- * @brief
- *		The task wrapper to sync_mom_hookfiles(), which executes in a child
- *		process.
+ *	The task wrapper to sync_mom_hookfilesTPP(), which executes in a child
+ *	process.
  *
  * @return int
- * @retval 0	for successfully executing the task process to
- *				sync_mom_hookfiles()
+ * @retval 0	for successfully executing the task process to sync_mom_hookfilesTPP()
  * @retval != 0 if an error occurred.
  */
 int
 bg_sync_mom_hookfiles(void)
 {
-	int		rc;
-	struct		work_task	*ptask;
-
-#ifdef WIN32
-	char	cmdline[BUFSIZ+1];
-	pio_handles	pio;
-	char	buf[BUFSIZ+1];
-#else
-	pid_t	pid;
-	struct 	sigaction act;
-#endif
+	int rc;
 
 	g_sync_hook_time = time(0);
-	snprintf(log_buffer, sizeof(log_buffer), "g_sync_hook_time = %s",
-			ctime(&g_sync_hook_time));
-	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, __func__, log_buffer);
-	if (pbs_conf.pbs_use_tcp == 1) {
-		rc = sync_mom_hookfilesRPP(NULL);
-		/* transaction id to use for next batch of updates */
-		hook_action_tid_set(hook_action_tid_get()+1);
-		return rc;
-	}
-
-#ifndef WIN32
-	pid = fork();
-
-	if (pid == -1) {	/* Error on fork */
-		log_err(errno, __func__, "fork failed\n");
-		pbs_errno = PBSE_SYSTEM;
-		return (1);
-	}
-
-	if (pid != 0) {		/* The parent (main server) */
-
-		hook_action_tid_set(hook_action_tid_get()+1);
-		g_sync_hook_pid = pid;
-		snprintf(log_buffer, sizeof(log_buffer), "g_sync_hook_pid = %d",
-				g_sync_hook_pid);
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, __func__, log_buffer);
-		sync_mom_hookfiles_proc_running = 1;
-		ptask = set_task(WORK_Deferred_Child, pid,
-			post_sync_mom_hookfiles, NULL);
-		if (!ptask) {
-			log_err(errno, __func__, msg_err_malloc);
-			return (1);
-		}
-		return (0);
-	}
-
-	/*
-	 * the child process
-	 */
-
-	/* standard rpp closure and net close */
-	net_close(-1);
-	rpp_terminate();
-
-	/* Reset signal actions for most to SIG_DFL */
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	act.sa_handler = SIG_DFL;
-	(void)sigaction(SIGCHLD, &act, NULL);
-	(void)sigaction(SIGHUP, &act, NULL);
-	(void)sigaction(SIGINT, &act, NULL);
-	(void)sigaction(SIGTERM, &act, NULL);
-
-	/* Reset signal mask */
-	(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	rc=sync_mom_hookfiles(NULL);
-	exit(rc);
-
-#else  /* Windows */
-	sprintf(cmdline, "%s/sbin/pbs_send_hooks", pbs_conf.pbs_exec_path);
-
-	if (win_popen(cmdline, "w", &pio, NULL) == 0) {
-		errno = GetLastError();
-		pbs_errno = errno;
-		(void)sprintf(log_buffer, "executing %s failed errno=%d",
-			cmdline, errno);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR,
-			__func__, log_buffer);
-
-		win_pclose(&pio);
-		return (1);
-	}
-
-	ptask = set_task(WORK_Deferred_Child, (long)pio.pi.hProcess,
-		post_sync_mom_hookfiles, NULL);
-	if (!ptask) {
-		log_err(errno, __func__, msg_err_malloc);
-		errno = ENOMEM;
-		pbs_errno = errno;
-		win_pclose(&pio);
-		return (1);
-	}
-	addpid(pio.pi.hProcess);
-
-	sprintf(buf, "pbs_server_addr=%ld\n", pbs_server_addr);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "pbs_server_port_dis=%d\n", pbs_server_port_dis);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "log_file=%s\n", (log_file?log_file:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_log=%s\n", (path_log?path_log:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_hooks=%s\n", (path_hooks?path_hooks:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "path_hooks_tracking=%s\n",
-		(path_hooks_tracking?path_hooks_tracking:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	sprintf(buf, "hook_action_tid=%lld\n", hook_action_tid);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	strcpy(buf, "quit\n");
-	win_pwrite(&pio, buf, strlen(buf));
-
-	win_pclose2(&pio); /* closes all handles except the process handle */
-	g_sync_hook_pid = (pid_t)pio.pi.dwProcessId;
-	snprintf(log_buffer, sizeof(log_buffer), "g_sync_hook_pid = %d",
-                        (pid_t)g_sync_hook_pid);
-	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, __func__, log_buffer);
-	sync_mom_hookfiles_proc_running = 1;
-	hook_action_tid_set(hook_action_tid_get()+1);
-	return (0);
-#endif
-
+	snprintf(log_buffer, sizeof(log_buffer), "g_sync_hook_time = %s", ctime(&g_sync_hook_time));
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+	rc = sync_mom_hookfilesTPP(NULL);
+	/* transaction id to use for next batch of updates */
+	hook_action_tid_set(hook_action_tid_get() + 1);
+	return rc;
 }
 
 /**
@@ -6794,13 +6132,9 @@ next_sync_mom_hookfiles(void)
 	time_t	current_time;
 	short timed_out = 0;
 
-	if (pbs_conf.pbs_use_tcp == 1) {
-		timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
-		if (server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
-			timeout_sec = server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
-	} else {
-		timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT;
-	}
+	timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
+	if (server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
+		timeout_sec = server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
 
@@ -6810,26 +6144,17 @@ next_sync_mom_hookfiles(void)
 			return;
 
 		/* we're timing out previous sync mom hook files process/action */
-		if (pbs_conf.pbs_use_tcp == 1) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Timing out previous send of mom hook updates "
-				"(send replies expected=%d received=%d)",
-				g_hook_replies_expected, g_hook_replies_recvd);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, __func__, log_buffer);
-			snprintf(log_buffer, sizeof(log_buffer), "timeout_sec=%lu", timeout_sec);
-			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Timing out previous send of mom hook updates "
+			"(send replies expected=%d received=%d)",
+			g_hook_replies_expected, g_hook_replies_recvd);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+			LOG_INFO, __func__, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "timeout_sec=%lu", timeout_sec);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
-			g_hook_replies_recvd = 0;
-			g_hook_replies_expected = 0;
-		} else {
-			sprintf(log_buffer,
-				"Timing out previous send of mom hook updates "
-				"(killing child process %d)", g_sync_hook_pid);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, __func__, log_buffer);
-			kill_sync_hook_process();
-		}
+		g_hook_replies_recvd = 0;
+		g_hook_replies_expected = 0;
 		/* attempt collapsing  the hook tracking file */
 		collapse_hook_tr();
 		sync_mom_hookfiles_proc_running = 0;
@@ -6898,142 +6223,15 @@ mom_hooks_seen_count(void)
 int
 bg_delete_mom_hooks(void *minfo)
 {
-	char		path_hooks_tracking_tmp[MAXPATHLEN+1];
-
-#ifdef WIN32
-	char	cmdline[BUFSIZ+1];
-	struct	pio_handles	pio;
-	char	buf[BUFSIZ+1];
-	char	*path_hooks_tracking_save;
-#else
-	pid_t	pid;
-	struct 	sigaction act;
-#endif
-
-	if (pbs_conf.pbs_use_tcp == 1) {
-		/*
-		 * add_pending* and sync_mom_hookfiles() use the
-		 * path_hooks_tracking file for recording the hook
-		 * actions to perform and their outcome.
-		 */
-		add_pending_mom_allhooks_action(minfo, MOM_HOOK_ACTION_DELETE);
-		add_pending_mom_hook_action(minfo, PBS_RESCDEF,
-			MOM_HOOK_ACTION_DELETE_RESCDEF);
-		(void)sync_mom_hookfilesRPP(minfo);
-		return 0;
-	}
-
-#ifndef WIN32
-	pid = fork();
-
-	if (pid == -1) {	/* Error on fork */
-		log_err(errno, __func__, "fork failed\n");
-		pbs_errno = PBSE_SYSTEM;
-		return (1);
-	}
-
-	if (pid != 0) /* The parent (main server) */
-		return (0);
-
 	/*
-	 * the child process
-	 */
-
-	/* standard rpp closure and net close */
-	net_close(-1);
-	rpp_terminate();
-
-	/* Reset signal actions for most to SIG_DFL */
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	act.sa_handler = SIG_DFL;
-	(void)sigaction(SIGCHLD, &act, NULL);
-	(void)sigaction(SIGHUP, &act, NULL);
-	(void)sigaction(SIGINT, &act, NULL);
-	(void)sigaction(SIGTERM, &act, NULL);
-
-	/* Reset signal mask */
-	(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-
-	snprintf(path_hooks_tracking_tmp, MAXPATHLEN,
-		"%s%s%s.%d", path_hooks_workdir, PBS_TRACKING,
-		HOOK_TRACKING_SUFFIX, getpid());
-
-	path_hooks_tracking = (char *)path_hooks_tracking_tmp;
-
-	/*
-	 * add_pending* and sync_mom_hookfiles() use the
+	 * add_pending* and sync_mom_hookfilesTPP() use the
 	 * path_hooks_tracking file for recording the hook
 	 * actions to perform and their outcome.
 	 */
 	add_pending_mom_allhooks_action(minfo, MOM_HOOK_ACTION_DELETE);
-	add_pending_mom_hook_action(minfo, PBS_RESCDEF,
-		MOM_HOOK_ACTION_DELETE_RESCDEF);
-	(void)sync_mom_hookfiles(minfo);
-	exit(0);
-
-#else  /* Windows */
-
-	snprintf(cmdline, sizeof(cmdline), "%s/sbin/pbs_send_hooks",
-		pbs_conf.pbs_exec_path);
-
-	if (win_popen(cmdline, "w", &pio, NULL) == 0) {
-		errno = GetLastError();
-		pbs_errno = errno;
-		(void)sprintf(log_buffer, "executing %s failed errno=%d",
-			cmdline, errno);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR,
-			__func__, log_buffer);
-
-		win_pclose(&pio);
-		return (1);
-	}
-
-	snprintf(buf, BUFSIZ, "pbs_server_addr=%ld\n", pbs_server_addr);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	snprintf(buf, BUFSIZ, "pbs_server_port_dis=%d\n", pbs_server_port_dis);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	snprintf(buf, BUFSIZ, "log_file=%s\n", (log_file?log_file:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	snprintf(buf, BUFSIZ, "path_log=%s\n", (path_log?path_log:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	snprintf(buf, BUFSIZ, "path_hooks=%s\n", (path_hooks?path_hooks:""));
-	win_pwrite(&pio, buf, strlen(buf));
-
-	path_hooks_tracking_save = path_hooks_tracking;
-	snprintf(path_hooks_tracking_tmp, MAXPATHLEN,
-		"%s%s%s.%ld", path_hooks_workdir, PBS_TRACKING,
-		HOOK_TRACKING_SUFFIX, time(NULL));
-	path_hooks_tracking = (char *)path_hooks_tracking_tmp;
-	/*
-	 * add_pending* and pbs_send_hooks prgram use the
-	 * path_hooks_tracking file for recording the hook
-	 * actions to perform and their outcome.
-	 */
-	add_pending_mom_allhooks_action(minfo, MOM_HOOK_ACTION_DELETE);
-	add_pending_mom_hook_action(minfo, PBS_RESCDEF,
-		MOM_HOOK_ACTION_DELETE_RESCDEF);
-	/*
-	 * restore original 'path_hooks_tracking' value, since
-	 * on Windows, this is still the main server
-	 */
-	path_hooks_tracking = path_hooks_tracking_save;
-	sprintf(buf, "path_hooks_tracking=%s\n", path_hooks_tracking_tmp);
-	win_pwrite(&pio, buf, strlen(buf));
-
-	strcpy(buf, "quit\n");
-	win_pwrite(&pio, buf, strlen(buf));
-
-	win_pclose2(&pio); /* closes all handles except the process handle */
-	close_valid_handle(&(pio.pi.hProcess)); /* no tracking involved so */
-	/* we don't need this handle */
-	return (0);
-#endif
-
+	add_pending_mom_hook_action(minfo, PBS_RESCDEF, MOM_HOOK_ACTION_DELETE_RESCDEF);
+	(void)sync_mom_hookfilesTPP(minfo);
+	return 0;
 }
 
 /**
@@ -7719,7 +6917,7 @@ run_periodic_hook(struct work_task *ptask)
 	else {
 		/* Close all server connections */
 		net_close(-1);
-		rpp_terminate();
+		tpp_terminate();
 		/* Unprotect child from being killed by kernel */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 

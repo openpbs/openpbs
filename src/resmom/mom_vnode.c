@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	mom_vnode.c
  */
@@ -57,10 +59,6 @@
 #include	"mom_vnode.h"
 #include	"libutil.h"
 #include	"hook_func.h"
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-#include	<resmon.h>
-#include	<bitmask.h>
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
 
 #ifndef	_POSIX_ARG_MAX
 #define	_POSIX_ARG_MAX	4096	/* largest value standards guarantee */
@@ -70,14 +68,6 @@ extern char		mom_host[];
 extern unsigned int	pbs_mom_port;
 extern unsigned int	pbs_rm_port;
 extern vnl_t		*vnlp;					/* vnode list */
-#if	defined(MOM_CPUSET)
-extern int		do_memreserved_adjustment;
-#if	(CPUSET_VERSION >= 4)
-static struct bitmask	*cpu_mask = NULL;
-static struct bitmask	*mem_mask = NULL;
-#endif	/* CPUSET_VERSION >= 4 */
-#endif	/* MOM_CPUSET */
-
 static void		*cpuctx;
 static AVL_IX_REC	*pe;
 static void		cpu_inuse(unsigned int, job *, int);
@@ -85,13 +75,6 @@ static void		*new_ctx(void);
 static mom_vninfo_t	*new_vnid(const char *, void *);
 static void		truncate_and_log(const char *, char *, int);
 static mom_vninfo_t	*vnid2mominfo(const char *, const void *);
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-static long		execmax = _POSIX_ARG_MAX;
-
-static int		cpumask_add(unsigned int);
-static int		memmask_add(unsigned int);
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
-
 enum res_op	{ RES_DECR, RES_INCR, RES_SET };
 
 /**
@@ -360,10 +343,6 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 			mvp->mvi_ncpus++;
 			mvp->mvi_acpus++;
 			ncpus = mvp->mvi_ncpus;
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-			if (cpumask_add(cpunum) != 0)
-				return;
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
 		}
 	}
 }
@@ -430,82 +409,6 @@ cpuindex_inuse(mom_vninfo_t *mvp, unsigned int cpuindex, job *pjob)
 	mvp->mvi_cpulist[cpuindex].mvic_flags = MVIC_ASSIGNED;
 	mvp->mvi_cpulist[cpuindex].mvic_job = pjob;
 }
-
-#if	defined(MOM_CPUSET)
-/**
- * @brief
- *	cpunum_free() is a context-free function to mark a CPU as available.
- *	It must previously have been marked as inuse via cpuindex_inuse().
- *	This function is used to recover from failure of make_cpuset().
- *
- * @param[in] cpunum - number of cpu
- *
- * @return Void
- *
- */
-void
-cpunum_free(unsigned int cpunum)
-{
-	AVL_IX_DESC	*pix;
-	int		ret;
-	char		buf[BUFSIZ];
-
-	sprintf(buf, "mark CPU %u free", cpunum);
-	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, buf);
-
-	if ((pix = cpuctx) != NULL) {
-		avl_first_key(pix);
-
-		if (pe == NULL) {
-			pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
-			if (pe == NULL) {
-				log_err(errno, __func__, "malloc pe failed");
-				return;
-			}
-		}
-		while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
-			unsigned int	i;
-			mominfo_t	*mip;
-			mom_vninfo_t	*mvp;
-
-			mip = (mominfo_t *) pe->recptr;
-			assert(mip != NULL);
-			assert(mip->mi_data != NULL);
-
-			mvp = (mom_vninfo_t *) mip->mi_data;
-			for (i = 0; i < mvp->mvi_ncpus; i++)
-				if (mvp->mvi_cpulist[i].mvic_cpunum == cpunum) {
-					cpuindex_free(mvp, i);
-					return;
-				}
-		}
-
-		assert(ret == AVL_EOIX);
-
-		sprintf(log_buffer, "CPU %u not found in cpuctx", cpunum);
-		log_err(PBSE_SYSTEM, __func__, log_buffer);
-	}
-}
-
-/**
- * @brief
- *	cpunum_inuse() is a ``context-free'' function that marks a CPU
- *	(which is referred to by its physical CPU number) as being in use.
- *	It must be called with a non-NULL job pointer.
- *
- * @param[in] cpunum - number of cpu
- * @param[in] pjob - pointer to job structure
- *
- * @return Void
- *
- */
-void
-cpunum_inuse(unsigned int cpunum, job *pjob)
-{
-	assert(pjob != NULL);
-	cpu_inuse(cpunum, pjob, 0);
-}
-#endif	/* MOM_CPUSET */
 
 /**
  * @brief
@@ -719,59 +622,6 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 	}
 }
 
-#if	defined(MOM_CPUSET)
-/**
- * @brief
- *	We maintain the mom_vnodeinfo data for use in constructing CPU sets and
- *	must ensure that the CPU information is correctly reflected in the
- *	vnodes' "resources_available.ncpus" attribute values before those are
- *	passed back to the server.  mom_vnodeinfo data are authoritative since
- *	they must remain unchanged across MoM reconfiguration operations (e.g.
- *	SIGHUP).  This function updates those attribute values in the vnode
- *	attribute lists hanging off the list of vnodes (see "placementsets.h")
- *	that is used in constructing the IS_UPDATE2 response to server IS_HELLO
- *	messages.
- *
- * @return Void
- *
- */
-void
-cpu_raresync(void)
-{
-	static char	ra_ncpus[] = "resources_available.ncpus";
-	AVL_IX_DESC	*pix;
-	int		ret;
-
-	if ((pix = cpuctx) != NULL) {
-		avl_first_key(pix);
-
-		if (pe == NULL) {
-			pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
-			if (pe == NULL) {
-				log_err(errno, __func__, "malloc pe failed");
-				return;
-			}
-		}
-		while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
-			unsigned int	i;
-			mominfo_t	*mip;
-			mom_vninfo_t	*mvp;
-
-			mip = (mominfo_t *) pe->recptr;
-			assert(mip != NULL);
-			assert(mip->mi_data != NULL);
-
-			mvp = (mom_vninfo_t *) mip->mi_data;
-			for (i = 0; i < mvp->mvi_ncpus; i++)
-				resadj(vnlp, mvp->mvi_id, ra_ncpus, RES_SET,
-					mvp->mvi_acpus);
-		}
-
-		assert(ret == AVL_EOIX);
-	}
-}
-#endif	/* MOM_CPUSET */
-
 /**
  * @brief
  *	Add a list of CPUs (one or more elements separated by ',' and of the
@@ -870,7 +720,7 @@ find_mominfo(const char *vnid)
  *		per vnode)
  *
  *		for the "sharing" attribute, we simply remember the attribute
- *		value for later use in make_cpuset(), q.v.
+ *		value for later use
  *
  *		for the "resources_available.mem" attribute, set a flag that
  *		tells us to remember to do the memreserved adjustment
@@ -888,18 +738,6 @@ int
 vn_callback(const char *vnid, char *attr, char *attrval)
 {
 	static void		*ctx = NULL;
-#if	defined(MOM_CPUSET)
-	static char		memres[] = "resources_available.mem";
-
-	/*
-	 *	If we're setting the memory on a vnode, turn on a flag telling
-	 *	us to remember to do the memreserved adjustment.
-	 */
-	if ((do_memreserved_adjustment == 0) && (strcmp(attr, memres) == 0)) {
-		do_memreserved_adjustment = 1;
-		return (1);
-	}
-#endif	/* MOM_CPUSET */
 
 	if (strcmp(attr, "cpus") == 0) {
 		mom_vninfo_t	*mvp;
@@ -928,10 +766,6 @@ vn_callback(const char *vnid, char *attr, char *attrval)
 			return (0);
 
 		mvp->mvi_memnum = atoi(attrval);
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-		if (memmask_add(mvp->mvi_memnum) != 0)
-			return (-1);
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
 		return (0);
 	} else if (strcmp(attr, "sharing") == 0) {
 		mom_vninfo_t	*mvp;
@@ -1055,229 +889,3 @@ new_vnid(const char *vnid, void *ctx)
 
 	return (mvp);
 }
-
-#if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
-/**
- * @brief
- *	Add a CPU to the mask of CPUs that is constructed while reading
- *	vnode definitions files.
- *
- * @param[in] cpunum - number of cpus
- *
- * @return   int
- * @retval   0    Success
- * @retval  -1    Failure
- *
- */
-static int
-cpumask_add(unsigned int cpunum)
-{
-	if (cpu_mask == NULL) {
-		if (cpus_nbits == 0)
-			cpus_nbits = cpuset_cpus_nbits();
-		cpu_mask = bitmask_alloc(cpus_nbits);
-		if (cpu_mask == NULL) {
-			log_err(PBSE_SYSTEM, __func__, "bitmask_alloc failed");
-			return (-1);
-		} else
-			bitmask_clearall(cpu_mask);
-	}
-	assert(cpunum < bitmask_nbits(cpu_mask));
-	(void) bitmask_setbit(cpu_mask, cpunum);
-
-	return (0);
-}
-
-/**
- * @brief
- *	Add a memory node to the memory mask that is constructed while reading
- *	vnode definitions files.
- *
- * @param[in] memnum - memory board node id
- *
- * @return    int
- * @retval    0     Success
- * @retval   -1     Failure
- *
- */
-static int
-memmask_add(unsigned int memnum)
-{
-	if (mem_mask == NULL) {
-		if (mems_nbits == 0)
-			mems_nbits = cpuset_mems_nbits();
-		mem_mask = bitmask_alloc(mems_nbits);
-		if (mem_mask == NULL) {
-			log_err(PBSE_SYSTEM, __func__, "bitmask_alloc failed");
-			return (-1);
-		} else
-			bitmask_clearall(mem_mask);
-	}
-	assert(memnum < bitmask_nbits(mem_mask));
-	(void) bitmask_setbit(mem_mask, memnum);
-
-	return (0);
-}
-
-/**
- * @brief
- *	get_cpubits() and get_membits() initialize memory bitmasks used to
- *	represent the CPUs (resp. memory boards) discovered while parsing
- *	vnode definitions files.
- *
- * @param[in] m - pointer to bitmask structure
- *
- * @return Void
- *
- */
-void
-get_cpubits(struct bitmask *m)
-{
-	assert(m != NULL);
-	if (cpu_mask != NULL) {
-		assert(bitmask_nbits(m) == bitmask_nbits(cpu_mask));
-		(void) bitmask_copy(m, cpu_mask);
-	} else {
-		bitmask_clearall(m);
-		log_err(PBSE_SYSTEM, __func__, "cpu_mask not yet initialized");
-	}
-}
-
-/**
- * @brief
- *      get_cpubits() and get_membits() initialize memory bitmasks used to
- *      represent the CPUs (resp. memory boards) discovered while parsing
- *      vnode definitions files.
- *
- * @param[in] m - pointer to bitmask structure
- *
- * @return Void
- *
- */
-void
-get_membits(struct bitmask *m)
-{
-	assert(m != NULL);
-	if (mem_mask != NULL) {
-		assert(bitmask_nbits(m) == bitmask_nbits(mem_mask));
-		(void) bitmask_copy(m, mem_mask);
-	} else {
-		bitmask_clearall(m);
-		log_err(PBSE_SYSTEM, __func__, "mem_mask not yet initialized");
-	}
-}
-
-/**
- * @brief
- *	In response to an unrecoverable error, derive the list of vnodes
- *	assigned to the given job that belong to this mom and use the list
- *	to construct and issue a command to offline them.
- *
- * @param[in] pjob - pointer to job structure
- *
- * @return Void
- *
- */
-void
-offline_job_vnodes(job *pjob)
-{
-	int			i;
-	hnodent			*hn;
-	char			*jid = pjob->ji_qs.ji_jobid;
-	static char		*cmdbuf = NULL;
-	static char		*cmdprefix = "qmgr -c 'set node ";
-	static char		*cmdsuffix = "state += offline'";
-	int			suffixlen = strlen(cmdsuffix) + 1;
-	char			linebuf[_POSIX_ARG_MAX];
-	char			*vnodeptr;	/* vnode within cmdbuf */
-
-	if (cmdbuf == NULL) {
-		cmdbuf = malloc(execmax);
-		if (cmdbuf == NULL) {
-			log_joberr(errno, __func__, "cmdbuf malloc", jid);
-			return;
-		}
-	}
-	if (snprintf(cmdbuf, execmax, "%s/bin/%s",
-		pbs_conf.pbs_exec_path, cmdprefix) >= execmax) {
-		log_joberr(-1, __func__, "cmdbuf overflow", jid);
-		return;
-	}
-	vnodeptr = cmdbuf + strlen(cmdbuf);	/* assume ' ' at cmdprefix end */
-
-	for (i = 0, hn = &pjob->ji_hosts[pjob->ji_nodeid];
-		i < hn->hn_vlnum; i++) {
-		host_vlist_t	*hv;
-
-		hv = &hn->hn_vlist[i];
-		if ((hv->hv_mem > 0) || (hv->hv_ncpus > 0)) {
-			size_t	len = strlen(hv->hv_vname);
-
-			if (len >= sizeof(linebuf)) {
-				sprintf(log_buffer, "vnode name too long (%lu)",
-					len);
-				log_joberr(-1, __func__, log_buffer, jid);
-				return;
-			}
-
-			/* cmdbuf length + vnode name length + ' ' + suffixlen */
-			if (strlen(cmdbuf) + len + 1 + suffixlen > execmax) {
-				log_joberr(-1, __func__, "cmdbuf overflow", jid);
-				return;
-			}
-			sprintf(linebuf, "%s %s", hv->hv_vname, cmdsuffix);
-			(void) strcat(cmdbuf, linebuf);
-
-			if (system(cmdbuf) == -1) {
-				log_joberr(errno, __func__,
-					"attempt to offline job vnode(s) failed",
-					jid);
-			} else {
-				sprintf(log_buffer, "vnode %s offlined",
-					hv->hv_vname);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB,
-					LOG_ALERT, jid, log_buffer);
-			}
-			*vnodeptr = '\0';	/* truncate to cmdprefix */
-		}
-	}
-}
-
-/**
- * @brief
- *	In response to an unrecoverable error (normally after calling the
- *	offline_job_host() function above), requeue a job - perhaps it
- *	will have better luck running on a set of vnodes other than those
- *	just offlined.
- *
- * @param[in] pjob - pointer to job structure
- *
- * @return Void
- *
- */
-void
-requeue_job(job *pjob)
-{
-	char			*jid = pjob->ji_qs.ji_jobid;
-	static char		*cmdbuf = NULL;
-
-	if (cmdbuf == NULL) {
-		cmdbuf = malloc(execmax);
-		if (cmdbuf == NULL) {
-			log_joberr(errno, __func__, "cmdbuf malloc", jid);
-			return;
-		}
-	}
-	if (snprintf(cmdbuf, execmax, "%s/bin/%s %s",
-		pbs_conf.pbs_exec_path, "qrerun", jid) >= execmax) {
-		log_joberr(-1, __func__, "cmdbuf overflow", jid);
-		return;
-	}
-
-	if (system(cmdbuf) == -1)
-		log_joberr(errno, __func__, "attempt to requeue job failed", jid);
-	else
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_NOTICE, jid,
-			"requeued");
-}
-#endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */

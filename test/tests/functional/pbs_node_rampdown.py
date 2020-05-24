@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -157,6 +160,14 @@ class TestPbsNodeRampDown(TestFunctional):
         for _ in range(n):
             server_stat = self.server.status(SERVER, 'license_count')
             lic_count = server_stat[0]['license_count']
+            if lic_count.find('Avail_Global:10000000 ' +
+                              'Avail_Local:10000000 Used:0') != -1:
+                return
+            license_type = self.server.status(SERVER, 'pbs_license_info')
+            license_info = license_type[0]['pbs_license_info']
+            node_license = self.du.isfile(path=license_info)
+            if node_license:
+                return
             for lic in lic_count.split():
                 lic_split = lic.split(':')
                 if lic_split[0] == 'Used':
@@ -1884,108 +1895,6 @@ pbs.event().job.release_nodes_on_stageout=False
             "pbs_release_nodes: not currently supported " +
             "on Cray X* series nodes: "
             "%s" % (self.n7,)))
-
-        # Ensure nothing has changed with the job.
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '6gb',
-                                 'Resource_List.ncpus': 8,
-                                 'Resource_List.nodect': 3,
-                                 'Resource_List.select': self.job1_select,
-                                 'Resource_List.place': self.job1_place,
-                                 'schedselect': self.job1_schedselect,
-                                 'exec_host': self.job1_exec_host,
-                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
-
-        # server's license_count used value matches job's 'ncpus' value.
-        self.license_count_match(8)
-
-        # Check various vnode status.
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n3, self.n6], 'job-busy',
-                                jobs_assn1, 1, '0kb')
-
-        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
-                                2, '2097152kb')
-
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
-
-        # Check for no existence of account update ('u') record
-        self.server.accounting_match(
-            msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
-
-        # Check for no existence of account next ('c') record
-        self.server.accounting_match(
-            msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
-
-    def test_release_cpuset_nodes(self):
-        """
-        Test:
-             Given: a job that has been submitted with a select spec
-             of 2 super-chunks of ncpus=3 and mem=2gb each,
-             and 1 chunk of ncpus=2 and mem=2gb, along with
-             place spec of "scatter", resulting in an
-
-             exec_vnode=
-                  (<n1>+<n2>+<n3>)+(<n4>+<n5>+<n6>)+(<n7>)
-
-             Executing:
-                  pbs_release_nodes -j <job-id> <n4> <n5> <n6> <n7>
-             where <n7> is a cpuset node,
-        Result:
-             Returns an error message and no nodes get released.
-        """
-        jid = self.create_and_submit_job('job1')
-
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '6gb',
-                                 'Resource_List.ncpus': 8,
-                                 'Resource_List.nodect': 3,
-                                 'Resource_List.select': self.job1_select,
-                                 'Resource_List.place': self.job1_place,
-                                 'schedselect': self.job1_schedselect,
-                                 'exec_host': self.job1_exec_host,
-                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
-
-        # server's license_count used value matches job's 'ncpus' value.
-        self.license_count_match(8)
-
-        # Check various vnode status.
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-busy', jobs_assn1, 1, '0kb')
-
-        jobs_assn2 = "%s/0, %s/1" % (jid, jid)
-        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
-                                2, '2097152kb')
-
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
-
-        self.assertTrue(
-            self.pbs_nodefile_match_exec_host(jid, self.job1_exec_host))
-
-        # Set hostB to be of cpuset type
-        a = {'resources_available.arch': 'linux_cpuset'}
-        # set natural vnode of hostC
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.n7)
-
-        # Run pbs_release_nodes
-        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4, self.n5,
-               self.n6, self.n7]
-        ret = self.server.du.run_cmd(self.server.hostname, cmd,
-                                     runas=TEST_USER)
-
-        self.assertNotEqual(ret['rc'], 0)
-        self.assertTrue(ret['err'][0].startswith(
-            "pbs_release_nodes: not currently supported on nodes whose " +
-            "resources are part of a cpuset: %s" % (self.n7,)))
 
         # Ensure nothing has changed with the job.
         self.server.expect(JOB, {'job_state': 'R',
@@ -6037,10 +5946,11 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.start()
         self.assertTrue(self.server.isUp())
 
-        # make sure job is now running with assigned resources
+        # make sure job is now running after server restart
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        # make sure job is running with assigned resources
         # from the original request
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '5gb',
+        self.server.expect(JOB, {'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
                                  'Resource_List.nodect': 3,
                                  'Resource_List.select': self.job11x_select,
@@ -6403,10 +6313,12 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.start()
         self.assertTrue(self.server.isUp())
 
-        # make sure job is now running with assigned resources
+        # make sure job is now running after server restart
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # make sure job is running with assigned resources
         # from the original request
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '5gb',
+        self.server.expect(JOB, {'Resource_List.mem': '5gb',
                                  'Resource_List.ncpus': 7,
                                  'Resource_List.nodect': 3,
                                  'Resource_List.select': self.job11_select,
@@ -7228,3 +7140,43 @@ else:
                                  'schedselect': newsel,
                                  'exec_host': new_exec_host,
                                  'exec_vnode': new_exec_vnode}, id=jid)
+
+    def test_execjob_end_called(self):
+        """
+        Test:
+             Test to make sure when a job is removed from
+             a mom host that the execjob_end hook is called on
+             that mom.
+        """
+
+        # First, submit an execjob_end hook:
+
+        hook_body = """
+import pbs
+pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
+"""
+
+        a = {'event': 'execjob_end', 'enabled': 'true'}
+        self.server.create_import_hook("endjob", a, hook_body)
+
+        # Create a multinode job request
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Wait for the job to start
+        self.server.expect(JOB, {'job_state': 'R'},
+                           offset=30, id=jid, max_attempts=30)
+
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, runas=TEST_USER)
+        self.assertEqual(ret['rc'], 0)
+
+        # Check the sister mom log for the "execjob_end hook executed"
+        self.momB.log_match("execjob_end hook executed")
+
+        # Verify the rest of the job is still running
+        self.server.expect(JOB, {'job_state': 'R'},
+                           id=jid, max_attempts=30)

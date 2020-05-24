@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    pbsd_init.c
  *
@@ -106,7 +108,7 @@
 #include "svrfunc.h"
 #include "acct.h"
 #include "pbs_version.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "pbs_license.h"
 #include "resource.h"
 #include "pbs_python.h"
@@ -404,6 +406,8 @@ pbsd_init(int type)
 	if (setup_env(pbs_conf.pbs_environment)==-1)
 		return (-1);
 
+	log_supported_auth_methods(pbs_conf.supported_auth_methods);
+
 	i = getgid();
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
 
@@ -500,9 +504,9 @@ pbsd_init(int type)
 	if (sigaction(SIGUSR2, &act, &oact) != 0) {
 		log_err(errno, __func__, "sigaction for USR2");
 		return (2);
-	}	
+	}
 
-#ifdef PBS_UNDOLR_ENABLED	
+#ifdef PBS_UNDOLR_ENABLED
 	act.sa_handler = catch_sigusr1;
 #endif
 	if (sigaction(SIGUSR1, &act, &oact) != 0) {
@@ -615,7 +619,7 @@ pbsd_init(int type)
 			/* No Schedulers found in DB */
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-			set_sched_default(dflt_scheduler, 0, 0);
+			set_sched_default(dflt_scheduler, 0);
 			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		} else {
 			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
@@ -625,10 +629,6 @@ pbsd_init(int type)
 						strlen(PBS_DFLT_SCHED_NAME))) {
 						dflt_scheduler = psched;
 
-					}
-					if (pbs_conf.pbs_use_tcp == 0) {
-						/* check if throughput mode is visible in non-TPP mode, if so make it invisible */
-						psched->sch_attr[SCHED_ATR_throughput_mode].at_flags = 0;
 					}
 					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
 					psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
@@ -662,7 +662,7 @@ pbsd_init(int type)
 		}
 		svr_save_db(&server, SVR_SAVE_NEW);
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-		set_sched_default(dflt_scheduler, 0, 0);
+		set_sched_default(dflt_scheduler, 0);
 		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 	}
 
@@ -690,27 +690,28 @@ pbsd_init(int type)
 		&server.sv_attr[(int)SRV_ATR_version], 0, 0,
 		PBS_VERSION);
 
-	if (check_license(&licenses) < 0) {
+	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
-	} else {
-		if (ext_license_server) {
-			sprintf(log_buffer, "Using license server at %s",
-				PBS_LICENSE_LOCATION);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-				msg_daemonname, log_buffer);
-			printf("%s\n", log_buffer);
-		} 
-		if (licenses.lb_aval_floating > 0) {
-			sprintf(log_buffer,
-				"Licenses valid for %d Floating hosts",
-				licenses.lb_aval_floating);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-				msg_daemonname, log_buffer);
-			printf("%s\n", log_buffer);
-		}
 	}
+
+	if (ext_license_server) {
+		sprintf(log_buffer, "Using license server at %s",
+			PBS_LICENSE_LOCATION);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			msg_daemonname, log_buffer);
+		printf("%s\n", log_buffer);
+	}
+	if (licenses.lb_aval_floating > 0) {
+		sprintf(log_buffer,
+			"Licenses valid for %d Floating hosts",
+			licenses.lb_aval_floating);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			msg_daemonname, log_buffer);
+		printf("%s\n", log_buffer);
+	}
+
 	/* start a timed-event every hour to long the number of floating used */
 	if ((licenses.lb_aval_floating > 0) || ext_license_server)
 		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
@@ -951,18 +952,6 @@ pbsd_init(int type)
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		return (-1);
 
-	/* If we have trial licenses, we would need to immediately   */
-	/* license the jobs under svr_unlicensedjobs list.           */
-	/* If we have a license server, then                         */
-	/* relicense_svr_unlicensedjobs() is periodically called by  */
-	/* return_licenses() in checkkey.c.                          */
-
-	if( !(server.sv_attr[SRV_ATR_pbs_license_info].at_flags & ATR_VFLAG_SET) ||
-	(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
-                                                               == '\0') ) {
-		relicense_svr_unlicensedjobs();
-	}
-
 	/* Now, cause any reservations marked RESV_FINISHED to be
 	 * removed and place "begin" and "end" tasks onto the
 	 * "work_task_timed" list, as appropriate, for those that
@@ -972,7 +961,7 @@ pbsd_init(int type)
 	remove_deleted_resvs();
 	add_resv_beginEnd_tasks();
 
-	cnvrt_timer_init(); /* !! */
+	resv_timer_init();
 
 	/* Put us back in the Server's Private directory */
 
@@ -1051,6 +1040,7 @@ pbsd_init(int type)
 	print_hooks(HOOK_EVENT_RESVSUB);
 	print_hooks(HOOK_EVENT_MOVEJOB);
 	print_hooks(HOOK_EVENT_RUNJOB);
+	print_hooks(HOOK_EVENT_MANAGEMENT);
 	print_hooks(HOOK_EVENT_PROVISION);
 	print_hooks(HOOK_EVENT_PERIODIC);
 	print_hooks(HOOK_EVENT_RESV_END);
@@ -1844,7 +1834,6 @@ change_logs(int sig)
 	log_close(1);
 	log_open(log_file, path_log);
 	(void)acct_open(acct_file);
-	rpp_dbprt = 1 - rpp_dbprt;	/* toggle debug prints for RPP */
 }
 
 /**
@@ -2124,4 +2113,3 @@ call_log_license(struct work_task *ptask)
 	ntime = ((ntime+3601)/3600)*3600;
 	(void)set_task(WORK_Timed, ntime, call_log_license, 0);
 }
-

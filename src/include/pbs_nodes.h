@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_PBS_NODES_H
 #define	_PBS_NODES_H
 #ifdef	__cplusplus
@@ -115,7 +117,7 @@ enum nodeattr {
 struct mominfo {
 	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where mom is */
 	unsigned int	mi_port;	/* port to which Mom is listening */
-	unsigned int	mi_rmport;	/* port for MOM RPP */
+	unsigned int	mi_rmport;	/* port for MOM RM */
 	time_t		mi_modtime;	/* time configuration changed */
 	void	       *mi_data;	/* daemon dependent substructure */
 	mom_hook_action_t **mi_action;	/* pending hook copy/delete on mom */
@@ -136,12 +138,12 @@ struct mom_svrinfo {
 	int	      msr_numjobs; /* number of jobs on this node */
 	char	     *msr_arch;	    /* reported "arch" */
 	char	     *msr_pbs_ver;  /* mom's reported "pbs_version" */
-	int	      msr_stream;   /* RPP stream to Mom */
+	int	      msr_stream;   /* TPP stream to Mom */
 	time_t	      msr_timedown; /* time Mom marked down */
 	time_t	      msr_timeinit; /* time Mom marked initializing */
 	time_t        msr_timepinged; /* time Mom was last pinged */
 	struct work_task *msr_wktask;	/* work task for reque jobs */
-	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for RPP replies */
+	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for TPP replies */
 	unsigned long *msr_addrs;   /* IP addresses of host */
 	int	      msr_numvnds;  /* number of vnodes */
 	int	      msr_numvslots; /* number of slots in msr_children */
@@ -260,6 +262,12 @@ union ndu_ninfo {
 	unsigned int	__nd_int;
 };
 
+/* Device structure */
+struct	devices {
+	long nsockets;
+	long nnodes;
+};
+
 /*
  * Vnode structure
  */
@@ -282,6 +290,7 @@ struct	pbsnode {
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
 	int			 nd_modified;	/* flag indicating whether state update is required */
+	struct devices device;
 	attribute		 nd_attr[ND_ATR_LAST];
 };
 
@@ -469,7 +478,7 @@ extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
 extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
-extern void	propagate_socket_licensing(mominfo_t *, int);
+extern void	propagate_socket_licensing(mominfo_t *);
 
 extern char *msg_daemonname;
 

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef _HAVE_LIB_UTIL_H
 #define _HAVE_LIB_UTIL_H
 #ifdef  __cplusplus
@@ -44,6 +46,7 @@ extern "C" {
 
 #include <time.h>
 #include <stdio.h>
+#include <netinet/in.h>
 
 /* misc_utils specific */
 
@@ -199,7 +202,8 @@ char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 /*
  * Internal asprintf() implementation for use on all platforms
  */
-int pbs_asprintf(char **dest, const char *fmt, ...);
+extern int pbs_asprintf(char **dest, const char *fmt, ...);
+extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
 /*
  * calculate the number of digits to the right of the decimal point in
@@ -211,16 +215,6 @@ int pbs_asprintf(char **dest, const char *fmt, ...);
  *
  */
 int float_digits(double fl, int digits);
-
-/* munge related routines, no win32 */
-#ifndef WIN32
-int pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz);
-char *pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz);
-#endif
-
-/* callback routines from TPP to handle all types of external authentication, available on all platforms */
-void *get_ext_auth_data(int auth_type, int *data_len, char *ebuf, int ebufsz);
-int validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int ebufsz);
 
 /* Various helper functions in hooks processing */
 int starts_with_triple_quotes(char *str);
@@ -276,12 +270,17 @@ int is_string_in_arr(char **strarr, char *str);
 void free_string_array(char **arr);
 
 /*
- *      Escape every occurrence of 'delim' in 'str' with 'esc'
+ * convert_string_to_lowercase - convert string to lower case
  */
-char * escape_delimiter(char *str, char *delim, char esc);
+char *convert_string_to_lowercase(char *str);
+
+/*
+ * Escape every occurrence of 'delim' in 'str' with 'esc'
+ */
+char *escape_delimiter(char *str, char *delim, char esc);
 
 #ifdef HAVE_MALLOC_INFO
-char * get_mem_info(void);
+char *get_mem_info(void);
 #endif
 
 /* Size of time buffer */
@@ -297,20 +296,17 @@ void convert_duration_to_str(time_t duration, char* buf, int bufsize);
 /**
  * deduce the preemption ordering to be used for a job
  */
-struct preempt_ordering *
-get_preemption_order(struct preempt_ordering *porder, int req, int used);
+struct preempt_ordering *get_preemption_order(struct preempt_ordering *porder, int req, int used);
 
 /**
  * Begin collecting performance stats (e.g. walltime)
  */
-void 
-perf_stat_start(char *instance);
+void perf_stat_start(char *instance);
 
 /**
  * Remove a performance stats entry.
  */
-void 
-perf_stat_remove(char *instance);
+void perf_stat_remove(char *instance);
 
 /**
  * check delay in client commands
@@ -321,8 +317,23 @@ void delay_query(void);
 /**
  * End collecting performance stats (e.g. walltime)
  */
-char *
-perf_stat_stop(char *instance);
+char *perf_stat_stop(char *instance);
+
+extern char *netaddr(struct sockaddr_in *);
+extern unsigned long crc_file(char *fname);
+extern int get_fullhostname(char *, char *, int);
+
+#ifdef _USRDLL
+#ifdef DLL_EXPORT
+#define DECLDIR __declspec(dllexport)
+#else
+#define DECLDIR __declspec(dllimport)
+#endif
+DECLDIR void encode_SHA(char*, size_t, char **);
+#else
+void encode_SHA(char*, size_t, char **);
+#endif
+
 
 #ifdef  __cplusplus
 }

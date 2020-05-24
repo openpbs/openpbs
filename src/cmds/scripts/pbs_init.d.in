@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 #
 
 #
@@ -270,17 +273,17 @@ start_pbs() {
 
     # Perform sanity checks
     server_hostname=`get_server_hostname`
-    if [ -z "${server_hostname}" -o "${server_hostname}" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ] ; then
+    if [ -z "${server_hostname}" -o "${server_hostname}" = 'CHANGE_THIS_TO_PBS_SERVER_HOSTNAME' ] ; then
 	echo "***" >&2
-	echo "*** The hostname of the PBS Pro server in ${conf} is invalid." >&2
-	echo "*** Update the configuration file before starting PBS Pro." >&2
+	echo "*** The hostname of the PBS server in ${conf} is invalid." >&2
+	echo "*** Update the configuration file before starting PBS." >&2
 	echo "***" >&2
 	exit 1
     fi
     check_hostname "${server_hostname}"
     if [ $? -ne 0 ]; then
 	echo "***" >&2
-	echo "*** The PBS Pro server could not be found: $server" >&2
+	echo "*** The PBS server could not be found: $server" >&2
 	echo "*** This value must resolve to a valid IP address." >&2
 	echo "***" >&2
 	exit 1
@@ -344,7 +347,7 @@ start_pbs() {
     fi
 
     if [ $core_flag -eq 1 ];then
-        echo "Warning: PBS Professional has detected core file(s) in PBS_HOME that require attention!!!"
+        echo "Warning: PBS has detected core file(s) in PBS_HOME that require attention!!!"
         echo "Warning: Please inform your administrator immediately or contact Altair customer support"
     fi
 
@@ -376,17 +379,6 @@ start_pbs() {
 	    env LD_LIBRARY_PATH=$DB2DIR/lib64:$DB2DIR/lib ${PBS_EXEC}/sbin/pbs_mom
 	    echo "PBS Blue Gene mom"
         else
-	   if using_cpuset_mom
-	   then
-	      if devcpuset_available
-	      then
-	         :
-	      else
-		 echo "using a CPU set-enabled pbs_mom on a system without CPU sets is unsupported."
-		 return 1
-	      fi
-	   fi
-
 	   if  ${PBS_EXEC}/sbin/pbs_mom
            then
 	      echo "PBS mom"
@@ -499,9 +491,8 @@ stop_pbs() {
     fi
     if [ "${PBS_START_MOM}" -gt 0 ] ; then
       if check_prog "mom" ; then
-	site_mom_cleanup
-	kill ${pbs_mom_pid}
-	echo "PBS mom - was pid: ${pbs_mom_pid}"
+        kill ${pbs_mom_pid}
+        echo "PBS mom - was pid: ${pbs_mom_pid}"
       fi
     fi
     if [ "${PBS_START_SCHED}" -gt 0 ] ; then
@@ -600,36 +591,6 @@ status_pbs() {
     fi
 }
 
-using_cpuset_mom()
-{
-	if type ldd > /dev/null 2>&1
-	then
-		ldd $PBS_EXEC/sbin/pbs_mom 2> /dev/null | grep libcpuset > /dev/null
-	else
-		return 1
-	fi
-}
-
-devcpuset_available()
-{
-	if sgi_chkfeature -qr sgi-cpuset
-	then
-	    	return 0
-	fi
-
-	if grep -q cpuset /proc/filesystems
-	then
-		if mount | grep -q /dev/cpuset
-		then
-			return 0
-		else
-			return 1
-		fi
-	else
-		return 1
-	fi
-}
-
 # find_bgl_environment:
 #
 # Finds a BGLDIR path that contains Blue Gene API include
@@ -668,103 +629,9 @@ find_bgl_environment ()
 
 }
 
-# Wrapper for SGI's chkfeature utility, q.v..  "has_chkfeature" is initialized
-# in the site_mom_startup function.
-sgi_chkfeature()
-{
-	if [ $has_chkfeature -ne 0 ]
-	then
-		chkfeature ${1+"$@"}
-		return $?
-	else
-		return 1
-	fi
-}
-
-# called when we are starting on a SGI ICE system
-# /etc/sgi-compute-node-release exists
-# Make a vnodedef file with cpuset info
-sgi_ice_startup()
-{
-	vnodedefsdir=`dirname $vnodedefs`
-	[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
-
-	sh $momscriptdir/sgiICEvnode.sh "$1"  > ${vnodedefs}.new
-
-	if [ ! -f $vnodedefs ] || ! cmp -s $vnodedefs ${vnodedefs}.new
-	then
-		/bin/cp ${vnodedefs}.new $vnodedefs
-	fi
-	/bin/rm -f ${vnodedefs}.new
-}
-
 site_mom_startup()
 {
-    vnodedefs="${PBS_MOM_HOME}/mom_priv/config.d/PBSvnodedefs"
-    momscriptdir="${pbslibdir}/init.d"
-    SGItopology="/proc/sgi_sn/sn_topology";
-    UVSGItopology="/proc/sgi_uv/topology";
-    SGIcomputenode="/etc/sgi-compute-node-release"
-    if type chkfeature > /dev/null 2>&1
-    then
-	has_chkfeature=1
-    else
-	has_chkfeature=0
-    fi
-    #	If this site is using a pbs_mom that supports CPU sets ...
-    if using_cpuset_mom
-    then
-	# and if there's an SGI topology file (Altix),
-	# generate a placement and vnode definitions file.
-	if  [ -f $SGItopology -o -f $UVSGItopology ]
-	then
-		vnodedefsdir=`dirname $vnodedefs`
-		[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
-		awk -f "$momscriptdir/sgigenvnodelist.awk" > $vnodedefs
-	elif [ -f $SGIcomputenode ]
-	then
-		sgi_ice_startup cpuset
-	fi
-    fi
     find_bgl_environment
-}
-
-#	When shutting down PBS, if no processes are left running in
-#	the /dev/cpuset/PBSPro hierarchy, tidy up by turning off the
-#	cpu_exclusive and mem_exclusive flags on the sets created by
-#	pbs_mom.cpuset.
-PBSPro_cleanup()
-{
-	CPUset_root="/dev/cpuset"
-	PBSPro_root="PBSPro"
-	tmpfile="$tmpdir/cpusetlist$$"
-
-	trap "rm -f $tmpfile" 0 1 2 3 15
-
-	[ -d "$CPUset_root/$PBSPro_root" ] || return
-	cpuset -s $PBSPro_root -r > $tmpfile
-	while read set
-	do
-		[ -n "`cpuset -p $set`" ] && return
-	done < $tmpfile
-
-	find $CPUset_root/$PBSPro_root -type d -print |
-	sed -e "s,$CPUset_root,," |
-	sort -r |
-	while read set
-	do
-		cpuset -x $set
-	done
-}
-
-site_mom_cleanup()
-{
-	CPUset_root="/dev/cpuset"
-
-	if [ -d $CPUset_root ] && using_cpuset_mom
-	then
-		PBSPro_cleanup
-	fi
 }
 
 # Check whether PBS is registered to start at boot time
@@ -866,9 +733,6 @@ fi
 [ -z "${PBS_START_MOM}" ] && PBS_START_MOM=0
 [ -z "${PBS_START_SCHED}" ] && PBS_START_SCHED=0
 [ -z "${PBS_START_COMM}" ] && PBS_START_COMM=0
-
-# For Kerberos enabled server
-[ ! -z "${PBS_START_SERVER}" ] && export PBSPRO_IGNORE_KERBEROS=1
 
 UNIX95=1
 export UNIX95

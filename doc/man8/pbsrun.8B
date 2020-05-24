@@ -1,39 +1,43 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbsrun 8B "5 March 2019" Local "PBS Professional"
+
+.TH pbsrun 8B "5 March 2019" Local "PBS"
 .SH NAME
 .B pbsrun
 \- general-purpose wrapper script for mpirun
@@ -51,7 +55,7 @@ This provides a user-transparent way for PBS to control jobs
 which call mpirun in their jobscripts.
 The
 .B pbsrun_wrap
-script instantiates 
+script instantiates
 .B pbsrun
 so that the wrapper script for the specific version of mpirun
 being used has the same name as that version of mpirun.
@@ -67,32 +71,32 @@ into
 .br
             <executable> [<args>]
 .br
-where 
-.I special options to pbs_attach 
-refers to any options needed by 
-.B pbs_attach 
+where
+.I special options to pbs_attach
+refers to any options needed by
+.B pbs_attach
 to do its job (e.g. -j $PBS_JOBID).
 
 If the wrapper script is executed outside of PBS, a warning is issued
 about "not running under PBS", but it proceeds as if the actual
 program had been called in standalone fashion.
 
-The 
-.B pbsrun 
+The
+.B pbsrun
 wrapper script is not meant to be executed directly; instead
-it is instantiated by 
+it is instantiated by
 .B pbsrun_wrap.
 It is copied to the target directory and renamed
-"pbsrun.<mpirun version/flavor>" where 
+"pbsrun.<mpirun version/flavor>" where
 .I mpirun version/flavor
 is a string that identifies the mpirun
 version being wrapped (e.g. ch_gm).
 
-The 
-.B pbsrun 
+The
+.B pbsrun
 script, if executed inside a PBS job,
-runs an 
-.B initialization script, 
+runs an
+.B initialization script,
 named $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init, then
 parses mpirun-like arguments from the command line, sorting which
 options and option values to retain, to ignore, or to transform,
@@ -137,7 +141,7 @@ MVAPICH2's mpiexec
 
 .SH OPTIONS
 .IP "--version" 8
-The 
+The
 .B pbsrun
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -145,8 +149,8 @@ This option can only be used alone.
 .SH INITIALIZATION SCRIPT
 
 The initialization script, called $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init,
-where 
-.I mpirun version/flavor 
+where
+.I mpirun version/flavor
 reflects the mpirun flavor/version being wrapped,
 can be modified by an administrator to customize against the local
 flavor/version of mpirun being wrapped.
@@ -187,19 +191,19 @@ arbitrary names with left and right arrows, as in "<n>".
 
 .IP "options_to_transform" 5
 Space-separated list of options and values
-that 
-.B pbsrun 
+that
+.B pbsrun
 modifies before passing on to the actual mpirun call.
 
 .IP "option_to_fail" 5
 Space-separated list of options that will cause
-.B pbsrun 
+.B pbsrun
 to exit upon encountering a match.
 
 .IP "options_to_configfile" 5
 Single option and value that refers to
 the name of the "configfile" containing command line segments found in
-certain versions of mpirun. 
+certain versions of mpirun.
 
 .IP "options_with_another_form" 5
 Space-separated list of options and values that can be found in
@@ -207,27 +211,27 @@ options_to_retain, options_to_ignore, or options_to_transform, whose
 syntax has an alternate, unsupported form.
 
 .IP "pbs_attach" 5
-Path to 
-.B pbs_attach, 
+Path to
+.B pbs_attach,
 which is called before the
 <executable> argument of mpirun.
 
 .IP "options_to_pbs_attach" 5
 Special options to pass to the
-.B pbs_attach call. 
+.B pbs_attach call.
 You may pass variable references (e.g. $PBS_JOBID) and
-they are substituted  by 
-.B pbsrun 
+they are substituted  by
+.B pbsrun
 to actual values.
 .LP
 .RE
 
-If 
-.B pbsrun 
-encounters any option not found in 
-.I options_to_retain, options_to_ignore, 
-and 
-.I options_to_transform, 
+If
+.B pbsrun
+encounters any option not found in
+.I options_to_retain, options_to_ignore,
+and
+.I options_to_transform,
 then it is flagged
 as an error.
 
@@ -260,7 +264,7 @@ modified by the PBS administrator.
      args=$*
 .br
 }
-		
+
 .IP "end_action () {" 5
      mpirun_location=$1
 .br
@@ -269,7 +273,7 @@ modified by the PBS administrator.
 
 .IP "transform_action()" 5
 The pbsrun.<mpirun version/flavor> wrapper script invokes the function
-.I transform_action() 
+.I transform_action()
 (called once on each matched item and value) with
 actual options and values received matching one of the
 "options_to_transform". The function returns a string to pass on
@@ -288,26 +292,26 @@ progress to the next step.
 
 .IP "evaluate_options_action()" 5
 Called with the actual options
-and values that resulted after consulting 
-.I options_to_retain, options_to_ignore, options_to_transform, 
-and executing 
+and values that resulted after consulting
+.I options_to_retain, options_to_ignore, options_to_transform,
+and executing
 .I transform_action().
 This provides one more chance for the script writer to evaluate all
 the options and values in general, and make any necessary adjustments,
 before passing them on to the actual mpirun call. For instance,
-this function can specify what the default value is for a missing 
+this function can specify what the default value is for a missing
 .I -np
 option.
 
 
 .IP "configfile_cmdline_action()" 5
 Returns the actual options and values
-to be put in before the option_to_configfile parameter. 
+to be put in before the option_to_configfile parameter.
 
 .IP "configfile_firstline_action()" 5
-Returns the item that is 
+Returns the item that is
 put in the first line of the configuration file specified in the
-.I option_to_configfile 
+.I option_to_configfile
 parameter.
 
 .IP "end_action()" 5
@@ -326,13 +330,13 @@ The actual mpirun program to call is the path pointed to by
 .br
 In order for administrators to modify *.init scripts without breaking
 package verification in RPM, master copies of the initialization
-scripts are named *.init.in.  
-.B pbsrun_wrap 
+scripts are named *.init.in.
+.B pbsrun_wrap
 instantiates the *.init.in files as *.init. For instance,
 $PBS_EXEC/lib/MPI/pbsrun.mpich2.init.in is the master copy, and
-.B pbsrun_wrap 
+.B pbsrun_wrap
 instantiates it as $PBS_EXEC/lib/MPI/pbsrun.mpich2.init.
-.B pbsrun_unwrap 
+.B pbsrun_unwrap
 takes care of removing the *.init files.
 
 
@@ -346,7 +350,7 @@ takes care of removing the *.init files.
 SYNTAX
 .RS 5
 
-.B pbsrun.ch_gm <options> <executable> <arg1> 
+.B pbsrun.ch_gm <options> <executable> <arg1>
 .B <arg2> ... <argn>
 
 .B Deprecated.
@@ -354,24 +358,24 @@ This is the PBS wrapper script to MPICH-GM's mpirun (mpirun.ch_gm) with
 rsh/ssh process startup method.
 
 If executed inside a PBS job, this allows for PBS to track all MPICH-GM
-processes started by rsh/ssh so that PBS can perform accounting and 
+processes started by rsh/ssh so that PBS can perform accounting and
 have complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
-.B mpirun.ch_gm 
+.B mpirun.ch_gm
 was used.
 .RE
 
 OPTIONS HANDLING
 .RS 5
-If executed inside a PBS job script, all 
-.B mpirun.ch_gm 
+If executed inside a PBS job script, all
+.B mpirun.ch_gm
 options given are
 passed on to the actual mpirun call with these exceptions:
 
 .IP "-machinefile <file>" 5
-The 
-.I file 
+The
+.I file
 argument contents are ignored and replaced by the contents of
 the $PBS_NODEFILE.
 
@@ -380,10 +384,10 @@ If not specified, the number of entries found in the
 $PBS_NODEFILE is used.
 
 .IP "-pg" 5
-The use of the 
-.I -pg 
+The use of the
+.I -pg
 option, for having multiple executables on multiple
-hosts, is allowed but it is up to user to make sure 
+hosts, is allowed but it is up to user to make sure
 only PBS hosts are specified in the process group file; MPI processes
 spawned are not guaranteed to be under the control of PBS.
 .RE
@@ -410,15 +414,15 @@ To unwrap MPICH-GM's mpirun script:
 SYNTAX
 .RS 5
 
-.B pbsrun.ch_mx <options> <executable> <arg1> 
+.B pbsrun.ch_mx <options> <executable> <arg1>
 .B <arg2> ... <argn>
 
-.B Deprecated.  
+.B Deprecated.
 This is the PBS wrapper script to MPICH-MX's mpirun (mpirun.ch_mx) with
 rsh/ssh process startup method.
 
 If executed inside a PBS job, this allows for PBS to track all MPICH-MX
-processes started by rsh/ssh so that PBS can perform accounting and 
+processes started by rsh/ssh so that PBS can perform accounting and
 has complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
@@ -431,8 +435,8 @@ If executed inside a PBS job script, all mpirun.ch_gm options given are
 passed on to the actual mpirun call with some exceptions:
 
 .IP "-machinefile <file>" 5
-The 
-.I file 
+The
+.I file
 argument contents is ignored and replaced by the contents
 of the $PBS_NODEFILE.
 
@@ -441,10 +445,10 @@ If not specified, the number of entries found in the
 $PBS_NODEFILE is used.
 
 .IP "-pg" 5
-The use of the 
-.I -pg 
+The use of the
+.I -pg
 option, for having multiple executables on multiple
-hosts, is allowed but it is up to user to make sure 
+hosts, is allowed but it is up to user to make sure
 only PBS hosts are specified in the process group file; MPI processes
 spawned are not guaranteed to be under the control of PBS.
 .RE
@@ -459,7 +463,7 @@ To unwrap MPICH-MX's mpirun script:
 .RS 4
 .B # pbsrun_unwrap pbsrun.ch_mx
 .RE
-.RE 
+.RE
 .RE
 
 --------------------------------------------------------
@@ -471,15 +475,15 @@ To unwrap MPICH-MX's mpirun script:
 SYNTAX
 .RS 5
 
-.B pbsrun.gm_mpd <options> <executable> <arg1> 
+.B pbsrun.gm_mpd <options> <executable> <arg1>
 .B <arg2> ... <argn>
 
-.B Deprecated.  
+.B Deprecated.
 This is the PBS wrapper script to MPICH-GM's mpirun (mpirun.mpd) with
 MPD process startup method.
 
 If executed inside a PBS job, this allows for PBS to track all MPICH-GM
-processes started by the MPD daemons so that PBS can perform accounting 
+processes started by the MPD daemons so that PBS can perform accounting
 have and complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
@@ -487,13 +491,13 @@ mpirun.ch_gm with MPD was used.
 .RE
 
 OPTIONS HANDLING
-.RS 5 
+.RS 5
 If executed inside a PBS job script, all mpirun.ch_gm with MPD options given
 are passed on to the actual mpirun call with these exceptions:
 
 .IP "-m <file>" 5
-The 
-.I file 
+The
+.I file
 argument contents are ignored and replaced by the contents of
 the $PBS_NODEFILE.
 
@@ -502,10 +506,10 @@ If not specified, the number of entries found in the
 $PBS_NODEFILE is used.
 
 .IP "-pg" 5
-The use of the 
-.I -pg 
+The use of the
+.I -pg
 option, for having multiple executables on multiple
-hosts, is allowed but it is up to user to make sure 
+hosts, is allowed but it is up to user to make sure
 only PBS hosts are specified in the process group file; MPI processes
 spawned are not guaranteed to be under the control of PBS.
 .RE
@@ -542,15 +546,15 @@ To unwrap MPICH-GM's mpirun script with MPD:
 SYNTAX
 .RS 5
 
-.B pbsrun.mx_mpd <options> <executable> <arg1> 
+.B pbsrun.mx_mpd <options> <executable> <arg1>
 .B <arg2> ... <argn>
 
-.B Deprecated.  
+.B Deprecated.
 This is the PBS wrapper script to MPICH-MX's mpirun (mpirun.mpd) with
 MPD process startup method.
 
 If executed inside a PBS job, this allows for PBS to track all MPICH-MX
-processes started by the MPD daemons so that PBS can perform accounting 
+processes started by the MPD daemons so that PBS can perform accounting
 and have complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
@@ -563,7 +567,7 @@ If executed inside a PBS job script, all mpirun.ch_gm with MPD options given
 are passed on to the actual mpirun call with these exceptions:
 
 .IP "-m <file>" 5
-The 
+The
 .I file
 argument contents are ignored and replaced by the contents of
 the $PBS_NODEFILE.
@@ -572,10 +576,10 @@ the $PBS_NODEFILE.
 If not specified, the number of entries found in the $PBS_NODEFILE is used.
 
 .IP "-pg" 5
-The use of the 
-.I -pg 
+The use of the
+.I -pg
 option, for having multiple executables on multiple
-hosts, is allowed but it is up to user to make sure 
+hosts, is allowed but it is up to user to make sure
 only PBS hosts are specified in the process group file; MPI processes
 spawned are not guaranteed to be under the control of PBS.
 .RE
@@ -612,14 +616,14 @@ To unwrap MPICH-MX's mpirun script with MPD:
 SYNTAX
 .RS 5
 
-.B pbsrun.mpich2 [<global args>] [<local args>] 
-.B <executable> 
+.B pbsrun.mpich2 [<global args>] [<local args>]
+.B <executable>
 .RS 14
 .B [<args>]
-.B [: [<local args>] <executable> [<args>]] 
+.B [: [<local args>] <executable> [<args>]]
 .RE
 .br
-- or - 
+- or -
 .br
 .B pbsrun.mpich2 -configfile <configfile>
 
@@ -651,36 +655,36 @@ For specifying the execution host to run
 on.  Not passed on to the actual mpirun call.
 
 .IP "-machinefile <file>" 5
-The 
-.I file 
+The
+.I file
 argument contents are ignored and replaced by the
 contents of the $PBS_NODEFILE.
 
 .IP "MPICH2's mpirun -localonly <x>" 5
 For specifying the <x> number of
 processes to run locally. Not supported. The user is advised
-instead to use the equivalent arguments: 
-.I "-np <x> -localonly".  
+instead to use the equivalent arguments:
+.I "-np <x> -localonly".
 The reason
-for this is that the 
-.B pbsrun 
+for this is that the
+.B pbsrun
 wrapper script cannot handle a variable number
 of arguments to an option (e.g. "-localonly" has 1 argument and "-localonly <x>"
 has 2 arguments).
 
 .IP "-np" 5
-If user did not specify a 
-.I -np 
+If user did not specify a
+.I -np
 option, then no default value is provided
 by the PBS wrapper scripts. It is up to the local mpirun to decide what
 the reasonable default value should be, which is usually 1.
-.RE 
+.RE
 
 STARTUP/SHUTDOWN
 .RS 5
 The script takes care of ensuring that the MPD daemons on each of the hosts
 listed in the $PBS_NODEFILE are started. It also takes care of ensuring
-that the MPD daemons have been shut down at the end of MPI job execution. 
+that the MPD daemons have been shut down at the end of MPI job execution.
 .RE
 
 WRAP/UNWRAP
@@ -698,11 +702,11 @@ To unwrap MPICH2's mpirun script:
 
 -----------------------------------
 .br
-.B Intel MPI's mpirun: pbsrun.intelmpi 
+.B Intel MPI's mpirun: pbsrun.intelmpi
 .br
 -----------------------------------
 
-Wrapping Intel MPI, and support for mpdboot, are 
+Wrapping Intel MPI, and support for mpdboot, are
 .B deprecated.
 
 SYNTAX
@@ -711,19 +715,19 @@ SYNTAX
 .B pbsrun.intelmpi  [<mpdboot options>] [<mpiexec options>]
 .RS 16
 .B <executable> [<prog args>]
-.br 
+.br
 .B [: [<mpiexec options>] <executable> [<prog args>]]
 .RE
 .br
-- or - 
+- or -
 .br
 .B pbsrun.intelmpi [<mpdboot options>] -f <configfile>
 
-where 
-.I mpdboot options 
+where
+.I mpdboot options
 are any options to pass to the mpdboot program,
 which is automatically called by Intel MPI's mpirun to start MPDs, and
-.I configfile 
+.I configfile
 contains command line segments as lines.
 
 This is the PBS wrapper script to Intel MPI's mpirun.
@@ -735,18 +739,18 @@ If executed outside of a PBS job, it behaves exactly as if standard
 Intel MPI's mpirun was used.
 .RE
 
-Using 
-.B pbsrun, pbsrun_wrap, 
-and 
+Using
+.B pbsrun, pbsrun_wrap,
+and
 .B pbsrun_unwrap
-with Intel MPI is 
-.B deprecated 
+with Intel MPI is
+.B deprecated
 as of 13.0.
 
 OPTIONS HANDLING
 .RS 5
-If executed inside a PBS job script, all of the options to the PBS 
-interface to MPI's mpirun are passed to the actual 
+If executed inside a PBS job script, all of the options to the PBS
+interface to MPI's mpirun are passed to the actual
 mpirun call with these exceptions:
 
 .IP "-host and -ghost" 5
@@ -754,7 +758,7 @@ For specifying the execution host to run
 on.  Not passed on to the actual mpirun call.
 
 .IP  "-machinefile <file>" 5
-The 
+The
 .I file
 argument contents are ignored and replaced by the
 contents of the $PBS_NODEFILE.
@@ -766,27 +770,27 @@ and name of $PBS_NODEFILE respectively.
 .IP "arguments to mpdboot options --file=* and -f <mpd_hosts_file>" 5
 Replaced by $PBS_NODEFILE.
 
-.IP "-s" 5 
-If 
-.B pbsrun.intelmpi 
-is called inside a PBS job, Intel MPIs mpirun 
-.I -s 
+.IP "-s" 5
+If
+.B pbsrun.intelmpi
+is called inside a PBS job, Intel MPIs mpirun
+.I -s
 argument
 to mpdboot are not supported as this closely matches the mpirun option
-.I "-s <spec>". 
-The user can simply run a separate mpdboot 
-.I -s 
+.I "-s <spec>".
+The user can simply run a separate mpdboot
+.I -s
 before calling
-mpirun.  A warning message is issued by 
-.B pbsrun.intelmpi 
+mpirun.  A warning message is issued by
+.B pbsrun.intelmpi
 upon
-encountering a 
-.I -s 
+encountering a
+.I -s
 option telling users of the supported form.
 
 .IP "-np" 5
-If the user does not specify a 
-.I -np 
+If the user does not specify a
+.I -np
 option, then no default value is provided
 by the PBS wrap scripts. It is up to the local mpirun to decide what
 the reasonable default value should be, which is usually 1.
@@ -795,12 +799,12 @@ the reasonable default value should be, which is usually 1.
 STARTUP/SHUTDOWN
 .RS 5
 Intel MPI's mpirun itself takes care of starting/stopping the
-MPD daemons. 
-.B pbsrun.intelmpi 
+MPD daemons.
+.B pbsrun.intelmpi
 always passes the arguments
-.I -totalnum=<number of mpds to start> 
-and 
-.I -file=<mpd_hosts_file> 
+.I -totalnum=<number of mpds to start>
+and
+.I -file=<mpd_hosts_file>
 to the actual
 mpirun, taking its input from unique entries in $PBS_NODEFILE.
 .RE
@@ -830,12 +834,12 @@ SYNTAX
 
 .B pbsrun.mvapich1 <mpirun options> <executable> <options>
 
-.B Deprecated.  
+.B Deprecated.
 Only one executable can be specified.
-This is the PBS wrapper script to MVAPICH1's mpirun.  
+This is the PBS wrapper script to MVAPICH1's mpirun.
 
-If executed inside a PBS job, this allows for PBS to be aware of all MVAPICH1 
-ranks and track their resources, so that PBS can perform accounting and 
+If executed inside a PBS job, this allows for PBS to be aware of all MVAPICH1
+ranks and track their resources, so that PBS can perform accounting and
 have complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
@@ -845,23 +849,23 @@ was used.
 
 OPTIONS HANDLING
 .RS 5
-If executed inside a PBS job script, all 
+If executed inside a PBS job script, all
 .B mpirun
 options given are
 passed on to the actual mpirun call with these exceptions:
 
 .IP "-map <list>" 5
-The 
+The
 .I map
 option is ignored.
 
 .IP "-exclude <list>" 5
-The 
+The
 .I exclude
 option is ignored.
 
 .IP "-machinefile <file>" 5
-The 
+The
 .I machinefile
 option is ignored.
 
@@ -896,17 +900,17 @@ To unwrap MVAPICH1's mpirun script:
 SYNTAX
 .RS 5
 
-.B pbsrun.mvapich2 <mpiexec args> <executable> <executable's 
+.B pbsrun.mvapich2 <mpiexec args> <executable> <executable's
 .RS 16
-.B args> 
+.B args>
 .B [: <mpiexec args> <executable> <executable's args>]
 .RE
 Multiple executables can be specified using the colon notation.
-This is the PBS wrapper script to MVAPICH2's mpiexec, which have 
+This is the PBS wrapper script to MVAPICH2's mpiexec, which have
 the same format.
 
 If executed inside a PBS job, this allows for PBS to be aware of all MVAPICH2
-ranks and track their resources, so that PBS can perform accounting and 
+ranks and track their resources, so that PBS can perform accounting and
 have complete job control.
 
 If executed outside of a PBS job, it behaves exactly as if standard
@@ -916,19 +920,19 @@ was used.
 
 OPTIONS HANDLING
 .RS 5
-If executed inside a PBS job script, all 
+If executed inside a PBS job script, all
 .B mpiexec
 options given are
 passed on to the actual mpiexec call with these exceptions:
 
 .IP "-host <host>" 5
-The 
+The
 .I host
 argument contents are ignored.
 
 .IP "-machinefile <file>" 5
-The 
-.I file 
+The
+.I file
 argument contents are ignored and replaced by the contents of
 the $PBS_NODEFILE.
 
@@ -953,18 +957,18 @@ The mpirun being wrapped
 must be installed and working on all the nodes in the PBS cluster.
 
 .SH ERRORS
-If 
-.B pbsrun 
-encounters any option not found in 
-.I options_to_retain, options_to_ignore, 
-and 
-.I options_to_transform, 
+If
+.B pbsrun
+encounters any option not found in
+.I options_to_retain, options_to_ignore,
+and
+.I options_to_transform,
 then it is flagged as an error.
 
 .SH SEE ALSO
-The 
-.B PBS Professional Administrator's Guide
+The
+.B PBS Administrator's Guide
 .LP
-pbs_attach(8B), 
-pbsrun_wrap(8B), 
+pbs_attach(8B),
+pbsrun_wrap(8B),
 pbsrun_unwrap(8B)

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	int_submit.c
  */
@@ -50,19 +52,16 @@
 #include "portability.h"
 #include "libpbs.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "net_connect.h"
 
 #define	IS_PROTOCOL	4
 #define	IS_PROTOCOL_VER	3
 
-
-
-
 /**
  * @brief - Start a standard inter-server message.
  *
- * @param[in] stream  - The RPP stream on which to send message
+ * @param[in] stream  - The TPP stream on which to send message
  * @param[in] command - The message type (cmd) to encode
  *
  * @return error code
@@ -76,7 +75,7 @@ is_compose(int stream, int command)
 
 	if (stream < 0)
 		return DIS_EOF;
-	DIS_rpp_reset();
+	DIS_tpp_funcs();
 
 	ret = diswsi(stream, IS_PROTOCOL);
 	if (ret != DIS_SUCCESS)
@@ -135,13 +134,13 @@ get_msgid(char **id)
 }
 
 /**
- * @brief - Compose a RPP command
+ * @brief - Compose a command to be sent over TPP stream
  *
  * @par Functionality:
  *	calls im_compose to create the message header, get_msgid to
  * 	add a msg id to the header (unless one is passed)
  *
- * @param[in] stream - rpp stream to write to
+ * @param[in] stream - Tpp stream to write to
  * @param[in] command - The command to encode
  * @param[in,out] ret_msgid - The msgid, if passed to this function, is
  *                            the msgid to be used for this message.
@@ -176,9 +175,9 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  *	-PBSD_rdytocmt This function does the Ready To Commit sub-function of
  *	the Queue Job request.
  *
- * @param[in] connect - socket fd
+ * @param[in] c - socket fd
  * @param[in] jobid - job identifier
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return	int
@@ -186,51 +185,47 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
  * @retval	!0(pbs_errno)	failure
  *
  */
-
 int
-PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
+PBSD_rdytocmt(int c, char *jobid, int prot, char **msgid)
 {
 	int     rc;
 	struct batch_reply *reply;
-	int     sock;
 
-	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc=encode_DIS_ReqHdr(sock, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(sock, jobid))  ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
+		(rc = encode_DIS_JobId(c, jobid))  ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock))
+	if (dis_flush(c))
 		return (pbs_errno = PBSE_PROTOCOL);
 
 	/* read reply */
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 
 	PBSD_FreeReply(reply);
 
-	return connection[connect].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -238,9 +233,9 @@ PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
  *	-PBS_commit.c This function does the Commit sub-function of
  *	the Queue Job request.
  *
- * @param[in] connect - socket fd
+ * @param[in] c - socket fd
  * @param[in] jobid - job identifier
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -248,50 +243,46 @@ PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
  * @retval      !0(pbs_errno)   failure
  *
  */
-
 int
-PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
+PBSD_commit(int c, char *jobid, int prot, char **msgid)
 {
 	struct batch_reply *reply;
 	int rc;
-	int sock;
 
-	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_Commit, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(sock, jobid)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL)
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Commit, pbs_current_user)) ||
+		(rc = encode_DIS_JobId(c, jobid)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 
 	PBSD_FreeReply(reply);
 
-	return connection[connect].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -307,7 +298,7 @@ PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
  * @param[in] len - length of chunk
  * @param[in] jobid - ob id (for types 1 and 2 only)
  * @param[in] which - standard file type (enum)
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -315,46 +306,41 @@ PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
  * @retval      !0(pbs_errno)   failure
  *
  */
-
 static int
-PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
-		enum job_file which, int rpp, char **msgid)
+PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid, enum job_file which, int prot, char **msgid)
 {
 	struct batch_reply   *reply;
 	int	rc;
-	int	sock;
 
-	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
 	if (jobid == NULL)
 		jobid = "";	/* use null string for null pointer */
 
-	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
-		(rc = encode_DIS_JobFile(sock, seq, buf, len, jobid, which)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
+		(rc = encode_DIS_JobFile(c, seq, buf, len, jobid, which)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 		return pbs_errno;
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 
@@ -364,7 +350,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 
 	PBSD_FreeReply(reply);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -376,7 +362,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
  *
  * @param[in] c - connection handle
  * @param[in] script_file - job file
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return	int
@@ -386,7 +372,7 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
  */
 
 int
-PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
+PBSD_jscript(int c, char *script_file, int prot, char **msgid)
 {
 	int i;
 	int fd;
@@ -400,7 +386,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	i = 0;
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	while ((cc > 0) &&
-		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, NULL, JScript, rpp, msgid)) == 0)) {
+		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, NULL, JScript, prot, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -409,10 +395,10 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	if (cc < 0)	/* read failed */
 		return (-1);
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return (rc);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -421,7 +407,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
  *
  * @param[in] c - connection handle
  * @param[in] script_file - job file
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -429,9 +415,8 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
  * @retval      -1      failure
  *
  */
-
 int
-PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
+PBSD_jscript_direct(int c, char *script, int prot, char **msgid)
 {
 	int rc;
 	int tosend;
@@ -447,16 +432,16 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 	len = strlen(script);
 	do {
 		tosend = (len > SCRIPT_CHUNK_Z) ? SCRIPT_CHUNK_Z : len;
-		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, NULL, JScript, rpp, msgid);
+		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, NULL, JScript, prot, msgid);
 		i++;
 		p += tosend;
 		len -= tosend;
 	} while ((rc == 0) && (len > 0));
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return (rc);
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 
@@ -473,7 +458,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  * @param[in] path - file path
  * @param[in] jobid - job id
  * @param[in] which - standard file type (enum)
- * @param[in] rpp - indication for rpp to use or not
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
@@ -481,10 +466,8 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  * @retval      -1      failure
  *
  */
-
 int
-PBSD_jobfile(int c, int req_type, char *path, char *jobid,
-		enum job_file which, int rpp, char **msgid)
+PBSD_jobfile(int c, int req_type, char *path, char *jobid, enum job_file which, int prot, char **msgid)
 {
 	int   i;
 	int   cc;
@@ -498,7 +481,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 	i = 0;
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	while ((cc > 0) &&
-		((rc = PBSD_scbuf(c, req_type, i, s_buf, cc, jobid, which, rpp, msgid)) == 0)) {
+		((rc = PBSD_scbuf(c, req_type, i, s_buf, cc, jobid, which, prot, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -507,10 +490,10 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 	if (cc < 0)	/* read failed */
 		return (-1);
 
-	if (rpp)
+	if (prot == PROT_TPP)
 		return rc;
 
-	return connection[c].ch_errno;
+	return get_conn_errno(c);
 }
 
 /**
@@ -523,28 +506,24 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
  * @param[in] destin - destination name
  * @param[in] attrib - pointer to attribute list
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
  * @retval      0               Success
  * @retval      pbs_error(!0)   error
  */
-
 char *
-PBSD_queuejob(int connect, char *jobid, char *destin, struct attropl *attrib, char *extend, int rpp, char **msgid)
+PBSD_queuejob(int c, char *jobid, char *destin, struct attropl *attrib, char *extend, int prot, char **msgid)
 {
 	struct batch_reply *reply;
-	char  *return_jobid = NULL;
-	int    rc;
-	int    sock;
+	char *return_jobid = NULL;
+	int rc;
 
-	if (!rpp) {
-		sock = connection[connect].ch_socket;
-		DIS_tcp_setup(sock);
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
 	} else {
-		sock = connect;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS) {
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS) {
 			pbs_errno = PBSE_PROTOCOL;
 			return return_jobid;
 		}
@@ -552,43 +531,42 @@ PBSD_queuejob(int connect, char *jobid, char *destin, struct attropl *attrib, ch
 
 	/* first, set up the body of the Queue Job request */
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_QueueJob, pbs_current_user)) ||
-		(rc = encode_DIS_QueueJob(sock, jobid, destin, attrib)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		if (!rpp) {
-			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[connect].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_QueueJob, pbs_current_user)) ||
+		(rc = encode_DIS_QueueJob(c, jobid, destin, attrib)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;
-			} else {
-				pbs_errno = PBSE_PROTOCOL;
+				return NULL;
 			}
+			pbs_errno = PBSE_PROTOCOL;
 		}
 		return return_jobid;
 	}
 
-	if (rpp) {
+	if (prot == PROT_TPP) {
 		pbs_errno = PBSE_NONE;
-		if (rpp_flush(sock))
+		if (dis_flush(c))
 			pbs_errno = PBSE_PROTOCOL;
 
-		return (""); /* return something NON-NULL for rpp */
+		return (""); /* return something NON-NULL for tpp */
 	}
 
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		return return_jobid;
 	}
 
 	/* read reply from stream into presentation element */
 
-	reply = PBSD_rdrpy(connect);
+	reply = PBSD_rdrpy(c);
 	if (reply == NULL) {
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (reply->brp_choice &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Queue) {
 		pbs_errno = PBSE_PROTOCOL;
-	} else if (connection[connect].ch_errno == 0) {
+	} else if (get_conn_errno(c) == 0) {
 		return_jobid = strdup(reply->brp_un.brp_jid);
 		if (return_jobid == NULL) {
 			pbs_errno = PBSE_SYSTEM;

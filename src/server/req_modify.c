@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    req_modify.c
  *
@@ -111,7 +113,7 @@ post_modify_req(struct work_task *pwt)
 {
 	struct batch_request *preq;
 
-	if (pwt->wt_aux2 != 1) /* not rpp */
+	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore socket to client */
@@ -740,6 +742,8 @@ req_modifyReservation(struct batch_request *preq)
 	int		next_occr_start = 0;
 	extern char	*msg_stdg_resv_occr_conflict;
 	resc_resv	*presv;
+	int num_jobs;
+	long new_end_time = 0;
 
 	if (preq == NULL)
 		return;
@@ -769,6 +773,12 @@ req_modifyReservation(struct batch_request *preq)
 		return;
 	}
 
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
+	}
+
 	is_standing = presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long;
 	if (is_standing)
 		next_occr_start = get_occurrence(presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
@@ -778,6 +788,8 @@ req_modifyReservation(struct batch_request *preq)
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	presv->ri_alter_flags = 0;
+	presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+
 	while (psatl) {
 		long temp = 0;
 		char *end = NULL;
@@ -798,11 +810,11 @@ req_modifyReservation(struct batch_request *preq)
 
 		resc_access_perm = resc_access_perm_save; /* reset */
 		if (psatl->al_flags & ATR_VFLAG_HOOK) {
-			resc_access_perm = ATR_DFLAG_USWR | \
-					    ATR_DFLAG_OPWR | \
-					    ATR_DFLAG_MGWR | \
-				            ATR_DFLAG_SvWR | \
-					    ATR_DFLAG_Creat;
+			resc_access_perm = ATR_DFLAG_USWR |
+					   ATR_DFLAG_OPWR |
+					   ATR_DFLAG_MGWR |
+					   ATR_DFLAG_SvWR |
+					   ATR_DFLAG_Creat;
 		}
 		if ((pdef->at_flags & resc_access_perm) == 0) {
 			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);
@@ -811,16 +823,15 @@ req_modifyReservation(struct batch_request *preq)
 
 		switch (index) {
 			case RESV_ATR_start:
-				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) ||
-					!(presv->ri_qp->qu_numjobs)) {
+				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
-					if ((temp > time(NULL)) &&
-						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
+					if (temp > time(NULL)) {
 						if (!is_standing || (temp < next_occr_start)) {
 							send_to_scheduler = RESV_START_TIME_MODIFIED;
 							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
 						} else {
+							resv_revert_alter_times(presv);
 							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 								preq->rq_ind.rq_modify.rq_objname, log_buffer);
@@ -828,34 +839,39 @@ req_modifyReservation(struct batch_request *preq)
 							return;
 						}
 					} else {
+						resv_revert_alter_times(presv);
 						req_reject(PBSE_BADTSPEC, 0, preq);
 						return;
 					}
 				} else {
-					if (presv->ri_qp->qu_numjobs)
+					resv_revert_alter_times(presv);
+					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 					else
 						req_reject(PBSE_BADTSPEC, 0, preq);
 					return;
 				}
+
 				break;
 			case RESV_ATR_end:
 				temp = strtol(psatl->al_value, &end, 10);
-				if (temp == presv->ri_wattr[RESV_ATR_end].at_val.at_long) {
-					req_reject(PBSE_BADTSPEC, 0, preq);
-					return;
-				}
 				if (!is_standing || temp < next_occr_start) {
 					send_to_scheduler = RESV_END_TIME_MODIFIED;
 					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
 				} else {
+					resv_revert_alter_times(presv);
 					snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
 					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 						preq->rq_ind.rq_modify.rq_objname, log_buffer);
 					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 					return;
 				}
+
+				break;
+			case RESV_ATR_duration:
+				send_to_scheduler = RESV_DURATION_MODIFIED;
+				presv->ri_alter_flags |= RESV_DURATION_MODIFIED;
 				break;
 			default:
 				break;
@@ -872,10 +888,45 @@ req_modifyReservation(struct batch_request *preq)
 
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 	}
+
+
+	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_RUNNING && num_jobs) {
+		if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)) {
+			resv_revert_alter_times(presv);
+			req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
+			return;
+		}
+	}
 	resc_access_perm = resc_access_perm_save; /* restore perm */
 
+	new_end_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long + presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+
+	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_etime == 0) {
+		if (!is_standing || new_end_time < next_occr_start) {
+			presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+		} else {
+			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+				preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
+			req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
+			resv_revert_alter_times(presv);
+			return;
+		}
+	}
+
+	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_stime == 0) {
+		if (!is_standing || new_end_time < next_occr_start) {
+			presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+		} else {
+			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+				preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
+			req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
+			resv_revert_alter_times(presv);
+			return;
+		}
+	}
+
+
 	if (send_to_scheduler) {
-		presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 		resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
 		/*"start", "end","duration", and "wall"; derive and check */
 		if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
@@ -890,8 +941,43 @@ req_modifyReservation(struct batch_request *preq)
 	if (psatl)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
+	/* If Authorized_Groups is modified, we need to update the queue's acl_users
+	 * Authorized_Users cannot be unset, it must always have a value
+	 * The queue will have acl_user_enable set to 1 by default
+	 * If Authorized_Groups is modified, we need to update the queue's acl_groups and acl_group_enable
+	 * Authorized_Groups could be unset, so we need to update the queue accordingly, unsetting both acl_groups and acl_group_enable
+	 */
+	if (presv->ri_wattr[(int)RESV_ATR_auth_u].at_flags & ATR_VFLAG_MODIFY) {
+		svrattrl *pattrl;
+		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_u], NULL, resv_attr_def[(int)RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+		set_attr_svr(&presv->ri_qp->qu_attr[(int)QA_ATR_AclUsers], &que_attr_def[(int)QA_ATR_AclUsers], pattrl->al_atopl.value);
+		free(pattrl);
+	}
+	if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_MODIFY) {
+		if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_SET) {
+			svrattrl *pattrl = NULL;
+			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+			set_attr_svr(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value);
+			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
+				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			}
+			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+			free(pattrl);
+		} else {
+			resv_attr_def[(int)RESV_ATR_auth_g].at_free(&presv->ri_wattr[(int)RESV_ATR_auth_g]);
+			presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags |= ATR_VFLAG_MODIFY;
+			que_attr_def[(int)QE_ATR_AclGroup].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup]);
+			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup].at_flags |= ATR_VFLAG_MODIFY;
+			que_attr_def[(int)QE_ATR_AclGroupEnabled].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled]);
+			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_MODIFY;
+			que_save_db(presv->ri_qp, QUE_SAVE_FULL);
+		}
+	}
+
 	if (send_to_scheduler)
-		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
+		notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
 
 	(void)sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {
@@ -1006,4 +1092,3 @@ modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad)
 
 	return (0);
 }
-

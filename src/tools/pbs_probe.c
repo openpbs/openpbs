@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file
  *		pbs_probe.c
@@ -83,10 +85,10 @@
 #include <sys/utsname.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -389,23 +391,20 @@ static char exbin[][80] = {
 	/* 28 */ "bin/qsub",
 	/* 29 */ "bin/qterm",
 	/* 30 */ "bin/tracejob",
-	/* 31 */ "bin/pbs_password",
-	/* 32 */ "bin/pbs_migrate_users",
-	/* 33 */ "XXX",				/* slot available for use */
-	/* 34 */ "bin/pbs_lamboot",
-	/* 35 */ "bin/pbs_mpilam",
-	/* 36 */ "bin/pbs_mpirun",
-	/* 37 */ "bin/pbs_mpihp",
-	/* 38 */ "bin/pbs_attach",
-	/* 39 */ "bin/pbs_remsh",
-	/* 40 */ "bin/pbs_tmrsh",
-	/* 41 */ "bin/mpiexec",
-	/* 42 */ "bin/pbsrun",
-	/* 43 */ "bin/pbsrun_wrap",
-	/* 44 */ "bin/pbsrun_unwrap",
-	/* 45 */ "bin/pbs_python",
-	/* 46 */ "bin/pbs_ds_password",
-	/* 47 */ "bin/pbs_dataservice"
+	/* 31 */ "bin/pbs_lamboot",
+	/* 32 */ "bin/pbs_mpilam",
+	/* 33 */ "bin/pbs_mpirun",
+	/* 34 */ "bin/pbs_mpihp",
+	/* 35 */ "bin/pbs_attach",
+	/* 36 */ "bin/pbs_remsh",
+	/* 37 */ "bin/pbs_tmrsh",
+	/* 38 */ "bin/mpiexec",
+	/* 39 */ "bin/pbsrun",
+	/* 40 */ "bin/pbsrun_wrap",
+	/* 41 */ "bin/pbsrun_unwrap",
+	/* 42 */ "bin/pbs_python",
+	/* 43 */ "bin/pbs_ds_password",
+	/* 44 */ "bin/pbs_dataservice"
 };
 
 static char exsbin[][80] = {
@@ -414,8 +413,8 @@ static char exsbin[][80] = {
 	/* 02 */ "sbin/pbs_idled",
 	/* 03 */ "sbin/pbs_iff",
 	/* 04 */ "sbin/pbs_mom",
-	/* 05 */ "sbin/pbs_mom.cpuset",
-	/* 06 */ "sbin/pbs_mom.standard",
+	/* 05 */ "XXX",				/* slot available for use */
+	/* 06 */ "XXX",				/* slot available for use */
 	/* 07 */ "sbin/pbs_rcp",
 	/* 08 */ "sbin/pbs_sched",
 	/* 09 */ "sbin/pbs_server",
@@ -543,14 +542,13 @@ static char exman3[][80] = {
 	/* 23 */ "man/man3/pbs_statserver.3B",
 	/* 24 */ "man/man3/pbs_submit.3B",
 	/* 25 */ "man/man3/pbs_terminate.3B",
-	/* 26 */ "man/man3/rpp.3",
-	/* 27 */ "man/man3/tm.3",
-	/* 28 */ "man/man3/pbs_tclapi.3B",
-	/* 29 */ "man/man3/pbs_delresv.3B",
-	/* 30 */ "man/man3/pbs_locjob.3B",
-	/* 31 */ "man/man3/pbs_selstat.3B",
-	/* 32 */ "man/man3/pbs_statresv.3B",
-	/* 33 */ "man/man3/pbs_statfree.3B"
+	/* 26 */ "man/man3/tm.3",
+	/* 27 */ "man/man3/pbs_tclapi.3B",
+	/* 28 */ "man/man3/pbs_delresv.3B",
+	/* 29 */ "man/man3/pbs_locjob.3B",
+	/* 30 */ "man/man3/pbs_selstat.3B",
+	/* 31 */ "man/man3/pbs_statresv.3B",
+	/* 32 */ "man/man3/pbs_statfree.3B"
 };
 
 static char exman7[][80] = {
@@ -582,21 +580,18 @@ static char exman8[][80] = {
 	/* 13 */ "man/man8/qterm.8B",
 	/* 14 */ "man/man8/pbs_lamboot.8B",
 	/* 15 */ "man/man8/pbs_mpilam.8B",
-	/* 16 */ "man/man8/pbs_password.8B",
-	/* 17 */ "man/man8/pbs_migrate_users.8B",
-	/* 18 */ "man/man8/pbs_mpirun.8B",
-	/* 19 */ "man/man8/XXX",		/* slot available for use */
-	/* 20 */ "man/man8/pbs_attach.8B",
-	/* 21 */ "man/man8/pbs_mkdirs.8B",
-	/* 22 */ "man/man8/pbs_hostn.8B",
-	/* 23 */ "man/man8/pbs_probe.8B",
-	/* 24 */ "man/man8/pbs-report.8B",
-	/* 25 */ "man/man8/pbs_tclsh.8B",
-	/* 26 */ "man/man8/pbs_tmrsh.8B",
-	/* 27 */ "man/man8/pbs_wish.8B",
-	/* 28 */ "man/man8/printjob.8B",
-	/* 29 */ "man/man8/pbs.8B",
-	/* 30 */ "man/man8/pbs_interactive.8B"
+	/* 16 */ "man/man8/pbs_mpirun.8B",
+	/* 17 */ "man/man8/pbs_attach.8B",
+	/* 18 */ "man/man8/pbs_mkdirs.8B",
+	/* 19 */ "man/man8/pbs_hostn.8B",
+	/* 20 */ "man/man8/pbs_probe.8B",
+	/* 21 */ "man/man8/pbs-report.8B",
+	/* 22 */ "man/man8/pbs_tclsh.8B",
+	/* 23 */ "man/man8/pbs_tmrsh.8B",
+	/* 24 */ "man/man8/pbs_wish.8B",
+	/* 25 */ "man/man8/printjob.8B",
+	/* 26 */ "man/man8/pbs.8B",
+	/* 27 */ "man/man8/pbs_interactive.8B"
 };
 
 static char extcltk[][80] = {
@@ -621,40 +616,6 @@ static char expgsql[][80] = {
 	/* 2 */ "pgsql/lib",
 	/* 3 */ "pgsql/share"
 };
-
-
-/* ----------- messages for stdout ------------- */
-
-#if 0
-static	char err_report_all[] = "pbsprobe found the following errors in the PBS infrastructure:";
-static	char err_report_one[] = "pbsprobe found the following errors in the PBS infrastructure on ";
-static	char err_report_noerr_all[] = "no errors were detected in the PBS infrastructure:";
-static	char err_report_noerr_one[] = "no errors were detected in the PBS infrastructure on ";
-static	char report_describe_all[] = "pbsprobe checked the following PBS infrastructure:";
-static	char report_describe_one[] = "pbsprobe checked the following PBS infrastructure on ";
-
-/* Header and print control strings for Primary Infrastructure Information */
-
-static	char report_hdr_pri_info[] = "Derivation of Primary Infrastructure Information:";
-static  char report_pri_conf[] = "PBS's config file path - used %s.";
-static  char report_pri_home[] = "PBS's home path - used %s.";
-static  char report_pri_exec[] = "PBS's exec path - used %s.";
-static  char report_pri_svr_star[] = "Value of PBS_SERVER_STARTED - used %s.";
-static  char report_pri_mom_star[] = "Value of PBS_MOM_STARTED - used %s.";
-static  char report_pri_sched_star[] = "Value of PBS_SCHED_STARTED - used %s.";
-
-/* Headers and print control strings for categories of problems found */
-
-static  char report_hdr_missing[] = "Missing Files and Directories:";
-static  char report_hdr_bad_om[] = "Files or Directories with Incorrect Ownership or Modes:";
-static  char report_hdr_unkwn[] = "Unknown Files Detected in PBS Directories:";
-static  char report_owner_modes[] = "%s %s has (uid, gid, modes)=(%s, %s, %s); needs to be (%s, %s, %s).";
-static  char report_missing[] = "%s %s is missing.";
-static  char report_unknwn[] = "%s has %s files with no, or an unrecognized, suffix.";
-#endif
-
-
-/* ----------- messages for stderr ------------- */
 
 /* -------- global static PBS variables -------- */
 
@@ -778,23 +739,20 @@ static MPUG	bin_mpugs[] = {
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[28], NULL }, /* qsub */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[29], NULL }, /* qterm */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[30], NULL }, /* tracejob */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[31], NULL }, /* pbs_password */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[32], NULL }, /* pbs_migrate_users */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[33], NULL }, /* slot available for use */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[34], NULL }, /* pbs_lamboot */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[35], NULL }, /* pbs_mpilam */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[36], NULL }, /* pbs_mpirun */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[37], NULL }, /* pbs_mpihp */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[38], NULL }, /* pbs_attach */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[39], NULL }, /* pbs_remsh */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[40], NULL }, /* pbs_tmrsh */
-	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[41], NULL }, /* mpiexec */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[42], NULL }, /* pbsrun */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[43], NULL }, /* pbsrun_wrap */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[44], NULL }, /* pbsrun_unwrap */
-	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[45], NULL },  /* pbs_python */
-	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[46], NULL },  /* pbs_ds_password */
-	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[47], NULL }  /* pbs_dataservice */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[31], NULL }, /* pbs_lamboot */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[32], NULL }, /* pbs_mpilam */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[33], NULL }, /* pbs_mpirun */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[34], NULL }, /* pbs_mpihp */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[35], NULL }, /* pbs_attach */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[36], NULL }, /* pbs_remsh */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[37], NULL }, /* pbs_tmrsh */
+	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[38], NULL }, /* mpiexec */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[39], NULL }, /* pbsrun */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[40], NULL }, /* pbsrun_wrap */
+	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[41], NULL }, /* pbsrun_unwrap */
+	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exbin[42], NULL },  /* pbs_python */
+	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[43], NULL },  /* pbs_ds_password */
+	{1, 6, 0,   frwxgo,     tgrwxorwx, &dflt_pbs_ug, exbin[44], NULL }  /* pbs_dataservice */
 };
 
 static MPUG	sbin_mpugs[] = {
@@ -807,8 +765,8 @@ static MPUG	sbin_mpugs[] = {
 	{1, 2, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[ 2], NULL }, /* pbs_idled */
 	{1, 0, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 3], NULL }, /* pbs_iff */
 	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 4], NULL }, /* pbs_mom */
-	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* pbs_mom.cpuset, notReq reset to 2 if SGI Linux */
-	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 6], NULL }, /* pbs_mom.standard, notReq reset to 2 if SGI Linux */
+	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* slot available for use */
+	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 6], NULL }, /* slot available for use */
 	{1, 2, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 7], NULL }, /* pbs_rcp */
 	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_sched */
 	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 9], NULL }, /* pbs_server */
@@ -960,14 +918,13 @@ static MPUG	man_mpugs[] = {
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[23], NULL }, /* pbs_statserver.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[24], NULL }, /* pbs_submit.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[25], NULL }, /* pbs_terminate.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* rpp.3 */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* tm.3 */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[28], NULL }, /* pbs_tclapi.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[29], NULL }, /* pbs_delresv.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[30], NULL }, /* pbs_locjob.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[31], NULL }, /* pbs_selstat.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[32], NULL }, /* pbs_statresv.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[33], NULL }, /* pbs_statfree.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* tm.3 */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* pbs_tclapi.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[28], NULL }, /* pbs_delresv.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[20], NULL }, /* pbs_locjob.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[30], NULL }, /* pbs_selstat.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[31], NULL }, /* pbs_statresv.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[32], NULL }, /* pbs_statfree.3B */
 
 	/*
 	 * infrastructure data associated with PBS_EXEC/man/man7
@@ -1001,21 +958,18 @@ static MPUG	man_mpugs[] = {
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[13], NULL }, /* qterm.8B */
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[14], NULL }, /* pbs_lamboot.8B */
 	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[15], NULL }, /* pbs_mpilam.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[16], NULL }, /* pbs_password.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[17], NULL }, /* pbs_migrate_users.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[18], NULL }, /* pbs_mpirun.8B */
-	{1, 1, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[19], NULL }, /* slot available for use */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[20], NULL }, /* pbs_attach.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[21], NULL }, /* pbs_mkdirs.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[22], NULL }, /* pbs_hostn.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[23], NULL }, /* pbs_probe.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[24], NULL }, /* pbs-report.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[25], NULL }, /* pbs_tclsh.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[26], NULL }, /* pbs_tmrsh.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[27], NULL }, /* pbs_wish.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[28], NULL }, /* printjob.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[29], NULL }, /* pbs.8B */
-	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[30], NULL } }; /* pbs_interactive.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[16], NULL }, /* pbs_mpirun.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[17], NULL }, /* pbs_attach.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[18], NULL }, /* pbs_mkdirs.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[19], NULL }, /* pbs_hostn.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[20], NULL }, /* pbs_probe.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[21], NULL }, /* pbs-report.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[22], NULL }, /* pbs_tclsh.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[23], NULL }, /* pbs_tmrsh.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[24], NULL }, /* pbs_wish.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[25], NULL }, /* printjob.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[26], NULL }, /* pbs.8B */
+	{1, 0, 0,     frwrr,  xsgswxowx, &dflt_pbs_ug, exman8[27], NULL } }; /* pbs_interactive.8B */
 
 static MPUG	tcltk_mpugs[] = {
 	/*
@@ -1159,7 +1113,7 @@ typedef struct	probemsgs {
 	/*
 	 * each pointer in mtbls will point to an array of
 	 * pointers to messages.  The message pointers in each
-	 * array are pointing to output messages from pbsprobe that
+	 * array are pointing to output messages from pbs_probe that
 	 * belong to the same "category" of message - e.g. messages
 	 * about a file being "missing". (see enum msg_categories)
 	 *
@@ -1174,8 +1128,8 @@ typedef struct	probemsgs {
 
 typedef struct	infrastruct {
 
-	int	mode;		/* pbsprobe "mode" */
-	char*	phost;		/* host running pbsprobe */
+	int	mode;		/* pbs_probe "mode" */
+	char*	phost;		/* host running pbs_probe */
 
 	/* PRIMARY related MPUGS and their sources */
 
@@ -1263,7 +1217,7 @@ main(int argc, char *argv[])
 	am_i_authorized();
 
 	/*
-	 * Check that this invocation of pbsprobe is properly formed
+	 * Check that this invocation of pbs_probe is properly formed
 	 * compute the "run mode"
 	 */
 
@@ -1357,7 +1311,7 @@ main(int argc, char *argv[])
 }
 /**
  * @brief
- * 		Check whether user is authorized to use pbsprobe.
+ * 		Check whether user is authorized to use pbs_probe.
  *
  * @par MT-safe:	No
  */
@@ -1374,7 +1328,7 @@ am_i_authorized(void)
 	/*problem encountered*/
 
 	if (ppwd)
-		fprintf(stderr, "User %s not authorized to use pbsprobe\n", ppwd->pw_name);
+		fprintf(stderr, "User %s not authorized to use pbs_probe\n", ppwd->pw_name);
 	else
 		fprintf(stderr, "Problem checking user authorization for utility\n");
 	exit(1);
@@ -1384,7 +1338,7 @@ am_i_authorized(void)
  * 		configure values for various infrastructure parameters.
  *
  * @param[out]	pinf	-	 structpointer to infrastruct
- * @param[out]	mode	-	 pbsprobe "mode"
+ * @param[out]	mode	-	 pbs_probe "mode"
  */
 static void
 infrastruct_params(struct infrastruct *pinf, int mode)
@@ -1524,25 +1478,22 @@ adjust_for_os(struct infrastruct *pinf)
 
 	int	ofs_bin = 1;  /* use with bin_mpugs[] */
 	int	ofs_lib = 1;  /* use with lib_mpugs[] */
-	int	ofs_sbin = 1; /* use with sbin_mpugs[] */
 
 	if (strstr(pinf->utsd.ub.sysname, "Linux") != NULL) {
 
 		/* Linux: pbs_lamboot, pbs_mpilam, pbs_mpirun, mpiexec, pbsrun, pbsrun_wrap, pbsrun_unwrap  */
 
-		bin_mpugs[ofs_bin + 36].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 37].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 31].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 32].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 33].notReq &= ~(0x1);
 		bin_mpugs[ofs_bin + 38].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 43].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 44].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 45].notReq &= ~(0x1);
-		bin_mpugs[ofs_bin + 46].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 39].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 40].notReq &= ~(0x1);
+		bin_mpugs[ofs_bin + 41].notReq &= ~(0x1);
 
 		/* Linux + /etc/sgi-compute-node_release => SGI ICE	*/
 		if (access("/etc/sgi-compute-node-release", R_OK) == 0) {
 			lib_mpugs[ofs_lib + 23].notReq = 0;    /* sgiMPI.awk       */
-			sbin_mpugs[ofs_sbin + 5].notReq = 0x2; /* pbs_mom.cpuset   */
-			sbin_mpugs[ofs_sbin + 6].notReq = 0x2; /* pbs_mom.standard */
 		}
 
 		/* Linux: pbsrun.<keyword>.init.in files must exist */
@@ -1568,7 +1519,7 @@ print_infrastruct(struct infrastruct *pinf)
 	int	i, j;
 	int	tflag;
 	MPUG	*pmpug;
-	
+
 	tflag = 0;
 	for (i=0; i<PBS_last; ++i) {
 
@@ -1711,7 +1662,7 @@ title_string(enum code_title tc, int mode, INFRA *pinf)
 			fprintf(stderr,
 				"\t-v        - show hierarchy examined\n");
 			fprintf(stderr,
-				"\t--version - show PBS Pro version and exit\n");
+				"\t--version - show version and exit\n");
 			break;
 	}
 }
@@ -2103,7 +2054,7 @@ get_realpath_values(struct infrastruct *pinf)
 			}
 		} else {
 			if (pinf->pri.pbs_mpug[i].notReq == 0) {
-				pbs_asprintf(&msgbuf, "Missing primary path %s", 
+				pbs_asprintf(&msgbuf, "Missing primary path %s",
 					origin_names[i]);
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msgbuf);
 				free(msgbuf);
@@ -2237,7 +2188,7 @@ get_realpath_values(struct infrastruct *pinf)
 
 			if ((pmpug = pinf->exec[i]) == NULL)
 				continue;
-			
+
 			for (j = 0; j < exec_sizes[i]; ++j) {
 				if (pmpug[j].path) {
 
@@ -2370,7 +2321,7 @@ inspect_dir_entries(struct infrastruct *pinf)
 				 * MPUG's for entries that belong to that directory.
 				 *
 				 * A pointer to an array of MPUG pointers is returned.
-				 * These are MPUGS gleened from pbsprobe's database and
+				 * These are MPUGS gleened from pbs_probe's database and
 				 * is thought of as the, "known set of MPUGS".
 				 */
 
@@ -2704,7 +2655,7 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 			continue;
 
 		/*
-		 * entry is not a known name in pbsprobe's database and none
+		 * entry is not a known name in pbs_probe's database and none
 		 * of the other mechanisms for evaluating, in so way, the
 		 * fitness of this entry were found to apply.
 		 */
@@ -2809,12 +2760,12 @@ check_paths(struct infrastruct *pinf)
 			check_owner_modes(realpath, &pinf->pri.pbs_mpug[i], 0);
 	}
 
-	for (i=0; i<PH_last; ++i) {    
+	for (i=0; i<PH_last; ++i) {
 		msg_table_set_defaults(pinf, SRC_home, MSG_po);
 
 		if ((pmpug = pinf->home[i]) == NULL)
 			continue;
-        
+
 		for (j=0; j<home_sizes[i]; ++j) {
 			if ((realpath = pmpug[j].realpath))
 				check_owner_modes(realpath, pmpug + j, 0);
@@ -2885,7 +2836,7 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 		/* replace demarc value and stat this component of real path */
 
 		*dp = DEMARC;
-		
+
 	}
 
 	/*
@@ -3474,4 +3425,3 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 			break;
 	}
 }
-

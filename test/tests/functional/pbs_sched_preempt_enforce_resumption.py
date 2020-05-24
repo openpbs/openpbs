@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -56,6 +59,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
+    @skipOnCpuSet
     def test_filler_job_higher_walltime(self):
         """
         This test confirms that the filler job does not run if it conflicts
@@ -86,6 +90,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         self.scheduler.log_match(jid3 + logmsg)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid3)
 
+    @skipOnCpuSet
     def test_suspended_job_ded_time_calendared(self):
         """
         This test confirms that a suspended job becomes top job when unable to
@@ -127,6 +132,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
 
         self.assertGreaterEqual(est_start_time, end)
 
+    @skipOnCpuSet
     def test_filler_job_lesser_walltime(self):
         """
         This test confirms that the filler job does run when the walltime does
@@ -174,6 +180,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         logmsg = ";Job would conflict with reservation or top job"
         self.scheduler.log_match(jid4 + logmsg)
 
+    @skipOnCpuSet
     def test_filler_job_suspend(self):
         """
         This test confirms that the filler gets suspended by a high
@@ -234,6 +241,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
+    @skipOnCpuSet
     def test_preempted_job_server_soft_limits(self):
         """
         This test confirms that a preempted job remains suspended if it has
@@ -280,6 +288,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_preempted_job_queue_soft_limits(self):
         """
         This test confirms that a preempted job remains suspended if it has
@@ -326,6 +335,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
                            offset=30, interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
+    @skipOnCpuSet
     def test_filler_jobs_with_no_walltime(self):
         """
         This test confirms that filler jobs with no walltime remain queued

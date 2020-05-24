@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	pbs_client_thread.c
@@ -96,8 +98,6 @@ static int  __pbs_client_thread_lock_conntable(void);
 static int  __pbs_client_thread_unlock_conntable(void);
 static int  __pbs_client_thread_lock_conf(void);
 static int  __pbs_client_thread_unlock_conf(void);
-static int  __pbs_client_thread_lock_tcp(void);
-static int  __pbs_client_thread_unlock_tcp(void);
 static int  __pbs_client_thread_init_thread_context(void);
 static int  __pbs_client_thread_init_connect_context(int connect);
 static int  __pbs_client_thread_destroy_connect_context(int connect);
@@ -135,12 +135,6 @@ int (*pfn_pbs_client_thread_lock_conf)(void)
 int (*pfn_pbs_client_thread_unlock_conf)(void)
 = &__pbs_client_thread_unlock_conf;
 
-int (*pfn_pbs_client_thread_lock_tcp)(void)
-= &__pbs_client_thread_lock_tcp;
-
-int (*pfn_pbs_client_thread_unlock_tcp)(void)
-= &__pbs_client_thread_unlock_tcp;
-
 int (*pfn_pbs_client_thread_init_thread_context)(void)
 = &__pbs_client_thread_init_thread_context;
 
@@ -158,7 +152,6 @@ static pthread_once_t post_init_key_once = PTHREAD_ONCE_INIT;
 
 static pthread_mutex_t pbs_client_thread_conntable_mutex; /* for conn table */
 static pthread_mutex_t pbs_client_thread_conf_mutex; /* for pbs_loadconf */
-static pthread_mutex_t pbs_client_thread_tcp_mutex; /* for tcp_dis table */
 static pthread_mutexattr_t attr;
 
 
@@ -226,20 +219,6 @@ __pbs_client_thread_lock_conf_single_threaded(void)
 /** single threaded mode dummy function definition */
 static int
 __pbs_client_thread_unlock_conf_single_threaded(void)
-{
-	return 0;
-}
-
-/** single threaded mode dummy function definition */
-static int
-__pbs_client_thread_lock_tcp_single_threaded(void)
-{
-	return 0;
-}
-
-/** single threaded mode dummy function definition */
-static int
-__pbs_client_thread_unlock_tcp_single_threaded(void)
 {
 	return 0;
 }
@@ -367,10 +346,6 @@ pbs_client_thread_set_single_threaded_mode(void)
 		__pbs_client_thread_lock_conf_single_threaded;
 	pfn_pbs_client_thread_unlock_conf =
 		__pbs_client_thread_unlock_conf_single_threaded;
-	pfn_pbs_client_thread_lock_tcp =
-		__pbs_client_thread_lock_tcp_single_threaded;
-	pfn_pbs_client_thread_unlock_tcp =
-		__pbs_client_thread_unlock_tcp_single_threaded;
 	pfn_pbs_client_thread_init_thread_context =
 		__pbs_client_thread_init_thread_context_single_threaded;
 	pfn_pbs_client_thread_init_connect_context =
@@ -413,9 +388,6 @@ pbs_client_thread_set_single_threaded_mode(void)
 static void
 __init_thread_data(void)
 {
-	pthread_mutex_t *ch_mutex;
-	int i;
-
 	if ((__pbs_client_thread_init_rc =
 		pthread_key_create(&key_tls,
 		&__pbs_client_thread_destroy_thread_data)) != 0)
@@ -463,23 +435,6 @@ __init_thread_data(void)
 		pthread_mutex_init(&pbs_client_thread_conf_mutex, &attr))
 		!= 0)
 		return;
-
-	/*
-	 * initialize the process-wide tcp mutex
-	 * Recursive mutex
-	 */
-	if ((__pbs_client_thread_init_rc =
-		pthread_mutex_init(&pbs_client_thread_tcp_mutex, &attr))
-		!= 0)
-		return;
-
-	/* now initialize all the connection level mutexes */
-	for (i = 0; i < NCONNECTS; i++) {
-		ch_mutex = &(connection[i].ch_mutex);
-		if ((__pbs_client_thread_init_rc =
-			pthread_mutex_init(ch_mutex, &attr)) != 0)
-			return;
-	}
 
 	pthread_mutexattr_destroy(&attr);
 	return;
@@ -1032,22 +987,14 @@ static int
 __pbs_client_thread_lock_connection(int connect)
 {
 	struct pbs_client_thread_connect_context *con;
-	pthread_mutex_t *mutex;
+	pthread_mutex_t *mutex = NULL;
 
-	/*
-	 * check if connect is within NCONNECTS
-	 * if not, locking on uninitalized memory can
-	 * hang the app
-	 */
-	if (connect >= NCONNECTS) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return pbs_errno;
+	if ((mutex = get_conn_mutex(connect)) == NULL) {
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
-	mutex = &(connection[connect].ch_mutex);
 	if (pthread_mutex_lock(mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	con = pbs_client_thread_find_connect_context(connect);
@@ -1059,22 +1006,15 @@ __pbs_client_thread_lock_connection(int connect)
 		if ((con = pbs_client_thread_add_connect_context(connect))
 			== NULL) {
 			(void)pthread_mutex_unlock(mutex);
-			pbs_errno = PBSE_SYSTEM;
-			return pbs_errno;
+			return (pbs_errno = PBSE_SYSTEM);
 		}
 	}
 
 	/* copy stuff from con to connection handle slot */
-	connection[connect].ch_errno = con->th_ch_errno;
-	if (con->th_ch_errtxt) {
-		if (connection[connect].ch_errtxt)
-			free(connection[connect].ch_errtxt);
-		connection[connect].ch_errtxt = strdup(con->th_ch_errtxt);
-		if (connection[connect].ch_errtxt == NULL) {
-			(void)pthread_mutex_unlock(mutex);
-			pbs_errno = PBSE_SYSTEM;
-			return pbs_errno;
-		}
+	set_conn_errno(connect, con->th_ch_errno);
+	if (set_conn_errtxt(connect, con->th_ch_errtxt) != 0) {
+		(void)pthread_mutex_unlock(mutex);
+		return (pbs_errno = PBSE_SYSTEM);;
 	}
 	return 0;
 }
@@ -1105,40 +1045,32 @@ __pbs_client_thread_lock_connection(int connect)
 static int
 __pbs_client_thread_unlock_connection(int connect)
 {
-	pthread_mutex_t *mutex;
-	struct pbs_client_thread_connect_context *con;
+	pthread_mutex_t *mutex = NULL;
+	struct pbs_client_thread_connect_context *con = NULL;
+	char *errtxt = NULL;
 
-	/*
-	 * check if connect is within NCONNECTS
-	 * if not, locking on uninitalized memory can
-	 * hang the app
-	 */
-	if (connect >= NCONNECTS) {
-		pbs_errno = PBSE_NOCONNECTS;
-		return pbs_errno;
+	if ((mutex = get_conn_mutex(connect)) == NULL) {
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	con = pbs_client_thread_find_connect_context(connect);
 	if (con == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	/* copy stuff from con to connection handle slot */
-	con->th_ch_errno = connection[connect].ch_errno;
-	if (connection[connect].ch_errtxt) {
+	con->th_ch_errno = get_conn_errno(connect);
+	errtxt = get_conn_errtxt(connect);
+	if (errtxt) {
 		if (con->th_ch_errtxt)
 			free(con->th_ch_errtxt);
-		con->th_ch_errtxt =
-			strdup(connection[connect].ch_errtxt);
+		con->th_ch_errtxt = strdup(errtxt);
 		if (con->th_ch_errtxt == NULL)
 			return (pbs_errno = PBSE_SYSTEM);
 	}
 
-	mutex = &(connection[connect].ch_mutex);
 	if (pthread_mutex_unlock(mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
+		return (pbs_errno = PBSE_SYSTEM);
 	}
 
 	return 0;
@@ -1238,55 +1170,6 @@ __pbs_client_thread_unlock_conf(void)
 	}
 	return 0;
 }
-
-
-/**
- * @brief
- *	Locks the tcp level mutex
- *
- * @retval	0 (success)
- * @retval	pbs_errno (failure)
- *
- * @par Side-effects:
- *	Sets pbs_errno
- *
- * @par Reentrancy:
- *	Reentrant
- */
-static int
-__pbs_client_thread_lock_tcp(void)
-{
-	if (pthread_mutex_lock(&pbs_client_thread_tcp_mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
-	}
-	return 0;
-}
-
-
-/**
- * @brief
- *	Unlocks the tcp level mutex
- *
- * @retval	0 (success)
- * @retval	pbs_errno (failure)
- *
- * @par Side-effects:
- *	Sets pbs_errno
- *
- * @par Reentrancy:
- *	Reentrant
- */
-static int
-__pbs_client_thread_unlock_tcp(void)
-{
-	if (pthread_mutex_unlock(&pbs_client_thread_tcp_mutex) != 0) {
-		pbs_errno = PBSE_SYSTEM;
-		return pbs_errno;
-	}
-	return 0;
-}
-
 
 /**
  * @brief

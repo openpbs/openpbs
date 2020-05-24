@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -54,17 +57,16 @@ class TestReservationRequests(TestFunctional):
         duration and endtime, making the server calculate
         the starttime.
         """
-        # create reservation to end in 5 seconds and lasts 1.
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_end': now + 5,
-             'reserve_duration': 1}
+             'reserve_end': now + 30,
+             'reserve_duration': 5}
         R = Reservation(TEST_USER, attrs=a)
         R.unset_attributes(['reserve_start'])
         rid = self.server.submit(R)
 
         a = {'reserve_start': self.bu.convert_seconds_to_datetime(
-            now + 4, self.fmt)}
+            now + 25, self.fmt)}
         self.server.expect(RESV, a, id=rid)
 
     def test_duration_end_resv_fail(self):
@@ -73,10 +75,9 @@ class TestReservationRequests(TestFunctional):
         duration and endtime, making the server calculate
         the starttime and rejects if the starttime is before now.
         """
-        # create reservation to end in 5 seconds and lasts 10.
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_end': int(time.time()) + 5,
-             'reserve_duration': 10}
+             'reserve_end': int(time.time()) + 15,
+             'reserve_duration': 20}
         R = Reservation(TEST_USER, attrs=a)
         R.unset_attributes(['reserve_start'])
         rid = None
@@ -96,8 +97,8 @@ class TestReservationRequests(TestFunctional):
         """
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 10,
-             'reserve_end': now + 30,
+             'reserve_start': now + 20,
+             'reserve_end': now + 40,
              'reserve_duration': 10}
         R = Reservation(TEST_USER, attrs=a)
         rid = None
@@ -158,4 +159,4 @@ class TestReservationRequests(TestFunctional):
         out = self.server.status(RESV, 'reserve_duration', id=rid)[0][
             'reserve_duration']
         dur = int(out)
-        self.assertTrue(dur > 0, 'Duration ' + str(dur) + 'is negative.')
+        self.assertGreater(dur, 0, 'Duration ' + str(dur) + 'is negative.')

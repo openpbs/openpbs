@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	job_func.c
  * Functions which provide basic operation on the job structure
@@ -170,13 +172,16 @@ extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_alljobs;
 extern int is_called_by_job_purge;
+extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
 #include "mom_func.h"
 
-extern void  rmtmpdir(char *);
+extern void rmtmpdir(char *);
 void nodes_free(job *);
-extern char* std_file_name(job *pjob, enum job_file which, int *keeping);
+extern char *std_file_name(job *pjob, enum job_file which, int *keeping);
+extern char *path_checkpoint;
+
 /**
  * @brief
  * 		free up the tasks from the list of tasks associated with particular job, delete links and close connection.
@@ -257,6 +262,8 @@ job_abt(job *pjob, char *text)
 	int	old_substate;
 	int	rc = 0;
 
+	if (pjob == NULL)
+		return 0; /* nothing to do */
 	/* save old state and update state to Exiting */
 
 	old_state = pjob->ji_qs.ji_state;
@@ -305,6 +312,15 @@ job_abt(job *pjob, char *text)
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
+	} else if (old_state == JOB_STATE_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
+		  (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)) {
+		(void)svr_setjobstate(pjob, JOB_STATE_HELD,
+			JOB_SUBSTATE_ABORT);
+		depend_on_term(pjob);
+		/*
+		 * Check if the history of the finished job can be saved or it needs to be purged .
+		 */
+		svr_saveorpurge_finjobhist(pjob);
 	} else {
 		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 			JOB_SUBSTATE_ABORT);
@@ -346,10 +362,6 @@ job_alloc(void)
 	}
 	(void)memset((char *)pj, (int)0, (size_t)sizeof(job));
 
-	/* explicity setting these licensing parameters just be sure */
-	pj->ji_licneed = -1;	/* indicates uninitialized, invalid value */
-	pj->ji_licalloc = 0;
-
 	CLEAR_LINK(pj->ji_alljobs);
 	CLEAR_LINK(pj->ji_jobque);
 	CLEAR_LINK(pj->ji_unlicjobs);
@@ -384,11 +396,6 @@ job_alloc(void)
 	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-#if defined(HAVE_LIBKAFS) || defined(HAVE_LIBKOPENAFS)
-	pj->ji_extended.ji_ext.ji_pag = 0;
-#endif
-#endif
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -469,8 +476,8 @@ free_job_work_tasks(job *pj)
 			tbr = (struct batch_request *)pwt->wt_parm1;
 			if (tbr != NULL) {
 				/* Check if the reply is for scheduler
-					* If so, then reject the request.
-					*/
+				 * If so, then reject the request.
+				 */
 				if ((tbr->rq_orgconn != -1) &&
 					(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
 					tbr->rq_conn = tbr->rq_orgconn;
@@ -660,7 +667,8 @@ job_init_wattr(job *pj)
  * @return  void
  */
 void
-spool_filename(job *pjob, char *namebuf, char *suffix) {
+spool_filename(job *pjob, char *namebuf, char *suffix)
+{
     if (*pjob->ji_qs.ji_fileprefix != '\0')
         (void) strcat(namebuf, pjob->ji_qs.ji_fileprefix);
     else
@@ -678,9 +686,9 @@ spool_filename(job *pjob, char *namebuf, char *suffix) {
  * @return	void
  */
 void
-remove_stdouterr_files(job *pjob, char *suffix) {
+remove_stdouterr_files(job *pjob, char *suffix)
+{
 	char namebuf[MAXPATHLEN + 1];
-	extern char *msg_err_purgejob;
 
 	(void) strcpy(namebuf, path_spool);
 	spool_filename(pjob, namebuf, suffix);
@@ -700,7 +708,8 @@ remove_stdouterr_files(job *pjob, char *suffix) {
  * @retval 1 : direct write is requested by the job.
  * @retval 0 : direct write is not requested by the job.
  */
-int direct_write_requested(job *pjob) {
+int direct_write_requested(job *pjob)
+{
 	char *pj_attrk = NULL;
 	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
 		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
@@ -710,6 +719,102 @@ int direct_write_requested(job *pjob) {
 	return 0;
 }
 
+/**
+ * @brief	Convenience function to delete job related files for a job being purged
+ *
+ * @param[in]	pjob - the job being purged
+ * @param[in]	fsuffix - suffix of the file to delete
+ *
+ * @return	void
+ */
+void
+del_job_related_file(job *pjob, char *fsuffix)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	strcpy(namebuf, path_jobs);
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+	else
+		strcat(namebuf, pjob->ji_qs.ji_jobid);
+	strcat(namebuf, fsuffix);
+	if (unlink(namebuf) < 0) {
+		if (errno != ENOENT) {
+			log_joberr(errno, __func__, msg_err_purgejob,
+				pjob->ji_qs.ji_jobid);
+		}
+	}
+}
+
+#ifdef PBS_MOM
+
+/**
+ * @brief	Convenience function to delete directories associated with a job being purged
+ *
+ * @param[in]	pjob - the job being purged
+ *
+ * @return	void
+ */
+void
+del_job_dirs(job *pjob)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	strcpy(namebuf, path_jobs);      /* job directory path */
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+	else
+		strcat(namebuf, pjob->ji_qs.ji_jobid);
+	strcat(namebuf, JOB_TASKDIR_SUFFIX);
+	remtree(namebuf);
+
+	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
+
+	/* remove the staging and execution directory when sandbox=PRIVATE
+	 ** and there are no stage-out errors
+	 */
+	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
+		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
+			if (pjob->ji_grpcache != NULL)
+				rmjobdir(pjob->ji_qs.ji_jobid,
+					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
+					pjob->ji_grpcache->gc_uid,
+					pjob->ji_grpcache->gc_gid);
+			else
+				rmjobdir(pjob->ji_qs.ji_jobid,
+					jobdirname(pjob->ji_qs.ji_jobid, NULL),
+					0,
+					0);
+		}
+	}
+}
+
+/**
+ * @brief	Convenience function to delete checkpoint files for a job being purged
+ *
+ * @param[in]	pjob - job being purged
+ *
+ * @return void
+ */
+void
+del_chkpt_files(job *pjob)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+
+	if (path_checkpoint != NULL) {	/* delete checkpoint files */
+		(void)strcpy(namebuf, path_checkpoint);
+		if (*pjob->ji_qs.ji_fileprefix != '\0')
+			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+		else
+			(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
+		(void)strcat(namebuf, JOB_CKPT_SUFFIX);
+		(void)remtree(namebuf);
+		(void)strcat(namebuf, ".old");
+		(void)remtree(namebuf);
+	}
+}
+#endif
 
 /**
  * @brief
@@ -728,10 +833,9 @@ int direct_write_requested(job *pjob) {
 void
 job_purge(job *pjob)
 {
-	char		namebuf[MAXPATHLEN + 1] = {'\0'};
 	extern	char	*msg_err_purgejob;
 #ifdef	PBS_MOM
-	extern	char	*path_checkpoint;
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
 	attribute *jrpattr = NULL;
 
@@ -772,6 +876,7 @@ job_purge(job *pjob)
 		pjob->ji_preq = NULL;
 	}
 #ifndef WIN32
+
 	if (pjob->ji_momsubt != 0) {	/* child running */
 		(void)kill(pjob->ji_momsubt, SIGKILL);
 		pjob->ji_momsubt = 0;
@@ -863,63 +968,17 @@ job_purge(job *pjob)
 	}
 	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
 #endif
-	(void)strcpy(namebuf, path_jobs);	/* delete script file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_SCRIPT_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	/* delete script file */
+	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
 	if (pjob->ji_preq != NULL) {
 		req_reject(PBSE_MOMREJECT, 0, pjob->ji_preq);
 		pjob->ji_preq = NULL;
 	}
-	(void)strcpy(namebuf, path_jobs);      /* job directory path */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_TASKDIR_SUFFIX);
-	(void)remtree(namebuf);
 
-	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
+	del_job_dirs(pjob);
 
-	/* remove the staging and execution directory when sandbox=PRIVATE
-	 ** and there are no stage-out errors
-	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
-			if (pjob->ji_grpcache != NULL)
-				rmjobdir(pjob->ji_qs.ji_jobid,
-					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
-					pjob->ji_grpcache->gc_uid,
-					pjob->ji_grpcache->gc_gid);
-			else
-				rmjobdir(pjob->ji_qs.ji_jobid,
-					jobdirname(pjob->ji_qs.ji_jobid, NULL),
-					0,
-					0);
-		}
-	}
-
-	if (path_checkpoint != NULL) {	/* delete checkpoint files */
-		(void)strcpy(namebuf, path_checkpoint);
-		if (*pjob->ji_qs.ji_fileprefix != '\0')
-			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-		else
-			(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-		(void)strcat(namebuf, JOB_CKPT_SUFFIX);
-		(void)remtree(namebuf);
-		(void)strcat(namebuf, ".old");
-		(void)remtree(namebuf);
-	}
+	del_chkpt_files(pjob);
 
 	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
 	/* remove stdout/err files if remove_files is set. */
@@ -963,18 +1022,8 @@ job_purge(job *pjob)
 #endif	/* PBS_MOM */
 
 #ifdef PBS_MOM
-	(void)strcpy(namebuf, path_jobs);	/* delete job file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_FILE_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	/* delete job file */
+	del_job_related_file(pjob, JOB_FILE_SUFFIX);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	delete_cred(pjob->ji_qs.ji_jobid);
@@ -997,16 +1046,16 @@ job_purge(job *pjob)
 	}
 
 	if (pjob->ji_resvp) {
-		int		rc;
+		int rc;
 
 		if (pjob->ji_resvp->ri_qs.ri_type == RESV_JOB_OBJECT) {
 
-			/*reservation structure should not point to a
-			 *job structure that is going away
+			/* reservation structure should not point to a
+			 * job structure that is going away
 			 */
 			pjob->ji_resvp->ri_jbp = 0;
 
-			/*relinquish any nodes belonging to this reservation-job*/
+			/* relinquish any nodes belonging to this reservation-job */
 
 			if (pjob->ji_resvp->ri_qs.ri_svrflags & RESV_SVFLG_HasNodes)
 				free_resvNodes(pjob->ji_resvp);
@@ -1020,22 +1069,11 @@ job_purge(job *pjob)
 	}
 #endif
 
-	(void)strcpy(namebuf, path_jobs);	/* delete cred file */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_CRED_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	del_job_related_file(pjob, JOB_CRED_SUFFIX);
 
 	/* Clearing purge job info from svr_newjobs list */
-        if(pjob == (job *)GET_NEXT(svr_newjobs))
-                delete_link(&pjob->ji_alljobs);
+	if (pjob == (job *) GET_NEXT(svr_newjobs))
+		delete_link(&pjob->ji_alljobs);
 
 	job_free(pjob);
 
@@ -1086,7 +1124,10 @@ find_job(char *jobid)
 #endif
 	char *at;
 	job  *pj = NULL;
-	char buf[PBS_MAXSVRJOBID+1];
+	char buf[PBS_MAXSVRJOBID + 1];
+
+	if (jobid == NULL)
+		return NULL;
 
 	/* Make a copy of the job ID string before we modify it. */
 	snprintf(buf, sizeof(buf), "%s", jobid);
@@ -1780,7 +1821,7 @@ resv_purge(resc_resv *presv)
 		return;
 	}
 
-	/*reservation no longer has jobs or a supporting queue*/
+	/* reservation no longer has jobs or a supporting queue */
 
 	if (presv->ri_giveback) {
 		/*ok, resources were actually assigned to this reservation
@@ -1791,12 +1832,15 @@ resv_purge(resc_resv *presv)
 		presv->ri_giveback = 0;
 	}
 
-	/*Remove reservation's link element from whichever of the server's
-	 *global lists (svr_allresvs or svr_newresvs) has it
+	/* Remove reservation's link element from whichever of the server's
+	 * global lists (svr_allresvs or svr_newresvs) has it
 	 */
 	delete_link(&presv->ri_allresvs);
 
-	/*Release any nodes that were associated to this reservation*/
+	/* Delete any lingering tasks pointing to this reservation */
+	delete_task_by_parm1_func(presv, NULL, DELETE_ALL);
+
+	/* Release any nodes that were associated to this reservation */
 	free_resvNodes(presv);
 	set_scheduler_flag(SCH_SCHEDULE_TERM, dflt_scheduler);
 
@@ -1806,9 +1850,7 @@ resv_purge(resc_resv *presv)
 	if (pbs_db_delete_obj(svr_db_conn, &obj) == -1)
 		log_err(errno, __func__, msg_purgeResvDb);
 
-	/*Free resc_resv struct, any hanging substructs, any attached
-	 *work_task structs
-	 */
+	/* Free resc_resv struct, any hanging substructs, any attached *work_task structs */
 	resv_free(presv);
 	return;
 }

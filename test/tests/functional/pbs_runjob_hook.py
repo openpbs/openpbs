@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -75,6 +78,7 @@ else:
     j.Resource_List['foo_str'] = "foo_value"
 """
 
+    @skipOnCpuSet
     def test_array_sub_job_index(self):
         """
         Submit a job array. Check the array sub-job index value
@@ -96,6 +100,7 @@ else:
             self.server.log_match("sub_job_array_index=%d" % (i),
                                   starttime=self.server.ctime)
 
+    @skipOnCpuSet
     def test_array_sub_new_res_in_hook(self):
         """
         Insert site resource in runjob hook. Submit a job array.
@@ -125,6 +130,7 @@ else:
             m = 'E;' + re.escape(sid) + ';.*Resource_List.site=site_value'
             self.server.accounting_match(m, regexp=True)
 
+    @skipOnCpuSet
     def test_array_sub_res_persist_in_hook_forcereque(self):
         """
         set custom resource in runjob hook. Submit a job array.
@@ -173,7 +179,7 @@ else:
                            id=jid, extend='t')
         # bring back mom
         self.mom.start()
-        start_time = int(time.time())
+        start_time = time.time()
         self.mom.isUp()
         # let subjobs get rerun from sched Q->R
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -185,6 +191,7 @@ else:
         for i in range(lower, upper + 1):
             self.server.log_match(m % (sid[i]), start_time)
 
+    @skipOnCpuSet
     def test_array_sub_res_persist_in_hook_qrerun(self):
         """
         set custom resource in runjob hook. Submit a job array.
@@ -220,7 +227,7 @@ else:
         for i in range(lower, upper + 1):
             sid[i] = j1.create_subjob_id(jid, i)
             self.server.tracejob_match(m, id=sid[i], n='ALL', tail=False)
-        start_time = int(time.time())
+        start_time = time.time()
         # rerun the array job
         self.server.rerunjob(jobid=jid, runas=ROOT_USER)
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
@@ -229,7 +236,7 @@ else:
         m = "rerun_job_hook %s(1): Resource_List.foo_str=foo_value"
         for i in range(lower, upper + 1):
             self.server.log_match(m % (sid[i]), start_time)
-        start_time = int(time.time())
+        start_time = time.time()
         # rerun a single subjob
         self.server.rerunjob(jobid=sid[2], runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=sid[2])
@@ -252,6 +259,7 @@ else:
         self.server.log_match("sub_job_array_index=None",
                               starttime=self.server.ctime)
 
+    @skipOnCpuSet
     def test_reject_array_sub_job(self):
         """
         Test to check array subjobs,

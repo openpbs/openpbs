@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from ptl.lib.pbs_ifl_mock import *
 
@@ -72,10 +75,10 @@ api_to_cli = {
     ATTR_resv_duration: 'D',
     ATTR_resv_state: 'reserve_state',
     ATTR_resv_substate: 'reserve_substate',
+    ATTR_del_idle_time: 'W delete_idle_time=',
     ATTR_auth_u: 'U',
     ATTR_auth_g: 'G',
     ATTR_auth_h: 'Authorized_Hosts',
-    ATTR_pwd: 'pwd',
     ATTR_cred: 'cred',
     ATTR_nodemux: 'no_stdio_sockets',
     ATTR_umask: 'W umask=',
@@ -228,7 +231,6 @@ api_to_cli = {
     ATTR_aclResvuser: 'acl_resv_users',
     ATTR_NodeGroupEnable: 'node_group_enable',
     ATTR_NodeGroupKey: 'node_group_key',
-    ATTR_ssignon_enable: 'single_signon_password_enable',
     ATTR_dfltqdelargs: 'default_qdel_arguments',
     ATTR_dfltqsubargs: 'default_qsub_arguments',
     ATTR_rpp_retry: 'rpp_retry',

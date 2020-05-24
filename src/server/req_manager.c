@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    req_manager.c
@@ -1120,26 +1122,6 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 								pobj, ptype);
 							do_indirect_check = 1;
 					}
-					else {
-						/* If resources_available is unset, also unset associated resources assigned */
-						if (strcasecmp(plist->al_name, ATTR_rescavail) == 0) {
-							int i = find_attr(pdef, ATTR_rescassn, limit);
-							if (i >= 0) {
-								if ((pattr+i)->at_flags & ATR_VFLAG_SET) {
-									resource *nresc;
-									if ((nresc = find_resc_entry((pattr+i), prsdef)) != NULL) {
-										nresc->rs_defin->rs_free(&nresc->rs_value);
-										delete_link(&nresc->rs_link);
-										free(nresc);
-										nresc = (resource *)GET_NEXT((pattr+i)->at_val.at_list);
-										if (nresc == NULL)
-											(pattr+i)->at_flags &= ~ATR_VFLAG_SET;
-										(pattr+i)->at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
-									}
-								}
-							}
-						}
-					}
 					prsdef->rs_free(&presc->rs_value);
 				}
 				delete_link(&presc->rs_link);
@@ -1431,10 +1413,11 @@ mgr_queue_delete(struct batch_request *preq)
  *		Sets the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_set(struct batch_request *preq)
+mgr_server_set(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -1480,10 +1463,11 @@ mgr_server_set(struct batch_request *preq)
  *		Clears the requested attributes and returns a reply
  *
  * @param[in]	preq	- Pointer to a batch request structure
+ * @param[in]	conn	- Pointer to a connection structure assosiated with preq
  */
 
 void
-mgr_server_unset(struct batch_request *preq)
+mgr_server_unset(struct batch_request *preq, conn_t *conn)
 {
 	int	  bad_attr = 0;
 	svrattrl *plist;
@@ -1491,26 +1475,12 @@ mgr_server_unset(struct batch_request *preq)
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 
-	/* Check unsetting single_signon_password_enable,	*/
-	/*                 pbs_license_info,			*/
+	/* Check unsetting pbs_license_info,			*/
 	/*                 pbs_license_min,			*/
 	/*                 pbs_license_max,			*/
 	/*                 pbs_license_linger_time.		*/
 	while (plist) {
-		if (strcasecmp(plist->al_name, ATTR_ssignon_enable) == 0) {
-
-			/* from true to unset */
-			if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags       \
-						       & ATR_VFLAG_SET) &&     \
-        		(server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long \
-								== 1) && \
-        		(GET_NEXT(svr_alljobs) != NULL) ) {
-
-				reply_badattr(PBSE_SSIGNON_BAD_TRANSITION1, bad_attr,
-					plist, preq);
-				return;
-			}
-		} else if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
+		if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
 			/*Only root at server host can unset server attribute "acl_roots".*/
 			if (!is_local_root(preq->rq_user, preq->rq_host)) {
 				reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);
@@ -1528,7 +1498,7 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_license_linger) == 0) {
 			unset_license_linger();
-		} else if (strcasecmp(plist->al_name, ATTR_resv_retry_init) == 0 || 
+		} else if (strcasecmp(plist->al_name, ATTR_resv_retry_init) == 0 ||
 				strcasecmp(plist->al_name, ATTR_resv_retry_time) == 0) {
 			resv_retry_time = RESV_RETRY_TIME_DEFAULT;
 		} else if (strcasecmp(plist->al_name,
@@ -1701,9 +1671,9 @@ mgr_sched_set(struct batch_request *preq)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
 		if (find_sched_from_sock(preq->rq_conn))
-			set_sched_default(psched, 0, 1);
+			set_sched_default(psched, 1);
 		else
-			set_sched_default(psched, 0, 0);
+			set_sched_default(psched, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
 
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
@@ -1771,7 +1741,7 @@ mgr_sched_unset(struct batch_request *preq)
 	else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 1, 0);
+		set_sched_default(psched, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
@@ -3645,7 +3615,7 @@ mgr_sched_create(struct batch_request *preq)
 	} else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 0, 0);
+		set_sched_default(psched, 0);
 		(void) sched_save_db(psched, SVR_SAVE_FULL);
 		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
 				preq->rq_user, preq->rq_host);
@@ -4716,13 +4686,29 @@ mgr_resource_unset(struct batch_request *preq)
  *		the object and the operation to be performed on it.  Then the
  *		appropriate function is called to perform the operation.
  *
- * @param[in]	preq	- The request containing information about the resource to
- * 		     				perform the operation.
+ * @param[in]	preq	- The request containing information about the resource to perform the operation.
+ *
+ * @return void
+ *
  */
 void
 req_manager(struct batch_request *preq)
 {
 	int obj_name_len;
+	conn_t *conn = NULL;
+
+	++preq->rq_refct;
+
+	if (preq->prot == PROT_TCP) {
+		if (preq->rq_conn != PBS_LOCAL_CONNECTION) {
+			conn = get_conn(preq->rq_conn);
+			if (!conn) {
+				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
+				req_reject(PBSE_SYSTEM, 0, preq);
+				goto req_manager_exit;
+			}
+		}
+	}
 
 	obj_name_len = strlen(preq->rq_ind.rq_manager.rq_objname);
 
@@ -4735,7 +4721,7 @@ req_manager(struct batch_request *preq)
 			if (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_SITE_HOOK) {
 				if ((preq->rq_perm & PERM_MANAGER) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
@@ -4761,7 +4747,7 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					if (preq->rq_ind.rq_manager.rq_cmd == MGR_CMD_CREATE)
 						mgr_hook_create(preq);
@@ -4791,7 +4777,7 @@ req_manager(struct batch_request *preq)
 
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4802,13 +4788,13 @@ req_manager(struct batch_request *preq)
 			    (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_PBS_HOOK)) {
 				if ((preq->rq_perm & PERM_OPorMGR) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_set(preq);
+					mgr_server_set(preq, conn);
 					break;
 				case MGR_OBJ_SCHED:
 					if (obj_name_len == 0) {
@@ -4833,7 +4819,7 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_set(preq);
 					break;
@@ -4842,7 +4828,7 @@ req_manager(struct batch_request *preq)
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					break;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4852,13 +4838,13 @@ req_manager(struct batch_request *preq)
 			   (preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_PBS_HOOK)) {
 				if ((preq->rq_perm & PERM_OPorMGR) == 0) {
 					req_reject(PBSE_PERM, 0, preq);
-					return;
+					goto req_manager_exit;
 				}
 			}
 
 			switch (preq->rq_ind.rq_manager.rq_objtype) {
 				case MGR_OBJ_SERVER:
-					mgr_server_unset(preq);
+					mgr_server_unset(preq, conn);
 					break;
 				case MGR_OBJ_QUEUE:
 					mgr_queue_unset(preq);
@@ -4875,7 +4861,7 @@ req_manager(struct batch_request *preq)
 							server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_unset(preq);
 					break;
@@ -4892,6 +4878,7 @@ req_manager(struct batch_request *preq)
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4911,13 +4898,13 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_import(preq);
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
@@ -4937,18 +4924,27 @@ req_manager(struct batch_request *preq)
 							preq->rq_user, preq->rq_host, server_host);
 
 						reply_text(preq, PBSE_HOOKERROR, log_buffer);
-						return;
+						goto req_manager_exit;
 					}
 					mgr_hook_export(preq);
 					break;
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
-					return;
+					goto req_manager_exit;
 			}
 			break;
 
 		default: /*batch_request specified an invalid command*/
 			req_reject(PBSE_IVALREQ, 0, preq);
+			goto req_manager_exit;
+	}
+req_manager_exit:
+	{
+		char hook_msg[HOOK_MSG_SIZE];
+		process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+	}
+	if (--preq->rq_refct == 0) {
+		reply_send(preq);
 	}
 }
 

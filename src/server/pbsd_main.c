@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    pbsd_main.c
  * @brief
@@ -45,13 +47,11 @@
  * 	net_down_handler()
  * 	go_to_background()
  * 	decrypt_pwd()
- * 	do_rpp()
- * 	rpp_request()
+ * 	do_tpp()
+ * 	tpp_request()
  * 	build_path()
  * 	pbs_close_stdfiles()
  * 	clear_exec_vnode()
- * 	log_rppfail()
- * 	log_tppmsg()
  * 	make_server_auto_restart()
  * 	reap_child()
  * 	can_schedule()
@@ -121,9 +121,8 @@
 #include "tracking.h"
 #include "acct.h"
 #include "sched_cmds.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "dis.h"
-#include "dis_init.h"
 #include "libsec.h"
 #include "pbs_version.h"
 #include "pbs_license.h"
@@ -135,6 +134,7 @@
 #include "pbs_share.h"
 #include <pbs_python.h>  /* for python interpreter */
 #include "pbs_undolr.h"
+#include "auth.h"
 
 /* External functions called */
 
@@ -171,7 +171,6 @@ static int db_oper_failed_times = 0;
 static int last_rc = -1; /* we need to reset db_oper_failed_times for each state change of the db */
 static int db_delay = 0;
 static int touch_db_stop_file(void);
-static void log_tppmsg(int level, const char *objname, char *mess);
 #define MAX_DB_RETRIES			5
 #define MAX_DB_LOOP_DELAY		10
 #define HOT_START_PING_RATE		15
@@ -268,7 +267,6 @@ pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */
 pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
-pbs_list_head	svr_unlicensedjobs;	/* list of jobs to be licensed */
 pbs_list_head	task_list_immed;
 pbs_list_head	task_list_timed;
 pbs_list_head	task_list_event;
@@ -278,6 +276,7 @@ pbs_list_head	svr_modifyjob_hooks;
 pbs_list_head	svr_resvsub_hooks;
 pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
+pbs_list_head	svr_management_hooks;
 pbs_list_head	svr_provision_hooks;
 pbs_list_head	svr_periodic_hooks;
 pbs_list_head	svr_resv_end_hooks;
@@ -314,10 +313,6 @@ char *db_err_msg = NULL;
 extern void		ping_nodes(struct work_task *ptask);
 extern void mark_nodes_unknown(int);
 
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-extern int tcp_gss_process(int sfds);
-#endif
-
 /*
  * Used only by the TPP layer, to ping nodes only if the connection to the
  * local router to the server is up.
@@ -338,7 +333,8 @@ int tpp_network_up = 0;
 void
 net_restore_handler(void *data)
 {
-	log_tppmsg(LOG_INFO, NULL, "net restore handler called");
+	if (tpp_log_func)
+		tpp_log_func(LOG_INFO, NULL, "net restore handler called");
 	tpp_network_up = 1;
 	ping_nodes(NULL);
 }
@@ -358,7 +354,8 @@ net_down_handler(void *data)
 	if (tpp_network_up == 1) {
 		tpp_network_up = 0;
 		/* now loop and set all nodes to down */
-		log_tppmsg(LOG_CRIT, NULL, "marking all nodes unknown");
+		if (tpp_log_func)
+			tpp_log_func(LOG_CRIT, NULL, "marking all nodes unknown");
 		mark_nodes_unknown(1);
 	}
 }
@@ -406,21 +403,21 @@ go_to_background()
 
 /**
  * @brief
- * 		Read a RPP message from a stream.  Only one kind of message
+ * 		Read a message from a TPP stream. Only one kind of message
  * 		is expected -- Inter Server requests from MOM's.
  *
- * @param[in]	stream	- sream from which RPP message is read.
+ * @param[in]	stream	- TPP stream from which message is read.
  *
  * @return	void
  */
 void
-do_rpp(int stream)
+do_tpp(int stream)
 {
 	int			ret, proto, version;
 	void			is_request(int, int);
 	void			stream_eof(int, int, char *);
 
-	DIS_rpp_reset();
+	DIS_tpp_funcs();
 	proto = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS) {
 		stream_eof(stream, ret, NULL);
@@ -450,22 +447,22 @@ do_rpp(int stream)
 
 /**
  * @brief
- * 		Read the stream using rpp_poll and invoke do_rpp using that stream.
+ * 		Read the TPP stream using tpp_poll and invoke do_tpp using that stream.
  *
  * @param[in]	fd	- not used.
  *
  * @return	void
  */
 void
-rpp_request(int fd)
+tpp_request(int fd)
 {
 	int	iloop;
 	int	rpp_max_pkt_check = RPP_MAX_PKT_CHECK_DEFAULT;
 
 	/*
-	 * Interleave RPP processing with batch request processing.
+	 * Interleave TPP processing with batch request processing.
 	 * Certain things like hook/short-job propagation can generate a
-	 * huge amount of RPP traffic that can make batch processing
+	 * huge amount of TPP traffic that can make batch processing
 	 * appear sluggish if not interleaved.
 	 *
 	 */
@@ -475,13 +472,13 @@ rpp_request(int fd)
 	for (iloop = 0; iloop < rpp_max_pkt_check; iloop++) {
 		int	stream;
 
-		if ((stream = rpp_poll()) == -1) {
-			log_err(errno, __func__, "rpp_poll");
+		if ((stream = tpp_poll()) == -1) {
+			log_err(errno, __func__, "tpp_poll");
 			break;
 		}
 		if (stream == -2)
 			break;
-		do_rpp(stream);
+		do_tpp(stream);
 	}
 	return;
 }
@@ -605,48 +602,6 @@ clear_exec_vnode()
 		}
 	}
 }
-/**
- * @brief
- *		log details in case of an rpp failure
- *
- * @param[in]	mess    - The log message
- *
- */
-void
-log_rppfail(char *mess)
-{
-	log_event(PBSEVENT_DEBUG, LOG_DEBUG,
-		PBS_EVENTCLASS_SERVER, "rpp", mess);
-}
-
-/**
- * @brief
- *		This is the log handler for tpp implemented in the daemon. The pointer to
- *		this function is used by the Libtpp layer when it needs to log something to
- *		the daemon logs
- *
- * @param[in]	level   - Logging level
- * @param[in]	objname - Name of the object about which logging is being done
- * @param[in]	mess    - The log message
- *
- */
-static void
-log_tppmsg(int level, const char *objname, char *mess)
-{
-	char id[2*PBS_MAXHOSTNAME];
-	int thrd_index;
-	int etype = log_level_2_etype(level);
-
-	thrd_index = tpp_get_thrd_index();
-	if (thrd_index == -1)
-		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL) ? objname : msg_daemonname);
-	else
-		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL) ? objname : msg_daemonname, thrd_index);
-
-	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
-	DBPRT((mess));
-	DBPRT(("\n"));
-}
 
 /**
  * @brief
@@ -705,6 +660,69 @@ can_schedule()
 	return (1);
 }
 
+
+
+/**
+ * @brief
+ *	this function handles auth related data before process_request()
+ *
+ * @param[in] conn - connection data
+ *
+ * @return	int
+ * @retval	>0	data ready
+ * @retval	0	no data ready
+ * @retval	-1	error
+ * @retval	-2	on EOF
+ */
+int
+tcp_pre_process(conn_t *conn)
+{
+	char errbuf[LOG_BUF_SIZE];
+	int rc;
+
+	if (conn->cn_auth_config == NULL)
+		return 1;
+
+	DIS_tcp_funcs();
+	if (conn->cn_auth_config->encrypt_method[0] != '\0') {
+		rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_ENCRYPT);
+		if (rc == (int)AUTH_STATUS_UNKNOWN)
+			return 1;
+
+
+		if (rc < (int)AUTH_STATUS_CTX_READY) {
+			errbuf[0] = '\0';
+			rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_ENCRYPT, errbuf, sizeof(errbuf));
+			if (errbuf[0] != '\0') {
+				if (rc != 0)
+					log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+				else
+					log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+			}
+			return rc;
+		}
+	}
+
+	rc = transport_chan_get_ctx_status(conn->cn_sock, FOR_AUTH);
+	if (rc == (int)AUTH_STATUS_UNKNOWN)
+		return 1;
+
+
+	if (rc < (int)AUTH_STATUS_CTX_READY) {
+		errbuf[0] = '\0';
+		rc = engage_server_auth(conn->cn_sock, server_host, conn->cn_hostname, FOR_AUTH, errbuf, sizeof(errbuf));
+		if (errbuf[0] != '\0') {
+			if (rc != 0)
+				log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, errbuf);
+			else
+				log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, errbuf);
+		}
+		return rc;
+	}
+
+	return 1;
+}
+
 /**
  * @brief
  * 		main - the initialization and main loop of pbs_daemon
@@ -721,13 +739,11 @@ can_schedule()
 int
 main(int argc, char **argv)
 {
-
+	char *nodename = NULL;
 	int			are_primary;
 	int			c, rc;
 	int			i;
-	int			rppfd;		/* fd to receive is HELLO's */
-	int			privfd;		/* fd to send is messages */
-	uint			tryport;
+	int			tppfd;		/* fd to receive is HELLO's */
 	struct			tpp_config tpp_conf;
 	char			lockfile[MAXPATHLEN+1];
 	char			**origevp;
@@ -816,13 +832,17 @@ main(int argc, char **argv)
 
 	/* initialize the thread context */
 	if (pbs_client_thread_init_thread_context() != 0) {
-		log_err(-1, "pbsd_main",
+		log_err(-1, __func__,
 			"Unable to initialize thread context");
 		return (1);
 	}
 
 	if (pbs_loadconf(0) == 0)
 		return (1);
+
+	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
+			pbs_conf.locallog, pbs_conf.syslogfac,
+			pbs_conf.syslogsvr, pbs_conf.pbs_log_highres_timestamp);
 
 	/* find out who we are (hostname) */
 	server_host[0] = '\0';
@@ -836,12 +856,12 @@ main(int argc, char **argv)
 		if (endp)
 			*endp = '\0';
 	} else if (gethostname(server_host, (sizeof(server_host) - 1)) == -1) {
-		log_err(-1, "pbsd_main", "Host name too large");
+		log_err(-1, __func__, "Host name too large");
 		return (-1);
 	}
 	if ((server_host[0] == '\0') ||
 	    (get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-		log_err(-1, "pbsd_main", "Unable to get my host name");
+		log_err(-1, __func__, "Unable to get my host name");
 		return (-1);
 	}
 
@@ -868,7 +888,7 @@ main(int argc, char **argv)
 
 	pbs_server_name = pbs_default();
 	if ((!pbs_server_name) || (*pbs_server_name == '\0')) {
-		log_err(-1, "pbsd_main", "Unable to get server host name");
+		log_err(-1, __func__, "Unable to get server host name");
 		return (-1);
 	}
 
@@ -930,8 +950,6 @@ main(int argc, char **argv)
 					(void)fprintf(stderr, "%s -t bad recovery type\n",
 						argv[0]);
 					return (1);
-				} else if (server_init_type == RECOV_CREATE) {
-					pbs_authors();
 				}
 				break;
 			case 'A':
@@ -1046,13 +1064,13 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_allresvs);
 	CLEAR_HEAD(svr_newresvs);
 	CLEAR_HEAD(svr_deferred_req);
-	CLEAR_HEAD(svr_unlicensedjobs);
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
 	CLEAR_HEAD(svr_modifyjob_hooks);
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_movejob_hooks);
 	CLEAR_HEAD(svr_runjob_hooks);
+	CLEAR_HEAD(svr_management_hooks);
 	CLEAR_HEAD(svr_periodic_hooks);
 	CLEAR_HEAD(svr_provision_hooks);
 	CLEAR_HEAD(svr_resv_end_hooks);
@@ -1136,6 +1154,10 @@ main(int argc, char **argv)
 	}
 
 	/*Initialize security library's internal data structures*/
+	if (load_auths(AUTH_SERVER)) {
+		log_err(-1, __func__, "Failed to load auth lib");
+		exit(3);
+	}
 
 	{
 		int	csret;
@@ -1146,7 +1168,7 @@ main(int argc, char **argv)
 		if ((csret = CS_server_init()) != CS_SUCCESS) {
 			sprintf(log_buffer,
 				"Problem initializing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 			exit(3);
 		}
 	}
@@ -1478,11 +1500,7 @@ try_db_again:
 		log_err(errno, msg_daemonname, "sigprocmask(BLOCK)");
 
 	/* initialize the network interface */
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	if (init_network_add(sock, tcp_gss_process, process_request) != 0) {
-#else
-	if (init_network_add(sock, NULL, process_request) != 0) {
-#endif
+	if (init_network_add(sock, tcp_pre_process, process_request) != 0) {
 		(void) sprintf(log_buffer, "add connection for init_network failed");
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
@@ -1490,103 +1508,62 @@ try_db_again:
 		return (3);
 	}
 
-	if (pbs_conf.pbs_use_tcp == 1) {
-		char *nodename = NULL;
+	sprintf(log_buffer, "Out of memory");
+	if (pbs_conf.pbs_leaf_name) {
+		char *p;
+		nodename = strdup(pbs_conf.pbs_leaf_name);
 
-		sprintf(log_buffer, "Out of memory");
-		if (pbs_conf.pbs_leaf_name) {
-			char *p;
-			nodename = strdup(pbs_conf.pbs_leaf_name);
-
-			/* reset pbs_leaf_name to only the first leaf name with port */
-			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
-			if (p)
-				*p = '\0';
-			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
-			if (p)
-				*p = '\0';
-		} else {
-			char *host = NULL;
-			if (pbs_conf.pbs_primary)
-				if (!pbs_failover_active)
-					host = pbs_conf.pbs_primary;
-				else
-					host = pbs_conf.pbs_secondary;
-			else if (pbs_conf.pbs_server_host_name)
-				host = pbs_conf.pbs_server_host_name;
-			else if (pbs_conf.pbs_server_name)
-				host = pbs_conf.pbs_server_name;
-
-			/* since pbs_leaf_name was not specified, determine all IPs */
-			nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
-		}
-
-		if (!nodename) {
-			log_err(-1, "pbsd_main", log_buffer);
-			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
-			stop_db();
-			return (1);
-		}
-
-		/* set tpp function pointers */
-		set_tpp_funcs(log_tppmsg);
-
-		if (pbs_conf.auth_method == AUTH_RESV_PORT || pbs_conf.auth_method == AUTH_GSS) {
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
-		} else {
-			/* for all non-resv-port based authentication use a callback from TPP */
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
-		}
-
-		free(nodename);
-
-		if (rc == -1) {
-			(void) sprintf(log_buffer, "Error setting TPP config");
-			fprintf(stderr, "%s", log_buffer);
-			stop_db();
-			return (3);
-		}
-
-		tpp_set_app_net_handler(net_down_handler, net_restore_handler);
-		tpp_conf.node_type = TPP_LEAF_NODE_LISTEN; /* server needs to know about all CTL LEAVE messages */
-
-		if ((rppfd = tpp_init(&tpp_conf)) == -1) {
-			log_err(-1, msg_daemonname, "tpp_init failed");
-			fprintf(stderr, "%s", log_buffer);
-			stop_db();
-			return (3);
-		}
-
-		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
+		/* reset pbs_leaf_name to only the first leaf name with port */
+		p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+		if (p)
+			*p = '\0';
+		p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+		if (p)
+			*p = '\0';
 	} else {
-		/* set rpp function pointers */
-		set_rpp_funcs(log_rppfail);
+		char *host = NULL;
+		if (pbs_conf.pbs_primary)
+			if (!pbs_failover_active)
+				host = pbs_conf.pbs_primary;
+			else
+				host = pbs_conf.pbs_secondary;
+		else if (pbs_conf.pbs_server_host_name)
+			host = pbs_conf.pbs_server_host_name;
+		else if (pbs_conf.pbs_server_name)
+			host = pbs_conf.pbs_server_name;
 
-		if ((rppfd = rpp_bind(pbs_server_port_dis)) == -1) {
-			log_err(errno, msg_daemonname, "rpp_bind");
-			stop_db();
-			return (1);
-		}
-		rpp_fd = -1;		/* force rpp_bind() to get another socket */
-		tryport = IPPORT_RESERVED;
-		while (--tryport > 0) {
-			if ((privfd = rpp_bind(tryport)) != -1)
-				break;
-
-			if ((errno != EADDRINUSE) && (errno != EADDRNOTAVAIL))
-				break;
-		}
-		if (privfd == -1) {
-			log_err(errno, msg_daemonname, "no privileged ports");
-			stop_db();
-			return (1);
-		}
-
-		(void)add_conn(rppfd,  RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
-		(void)add_conn(privfd, RppComm, (pbs_net_t)0, 0, NULL, rpp_request);
+		/* since pbs_leaf_name was not specified, determine all IPs */
+		nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 	}
+
+	if (!nodename) {
+		log_err(-1, __func__, log_buffer);
+		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
+		stop_db();
+		return (1);
+	}
+
+	/* set tpp config */
+	rc = set_tpp_config(NULL, &pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers);
+	free(nodename);
+	if (rc == -1) {
+		(void) sprintf(log_buffer, "Error setting TPP config");
+		fprintf(stderr, "%s", log_buffer);
+		stop_db();
+		return (3);
+	}
+
+	tpp_set_app_net_handler(net_down_handler, net_restore_handler);
+	tpp_conf.node_type = TPP_LEAF_NODE_LISTEN; /* server needs to know about all CTL LEAVE messages */
+
+	if ((tppfd = tpp_init(&tpp_conf)) == -1) {
+		log_err(-1, msg_daemonname, "tpp_init failed");
+		fprintf(stderr, "%s", log_buffer);
+		stop_db();
+		return (3);
+	}
+
+	(void)add_conn(tppfd, TppComm, (pbs_net_t)0, 0, NULL, tpp_request);
 
 	/* record the fact that the Secondary is up and active (running) */
 
@@ -1749,8 +1726,7 @@ try_db_again:
 				/* if time or event says to run scheduler, do it */
 
 				/* if we have a high prio sched command, send it 1st */
-				if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
-					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
+				if (psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
@@ -1822,11 +1798,6 @@ try_db_again:
 			pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 		}
 
-		if (pbs_conf.pbs_use_tcp == 0) {
-			/* touch the rpp streams that need to send, not required for TCP */
-			rpp_request(42);
-		}
-
 		if (reap_child_flag)
 			reap_child();
 
@@ -1896,14 +1867,6 @@ try_db_again:
 	if ((*state != SV_STATE_SECIDLE) && (shutdown_who & SHUT_WHO_MOM))
 		shutdown_nodes();
 
-	if (pbs_conf.pbs_use_tcp == 0) {
-		/* try just a little bit to get the packets to all the Moms, not for TCP */
-		for (i=0; i<2; ++i) {
-			rpp_request(42);
-			sleep(1);
-		}
-	}
-
 	/* if brought up the DB, take it down */
 	stop_db();
 
@@ -1945,7 +1908,7 @@ try_db_again:
 
 	shutdown_ack();
 	net_close(-1);		/* close all network connections */
-	rpp_shutdown();
+	tpp_shutdown();
 
 	/*
 	 * SERVER is going to be shutdown, delete AVL tree using
@@ -1964,7 +1927,7 @@ try_db_again:
 			/*had some problem closing the security library*/
 
 			sprintf(log_buffer, "problem closing security library (%d)", csret);
-			log_err(-1, "pbsd_main", log_buffer);
+			log_err(-1, __func__, log_buffer);
 		}
 	}
 
@@ -1978,6 +1941,7 @@ try_db_again:
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);
 	(void)unlink(lockfile);
+	unload_auths();
 
 	if (*state == SV_STATE_SECIDLE) {
 		/*

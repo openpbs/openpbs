@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    reply_send.c
  *
@@ -74,7 +76,7 @@
 #include "work_task.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 /* External Globals */
@@ -89,11 +91,6 @@ extern pbs_list_head task_list_immed;
 char   *resc_in_err = NULL;
 #endif	/* PBS_MOM */
 
-extern struct pbs_err_to_txt pbs_err_to_txt[];
-extern int pbs_tcp_errno;
-extern int rpp_flush(int index);
-
-void reply_free(struct batch_reply *prep);
 #ifndef WIN32
 extern volatile int reply_timedout; /* global to notify DIS routines reply took too long */
 #endif
@@ -168,10 +165,10 @@ set_err_msg(int code, char *msgbuf, size_t msglen)
 /**
  * @brief
  * 		SIGALRM signal handler for dis_reply_write
- * 
+ *
  * Set the volatile global variable reply_timedout
  * Record about the timeout in TCP reply.
- * 
+ *
  * @param[in]	sig -  signal number
  *
  * @return	return void
@@ -204,8 +201,8 @@ dis_reply_write(int sfds, struct batch_request *preq)
 	time_t  old_tcp_timeout = pbs_tcp_timeout ;
 #endif
 
-	if (preq->isrpp) {
-		rc = encode_DIS_replyRPP(sfds, preq->rppcmd_msgid, preply);
+	if (preq->prot == PROT_TPP) {
+		rc = encode_DIS_replyTPP(sfds, preq->tppcmd_msgid, preply);
 	} else {
 #ifndef WIN32
 		reply_timedout = 0;
@@ -219,25 +216,25 @@ dis_reply_write(int sfds, struct batch_request *preq)
 		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_REPLY;
 #endif
 		/*
-		 * clear pbs_tcp_errno - set on error in DIS_tcp_wflush when called
+		 * clear pbs_tcp_errno - set on error in dis_flush when called
 		 * either in encode_DIS_reply() or directly below.
 		 */
 		pbs_tcp_errno = 0;
-		DIS_tcp_setup(sfds);		/* setup for DIS over tcp */
+		DIS_tcp_funcs();		/* setup for DIS over tcp */
 
 		rc = encode_DIS_reply(sfds, preply);
 	}
 
 	if (rc == 0) {
-		DIS_wflush(sfds, preq->isrpp);
+		dis_flush(sfds);
 	}
 
 #ifndef WIN32
 	reply_timedout = 0; /* Resetting the value for next tcp connection */
-	if (!(preq->isrpp)) {
-        alarm(0);
-        (void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
-    }
+	if (preq->prot == PROT_TCP) {
+		alarm(0);
+		(void)sigaction(SIGALRM, &oact, NULL);  /* reset handler for SIGALRM */
+	}
 	pbs_tcp_timeout = old_tcp_timeout;
 #endif
 	if (rc) {
@@ -284,8 +281,12 @@ reply_send(struct batch_request *request)
 	int		    rc = 0;
 	int		    sfds = request->rq_conn;		/* socket */
 
-	/* if this is a child request, just move the error to the parent */
+	if (request && request->rq_type == PBS_BATCH_ModifyJob_Async) {
+		free_br(request);
+		return 0;
+	}
 
+	/* if this is a child request, just move the error to the parent */
 	if (request->rq_parentbr) {
 		if ((request->rq_parentbr->rq_reply.brp_choice == BATCH_REPLY_CHOICE_NULL) && (request->rq_parentbr->rq_reply.brp_code == 0)) {
 			request->rq_parentbr->rq_reply.brp_code = request->rq_reply.brp_code;
@@ -367,7 +368,12 @@ reply_ack(struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
-	if (preq->isrpp && (preq->rpp_ack == 0)) {
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+		free_br(preq);
+		return;
+	}
+
+	if (preq->prot == PROT_TPP && preq->tpp_ack == 0) {
 		free_br(preq);
 		return;
 	}
@@ -449,6 +455,11 @@ req_reject(int code, int aux, struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+		free_br(preq);
+		return;
+	}
+
 	if (code != PBSE_NONE) {
 		evt_type = PBSEVENT_DEBUG;
 		if (code == PBSE_BADHOST)
@@ -500,6 +511,11 @@ reply_badattr(int code, int aux, svrattrl *pal,
 
 	if (preq == NULL)
 		return;
+
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+		free_br(preq);
+		return;
+	}
 
 #ifdef NAS /* localmod 005 */
 	set_err_msg(code, msgbuf, sizeof(msgbuf));
@@ -553,6 +569,11 @@ reply_text(struct batch_request *preq, int code, char *text)
 {
 	if (preq == NULL)
 		return 0;
+
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+		free_br(preq);
+		return 0;
+	}
 
 	if (preq->rq_reply.brp_choice != BATCH_REPLY_CHOICE_NULL)
 		/* in case another reply was being built up, clean it out */

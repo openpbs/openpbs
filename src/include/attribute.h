@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_ATTRIBUTE_H
 #define	_ATTRIBUTE_H
 #ifdef	__cplusplus
@@ -168,7 +170,7 @@ union attr_val {	      /* the attribute value	*/
 	pbs_list_head	      at_list;	/* list of resources,  ... */
 	struct  pbsnode	     *at_jinfo; /* ptr to node's job info  */
 	short		      at_short;	/* short int; node's state */
-	float		      at_float;	/* floating point vaule */
+	float		      at_float;	/* floating point value */
 	struct attr_entity    at_enty;	/* FGC entity tree head */
 };
 
@@ -444,7 +446,6 @@ extern int action_entlim_ct  (attribute *attr, void *pobj, int mode);
 extern int action_entlim_res(attribute *attr, void *pobj, int mode);
 extern int at_non_zero_time(attribute *attr, void *pobj, int mode);
 extern int set_log_events(attribute *pattr, void *pobject, int actmode);
-extern int set_sched_throughput_mode(attribute *pattr, void *pobj, int actmode);
 
 extern void free_str  (attribute *attr);
 extern void free_arst(attribute *attr);
@@ -565,8 +566,6 @@ extern int set_rcost(attribute *attr,  attribute *new,  enum batch_op);
 extern void free_rcost(attribute *attr);
 extern int decode_null(attribute *patr,  char *name,  char *rn,  char *val);
 extern int set_null(attribute *patr,  attribute *new,  enum batch_op op);
-extern int ssignon_transition_okay(attribute *patr,  void *pobject,
-	int actmode);
 extern int eligibletime_action(attribute *pattr,  void *pobject,  int actmode);
 extern int decode_formula(attribute *patr,  char *name,  char *rn,  char *val);
 extern int action_backfill_depth(attribute *pattr,  void *pobj,  int actmode);

@@ -3,40 +3,44 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import datetime
 import json
+import copy
 import logging
 import os
 import platform
@@ -1608,22 +1612,18 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
-        self.__dbobj = {}
+        self.jdata = {}
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-        jdata = None
-        if _TESTRESULT_TN not in self.__dbobj.keys():
-            self.__dbobj[_TESTRESULT_TN] = open(self.dbpath, 'w+')
-        else:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            jdata = json.load(self.__dbobj[_TESTRESULT_TN])
-        jsondata = self.res_data.get_json(data=data, prev_data=jdata)
-        self.__dbobj[_TESTRESULT_TN].seek(0)
-        json.dump(jsondata, self.__dbobj[_TESTRESULT_TN], indent=2)
+        prev_data = copy.deepcopy(self.jdata)
+        self.jdata = self.res_data.get_json(data=data, prev_data=prev_data)
+        with open(self.dbpath, 'w') as fd:
+            json.dump(self.jdata, fd, indent=2)
+            fd.write("\n")
 
     def write(self, data, logfile=None):
         if len(data) == 0:
@@ -1633,16 +1633,11 @@ class JSONDb(DBType):
 
     def close(self, result=None):
         if result is not None:
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            df = json.load(self.__dbobj[_TESTRESULT_TN])
             dur = str(result.stop - result.start)
-            df['test_summary']['test_duration'] = dur
-            self.__dbobj[_TESTRESULT_TN].seek(0)
-            json.dump(df, self.__dbobj[_TESTRESULT_TN], indent=2)
-        for v in self.__dbobj.values():
-            v.write('\n')
-            v.flush()
-            v.close()
+            self.jdata['test_summary']['test_duration'] = dur
+            with open(self.dbpath, 'w') as fd:
+                json.dump(self.jdata, fd, indent=2)
+                fd.write("\n")
 
 
 class PTLTestDb(Plugin):
@@ -1657,7 +1652,7 @@ class PTLTestDb(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.__dbconn = None
-        self.__dbtype = 'JSONDb'
+        self.__dbtype = None
         self.__dbpath = None
         self.__dbaccess = None
         self.__dbmapping = {'file': FileDb,

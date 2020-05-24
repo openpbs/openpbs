@@ -84,7 +84,7 @@
       <AdditionalDependencies>secur32.lib;Userenv.lib;mpr.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;netapi32.lib;comctl32.lib;libcrypto.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>..\..\..\win_build\src\pbs_mom\Debug\pbs_stage_file.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\..\..\binaries\openssl_debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\binaries\openssl_debug\lib;..\..\..\binaries\python_debug\PCbuild\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>..\..\..\win_build\src\pbs_mom\Debug\pbs_stage_file.pdb</ProgramDatabaseFile>
@@ -126,7 +126,7 @@
       <AdditionalDependencies>secur32.lib;Userenv.lib;mpr.lib;ws2_32.lib;odbc32.lib;odbccp32.lib;netapi32.lib;comctl32.lib;libcrypto.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>..\..\..\win_build\src\pbs_mom\Release\pbs_stage_file.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\..\..\binaries\openssl\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\binaries\openssl\lib;..\..\..\binaries\python\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>..\..\..\win_build\src\pbs_mom\Release\pbs_stage_file.pdb</ProgramDatabaseFile>

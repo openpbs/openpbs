@@ -3,45 +3,48 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import os
 from tests.functional import *
+from time import sleep
 
 
 @requirements(num_moms=3)
 class TestHookTimeout(TestFunctional):
-
     """
     Test to make sure hooks are resent to moms that don't ack when
     the hooks are sent
@@ -71,11 +74,22 @@ class TestHookTimeout(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostC)
+        for mom in self.moms.values():
+            self.server.expect(NODE, {'state': 'free'}, id=mom.shortname)
 
-        self.server.expect(VNODE, {'state=free': 3}, op=EQ, count=True,
-                           max_attempts=10, interval=2)
+    def timeout_messages(self, num_msg=1, starttime=None):
+        msg_found = None
+        for count in range(10):
+            sleep(30)
+            allmatch_msg = self.server.log_match(
+                "Timing out previous send of mom hook updates ",
+                max_attempts=1, starttime=starttime, allmatch=True)
+            if len(allmatch_msg) >= num_msg:
+                msg_found = allmatch_msg
+                break
+        self.assertIsNotNone(msg_found,
+                             msg="Didn't get expected timeout messages")
 
-    @timeout(600)
     def test_hook_send(self):
         """
         Test when the server doesn't receive an ACK from a mom for
@@ -88,7 +102,7 @@ class TestHookTimeout(TestFunctional):
         self.logger.info("Stopping MomB")
         self.momB.signal("-STOP")
 
-        start_time = int(time.time())
+        start_time = time.time()
 
         hook_body = "import pbs\n"
         a = {'event': 'execjob_epilogue', 'enabled': 'True'}
@@ -98,8 +112,7 @@ class TestHookTimeout(TestFunctional):
 
         # First batch of hook update is for the *.HK files
         self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=3 received=2)", n=600,
+            "Timing out previous send of mom hook updates ", n=600,
             max_attempts=timeout_max_attempt, interval=30,
             starttime=start_time)
 
@@ -119,12 +132,7 @@ class TestHookTimeout(TestFunctional):
 
         # Second batch of hook update is for the *.PY files + resend of
         # *.HK file to momB
-        self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=4 received=2)", n=600,
-            max_attempts=timeout_max_attempt, interval=30,
-            starttime=start_time)
-
+        self.timeout_messages(2, start_time)
         # sent hook content file
         for h in [self.hostA, self.hostB, self.hostC]:
             hfile = os.path.join(self.server.pbs_conf['PBS_HOME'],
@@ -158,12 +166,7 @@ class TestHookTimeout(TestFunctional):
 
         # Ensure that hook send updates are retried for
         # the *.HK and *.PY file to momB
-        self.server.log_match(
-            "Timing out previous send of mom hook updates "
-            "(send replies expected=2 received=0)", n=600,
-            max_attempts=timeout_max_attempt, interval=30,
-            starttime=start_time)
-
+        self.timeout_messages(3, start_time)
         # Submit a job, it should still run
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}

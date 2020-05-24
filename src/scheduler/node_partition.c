@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    node_partition.c
@@ -274,7 +276,7 @@ dup_node_partition(node_partition *onp, server_info *nsinfo)
  * @brief copy a node partition array from pointers out of another.
  * @param[in] onp_arr - old node partition array
  * @param[in] new_nps - node partition array with new pointers
- * 
+ *
  * @return node_partition **
  */
 node_partition **
@@ -1133,12 +1135,13 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
  * @param[in]	policy	-	policy info
  * @param[in]	name	-	the name of the node partition
  * @param[in]	nodes	-	the nodes to create the placement set with
+ * @param[in]	flags	-	flags which change operations of node partition creation
  *
  * @return	node_partition * - the node partition
  * @NULL	: on error
  */
 node_partition *
-create_specific_nodepart(status *policy, char *name, node_info **nodes)
+create_specific_nodepart(status *policy, char *name, node_info **nodes, int flags)
 {
 	node_partition *np;
 	int i, j;
@@ -1169,12 +1172,14 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes)
 	j = 0;
 	for (i = 0; i < cnt; i++) {
 		if (!nodes[i]->is_stale) {
-			tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
-			if (tmp_arr == NULL) {
-				free_node_partition(np);
-				return NULL;
+			if (!(flags & NP_NO_ADD_NP_ARR)) {
+				tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
+				if (tmp_arr == NULL) {
+					free_node_partition(np);
+					return NULL;
+				}
+				nodes[i]->np_arr = tmp_arr;
 			}
-			nodes[i]->np_arr = tmp_arr;
 
 			np->ninfo_arr[j] = nodes[i];
 			j++;
@@ -1215,7 +1220,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	char *resstr[] = {"host", NULL};
 	int num;
 
-	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes);
+	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
@@ -1268,7 +1273,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		queue_info *qinfo = sinfo->queues[i];
 
 		if (qinfo->has_nodes)
-			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes);
+			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes, NO_FLAGS);
 
 		if (sinfo->node_group_enable && (qinfo->has_nodes || qinfo->node_group_key)) {
 			if (qinfo->has_nodes)
@@ -1379,7 +1384,7 @@ update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 	node_partition_update_array(policy, sinfo->hostsets);
 
 	if ((flags & NO_ALLPART) == 0)
-			node_partition_update(policy, sinfo->allpart);
+		node_partition_update(policy, sinfo->allpart);
 
 	sort_all_nodepart(policy, sinfo);
 

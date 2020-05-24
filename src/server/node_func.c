@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	node_func.c
@@ -133,7 +135,7 @@
 #include "svrfunc.h"
 #include "pbs_error.h"
 #include "log.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "work_task.h"
 #include "net_connect.h"
 #include "cmds.h"
@@ -476,6 +478,8 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->nd_modified = 0;
+	pnode->device.nnodes = 0;
+	pnode->device.nsockets = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
@@ -1402,7 +1406,7 @@ mod_node_ncpus(struct pbsnode *pnode, long ncpus, int actmode)
  * @brief
  * 		fix_indirect_resc_targets - set or clear ATR_VFLAG_TARGET flag in
  * 		a target resource "index" is the index into the node's attribute
- * 		array (which attr). If invoked with ND_ATR__ResourceAvail or 
+ * 		array (which attr). If invoked with ND_ATR__ResourceAvail or
  * 		ND_ATR_ResourceAssn, the target flag is applied on both. We need
  * 		to do this as the check for target flag in fix_indirectness relies
  * 		on resources_assigned as resources_available is already got over-written.
@@ -2043,7 +2047,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 			strncpy(buf, p, (sizeof(buf) - 1));
 			buf[sizeof(buf) - 1] = '\0';
 		}
-		
+
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;
@@ -2331,7 +2335,7 @@ chk_vnode_pool (attribute *new, void *pobj, int actmode)
 
 /**
  * @brief
- * 		action routine for the queue's "partition" attribute
+ *		action routine for the node's "partition" attribute
  *
  * @param[in]	pattr	-	attribute being set
  * @param[in]	pobj	-	Object on which attribute is being set
@@ -2347,8 +2351,15 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 {
 	struct pbsnode *pnode;
 	pbs_queue 	*pq;
+	struct  pbssubn *psn;
 
 	pnode = (pbsnode *)pobj;
+
+	if (actmode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
+
+	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
+		return PBSE_DEFAULT_PARTITION;
 
 	if (pnode->nd_attr[(int)ND_ATR_Queue].at_flags & ATR_VFLAG_SET) {
 		pq = find_queuebyname(pnode->nd_attr[(int)ND_ATR_Queue].at_val.at_str);
@@ -2361,5 +2372,13 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 		}
 	}
 
+	/* reject setting the node partition if the node is busy or has a reservation scheduled to run on it */
+	if (pnode->nd_resvp != NULL)
+		return PBSE_NODE_BUSY;
+
+
+	for (psn = pnode->nd_psn; psn; psn = psn->next)
+		if (psn->jobs != NULL)
+			return PBSE_NODE_BUSY;
 	return PBSE_NONE;
 }

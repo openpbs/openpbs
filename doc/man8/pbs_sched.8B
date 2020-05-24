@@ -1,47 +1,51 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_sched 8B "20 November 2019" Local "PBS Professional"
+
+.TH pbs_sched 8B "20 November 2019" Local "PBS"
 .SH NAME
-.B pbs_sched 
+.B pbs_sched
 \- run a PBS scheduler
 
 .SH SYNOPSIS
-.B pbs_sched 
-[-a <alarm>] [-c <clientsfile>] [-d <home dir>] 
-          [-I <scheduler name>] [-L <logfile>] [-n] [-N] 
+.B pbs_sched
+[-a <alarm>] [-c <clientsfile>] [-d <home dir>]
+          [-I <scheduler name>] [-L <logfile>] [-n] [-N]
           [-p <output file>] [-R <port number>] [-S <port number>]
 
 .B pbs_sched
@@ -50,41 +54,41 @@
 .SH DESCRIPTION
 Runs the default scheduler or a multisched.
 .LP
-.B pbs_sched 
+.B pbs_sched
 must be executed with root permission.
 
 .SH OPTIONS
 .IP "-a <alarm>" 13
-.B Deprecated.  
-Overwrites value of 
+.B Deprecated.
+Overwrites value of
 .I sched_cycle_length
 scheduler attribute.
 .br
-Time in seconds to wait for a scheduling cycle to finish. 
+Time in seconds to wait for a scheduling cycle to finish.
 .br
 Format: Time, in seconds.
 .br
 
 .IP "-c <clientsfile>" 13
 Add clients to this scheduler's list of known clients.
-The 
+The
 .I clientsfile
 contains single-line entries of the form
 .RS 17
 .I $clienthost <hostname>
 .RE
 .IP
-Each 
+Each
 .I hostname
 is added to the list of hosts allowed to connect to this scheduler.
-If 
+If
 .I clientsfile
 cannot be opened, this scheduler aborts.
 Path can be absolute or relative.  If relative, it is relative to
 PBS_HOME/sched_priv.
 
 .IP "-d <home dir>" 13
-The directory in which this scheduler will run.  
+The directory in which this scheduler will run.
 .br
 Default: PBS_HOME/sched_priv.
 
@@ -93,23 +97,23 @@ Name of scheduler to start.  Required when starting a multisched.
 
 .IP "-L <logfile>" 13
 The absolute path and filename of the log file.
-A scheduler writes its PBS version and build information to 
-the logfile whenever it starts up or 
-the logfile is rolled to a new file.  See the 
-.I -d 
+A scheduler writes its PBS version and build information to
+the logfile whenever it starts up or
+the logfile is rolled to a new file.  See the
+.I -d
 option.
 .br
-Default: A scheduler opens a file named for the current 
-date in the PBS_HOME/sched_logs directory.  
+Default: A scheduler opens a file named for the current
+date in the PBS_HOME/sched_logs directory.
 
 .IP "-n" 13
-Tells this scheduler to not restart itself if it receives a 
-.I sigsegv 
-or a 
-.I sigbus.  
+Tells this scheduler to not restart itself if it receives a
+.I sigsegv
+or a
+.I sigbus.
 A scheduler by default restarts itself if it receives either
-of these two signals more than five minutes after starting.  
-A scheduler does not restart itself if it receives 
+of these two signals more than five minutes after starting.
+A scheduler does not restart itself if it receives
 either one within five minutes of starting.
 
 .IP "-N" 13
@@ -118,9 +122,9 @@ Runs the scheduler in standalone mode.
 
 .IP "-p <output file>" 13
 Any output which is written to standard out or standard error is
-written to 
-.I output file.  
-The pathname can be absolute or relative, 
+written to
+.I output file.
+The pathname can be absolute or relative,
 in which case it is relative to PBS_HOME/sched_priv.
 See the
 .I -d
@@ -136,20 +140,20 @@ the port number is taken from PBS_MANAGER_SERVICE_PORT, in pbs.conf.
 Default: 15003
 
 .IP "-S <port number>" 13
-The port for this scheduler to use.  
+The port for this scheduler to use.
 
 Required when starting a multisched.
 
 For the default scheduler, if this option is not specified
-the default port is taken from PBS_SCHEDULER_SERVICE_PORT, 
-in pbs.conf.  
+the default port is taken from PBS_SCHEDULER_SERVICE_PORT,
+in pbs.conf.
 .br
 Default value for default scheduler: 15004
 .br
 Default value for multisched: none
 
 .IP "--version" 13
-The 
+The
 .B pbs_sched
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -158,7 +162,7 @@ This option can only be used alone.
 The file PBS_HOME/sched_priv/sched_config contains configuration parameters
 for this scheduler.  Each entry must be a single unbroken line.
 .br
-Format: 
+Format:
 .I name: value [prime | non-prime | all | none]
 .br
 where
@@ -166,23 +170,23 @@ where
 .IP name 13
 Must not contain whitespace.
 .IP value 13
-Must be double-quoted if it contains whitespace.  
+Must be double-quoted if it contains whitespace.
 .I value
-can be 
+can be
 .I True | False | <number> | <string>.
 .I True
-and 
+and
 .I False
 are not case-sensitive.
 .IP "[prime | non-prime | all | none]" 13
 Specifies when this setting applies:
 during primetime,
 non-primetime, all the time, or none of the time.  A blank third field
-is equivalent to 
+is equivalent to
 .I all
 which means that it applies to both primetime and non-primetime.
 .br
-Valid values: 
+Valid values:
 .I "all", "ALL", "none", "NONE", "prime", "PRIME", "non_prime", "NON_PRIME"
 .LP
 .RE
@@ -191,36 +195,36 @@ Any line starting with a hashmark, "#", is a comment, and is ignored.
 .B Configuration Parameters
 .br
 .IP "backfill " 13
-.B Deprecated.  
-Use the 
-.I backfill_depth 
-queue/server attribute instead.  
-Toggle that controls whether PBS uses backfilling.  
+.B Deprecated.
+Use the
+.I backfill_depth
+queue/server attribute instead.
+Toggle that controls whether PBS uses backfilling.
 If this is set to True, this scheduler attempts to schedule
 smaller jobs around higher-priority jobs when using
-.I strict_ordering, 
+.I strict_ordering,
 as long as running the smaller jobs won't change the
 start time of the jobs they were scheduled around. A scheduler
 chooses jobs in the standard order, so other high-priority jobs will be
-considered first in the set to fit around the highest-priority job. 
+considered first in the set to fit around the highest-priority job.
 
-When this parameter is 
+When this parameter is
 .I True
-and 
+and
 .I help_starving_jobs
-is 
+is
 .I True,
 this scheduler backfills around starving jobs.
 
 Can be used
-with 
+with
 .I strict_ordering
-and 
+and
 .I help_starving_jobs.
 .br
 Format: Boolean.
 .br
-Default: 
+Default:
 .I True all
 
 
@@ -233,80 +237,80 @@ can start as soon as the time boundary happens. See also
 .br
 Format: Boolean.
 .br
-Default: 
+Default:
 .I False all
 
 .IP "by_queue " 13
-If set to 
-.I True, 
+If set to
+.I True,
 all jobs that can be run from the highest-priority
 queue are run, then any jobs that can be run from the next queue are
-run, and so on.  If 
-.I by_queue 
-is set to 
-.I False, 
-all jobs are treated as if they are in one large queue. The 
-.I by_queue 
+run, and so on.  If
+.I by_queue
+is set to
+.I False,
+all jobs are treated as if they are in one large queue. The
+.I by_queue
 parameter is overridden
-by the 
-.I round_robin 
-parameter when 
+by the
 .I round_robin
-is set to 
-.I True. 
+parameter when
+.I round_robin
+is set to
+.I True.
 .br
 Format: Boolean.
 .br
-Default: 
+Default:
 .I True all
 
 .IP cpus_per_ssinode 13
-.B Deprecated. 
+.B Deprecated.
 Such configuration now occurs automatically.
 
 .IP dedicated_prefix 13
 Queue names with this prefix are treated as dedicated
 queues, meaning jobs in that queue are considered for
 execution only when the system is in dedicated time as specified in the
-configuration file PBS_HOME/sched_priv/dedicated_time. 
+configuration file PBS_HOME/sched_priv/dedicated_time.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I ded
 
 .IP fair_share 13
-Enables the fairshare algorithm, and 
+Enables the fairshare algorithm, and
 turns on usage collecting. Jobs will be selected based on a
 function of their recent usage and priority (shares). Not a prime option.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False all
 
 .IP fairshare_decay_factor 13
 Decay multiplier for fairshare usage reduction.  Each decay period, the
-usage is multiplied by this value.  
+usage is multiplied by this value.
 .br
 Valid values: between 0 and 1, not inclusive.  Not a prime option.
 .br
 Format: Float
 .br
-Default: 
+Default:
 .I 0.5
 
 .IP fairshare_decay_time 13
-Time between fairshare usage decay operations.  Not a prime option. 
+Time between fairshare usage decay operations.  Not a prime option.
 .br
 Format: Duration
-.br 
-Default: 
+.br
+Default:
 .I 24:00:00
 
 .IP fairshare_entity 13
 Specifies the entity for which fairshare usage data will
-be collected. Can be 
+be collected. Can be
 .I euser, egroup, Account_Name, queue,
 or
 .I egroup:euser.
@@ -314,38 +318,38 @@ Not a prime option.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I euser
 
 .IP fairshare_enforce_no_shares 13
 If this option is enabled, jobs whose entity has zero
 shares will never run. Requires
-.I fair_share 
+.I fair_share
 parameter to be enabled.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False
 
 .IP fairshare_usage_res 13
 Specifies the mathematical formula to use in fairshare calculations.
-Is composed of PBS resources as well as mathematical operations that 
+Is composed of PBS resources as well as mathematical operations that
 are standard Python operators and/or those in the Python math module.
-When using a PBS resource, if 
-.I resources_used.<resource name> 
-exists, that value is used.  Otherwise, the value is taken from 
+When using a PBS resource, if
+.I resources_used.<resource name>
+exists, that value is used.  Otherwise, the value is taken from
 .I Resource_List.<resource name>.
 Not a prime option.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I cput
 
 .IP half_life 13
 .B Deprecated
-(as of 13.0).  
+(as of 13.0).
 The half-life for fairshare usage; after the amount of time
 specified, the fairshare usage is halved. Requires that
 .I fair_share
@@ -353,24 +357,24 @@ parameter be enabled.  Not a prime option.
 .br
 Format: Duration
 .br
-Default: 
+Default:
 .I 24:00:00
 
 .IP help_starving_jobs 13
 Setting this option enables starving job support. Once
-jobs have waited for the amount of time given by 
+jobs have waited for the amount of time given by
 .I max_starve
 they are considered starving. If a job is considered starving, no
 lower-priority jobs will run until the starving job can be run, unless
-backfilling is also specified. To use this option, the 
+backfilling is also specified. To use this option, the
 .I max_starve
-configuration parameter needs to be set as well. See also 
-.I backfill, max_starve, 
-and the server's 
+configuration parameter needs to be set as well. See also
+.I backfill, max_starve,
+and the server's
 .I eligible_time_enable
 attribute.
 .br
-At each scheduler iteration, PBS calculates 
+At each scheduler iteration, PBS calculates
 .I estimated.start_time
 and
 .I estimated.exec_vnode
@@ -378,35 +382,35 @@ for starving jobs being backfilled around.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I True all
 
 .IP job_sort_key 13
 .RS
-Specifies how jobs should be sorted. 
+Specifies how jobs should be sorted.
 .I job_sort_key
 can be used to sort either by resources or by special case sorting
-routines. Multiple 
-.I job_sort_key 
+routines. Multiple
+.I job_sort_key
 entries can be used, one to a line, in which
 case the first entry will be the primary sort key, the second will be
-used to sort equivalent items from the first sort, etc. 
-The 
+used to sort equivalent items from the first sort, etc.
+The
 .I HIGH
-option implies descending sorting, 
-.I LOW 
+option implies descending sorting,
+.I LOW
 implies ascending. See example for details.
 
-This attribute is overridden by the 
-.I job_sort_formula 
+This attribute is overridden by the
+.I job_sort_formula
 attribute.
-If both are set, 
-.I job_sort_key 
+If both are set,
+.I job_sort_key
 is ignored and an error message is
 printed.
 
 .br
-Syntax: 
+Syntax:
 .br
 .I job_sort_key: """<resource name> HIGH|LOW"""
 .br
@@ -416,32 +420,32 @@ Syntax:
 
 .br
 There are three special case sorting routines, which can be used
-instead of 
+instead of
 .I <resource name>:
 .RS
 .IP "fairshare_perc HIGH" 13
-Sort based on how much fairshare percentage the entity deserves, 
-based on the values in the 
-.I resource group 
-file. If user A has more priority than user B, all of user A's 
-jobs will always run first.  Past history is not used.  
+Sort based on how much fairshare percentage the entity deserves,
+based on the values in the
+.I resource group
+file. If user A has more priority than user B, all of user A's
+jobs will always run first.  Past history is not used.
 
 This should only
-be used if entity share (strict priority) sorting is needed. 
+be used if entity share (strict priority) sorting is needed.
 Incompatible with
 .I fair_share
-scheduling parameter being 
+scheduling parameter being
 .I True.
 
 .IP "job_priority HIGH | LOW" 13
-Sort jobs by the job 
-.I priority 
-attribute regardless of job owner. 
+Sort jobs by the job
+.I priority
+attribute regardless of job owner.
 
 .IP "sort_priority HIGH|LOW" 13
-.B Deprecated.  
-See 
-.I job_priority 
+.B Deprecated.
+See
+.I job_priority
 above.
 .RE
 
@@ -451,7 +455,7 @@ high CPU count come first:
 job_sort_key: "ncpus HIGH" all
 .br
 .RE
-The following example shows how to sort jobs so that those with 
+The following example shows how to sort jobs so that those with
 lower memory come first:
 .br
 .RS
@@ -465,66 +469,66 @@ Default: Not in force
 .RE
 
 .IP key 13
-.B Deprecated. 
-Use 
+.B Deprecated.
+Use
 .I job_sort_key.
 
 .IP load_balancing 13
-When set to 
-.I True, 
+When set to
+.I True,
 this scheduler takes into account the load average on vnodes as
-well as the resources listed in the 
+well as the resources listed in the
 .I resources
 line in sched_config.  Load balancing can result in overloaded CPUs.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False all
 
 .IP load_balancing_rr 13
-.B Deprecated. 
-To duplicate this setting, enable 
+.B Deprecated.
+To duplicate this setting, enable
 .I load_balancing
-and 
-.I set smp_cluster_dist 
-to 
-.I round_robin. 
+and
+.I set smp_cluster_dist
+to
+.I round_robin.
 
 .IP log_filter 13
 .B Obsolete.
-See the 
+See the
 .I log_events
 scheduler attribute.
 
 .IP max_starve 13
 The amount of time before a job is considered starving. This
-variable is used only if 
-.I help_starving_jobs 
+variable is used only if
+.I help_starving_jobs
 is set.
 .br
 Upper limit: None
 .br
 Format: Duration
 .br
-Default: 
+Default:
 .I 24:00:00
 
 .IP mem_per_ssinode 13
-.B Deprecated. 
+.B Deprecated.
 Such configuration now occurs automatically.
 
 .IP mom_resources 13
 This option is used to query the MoMs to set the value of
 .I resources_available.<resource name>
-where 
+where
 .I resource name
 is a site-defined
 resource. Each MoM is queried with the resource name and the
-return value is used to replace 
+return value is used to replace
 .I resources_available.<resource name>
 on that vnode. On a multi-vnoded machine with a natural vnode,
-all vnodes share anything set in 
+all vnodes share anything set in
 .I mom_resources.
 .br
 Format: String
@@ -532,8 +536,8 @@ Format: String
 .IP node_sort_key 13
 .RS
 Defines sorting on resource or priority values on vnodes. Resource
-must be numerical, for example, long or float.  Up to 20 
-.I node_sort_key entries 
+must be numerical, for example, long or float.  Up to 20
+.I node_sort_key entries
 can be used, in which
 case the first entry will be the primary sort key, the second will be
 used to sort equivalent items from the first sort, etc.
@@ -547,19 +551,19 @@ Syntax:
 .br
 where
 .RS
-.IP total 
-Use the 
-.I resources_available 
+.IP total
+Use the
+.I resources_available
 value.
-.IP assigned 
-Use the 
-.I resources_assigned 
+.IP assigned
+Use the
+.I resources_assigned
 value.
-.IP unused 
-Use the value given by 
+.IP unused
+Use the value given by
 .I resources_available - resources_assigned.
 .IP sort_priority
-Sort vnodes by the value of the vnode 
+Sort vnodes by the value of the vnode
 .I priority
 attribute.
 .RE
@@ -569,25 +573,25 @@ When sorting on a resource, the default third field is "total".
 .br
 Format: String
 .br
-Default: 
+Default:
 .I node_sort_key: sort_priority HIGH all
 .RE
 
 .IP nonprimetime_prefix 13
 Queue names which start with this prefix are treated
-as non-primetime queues. Jobs in these queues 
+as non-primetime queues. Jobs in these queues
 run only during non-primetime. Primetime and non-primetime are
-defined in the holidays file. 
+defined in the holidays file.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I np_
 
 .IP peer_queue 13
 Defines the mapping of a pulling queue to a furnishing queue
 for peer scheduling. Maximum number is 50 peer queues per
-scheduler. 
+scheduler.
 .br
 Format: String
 .br
@@ -595,35 +599,35 @@ Default: Unset
 
 .IP preemptive_sched 13
 Enables job preemption.  See the
-.I preempt_order 
+.I preempt_order
 scheduler attribute.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I True all
 
 .IP preempt_checkpoint 13
-.B Deprecated. 
+.B Deprecated.
 Add "C" to the
-.I preempt_order 
+.I preempt_order
 scheduler attribute.
 
 .IP preempt_fairshare 13
-.B Deprecated. 
-Add "fairshare" to 
-.I preempt_prio 
+.B Deprecated.
+Add "fairshare" to
+.I preempt_prio
 parameter.
 
 .IP preempt_order 13
-.B Obsolete.  
-See the 
+.B Obsolete.
+See the
 .I preempt_order
 scheduler attribute.
 
 .IP preempt_prio 13
 .B Obsolete.
-See the 
+See the
 .I preempt_prio
 scheduler attribute.
 
@@ -634,9 +638,9 @@ See the
 scheduler attribute.
 
 .IP preempt_requeue 13
-.B Deprecated. 
+.B Deprecated.
 Add an "R" to the
-.I preempt_order 
+.I preempt_order
 scheduler attribute.
 
 .IP preempt_sort 13
@@ -646,19 +650,19 @@ See the
 scheduler attribute.
 
 .IP preempt_starving 13
-.B Deprecated. 
-Add 
+.B Deprecated.
+Add
 .I """starving_jobs"""
 to
-.I preempt_prio 
+.I preempt_prio
 parameter.
 
 .IP preempt_suspend 13
-.B Deprecated. 
-Add an 
-.I """S""" 
+.B Deprecated.
+Add an
+.I """S"""
 to the
-.I preempt_order 
+.I preempt_order
 scheduler attribute.
 
 .IP primetime_prefix 13
@@ -669,43 +673,43 @@ holidays file.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I p_
 
 .IP prime_exempt_anytime_queues 13
-Determines whether 
-.I anytime 
+Determines whether
+.I anytime
 queues are controlled by
-.I backfill_prime. 
-If set to true, jobs in an 
-.I anytime 
+.I backfill_prime.
+If set to true, jobs in an
+.I anytime
 queue
 are not prevented from running across a primetime/nonprimetime
 or non-primetime/primetime boundary. If set to
-false, the jobs in an 
-.I anytime 
+false, the jobs in an
+.I anytime
 queue may not cross this boundary,
-except for the amount specified by their 
-.I prime_spill 
+except for the amount specified by their
+.I prime_spill
 setting.
-See also 
+See also
 .I backfill_prime, prime_spill.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False
 
 .IP prime_spill 13
 .RS
 Specifies the amount of time a job can spill over from non-primetime
 into primetime or from primetime into non-primetime.
-This option is only meaningful if 
-.I backfill_prime 
-is 
-.I True. 
+This option is only meaningful if
+.I backfill_prime
+is
+.I True.
 This option can be separately specified for
-primetime and non-primetime. See also 
+primetime and non-primetime. See also
 .I backfill_prime, prime_exempt_anytime_queues.
 .br
 For example, non-primetime jobs can spill into primetime by 1 hour:
@@ -720,25 +724,25 @@ the other by 1 hour:
 .br
 Format: Duration
 .br
-Default: 
+Default:
 .I 00:00:00
 .RE
 
 .IP provision_policy
-Specifies how vnodes are selected for provisioning.  Can be set by 
+Specifies how vnodes are selected for provisioning.  Can be set by
 Manager only; readable by all.  Can be set to one of the following:
 
 .RS
 .IP "avoid_provision" 5
 
 PBS first tries to satisfy the job's request from free vnodes that
-already have the requested AOE instantiated.  PBS uses 
+already have the requested AOE instantiated.  PBS uses
 .I node_sort_key
 to sort these vnodes.
 
 If it cannot satisfy the job's request using vnodes that already have
 the requested AOE instantiated, PBS uses the server's
-.I node_sort_key 
+.I node_sort_key
 to select the free vnodes that must be
 provisioned in order to run the job, choosing from any free vnodes,
 regardless of which AOE is instantiated on them.
@@ -751,8 +755,8 @@ requested AOE instantiated on them.
 PBS selects vnodes to be provisioned without considering which AOE
 is currently instantiated.
 
-PBS uses the server's 
-.I node_sort_key 
+PBS uses the server's
+.I node_sort_key
 to select the vnodes on which to run the job,
 choosing from any free vnodes, regardless of which AOE is instantiated
 on them.  Of the selected vnodes, PBS provisions any that do not have
@@ -761,27 +765,27 @@ the requested AOE instantiated on them.
 
 Format: string
 .br
-Default: 
+Default:
 .I "aggressive_provision"
 .RE
 
 .IP resources 13
 .RS
-Specifies those resources which are not to be over-allocated, 
+Specifies those resources which are not to be over-allocated,
 or if Boolean, are to be honored, when
 scheduling jobs. Vnode-level Boolean resources are automatically
 enforced and do not need to be listed here. Limits are set
-by setting 
+by setting
 .I resources_available.<resource name>
 on vnodes, queues, and the server. A scheduler
 considers numeric (integer or float) items as consumable
 resources and ensures that no more are assigned than are available
-(e.g. 
-.I ncpus 
-or 
+(e.g.
+.I ncpus
+or
 .I mem
 ). Any string resources are compared
-using string comparisons (e.g. 
+using string comparisons (e.g.
 .I arch
 ).
 .br
@@ -795,16 +799,16 @@ the job will run on any host.
 .br
 Format: String
 .br
-Default: 
+Default:
 .I ncpus, mem, arch, host, vnode, aoe
 .RE
 
 .IP resource_unset_infinite 13
-Resources in this list are treated as infinite if they are unset. 
+Resources in this list are treated as infinite if they are unset.
 Cannot be set differently
-for primetime and non-primetime. 
+for primetime and non-primetime.
 .br
-Example: 
+Example:
 .I resource_unset_infinite: vmem, foo_licenses
 .br
 Format: Comma-delimited list of resources
@@ -812,39 +816,39 @@ Format: Comma-delimited list of resources
 Default: Empty list
 
 .IP round_robin 13
-If set to 
-.I True, 
+If set to
+.I True,
 this scheduler considers one job from
 the first queue, then one job from the second queue, and so on
-in a circular fashion. If 
-.I sort_queues 
-is set to 
-.I True, 
+in a circular fashion. If
+.I sort_queues
+is set to
+.I True,
 the queues are ordered with the highest-priority queue first. Each
 scheduling cycle starts with the same highest-priority queue,
 which will therefore get preferential treatment.  If
-.I round_robin 
-is set to 
-.I False, 
-this scheduler considers jobs according to the setting of the 
-.I by_queue 
+.I round_robin
+is set to
+.I False,
+this scheduler considers jobs according to the setting of the
+.I by_queue
 attribute.
-When 
-.I True, 
-overrides the 
-.I by_queue 
+When
+.I True,
+overrides the
+.I by_queue
 attribute.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False all
 
 .IP server_dyn_res 13
 Directs this scheduler to replace the server's
-.I resources_available 
+.I resources_available
 values with new values returned
-by a site-specific external program. 
+by a site-specific external program.
 .br
 Format: String
 .br
@@ -852,67 +856,67 @@ Default: Unset
 
 .IP smp_cluster_dist 13
 .RS
-.B Deprecated (12.2). 
+.B Deprecated (12.2).
 Specifies how single-host jobs should be distributed to
-all hosts of the complex. Options: 
+all hosts of the complex. Options:
 .RS
-.IP pack 
+.IP pack
 Keep putting jobs onto one host until it is full and then move on to the next.
 .IP round_robin
 Put one job on each vnode in turn before cycling back to the first one.
 .IP lowest_load
-Put the job on the lowest-loaded host. 
+Put the job on the lowest-loaded host.
 .RE
 .br
 Format: String
 .br
-Default: 
+Default:
 .I pack all
 .RE
 
 .IP sort_by 13
-.B Deprecated. 
-Use 
+.B Deprecated.
+Use
 .I job_sort_key.
 
 .IP sort_queues 13
-.B Deprecated.  
-When set to 
-.I True, 
-queues are sorted so that the highest-priority queues 
-are considered first. Queues are sorted by each queue's 
-.I priority 
+.B Deprecated.
+When set to
+.I True,
+queues are sorted so that the highest-priority queues
+are considered first. Queues are sorted by each queue's
+.I priority
 attribute. The queues are sorted in a descending
 fashion, that is, a queue with priority 6 comes before a
-queue with priority 3. 
+queue with priority 3.
 
-When set to 
-.I False, 
+When set to
+.I False,
 queues are not sorted.
 
 This is a prime option, which means it can be selectively
 applied to primetime or non-primetime.
 
-The sorted order of queues is not taken into consideration unless 
+The sorted order of queues is not taken into consideration unless
 .I by_queue
-is set to 
+is set to
 .I True.
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I True ALL
 
 .IP strict_fifo 13
-.B Deprecated. 
-Use 
+.B Deprecated.
+Use
 .I strict_ordering.
 
 .IP strict_ordering 13
 Specifies that jobs must be run in the order determined
 by whatever sorting parameters are being used. This means that
 a job cannot be skipped due to resources required not being
-available. 
+available.
 If a job due to run next cannot run, no job will run, unless
 backfilling is used, in which case jobs can be backfilled around the job that is
 due to run next.
@@ -923,29 +927,29 @@ Example line in PBS_HOME/sched_priv/sched_config:
 .br
 Format: Boolean
 .br
-Default: 
+Default:
 .I False all
 .RE
 
 .IP sync_time 13
-.B Deprecated.  
+.B Deprecated.
 The amount of time between writing the fairshare usage
-data to disk. Requires 
-.I fair_share 
+data to disk. Requires
+.I fair_share
 to be enabled.
 .br
 Format: Duration
 .br
-Default: 
+Default:
 .I 1:00:00
 
 .IP unknown_shares 13
-The number of shares for the 
-.I unknown 
+The number of shares for the
+.I unknown
 group. These
 shares determine the portion of a resource to be allotted to that
-group via fairshare. Requires 
-.I fair_share 
+group via fairshare. Requires
+.I fair_share
 to be enabled.
 .br
 Format: Integer
@@ -957,11 +961,11 @@ Default: The unknown group gets 0 shares
 Allowable values (case insensitive): True|T|Y|1|False|F|N|0
 
 .IP Duration 10
-Period of time.  Expressed either as 
+Period of time.  Expressed either as
 .br
 .I \ \ \ integer seconds
 .br
-or 
+or
 .br
 .I \ \ \ [[hours:]minutes:]seconds[.milliseconds]
 .br
@@ -976,19 +980,19 @@ Long integer.
 Allowable values: 0-9 [[0-9] ...], and + and -
 
 .IP Size 10
-Number of bytes or words.  The size of a word is 64 bits.  
+Number of bytes or words.  The size of a word is 64 bits.
 .br
 Format:
 .I <integer>[<suffix>]
 .br
-where 
-.I suffix 
+where
+.I suffix
 can be
 .RS 13
 .IP "\ b\ or\ \ w" 13
 bytes or words
 .IP "kb\ or\ kw"
-Kilobytes or kilowords (2 to the 10th, or 1024) 
+Kilobytes or kilowords (2 to the 10th, or 1024)
 .IP "mb\ or\ mw" 13
 Megabytes or megawords (2 to the 20th, or 1,048,576)
 .IP "gb\ or\ gw" 13
@@ -998,8 +1002,8 @@ Terabytes or terawords (2 to the 40th, or 1024 gigabytes)
 .IP "pb\ or\ pw" 13
 Petabytes or petawords (2 to the 50th, or 1,048,576 gigabytes)
 .RE
-.IP 
-Default: 
+.IP
+Default:
 .I bytes
 
 
@@ -1015,18 +1019,18 @@ Allowable values: [_a-zA-Z0-9][[-_a-zA-Z0-9 !"#$%' ()*+,-./:;<=>?@[\\]^_{|}~] ..
 String resource values are case-sensitive.
 
 .SH FILES
-$PBS_HOME/sched_priv is 
+$PBS_HOME/sched_priv is
 the default directory for configuration files.
 
 $PBS_HOME/sched_priv/holidays is the holidays file.
 
 .SH SIGNAL HANDLING
 
-All signals are ignored until the end of the cycle.  Most signals are 
+All signals are ignored until the end of the cycle.  Most signals are
 handled in the standard UNIX fashion.
 
 .IP SIGHUP
-This scheduler closes and reopens its log file and rereads its 
+This scheduler closes and reopens its log file and rereads its
 configuration file if one exists.
 .IP "SIGALRM, SIGBUS, etc."
 Ignored until end of scheduling cycle.  This scheduler quits.
@@ -1040,5 +1044,5 @@ Zero upon normal termination.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide, 
+.B PBS Administrator's Guide,
 pbs_server(8B), pbs_mom(8B)

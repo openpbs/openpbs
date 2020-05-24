@@ -1,47 +1,51 @@
+.\"
 .\" Copyright (C) 1994-2020 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
 .\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
 .\"
-.TH pbs_tmrsh 8B "22 November 2017" Local "PBS Professional"
+
+.TH pbs_tmrsh 8B "22 November 2017" Local "PBS"
 .SH NAME
-.B pbs_tmrsh 
+.B pbs_tmrsh
 - TM-enabled replacement for rsh/ssh for use by MPI implementations
 .SH SYNOPSIS
-.B pbs_tmrsh 
+.B pbs_tmrsh
 <hostname> [-l <username>] [-n] <command> [<args> ...]
 .br
-.B pbs_tmrsh 
+.B pbs_tmrsh
 --version
 
 .SH DESCRIPTION
@@ -50,13 +54,13 @@ The
 command attempts to emulate an "rsh" connection to the specified host,
 via underlying calls to the Task Management (TM) API. The program is
 intended to be used during MPI integration activities, and not by
-end-users. 
+end-users.
 
 Running "pbs_tmrsh <hostname> <command>" causes a PBS task to be started
-on 
-.I hostname 
-running 
-.I command. 
+on
+.I hostname
+running
+.I command.
 
 .B Requirements for Environment Variables
 .br
@@ -69,26 +73,26 @@ and point to the full path for
 The file $PBS_HOME/pbs_environment should contain an environment
 variable PATH in which to search for the program executable. This
 applies to both Windows and Linux. It is expected that a full path will
-be specified for the 
-.I command 
+be specified for the
+.I command
 and the PATH variable will not be needed.
 
 .SH OPTIONS
 .IP "-l <username>" 13
-Specifies the username under which to execute the task. If used, 
-.I username 
+Specifies the username under which to execute the task. If used,
+.I username
 must
 match the username running the
-.B pbs_tmrsh 
+.B pbs_tmrsh
 command.
 .IP "-n" 13
 A no-op; provided for MPI implementations that expect to call
-rsh with the 
-.I -n 
+rsh with the
+.I -n
 option.
 .LP
 .IP "--version" 13
-The 
+The
 .B pbs_tmrsh
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -98,8 +102,8 @@ This option can only be used alone.
 Specifies command to be run as a PBS task.
 
 .IP hostname
-Specifies host on which to run PBS task.  The 
-.I hostname 
+Specifies host on which to run PBS task.  The
+.I hostname
 may be in IP-dot-address form.
 
 .SH Output and Error
@@ -119,6 +123,6 @@ program exits with the exit status of the remote command or with
 
 .SH SEE ALSO
 The
-.I PBS Professional Administrator's Guide
+.I PBS Administrator's Guide
 and the following manual pages:
-pbs_attach(8B), tm(3) 
+pbs_attach(8B), tm(3)

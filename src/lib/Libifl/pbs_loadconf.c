@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	pbs_loadconf.c
  */
@@ -78,7 +80,9 @@ struct pbs_config pbs_conf = {
 	0,					/* start_sched */
 	0,					/* start comm */
 	0,					/* locallog */
-	AUTH_RESV_PORT,				/* default to reserved port authentication */
+	NULL,					/* default to NULL for supported auths */
+	{'\0'},					/* default no auth method to encrypt/decrypt data */
+	AUTH_RESVPORT_NAME,			/* default to reserved port authentication */
 	0,					/* sched_modify_event */
 	0,					/* syslogfac */
 	3,					/* syslogsvr - LOG_ERR from syslog.h */
@@ -99,7 +103,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_demux_path */
 	NULL,					/* pbs_environment */
 	NULL,					/* iff_path */
-	NULL,					/* k5dcelogin_path */
 	NULL,					/* primary name   */
 	NULL,					/* secondary name */
 	NULL,					/* aux Mom home   */
@@ -111,7 +114,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_mail_host_name */
 	NULL,					/* pbs_output_host_name */
 	NULL,					/* pbs_smtp_server_name */
-	1,					/* use TCP by default */
 	1, 					/* use compression by default with TCP */
 	1,					/* use mcast by default with TCP */
 	0,					/* force fault tolerant comm disabled by default */
@@ -441,10 +443,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_data_service_host);
 				pbs_conf.pbs_data_service_host = strdup(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_USE_TCP)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.pbs_use_tcp = ((uvalue > 0) ? 1 : 0);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_USE_COMPRESSION)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_compression = ((uvalue > 0) ? 1 : 0);
@@ -587,18 +585,33 @@ __pbs_loadconf(int reload)
 				pbs_conf.pbs_conf_remote_viewer = strdup(conf_value);
 			}
 #endif
-#ifndef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_AUTH)) {
-				if (!strcasecmp(conf_value, "MUNGE")) {
-				   pbs_conf.auth_method = AUTH_MUNGE;
-				} else if (!strcasecmp(conf_value, "GSS")) {
-					pbs_conf.auth_method = AUTH_GSS;
-				} else {
-					fprintf(stderr, "pbsconf error: illegal value for %s\n",PBS_CONF_AUTH);
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
+				strcpy(pbs_conf.auth_method, value);
+				free(value);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_ENCRYPT_METHOD)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));
+				strcpy(pbs_conf.encrypt_method, value);
+				free(value);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_SUPPORTED_AUTH_METHODS)) {
+				char *value = convert_string_to_lowercase(conf_value);
+				if (value == NULL)
+					goto err;
+				pbs_conf.supported_auth_methods = break_comma_list(value);
+				if (pbs_conf.supported_auth_methods == NULL) {
+					free(value);
 					goto err;
 				}
+				free(value);
 			}
-#endif
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
 		fclose(fp);
@@ -732,10 +745,6 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
-	if ((gvalue = getenv(PBS_CONF_USE_TCP)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.pbs_use_tcp = ((uvalue > 0) ? 1 : 0);
-	}
 	if ((gvalue = getenv(PBS_CONF_USE_COMPRESSION)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_use_compression = ((uvalue > 0) ? 1 : 0);
@@ -828,7 +837,6 @@ __pbs_loadconf(int reload)
 		free(pbs_conf.pbs_conf_remote_viewer);
 		pbs_conf.pbs_conf_remote_viewer = strdup(gvalue);
 	}
-	
 #endif
 
 	/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
@@ -953,18 +961,49 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
-#ifndef WIN32
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {
-		if (!strcasecmp(gvalue, "MUNGE")) {
-			pbs_conf.auth_method = AUTH_MUNGE;
-		} else if (!strcasecmp(gvalue, "GSS")) {
-			pbs_conf.auth_method = AUTH_GSS;
-		} else {
-			fprintf(stderr, "pbsconf error: illegal value for %s\n",PBS_CONF_AUTH);
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		memset(pbs_conf.auth_method, '\0', sizeof(pbs_conf.auth_method));
+		strcpy(pbs_conf.auth_method, value);
+		free(value);
+	}
+	if ((gvalue = getenv(PBS_CONF_ENCRYPT_METHOD)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		memset(pbs_conf.encrypt_method, '\0', sizeof(pbs_conf.encrypt_method));
+		strcpy(pbs_conf.encrypt_method, value);
+		free(value);
+	}
+	if ((gvalue = getenv(PBS_CONF_SUPPORTED_AUTH_METHODS)) != NULL) {
+		char *value = convert_string_to_lowercase(gvalue);
+		if (value == NULL)
+			goto err;
+		free_string_array(pbs_conf.supported_auth_methods);
+		pbs_conf.supported_auth_methods = break_comma_list(value);
+		if (pbs_conf.supported_auth_methods == NULL) {
+			free(value);
+			goto err;
+		}
+		free(value);
+	}
+
+	if (pbs_conf.supported_auth_methods == NULL) {
+		pbs_conf.supported_auth_methods = break_comma_list(AUTH_RESVPORT_NAME);
+		if (pbs_conf.supported_auth_methods == NULL) {
 			goto err;
 		}
 	}
-#endif
+
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		/* encryption is not disabled, validate encrypt method */
+		if (is_valid_encrypt_method(pbs_conf.encrypt_method) != 1) {
+			fprintf(stderr, "The given PBS_ENCRYPT_METHOD = %s does not support encrypt/decrypt of data\n", pbs_conf.encrypt_method);
+			goto err;
+		}
+	}
 
 	pbs_conf.pbs_tmpdir = pbs_get_tmpdir();
 
@@ -993,11 +1032,6 @@ __pbs_loadconf(int reload)
 		}
 	}
 
-	if (pbs_conf.pbs_use_tcp == 0) {
-		pbs_conf.pbs_use_compression = 0;
-		pbs_conf.pbs_use_mcast = 0;
-		pbs_conf.pbs_use_ft = 0;
-	}
 	pbs_conf.loaded = 1;
 
 	if (pbs_client_thread_unlock_conf() != 0)
@@ -1065,6 +1099,10 @@ err:
 	if (pbs_conf.pbs_lr_save_path) {
 		free(pbs_conf.pbs_lr_save_path);
 		pbs_conf.pbs_lr_save_path = NULL;
+	}
+	if (pbs_conf.supported_auth_methods) {
+		free_string_array(pbs_conf.supported_auth_methods);
+		pbs_conf.supported_auth_methods = NULL;
 	}
 
 	pbs_conf.load_failed = 1;

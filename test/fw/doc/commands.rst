@@ -26,7 +26,7 @@ Before running any test we have to export below 2 paths::
   export PYTHONPATH=</path/to/install/location>/lib/python<python version>/site-packages
 
 ::
-  
+
   export PATH=</path/to/install/location>/bin
 
 To Run a test suite and/or a test case
@@ -74,7 +74,7 @@ To Run a test suite and/or a test case
         pbs_benchpress -t <TestSuite> --param-file=</path/to/file>
 
         Example: take file as "param_file" then file content should be as below.
-         
+
         key1=val1
         key2=val2
         .
@@ -399,7 +399,7 @@ Here are a few examples, if a server soft limit is set to 0::
 for user user1 on the server object, pbs_stat --limits-info will show::
 
     u:user1
-        container = server:minita.pbspro.com
+        container = server:minita.pbs.com
         limit_type = max_run_soft
         remainder = -1
         usage/limit = 1/0
@@ -412,7 +412,7 @@ if a server soft limit is set to 0 on generic users::
 then pbs_stat --limits-info will show::
 
     u:user1/PBS_GENERIC
-        container = server:minita.pbspro.com
+        container = server:minita.pbs.com
         limit_type = max_run_soft
         remainder = -1
         usage/limit = 1/0

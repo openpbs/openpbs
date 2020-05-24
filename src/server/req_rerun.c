@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    req_rerun.c
  *
@@ -100,6 +102,7 @@ post_rerun(struct work_task *pwt)
 {
 	job	*pjob;
 	struct batch_request *preq;
+	struct depend *pdep;
 
 	preq = (struct batch_request *)pwt->wt_parm1;
 
@@ -114,6 +117,12 @@ post_rerun(struct work_task *pwt)
 
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(preq->rq_reply.brp_code, PREEMPT_METHOD_REQUEUE, pjob);
+		}
+		else {
+			/* mom acknowledged to rerun the job, release depend hold on run-one dependency */
+			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+			if (pdep != NULL)
+				depend_runone_release_all(pjob);
 		}
 	}
 
@@ -409,6 +418,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	struct  work_task *ptask;
 	time_t  rerun_to;
 	conn_t	*conn;
+	struct depend *pdep;
 	int rc;
 
 	if (preq->rq_extend && (strcmp(preq->rq_extend, "force") == 0))
@@ -457,7 +467,6 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	 * then deleted from mom as well.
 	 */
 	if (force == 1) {
-
 		/* Mom is down and issue signal failed or
 		 * request is from a manager and "force" is on,
 		 * force the requeue */
@@ -471,6 +480,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		 * force_reque will be called in post_discard_job,
 		 * after receiving IS_DISCARD_DONE from the MOM.
 		 */
+		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		if (pdep != NULL)
+			depend_runone_release_all(pjob);
 		reply_ack(preq);
 		return;
 

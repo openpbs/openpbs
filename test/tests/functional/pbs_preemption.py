@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -163,18 +166,21 @@ exit 1
 
         self.scheduler.log_match(jid + ";Job preempted by " + preempted_by)
 
+    @skipOnCpuSet
     def test_preempt_suspend(self):
         """
         Test that a job is preempted by suspension
         """
         self.submit_and_preempt_jobs(preempt_order='S')
 
+    @skipOnCpuSet
     def test_preempt_suspend_ja(self):
         """
         Test that a subjob is preempted by suspension
         """
         self.submit_and_preempt_jobs(preempt_order='S', job_array=True)
 
+    @skipOnCpuSet
     def test_preempt_checkpoint(self):
         """
         Test that a job is preempted with checkpoint
@@ -182,19 +188,22 @@ exit 1
         self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='C')
 
+    @skipOnCpuSet
     def test_preempt_checkpoint_requeue(self):
         """
         Test that when checkpoint fails, a job is correctly requeued
         """
-        self.mom.add_checkpoint_abort_script(body=self.chk_script)
+        self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
+    @skipOnCpuSet
     def test_preempt_requeue(self):
         """
         Test that a job is preempted by requeue
         """
         self.submit_and_preempt_jobs(preempt_order='R')
 
+    @skipOnCpuSet
     def test_preempt_requeue_exclhost(self):
         """
         Test that a job is preempted by requeue on node
@@ -212,18 +221,21 @@ exit 1
             existence=False, starttime=start_time,
             max_attempts=5)
 
+    @skipOnCpuSet
     def test_preempt_requeue_ja(self):
         """
         Test that a subjob is preempted by requeue
         """
         self.submit_and_preempt_jobs(preempt_order='R', job_array=True)
 
+    @skipOnCpuSet
     def test_preempt_delete(self):
         """
         Test preempt via delete correctly deletes a job
         """
         self.submit_and_preempt_jobs(preempt_order='D')
 
+    @skipOnCpuSet
     def test_preempt_delete_ja(self):
         """
         Test preempt via delete correctly deletes a subjob
@@ -231,6 +243,7 @@ exit 1
 
         self.submit_and_preempt_jobs(preempt_order='D', job_array=True)
 
+    @skipOnCpuSet
     def test_preempt_checkpoint_delete(self):
         """
         Test that when checkpoint fails, a job is correctly deleted
@@ -238,6 +251,7 @@ exit 1
         self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CD')
 
+    @skipOnCpuSet
     def test_preempt_rerunable_false(self):
         # in CLI mode Rerunnable requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
@@ -248,6 +262,7 @@ exit 1
 
         self.server.set_op_mode(m)
 
+    @skipOnCpuSet
     def test_preempt_checkpoint_false(self):
         # in CLI mode Checkpoint requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
@@ -258,6 +273,7 @@ exit 1
 
         self.server.set_op_mode(m)
 
+    @skipOnCpuSet
     def test_preempt_order_requeue_first(self):
         """
         Test that a low priority job is requeued if preempt_order is in
@@ -265,6 +281,7 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R', order=1)
 
+    @skipOnCpuSet
     def test_preempt_order_requeue_second(self):
         """
         Test that a low priority job is requeued if preempt_order is in
@@ -272,6 +289,7 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R', order=2)
 
+    @skipOnCpuSet
     def test_preempt_requeue_never_run(self):
         """
         Test that a job is preempted by requeue and the scheduler does not
@@ -283,6 +301,7 @@ exit 1
             ";Job will never run", existence=False, starttime=start_time,
             max_attempts=5)
 
+    @skipOnCpuSet
     def test_preempt_multiple_jobs(self):
         """
         Test that multiple jobs are preempted by one large high priority job
@@ -306,6 +325,7 @@ exit 1
         self.server.expect(JOB, {'job_state=S': 10})
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
 
+    @skipOnCpuSet
     def test_qalter_preempt_targets_to_none(self):
         """
         Test that a job requesting preempt targets set to two different queues
@@ -329,6 +349,7 @@ exit 1
         self.server.expect(JOB, id=jid,
                            attrib={'Resource_List.preempt_targets': 'None'})
 
+    @skipOnCpuSet
     def test_preempt_sort_when_set(self):
         """
         This test is for preempt_sort when it is set to min_time_since_start
@@ -343,6 +364,7 @@ exit 1
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
 
+    @skipOnCpuSet
     def test_preempt_sort_when_unset(self):
         """
         This test is for preempt_sort when it is unset
@@ -356,6 +378,7 @@ exit 1
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
 
+    @skipOnCpuSet
     def test_preempt_retry(self):
         """
         Test that jobs can be successfully preempted after a previously failed
@@ -411,6 +434,7 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.server.set_op_mode(m)
 
+    @skipOnCpuSet
     def test_vnode_resource_contention(self):
         """
         Test to make sure that preemption happens when the resource in
@@ -441,6 +465,7 @@ exit 3
         self.server.expect(NODE, {'state': 'free'}, id='vnode[4]')
 
     @requirements(num_moms=2)
+    @skipOnCpuSet
     def test_host_resource_contention(self):
         """
         Test to make sure that preemption happens when the resource in
@@ -490,6 +515,7 @@ exit 3
         comment = "Not Running: Insufficient amount of resource: host"
         self.server.expect(JOB, {'comment': comment}, id=hjid2)
 
+    @skipOnCpuSet
     def test_preempt_queue_restart(self):
         """
         Test that a queue which has preempt_targets set to another queue
@@ -524,6 +550,7 @@ exit 3
             self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
             self.fail('TC failed as workq2 recovery failed')
 
+    @skipOnCpuSet
     def test_insufficient_server_rassn_select_resc(self):
         """
         Set a rassn_select resource (like ncpus or mem) ons server and
@@ -549,6 +576,7 @@ exit 3
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
 
+    @skipOnCpuSet
     def test_preemption_priority_escalation(self):
         """
         Test that scheduler does not try preempting a job that escalates its
@@ -606,8 +634,9 @@ exit 3
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = ";Preempting job will escalate its priority"
         for job_id in jid_list[0:-2]:
-                self.scheduler.log_match(job_id + msg)
+            self.scheduler.log_match(job_id + msg)
 
+    @skipOnCpuSet
     def test_preemption_priority_escalation_2(self):
         """
         Test that scheduler does not try preempting a job that escalates its
@@ -707,3 +736,55 @@ exit 3
 
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
         self.server.expect(JOB, {'job_state=Q': 1})
+
+    def test_preempt_wrong_cull(self):
+        """
+        Test to make sure that if a preemptor cannot run because
+        it misses a non-consumable on a node, preemption candidates
+        are not incorrectly removed from consideration
+        if and because they "do not request the relevant resource".
+        Deciding on their utility should be left to the check
+        to see whether the nodes they occupy are useful.
+        """
+        attr = {'type': 'string_array', 'flag': 'h'}
+
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
+        self.scheduler.add_resource('app')
+
+        a = {'resources_available.ncpus': 1, 'resources_available.app': 'appA'}
+        self.server.create_vnodes('vna', a, num=1, mom=self.mom,
+                                  usenatvnode=False)
+        b = {'resources_available.ncpus': 1, 'resources_available.app': 'appB'}
+        self.server.create_vnodes('vnb', b, num=1, mom=self.mom,
+                                  usenatvnode=False, additive=True)
+
+        # set the preempt_order to kill/requeue only -- try old and new syntax
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
+
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "hipri")
+
+        # create normal queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 1}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "lopri")
+
+        # submit job 1
+        a = {'Resource_List.select': '1:ncpus=1:vnode=vna[0]', ATTR_q: 'lopri'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'state': 'R'}, id=jid1)
+
+        # submit job 2
+        a = {'Resource_List.select': '1:ncpus=1:app=appA', ATTR_q: 'hipri'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        self.server.expect(JOB, {'state': 'R'}, id=jid2)

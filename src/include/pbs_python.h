@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 
 #ifndef _PBS_PYTHON_DEF
@@ -238,7 +240,7 @@ extern int  pbs_python_ext_alloc_python_script(
 extern void pbs_python_ext_quick_start_interpreter(void);
 extern void pbs_python_ext_quick_shutdown_interpreter(void);
 extern int set_py_progname(void);
-extern int get_py_progname(char **dest, int dest_sz);
+extern int get_py_progname(char **);
 
 
 /* -- END pbs_python_external.c implementations -- */
@@ -290,6 +292,7 @@ extern int get_py_progname(char **dest, int dest_sz);
 #define PY_EVENT_PARAM_ARGLIST "argv"
 #define PY_EVENT_PARAM_ENV	"env"
 #define PY_EVENT_PARAM_PID	"pid"
+#define PY_EVENT_PARAM_MANAGEMENT	"management"
 
 /* special job object attributes */
 #define PY_JOB_FAILED_MOM_LIST	"failed_mom_list"
@@ -344,6 +347,8 @@ extern int get_py_progname(char **dest, int dest_sz);
 #define PY_TYPE_FLOAT2			"float"
 #define PY_TYPE_ENTITY			"pbs_entity"
 #define PY_TYPE_ENV			"pbs_env"
+#define PY_TYPE_MANAGEMENT	"management"
+#define PY_TYPE_SERVER_ATTRIBUTE	"server_attribute"
 
 /* PBS Python Exception errors - in modules/pbs/v1.1 files */
 #define	PY_ERROR_EVENT_INCOMPATIBLE 	"EventIncompatibleError"
@@ -426,6 +431,7 @@ extern int get_py_progname(char **dest, int dest_sz);
 #define	EVENT_ARGV_OBJECT  EVENT_OBJECT ".argv"
 #define	EVENT_ENV_OBJECT  EVENT_OBJECT ".env"
 #define	EVENT_PID_OBJECT  EVENT_OBJECT ".pid"
+#define	EVENT_MANAGEMENT_OBJECT  EVENT_OBJECT ".management"
 
 /* Special Job parameters */
 #define	JOB_FAILED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_FAILED_MOM_LIST

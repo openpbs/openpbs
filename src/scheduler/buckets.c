@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 #include <pbs_config.h>
 #include <stdio.h>
@@ -90,10 +92,10 @@ void
 free_bucket_bitpool(bucket_bitpool *bp) {
 	if(bp == NULL)
 		return;
-	
+
 	pbs_bitmap_free(bp->truth);
 	pbs_bitmap_free(bp->working);
-	
+
 	free(bp);
 }
 
@@ -244,13 +246,13 @@ void
 free_node_bucket(node_bucket *nb) {
 	if(nb == NULL)
 		return;
-	
+
 	free_bucket_bitpool(nb->busy_pool);
 	free_bucket_bitpool(nb->busy_later_pool);
 	free_bucket_bitpool(nb->free_pool);
-	
+
 	free_resource_list(nb->res_spec);
-	
+
 	pbs_bitmap_free(nb->bkt_nodes);
 
 	free(nb->name);
@@ -397,31 +399,31 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 	node_bucket **buckets = NULL;
 	node_bucket **tmp;
 	int node_ct;
-	
+
 	if (policy == NULL || nodes == NULL)
 		return NULL;
-	
+
 	node_ct = count_array((void**) nodes);
-	
+
 	buckets = calloc((node_ct + 1), sizeof(node_bucket *));
 	if (buckets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-		
-	
+
+
 	for (i = 0; i < node_ct; i++) {
 		node_bucket *nb = NULL;
 		int bkt_ind;
 		queue_info *qinfo = NULL;
 		int node_ind = nodes[i]->node_ind;
-		
+
 		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1)
 			continue;
 
 		if (queues != NULL && nodes[i]->queue_name != NULL)
 			qinfo = find_queue_info(queues, nodes[i]->queue_name);
-		
+
 		bkt_ind = find_node_bucket_ind(buckets, nodes[i]->res, qinfo, nodes[i]->priority);
 		if (flags & UPDATE_BUCKET_IND) {
 			if (bkt_ind == -1)
@@ -431,12 +433,12 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 		}
 		if (bkt_ind != -1)
 			nb = buckets[bkt_ind];
-		
+
 
 		if (nb == NULL) { /* no bucket found, need to add one*/
 			schd_resource *cur_res;
 			buckets[j] = new_node_bucket(1);
-			
+
 			if (buckets[j] == NULL) {
 				free_node_bucket_array(buckets);
 				return NULL;
@@ -449,17 +451,17 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 				free_node_bucket_array(buckets);
 				return NULL;
 			}
-			
+
 			if (qinfo != NULL)
 				buckets[j]->queue = qinfo;
-			
+
 			buckets[j]->priority = nodes[i]->priority;
 
 			for (cur_res = buckets[j]->res_spec; cur_res != NULL; cur_res = cur_res->next)
 				if (cur_res->type.is_consumable)
 					cur_res->assigned = 0;
 
-			
+
 			buckets[j]->busy_later_pool->truth_ct = 0;
 			buckets[j]->free_pool->truth_ct = 0;
 			buckets[j]->busy_pool->truth_ct = 0;
@@ -493,7 +495,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 			nb->busy_pool->truth_ct++;
 		}
 	}
-	
+
 	if (j == 0) {
 		free(buckets);
 		return NULL;
@@ -533,7 +535,7 @@ new_chunk_map() {
 }
 
 /* chunk_map destructor */
-void 
+void
 free_chunk_map(chunk_map *cmap) {
 	if (cmap == NULL)
 		return;
@@ -544,7 +546,7 @@ free_chunk_map(chunk_map *cmap) {
 }
 
 /* chunk_map array destructor */
-void 
+void
 free_chunk_map_array(chunk_map **cmap_arr) {
 	int i;
 	if (cmap_arr == NULL)
@@ -584,7 +586,7 @@ log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
 			total_chunks += chunk_count;
 		}
 		if (total_chunks < cmap[i]->chunk->num_chunks)
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Found %d out of %d chunks needed", total_chunks, cmap[i]->chunk->num_chunks);
 	}
 }
@@ -628,7 +630,7 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 	int k;
 	static pbs_bitmap *zeromap = NULL;
 	server_info *sinfo;
-	
+
 	if (cmap == NULL || resresv == NULL || resresv->select == NULL)
 		return 0;
 
@@ -637,7 +639,7 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 		if (zeromap == NULL)
 			return 0;
 	}
-	
+
 	sinfo = resresv->server;
 
 	for (i = 0; cmap[i] != NULL; i++) {
@@ -708,7 +710,7 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 		if (num_chunks_needed > 0)
 			return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -818,17 +820,17 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 	int n = 0;
 	nspec **ns_arr;
 	server_info *sinfo;
-	
+
 	if (policy == NULL || cb_map == NULL || resresv == NULL)
 		return NULL;
-		
+
 	sinfo = resresv->server;
 	ns_arr = calloc(resresv->select->total_chunks + 1, sizeof(nspec*));
 	if (ns_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-		
+
 	for (i = 0; cb_map[i] != NULL; i++) {
 		int chunks_needed = cb_map[i]->chunk->num_chunks;
 		for (j = pbs_bitmap_first_on_bit(cb_map[i]->node_bits); j >= 0;
@@ -879,7 +881,7 @@ int job_should_use_buckets(resource_resv *resresv) {
 	/* nodes are bucketed, they can't be sorted by unused */
 	if (conf.node_sort_unused)
 		return 0;
-	
+
 	/* Bucket algorithm doesn't support avoid_provisioning */
 	if (conf.provision_policy == AVOID_PROVISION)
 		return 0;
@@ -887,19 +889,19 @@ int job_should_use_buckets(resource_resv *resresv) {
 	/* qrun uses the standard path */
 	if (resresv == resresv->server->qrun_job)
 		return 0;
-	
+
 	/* Jobs in reservations use the standard path */
 	if (resresv->job != NULL) {
 		if(resresv->job->resv != NULL)
 			return 0;
 	}
-	
+
 	/* Only excl jobs use buckets */
 	if (resresv->place_spec->share)
 		return 0;
 	if (!resresv->place_spec->excl)
 		return 0;
-	
+
 	/* place=pack jobs do not use buckets */
 	if (resresv->place_spec->pack)
 		return 0;
@@ -907,7 +909,7 @@ int job_should_use_buckets(resource_resv *resresv) {
 	/*  multivnoded systems are incompatible */
 	if (resresv->server->has_multi_vnode)
 		return 0;
-	
+
 	/* Job's requesting specific hosts or vnodes use the standard path */
 	if (resdef_exists_in_array(resresv->select->defs, getallres(RES_HOST)))
 		return 0;
@@ -916,9 +918,9 @@ int job_should_use_buckets(resource_resv *resresv) {
 	/* If a job has an execselect, it means it's requesting vnode */
 	if (resresv->execselect != NULL)
 		return 0;
-	
+
 	return 1;
-		
+
 }
 
 /*
@@ -926,12 +928,12 @@ int job_should_use_buckets(resource_resv *resresv) {
  * 	    The mapping will be of the chunks to all the buckets that can satisfy them.
  * 	    This may be way more nodes than are required to run the job.
  * 	    If we can't find enough nodes in the buckets, we know we can never run.
- * 
+ *
  * @param[in] policy - policy info
  * @param[in] buckets - buckets to check
  * @param[in] resresv - resresv to check
  * @param[out] err - error structure to return failure
- * 
+ *
  * @return chunk map
  * @retval NULL - for the following reasons:
 		- if no buckets are found for one chunk
@@ -947,7 +949,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 	int can_run = 1;
 	chunk_map **cb_map;
 	static struct schd_error *failerr = NULL;
-	
+
 	if (policy == NULL || buckets == NULL || resresv == NULL || resresv->select == NULL || resresv->select->chunks == NULL || err == NULL)
 		return NULL;
 
@@ -959,10 +961,10 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 		}
 	} else
 		clear_schd_error(failerr);
-	
+
 	bucket_ct = count_array((void **) buckets);
 	chunk_ct = count_array((void **) resresv->select->chunks);
-	
+
 	cb_map = calloc((chunk_ct + 1), sizeof(chunk_map *));
 	if (cb_map == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1012,12 +1014,12 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 					total += buckets[j]->total * c;
 				} else {
 					if (failerr->status_code == SCHD_UNKWN)
-						copy_schd_error(failerr, err);
+						move_schd_error(failerr, err);
 				}
 				clear_schd_error(err);
 			}
 		}
-		
+
 		/* No buckets match or not enough nodes in the buckets: the job can't run */
 		if(b == 0 || total < cb_map[i]->chunk->num_chunks)
 			can_run = 0;
@@ -1058,6 +1060,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 	if (policy == NULL || sinfo == NULL || resresv == NULL || err == NULL)
 		return NULL;
+
 	if (resresv->is_job && qinfo == NULL)
 		return NULL;
 
@@ -1079,8 +1082,6 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 		if (qinfo->has_nodes)
 			ninfo_arr = qinfo->nodes;
-		else if (qinfo->partition != NULL)
-			ninfo_arr = qinfo->nodes_in_partition;
 		else
 			ninfo_arr = sinfo->unassoc_nodes;
 
@@ -1103,7 +1104,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 		for (i = 0; nodepart[i] != NULL; i++) {
 			nspec **nspecs;
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, 
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Evaluating placement set: %s", nodepart[i]->name);
 
 			clear_schd_error(err);
@@ -1140,12 +1141,12 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 /*
  * @brief check to see if a resresv can fit on the nodes using buckets
- * 
+ *
  * @param[in] policy - policy info
  * @param[in] bkts - buckets to search
  * @param[in] resresv - resresv to see if it can fit
  * @param[out] err - error structure to return failure
- * 
+ *
  * @return place resresv can run or NULL if it can't
  */
 nspec **

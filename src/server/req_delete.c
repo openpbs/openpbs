@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	req_delete.c
  *
@@ -616,6 +618,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	struct batch_request *temp_preq = NULL;
 	int rc;
 	int is_mgr = 0;
+	int jt;
 
 	/* + 2 is for the '@' in user@host and for the null termination byte. */
 	char by_user[PBS_MAXUSER + PBS_MAXHOSTNAME + 2] = {'\0'};
@@ -632,6 +635,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	/* See if the request is coming from a manager */
 	if (preq->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR))
 		is_mgr = 1;
+
+	jt = is_job_array(pjob->ji_qs.ji_jobid);
 
 	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
 
@@ -694,6 +699,13 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		}
 
 		return;
+	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
+		   ((pjob->ji_qs.ji_state == JOB_STATE_QUEUED) ||
+		    (pjob->ji_qs.ji_state == JOB_STATE_HELD))) {
+		struct depend *dp;
+		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		if (dp != NULL)
+			depend_runone_remove_dependency(pjob);
 	}
 
 	if (is_mgr && forcedel) {
@@ -790,7 +802,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, "Delete forced");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
-			/* 
+			/*
 			 * If we are waiting for preemption to be complete and someone does a qdel -Wforce
 			 * we need to reply back to the scheduler.  We need to reply success so we don't
 			 * attempt another preemption method.  This leads to a minor race condition
@@ -809,6 +821,11 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
 				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 			}
+
+			/* see if it has any dependencies */
+			if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
+				(void)depend_on_term(pjob);
+
 			/*
 			 * Check if the history of the finished job can be saved or it needs to be purged .
 			 */
@@ -894,7 +911,7 @@ void req_reservationOccurrenceEnd(struct batch_request *preq)
 		case 0:	/* explicit reject */
 			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			break;
-		case 1: /* no recreate request as there are only read permissions */ 
+		case 1: /* no recreate request as there are only read permissions */
 		case 2:	/* no hook script executed - go ahead and accept event*/
 			reply_ack(preq);
 			break;

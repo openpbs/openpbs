@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	tpp_util.c
@@ -67,11 +69,8 @@
 #endif
 #include "avltree.h"
 #include "pbs_error.h"
-
-#include "rpp.h"
-#include "tpp_common.h"
-#include "tpp_platform.h"
-
+#include "tpp_internal.h"
+#include "dis.h"
 #ifdef PBS_COMPRESSION_ENABLED
 #include <zlib.h>
 #endif
@@ -88,6 +87,564 @@ static pthread_once_t tpp_once_ctrl = PTHREAD_ONCE_INIT; /* once ctrl to initial
 long tpp_log_event_mask = 0;
 
 void (*tpp_log_func)(int level, const char *id, char *mess) = NULL;
+
+/* default keepalive values */
+#define DEFAULT_TCP_KEEPALIVE_TIME 30
+#define DEFAULT_TCP_KEEPALIVE_INTVL 10
+#define DEFAULT_TCP_KEEPALIVE_PROBES 3
+#define DEFAULT_TCP_USER_TIMEOUT 60000
+
+#define PBS_TCP_KEEPALIVE "PBS_TCP_KEEPALIVE" /* environment string to search for */
+
+/* extern functions called from this file into the tpp_transport.c */
+static pbs_tcp_chan_t * tppdis_get_user_data(int sd);
+
+void
+tpp_auth_logger(int type, int objclass, int severity, const char *objname, const char *text)
+{
+	if (tpp_log_func)
+		tpp_log_func(severity, objname, (char *)text);
+}
+
+/**
+ * @brief
+ *	Get the user buffer associated with the tpp channel. If no buffer has
+ *	been set, then allocate a tppdis_chan structure and associate with
+ *	the given tpp channel
+ *
+ * @param[in] - fd - Tpp channel to which to get/associate a user buffer
+ *
+ * @retval	NULL - Failure
+ * @retval	!NULL - Buffer associated with the tpp channel
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+static pbs_tcp_chan_t *
+tppdis_get_user_data(int fd)
+{
+	void *data = tpp_get_user_data(fd);
+	if (data == NULL) {
+		if (errno != ENOTCONN) {
+			/* fd connected, but first time - so call setup */
+			dis_setup_chan(fd, (pbs_tcp_chan_t * (*)(int))&tpp_get_user_data);
+			/* get the buffer again*/
+			data = tpp_get_user_data(fd);
+		}
+	}
+	return (pbs_tcp_chan_t *)data;
+}
+
+/**
+ * @brief
+ *	Setup dis function pointers to point to tpp_dis routines
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+void
+DIS_tpp_funcs()
+{
+	pfn_transport_get_chan = tppdis_get_user_data;
+	pfn_transport_set_chan = (int (*)(int, pbs_tcp_chan_t *)) &tpp_set_user_data;
+	pfn_transport_recv = tpp_recv;
+	pfn_transport_send = tpp_send;
+}
+
+
+/**
+ * @brief
+ *		This is the log handler for tpp implemented in the daemon. The pointer to
+ *		this function is used by the Libtpp layer when it needs to log something to
+ *		the daemon logs
+ *
+ * @param[in]	level   - Logging level
+ * @param[in]	objname - Name of the object about which logging is being done
+ * @param[in]	mess    - The log message
+ *
+ */
+static void
+log_tppmsg(int level, const char *objname, char *mess)
+{
+	char id[2 * PBS_MAXHOSTNAME];
+	int thrd_index;
+	int etype = log_level_2_etype(level);
+
+	thrd_index = tpp_get_thrd_index();
+	if (thrd_index == -1)
+		snprintf(id, sizeof(id), "%s(Main Thread)", (objname != NULL) ? objname : msg_daemonname);
+	else
+		snprintf(id, sizeof(id), "%s(Thread %d)", (objname != NULL) ? objname : msg_daemonname, thrd_index);
+
+	log_event(etype, PBS_EVENTCLASS_TPP, level, id, mess);
+	DBPRT((mess));
+	DBPRT(("\n"));
+}
+
+/**
+ * @brief
+ *	Helper function called by PBS daemons to set the tpp configuration to
+ *	be later used during tpp_init() call.
+ *
+ * @param[in] pbs_conf - Pointer to the Pbs_config structure
+ * @param[out] tpp_conf - The tpp configuration structure duly filled based on
+ *			  the input parameters
+ * @param[in] nodenames - The comma separated list of name of this side of the communication.
+ * @param[in] port     - The port at which this side is identified.
+ * @param[in] routers  - Array of router addresses ended by a null entry
+ *			 router addresses are of the form "host:port"
+ * @param[in] compress - Whether compression of data must be done
+ *
+ *
+ * @retval Error code
+ * @return -1 - Failure
+ * @return  0 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+int
+set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *nodenames, int port, char *r)
+{
+	int i;
+	int num_routers = 0;
+	char *routers = NULL;
+	char *s, *t, *ctx;
+	char *nm;
+	int len, hlen;
+	char *token, *saveptr, *tmp;
+	char *formatted_names = NULL;
+
+	if (log_fn)
+		tpp_log_func = log_fn;
+	else
+		tpp_log_func = log_tppmsg;
+
+	/* before doing anything else, initialize the key to the tls
+	 * its okay to call this function multiple times since it
+	 * uses a pthread_once functionality to initialize key only once
+	 */
+	if (tpp_init_tls_key() != 0) {
+		/* can only use prints since tpp key init failed */
+		fprintf(stderr, "Failed to initialize tls key\n");
+		return -1;
+	}
+
+	if (r) {
+		routers = strdup(r);
+		if (!routers) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Out of memory allocating routers");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, __func__, log_buffer);
+			return -1;
+		}
+	}
+
+	if (!nodenames) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP node name not set");
+		fprintf(stderr, "%s\n", log_buffer);
+		tpp_log_func(LOG_CRIT, NULL, log_buffer);
+		return -1;
+	}
+
+	if (port == -1) {
+		struct sockaddr_in in;
+		int sd;
+		int rc;
+		tpp_addr_t *addr;
+
+		if ((sd = tpp_sock_socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "tpp_sock_socket() error, errno=%d", errno);
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			return -1;
+		}
+
+		/* bind this socket to a reserved port */
+		in.sin_family = AF_INET;
+		in.sin_addr.s_addr = INADDR_ANY;
+		in.sin_port = 0;
+		memset(&(in.sin_zero), '\0', sizeof(in.sin_zero));
+		if ((rc = tpp_sock_bind(sd, (struct sockaddr *) &in, sizeof(in))) == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "tpp_sock_bind() error, errno=%d", errno);
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			tpp_sock_close(sd);
+			return -1;
+		}
+
+		addr = tpp_get_local_host(sd);
+		if (addr) {
+			port = addr->port;
+			free(addr);
+		}
+
+		if (port == -1) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP client could not detect port to use");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_ERR, __func__, log_buffer);
+			tpp_sock_close(sd);
+			return -1;
+		}
+		/* don't close this socket */
+		tpp_set_close_on_exec(sd);
+	}
+
+	/* add port information to the node names and format into a single string as desired by TPP */
+	len = 0;
+	token = strtok_r(nodenames, ",", &saveptr);
+	while (token) {
+		nm = mk_hostname(token, port);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		hlen = strlen(nm);
+		if ((tmp = realloc(formatted_names, len + hlen + 2)) == NULL) { /* 2 for command and null char */
+			free(formatted_names);
+			free(nm);
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make formatted node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		formatted_names = tmp;
+
+		if (len == 0) {
+			strcpy(formatted_names, nm);
+		} else {
+			strcat(formatted_names, ",");
+			strcat(formatted_names, nm);
+		}
+		free(nm);
+
+		len += hlen + 2;
+
+		token = strtok_r(NULL, ",", &saveptr);
+	}
+
+	tpp_conf->node_name = formatted_names;
+	tpp_conf->node_type = TPP_LEAF_NODE;
+	tpp_conf->numthreads = 1;
+
+	tpp_conf->auth_config = make_auth_config(pbs_conf->auth_method,
+							pbs_conf->encrypt_method,
+							pbs_conf->pbs_exec_path,
+							pbs_conf->pbs_home_path,
+							(void *)tpp_auth_logger);
+	if (tpp_conf->auth_config == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating auth config");
+		return -1;
+	}
+
+	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
+	tpp_log_func(LOG_INFO, NULL, log_buffer);
+	if (tpp_conf->auth_config->encrypt_method[0] != '\0') {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP encryption method = %s", tpp_conf->auth_config->encrypt_method);
+		tpp_log_func(LOG_INFO, NULL, log_buffer);
+	}
+
+#ifdef PBS_COMPRESSION_ENABLED
+	tpp_conf->compress = pbs_conf->pbs_use_compression;
+#else
+	tpp_conf->compress = 0;
+#endif
+
+	/* set default parameters for keepalive */
+	tpp_conf->tcp_keepalive = 1;
+	tpp_conf->tcp_keep_idle = DEFAULT_TCP_KEEPALIVE_TIME;
+	tpp_conf->tcp_keep_intvl = DEFAULT_TCP_KEEPALIVE_INTVL;
+	tpp_conf->tcp_keep_probes = DEFAULT_TCP_KEEPALIVE_PROBES;
+	tpp_conf->tcp_user_timeout = DEFAULT_TCP_USER_TIMEOUT;
+
+	/* if set, read them from environment variable PBS_TCP_KEEPALIVE */
+	if ((s = getenv(PBS_TCP_KEEPALIVE))) {
+		/*
+		 * The format is a comma separated list of values in order, for the following variables,
+		 * tcp_keepalive_enable,tcp_keepalive_time,tcp_keepalive_intvl,tcp_keepalive_probes,tcp_user_timeout
+		 */
+		tpp_conf->tcp_keepalive = 0;
+		t = strtok_r(s, ",", &ctx);
+		if (t) {
+			/* this has to be the tcp_keepalive_enable value */
+			if (atol(t) == 1) {
+				tpp_conf->tcp_keepalive = 1;
+
+				/* parse other values only if this is enabled */
+				if ((t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_time */
+					tpp_conf->tcp_keep_idle = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_intvl */
+					tpp_conf->tcp_keep_intvl = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/* tcp_keepalive_probes */
+					tpp_conf->tcp_keep_probes = (int) atol(t);
+				}
+
+				if (t && (t = strtok_r(NULL, ",", &ctx))) {
+					/*tcp_user_timeout */
+					tpp_conf->tcp_user_timeout = (int) atol(t);
+				}
+
+				/* emit a log depicting what we are going to use as keepalive */
+				snprintf(log_buffer, TPP_LOGBUF_SZ,
+						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
+						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
+			} else {
+				snprintf(log_buffer, TPP_LOGBUF_SZ, "tcp keepalive disabled");
+			}
+		}
+		tpp_log_func(LOG_CRIT, NULL, log_buffer);
+	}
+
+	tpp_conf->buf_limit_per_conn = 5000; /* size in KB, TODO: load from pbs.conf */
+
+	if (pbs_conf->pbs_use_ft == 1)
+		tpp_conf->force_fault_tolerance = 1;
+	else
+		tpp_conf->force_fault_tolerance = 0;
+
+	if (routers && routers[0] != '\0') {
+		char *p = routers;
+		char *q;
+
+		num_routers = 1;
+
+		while (*p) {
+			if (*p == ',')
+				num_routers++;
+			p++;
+		}
+
+		tpp_conf->routers = malloc(sizeof(char *) * (num_routers + 1));
+		if (!tpp_conf->routers) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating routers array");
+			if (routers)
+				free(routers);
+			return -1;
+		}
+
+		p = routers;
+
+		/* trim leading spaces, if any */
+		while (*p && (*p == ' ' || *p == '\t'))
+			p++;
+
+		q = p;
+		i = 0;
+		while (*p) {
+			if (*p == ',') {
+				*p = 0;
+				tpp_conf->routers[i++] = strdup(q);
+
+				p++; /* go past the null char and trim any spaces */
+				while (*p && (*p == ' ' || *p == '\t'))
+					p++;
+
+				q = p;
+			}
+			p++;
+		}
+
+		nm = mk_hostname(q, TPP_DEF_ROUTER_PORT);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make router name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+		tpp_conf->routers[i++] = nm;
+		tpp_conf->routers[i++] = NULL;
+
+	} else {
+		tpp_conf->routers = NULL;
+	}
+
+	for (i = 0; i < num_routers; i++) {
+		if (tpp_conf->routers[i] == NULL || strcmp(tpp_conf->routers[i], tpp_conf->node_name) == 0) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Router name NULL or points to same node endpoint %s",
+				(tpp_conf->routers[i]) ?(tpp_conf->routers[i]) : "");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+
+			if (tpp_conf->routers)
+				free(tpp_conf->routers);
+			return -1;
+		}
+	}
+
+	if (routers)
+		free(routers);
+
+	return 0;
+}
+
+/**
+ * @brief tpp_make_authdata - allocate conn_auth_t structure based given values
+ *
+ * @param[in] tpp_conf - pointer to tpp config structure
+ * @param[in] conn_type - one of AUTH_CLIENT or AUTH_SERVER
+ * @param[in] auth_method - auth method name
+ * @param[in] encrypt_method - encrypt method name
+ *
+ * @return conn_auth_t *
+ * @return !NULL - success
+ * @return NULL  - failure
+ */
+conn_auth_t *
+tpp_make_authdata(struct tpp_config *tpp_conf, int conn_type, char *auth_method, char *encrypt_method)
+{
+	conn_auth_t *authdata = NULL;
+
+	if ((authdata = (conn_auth_t *)calloc(1, sizeof(conn_auth_t))) == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory");
+		return NULL;
+	}
+	authdata->conn_type = conn_type;
+	authdata->config = make_auth_config(auth_method,
+						encrypt_method,
+						tpp_conf->auth_config->pbs_exec_path,
+						tpp_conf->auth_config->pbs_home_path,
+						tpp_conf->auth_config->logfunc);
+	if (authdata->config == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory");
+		return NULL;
+	}
+
+	return authdata;
+}
+
+/**
+ * @brief tpp_handle_auth_handshake - initiate handshake or process incoming handshake data
+ *
+ * @param[in] tfd - file descriptor
+ * @param[in] conn_fd - connection fd for sending data
+ * @param[in] authdata - pointer to conn auth data struct associated with tfd
+ * @param[in] for_encrypt - whether to handle incoming data for encrypt/decrypt or for authentication
+ * @param[in] data_in - incoming handshake data (if any)
+ * @param[in] len_in - length of data_in else 0
+ *
+ * @return int
+ * @return -1 - failure
+ * @return 0  - need handshake continuation
+ * @return 1  - handshake completed
+ */
+int
+tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_encrypt, void *data_in, size_t len_in)
+{
+	void *data_out = NULL;
+	size_t len_out = 0;
+	int is_handshake_done = 0;
+	void *authctx = NULL;
+	auth_def_t *authdef = NULL;
+
+	if (authdata == NULL) {
+		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, No auth data found", tfd);
+		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		return -1;
+	}
+
+	if (for_encrypt == FOR_AUTH) {
+		if (authdata->authdef == NULL) {
+			authdef = get_auth(authdata->config->auth_method);
+			if (authdef == NULL) {
+				tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef");
+				return -1;
+			}
+			authdata->authdef = authdef;
+			authdef->set_config((const pbs_auth_config_t *)(authdata->config));
+			if (authdef->create_ctx(&(authdata->authctx), authdata->conn_type, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
+				tpp_log_func(LOG_CRIT, __func__, "Failed to create auth context");
+				return -1;
+			}
+
+		}
+		authdef = authdata->authdef;
+		authctx = authdata->authctx;
+	} else {
+		if (authdata->encryptdef == NULL) {
+			authdef = get_auth(authdata->config->encrypt_method);
+			if (authdef == NULL) {
+				tpp_log_func(LOG_CRIT, __func__, "Failed to find authdef");
+				return -1;
+			}
+			authdata->encryptdef = authdef;
+			authdef->set_config((const pbs_auth_config_t *)(authdata->config));
+			if (authdef->create_ctx(&(authdata->encryptctx), authdata->conn_type, AUTH_SERVICE_CONN, tpp_transport_get_conn_hostname(tfd))) {
+				tpp_log_func(LOG_CRIT, __func__, "Failed to create encrypt context");
+				return -1;
+			}
+
+		}
+		authdef = authdata->encryptdef;
+		authctx = authdata->encryptctx;
+	}
+	tpp_transport_set_conn_extra(tfd, authdata);
+
+	if (authdef->process_handshake_data(authctx, data_in, len_in, &data_out, &len_out, &is_handshake_done) != 0) {
+		if (len_out > 0) {
+			tpp_log_func(LOG_CRIT, __func__, (char *)data_out);
+			free(data_out);
+		}
+		return -1;
+	}
+
+	if (len_out > 0) {
+		tpp_auth_pkt_hdr_t ahdr = {0};
+		tpp_chunk_t chunks[2] = {{0}};
+
+		ahdr.type = TPP_AUTH_CTX;
+		ahdr.for_encrypt = for_encrypt;
+		strcpy(ahdr.auth_method, authdata->config->auth_method);
+		strcpy(ahdr.encrypt_method, authdata->config->encrypt_method);
+
+		chunks[0].data = &ahdr;
+		chunks[0].len = sizeof(tpp_auth_pkt_hdr_t);
+
+		chunks[1].data = data_out;
+		chunks[1].len = len_out;
+
+		if (tpp_transport_vsend(conn_fd, chunks, 2) != 0) {
+			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tpp_transport_vsend failed, err=%d", errno);
+			tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+			free(data_out);
+			return -1;
+		}
+		free(data_out);
+	}
+
+	/*
+	 * We didn't send any handshake data and handshake is not completed
+	 * so error out as we should send some handshake data
+	 * or handshake should be completed
+	 */
+	if (is_handshake_done == 0 && len_out == 0) {
+		tpp_log_func(LOG_CRIT, __func__, "Auth handshake failed");
+		return -1;
+	}
+
+	if (is_handshake_done != 1)
+		return 0;
+	return 1;
+}
 
 /**
  * @brief
@@ -363,7 +920,7 @@ tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data)
 		tpp_log_func(LOG_CRIT, __func__, "Failed to destroy attribute");
 		return -1;
 	}
-#endif 
+#endif
 	return rc;
 }
 
@@ -520,7 +1077,7 @@ tpp_init_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -567,7 +1124,7 @@ tpp_wrlock_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -592,7 +1149,7 @@ tpp_unlock_rwlock(void *lock)
  *	None
  *
  * @par MT-safe: Yes
- * 
+ *
  * * @return	error code
  * @retval	1	failure
  * @retval	0	success
@@ -632,7 +1189,7 @@ tpp_parse_hostname(char *full, int *port)
 	char *host = NULL;
 
 	*port = TPP_DEF_ROUTER_PORT;
-	if ((host = strdup(full)) == NULL) 
+	if ((host = strdup(full)) == NULL)
 		return NULL;
 
 	if ((p = strstr(host, ":"))) {
@@ -1318,7 +1875,11 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	z_stream strm;
 	void *outbuf = NULL;
 
-	outbuf = malloc(totlen);
+	/*
+	 * in some rare cases totlen < compressed_len (inlen)
+	 * so safer to malloc the larger of the two values
+	 */
+	outbuf = malloc(totlen > inlen ? totlen:inlen);
 	if (!outbuf) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating inflate buffer %d bytes", totlen);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1418,7 +1979,11 @@ tpp_validate_hdr(int tfd, char *pkt_start)
 	type = *((unsigned char *) data);
 
 	if ((data_len < 0 || type >= TPP_LAST_MSG) ||
-		(data_len > TPP_SEND_SIZE && type != TPP_DATA && type != TPP_MCAST_DATA && type != TPP_GSS_WRAP)) {
+		(data_len > TPP_SEND_SIZE &&
+			type != TPP_DATA &&
+			type != TPP_MCAST_DATA &&
+			type != TPP_ENCRYPTED_DATA &&
+			type != TPP_AUTH_CTX)) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				 "tfd=%d, Received invalid packet type with type=%d? data_len=%d", tfd, type, data_len);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1438,7 +2003,7 @@ tpp_validate_hdr(int tfd, char *pkt_start)
  * @retval  NULL  - call failed
  *
  * @par MT-safe: Yes
- * 
+ *
  **/
 tpp_addr_t *
 tpp_get_addresses(char *names, int *count)
@@ -1468,10 +2033,10 @@ tpp_get_addresses(char *names, int *count)
 			free(node_names);
 			return NULL;
 		}
-		
+
 		*p = '\0';
 		port = atol(p+1);
-		
+
 		addrs_tmp = tpp_sock_resolve_host(token, &tmp_count); /* get all ipv4 addresses */
 		if (addrs_tmp) {
 			tpp_addr_t *tmp;

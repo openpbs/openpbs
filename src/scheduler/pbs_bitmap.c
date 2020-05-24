@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,18 +60,18 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 	pbs_bitmap *bm;
 	unsigned long *tmp_bits;
 	long prev_longs;
-	
+
 	if(num_bits <= 0)
 		return NULL;
-	
+
 	if(pbm == NULL) {
 		bm = calloc(1, sizeof(pbs_bitmap));
 		if(bm == NULL)
 			return NULL;
 	}
-	else 
+	else
 		bm = pbm;
-	
+
 	/* shrinking bitmap, clear previously used bits */
 	if (num_bits < bm->num_bits) {
 		int i;
@@ -85,10 +87,10 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 		bm->num_bits = num_bits;
 		return bm;
 	}
-		
-		
+
+
 	prev_longs = bm->num_longs;
-	
+
 	bm->num_bits = num_bits;
 	bm->num_longs = num_bits / BYTES_TO_BITS(sizeof(unsigned long));
 	if (num_bits % BYTES_TO_BITS(sizeof(unsigned long)) > 0)
@@ -99,16 +101,16 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 			pbs_bitmap_free(bm);
 		return NULL;
 	}
-	
+
 	if(bm->bits != NULL) {
 		int i;
 		for(i = 0; i < prev_longs; i++)
 			tmp_bits[i] = bm->bits[i];
-		
+
 		free(bm->bits);
 	}
 	bm->bits = tmp_bits;
-		
+
 	return bm;
 }
 
@@ -133,18 +135,18 @@ pbs_bitmap_bit_on(pbs_bitmap *pbm, long bit)
 {
 	long long_ind;
 	unsigned long b;
-	
+
 	if(pbm == NULL)
 		return 0;
-	
+
 	if (bit >= pbm->num_bits) {
 		if(pbs_bitmap_alloc(pbm, bit + 1) == NULL)
 			return 0;
 	}
-	
+
 	long_ind = bit / BYTES_TO_BITS(sizeof(unsigned long));
 	b = 1UL << (bit % BYTES_TO_BITS(sizeof(unsigned long)));
-	
+
 	pbm->bits[long_ind] |= b;
 	return 1;
 }
@@ -160,18 +162,18 @@ pbs_bitmap_bit_off(pbs_bitmap *pbm, long bit)
 {
 	long long_ind;
 	unsigned long b;
-	
+
 	if (pbm == NULL)
 		return 0;
-	
+
 	if (bit >= pbm->num_bits) {
 		if(pbs_bitmap_alloc(pbm, bit + 1) == NULL)
 			return 0;
 	}
-	
+
 	long_ind = bit / BYTES_TO_BITS(sizeof(unsigned long));
 	b = 1UL << (bit % BYTES_TO_BITS(sizeof(unsigned long)));
-	
+
 	pbm->bits[long_ind] &= ~b;
 	return 1;
 }
@@ -189,16 +191,16 @@ pbs_bitmap_get_bit(pbs_bitmap *pbm, unsigned long bit)
 {
 	long long_ind;
 	unsigned long b;
-	
+
 	if (pbm == NULL)
 		return 0;
-	
+
 	if (bit >= pbm->num_bits)
 		return 0;
-	
+
 	long_ind = bit / BYTES_TO_BITS(sizeof(unsigned long));
 	b = 1UL << (bit % BYTES_TO_BITS(sizeof(unsigned long)));
-	
+
 	return (pbm->bits[long_ind] & b) ? 1 : 0;
 }
 
@@ -216,13 +218,13 @@ pbs_bitmap_next_on_bit(pbs_bitmap *pbm, long start_bit)
 	long long_ind;
 	long bit;
 	int i;
-	
+
 	if (pbm == NULL)
 		return -1;
-	
+
 	if (start_bit >= pbm->num_bits)
 		return -1;
-	
+
 	long_ind = start_bit / BYTES_TO_BITS(sizeof(unsigned long));
 	bit = start_bit % BYTES_TO_BITS(sizeof(unsigned long));
 
@@ -267,7 +269,7 @@ pbs_bitmap_first_on_bit(pbs_bitmap *bm)
 {
 	if(pbs_bitmap_get_bit(bm, 0))
 		return 0;
-	
+
 	return pbs_bitmap_next_on_bit(bm, 0);
 }
 
@@ -283,12 +285,12 @@ int
 pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R)
 {
 	int i;
-	
+
 	if (L == NULL || R == NULL)
 		return 0;
-	
+
 	/* In the case where R is longer than L, we need to allocate more space for L
-	 * Instead of using R->num_bits, we call pbs_bitmap_alloc() with the 
+	 * Instead of using R->num_bits, we call pbs_bitmap_alloc() with the
 	 * full number of bits required for its num_longs.  This is because it
 	 * is possible that R has more space allocated to it than required for its num_bits.
 	 * This happens if it had a previous call to pbs_bitmap_equals() with a shorter bitmap.
@@ -296,13 +298,13 @@ pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R)
 	if (R->num_longs > L->num_longs)
 		if(pbs_bitmap_alloc(L, BYTES_TO_BITS(R->num_longs * sizeof(unsigned long))) == NULL)
 			return 0;
-	
+
 	for (i = 0; i < R->num_longs; i++)
 		L->bits[i] = R->bits[i];
 	if (R->num_longs < L->num_longs)
 		for(; i < L->num_longs; i++)
 			L->bits[i] = 0;
-	
+
 	L->num_bits = R->num_bits;
 	return 1;
 }
@@ -319,16 +321,16 @@ int
 pbs_bitmap_is_equal(pbs_bitmap *L, pbs_bitmap *R)
 {
 	int i;
-	
+
 	if(L == NULL || R == NULL)
 		return 0;
-	
+
 	if (L->num_bits != R->num_bits)
 		return 0;
-	
+
 	for(i = 0; i < L->num_longs; i++)
 		if(L->bits[i] != R->bits[i])
 			return 0;
-	
+
 	return 1;
 }

@@ -1,5 +1,42 @@
 #!/bin/bash -xe
 
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 if [ $(id -u) -ne 0 ]; then
   echo "This script must be run by root user"
   exit 1
@@ -10,17 +47,17 @@ if [ -f /src/ci ]; then
   FIRST_TIME_BUILD=$1
   workdir=/src
   logdir=/logs
-  PBS_DIR=/pbspro
+  PBS_DIR=/pbssrc
 else
   PBS_DIR=$( readlink -f $0 | awk -F'/ci/' '{print $1}' )
 fi
 
 cd ${PBS_DIR}
 . /etc/os-release
-SPEC_FILE=${PBS_DIR}/pbspro.spec
+SPEC_FILE=$(/bin/ls -1 ${PBS_DIR}/*.spec)
 REQ_FILE=${PBS_DIR}/test/fw/requirements.txt
 if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
-  echo "Couldn't find pbspro.spec or requirement.txt"
+  echo "Couldn't find pbs spec file or ptl requirements file"
   exit 1
 fi
 
@@ -37,9 +74,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-        echo -e "[storage-sig]\nname=CentOS Storage SIG \$releasever - \$basearch\nbaseurl=https://cbs.centos.org/repos/storage7-testing/\$basearch/os\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/storage-sig.repo
         yum -y update
-        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel openafs-authlibs openafs-authlibs-devel
+        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     _PRETTY_NAME=$(echo ${PRETTY_NAME} | awk -F[=\"] '{print $1}')
@@ -65,7 +101,8 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql postgresql-contrib python3-pip sudo man-db git
+                        swig expat postgresql postgresql-contrib python3-pip sudo \
+                        man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
@@ -76,7 +113,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
                         libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
                         libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql python3-pip sudo man-db git
+                        swig expat postgresql python3-pip sudo man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   else
     echo "Unknown platform..."
@@ -165,7 +202,13 @@ set -e
 pbs_config --make-ug
 
 if [ "x${RUN_TESTS}" == "x1" ];then
-  ptl_tests_dir=$(dirname ${prefix})/ptl/tests
+  if [ "x${ID}" == "xcentos" ];then
+    export LC_ALL=en_US.utf-8
+    export LANG=en_US.utf-8
+  elif [ "x${ID}" == "xopensuse" ]; then
+    export LC_ALL=C.utf8
+  fi
+  ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
   benchpress_opt="$( cat ${workdir}/.benchpress_opt )"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"

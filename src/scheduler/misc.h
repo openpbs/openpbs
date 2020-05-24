@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_MISC_H
 #define	_MISC_H
 #ifdef	__cplusplus
@@ -159,6 +161,11 @@ int is_num(char *str);
 int count_array(void **arr);
 
 /*
+ *	dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
+ */
+void **dup_array(void *ptr);
+
+/*
  *	remove_ptr_from_array - remove a pointer from a ptr list and move
  *				the rest of the pointers up to fill the hole
  *				Pointer array size will not change - an extra
@@ -167,7 +174,18 @@ int count_array(void **arr);
  *	returns non-zero if the ptr was successfully removed from the array
  *		zero if the array has not been modified
  */
-int remove_ptr_from_array(void **arr, void *ptr);
+int remove_ptr_from_array(void *arr, void *ptr);
+
+/*
+ *	remove_str_from_array - remove a string from a ptr list and move
+ *				the rest of the pointers up to fill the hole
+ *				Pointer array size will not change - an extra
+ *				NULL is added to the end
+ *
+ *	returns non-zero if the str was successfully removed from the array
+ *		zero if the array has not been modified
+ */
+int remove_str_from_array(char **arr, char *str);
 
 /*
  *      is_valid_pbs_name - is str a valid pbs username (POSIX.1 + ' ')
@@ -265,6 +283,11 @@ add_str_to_array(char ***str_arr, char *str);
  */
 int
 add_str_to_unique_array(char ***str_arr, char *str);
+
+/*
+ * helper function to free an array of pointers
+ */
+void free_ptr_array (void *inp);
 
 #ifdef	__cplusplus
 }

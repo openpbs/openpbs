@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    simulate.c
@@ -597,7 +599,7 @@ perform_event(status *policy, timed_event *event)
 		event->event_func(event->event_ptr, event->event_func_arg);
 
 	if (ret)
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			event->name, "Simulation: %s [%s]", logbuf, timebuf);
 	return ret;
 }
@@ -621,7 +623,7 @@ exists_run_event(event_list *calendar, time_t end)
 {
 	if (calendar == NULL || calendar->first_run_event == NULL)
 		return 0;
-	
+
 	if (calendar->first_run_event->event_time < end)
 		return 1;
 	return 0;
@@ -638,7 +640,7 @@ exists_run_event_on_node(node_info *ninfo, time_t end)
 {
 	if (ninfo == NULL || ninfo->node_events == NULL)
 		return 0;
-	
+
 	/* node_events contains an ordered list of run events.  We only have the check the first one */
 	if (ninfo->node_events->event->event_time < end)
 		return 1;
@@ -881,9 +883,6 @@ create_events(server_info *sinfo)
 	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
 
 	for (i = 0; all[i] != NULL && is_timed(all[i]); i++) {
-		if (all[i]->is_resv && all[i]->resv != NULL &&
-			all[i]->resv->resv_state == RESV_BEING_ALTERED)
-			continue;
 		/* only add a run event for a job or reservation if they're
 		 * in a runnable state (i.e. don't add it if they're running)
 		 */
@@ -910,7 +909,7 @@ create_events(server_info *sinfo)
 
 	/* for nodes that are in state=sleep add a timed event */
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
-	        node_info *node = sinfo->nodes[i];
+		node_info *node = sinfo->nodes[i];
 		if (node->is_sleeping) {
 			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
 					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);
@@ -999,7 +998,7 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 			oelist->next_event->event_type,
 			oelist->next_event->event_time);
 		if (nelist->next_event == NULL) {
-			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 			oelist->next_event->name, "can't find next event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
@@ -1013,7 +1012,7 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 				     TIMED_RUN_EVENT,
 				     oelist->first_run_event->event_time);
 		if (nelist->first_run_event == NULL) {
-			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name, 
+			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name,
 				"can't find first run event event in duplicated list");
 			free_event_list(nelist);
 			return NULL;
@@ -1073,7 +1072,7 @@ new_timed_event()
 /**
  * @brief
  * 		dup_timed_event() - timed_event copy constructor
- * 
+ *
  * @par
  * 		dup_timed_event() modifies the run_event and end_event memebers of the resource_resv.
  * 		If dup_timed_event() is not called as part of dup_server_info(), the resource_resvs of
@@ -1099,6 +1098,7 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
 		return NULL;
 
 	nte = create_event(ote->event_type, ote->event_time, event_ptr, ote->event_func, ote->event_func_arg);
+	set_timed_event_disabled(nte, ote->disabled);
 
 	return nte;
 }
@@ -1111,22 +1111,22 @@ te_list *
 new_te_list() {
 	te_list *tel;
 	tel = malloc(sizeof(te_list));
-	
+
 	if(tel == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-	
+
 	tel->event = NULL;
 	tel->next = NULL;
-	
+
 	return tel;
 }
 
 /*
  * @brief te_list destructor
  * @param[in] tel - te_list to free
- * 
+ *
  * @return void
  */
 void
@@ -1141,7 +1141,7 @@ free_te_list(te_list *tel) {
  * @brief te_list copy constructor
  * @param[in] ote - te_list to copy
  * @param[in] new_timed_even_list - new timed events
- * 
+ *
  * @return copied te_list
  */
 te_list *
@@ -1155,9 +1155,9 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
 	nte = new_te_list();
 	if(nte == NULL)
 		return NULL;
-	
+
 	nte->event = find_timed_event(new_timed_event_list, 0, ote->event->name, ote->event->event_type, ote->event->event_time);
-	
+
 	return nte;
 }
 
@@ -1165,7 +1165,7 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
  * @brief copy constructor for a list of te_list structures
  * @param[in] ote - te_list to copy
  * @param[in] new_timed_even_list - new timed events
- * 
+ *
  * @return copied te_list list
  */
 
@@ -1178,18 +1178,18 @@ dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
 
 	if (ote == NULL || new_timed_event_list == NULL)
 		return NULL;
-	
+
 	for(cur = ote; cur != NULL; cur = cur->next) {
 		nte = dup_te_list(cur, new_timed_event_list);
 		if (nte == NULL) {
 			free_te_list(nte_head);
 			return NULL;
 		}
-		if(end_te != NULL) 
+		if(end_te != NULL)
 			end_te->next = nte;
 		else
 			nte_head = nte;
-			
+
 		end_te = nte;
 	}
 	return nte_head;
@@ -1199,7 +1199,7 @@ dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
  * @brief add a te_list for a timed_event to a list sorted by the event's time
  * @param[in,out] tel - te_list to add to
  * @param[in] te - timed_event to add
- * 
+ *
  * @return success/failure
  * @retval 1 success
  * @retbal 0 failure
@@ -1209,18 +1209,18 @@ add_te_list(te_list **tel, timed_event *te) {
 	te_list *cur_te;
 	te_list *prev = NULL;
 	te_list *ntel;
-	
+
 	if(tel == NULL || te == NULL)
 		return 0;
-	
+
 	for(cur_te = *tel; cur_te != NULL && cur_te->event->event_time < te->event_time; prev = cur_te, cur_te = cur_te->next)
 		;
-	
+
 	ntel = new_te_list();
 	if(ntel == NULL)
 		return 0;
 	ntel->event = te;
-	
+
 	if(prev == NULL) {
 		ntel->next = *tel;
 		(*tel) = ntel;
@@ -1235,7 +1235,7 @@ add_te_list(te_list **tel, timed_event *te) {
  * @brief remove a te_list from a list by timed_event
  * @param[in,out] tel - te_list to remove event from
  * @param[in] te - timed_event to remove
- * 
+ *
  * @return success/failure
  * @retval 1 success
  * @retval 0 failure
@@ -1245,10 +1245,10 @@ remove_te_list(te_list **tel, timed_event *e)
 {
 	te_list *prev_tel;
 	te_list *cur_tel;
-	
+
 	if(tel == NULL || *tel == NULL || e == NULL)
 		return 0;
-	
+
 	prev_tel = NULL;
 	for (cur_tel = *tel; cur_tel != NULL && cur_tel->event != e; prev_tel = cur_tel, cur_tel = cur_tel->next)
 		;
@@ -1262,7 +1262,7 @@ remove_te_list(te_list **tel, timed_event *e)
 	}
 	else
 		return 0;
-	
+
 	return 1;
 }
 
@@ -1298,7 +1298,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 				/* In case of jobs there can be only one occurance of job in
 				 * all_resresv list, so no need to search using start time of job
 				 */
-				event_ptr = find_resource_resv_by_indrank(nsinfo->all_resresv, 
+				event_ptr = find_resource_resv_by_indrank(nsinfo->all_resresv,
 					    oep->resresv_ind, oep->rank);
 
 			if (event_ptr == NULL) {
@@ -1318,7 +1318,7 @@ find_event_ptr(timed_event *ote, server_info *nsinfo)
 				((node_info*)(ote->event_ptr))->name);
 			break;
 		default:
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, 
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__,
 				"Unknown event type: %d", (int)ote->event_type);
 	}
 
@@ -1453,7 +1453,7 @@ add_event(event_list *calendar, timed_event *te)
 	/* if next_event == NULL, then we've simulated to the end. */
 	else if (te->event_time >= current_time)
 		calendar->next_event = te;
-	
+
 	if (te->event_type == TIMED_RUN_EVENT)
 		if (calendar->first_run_event == NULL || te->event_time < calendar->first_run_event->event_time)
 			calendar->first_run_event = te;
@@ -1541,7 +1541,7 @@ delete_event(server_info *sinfo, timed_event *e)
 
 	if (calendar->next_event == e)
 		calendar->next_event = e->next;
-	
+
 	if (calendar->first_run_event == e)
 		calendar->first_run_event = find_timed_event(calendar->events, 0, NULL, TIMED_RUN_EVENT, 0);
 
@@ -1648,7 +1648,7 @@ determine_event_name(timed_event *te)
 			te->name = ((node_info*) te->event_ptr)->name;
 			break;
 		default:
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 				__func__, "Unknown event type: %d", (int)te->event_type);
 			return 0;
 	}
@@ -1684,7 +1684,7 @@ dedtime_change(status *policy, void  *arg)
 	else if (strcmp(event_arg, DEDTIME_END) == 0)
 		policy->is_ded_time = 0;
 	else {
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, 
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 			__func__, "unknown dedicated time change");
 		return 0;
 	}

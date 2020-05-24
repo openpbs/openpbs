@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	pbs_resc.c
@@ -140,26 +142,22 @@ static int
 PBS_resc(int c, int reqtype, char **rescl, int ct, pbs_resource_t rh)
 {
 	int rc;
-	int sock;
-
-	sock = connection[c].ch_socket;
 
 	/* setup DIS support routines for following DIS calls */
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 
-	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
-		(rc = encode_DIS_Resc(sock, rescl, ct, rh)) ||
-		(rc = encode_DIS_ReqExtend(sock, NULL))) {
-		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-		if (connection[c].ch_errtxt == NULL) {
+	if ((rc = encode_DIS_ReqHdr(c, reqtype, pbs_current_user)) ||
+		(rc = encode_DIS_Resc(c, rescl, ct, rh)) ||
+		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 		} else {
 			pbs_errno = PBSE_PROTOCOL;
 		}
 		return (pbs_errno);
 	}
-	if (DIS_tcp_wflush(sock)) {
+	if (dis_flush(c)) {
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
 	return (0);
@@ -201,7 +199,11 @@ pbs_rescquery(int c, char **resclist, int num_resc,
 		return pbs_errno;
 
 	if (resclist == 0) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMNOPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
@@ -217,13 +219,17 @@ pbs_rescquery(int c, char **resclist, int num_resc,
 	/* read in reply */
 
 	reply = PBSD_rdrpy(c);
-	if ((rc = connection[c].ch_errno) == PBSE_NONE &&
+	if ((rc = get_conn_errno(c)) == PBSE_NONE &&
 		reply->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {
 		struct	brp_rescq	*resq = &reply->brp_un.brp_rescq;
 
 		if (resq == NULL || num_resc != resq->brq_number) {
-			rc = pbs_errno = connection[c].ch_errno =
-				PBSE_IRESVE;
+			rc = PBSE_IRESVE;
+			if (set_conn_errno(c, PBSE_IRESVE) != 0) {
+				pbs_errno = PBSE_SYSTEM;
+			} else {
+				pbs_errno = PBSE_IRESVE;
+			}
 			goto done;
 		}
 
@@ -279,12 +285,20 @@ pbs_rescreserve(int c, char **rl, int num_resc, pbs_resource_t *prh)
 		return pbs_errno;
 
 	if (rl == NULL) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMNOPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
 	if (prh == NULL) {
-		pbs_errno = connection[c].ch_errno = PBSE_RMBADPARAM;
+		if (set_conn_errno(c, PBSE_RMNOPARAM) != 0) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_RMNOPARAM;
+		}
 		(void)pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
@@ -302,7 +316,7 @@ pbs_rescreserve(int c, char **rl, int num_resc, pbs_resource_t *prh)
 
 	reply = PBSD_rdrpy(c);
 
-	if (((rc = connection[c].ch_errno) == PBSE_NONE) ||
+	if (((rc = get_conn_errno(c)) == PBSE_NONE) ||
 		(rc == PBSE_RMPART)) {
 		*prh = reply->brp_auxcode;
 	}
@@ -358,7 +372,7 @@ pbs_rescrelease(int c, pbs_resource_t rh)
 
 	PBSD_FreeReply(reply);
 
-	rc = connection[c].ch_errno;
+	rc = get_conn_errno(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)

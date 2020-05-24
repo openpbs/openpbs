@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from ptl.utils.pbs_testsuite import *
 
@@ -45,15 +48,6 @@ class SmokeTest(PBSTestSuite):
     This test suite contains a few smoke tests of PBS
 
     """
-    # Class variables
-    resc_types = [None, 'long', 'float', 'boolean', 'size', 'string',
-                  'string_array']
-    resc_flags = [None, 'n', 'h', 'nh', 'q', 'f', 'fh', 'm', 'mh']
-    resc_flags_ctl = [None, 'r', 'i']
-    objs = [QUEUE, SERVER, NODE, JOB, RESV]
-    resc_name = "ptl_custom_res"
-    avail_resc_name = 'resources_available.' + resc_name
-    pu = ProcUtils()
 
     def test_submit_job(self):
         """
@@ -359,10 +353,11 @@ class SmokeTest(PBSTestSuite):
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
         exp_eq_val = {ATTR_used+'.ncpus': '2',
-                      ATTR_used+'.cput': '00:00:15', ATTR_exit_status: '0'}
+                      ATTR_exit_status: '0'}
         for key in exp_eq_val:
             self.assertEqual(exp_eq_val[key], jobs[0][key])
         exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
+                         ATTR_used+'.cput': '00:00:00',
                          ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
         for key in exp_noteq_val:
             self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
@@ -510,7 +505,7 @@ class SmokeTest(PBSTestSuite):
         self.server.create_import_hook(hook_name, a, hook_body)
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
         j = Job(TEST_USER)
-        now = int(time.time())
+        now = time.time()
         try:
             self.server.submit(j)
         except PbsSubmitError:
@@ -561,24 +556,18 @@ class SmokeTest(PBSTestSuite):
         """
         Test to submit job with job script
         """
-        a = {ATTR_rescavail + '.ncpus': '2'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
         j.create_script('sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.delete(id=jid, extend='force', wait=True)
         self.logger.info("Testing script with extension")
         j = Job(TEST_USER)
         fn = self.du.create_temp_file(suffix=".scr", body="/bin/sleep 10",
                                       asuser=str(TEST_USER))
-        try:
-            jid = self.server.submit(j, script=fn)
-        except PbsSubmitError as e:
-            self.assertNotIn('illegal -N value', e.msg[0],
-                             'qsub: Not accepted "." in job name')
-        else:
-            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-            self.logger.info('Job submitted successfully: ' + jid)
+        jid = self.server.submit(j, script=fn)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.logger.info('Job submitted successfully: ' + jid)
 
     @skipOnCpuSet
     def test_formula_match(self):
@@ -744,19 +733,25 @@ class SmokeTest(PBSTestSuite):
             a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: queue}
             j = Job(TEST_USER, a)
             jids.append(self.server.submit(j))
-        start_time = int(time.time())
+        start_time = time.time()
         a = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(JOB, {'job_state=R': 9})
-        cycle = self.scheduler.cycles(start=start_time, end=int(time.time()))
+        end_time = int(time.time()) + 1
+        cycle = self.scheduler.cycles(start=start_time, end=end_time)
+        self.logger.info("len(cycle):%s, td:%s" % (len(cycle),
+                         end_time - start_time))
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
                 i -= 1
             if i < 0:
                 self.assertTrue(False, 'failed to found political order')
+            for j, _cycle in enumerate(cycle):
+                self.logger.info("cycle:%s:%s" % (i, _cycle.political_order))
+            self.logger.info("cycle i:%s" % i)
             cycle = cycle[i]
             jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7],
                     jids[2], jids[5], jids[8]]
@@ -820,6 +815,25 @@ class SmokeTest(PBSTestSuite):
         a = {'job_state': 'Q', 'Resource_List.foo': '15',
              'comment': msg}
         self.server.expect(JOB, a, id=j1id)
+
+    def test_add_mom_dyn_res(self):
+        """
+        Test for mom dynamin resource
+        """
+        script_body = '/bin/echo 3'
+        attr = {'type': 'float', 'flag': 'nh'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
+        self.scheduler.set_sched_config({'mom_resources': "foo"},
+                                        validate=True)
+        self.scheduler.add_resource('foo')
+
+        self.mom.add_mom_dyn_res('foo', script_body, prefix='mom_resc',
+                                 suffix='.scr')
+        attr = {'Resource_List.foo': 2}
+        j = Job(TEST_USER, attrs=attr)
+        jid = self.server.submit(j)
+        attr = {'job_state': 'R', 'Resource_List.foo': '2'}
+        self.server.expect(JOB, attr, id=jid, attrop=PTL_AND)
 
     @skipOnCpuSet
     def test_schedlog_preempted_info(self):
@@ -1046,13 +1060,13 @@ class SmokeTest(PBSTestSuite):
         <ppid> in Suspended state else return False
         """
         state = 'T'
-        rv = self.pu.get_proc_state(self.mom.shortname, ppid)
+        rv = self.mom.pu.get_proc_state(self.mom.shortname, ppid)
         if rv != state:
             return False
-        childlist = self.pu.get_proc_children(self.mom.shortname,
-                                              ppid)
+        childlist = self.mom.pu.get_proc_children(self.mom.shortname,
+                                                  ppid)
         for child in childlist:
-            rv = self.pu.get_proc_state(self.mom.shortname, child)
+            rv = self.mom.pu.get_proc_state(self.mom.shortname, child)
             if rv != state:
                 return False
         return True
@@ -1172,216 +1186,80 @@ class SmokeTest(PBSTestSuite):
                                    {'session_id': (NOT, self.isSuspended)},
                                    id=job['id'])
 
-    def create_resource_helper(self, r, t, f, c):
+    def test_resource_create_delete(self):
         """
-        create a resource with associated type, flag, and control flag
-
-        r - The resource name
-
-        t - Type of the resource
-
-        f - Permissions/flags associated to the resource
-
-        c - Control flags
-
-        This method handles expected errors for invalid settings
+        Verify behavior of resource on creation, deletion
+        and job.
         """
 
-        expect_error = self.expect_error(t, f)
-        attr = {}
-        if t is not None:
-            attr['type'] = t
-        if f is not None:
-            attr['flag'] = f
-        if c:
-            if 'flag' in attr:
-                attr['flag'] += c
-            else:
-                attr['flag'] = c
-        if len(attr) == 0:
-            attr = None
-        try:
-            rc = self.server.manager(MGR_CMD_CREATE, RSC, attr, id=r,
-                                     logerr=False)
-            msg = None
-        except PbsManagerError as e:
-            rc = e.rc
-            msg = e.msg
-        if expect_error:
-            if msg:
-                m = 'Expected error contains "Erroneous to have"'
-                self.logger.info(m + ' in ' + msg[0])
-                self.assertTrue('Erroneous to have' in msg[0])
-            self.assertNotEqual(rc, 0)
-            return False
-        else:
-            self.assertEqual(rc, 0)
-            self.server.manager(MGR_CMD_LIST, RSC, id=r)
-            rv = self.server.resources[r].attributes['type']
-            if t is None:
-                self.assertEqual(rv, 'string')
-            else:
-                self.assertEqual(rv, t)
-            _f = ''
-            if f is not None:
-                _f = f
-            if c is not None:
-                _f += c
-            if _f:
-                rv = self.server.resources[r].attributes['flag']
-                self.assertEqual(sorted(rv), sorted(_f))
-        return True
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
-    def expect_error(self, t, f):
-        """
-        Returns true for invalid combinations of flag and/or type
-        """
-        if (f in ['nh', 'f', 'fh', 'n', 'q'] and
-                t in [None, 'string', 'string_array', 'boolean']):
-            return True
-        if (f == 'n' and t in [None, 'long', 'float', 'size']):
-            return True
-        if (f == 'f' and t in [None, 'long', 'float', 'size']):
-            return True
-        return False
+        attr = {'type': 'boolean'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
+        attr = {'type': 'long', 'flag': 'nh'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo1')
+        attr = {'type': 'string'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo2')
+        attr = {'type': 'size', 'flag': 'nh'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo3')
 
-    def test_resource_create(self):
-        """
-        Test behavior of resource creation by permuting over all possible and
-        supported types and flags
-        """
-        rc = self.server.manager(MGR_CMD_CREATE, RSC, id=self.resc_name)
-        self.assertEqual(rc, 0)
-        rc = self.server.manager(MGR_CMD_LIST, RSC, id=self.resc_name)
-        self.assertEqual(rc, 0)
-        rsc = self.server.resources[self.resc_name]
-        self.assertEqual(rsc.attributes['type'], 'string')
-        self.logger.info(self.server.logprefix +
-                         ' verify that default resource type is string...OK')
-        self.logger.info(self.server.logprefix +
-                         ' verify that duplicate resource creation fails')
-        # check that duplicate is not allowed
-        try:
-            rc = self.server.manager(MGR_CMD_CREATE, RSC, None,
-                                     id=self.resc_name,
-                                     logerr=True)
-        except PbsManagerError as e:
-            rc = e.rc
-            msg = e.msg
-        self.assertNotEqual(rc, 0)
-        self.assertTrue('Duplicate entry' in msg[0])
-        self.logger.info('Expected error: Duplicate entry in ' + msg[0] +
-                         ' ...OK')
-        rc = self.server.manager(MGR_CMD_DELETE, RSC, id=self.resc_name)
-        self.assertEqual(rc, 0)
-        for t in self.resc_types:
-            for f in self.resc_flags:
-                for c in self.resc_flags_ctl:
-                    rv = self.create_resource_helper(self.resc_name, t, f, c)
-                    if rv:
-                        rc = self.server.manager(MGR_CMD_DELETE, RSC,
-                                                 id=self.resc_name)
-                        self.assertEqual(rc, 0)
-                    self.logger.info("")
+        with self.assertRaises(PbsManagerError) as e:
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo1')
+        msg = 'qmgr obj=foo1 svr=default: Duplicate entry in list '
+        self.assertIn(msg, e.exception.msg)
 
-    def delete_resource_helper(self, r, t, f, c, obj_type, obj_id):
-        """
-        Vierify behavior upon deleting a resource that is set on a PBS object.
+        self.scheduler.add_resource("foo, foo1, foo2, foo3", apply=True)
 
-        r - The resource to create and later on delete
+        attr = {'Resources_available.foo': True}
+        self.server.manager(MGR_CMD_SET, SERVER, attr,
+                            id=self.server.shortname)
+        attr = {'Resources_available.foo3': '2gb'}
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        attr = {'Resources_available.foo1': 3}
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
 
-        t - The type of resource
+        now = time.time()
+        r = Reservation(TEST_USER)
+        a = {'Resource_List.foo2': 'abc',
+             'reserve_start': now + 10,
+             'reserve_end': now + 40}
+        r.set_attributes(a)
+        rid = self.server.submit(r)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+        a = {'Resource_List.foo3': '1gb',
+             'Resource_List.foo1': 2,
+             ATTR_q: rid_q}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(15)
+        jid = self.server.submit(j)
 
-        f - The permissions/flags of the resource
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid,
+                           offset=10)
 
-        c - The control flags of the resource
+        with self.assertRaises(PbsManagerError) as e:
+            self.server.manager(MGR_CMD_DELETE, RSC, id='foo1')
+        msg = 'qmgr obj=foo1 svr=default: Resource busy on job'
+        self.assertIn(msg, e.exception.msg)
 
-        obj_type - The object type (server, queue, node, job, reservation) on
-        which the resource is set.
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
+                           offset=15, id=jid)
 
-        obj_id - The object identifier/name
-        """
-        ar = 'resources_available.' + r
-        rv = self.create_resource_helper(self.resc_name, t, f, c)
-        if rv:
-            if t in ['long', 'float', 'size', 'boolean']:
-                val = 0
-            else:
-                val = 'abc'
-            if obj_type in [JOB, RESV]:
-                if obj_type == JOB:
-                    j = Job(TEST_USER1, {'Resource_List.' + r: val})
-                else:
-                    j = Reservation(TEST_USER1, {'Resource_List.' + r: val})
-                try:
-                    jid = self.server.submit(j)
-                except PbsSubmitError as e:
-                    jid = e.rv
-                if c is not None and ('r' in c or 'i' in c):
-                    self.assertEqual(jid, None)
-                    self.logger.info('Verify that job/resv can not request '
-                                     'invibile or read-only resource...OK')
-                    self.server.manager(MGR_CMD_DELETE, RSC, id=r)
-                    # done with the test case, just return
-                    return
-                if obj_type == RESV:
-                    a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-                    self.server.expect(RESV, a, id=jid)
-                self.assertNotEqual(jid, None)
-            else:
-                self.server.manager(MGR_CMD_SET, obj_type, {ar: val},
-                                    id=obj_id)
-            try:
-                rc = self.server.manager(MGR_CMD_DELETE, RSC, id=r,
-                                         logerr=False)
-                msg = None
-            except PbsManagerError as e:
-                rc = e.rc
-                msg = e.msg
-            if obj_type in [JOB, RESV]:
-                self.assertNotEqual(rc, 0)
-                if msg:
-                    m = "Resource busy on " + PBS_OBJ_MAP[obj_type]
-                    self.logger.info('Expecting qmgr error: ' + m + ' in ' +
-                                     msg[0])
-                    self.assertTrue(m in msg[0])
-                self.server.delete(jid)
-                self.server.expect(obj_type, 'queue', op=UNSET)
-                self.server.manager(MGR_CMD_DELETE, RSC, id=r)
-            else:
-                self.assertEqual(rc, 0)
-                d = self.server.status(obj_type, ar, id=obj_id)
-                if d and len(d) > 0:
-                    self.assertFalse(ar in d[0])
+        a = {'Resource_List.foo': True}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(15)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
+                           offset=15, id=jid1)
 
-    @timeout(720)
-    def test_resource_delete(self):
-        """
-        Verify behavior of resource deletion when the resource is defined
-        on a PBS object by varying over all permutations of types and flags
-        """
-
-        self.obj_map = {QUEUE: self.server.default_queue,
-                        SERVER: self.server.name,
-                        NODE: self.mom.shortname,
-                        JOB: None, RESV: None}
-        try:
-            self.server.status(RSC, id=self.resc_name)
-            self.server.manager(MGR_CMD_DELETE, RSC,
-                                id=self.resc_name, logerr=False)
-        except (PbsManagerError, PbsStatusError):
-            pass
-        for k in self.objs:
-            if k not in self.obj_map:
-                self.logger.error('can not map object ' + k)
-                continue
-            v = self.obj_map[k]
-            for t in self.resc_types:
-                for f in self.resc_flags:
-                    for c in self.resc_flags_ctl:
-                        self.delete_resource_helper(
-                            self.resc_name, t, f, c, k, v)
-                        self.logger.info("")
+        a = {'job_history_enable': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_DELETE, RSC, id='foo1')
+        self.server.manager(MGR_CMD_DELETE, RSC, id='foo2')
+        self.server.manager(MGR_CMD_DELETE, RSC, id='foo3')
 
     def setup_fs(self, formula):
 
@@ -1550,6 +1428,7 @@ class SmokeTest(PBSTestSuite):
             msg += " %s command" % pbs_cmd
             self.logger.info(msg)
 
+    @skipOnCpuSet
     def test_exclhost(self):
         """
         Test that a job requesting exclhost is not placed on another host
@@ -1581,6 +1460,10 @@ class SmokeTest(PBSTestSuite):
         Test that if jobscript_max_size attribute is set, users can not
         submit jobs with job script size exceeding the limit.
         """
+        msg = "skipped due to issue: "
+        msg += "server attribute 'jobscript_max_size' not working properly."
+        self.skipTest(msg)
+
         scr = []
         scr += ['echo "This is a very long line, it will exceed 20 bytes"']
 

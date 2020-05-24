@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 #ifndef _PBS_INTERNAL_H
 #define	_PBS_INTERNAL_H
@@ -45,6 +47,7 @@ extern "C" {
 
 #include "pbs_ifl.h"
 #include "libutil.h"
+#include "auth.h"
 
 /*
  *
@@ -198,7 +201,9 @@ struct pbs_config
 	unsigned start_sched:1;		/* should the scheduler be started */
 	unsigned start_comm:1; 		/* should the comm daemon be started */
 	unsigned locallog:1;			/* do local logging */
-	unsigned auth_method;		/* set auth_method to use */
+	char **supported_auth_methods;		/* supported auth methods on server */
+	char encrypt_method[MAXAUTHNAME + 1];	/* auth method to used for encrypt/decrypt data */
+	char auth_method[MAXAUTHNAME + 1];	/* default auth_method to used by client */
 	unsigned int sched_modify_event:1;	/* whether to trigger modifyjob hook event or not */
 	unsigned syslogfac;		        /* syslog facility */
 	unsigned syslogsvr;			/* min priority to log to syslog */
@@ -219,7 +224,6 @@ struct pbs_config
 	char *pbs_demux_path;			/* path to pbs demux */
 	char *pbs_environment;		/* path to pbs_environment file */
 	char *iff_path;			/* path to pbs_iff */
-	char *k5dcelogin_path;		/* path to k5dcelogin */
 	char *pbs_primary;			/* FQDN of host with primary server */
 	char *pbs_secondary;			/* FQDN of host with secondary server */
 	char *pbs_mom_home;			/* path to alternate home for Mom */
@@ -231,7 +235,6 @@ struct pbs_config
 	char *pbs_mail_host_name;	/* name of host to which to address mail */
 	char *pbs_smtp_server_name;   /* name of SMTP host to which to send mail */
 	char *pbs_output_host_name;	/* name of host to which to stage std out/err */
-	unsigned pbs_use_tcp:1;		/* whether pbs should use TCP instead of RPP */
 	unsigned pbs_use_compression:1;	/* whether pbs should compress communication data */
 	unsigned pbs_use_mcast:1;		/* whether pbs should multicast communication */
 	unsigned pbs_use_ft:1;		/* whether pbs should force use fault tolerant communications */
@@ -274,7 +277,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SCHEDULER_SERVICE_PORT	     "PBS_SCHEDULER_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_PORT           "PBS_DATA_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_HOST           "PBS_DATA_SERVICE_HOST"
-#define PBS_CONF_USE_TCP		     "PBS_USE_TCP"
 #define PBS_CONF_USE_COMPRESSION     	     "PBS_USE_COMPRESSION"
 #define PBS_CONF_USE_MCAST		     "PBS_USE_MCAST"
 #define PBS_CONF_FORCE_FT_COMM		     "PBS_FORCE_FT_COMM"
@@ -293,7 +295,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_CP		"PBS_CP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
-#define PBS_CONF_K5DCELOGIN	"PBS_K5DCELOGIN"       /* path to k5dcelogin */
 #define PBS_CONF_PRIMARY	"PBS_PRIMARY"  /* Primary Server in failover */
 #define PBS_CONF_SECONDARY	"PBS_SECONDARY"	/* Secondary Server failover */
 #define PBS_CONF_MOM_HOME	"PBS_MOM_HOME"  /* alt Mom home for failover */
@@ -304,7 +305,9 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_OUTPUT_HOST_NAME "PBS_OUTPUT_HOST_NAME"
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
-#define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
+#define PBS_CONF_AUTH		"PBS_AUTH_METHOD"
+#define PBS_CONF_ENCRYPT_METHOD	"PBS_ENCRYPT_METHOD"
+#define PBS_CONF_SUPPORTED_AUTH_METHODS	"PBS_SUPPORTED_AUTH_METHODS"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
 #define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
@@ -359,6 +362,7 @@ enum accrue_types {
 
 #define PBS_RESV_CONFIRM_FAIL "PBS_RESV_CONFIRM_FAIL"   /* Used to inform server that a reservation could not be confirmed */
 #define PBS_RESV_CONFIRM_SUCCESS "PBS_RESV_CONFIRM_SUCCESS"   /* Used to inform server that a reservation could be confirmed */
+#define DEFAULT_PARTITION "pbs-default" /* Default partition name set on the reservation queue when the reservation is confirmed by default scheduler */
 
 #define PBS_USE_IFF		1	/* pbs_connect() to call pbs_iff */
 
@@ -426,9 +430,9 @@ DECLDIR int pbs_geterrno(void);
 
 DECLDIR int pbs_py_spawn(int, char *, char **, char **);
 
-DECLDIR int pbs_encrypt_pwd(unsigned char *, int *, unsigned char **, size_t *);
+DECLDIR int pbs_encrypt_pwd(unsigned char *, int *, unsigned char **, size_t *, const unsigned char *, const unsigned char *);
 
-DECLDIR int pbs_decrypt_pwd(unsigned char *, int, size_t, unsigned char **);
+DECLDIR int pbs_decrypt_pwd(unsigned char *, int, size_t, unsigned char **, const unsigned char * , const unsigned char *);
 
 DECLDIR char *
 pbs_submit_with_cred(int, struct attropl *, char *,
@@ -466,13 +470,10 @@ DECLDIR int      set_attr_resc(struct attrl **, char *, char *, char *);
 DECLDIR int      set_resources(struct attrl **, char *, int, char **);
 DECLDIR int      cnt2server(char *);
 DECLDIR int      cnt2server_extend(char *, char *);
-DECLDIR int      get_fullhostname(char *, char *, int);
 DECLDIR int      get_server(char *, char *, char *);
 DECLDIR int      PBSD_ucred(int, char *, int, char *, int);
 
 #else
-
-extern int pbs_connection_getsocket(int);
 
 extern int pbs_connect_noblk(char *, int);
 
@@ -482,9 +483,9 @@ extern int pbs_geterrno(void);
 
 extern int pbs_py_spawn(int, char *, char **, char **);
 
-extern int pbs_encrypt_pwd(char *, int *, char **, size_t *);
+extern int pbs_encrypt_pwd(char *, int *, char **, size_t *, const unsigned char *, const unsigned char *);
 
-extern int pbs_decrypt_pwd(char *, int, size_t, char **);
+extern int pbs_decrypt_pwd(char *, int, size_t, char **, const unsigned char *, const unsigned char *);
 
 extern char *pbs_submit_with_cred(int, struct attropl *, char *,
 	char *, char *, int, size_t , char *);
@@ -547,7 +548,6 @@ extern char*	get_attr(struct attrl *, char *, char *);
 extern int      set_resources(struct attrl **, char *, int, char **);
 extern int      cnt2server(char *server);
 extern int      cnt2server_extend(char *server, char *);
-extern int      get_fullhostname(char *, char *, int);
 extern int      get_server(char *, char *, char *);
 extern int      PBSD_ucred(int, char *, int, char *, int);
 extern char	*encode_xml_arg_list(int, int, char **);
@@ -568,4 +568,3 @@ extern const char pbs_parse_err_msges[][PBS_PARSE_ERR_MSG_LEN_MAX + 1];
 #endif
 
 #endif	/* _PBS_INTERNAL_H */
-

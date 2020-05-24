@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	req_runjob.c
  *
@@ -124,7 +126,7 @@ static int  svr_strtjob2(job *, struct batch_request *);
 static job *chk_job_torun(struct batch_request *preq, job *);
 static void req_runjob2(struct batch_request *preq, job *pjob);
 static job *where_to_runjob(struct batch_request *preq, job *);
-
+static void convert_job_to_resv(job *pjob);
 /* Global Data Items: */
 
 extern int       license_expired;
@@ -650,7 +652,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	char		 *dest;
 	int		 rq_type = 0;
 
-		
+
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
 	prov_rc = check_and_provision_job(preq, pjob, &need_prov);
@@ -1000,6 +1002,10 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	if (rc != 0)
 		return rc;
 
+	if (pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_flags & ATR_VFLAG_SET &&
+	    pjob->ji_wattr[JOB_ATR_create_resv_from_job].at_val.at_long)
+		convert_job_to_resv(pjob);
+
 	/* Move job_kill_delay attribute from Server to MOM */
 	if (pque->qu_attr[(int)QE_ATR_KillDelay].at_flags & ATR_VFLAG_SET)
 		delay = pque->qu_attr[(int)QE_ATR_KillDelay].at_val.at_long;
@@ -1114,8 +1120,23 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 		 * in
 		 */
 		if (preq == NULL || (preq->rq_type == PBS_BATCH_AsyrunJob)) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)
+			job *base_job = NULL;
+			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN){
 				set_resc_assigned((void *)pjob, 0, INCR);
+				/* Just update dependencies for the first subjob that runs */
+				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+				    pjob->ji_parentaj->ji_wattr[(int)JOB_ATR_state].at_val.at_long != JOB_STATE_BEGUN)
+					base_job = pjob->ji_parentaj;
+				else
+					base_job = pjob;
+			}
+			if (base_job != NULL &&
+			    base_job->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET) {
+				struct depend *pdep;
+				pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &base_job->ji_wattr[(int)JOB_ATR_depend]);
+				if (pdep != NULL)
+					depend_runone_hold_all(base_job);
+			}
 		}
 		return (0);
 	} else {
@@ -1360,7 +1381,7 @@ post_sendmom(struct work_task *pwt)
 	int 	wstat = pwt->wt_aux;
 	job 	*jobp = (job *) pwt->wt_parm2;
 	struct 	batch_request *preq = (struct batch_request *) pwt->wt_parm1;
-	int 	isrpp = pwt->wt_aux2;
+	int 	prot = pwt->wt_aux2;
 	struct	batch_reply *reply = (struct batch_reply *) pwt->wt_parm3;
 	char	dest_host[PBS_MAXROUTEDEST + 1];
 	char	hook_name[PBS_HOOK_NAME_SIZE + 1] = {'\0'};
@@ -1377,12 +1398,8 @@ post_sendmom(struct work_task *pwt)
 
 	if (jobp->ji_prunreq)
 		jobp->ji_prunreq = NULL;	/* set in svr_strtjob2() */
-	else {
-		if (pbs_conf.pbs_use_tcp == 0)
-			return; /* reply must have already been handled, see job_obit */
-	}
 
-	if (!isrpp) {
+	if (prot == PROT_TCP) {
 		if (WIFEXITED(wstat)) {
 			r = WEXITSTATUS(wstat);
 		} else if (WIFSIGNALED(wstat)) {
@@ -1434,7 +1451,7 @@ post_sendmom(struct work_task *pwt)
 		}
 
 	} else {
-		/* in case of rpp, the pbs_errno is set in wstat, based
+		/* in case of tpp, the pbs_errno is set in wstat, based
 		 * on which we determine value of r
 		 */
 		switch (wstat) {
@@ -1465,9 +1482,10 @@ post_sendmom(struct work_task *pwt)
 		if (reply && reply->brp_choice == BATCH_REPLY_CHOICE_Text)
 			reject_msg = reply->brp_un.brp_txt.brp_str;
 
-		/* the above reject_msg should never be freed within this function
-		 * since it will be freed by the caller process_DreplyRPP() in the
-		 * case of a RPP based job send
+		/*
+		 * the above reject_msg should never be freed within this function
+		 * since it will be freed by the caller process_DreplyTPP() in the
+		 * case of a TPP based job send
 		 */
 
 		if (r != SEND_JOB_OK) {
@@ -1522,7 +1540,7 @@ post_sendmom(struct work_task *pwt)
 		jobp->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING  ||
 		jobp->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
 		sprintf(log_buffer, "send_job returned with exit status = %d and job substate = %d",
-		        r, jobp->ji_qs.ji_substate);
+			r, jobp->ji_qs.ji_substate);
 
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobp->ji_qs.ji_jobid, log_buffer);
@@ -1673,8 +1691,8 @@ post_sendmom(struct work_task *pwt)
 			break;
 	}
 
-	if (!isrpp && reject_msg != NULL)
-		free(reject_msg); /* free this only in case of non-rpp since it was locally allocated */
+	if (prot == PROT_TCP && reject_msg != NULL)
+		free(reject_msg); /* free this only in case of non-tpp since it was locally allocated */
 
 	return;
 }
@@ -1965,4 +1983,56 @@ req_defschedreply(struct batch_request *preq)
 	free(pdefr);
 
 	reply_send(preq);
+}
+
+/**
+ * @brief
+ *	convert_job_to_resv - create a reservation out of the job
+ * 			      and move the job to the newly created
+ * 			      reservation.
+ *
+ * @param[in]	pjob - pointer to the job object
+ *
+ * @return	void
+ */
+
+void
+convert_job_to_resv(job *pjob)
+{
+	svrattrl *psatl;
+	unsigned int len;
+	pbs_list_head *plhed;
+	struct work_task *pwt;
+	struct batch_request *newreq;
+
+	newreq = alloc_br(PBS_BATCH_SubmitResv);
+	if (newreq == NULL) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, "batch request allocation failed, could not create reservation from the job");
+		return;
+	}
+	newreq->rq_type = PBS_BATCH_SubmitResv;
+
+	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, newreq->rq_user);
+
+	strncpy(newreq->rq_host, pjob->ji_wattr[JOB_ATR_submit_host].at_val.at_str, PBS_MAXHOSTNAME);
+	newreq->rq_perm = READ_WRITE | ATR_DFLAG_ALTRUN;
+
+	newreq->rq_ind.rq_queuejob.rq_jid[0] = '\0';
+	newreq->rq_ind.rq_queuejob.rq_destin[0] = '\0';
+
+	len = strlen(pjob->ji_qs.ji_jobid) + 1;
+	plhed = &newreq->rq_ind.rq_queuejob.rq_attr;
+	CLEAR_HEAD(newreq->rq_ind.rq_queuejob.rq_attr);
+	if ((psatl = attrlist_create(ATTR_resv_job, NULL, len)) != NULL) {
+		psatl->al_flags = resv_attr_def[RESV_ATR_job].at_flags;
+		strcpy(psatl->al_value, pjob->ji_qs.ji_jobid);
+		append_link(plhed, &psatl->al_link, psatl);
+	}
+
+	if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, release_req, &pwt, 0) == -1) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid, "Could not create reservation from the job");
+		free_br(newreq);
+	}
 }

@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 from ptl.lib.pbs_ifl_mock import *
@@ -45,9 +48,6 @@ class TestServerDynRes(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        # Setup node
-        a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
     def check_access_log(self, fp, exist=True):
         """
@@ -58,7 +58,7 @@ class TestServerDynRes(TestFunctional):
         # correct log message and avoid false positives from previous
         # logs
         time.sleep(1)
-        match_from = int(time.time())
+        match_from = time.time()
         self.scheduler.apply_config(validate=False)
         self.scheduler.get_pid()
         self.scheduler.signal('-HUP')
@@ -104,17 +104,20 @@ class TestServerDynRes(TestFunctional):
         restype = ["long"]
         script_body = ['echo abc']
 
+        start_time = time.time()
         # Add it as a server_dyn_res that returns a string output
         filenames = self.setup_dyn_res(resname, restype, script_body)
 
         # Submit a job
         j = Job(TEST_USER)
+        j.set_sleep_time(1)
         jid = self.server.submit(j)
 
         # Make sure that "Problem with creating server data structure"
         # is not logged in sched_logs
         self.scheduler.log_match("Problem with creating server data structure",
-                                 existence=False, max_attempts=10)
+                                 existence=False, max_attempts=10,
+                                 starttime=start_time)
 
         # Also check that "<script> returned bad output"
         # is in the logs
@@ -241,6 +244,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_small': '4'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -250,6 +254,7 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_medium': '10'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -282,6 +287,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'abc'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -318,6 +324,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'red'}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
@@ -354,6 +361,7 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
         j1 = Job(TEST_USER, attrs=a)
+        j1.set_sleep_time(5)
         jid1 = self.server.submit(j1)
 
         # Job must run successfully
@@ -372,24 +380,15 @@ class TestServerDynRes(TestFunctional):
         # The job shouldn't run
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid2, attrop=PTL_AND)
-
-        # Delete jobs
-        self.server.deljob(jid1, wait=True, runas=TEST_USER)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid1)
         self.server.deljob(jid2, wait=True, runas=TEST_USER)
 
         # Submit jobs again
-        a = {'Resource_List.foobar': '50gb'}
+        a = {'Resource_List.foobar': '100gb'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
-
-        a = {'Resource_List.foobar': '50gb'}
-        j2 = Job(TEST_USER, attrs=a)
-        jid2 = self.server.submit(j2)
-
-        # Both jobs must run successfully
-        a = {'job_state': 'R', 'Resource_List.foobar': '50gb'}
+        a = {'job_state': 'R', 'Resource_List.foobar': '100gb'}
         self.server.expect(JOB, a, id=jid1)
-        self.server.expect(JOB, a, id=jid2)
 
     def test_res_size_runtime(self):
         """
@@ -417,8 +416,9 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid)
 
         # Change script during job run
-        cmd = ["echo", "\"echo 50gb\"", " > ", filenames[0]]
-        self.du.run_cmd(cmd=cmd, runas=ROOT_USER, as_script=True)
+        tmp_file = self.du.create_temp_file(body="echo 50gb")
+        self.du.run_copy(src=tmp_file, dest=filenames[0], sudo=True,
+                         preserve_permission=False)
 
         # Rerun job
         self.server.rerunjob(jid)

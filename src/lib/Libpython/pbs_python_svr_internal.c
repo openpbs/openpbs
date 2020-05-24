@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 
 /**
@@ -82,7 +84,7 @@
 /* -----                        GLOBALS                        -----    */
 
 /* pipe-separated string lists  */
-#define runjob_modifiable_jobattrs	ATTR_h "|" ATTR_a "|" ATTR_project "|" ATTR_e "|" ATTR_o "|" ATTR_l "|" ATTR_v "|" ATTR_depend
+#define runjob_modifiable_jobattrs	ATTR_h "|" ATTR_a "|" ATTR_project "|" ATTR_e "|" ATTR_o "|" ATTR_l "|" ATTR_v "|" ATTR_depend "|" ATTR_create_resv_from_job
 #define runjob_modifiable_vnattrs	ATTR_NODE_state
 
 #define FMT_RUNJOB_ERRMSG	"Can only set job's (%s) attribute, or a vnode's (%s) attribute under RUNJOB event - got <%s>"
@@ -109,6 +111,8 @@ extern 	int		str_to_vnode_state(char *vnstate);
 extern	enum vnode_sharing str_to_vnode_sharing(char *vn_str);
 extern	int		str_to_vnode_ntype(char *vntype);
 extern u_Long		pps_size_to_kbytes(PyObject *l);
+extern PyObject * svrattrl_list_to_pyobject(pbs_list_head *);
+extern PyObject * svrattrl_to_server_attribute(svrattrl *);
 
 
 /* A dictionary for quick access to the pbs.v1 EMBEDDED_EXTENSION_TYPES */
@@ -153,6 +157,8 @@ typedef struct _pbs_python_types_entry {
 #define  PP_VNODE_IDX			24
 #define  PP_ENTITY_IDX			25
 #define  PP_ENV_IDX			26
+#define  PP_MANAGEMENT_IDX	27
+#define  PP_SERVER_ATTRIBUTE_IDX 28
 
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
@@ -182,6 +188,8 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_VNODE, 			NULL},		 /* 24 */
 	{PY_TYPE_ENTITY, 			NULL},		 /* 25 */
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
+	{PY_TYPE_MANAGEMENT,		NULL},		 /* 27 */
+	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
 
 
 	/* ADD ENTRIES ONLY BELOW, OR CHANGE THE PP_XXX_IDX above the table */
@@ -1253,7 +1261,8 @@ pbs_python_setup_types_table(void)
 	pbs_python_types_entry *pp_type = pbs_python_types_table;
 
 	while (pp_type->t_key) {
-		if (!(pp_type->t_class = PyDict_GetItemString(PBS_PythonTypes, pp_type->t_key))) {
+		pp_type->t_class = PyDict_GetItemString(PBS_PythonTypes, pp_type->t_key);
+		if (!(pp_type->t_class)) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"could not find key <%s> in PBS_PythonTypes",
 				pp_type->t_key);
@@ -5071,10 +5080,13 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_job_o = NULL;
 	PyObject *py_que = NULL;
 	PyObject *py_resv = NULL;
+	PyObject *py_margs = NULL;
+	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
 
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
+	PyObject *py_management_class = NULL;
 	PyObject *py_resv_class = NULL;
 	PyObject *py_env_class = NULL;
 	PyObject *py_varlist = NULL;
@@ -5082,7 +5094,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_vnodelist = NULL;
 	PyObject *py_vnodelist_fail = NULL;
 	PyObject *py_joblist = NULL;
-	PyObject *py_resvlist = NULL;	
+	PyObject *py_resvlist = NULL;
 	PyObject *py_exec_vnode = NULL;
 	PyObject *py_vnode	   = NULL;
 	PyObject *py_aoe	   = NULL;
@@ -5749,6 +5761,59 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				goto event_set_exit;
 			}
 		}
+	} else if (hook_event == HOOK_EVENT_MANAGEMENT) {
+		PyObject *py_attr = (PyObject *) NULL;
+		struct rq_management *rqj = req_params->rq_manage;
+		py_management_class = pbs_python_types_table[PP_MANAGEMENT_IDX].t_class;
+		if (!py_management_class) {
+			log_err(PBSE_INTERNAL, __func__, "failed to acquire management class");
+			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+				Py_None);
+			goto event_set_exit;
+		}
+
+		py_attr = svrattrl_list_to_pyobject(&rqj->rq_manager.rq_attr);
+		if (!py_attr){
+			log_err(PBSE_INTERNAL, __func__, "could not build the list of server attributes");
+			goto event_set_exit;
+		}
+
+		py_margs = Py_BuildValue("(iisliiisO)",
+			rqj->rq_manager.rq_cmd,
+			rqj->rq_manager.rq_objtype,
+			rqj->rq_manager.rq_objname,
+			rqj->rq_time,
+			rqj->rq_reply->brp_code,
+			rqj->rq_reply->brp_auxcode,
+			rqj->rq_reply->brp_choice,
+			(rqj->rq_reply->brp_choice == BATCH_REPLY_CHOICE_Text) ?
+				rqj->rq_reply->brp_un.brp_txt.brp_str : NULL,
+			py_attr
+			); /* NEW ref */
+		Py_CLEAR(py_attr);
+
+		if (!py_margs) {
+			log_err(PBSE_INTERNAL, __func__, "could not build args list for management");
+			goto event_set_exit;
+		}
+		py_management = PyObject_CallObject(py_management_class, py_margs);
+
+		if (!py_management) {
+			pbs_python_write_error_to_log(__func__);
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python management object");
+			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+				Py_None);
+			goto event_set_exit;
+		}
+
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_MANAGEMENT,
+			py_management);
+
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
+			goto event_set_exit;
+		}
 
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
@@ -5836,7 +5901,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list,
 					perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -5847,7 +5912,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			py_vnodelist_fail = create_hook_vnode_list_param(py_event_param,
 						PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    			(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
-					
+
 			if (py_vnodelist_fail == NULL) {
 				rc = -1;
 				goto event_set_exit;
@@ -5931,7 +5996,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			   create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list, perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -5941,7 +6006,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			   create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    	(pbs_list_head *)req_params->vns_list_fail, perf_label, HOOK_PERF_POPULATE_VNODELIST_FAIL);
-					
+
 		if (py_vnodelist_fail == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -6173,7 +6238,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list,
 			    perf_label, HOOK_PERF_POPULATE_VNODELIST);
-					
+
 		if (py_vnodelist == NULL) {
 			rc = -1;
 			goto event_set_exit;
@@ -6234,7 +6299,8 @@ event_set_exit:
 	Py_CLEAR(py_joblist);
 	Py_CLEAR(py_pid);
 	Py_CLEAR(py_resvlist);
-
+	Py_CLEAR(py_margs);
+	Py_CLEAR(py_management);
 	return (rc);
 }
 
@@ -6260,7 +6326,7 @@ _pbs_python_event_unset(void)
  */
 static int
 populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
-					pbs_list_head *vnlist) 
+					pbs_list_head *vnlist)
 {
 	PyObject *py_vnlist = NULL;
 	PyObject *py_attr_keys = NULL;
@@ -6383,7 +6449,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	PyObject 		*py_vnode = NULL;
 	PyObject 		*py_vnodelist = NULL;
 	PyObject 		*py_joblist = NULL;
-	PyObject 		*py_resvlist = NULL;	
+	PyObject 		*py_resvlist = NULL;
 	PyObject 		*py_job_o = NULL;
 	PyObject 		*py_resv = NULL;
 	char			*queue;
@@ -11925,7 +11991,7 @@ const char pbsv1mod_meth_get_pbs_conf_doc[] =
 \n\
   returns:\n\
          Returns a dictionary containing the entries to pbs conf file, which is by default\n\
-         /etc/pbs.conf in Linux/Unix or 'C:\\Program Files\\PBS Pro\\pbs.conf'.\n\
+         /etc/pbs.conf in Linux/Unix or 'C:\\Program Files (x86)\\PBS\\pbs.conf'.\n\
 ";
 
 /**
@@ -12129,7 +12195,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	char	*new_exec_host = NULL;
 	char	*new_exec_host2 = NULL;
 	char	*new_schedselect = NULL;
-	char	*tmpstr = NULL;	
+	char	*tmpstr = NULL;
 	PyObject *py_return = Py_None;
 	int	hook_set_mode_orig;
 	char	*jobid = NULL;
@@ -12177,7 +12243,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_err(errno, __func__, "malloc failure");
 			goto release_nodes_exit;
 		}
-	
+
 		vnodelist[0] = '\0';
 
 		num_attrs = PyList_Size(py_attr_keys);
@@ -12196,7 +12262,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 					goto release_nodes_exit;
 				}
 			}
-		
+
 			if (pbs_strcat(&vnodelist, &vnodelist_sz, vn_name) == NULL) {
 				log_err(errno, __func__, "pbs_strcat failure");
 				free(vn_name);
@@ -12218,7 +12284,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_err(-1, __func__, "strdup keep_select failed");
 			goto release_nodes_exit;
 		}
-	
+
 		/* populate failed_mom_list used to decide which nodes to release */
 		if (PyObject_HasAttrString(py_job, PY_JOB_FAILED_MOM_LIST)) {
 			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_FAILED_MOM_LIST);
@@ -12237,7 +12303,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 		/* populate succeeded_mom_list used to decide which nodes to keep */
 		if (PyObject_HasAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST)) {
 			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST); /* NEW */
-	
+
 			if (py_nodes != NULL) {
 				if (PyList_Check(py_nodes)) {
 					if (py_strlist_to_reliable_job_node_list(py_nodes, &succeeded_mom_list) == -1) {
@@ -12487,4 +12553,114 @@ release_nodes_exit:
 
 	hook_set_mode = hook_set_mode_orig;
 	return (py_return);
+}
+
+
+/**
+ *
+ * @brief
+ *	Returns a Python List of _server_attribute objects or  or NULL on error.
+ * @param[in]	phead	- pointer to the head of the list containing data.
+ *
+ * @return 	PyObject *
+ * @retval	<object>	- the Python list object holding
+ * @retval				the _server_attribute objects.
+ * @retval	NULL		- if an error occurred.
+ * @note
+ * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
+ * 		reference.
+ */
+PyObject *svrattrl_list_to_pyobject(pbs_list_head *phead)
+{
+	svrattrl *plist = NULL;
+	PyObject* py_list = PyList_New(0);
+
+	if (phead == NULL) {
+		log_err(errno, __func__, "NULL input parameters!");
+		Py_CLEAR(py_list);
+		return NULL;
+	}
+
+	for (plist = (svrattrl *)GET_NEXT(*phead); plist != NULL;
+		plist = (svrattrl *)GET_NEXT(plist->al_link)) {
+		PyObject *py_server_attribute = svrattrl_to_server_attribute(plist);
+		if (py_server_attribute) {
+			svrattrl *slist = NULL;
+			PyObject* py_slist = PyObject_GetAttrString(py_server_attribute, "sisters");
+			if (py_slist) {
+				for(slist = plist->al_sister; slist != NULL; slist = slist->al_sister) {
+					PyObject *py_server_attribute_sister = svrattrl_to_server_attribute(slist);
+					if (py_server_attribute_sister) {
+						PyList_Append(py_slist, py_server_attribute_sister);
+						Py_CLEAR(py_server_attribute_sister);
+					} else {
+						snprintf(log_buffer, LOG_BUF_SIZE-1,
+							"could not translate the sister for attribute <%s>", plist->al_name);
+						log_buffer[LOG_BUF_SIZE-1] = '\0';
+						log_err(PBSE_INTERNAL, __func__, log_buffer);
+						break;
+					}
+				}
+			}/* else {
+				log_err(PBSE_INTERNAL, __func__,
+					"failed to acquire sisters in server_attribute object");
+			} */
+			PyList_Append(py_list, py_server_attribute);
+			Py_CLEAR(py_server_attribute);
+		}
+	}
+	return py_list;
+}
+
+/**
+ *
+ * @brief
+ *	Returns a Python _server_attribute object or NULL on error.
+ * @param[in]	attribute	- pointer to the head of the list containing data.
+ *
+ * @return 	PyObject *
+ * @retval	<object>	- the Python _server_attribute object.
+ * @retval	NULL		- if an error occurred.
+ * @note
+ * 		the returned PyObject must be cleared(Py_CLEAR) as it's a new
+ * 		reference.
+ */
+PyObject *svrattrl_to_server_attribute(svrattrl *attribute)
+{
+	PyObject *py_server_attribute = NULL;
+	PyObject *py_server_attribute_class = NULL;
+	PyObject *py_server_attribute_args = NULL;
+
+	if (attribute == NULL){
+		goto server_attribute_exit;
+	}
+
+	py_server_attribute_class = pbs_python_types_table[PP_SERVER_ATTRIBUTE_IDX].t_class;
+	if (!py_server_attribute_class) {
+		log_err(PBSE_INTERNAL, __func__, "failed to acquire server_attribute class");
+		goto server_attribute_exit;
+	}
+
+	py_server_attribute_args = Py_BuildValue("(sssii)",
+		attribute->al_name,
+		attribute->al_resc,
+		attribute->al_value,
+		attribute->al_op,
+		attribute->al_flags
+		); /* NEW ref */
+
+	if (!py_server_attribute_args) {
+		log_err(PBSE_INTERNAL, __func__, "could not build args list for server_attribute");
+		goto server_attribute_exit;
+	}
+	py_server_attribute = PyObject_CallObject(py_server_attribute_class, py_server_attribute_args);
+
+	if (!py_server_attribute) {
+		pbs_python_write_error_to_log(__func__);
+		log_err(PBSE_INTERNAL, __func__, "failed to create a python server_attribute object");
+		goto server_attribute_exit;
+	}
+server_attribute_exit:
+	Py_CLEAR(py_server_attribute_args);
+	return py_server_attribute;
 }

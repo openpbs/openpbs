@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	pbs_rsub.c
  * @brief
@@ -59,6 +61,7 @@ static time_t dtstart;
 static time_t dtend;
 static int is_stdng_resv = 0;
 static int is_maintenance_resv = 0;
+static int is_job_resv = 0;
 static char **maintenance_hosts = NULL;
 
 /* The maximum buffer size that is allowed not to exceed 80 columns.
@@ -239,22 +242,16 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 				while (i == 1) {
-					if (strcmp(keyword, ATTR_convert) == 0) {
+					if (strcmp(keyword, ATTR_convert) == 0)
 						qmoveflg = TRUE;
-					} else {
-						/* unknown "-W" attribute in reservation req */
-						fprintf(stderr, "pbs_rsub: unrecognized pair, %s=%s\n",
-							keyword, valuewd);
-						errflg++;
-					}
-					if (errflg == 0)
-						set_attr_error_exit(&attrib, keyword, valuewd);
+
+					set_attr_error_exit(&attrib, keyword, valuewd);
 
 					/* move to next attribute in this "-W" specification */
 
 					i = parse_equal_string(NULL, &keyword, &valuewd);
 
-				}   /* bottom of inner while loop */
+				}
 
 				if (i == -1) {
 					fprintf(stderr, "%s", badw);
@@ -265,6 +262,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			case '-':
 				if (strcmp(optarg, "hosts") == 0)
 					is_maintenance_resv = 1;
+				else if (strcmp(optarg, "job") == 0) {
+					set_attr_error_exit(&attrib, ATTR_resv_job, argv[optind]);
+					is_job_resv = 1;
+					++optind;
+				}
 				else
 					errflg++;
 				break;
@@ -336,6 +338,12 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		}
 	}
 
+	if (is_job_resv && ((dtstart != 0) || (dtend != 0))) {
+		fprintf(stderr, "pbs_rsub: Start/End time cannot be used with --job option");
+		fprintf(stderr, "\n");
+		return (++errflg);
+	}
+
 	if (!errflg) {
 		errflg = (optind != argc);
 		if (errflg) {
@@ -364,7 +372,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 int
 set_resv_env(char **envp)
 {
-	char *job_env;
+	char *resv_env;
 	char *c, *env;
 	char host[PBS_MAXHOSTNAME+1];
 	int len;
@@ -389,25 +397,25 @@ set_resv_env(char **envp)
 	len += PBS_MAXHOSTNAME;
 	len += MAXPATHLEN;
 	len += len;     /* Double it for all the commas, etc. */
-	if ((job_env = (char *) malloc(len)) == NULL) {
+	if ((resv_env = (char *) malloc(len)) == NULL) {
 		fprintf(stderr, "pbs_rsub: Out of memory\n");
 		return FALSE;
 	}
-	*job_env = '\0';
+	*resv_env = '\0';
 
-	/* Send the required variables with the job. */
+	/* Send the required variables with the reservation. */
 	c = getenv("LOGNAME");
 	if (c != NULL) {
-		strcat(job_env, "PBS_O_LOGNAME=");
-		strcat(job_env, c);
+		strcat(resv_env, "PBS_O_LOGNAME=");
+		strcat(resv_env, c);
 	}
 	if ((rc = gethostname(host, (sizeof(host) - 1))) == 0) {
 		if ((rc = get_fullhostname(host, host, (sizeof(host) - 1))) == 0) {
-			if (*job_env)
-				strcat(job_env, ",PBS_O_HOST=");
+			if (*resv_env)
+				strcat(resv_env, ",PBS_O_HOST=");
 			else
-				strcat(job_env, "PBS_O_HOST=");
-			strcat(job_env, host);
+				strcat(resv_env, "PBS_O_HOST=");
+			strcat(resv_env, host);
 		}
 	}
 
@@ -416,8 +424,8 @@ set_resv_env(char **envp)
 #ifdef WIN32
 		back2forward_slash(c);
 #endif
-		strcat(job_env, ",PBS_O_MAIL=");
-		strcat(job_env, c);
+		strcat(resv_env, ",PBS_O_MAIL=");
+		strcat(resv_env, c);
 	}
 	if (rc != 0) {
 		fprintf(stderr, "pbs_rsub: cannot get full local host name\n");
@@ -425,8 +433,8 @@ set_resv_env(char **envp)
 	}
 	c = getenv("PBS_TZID");
 	if (c != NULL) {
-		strcat(job_env, ",PBS_TZID=");
-		strcat(job_env, c);
+		strcat(resv_env, ",PBS_TZID=");
+		strcat(resv_env, c);
 		set_attr_error_exit(&attrib, ATTR_resv_timezone, c);
 	}
 	else if (is_stdng_resv) {
@@ -434,8 +442,8 @@ set_resv_env(char **envp)
 		exit(2);
 	}
 
-	set_attr_error_exit(&attrib, ATTR_v, job_env);
-	free(job_env);
+	set_attr_error_exit(&attrib, ATTR_v, resv_env);
+	free(resv_env);
 	return TRUE;
 }
 
@@ -839,7 +847,7 @@ main(int argc, char *argv[], char *envp[])
 
 				if (ncpus_str != NULL)
 					ncpus = strtol(ncpus_str, &endp, 0);
-				
+
 				if (*endp != '\0') {
 					fprintf(stderr, "pbs_rsub: Attribute value error\n");
 					CS_close_app();

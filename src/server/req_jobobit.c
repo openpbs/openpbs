@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    req_jobobit.c
  *
@@ -93,7 +95,7 @@
 #include "sched_cmds.h"
 #include "mom_server.h"
 #include "dis.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "libutil.h"
 #include "pbs_sched.h"
 
@@ -118,7 +120,6 @@ extern char *msg_obitnodel;
 extern char *msg_bad_password;
 extern char *msg_hook_reject_deletejob;
 extern char *msg_hook_reject_rerunjob;
-extern struct connect_handle connection[];
 extern time_t time_now;
 
 /* External Functions called */
@@ -546,10 +547,7 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 	long t;
 	attribute *peh;
 	struct work_task *pwt;
-	int prot = PROT_TCP;
-
-	if (pbs_conf.pbs_use_tcp == 1)
-		prot = PROT_RPP;
+	int prot = PROT_TPP;
 
 	if (pjob->ji_momhandle < 0) {
 
@@ -691,7 +689,8 @@ conn_to_mom_failed(job *pjob, void(*func)(struct work_task *))
 	if (pjob->ji_mom_prot == PROT_TCP) {
 		svr_disconnect(pjob->ji_momhandle);
 	} else {
-		rpp_close(pjob->ji_momhandle);
+		tpp_close(pjob->ji_momhandle);
+		tdelete2((u_long)pjob->ji_momhandle, 0, &streams);
 	}
 	pjob->ji_momhandle = -1;
 	ptask = set_task(WORK_Immed, 0, func, pjob);
@@ -754,7 +753,7 @@ on_job_exit(struct work_task *ptask)
 	if ((handle = mom_comm(pjob, on_job_exit)) < 0)
 		return;
 
-	if (pjob->ji_mom_prot == PROT_RPP) {
+	if (pjob->ji_mom_prot == PROT_TPP) {
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
@@ -802,9 +801,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -893,9 +892,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -969,7 +968,7 @@ on_job_exit(struct work_task *ptask)
 
 			if (ptask->wt_type != WORK_Deferred_Reply) { /* first time in */
 
-				/* see if have any dependencys */
+				/* see if have any dependencies */
 
 				if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
 					(void)depend_on_term(pjob);
@@ -984,9 +983,9 @@ on_job_exit(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1036,7 +1035,7 @@ on_job_exit(struct work_task *ptask)
 				t = time_now + (t * t);
 				ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
 				append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
-				
+
 				free_br(preq);
 				preq = NULL;
 				return;
@@ -1075,7 +1074,7 @@ on_job_exit(struct work_task *ptask)
 
 				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 					issue_track(pjob);
-				
+
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_NONE, PREEMPT_METHOD_DELETE, pjob);
 				/*
@@ -1197,7 +1196,7 @@ on_job_rerun(struct work_task *ptask)
 	if ((handle = mom_comm(pjob, on_job_rerun)) < 0)
 		return;
 
-	if (pjob->ji_mom_prot == PROT_RPP) {
+	if (pjob->ji_mom_prot == PROT_TPP) {
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
@@ -1238,9 +1237,9 @@ on_job_rerun(struct work_task *ptask)
 				if (rc == 0) {
 					/* request ok, will come back when its done */
 					append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-					if (pjob->ji_mom_prot == PROT_RPP)
+					if (pjob->ji_mom_prot == PROT_TPP)
 						if (mom_tasklist_ptr)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 					return;
 				} else {
 					/* set up as if mom returned error */
@@ -1291,9 +1290,9 @@ on_job_rerun(struct work_task *ptask)
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else
 						/* set up as if mom returned error */
@@ -1364,9 +1363,9 @@ on_job_rerun(struct work_task *ptask)
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;
 					} else {	/* error on sending request */
 						preq->rq_reply.brp_code = rc;
@@ -1416,9 +1415,9 @@ on_job_rerun(struct work_task *ptask)
 					rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
-						if (pjob->ji_mom_prot == PROT_RPP)
+						if (pjob->ji_mom_prot == PROT_TPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if tpp, link to mom list as well */
 						return;	/* come back when Mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1449,7 +1448,7 @@ on_job_rerun(struct work_task *ptask)
 
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_SISCOMM, PREEMPT_METHOD_DELETE, pjob);
-				
+
 				discard_job(pjob, "A sister Mom failed to delete job", 0);
 				return;
 			} else if ((preq->rq_reply.brp_code == DIS_EOF) ||
@@ -1692,7 +1691,7 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
  *		or on_job_rerun().
  *
  * param[in] - pruu - the structure containing the resource usage info
- * param[in] - stream - the RPP stream connecting to the Mom
+ * param[in] - stream - the TPP stream connecting to the Mom
  *		The Server will send back either a rejection or an acceptance
  *		of  the Obit.
  */

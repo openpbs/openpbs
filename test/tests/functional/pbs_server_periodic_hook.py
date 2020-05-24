@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -53,8 +56,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         """
         function to create a hook script.
         It accepts 2 arguments
-        - accept	If set to true, then hook will accept else reject
-        - sleep_time	Number of seconds we want the hook to sleep
+        - accept        If set to true, then hook will accept else reject
+        - sleep_time        Number of seconds we want the hook to sleep
         """
         hook_action = "e.accept()"
         if accept is False:
@@ -70,33 +73,37 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         return int(a[1])
 
     def check_next_occurances(self, count, freq,
-                              hook_run_time, check_for_hook_end):
+                              hook_run_time, check_for_hook_end, alarm=0):
         """
         Helper function to check the occurances of hook by matching their
         logs in server logs.
         It needs 4 arguments:
-        - count			to know how many times to repeat
-                                checking these logs
-        - freq			is the frequency set in pbs server to run this hook
-        - hook_run_time		is the amount of time hook takes to run.
-        - check_for_hook_end	If it is true then the functions checks for
-                                hook end messages.
+        - count                     to know how many times to repeat
+                                    checking these logs
+        - freq                      is the frequency set in pbs server to run
+                                    this hook
+        - hook_run_time             is the amount of time hook takes to run.
+        - check_for_hook_end        If it is true then the functions checks for
+                                    hook end messages.
+        - alarm                     hook alarm
         """
         occurance = 0
-        time_expected = int(time.time()) + freq
         # time after which we want to start matching log
-        search_after = int(time.time())
+        search_after = time.time()
         intr = freq
         while (occurance < count):
             msg_expected = self.start_msg
             msg = self.server.log_match(msg_expected,
                                         interval=(intr + 1),
                                         starttime=search_after)
-            time_logged = self.get_timestamp(msg[1])
-            self.assertFalse((time_logged - time_expected) > 1)
+            if occurance == 0:
+                time_expected = time_logged = self.get_timestamp(msg[1])
+            else:
+                time_logged = self.get_timestamp(msg[1])
+                self.assertFalse((time_logged - time_expected) > 1)
 
             if check_for_hook_end is True:
-                time_expected += hook_run_time
+                time_expected = time_logged + hook_run_time
                 # set it to a second before we expect the hook to end
                 search_after = time_expected - 1
                 msg_expected = self.end_msg
@@ -104,7 +111,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                                             interval=(hook_run_time + 1),
                                             starttime=search_after)
                 time_logged = self.get_timestamp(msg[1])
-                self.assertFalse((time_logged - time_expected) > 1)
+                if alarm != 0:
+                        self.assertLessEqual(time_logged - time_expected,
+                                             alarm - hook_run_time)
+                else:
+                        self.assertLessEqual(time_logged - time_expected, 1)
 
                 if hook_run_time <= freq:
                     intr = freq - hook_run_time
@@ -119,7 +130,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
             # we just matched hook start/end message, next start message is
             # surely after time_expected.
             search_after = time_expected
-            time_expected = time_expected + intr
+            time_expected = time_logged + intr
             occurance += 1
 
     def test_sp_hook_run(self):
@@ -288,7 +299,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         attrs = {'event': 'periodic', 'alarm': 15, 'freq': 5}
         self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
         self.check_next_occurances(2, freq=5, hook_run_time=10,
-                                   check_for_hook_end=True)
+                                   check_for_hook_end=True, alarm=15)
 
     def test_check_for_negative_freq(self):
         """
@@ -330,7 +341,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         scr = self.create_hook(accept=True, sleep_time=25)
         attrs = {'event': "periodic", 'alarm': "28"}
         self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
-        start_time = int(time.time())
+        start_time = time.time()
         attrs = {'freq': 30, 'enabled': 'True'}
         self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         expected_msg = "periodic hook started at "
@@ -345,7 +356,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         attrs = {'event': "exechost_periodic", 'alarm': "7", 'freq': "8",
                  'enabled': 'True'}
         self.server.create_import_hook(hook_name, attrs, scr)
-        start_time = int(time.time())
+        start_time = time.time()
         expected_msg = "periodic hook started at "
         self.mom.log_match(expected_msg, interval=(freq + 1),
                            starttime=start_time)

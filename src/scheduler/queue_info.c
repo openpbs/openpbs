@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    queue_info.c
@@ -184,7 +186,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 
-		if (queue_in_partition(qinfo, sinfo->partitions)) {
+		if (queue_in_partition(qinfo, sinfo->partition)) {
 			/* check if the queue is a dedicated time queue */
 			if (conf.ded_prefix[0] != '\0')
 				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
@@ -219,10 +221,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 				qinfo->num_nodes = count_array((void **) qinfo->nodes);
 
-			} else if (qinfo->partition != NULL) {
-				qinfo->nodes_in_partition = node_filter(sinfo->nodes, sinfo->num_nodes,
-						node_partition_cmp, (void *) qinfo->partition, 0);
-				qinfo->num_nodes = count_array((void **) qinfo->nodes_in_partition);
 			}
 
 			if (ret != QUEUE_NOT_EXEC) {
@@ -566,7 +564,6 @@ new_queue_info(int limallocflag)
 	qinfo->server	 = NULL;
 	qinfo->resv		 = NULL;
 	qinfo->nodes	 = NULL;
-	qinfo->nodes_in_partition = NULL;
 	qinfo->alljobcounts	 = NULL;
 	qinfo->group_counts  = NULL;
 	qinfo->project_counts  = NULL;
@@ -826,8 +823,6 @@ free_queue_info(queue_info *qinfo)
 		free(qinfo->running_jobs);
 	if (qinfo->nodes != NULL)
 		free(qinfo->nodes);
-	if (qinfo->nodes_in_partition != NULL)
-		free(qinfo->nodes_in_partition);
 	if (qinfo->alljobcounts != NULL)
 		free_counts_list(qinfo->alljobcounts);
 	if (qinfo->group_counts != NULL)
@@ -991,10 +986,6 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 		nqinfo->nodes = node_filter(nsinfo->nodes, nsinfo->num_nodes,
 			node_queue_cmp, (void *) nqinfo->name, 0);
 
-	if (oqinfo->nodes_in_partition != NULL)
-		nqinfo->nodes_in_partition = node_filter(nsinfo->nodes, nsinfo->num_nodes,
-			node_partition_cmp, (void *) oqinfo->partition, 0);
-
 	if (oqinfo->partition != NULL) {
 		nqinfo->partition = string_dup(oqinfo->partition);
 		if (nqinfo->partition == NULL) {
@@ -1060,7 +1051,7 @@ node_queue_cmp(node_info *ninfo, void *arg)
  *      queue_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	qinfo		-  queue information
- * @param[in]	partitions	-  array of partitions associated to scheduler
+ * @param[in]	partition	-  partition associated to scheduler
  *
  * @return	a node_info filled with information from node
  *
@@ -1069,10 +1060,10 @@ node_queue_cmp(node_info *ninfo, void *arg)
  * @retval	0	: if failure
  */
 int
-queue_in_partition(queue_info *qinfo, char **partitions)
+queue_in_partition(queue_info *qinfo, char *partition)
 {
 	if (dflt_sched) {
-		if (qinfo->partition == NULL)
+		if (qinfo->partition == NULL || (strcmp(qinfo->partition, DEFAULT_PARTITION) == 0))
 			return 1;
 		else
 			return 0;
@@ -1080,11 +1071,8 @@ queue_in_partition(queue_info *qinfo, char **partitions)
 	if (qinfo->partition == NULL)
 		return 0;
 
-	if (is_string_in_arr(partitions, qinfo->partition))
+	if (strcmp(partition, qinfo->partition) == 0)
 		return 1;
 	else
 		return 0;
 }
-
-
-

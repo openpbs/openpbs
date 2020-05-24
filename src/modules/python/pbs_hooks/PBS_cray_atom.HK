@@ -4,3 +4,4 @@ user=pbsadmin
 event=execjob_begin,execjob_end
 order=100
 alarm=300
+fail_action=offline_vnodes

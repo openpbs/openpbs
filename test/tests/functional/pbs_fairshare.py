@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 from tests.functional import *
 
@@ -163,7 +166,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1)
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -200,7 +203,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1)
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -239,7 +242,7 @@ class TestFairshare(TestFunctional):
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1, {'Resource_List.cput': 40})
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '0.3816')
@@ -281,7 +284,7 @@ class TestFairshare(TestFunctional):
         J4 = Job(TEST_USER1, {'Resource_List.ncpus': 4,
                               'Resource_List.walltime': "00:02:00"})
         jid4 = self.server.submit(J4)
-        t = int(time.time())
+        t = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
         self.scheduler.log_match(str(jid1) + msg + '60.3816')
@@ -363,8 +366,8 @@ class TestFairshare(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        t = int(time.time())
-        time.sleep(2)
+        t = time.time()
+        time.sleep(3)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.scheduler.log_match("Decaying Fairshare Tree", starttime=t)
@@ -374,3 +377,40 @@ class TestFairshare(TestFunctional):
         fs_usage = int(fs.usage)
         self.assertEqual(fs_usage, 1,
                          "Fairshare usage %d not equal to 1" % fs_usage)
+
+    def test_fairshare_topjob(self):
+        """
+        Test that jobs are run in the augmented fairshare order after a topjob
+        is added to the calendar
+        """
+        self.scheduler.set_sched_config({'fair_share': 'True'})
+        self.scheduler.set_sched_config({'fairshare_usage_res': 'ncpus'})
+        self.scheduler.set_sched_config({'strict_ordering': 'True'})
+        self.scheduler.add_to_resource_group(TEST_USER, 11, 'root', 10)
+        self.scheduler.add_to_resource_group(TEST_USER1, 12, 'root', 10)
+        self.scheduler.add_to_resource_group(TEST_USER2, 13, 'root', 10)
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 5},
+                            id=self.mom.shortname)
+        a = {'Resource_List.select': '5:ncpus=1'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        j2 = Job(TEST_USER1, attrs=a)
+        jid2 = self.server.submit(j2)
+        j3 = Job(TEST_USER1, attrs=a)
+        jid3 = self.server.submit(j3)
+        j4 = Job(TEST_USER2, attrs=a)
+        jid4 = self.server.submit(j4)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.scheduler.log_match(jid2 + ';Job is a top job and will run at')
+        c = self.scheduler.cycles(lastN=1)[0]
+        jorder = [jid2, jid4, jid3]
+        jorder = [j.split('.')[0] for j in jorder]
+        msg = 'Jobs ran out of order'
+        self.assertEqual(jorder, c.political_order, msg)

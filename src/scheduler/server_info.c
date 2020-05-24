@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    server_info.c
@@ -117,11 +119,11 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#include <pbs_ifl.h>
-#include <pbs_error.h>
-#include <log.h>
-#include <rpp.h>
-#include <pbs_share.h>
+#include "pbs_ifl.h"
+#include "pbs_error.h"
+#include "log.h"
+#include "tpp.h"
+#include "pbs_share.h"
 #include "server_info.h"
 #include "constant.h"
 #include "queue_info.h"
@@ -246,12 +248,16 @@ query_server(status *pol, int pbs_sd)
 	query_sched_obj(policy, sched, sinfo);
 	pbs_statfree(all_sched);
 
-	if (!dflt_sched && (sinfo->partitions == NULL)) {
+	if (!dflt_sched && (sinfo->partition == NULL)) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
 		return NULL;
+	}
+	/* If it is a default scheduler then set the partition to have only one value "pbs-default" */
+	if (dflt_sched) {
+		sinfo->partition = string_dup(DEFAULT_PARTITION);
 	}
 
 	/* to avoid a possible race condition in which the time it takes to
@@ -260,10 +266,7 @@ query_server(status *pol, int pbs_sd)
 	 * will populate internal data structures based on this batch status
 	 * after all other data is queried
 	 */
-	if (dflt_sched)
-		bs_resvs = stat_resvs(pbs_sd);
-	else
-		bs_resvs = NULL;
+	bs_resvs = stat_resvs(pbs_sd);
 
 	/* get the nodes, if any - NOTE: will set sinfo -> num_nodes */
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
@@ -348,6 +351,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 #endif /* localmod 050 */
+	associate_dependent_jobs(sinfo);
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
@@ -453,12 +457,13 @@ query_server(status *pol, int pbs_sd)
 	}
 	sinfo->unordered_nodes[i] = NULL;
 
+
+	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
+
 	/* Create placement sets  after collecting jobs on nodes because
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
-
-	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
 
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
@@ -864,16 +869,14 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 
 	attrp = sched->attribs;
 
-	if (pbs_conf.pbs_use_tcp == 1) {
-		/* set throughput mode to 1 by default */
-		sinfo->throughput_mode = 1;
-	}
+	/* set throughput mode to 1 by default */
+	sinfo->throughput_mode = 1;
 
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
 			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_partition)) {
-			sinfo->partitions = break_comma_list(attrp->value);
+			sinfo->partition = string_dup(attrp->value);
 		} else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
 			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
@@ -1204,8 +1207,8 @@ free_server_info(server_info *sinfo)
 		free_queue_list(sinfo->queue_list);
 	if(sinfo->equiv_classes != NULL)
 		free_resresv_set_array(sinfo->equiv_classes);
-	if (sinfo->partitions != NULL)
-		free_string_array(sinfo->partitions);
+	if (sinfo->partition != NULL)
+		free(sinfo->partition);
 	if(sinfo->buckets != NULL)
 		free_node_bucket_array(sinfo->buckets);
 
@@ -1322,7 +1325,7 @@ new_server_info(int limallocflag)
 	sinfo->pset_metadata_stale = 0;
 	sinfo->sched_cycle_len = 0;
 	sinfo->num_parts = 0;
-	sinfo->partitions = NULL;
+	sinfo->partition = NULL;
 	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
 	sinfo->res = NULL;
@@ -2332,7 +2335,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
-	nsinfo->partitions = dup_string_array(osinfo->partitions);
+	nsinfo->partition = string_dup(osinfo->partition);
 	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
 	nsinfo->name = string_dup(osinfo->name);
 	nsinfo->preempt_targets_enable = osinfo->preempt_targets_enable;
@@ -2488,6 +2491,10 @@ dup_server_info(server_info *osinfo)
 			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
 	}
 	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
+	/* Now that all job information has been created, time to associate
+	 * jobs to each other if they have runone dependency
+	 */
+	associate_dependent_jobs(nsinfo);
 
 	return nsinfo;
 }

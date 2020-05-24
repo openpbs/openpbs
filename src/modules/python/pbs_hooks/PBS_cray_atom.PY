@@ -3,40 +3,43 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 """
-PBS Professional hook for consuming the Shasta Northbound API.
+PBS hook for consuming the Shasta Northbound API.
 
 This hook services the following events:
 - execjob_begin
@@ -44,17 +47,21 @@ This hook services the following events:
 """
 
 
-import sys
-import os
 import json as JSON
-import urllib
+import os
 import site
+import sys
+import urllib
+
 site.main()
-import requests
-import requests_unixsocket
-import pbs
-import pwd
-import copy
+
+# to be PEP-8 compliant, the imports must be indented
+if True:
+    import requests
+    import requests_unixsocket
+    import pbs
+    import pwd
+    import copy
 
 requests_unixsocket.monkeypatch()
 
@@ -67,7 +74,9 @@ class OfflineError(Exception):
     """
     Exception that will offline the node and reject the event
     """
-    pass
+
+    def __init__(self, msg):
+        super().__init__(pbs.event().job.id + ': ' + msg)
 
 
 class RejectError(Exception):
@@ -401,11 +410,7 @@ if __name__ == 'builtins':
     try:
         main()
     except OfflineError as e:
-        for v in pbs.event().vnode_list.keys():
-            vnode = pbs.event().vnode_list[v]
-            vnode.state = pbs.ND_OFFLINE
-            vnode.comment = '%s: vnode set to offline: %s' % (
-                pbs.event().hook_name, e.message)
-        pbs.event().reject()
+        # the fail_action will offline the vnodes
+        raise
     except RejectError:
         pbs.event().reject()

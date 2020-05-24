@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    parse.c
@@ -137,7 +139,7 @@ parse_config(char *fname)
 	struct resource_type type = {0};
 
 	if ((fp = fopen(fname, "r")) == NULL) {
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
 			fname, "Can not open file: %s", fname);
 		return 0;
 	}
@@ -231,6 +233,8 @@ parse_config(char *fname)
 						conf.prime_lb = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == ALL)
 						conf.non_prime_lb = num ? 1 : 0;
+					obsolete[0] = PARSE_LOAD_BALANCING;
+					obsolete[1] = "exechost_periodic and node_sort_key";
 				}
 				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
 					if (prime == PRIME || prime == ALL)
@@ -459,8 +463,8 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && npkey_num > MAX_SORTS)) {
-						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
-							"Too many %s sorts.  %s sort ignored.  %d max sorts", 
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
+							"Too many %s sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
 					} else {
 						tok = strtok(config_value, DELIM);
@@ -523,8 +527,8 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && node_pkey_num > MAX_SORTS) ||
 						((prime == NON_PRIME || prime == ALL) && node_npkey_num > MAX_SORTS)) {
-						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
-							"Too many %s node sorts.  %s sort ignored.  %d max sorts", 
+						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
+							"Too many %s node sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
 					}
 					else {
@@ -794,15 +798,15 @@ parse_config(char *fname)
 		}
 
 		if (error)
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 				"Error reading line %d: %s", linenum, errbuf);
 
 		if (obsolete[0] != NULL) {
 			if (obsolete[1] != NULL)
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 					"Obsolete config name %s, instead use %s", obsolete[0], obsolete[1]);
 			else
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, 
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 					"Obsolete config name %s", obsolete[0]);
 		}
 	}

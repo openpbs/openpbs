@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /* windows 2000 specific */
 #ifndef	_PBS_WIN_H
 #define _PBS_WIN_H
@@ -262,7 +264,7 @@ struct passwd {
 extern struct passwd *getpwnam(const char *name);
 extern struct passwd *getpwuid(uid_t uid);
 extern struct passwd *logon_pw(char *username, char *credb, size_t credl,
-	int (*decrypt_func)(char *, int, size_t, char **), int use_winsta,  char msg[]);
+	int (*decrypt_func)(char *, int, size_t, char **, const unsigned char *, const unsigned char *), int use_winsta,  char msg[]);
 
 extern void cache_usertoken_and_homedir(char *user, char *pass,
 	size_t passl, int (*read_password_func)(void *, char **, size_t *),
@@ -281,8 +283,6 @@ extern char     *getlogin_full(void);           /* chars are in a static area */
 /* returns <domain>\<user>    */
 extern char	*getHomedir(char *user);	/* return the homedir of user */
 /* return value must be free()*/
-extern char	*getRhostsFile(char *user, HANDLE userlogin);
-/* returns .rhosts file path */
 /* return value is static */
 extern char	*map_unc_path(char *path, struct passwd *pw);
 extern void	unmap_unc_path(char *path);
@@ -307,7 +307,6 @@ extern int	isLocalAdminMember(char *user);
 extern DWORD 	sid2rid(SID *sid);
 extern int	isAdminPrivilege(char *user);
 extern int	sidIsAdminPrivilege(SID *sid);
-extern int	inGroups(char *gname, SID *gidlist[], int len);
 extern SID	*create_domain_admins_sid(void);  /* must free with LocalFree() */
 extern SID	*create_domain_users_sid(void);  /* must free with LocalFree() */
 extern SID	*create_administrators_sid(void); /* must free with LocalFree() */
@@ -317,11 +316,8 @@ extern SID*	create_everyone_sid(void);
 extern HANDLE LogonUserNoPass(char *username);
 extern BOOL impersonate_user(HANDLE hlogintoken);
 extern BOOL revert_impersonated_user();
-extern int setuser(char *username);
-extern int setuser_with_password(char *username, char *cred_buf,
-	size_t cred_len, int (*decrypt_func)(char *, int, size_t, char **));
-extern HANDLE setuser_handle(void);
-extern void setuser_close_handle(void);
+extern HANDLE setuser(char *username);
+extern void setuser_close_handle(HANDLE user_handle);
 extern int setuid(uid_t uid);	/* mimics UNIX call */
 
 extern DWORD get_activesessionid(int return_on_no_active_session, char *username);
@@ -344,7 +340,6 @@ extern int  accessinfo_mask_allzero(struct accessinfo *acc, int len);
 extern void accessinfo_free(struct accessinfo *acc, int len);
 extern char *accessinfo_values(struct accessinfo *acc, int len);
 extern int perm_granted_admin_and_owner(char *path, int mask, char *owner, char *errmsg);
-extern int perm_granted(char *path, int mask, char *user, char realuser[]);
 extern int secure_file(char *path, char *user, ACCESS_MASK mask);
 extern int secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2);
 extern void fix_perms(char *fname);
@@ -476,8 +471,6 @@ extern int ena_privilege(char *);
 /* Modify window staiion and desktop privilege */
 extern int use_window_station_desktop(SID *usid);
 
-extern int use_window_station_desktop2(char *user);
-
 /* Services related routine */
 #define SERVICE_ACCOUNT "pbsadmin"
 
@@ -498,10 +491,7 @@ extern int my_fclose(MY_FILE *stream);
 
 /* Various routines related to securing PBS files */
 
-void secure_server_files();
 void secure_mom_files();
-void secure_sched_files();
-void secure_rshd_files();
 void secure_misc_files();
 void secure_exec_files();
 
@@ -542,4 +532,13 @@ extern void get_uncpath(char *path);
 extern int get_localpath(char *unc_path, char *map_drive);
 extern int stat_uncpath(char *path, struct stat *sb);
 extern int access_uncpath(char *path, int mode);
+
+/* wrap CloseHandle to log in case of error */
+extern BOOL _log_wrap_CloseHandle(HANDLE, LPCSTR, LPCSTR, INT);
+#define CloseHandle(param) _log_wrap_CloseHandle(param, #param, __func__, __LINE__)
+
+/* wrap LocalFree to log in case of error */
+extern HLOCAL _log_wrap_LocalFree(HLOCAL , LPCSTR , LPCSTR , INT);
+#define LocalFree(param) _log_wrap_LocalFree(param, #param, __func__, __LINE__)
+
 #endif

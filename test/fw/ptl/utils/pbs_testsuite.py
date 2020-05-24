@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import calendar
 import grp
@@ -170,12 +173,16 @@ def skipOnShasta(function):
 
 def skipOnCpuSet(function):
     """
-    Decorator to skip a test on a CpuSet system
+    Decorator to skip a test on a cgroup cpuset system
     """
 
     def wrapper(self, *args, **kwargs):
-        if self.mom.is_cpuset_mom():
-            self.skipTest(reason='capability not supported on Cpuset')
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                      mom.shortname
+                self.skipTest(reason=msg)
+                break
         else:
             function(self, *args, **kwargs)
     wrapper.__doc__ = function.__doc__
@@ -349,7 +356,7 @@ class PBSTestSuite(unittest.TestCase):
     :param comms: Colon-separated list of hostnames hosting a PBS Comm.
                   Comms are made accessible as a dictionary in the
                   instance variable comms.
-    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param nomom: expect no MoM on colon-separated set of hosts
     :param mode: Sets mode of operation to PBS server. Can be either
                  ``'cli'`` or ``'api'``.Defaults to API behavior.
     :param conn_timeout: set a timeout in seconds after which a pbs_connect
@@ -449,18 +456,31 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_param()
         cls.check_users_exist()
         cls.init_servers()
+        cls.init_schedulers()
+        cls.init_moms()
         if cls.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_custom_setup",
                                        suffix=".json")
-            ret = cls.server.save_configuration(path, 'w')
+            ret = cls.server.save_configuration()
+            if not ret:
+                cls.logger.error("Failed to save server's custom setup")
+                raise Exception("Failed to save server's custom setup")
+            for mom in cls.moms.values():
+                ret = mom.save_configuration()
+                if not ret:
+                    cls.logger.error("Failed to save mom's custom setup")
+                    raise Exception("Failed to save mom's custom setup")
+            ret = cls.scheduler.save_configuration(path, 'w')
             if ret:
                 cls.saved_file = path
             else:
-                cls.logger.error("Failed to save custom setup")
-                raise Exception("Failed to save custom setup")
+                cls.logger.error("Failed to save scheduler's custom setup")
+                raise Exception("Failed to save scheduler's custom setup")
+            cls.add_mgrs_opers()
         cls.init_comms()
-        cls.init_schedulers()
-        cls.init_moms()
+        a = {ATTR_license_min: len(cls.moms)}
+        cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
+        cls.server.restart()
         cls.log_end_setup(True)
 
     def setUp(self):
@@ -471,25 +491,32 @@ class PBSTestSuite(unittest.TestCase):
         if not PBSTestSuite.config_saved and self.use_cur_setup:
             _, path = tempfile.mkstemp(prefix="saved_test_setup",
                                        suffix=".json")
-            ret = self.server.save_configuration(path, 'w')
+            ret = self.server.save_configuration()
+            if not ret:
+                self.logger.error("Failed to save server's test setup")
+                raise Exception("Failed to save server's test setup")
+            for mom in self.moms.values():
+                ret = mom.save_configuration()
+                if not ret:
+                    cls.logger.error("Failed to save mom's test setup")
+                    raise Exception("Failed to save mom's test setup")
+            ret = self.scheduler.save_configuration(path, 'w')
             if ret:
                 self.saved_file = path
-                PBSTestSuite.config_saved = True
             else:
-                self.logger.error("Failed to save test setup")
-                raise Exception("Failed to save test setup")
-        # Adding only server and pbs.conf methods in use current
-        # setup block, rest of them to be added to this block
+                self.logger.error("Failed to save scheduler's test setup")
+                raise Exception("Failed to save scheduler's test setup")
+            PBSTestSuite.config_saved = True
+        # Adding only server, mom & scheduler and pbs.conf methods in use
+        # current setup block, rest of them to be added to this block
         # once save & load configurations are implemented for
-        # comm, mom, scheduler
-        if self.use_cur_setup:
-            self.server.delete_nodes()
-        else:
+        # comm
+        if not self.use_cur_setup:
             self.revert_servers()
             self.revert_pbsconf()
-        self.revert_moms()
+            self.revert_schedulers()
+            self.revert_moms()
         self.revert_comms()
-        self.revert_schedulers()
         self.log_end_setup()
         self.measurements = []
 
@@ -1016,6 +1043,11 @@ class PBSTestSuite(unittest.TestCase):
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
                 restart_comm = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(comm.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
+                restart_comm = True
 
             if restart_comm:
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
@@ -1097,6 +1129,11 @@ class PBSTestSuite(unittest.TestCase):
             # Check if existing pbs.conf has more/less entries than the
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
+                restart_mom = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(mom.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
                 restart_mom = True
 
             if restart_mom:
@@ -1214,6 +1251,11 @@ class PBSTestSuite(unittest.TestCase):
             # default list
             if len(pbs_conf_val) != len(new_pbsconf):
                 restart_pbs = True
+            # Check if existing pbs.conf has correct ownership
+            dest = self.du.get_pbs_conf_file(server.hostname)
+            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+            if cf_uid != 0 or cf_gid > 10:
+                restart_pbs = True
 
             if restart_pbs or dmns_to_restart > 0:
                 # Write out the new pbs.conf file
@@ -1268,7 +1310,7 @@ class PBSTestSuite(unittest.TestCase):
 
     def revert_pbsconf(self):
         """
-        Revert contents of the pbs.conf file
+        Revert contents and ownership of the pbs.conf file
         Also start/stop the appropriate daemons
         """
         primary_server = self.server
@@ -1328,6 +1370,41 @@ class PBSTestSuite(unittest.TestCase):
         for mom in self.moms.values():
             self.revert_mom(mom, force)
 
+    @classmethod
+    def add_mgrs_opers(cls):
+        """
+        Adding manager and operator users
+        """
+        if not cls.use_cur_setup:
+            try:
+                # Unset managers list
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'managers',
+                                   sudo=True)
+                # Unset operators list
+                cls.server.manager(MGR_CMD_UNSET, SERVER, 'operators',
+                                   sudo=True)
+            except PbsManagerError as e:
+                cls.logger.error(e.msg)
+        attr = {}
+        current_user = pwd.getpwuid(os.getuid())[0] + '@*'
+        mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
+                      "operators": [str(OPER_USER) + '@*']}
+        server_stat = cls.server.status(SERVER, ["managers", "operators"])
+        if len(server_stat) > 0:
+            server_stat = server_stat[0]
+        for role, users in mgrs_opers.items():
+            if role not in server_stat:
+                attr[role] = (INCR, ','.join(users))
+            else:
+                add_users = []
+                for user in users:
+                    if user not in server_stat[role]:
+                        add_users.append(user)
+                if len(add_users) > 0:
+                    attr[role] = (INCR, ",".join(add_users))
+        if len(attr) > 0:
+            cls.server.manager(MGR_CMD_SET, SERVER, attr, sudo=True)
+
     def revert_server(self, server, force=False):
         """
         Revert the values set for server
@@ -1339,20 +1416,7 @@ class PBSTestSuite(unittest.TestCase):
             msg = 'Failed to restart server ' + server.hostname
             self.assertTrue(server.isUp(), msg)
         server_stat = server.status(SERVER)[0]
-        current_user = pwd.getpwuid(os.getuid())[0]
-        try:
-            # Unset managers list
-            server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True)
-            # Unset operators list
-            server.manager(MGR_CMD_UNSET, SERVER, 'operators', sudo=True)
-        except PbsManagerError as e:
-            self.logger.error(e.msg)
-        a = {ATTR_managers: (INCR, current_user + '@*,' +
-                             str(MGR_USER) + '@*')}
-        server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
-
-        a1 = {ATTR_operators: (INCR, str(OPER_USER) + '@*')}
-        server.manager(MGR_CMD_SET, SERVER, a1, sudo=True)
+        self.add_mgrs_opers()
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
                 force):
             server.revert_to_defaults(reverthooks=self.revert_hooks,
@@ -1423,15 +1487,40 @@ class PBSTestSuite(unittest.TestCase):
             if 'clienthost' in self.conf:
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
+            if mom.is_cpuset_mom():
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # In order to avoid intermingling CF/HK/PY file copies from the
+                # create node and those caused by the following call, wait
+                # until the dialogue between MoM and the server is complete
+                time.sleep(4)
+                just_before_enable_cgroup_cset = time.time()
+                mom.enable_cgroup_cset()
+                mom.log_match('pbs_cgroups.CF;copy hook-related '
+                              'file request received',
+                              starttime=just_before_enable_cgroup_cset)
+                # Make sure that the MoM will generate per-NUMA node vnodes
+                # when the natural node is created below
+                # HUP may not be enough if exechost_startup is delayed
+                restart = True
         if restart:
             mom.restart()
         else:
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+        if not mom.is_cpuset_mom():
+            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
-        self.server.expect(NODE, a, id=mom.shortname, interval=1)
+        if mom.is_cpuset_mom():
+            # Checking whether the CF file was copied really belongs in code
+            # that changes the config file -- i.e. after enable_cgroup_cset
+            # called above. We're not sure it is always called here,
+            # since that call is in an if
+            time.sleep(2)
+            mom.signal('-HUP')
+            self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
+        else:
+            self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
     def analyze_logs(self):
@@ -1445,7 +1534,7 @@ class PBSTestSuite(unittest.TestCase):
                                              momlog=self.mom.logfile,
                                              acctlog=self.server.acctlogfile,
                                              start=self.server.ctime,
-                                             end=int(time.time()))
+                                             end=time.time())
 
     def set_test_measurements(self, mdic=None):
         """
@@ -1567,6 +1656,8 @@ class PBSTestSuite(unittest.TestCase):
         svr.delete_nodes()
         # Delete queues
         svr.delete_queues()
+        # Delete resources
+        svr.delete_resources()
 
     def tearDown(self):
         """
@@ -1593,7 +1684,15 @@ class PBSTestSuite(unittest.TestCase):
             self.delete_current_state(self.server, self.moms)
             ret = self.server.load_configuration(self.saved_file)
             if not ret:
-                raise Exception("Failed to load test setup")
+                raise Exception("Failed to load server's test setup")
+            ret = self.scheduler.load_configuration(self.saved_file)
+            if not ret:
+                raise Exception("Failed to load scheduler's test setup")
+            for mom in self.moms.values():
+                ret = mom.load_configuration(self.saved_file)
+                if not ret:
+                    raise Exception("Failed to load mom's test setup")
+            self.du.rm(path=self.saved_file)
         self.log_end_teardown()
 
     @classmethod
@@ -1604,6 +1703,12 @@ class PBSTestSuite(unittest.TestCase):
             PBSTestSuite.config_saved = False
             ret = cls.server.load_configuration(cls.saved_file)
             if not ret:
-                raise Exception("Failed to load custom setup")
-        if cls.use_cur_setup:
+                raise Exception("Failed to load server's custom setup")
+            ret = cls.scheduler.load_configuration(cls.saved_file)
+            if not ret:
+                raise Exception("Failed to load scheduler's custom setup")
+            for mom in cls.moms.values():
+                ret = mom.load_configuration(cls.saved_file)
+                if not ret:
+                    raise Exception("Failed to load mom's custom setup")
             cls.du.rm(path=cls.saved_file)

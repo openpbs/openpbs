@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file	mom_comm.c
  */
@@ -80,9 +82,8 @@
 #include	"pbs_error.h"
 #include	"log.h"
 #include	"net_connect.h"
-#include	"rpp.h"
+#include	"tpp.h"
 #include	"dis.h"
-#include	"dis_init.h"
 #include	"mom_func.h"
 #include	"credential.h"
 #include	"ticket.h"
@@ -313,7 +314,7 @@ event_dup(eventent *ep, job *pjob, hnodent *pnode)
 	append_link(&pnode->hn_events, &nep->ee_next, nep);
 
 	if (pnode->hn_stream == -1)
-		pnode->hn_stream = rpp_open(pnode->hn_host, pnode->hn_port);
+		pnode->hn_stream = tpp_open(pnode->hn_host, pnode->hn_port);
 
 	return nep;
 }
@@ -395,7 +396,7 @@ check:
 	append_link(&pnode->hn_events, &ep->ee_next, ep);
 
 	if (pnode->hn_stream == -1)
-		pnode->hn_stream = rpp_open(pnode->hn_host, pnode->hn_port);
+		pnode->hn_stream = tpp_open(pnode->hn_host, pnode->hn_port);
 
 	return ep;
 }
@@ -764,7 +765,7 @@ im_compose(int stream, char *jobid, char *cookie, int command,
 
 	if (stream < 0)
 		return DIS_EOF;
-	DIS_rpp_reset();
+	DIS_tpp_funcs();
 
 	ret = diswsi(stream, IM_PROTOCOL);
 	if (ret != DIS_SUCCESS)
@@ -811,7 +812,7 @@ close_sisters_mcast(job *pjob)
 	for (i = 0; i < pjob->ji_numnodes; i++) {
 		hnodent *np = &pjob->ji_hosts[i];
 		if (np->hn_stream != -1) {
-			rpp_close(np->hn_stream);
+			tpp_close(np->hn_stream);
 			np->hn_stream = -1;
 		}
 	}
@@ -832,10 +833,6 @@ close_sisters_mcast(job *pjob)
 int
 is_comm_up(int maturity_time)
 {
-	/* if pbs is not using tpp, communication is deemed as up */
-	if (pbs_conf.pbs_use_tcp == 0)
-		return 1;
-
 	if ((mom_net_up == 1) && ((time_now - mom_net_up_time) > maturity_time))
 		return 1;
 
@@ -1130,10 +1127,10 @@ send_sisters_job_update(job *pjob)
 			continue;
 		}
 		if (np->hn_stream == -1)
-			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+			np->hn_stream = tpp_open(np->hn_host, np->hn_port);
 		if (np->hn_stream < 0) {
 			snprintf(log_buffer, sizeof(log_buffer),
-				"rpp_open failed on %s:%d", np->hn_host, np->hn_port);
+				"tpp_open failed on %s:%d", np->hn_host, np->hn_port);
 			log_err(errno, __func__, log_buffer);
 			free_attrlist(&phead);
 			if (pbs_conf.pbs_use_mcast == 1)
@@ -1154,7 +1151,7 @@ send_sisters_job_update(job *pjob)
 				"failed to create event for %s",
 					 np->hn_host?np->hn_host:"node");
 			log_err(errno, __func__, log_buffer);
-			rpp_close(np->hn_stream);
+			tpp_close(np->hn_stream);
 			np->hn_stream = -1;
 			if (pbs_conf.pbs_use_mcast == 1)
 				tpp_mcast_close(mtfd);
@@ -1162,14 +1159,14 @@ send_sisters_job_update(job *pjob)
 			return (-1);
 		}
 		if (pbs_conf.pbs_use_mcast == 1) {
-			/* add each of the rpp streams to the tpp mcast channel */
-			if ((tpp_mcast_add_strm(mtfd, np->hn_stream)) == -1) {
+			/* add each of the tpp streams to the tpp mcast channel */
+			if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
 				snprintf(log_buffer,
 					sizeof(log_buffer),
 					"mcast add to %s failed",
 					 np->hn_host?np->hn_host:"node");
 				log_err(errno, __func__, log_buffer);
-				rpp_close(np->hn_stream);
+				tpp_close(np->hn_stream);
 				np->hn_stream = -1;
 				tpp_mcast_close(mtfd);
 				free_attrlist(&phead);
@@ -1191,7 +1188,7 @@ send_sisters_job_update(job *pjob)
 			}
 			(void)encode_DIS_svrattrl(np->hn_stream,
 							psatl);
-			(void)rpp_flush(np->hn_stream);
+			(void)dis_flush(np->hn_stream);
 		}
 		num++;
 
@@ -1211,7 +1208,7 @@ send_sisters_job_update(job *pjob)
 			}
 			(void)encode_DIS_svrattrl(mtfd, psatl);
 
-			ret = rpp_flush(mtfd);
+			ret = dis_flush(mtfd);
 			if (ret != DIS_SUCCESS) {
 				log_err(errno, __func__, "flush mcast stream failed");
 				tpp_mcast_close(mtfd);
@@ -1321,14 +1318,6 @@ receive_job_update(int stream, job *pjob)
 		hook			*last_phook;
 		unsigned int		hook_fail_action = 0;
 
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		/* preserve job's current cpuset and processes, but mark the
-		 * resources internally as free, so that a subset of them can be
-		 * re-assigned back to the job via modify_cpuset().
-		 */
-		suspend_job(pjob);
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-
 		if ((rc=job_nodes(pjob)) != 0) {
 			snprintf(log_buffer, sizeof(log_buffer),
 			   	"failed updating internal nodes data (rc=%d)", rc);
@@ -1336,13 +1325,6 @@ receive_job_update(int stream, job *pjob)
                                  pjob->ji_qs.ji_jobid, log_buffer);
 			return (-1);
 		}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		if (modify_cpuset(pjob) < 0) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, "failed to modify job's current cpuset");
-			return (-1);
-		}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 		mom_hook_input_init(&hook_input);
 		hook_input.pjob = pjob;
@@ -1570,15 +1552,15 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 		}
 
 		if (np->hn_stream == -1)
-			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+			np->hn_stream = tpp_open(np->hn_host, np->hn_port);
 		np->hn_sister = SISTER_EOF;
 
 		if (np->hn_stream == -1)
 			continue;
 
-		/* add each of the rpp streams to the tpp mcast channel */
-		if ((tpp_mcast_add_strm(mtfd, np->hn_stream)) == -1) {
-			rpp_close(np->hn_stream);
+		/* add each of the tpp streams to the tpp mcast channel */
+		if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+			tpp_close(np->hn_stream);
 			np->hn_stream = -1;
 			continue;
 		}
@@ -1624,7 +1606,7 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 				return 0;
 			}
 		}
-		ret = rpp_flush(mtfd);
+		ret = dis_flush(mtfd);
 		if (ret != DIS_SUCCESS) {
 			close_sisters_mcast(pjob);
 			tpp_mcast_close(mtfd);
@@ -1723,7 +1705,7 @@ send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 		}
 
 		if (np->hn_stream == -1)
-			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+			np->hn_stream = tpp_open(np->hn_host, np->hn_port);
 
 		if (np->hn_stream == -1)
 			continue;
@@ -1758,7 +1740,7 @@ send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 			if (ret != DIS_SUCCESS)
 				continue;
 		}
-		ret = rpp_flush(np->hn_stream);
+		ret = dis_flush(np->hn_stream);
 		if (ret == -1)
 			continue;
 
@@ -1827,15 +1809,15 @@ find_node(job *pjob, int stream, tm_node_id vnodeid)
 	}
 
 	hp = vp->vn_host;	/* host for virtual node */
-	node_addr = rpp_getaddr(hp->hn_stream);
-	stream_addr = rpp_getaddr(stream);
+	node_addr = tpp_getaddr(hp->hn_stream);
+	stream_addr = tpp_getaddr(stream);
 
 	if (stream_addr == NULL) {	/* caller didn't have a stream */
 		/*
 		 ** If node is not me and no stream open, open one
 		 */
 		if (pjob->ji_nodeid != hp->hn_node && node_addr == NULL)
-			hp->hn_stream = rpp_open(hp->hn_host, hp->hn_port);
+			hp->hn_stream = tpp_open(hp->hn_host, hp->hn_port);
 		return hp;
 	}
 
@@ -2122,7 +2104,7 @@ node_bailout(job *pjob, hnodent *np)
 				DBPRT(("%s: JOIN_JOB %s jjretry %d old stream %d\n", __func__, pjob->ji_qs.ji_jobid, ep->ee_retry, np->hn_stream))
 				if (ep->ee_retry == 0) {
 					/* first failure, try to reopen and resend */
-					np->hn_stream = rpp_open(np->hn_host,
+					np->hn_stream = tpp_open(np->hn_host,
 						np->hn_port);
 					if (np->hn_stream < 0) {
 						/* reopen failed - fatal */
@@ -2260,7 +2242,7 @@ node_bailout(job *pjob, hnodent *np)
 				(void)tm_reply(ep->ee_fd, ptask->ti_protover,
 					TM_ERROR, ep->ee_client);
 				(void)diswsi(ep->ee_fd, TM_ESYSTEM);
-				(void)DIS_tcp_wflush(ep->ee_fd);
+				(void)dis_flush(ep->ee_fd);
 				break;
 
 			case	IM_POLL_JOB:
@@ -2390,11 +2372,11 @@ im_eof(int stream, int ret)
 	hnodent			*np;
 	struct	sockaddr_in	*addr;
 
-	addr = rpp_getaddr(stream);
+	addr = tpp_getaddr(stream);
 	sprintf(log_buffer, "%s from addr %s on stream %d",
 		dis_emsg[ret], netaddr(addr), stream);
 	log_err(-1, __func__, log_buffer);
-	rpp_close(stream);
+	tpp_close(stream);
 
 	if (stream == server_stream) {
 		sprintf(log_buffer, "Server closed connection.");
@@ -2506,23 +2488,15 @@ check_ms(int stream, job *pjob)
 	struct	sockaddr_in	*addr;
 	hnodent			*np;
 
-	addr = rpp_getaddr(stream);
-	if (pbs_conf.pbs_use_tcp == 0) {
-		if (ntohs(addr->sin_port) >= IPPORT_RESERVED) {
-			sprintf(log_buffer,
-				"non-privileged connection from %s", netaddr(addr));
-			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
-			rpp_close(stream);
-			return TRUE;
-		}
-	}
+	addr = tpp_getaddr(stream);
+
 	if (pjob == NULL)
 		return FALSE;
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
 		log_joberr(-1, __func__, "Mother Superior talking to herself",
 			pjob->ji_qs.ji_jobid);
-		rpp_eom(stream);
+		tpp_eom(stream);
 		return TRUE;
 	}
 
@@ -2956,7 +2930,6 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
  *						succeeded
  * @retval PRE_FINISH_FAIL_JOB_SETUP_SEND	action to do job_setup_send() failed
  * @retval PRE_FINISH_FAIL_JOIN_EXTRA		action to do job_join_extra() failed
- * @retval PRE_FINISH_FAIL_NEW_CPUSET		action to create new cpuset failed
  *
  */
 pre_finish_results_t
@@ -2977,12 +2950,6 @@ pre_finish_exec(job *pjob, int do_job_setup_send)
 			return PRE_FINISH_FAIL_JOIN_EXTRA;
 	}
 
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-	if (new_cpuset(pjob) < 0) {
-		return PRE_FINISH_FAIL_NEW_CPUSET;
-	}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-
 	/*
 	 * If there is a job_setup_send function,
 	 * send a SETUP_JOB message to each node.
@@ -2999,24 +2966,23 @@ pre_finish_exec(job *pjob, int do_job_setup_send)
 
 /**
  * @brief
- *      Input is coming from another MOM over a DIS rpp stream.
- *      Read the stream to get a Inter-MOM request.
+ *	Input is coming from another MOM over a DIS on tpp stream.
+ *	Read the stream to get a Inter-MOM request.
  *
  *	request (
- *		jobid			string
- *		cookie			string
- *		command			int
- *		event			int
- *		task			int
- *	        )
+ *		jobid	string
+ *		cookie	string
+ *		command	int
+ *		event	int
+ *		task	int
+ *	)
  *
  *	Format the reply and write it back.
  *
  *
- * @param[in]       stream	inter-MOM stream on which RPP I/O is done
- * @param[in]       version	inter-MOM protocol version;  only IM_PROTOCOL_VER is
- *			currently supported
- * @return		void
+ * @param[in] stream	inter-MOM TPP stream
+ * @param[in] version	inter-MOM protocol version; only IM_PROTOCOL_VER is currently supported
+ * @return void
  *
  */
 void
@@ -3079,16 +3045,16 @@ im_request(int stream, int version)
 	if ((version != IM_PROTOCOL_VER) && (version != IM_OLD_PROTOCOL_VER)) {
 		sprintf(log_buffer, "protocol version %d unknown", version);
 		log_err(-1, __func__, log_buffer);
-		rpp_close(stream);
+		tpp_close(stream);
 		return;
 	}
 
 	/* check that machine is known */
-	addr = rpp_getaddr(stream);
+	addr = tpp_getaddr(stream);
 	if (addr == NULL) {
 		sprintf(log_buffer, "Sender unknown");
 		log_err(-1, __func__, log_buffer);
-		rpp_close(stream);
+		tpp_close(stream);
 		return;
 	}
 	ipaddr = ntohl(addr->sin_addr.s_addr);
@@ -3217,7 +3183,7 @@ im_request(int stream, int version)
 			}
 			free_attrlist(&lhead);
 			if (errcode != 0) {
-				(void)job_purge(pjob);
+				(void)job_purge_mom(pjob);
 				SEND_ERR(errcode)
 				goto done;
 			}
@@ -3267,9 +3233,10 @@ im_request(int stream, int version)
 			/* np is set from job_nodes_inner */
 
 
-			/* NULL value passed to hook_input.vnl */
-			/* means to assign */
-			/* vnode list using pjob->ji_host[].   */
+			/*
+			 * NULL value passed to hook_input.vnl
+			 * means to assign vnode list using pjob->ji_host[].
+			 */
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
 
@@ -3289,10 +3256,11 @@ im_request(int stream, int version)
 				default:
 					/* a value of '0' means explicit reject encountered. */
 					if (hook_rc != 0) {
-						/* we've hit an internal error (malloc error, full disk, etc...), so */
-						/* treat this now like a  hook error so hook fail_action  */
-						/* will be consulted.  */
-						/* Before, behavior of an internal error was to ignore it! */
+						/*
+						 * we've hit an internal error (malloc error, full disk, etc...), so
+						 * treat this now like a  hook error so hook fail_action will be
+						 * consulted. Before, behavior of an internal error was to ignore it!
+						 */
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
@@ -3366,15 +3334,6 @@ im_request(int stream, int version)
 					goto done;
 				}
 			}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-			if (new_cpuset(pjob) < 0) {
-				(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
-				mom_deljob(pjob);
-				SEND_ERR(PBSE_SYSTEM)
-				goto done;
-			}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
 
 			(void)job_save(pjob, SAVEJOB_FULL);
 			(void)strcpy(namebuf, path_jobs);	/* job directory path */
@@ -3511,18 +3470,18 @@ im_request(int stream, int version)
 					goto join_err;
 			}
 
-			if (rpp_eom(stream) == -1)
+			if (tpp_eom(stream) == -1)
 				goto join_err;
 
-			if (rpp_flush(stream) == -1)
+			if (dis_flush(stream) == -1)
 				goto join_err;
 
 			goto fini;
 
 join_err:
-			log_err(errno, __func__, "rpp_write");
+			log_err(errno, __func__, "tpp flush");
 			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_ABORT, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, &hook_output, hook_msg, sizeof(hook_msg), 1);
-			rpp_close(stream);
+			tpp_close(stream);
 			mom_deljob(pjob);
 			goto fini;
 
@@ -3784,6 +3743,12 @@ join_err:
 				} else {
 					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
 				}
+				/* Call the execjob_end hook now */
+				if (mom_process_hooks(HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
+						hook_output_ptr, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
+						pjob->ji_hook_running_bg_on = BG_IM_DELETE_JOB2;
+						break;
+				}
 				mom_deljob(pjob);
 
 				/* Needed to create a lightweight copy of the job to
@@ -3814,8 +3779,10 @@ join_err:
 				reply = 0;
 			}
 			free(hook_input_ptr);
-			free(hook_output_ptr->reject_errcode);
-			free(hook_output_ptr);
+			if (hook_output_ptr) {
+				free(hook_output_ptr->reject_errcode);
+				free(hook_output_ptr);
+			}
 			break;
 
 		case	IM_EXEC_PROLOGUE:
@@ -4335,6 +4302,37 @@ join_err:
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobid, "RESTART received");
 
+			/*
+			 * NULL value passed to hook_input.vnl means to assign
+			 * vnode list using pjob->ji_host[].
+			 */
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &hook_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+
+			hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_BEGIN,
+					PBS_MOM_SERVICE_NAME, mom_host,
+					&hook_input, &hook_output,
+					hook_msg, sizeof(hook_msg), 1);
+			if (hook_rc <= 0) {
+				/* a value of '0' means explicit reject encountered. */
+				if (hook_rc != 0) {
+					/*
+					 * we've hit an internal error (malloc error, full disk, etc...), so
+					 * treat this now like a  hook error so hook fail_action will be consulted.
+					 * Before, behavior of an internal error was to ignore it!
+					 */
+					hook_errcode = PBSE_HOOKERROR;
+					send_hook_fail_action(last_phook);
+				}
+				SEND_ERR2(hook_errcode, (char *)hook_msg);
+				mom_deljob(pjob);
+				break;
+			}
+
 			errcode = local_restart(pjob, NULL);
 
 			if (errcode != PBSE_NONE) {	/* error, send reply */
@@ -4560,16 +4558,6 @@ join_err:
 							break;
 						  case PRE_FINISH_FAIL_JOIN_EXTRA:
 							goto done;
-						  case PRE_FINISH_FAIL_NEW_CPUSET:
-							log_joberr(PBSE_SYSTEM, __func__, "new_cpuset failed on MS", pjob->ji_qs.ji_jobid);
-							DBPRT(("%s: JOIN_JOB %s\n", __func__, pjob->ji_qs.ji_jobid))
-							/* whether or not job is node failure tolerant, we need it to bail out */
-							if (do_tolerate_node_failures(pjob))
-								/* force tolerant job to exit and rerun */
-								exec_bail(pjob, JOB_EXEC_RETRY, "create a cpuset");
-							else
-								job_start_error(pjob, PBSE_SYSTEM, mom_host, "create a cpuset");
-							goto err;
 						  case PRE_FINISH_FAIL_JOB_SETUP_SEND:
 							sprintf(log_buffer, "could not send setup");
 							goto err;
@@ -4768,7 +4756,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 					(void)diswui(efd, taskid);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_GET_TASKS:
@@ -4789,7 +4777,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 					for (;;) {
-						DIS_rpp_reset();
+						DIS_tpp_funcs();
 						taskid = disrui(stream, &ret);
 						if (ret != DIS_SUCCESS) {
 							if (ret == DIS_EOD)
@@ -4806,7 +4794,7 @@ join_err:
 					}
 					DIS_tcp_funcs();
 					(void)diswui(efd, TM_NULL_TASK);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_SIGNAL_TASK:
@@ -4824,7 +4812,7 @@ join_err:
 						break;
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_OBIT_TASK:
@@ -4845,7 +4833,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 					(void)diswsi(efd, exitval);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_GET_INFO:
@@ -4867,7 +4855,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 					(void)diswcs(efd, info, len);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_GET_RESC:
@@ -4889,7 +4877,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 					(void)diswst(efd, info);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_POLL_JOB:
@@ -5105,16 +5093,6 @@ join_err:
 							break;
 						  case PRE_FINISH_FAIL_JOIN_EXTRA:
 							goto done;
-						  case PRE_FINISH_FAIL_NEW_CPUSET:
-							log_joberr(PBSE_SYSTEM, __func__, "new_cpuset failed on MS", pjob->ji_qs.ji_jobid);
-							DBPRT(("%s: JOIN_JOB %s\n", __func__, pjob->ji_qs.ji_jobid))
-							/* whether or not job is node failure tolerant, we need it to bail out */
-							if (do_tolerate_node_failures(pjob))
-								/* force tolerant job to exit and rerun */
-								exec_bail(pjob, JOB_EXEC_RETRY, "create a cpuset");
-							else
-								job_start_error(pjob, PBSE_SYSTEM, mom_host, "create a cpuset");
-							goto err;
 						  case PRE_FINISH_FAIL_JOB_SETUP_SEND:
 							sprintf(log_buffer, "could not send setup");
 							goto err;
@@ -5329,7 +5307,7 @@ join_err:
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_ERROR, event_client);
 					(void)diswsi(efd, errcode);
-					(void)DIS_tcp_wflush(efd);
+					(void)dis_flush(efd);
 					break;
 
 				case	IM_POLL_JOB:
@@ -5504,13 +5482,13 @@ join_err:
 	}
 
 done:
-	rpp_eom(stream);
+	tpp_eom(stream);
 	if (reply) {	/* check if write worked */
 		if (ret != DIS_SUCCESS ||
-			rpp_flush(stream) == -1) {
+			dis_flush(stream) == -1) {
 			if (errno != 0)
-				log_err(errno, __func__, "rpp_flush");
-			rpp_close(stream);
+				log_err(errno, __func__, "dis_flush");
+			tpp_close(stream);
 			if (np != NULL && np->hn_stream == stream)
 				np->hn_stream = -1;
 		}
@@ -5904,8 +5882,24 @@ tm_request(int fd, int version)
 #else
 		i = dep_procinfo(pid, &sid, &proc_uid, comm, sizeof(comm));
 #endif
-		if (i != TM_OKAY)
+		if (i != TM_OKAY) {
+#ifdef linux
+			char	procid[MAXPATHLEN + 1];
+			struct	stat sbuf;
+
+			snprintf(procid, sizeof(procid), "/proc/%d", pid);
+			if (stat(procid, &sbuf) == -1)
+				goto aterr;
+
+			sid = getsid(pid);
+			if (sid == -1)
+				goto aterr;
+
+			proc_uid = sbuf.st_uid;
+#else
 			goto aterr;
+#endif
+		}
 		if (sid <= 1) {
 			i = TM_ENOPROC;
 			goto aterr;
@@ -6211,7 +6205,7 @@ aterr:
 			sprintf(log_buffer, "REGISTER received - NOT IMPLEMENTED");
 			(void)tm_reply(fd, version, TM_ERROR, event);
 			(void)diswsi(fd, TM_ENOTIMPLEMENTED);
-			(void)DIS_tcp_wflush(fd);
+			(void)dis_flush(fd);
 			goto err;
 
 		default:
@@ -6274,7 +6268,7 @@ aterr:
 				ret = diswui(phost->hn_stream, tvnodeid);
 				if (ret != DIS_SUCCESS)
 					goto done;
-				ret = (rpp_flush(phost->hn_stream) == -1) ?
+				ret = (dis_flush(phost->hn_stream) == -1) ?
 					DIS_NOCOMMIT : DIS_SUCCESS;
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -6472,7 +6466,7 @@ aterr:
 					goto done;
 				}
 			}
-			ret = (rpp_flush(phost->hn_stream) == -1) ?
+			ret = (dis_flush(phost->hn_stream) == -1) ?
 				DIS_NOCOMMIT : DIS_SUCCESS;
 			if (ret != DIS_SUCCESS) {
 				arrayfree(argv);
@@ -6519,7 +6513,7 @@ aterr:
 				ret = diswsi(phost->hn_stream, signum);
 				if (ret != DIS_SUCCESS)
 					goto done;
-				ret = (rpp_flush(phost->hn_stream) == -1) ?
+				ret = (dis_flush(phost->hn_stream) == -1) ?
 					DIS_NOCOMMIT : DIS_SUCCESS;
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -6569,7 +6563,7 @@ aterr:
 				ret = diswui(phost->hn_stream, taskid);
 				if (ret != DIS_SUCCESS)
 					goto done;
-				ret = (rpp_flush(phost->hn_stream) == -1) ?
+				ret = (dis_flush(phost->hn_stream) == -1) ?
 					DIS_NOCOMMIT : DIS_SUCCESS;
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -6642,7 +6636,7 @@ aterr:
 				free(name);
 				if (ret != DIS_SUCCESS)
 					goto done;
-				ret = (rpp_flush(phost->hn_stream) == -1) ?
+				ret = (dis_flush(phost->hn_stream) == -1) ?
 					DIS_NOCOMMIT : DIS_SUCCESS;
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -6686,7 +6680,7 @@ aterr:
 				ret = diswui(phost->hn_stream, myvnodeid);
 				if (ret != DIS_SUCCESS)
 					goto done;
-				ret = (rpp_flush(phost->hn_stream) == -1) ?
+				ret = (dis_flush(phost->hn_stream) == -1) ?
 					DIS_NOCOMMIT : DIS_SUCCESS;
 				if (ret != DIS_SUCCESS)
 					goto done;
@@ -6706,14 +6700,14 @@ aterr:
 			sprintf(log_buffer, "%s: unknown command %d", jobid, command);
 			(void)tm_reply(fd, version, TM_ERROR, event);
 			(void)diswsi(fd, TM_EUNKNOWNCMD);
-			(void)DIS_tcp_wflush(fd);
+			(void)dis_flush(fd);
 			goto err;
 	}
 
 done:
 	if (reply) {
 		DBPRT(("%s: REPLY %s\n", __func__, dis_emsg[ret]))
-		if (ret != DIS_SUCCESS || DIS_tcp_wflush(fd) == -1) {
+		if (ret != DIS_SUCCESS || dis_flush(fd) == -1) {
 			sprintf(log_buffer, "comm failed %s", dis_emsg[ret]);
 			log_err(errno, __func__, log_buffer);
 			close_conn(fd);
@@ -6809,7 +6803,7 @@ send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_head *
 		psatl = (svrattrl *)GET_NEXT(*phead);
 		(void)encode_DIS_svrattrl(stream, psatl);
 	}
-	rpp_flush(stream);
+	dis_flush(stream);
 }
 
 /**
@@ -6876,5 +6870,5 @@ send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob,
 		psatl = (svrattrl *)GET_NEXT(*phead);
 		(void)encode_DIS_svrattrl(stream, psatl);
 	}
-	rpp_flush(stream);
+	dis_flush(stream);
 }

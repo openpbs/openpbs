@@ -3,56 +3,57 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
-import os
-import time
-import tarfile
+
 import logging
-import socket
-import random
-import shutil
+import os
 import pprint
-import shlex
+import random
 import re
-
+import shlex
+import shutil
+import socket
+import tarfile
+import time
 from subprocess import STDOUT
-from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
+
 from ptl.lib.pbs_ifl_mock import *
+from ptl.lib.pbs_testlib import SCHED, BatchUtils, Scheduler, Server
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
-from ptl.lib.pbs_testlib import BatchUtils
-
 
 # Define an enum which is used to label various pieces of information
 (   # qstat outputs
@@ -401,7 +402,7 @@ class ObfuscateSnapshot(object):
 
         shutil.move(fout, file_path)
 
-    def obfuscate_acct_logs(self, snap_dir):
+    def obfuscate_acct_logs(self, snap_dir, sudo_val):
         """
         Helper function to obfuscate accounting logs
 
@@ -417,7 +418,7 @@ class ObfuscateSnapshot(object):
         attrs_to_obf += acct_extras
 
         acct_path = os.path.join(snap_dir, "server_priv", "accounting")
-        acct_fnames = os.listdir(acct_path)
+        acct_fnames = self.du.listdir(path=acct_path, sudo=sudo_val)
         for acct_fname in acct_fnames:
             acct_fpath = os.path.join(acct_path, acct_fname)
             self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
@@ -425,7 +426,7 @@ class ObfuscateSnapshot(object):
             self.logger.info("Total bad records found: " +
                              str(self.num_bad_acct_records))
 
-    def _replace_str_in_file(self, key, val, fpath):
+    def _replace_str_in_file(self, key, val, fpath, sudo=False):
         """
         Helper function to replace a given string (key) with another (val)
 
@@ -442,6 +443,8 @@ class ObfuscateSnapshot(object):
             alltext = fd.read()
             otext = re.sub(r'\b' + key + r'\b', val, alltext)
             fdout.write(otext)
+
+        self.du.rm(path=fpath, sudo=sudo)
         shutil.move(fout, fpath)
 
     def obfuscate_snapshot(self, snap_dir, map_file, sudo_val):
@@ -496,7 +499,7 @@ class ObfuscateSnapshot(object):
         # Note: We can't rely on sed to do this because there might be logs
         # From long back which have usernames & hostnames that didn't get
         # captured in the qstat/pbs_rstat/pbsnodes outputs
-        self.obfuscate_acct_logs(snap_dir)
+        self.obfuscate_acct_logs(snap_dir, sudo_val)
 
         # Until we can support obfuscating daemon logs, delete them
         svr_logs = os.path.join(snap_dir, SVR_LOGS_PATH)
@@ -504,7 +507,7 @@ class ObfuscateSnapshot(object):
         comm_logs = os.path.join(snap_dir, COMM_LOGS_PATH)
         db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
         sched_logs = []
-        for dirname in os.listdir(snap_dir):
+        for dirname in self.du.listdir(path=snap_dir, sudo=sudo_val):
             if dirname.startswith(DFLT_SCHED_LOGS_PATH):
                 dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
@@ -520,21 +523,23 @@ class ObfuscateSnapshot(object):
                               "simply be deleted")
         jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
         jbcontent = {}
-        for name in os.listdir(jobspath):
-            if name.endswith(".JB"):
-                ret = None
-                fpath = os.path.join(jobspath, name)
-                if printjob is not None:
-                    cmd = [printjob, fpath]
-                    ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
-                                          as_script=True)
-                self.du.rm(path=fpath)
-                if ret is not None and ret["out"] is not None:
-                    jbcontent[name] = "\n".join(ret["out"])
-            # Also delete any other files/directories inside mom_priv/jobs
-            else:
-                path = os.path.join(jobspath, name)
-                self.du.rm(path=path, recursive=True, force=True)
+        jbfilelist = self.du.listdir(path=jobspath, sudo=sudo_val)
+        if jbfilelist is not None:
+            for name in jbfilelist:
+                if name.endswith(".JB"):
+                    ret = None
+                    fpath = os.path.join(jobspath, name)
+                    if printjob is not None:
+                        cmd = [printjob, fpath]
+                        ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
+                                              as_script=True)
+                    self.du.rm(path=fpath)
+                    if ret is not None and ret["out"] is not None:
+                        jbcontent[name] = "\n".join(ret["out"])
+                # Also delete any other files/directories inside mom_priv/jobs
+                else:
+                    path = os.path.join(jobspath, name)
+                    self.du.rm(path=path, recursive=True, force=True)
         for name, content in jbcontent.items():
             # Save the printjob outputs, these will be obfuscated later
             fpath = os.path.join(jobspath, name + "_printjob")
@@ -554,7 +559,7 @@ class ObfuscateSnapshot(object):
 
                 # Obfuscate values from val_obf_map
                 for key, val in self.val_obf_map.items():
-                    self._replace_str_in_file(key, val, fpath)
+                    self._replace_str_in_file(key, val, fpath, sudo=sudo_val)
                     if key in fname:
                         new_fname = fname.replace(key, val)
 
@@ -891,7 +896,7 @@ class _PBSSnapUtils(object):
             self.sys_info[VMSTAT_OUT] = value
             value = (DF_H_PATH, ["df", "-h"])
             self.sys_info[DF_H_OUT] = value
-            value = (DMESG_PATH, ["dmesg"])
+            value = (DMESG_PATH, ["dmesg", "-T"])
             self.sys_info[DMESG_OUT] = value
             value = (PS_LEAF_PATH, ["ps", "-leaf"])
             self.sys_info[PS_LEAF_OUT] = value
@@ -1820,11 +1825,11 @@ quit()
 
     def capture_pbs_logs(self):
         """
-        Capture PBSPro logs from all relevant hosts
+        Capture PBS logs from all relevant hosts
 
         :returns: name of the output directory/tarfile containing the snapshot
         """
-        self.logger.info("capturing PBSPro logs")
+        self.logger.info("capturing PBS logs")
 
         if self.num_daemon_logs > 0:
             # Capture server logs

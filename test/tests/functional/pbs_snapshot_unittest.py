@@ -3,44 +3,47 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
-import time
-import os
+
 import json
+import os
+import time
 
-from tests.functional import *
 from ptl.utils.pbs_snaputils import *
+from tests.functional import *
 
 
 class TestPBSSnapshot(TestFunctional):
@@ -360,7 +363,7 @@ class TestPBSSnapshot(TestFunctional):
 
         if not (server_up or mom_up or comm_up or sched_up):
             # Skip the test
-            self.skipTest("No PBSPro daemons found on the system," +
+            self.skipTest("No PBS daemons found on the system," +
                           " skipping the test")
 
         with PBSSnapUtils(out_dir=self.parent_dir, acct_logs=num_acct_logs,
@@ -445,7 +448,7 @@ class TestPBSSnapshot(TestFunctional):
         # Let's submit a reservation with Authorized_Users and
         # Authorized_Groups set
         attribs = {ATTR_auth_u: TEST_USER1, ATTR_auth_g: TSTGRP0,
-                   ATTR_l + ".ncpus": 2, 'reserve_start': now + 25,
+                   ATTR_l + ".ncpus": 1, 'reserve_start': now + 25,
                    'reserve_end': now + 45}
         resv_obj = Reservation(attrs=attribs)
         resv_id = self.server.submit(resv_obj)
@@ -832,6 +835,19 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         real_values[ATTR_aclgroup] = [TSTGRP0]
         real_values[ATTR_acluser] = [TEST_USER]
 
+        # Create a custom resource
+        attr = {"type": "long", "flag": "nh"}
+        rsc_id = "myres"
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id=rsc_id,
+                            logerr=False)
+
+        # Make it schedulable
+        self.scheduler.add_resource("myres")
+
+        # Set myres on the vnode
+        attr = {"resources_available.myres": 1}
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+
         # Set acls on server
         self.server.manager(MGR_CMD_SET, SERVER,
                             {ATTR_aclResvgroup: TSTGRP0,
@@ -866,7 +882,8 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         # Submit a job with sensitive attributes set
         a = {ATTR_project: 'p1', ATTR_A: 'a1', ATTR_g: TSTGRP0,
              ATTR_M: TEST_USER, ATTR_u: TEST_USER,
-             ATTR_l + ".walltime": "00:01:00", ATTR_S: "/bin/bash"}
+             ATTR_l + ".walltime": "00:01:00",
+             ATTR_l + ".myres": 1, ATTR_S: "/bin/bash"}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(1000)
         self.server.submit(j)
@@ -883,6 +900,7 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         real_values[ATTR_owner] = [TEST_USER, self.server.hostname]
         real_values[ATTR_exechost] = [self.server.hostname]
         real_values[ATTR_S] = ["/bin/bash"]
+        real_values[ATTR_l] = ["myres"]
 
         # Take a snapshot with --obfuscate
         (_, snap_dir) = self.take_snapshot(obfuscate=True)

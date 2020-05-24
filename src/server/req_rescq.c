@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /*
  * @file	req_rescq.c
  *
@@ -42,9 +44,9 @@
  * 	req_rescq.c	-	Functions relating to the Resource Query Batch Request.
  *
  * Included functions are:
- *	cnvrt_delete()
+ *	resv_idle_delete()
  *	cnvrt_qmove()
- *	cnvrt_timer_init()
+ *	resv_timer_init()
  *	assign_resv_resc()
  *	req_confirmresv()
  *
@@ -95,45 +97,69 @@ extern time_t  time_now;
 extern int cnvrt_local_move(job *, struct batch_request *);
 
 /**
- * @brief
- * 		cnvrt_delete - delete reservation when no reservation job for 10 min
+ * @brief work task to delete reservation if there are no jobs in the reservation queue
  *
- * @param[in,out]	pwt	-	work task structure which contains the reservation
+ * @param[in] ptask - work task
+ *
  */
 void
-cnvrt_delete(struct work_task *ptask)
+resv_idle_delete(struct work_task *ptask)
 {
-	int flag = FALSE;
-	resc_resv *ptmp, *presv;
-	struct work_task *wt;
+	resc_resv *presv;
+	int num_jobs;
 
-	ptmp = (resc_resv *)ptask->wt_parm1;
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	if (presv == NULL || ptmp == NULL) return;
+	presv = ptask->wt_parm1;
 
-	while (presv) {
-		if ((presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) &&
-			(ptmp->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL)) {
-			if (strcmp(presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str,
-				ptmp->ri_wattr[(int)RESV_ATR_convert].at_val.at_str) == 0) {
-				flag = TRUE;
-				break;
-			}
-		}
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-	}
-
-	if (presv == NULL && flag == FALSE) return;
-
-	if (flag == TRUE  &&  ptmp->ri_qp->qu_numjobs == 0) {
-		gen_future_deleteResv(ptmp, 10);
+	if (presv == NULL)
 		return;
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
 	}
 
-	wt = set_task(WORK_Timed, (time_now + 600), cnvrt_delete, ptmp);
-	append_link(&presv->ri_svrtask, &wt->wt_linkobj, wt);
+	if (num_jobs == 0) {
+		log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_DEBUG, presv->ri_qs.ri_resvID,
+			"Deleting reservation after being idle for %d seconds",
+			presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long);
+		gen_future_deleteResv(presv, 1);
+	}
 }
 
+/**
+ * @brief if there are no jobs in the reservation queue, set a timer to delete the reservation
+ *
+ * @param[in]	presv - pointer to reservation
+ */
+void
+set_idle_delete_task(resc_resv *presv)
+{
+	struct work_task *wt;
+	long retry_time;
+	int num_jobs;
+
+	if (presv == NULL)
+		return;
+
+	if (!(presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET))
+		return;
+
+	num_jobs = presv->ri_qp->qu_numjobs;
+	if (svr_chk_history_conf()) {
+		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
+			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
+	}
+
+	if (num_jobs == 0 && presv->ri_qs.ri_state == RESV_RUNNING) {
+		delete_task_by_parm1_func(presv, resv_idle_delete, DELETE_ONE); /* Delete the previous task if it exists */
+		retry_time = time_now + presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_val.at_long;
+		if (retry_time < presv->ri_qs.ri_etime) {
+			wt = set_task(WORK_Timed, retry_time, resv_idle_delete, presv);
+			append_link(&presv->ri_svrtask, &wt->wt_linkobj, wt);
+		}
+	}
+}
 
 /**
  * @brief
@@ -148,11 +174,10 @@ cnvrt_delete(struct work_task *ptask)
  *
  */
 int
-cnvrt_qmove(resc_resv  *presv)
+cnvrt_qmove(resc_resv *presv)
 {
 	int rc;
 	struct job *pjob;
-	struct work_task wtnew;
 	char *q_job_id, *at;
 	struct batch_request *reqcnvrt;
 
@@ -187,8 +212,6 @@ cnvrt_qmove(resc_resv  *presv)
 
 	snprintf(pjob->ji_qs.ji_destin, PBS_MAXROUTEDEST, "%s", reqcnvrt->rq_ind.rq_move.rq_destin);
 	rc = cnvrt_local_move(pjob, reqcnvrt);
-	wtnew.wt_parm1 = (void *)presv;
-	cnvrt_delete(&wtnew);
 
 	if (rc != 0) return (-1);
 	return (0);
@@ -197,18 +220,16 @@ cnvrt_qmove(resc_resv  *presv)
 
 /**
  * @brief
- * 		cnvrt_timer_init - initialize timed task for removing empty reservation
+ * 		resv_timer_init - initialize timed task for removing empty reservation
  */
 void
-cnvrt_timer_init()
+resv_timer_init(void)
 {
 	resc_resv *presv;
-	struct work_task wtnew;
 	presv = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (presv) {
-		if (presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) {
-			wtnew.wt_parm1 = (void *)presv;
-			cnvrt_delete(&wtnew);
+		if (presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET) {
+			set_idle_delete_task(presv);
 		}
 		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
 	}
@@ -282,7 +303,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 
 				resv_attr_def[(int)RESV_ATR_resv_nodes].at_free(&tmpatr);
 
-				/* Note: We do not want to set presv->ri_giveback to 0 here. 
+				/* Note: We do not want to set presv->ri_giveback to 0 here.
 				 * The resv_nodes may not be empty yet and there could
 				 * be server resources assigned - it will be handled later.
 				 */
@@ -335,7 +356,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 			break;
 		}
 	}
-	
+
 	free(tmp_buf);
 }
 
@@ -465,7 +486,7 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 		&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
-		/*update resc_resv object's RESV_ATR_resv_nodes attribute*/
+		/* update resc_resv object's RESV_ATR_resv_nodes attribute */
 
 		resv_attr_def[(int)RESV_ATR_resv_nodes].at_free(
 			&presv->ri_wattr[(int)RESV_ATR_resv_nodes]);
@@ -511,6 +532,7 @@ req_confirmresv(struct batch_request *preq)
 	int sub = 0;
 	int resv_count = 0;
 	int is_degraded = 0;
+	int is_confirmed = 0;
 	char *execvnodes = NULL;
 	char *next_execvnode = NULL;
 	char **short_xc = NULL;
@@ -520,7 +542,8 @@ req_confirmresv(struct batch_request *preq)
 	int is_being_altered = 0;
 	char *tmp_buf = NULL;
 	size_t tmp_buf_size = 0;
-	char buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME+256] = {0}; /* FQDN resvID+text */
+	char buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME + 256] = {0}; /* FQDN resvID+text */
+	char *partition_name = NULL;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -534,7 +557,11 @@ req_confirmresv(struct batch_request *preq)
 	}
 	is_degraded = (presv->ri_qs.ri_substate == RESV_DEGRADED || presv->ri_qs.ri_substate == RESV_IN_CONFLICT) ? 1 : 0;
 	is_being_altered = presv->ri_alter_flags;
+	is_confirmed = (presv->ri_qs.ri_substate == RESV_CONFIRMED) ? 1 : 0;
 
+	presv->rep_sched_count++;
+
+	/* Check if preq is coming from scheduler */
 	if (preq->rq_extend == NULL) {
 		req_reject(PBSE_resvFail, 0, preq);
 		return;
@@ -559,32 +586,32 @@ req_confirmresv(struct batch_request *preq)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 			}
 		} else {
-			if (!is_being_altered)
-				log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
-					LOG_INFO, presv->ri_qs.ri_resvID,
-					"Reservation denied");
-
-			/* Clients waiting on an interactive request must be
-			 * notified of the failure to confirm
-			 */
-			if ((presv->ri_brp != NULL) &&
-				(presv->ri_wattr[RESV_ATR_interactive].at_flags &
-				ATR_VFLAG_SET)) {
-				presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-				snprintf(buf, sizeof(buf), "%s DENIED",
-					presv->ri_qs.ri_resvID);
-				(void)reply_text(presv->ri_brp,
-					PBSE_NONE, buf);
-				presv->ri_brp = NULL;
-			}
-			if (!is_being_altered) {
-				(void)snprintf(log_buffer, sizeof(log_buffer),
-					"requestor=%s@%s", msg_daemonname, server_host);
-				account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-					LOG_NOTICE, presv->ri_qs.ri_resvID,
-					"reservation deleted");
-				resv_purge(presv);
+			if ((presv->rep_sched_count >= presv->req_sched_count) && !is_confirmed) {
+				/* Clients waiting on an interactive request must be
+				* notified of the failure to confirm
+				*/
+				if ((presv->ri_brp != NULL) &&
+					(presv->ri_wattr[RESV_ATR_interactive].at_flags &
+					ATR_VFLAG_SET)) {
+					presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
+					snprintf(buf, sizeof(buf), "%s DENIED",
+						presv->ri_qs.ri_resvID);
+					(void)reply_text(presv->ri_brp,
+						PBSE_NONE, buf);
+					presv->ri_brp = NULL;
+				}
+				if (!is_being_altered) {
+					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
+						LOG_INFO, presv->ri_qs.ri_resvID,
+						"Reservation denied");
+					(void)snprintf(log_buffer, sizeof(log_buffer),
+						"requestor=%s@%s", msg_daemonname, server_host);
+					account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
+						LOG_NOTICE, presv->ri_qs.ri_resvID,
+						"reservation deleted");
+					resv_purge(presv);
+				}
 			}
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
@@ -789,7 +816,53 @@ req_confirmresv(struct batch_request *preq)
 	cmp_resvStateRelated_attrs((void *)presv,
 		presv->ri_qs.ri_type);
 	Update_Resvstate_if_resv(presv->ri_jbp);
+	if (strncmp(preq->rq_extend, PBS_RESV_CONFIRM_SUCCESS, strlen(PBS_RESV_CONFIRM_SUCCESS)) == 0) {
+		char *p_tmp;
+		p_tmp = strstr(preq->rq_extend, ":partition=");
+		if (p_tmp) {
+			p_tmp += strlen(":partition=");
+			partition_name = strdup(p_tmp);
+		} else
+			partition_name = strdup(DEFAULT_PARTITION);
 
+		if (partition_name == NULL) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+	}
+	if (state == RESV_CONFIRMED && partition_name != NULL) {
+		/* Set the name of the partition where the reservation is confirmed*/
+		pbs_queue *rque = NULL;
+		char *qname = NULL;
+		char *p;
+		resv_attr_def[(int)RESV_ATR_partition].at_decode(
+			&presv->ri_wattr[(int)RESV_ATR_partition], NULL, NULL, partition_name);
+		qname = strdup(presv->ri_qs.ri_resvID);
+		if (qname == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "malloc failed");
+			req_reject(PBSE_SYSTEM, 0, preq);
+			free(partition_name);
+			return;
+		}
+		p = strpbrk(qname, ".");
+		if (p != NULL)
+			*p = '\0';
+		rque = find_queuebyname(qname);
+		if (rque == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "Reservation queue not found");
+			req_reject(PBSE_INTERNAL, 0, preq);
+			free(partition_name);
+			free (qname);
+			return;
+		} else {
+			que_attr_def[(int)QA_ATR_partition].at_decode(&rque->qu_attr[QA_ATR_partition],
+									NULL, NULL, partition_name);
+			que_save_db(rque, QUE_SAVE_FULL);
+		}
+		free(qname);
+	}
+	free(partition_name);
 	if (presv->ri_modified)
 		(void)job_or_resv_save((void *)presv, SAVERESV_FULL, RESC_RESV_OBJECT);
 
@@ -801,15 +874,15 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (presv->ri_brp) {
 		presv = find_resv(presv->ri_qs.ri_resvID);
-		if (presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) {
+		if (presv->ri_wattr[(int) RESV_ATR_convert].at_val.at_str != NULL) {
 			rc = cnvrt_qmove(presv);
 			if (rc != 0) {
-				snprintf(buf, sizeof(buf), "%.240s FAILED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s FAILED", presv->ri_qs.ri_resvID);
 			} else {
-				snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 			}
 		} else {
-			snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+			snprintf(buf, sizeof(buf), "%.240s CONFIRMED", presv->ri_qs.ri_resvID);
 		}
 
 		rc = reply_text(presv->ri_brp, PBSE_NONE, buf);
@@ -852,10 +925,9 @@ req_confirmresv(struct batch_request *preq)
 
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 			  presv->ri_qs.ri_resvID, "Reservation alter confirmed");
-	} else {
+	} else
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 			  presv->ri_qs.ri_resvID, "Reservation confirmed");
-	}
 
 	if (!is_degraded) {
 		/* 100 extra bytes for field names, times, and count */
@@ -929,6 +1001,23 @@ resv_revert_alter_times(resc_resv *presv)
 		|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		presv->ri_alter_etime = 0;
 	}
+	if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
+		if (presv->ri_alter_etime != 0) {
+			presv->ri_qs.ri_etime = presv->ri_alter_etime;
+			presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter_etime;
+			presv->ri_wattr[RESV_ATR_end].at_flags
+			|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_alter_etime = 0;
+		}
+		if (presv->ri_alter_stime != 0) {
+			presv->ri_qs.ri_stime = presv->ri_alter_stime;
+			presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter_stime;
+			presv->ri_wattr[RESV_ATR_start].at_flags
+			|= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			presv->ri_alter_stime = 0;
+		}
+	}
+
 	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
 	presv->ri_wattr[RESV_ATR_duration].at_flags
@@ -938,4 +1027,3 @@ resv_revert_alter_times(resc_resv *presv)
 	/* While requesting alter, substate was retained, so we use the same here. */
 	(void)resv_setResvState(presv, state, presv->ri_qs.ri_substate);
 }
-

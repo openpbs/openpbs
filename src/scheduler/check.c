@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    check.c
@@ -335,7 +337,7 @@ shrink_to_boundary(status *policy, server_info *sinfo,
 		if (ns_arr && orig_duration > njob->duration) {
 			char timebuf[TIMEBUF_SIZE];
 			convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 				"Considering shrinking job to duration=%s, due to a prime/dedicated time conflict", timebuf);
 		}
 	}
@@ -510,7 +512,7 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 			} else if (te == initial_event || te->event_time < min_end_time)
 				break;
 			/* If no events in this segment, then try last skipped event of the previous segment
-			 * Skip events that fall in the previous segment or if the event time is already tried 
+			 * Skip events that fall in the previous segment or if the event time is already tried
 			 */
 			else if (te->event_time > end_time || te->event_time == last_tried_event_time) {
 				last_skipped_event = te;
@@ -532,12 +534,12 @@ shrink_to_run_event(status *policy, server_info *sinfo,
 		}
 	}
 	if (ns_arr && njob->duration == njob->min_duration)
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 			"Considering shrinking job to it's minimum walltime");
 	else if (ns_arr && orig_duration > njob->duration) {
 		char timebuf[TIMEBUF_SIZE];
 		convert_duration_to_str(njob->duration, timebuf, TIMEBUF_SIZE);
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name, 
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, njob->name,
 			"Considering shrinking job to duration=%s, due to a reservation/top job conflict", timebuf);
 	}
 	return (ns_arr);
@@ -723,7 +725,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
 		return NULL;
-	
+
 	if (resresv->is_job && qinfo == NULL)
 		return NULL;
 
@@ -765,7 +767,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 
 		/* if a reservation is unconfirmed or being altered, we can try and confirm it */
-		if ((resresv->is_resv) && 
+		if ((resresv->is_resv) &&
 			resresv->resv->resv_state != RESV_UNCONFIRMED &&
 			resresv->resv->resv_state != RESV_BEING_ALTERED) {
 
@@ -938,7 +940,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		else if (resresv->is_resv && resresv->resv !=NULL) {
 			sprintf(errbuf,
 				"Could not confirm reservation - nodes are not licensed or"
-				" unable to obtain %d cpu licenses at requested time." 
+				" unable to obtain %d cpu licenses at requested time."
 				" avail_licenses=%d", resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
 
@@ -1536,18 +1538,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			return NULL;
 	}
 
-	/* For a reservation alter, if the reservation has not started running
-	 * note that alternate nodes (that do not belong to the reservation)
-	 * should also be looked at if the alter cannot be confirmed on the
-	 * nodes belonging to the reservation.
-	 */
-	if (resresv->is_resv && resresv->resv &&
-		resresv->resv->resv_state == RESV_BEING_ALTERED &&
-		resresv->resv->resv_substate == RESV_CONFIRMED) {
-
-		resresv->resv->check_alternate_nodes = 1;
-	}
-
 	/* Sets of nodes:
 	   * 1. job is in a reservation - use reservation nodes
 	   * 2. job or reservation has nodes -- use them
@@ -1565,10 +1555,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 		ninfo_arr = resresv->job->resv->resv->resv_nodes;
 		nodepart = NULL;
 	}
-	else if (resresv->is_resv && resresv->resv && resresv->resv->check_alternate_nodes) {
-		ninfo_arr = sinfo->unassoc_nodes;
-		nodepart = NULL;
-	}
+
 	/* if we have nodes, use them
 	 * don't care about node grouping because nodes are already assigned
 	 * to the job.  We won't need to search for them.
@@ -1588,8 +1575,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			/* if there are nodes assigned to the queue, then check those */
 			if (qinfo->has_nodes)
 				ninfo_arr = qinfo->nodes;
-			else if (qinfo->partition != NULL)
-				ninfo_arr = qinfo->nodes_in_partition;
 			else
 				ninfo_arr = sinfo->unassoc_nodes;
 		} else
@@ -1999,8 +1984,7 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*spec = resresv->select;
 		}
 	} else if (resresv->is_resv && resresv->resv != NULL) {
-		if ((resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING) && 
-				!resresv->resv->check_alternate_nodes)
+		if (resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING)
 			*spec = resresv->execselect;
 		else
 			*spec = resresv->select;

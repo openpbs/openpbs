@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * @file    svr_func.c
  *
@@ -55,7 +57,6 @@
  * 	set_rpp_highwater()
  * 	set_sched_sock()
  * 	is_valid_resource()
- * 	ssignon_transition_okay()
  * 	deflt_chunk_action()
  * 	set_license_location()
  * 	unset_license_location()
@@ -134,7 +135,6 @@
  * 	read_db_svrhost_file()
  * 	replace_db_svrhost_file()
  * 	chk_and_update_db_svrhost()
- * 	set_sched_throughput_mode()
  * 	keepfiles_action()
  * 	removefiles_action()
  *	are_we_primary()
@@ -176,7 +176,7 @@
 #include "sched_cmds.h"
 #include "ticket.h"
 #include "pbs_nodes.h"
-#include "rpp.h"
+#include "tpp.h"
 #include "pbs_license.h"
 #include "pbs_share.h"
 #include "pbs_entlim.h"
@@ -843,82 +843,6 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 }
 
 
-/**
- * @brief
- *		The action function for the "single_signon_password_enable" server
- *		attribute, which validates transitions between "true" and "false"
- *		values.
- *
- * @param[in]	pattr	-	target "single_signon_password_enable" attribute value
- * @param[in]	pobject -	pointer to some parent object.(required but unused here)
- * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
- *
- * @return	Whether or not okay to set to new value.
- * @retval	0	: Action is okay.
- * @retval	PBSE_SSIGNON_BAD_TRANSITION1	:
- * 				single_signon_password_enable from true to false: jobs exist!
- *
- * @retval	PBSE_SSIGNON_BAD_TRANSITION2	:
- * 				single_signon_password_enable from false to true: not all jobs have a
- *      		bad password hold!
- */
-int
-ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
-{
-	job *pjob;
-
-	if (actmode == ATR_ACTION_FREE)
-		return (0);
-
-	/* from true to false */
-	if ( (server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) && \
-          (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 1) && \
-	  (pattr->at_val.at_long == 0) ) {
-
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* found at least a job that is not moved or finished */
-			return (PBSE_SSIGNON_BAD_TRANSITION1);
-
-		}
-	}
-
-	/* from false to true */
-
-	if ( (!(server.sv_attr[SRV_ATR_ssignon_enable].at_flags & ATR_VFLAG_SET) ||\
-           (server.sv_attr[SRV_ATR_ssignon_enable].at_val.at_long == 0)) && \
-	  (pattr->at_val.at_long == 1) ) {
-
-		for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-				continue;
-			}
-
-			/* any unheld job found, or if held but not */
-			/* containing password hold */
-			if (!(pjob->ji_wattr[(int)JOB_ATR_hold].at_flags &
-			ATR_VFLAG_SET) || \
-			    !(pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long \
-						         & HOLD_bad_password) )
-				return (PBSE_SSIGNON_BAD_TRANSITION2);
-		}
-
-	}
-
-	return (0);
-
-}
 
 /**
  * @brief
@@ -1099,12 +1023,10 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
 							!= '\0') ) {
 			close_licensing();	/* checkin, close connection */
-		} else { /* from no license server */
+			unlicense_socket_licensed_nodes();
+			clear_license_info();
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
 
 		if (pbs_licensing_license_location)
 			free(pbs_licensing_license_location);
@@ -1114,27 +1036,14 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 		if (pbs_licensing_license_location == NULL) {
 			log_err(errno, __func__, "warning: strdup failed!");
 		}
-
 		if (pbs_licensing_license_location &&
 			(pbs_licensing_license_location[0] != '\0')) {
-			init_licensing();
-			if (license_sanity_check())
-				license_more_nodes();
-		} else {   /* no pbs_licensing_license_location */
-
-			/* get trial license */
-			if (check_license(&licenses) < 0) {
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_ALERT, msg_daemonname,
-					"One or more PBS license keys are invalid, jobs may not run");
-			} else {
-				sprintf(log_buffer,
-					"Licenses valid for %d floating hosts",
-					licenses.lb_aval_floating);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_NOTICE, msg_daemonname, log_buffer);
-				relicense_svr_unlicensedjobs();
-			}
+			int delay;
+			if (actmode == ATR_ACTION_ALTER)
+				delay = 5;
+			else
+				delay = 0;
+			init_licensing(delay);
 		}
 	}
 
@@ -1156,32 +1065,14 @@ unset_license_location(void)
 		if (pbs_licensing_license_location[0] != '\0') {
 
 			close_licensing();
-			sockets_reset();
 			unlicense_socket_licensed_nodes();
-
-		} else { /* from no license server */
+			clear_license_info();
+		} else /* from no license server */
 			init_fl_license_attrs(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
+
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
 		licstate_unconfigured(LIC_SERVER);
-	}
-
-	/* try to find a trial license */
-	if (check_license(&licenses) < 0) {
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ALERT, msg_daemonname,
-			"One or more PBS license keys are invalid, jobs may not run");
-	} else {
-		sprintf(log_buffer,
-			"Licenses valid for %d floating hosts",
-			licenses.lb_aval_floating);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_NOTICE, msg_daemonname, log_buffer);
-		relicense_svr_unlicensedjobs();
 	}
 
 }
@@ -6307,7 +6198,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	}
 
 #ifdef WIN32
-
+	/* FIXME: remove below code? as we don't have pbs_start_provision anymore on windows? */
 	/* In Windows, do not need to unprotect the process created as */
 	/* it will not inherit the protection value from the parent    */
 	sprintf(cmdline, "%s/sbin/pbs_start_provision %s %s %s %s %s %s",
@@ -6333,9 +6224,9 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	}
 	else if (pid == 0) {	/* child process */
 		alarm(0);
-		/* standard rpp closure and net close */
+		/* standard tpp closure and net close */
 		net_close(-1);
-		rpp_terminate();
+		tpp_terminate();
 
 		/* Reset signal actions for most to SIG_DFL */
 		sigemptyset(&act.sa_mask);
@@ -7190,31 +7081,6 @@ enum failover_state are_we_primary(void)
 		return FAILOVER_SECONDARY;  /* we are the secondary */
 
 	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
-}
-
-
-/**
- * @brief
- * 		action routine for the sched's "throughput" attribute
- *
- * @param[in]	pattr	-	attribute being set
- * @param[in]	pobj	-	Object on which attribute is being set
- * @param[in]	actmode	-	the mode of setting, recovery or just alter
- *
- * @return	error code
- * @retval	PBSE_NONE	-	Success
- * @retval	!PBSE_NONE	-	Failure
- *
- */
-int
-set_sched_throughput_mode(attribute *pattr, void *pobj, int actmode)
-{
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if (pbs_conf.pbs_use_tcp == 0) {
-			return PBSE_BADATVAL;
-		}
-	}
-	return PBSE_NONE;
 }
 
 /* action function for opt_backfill_fuzzy -- only allow the correct values */

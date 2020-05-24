@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_MOM_FUNC_H
 #define	_MOM_FUNC_H
 #ifdef	__cplusplus
@@ -143,6 +145,8 @@ enum hup_action {
  */
 extern enum hup_action	call_hup;
 
+extern int mock_run;
+
 /* public funtions within MOM */
 
 #ifdef	_PBS_JOB_H
@@ -239,8 +243,7 @@ typedef enum {
 	PRE_FINISH_SUCCESS_JOB_SETUP_SEND,
 	PRE_FINISH_FAIL,
 	PRE_FINISH_FAIL_JOB_SETUP_SEND,
-	PRE_FINISH_FAIL_JOIN_EXTRA,
-	PRE_FINISH_FAIL_NEW_CPUSET
+	PRE_FINISH_FAIL_JOIN_EXTRA
 } pre_finish_results_t;
 
 #ifdef	_LIBPBS_H
@@ -354,6 +357,7 @@ extern int send_rq_cpyfile_cred(pio_handles *, struct rq_cpyfile *);
 extern int recv_pcphosts(void);
 extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
+extern void check_err(const char *func_name, char *buf, int len);
 #else
 extern void  bld_env_variables(struct var_table *, char *, char *);
 extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);
@@ -397,6 +401,8 @@ extern int setcurrentworkdir(char *);
 extern int becomeuser(job *);
 extern int becomeuser_args(char *, uid_t, gid_t, gid_t);
 extern void close_update_pipes(job *);
+extern void mom_set_use_all(void);
+void job_purge_mom(job *pjob);
 
 /* From popen.c */
 extern FILE *pbs_popen(const char *, const char *);
@@ -418,7 +424,7 @@ extern void recover_walltime(job *);
 
 /* For windows only, define the window station to use */
 /* for launching processes. */
-#define PBS_DESKTOP_NAME        "PBSProWS\\default"
+#define PBS_DESKTOP_NAME        "PBSWS\\default"
 
 /* max # of users that will be exempted from dorestrict_user process killing */
 #ifdef NAS /* localmod 008 */

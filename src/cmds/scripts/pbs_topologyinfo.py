@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import errno
 from optparse import OptionParser
@@ -57,6 +60,8 @@ class Inventory(object):
         self.CrayVersion = "0.0"
         self.ndevices = 0
         self.gpudevices = 0
+        self.cardflag = False
+        self.renderflag = False
 
     def __init__(self):
         self.reset()
@@ -145,13 +150,12 @@ class Inventory(object):
                                   % (name, e.lineno, e.offset))
                     else:
                         self.countsockets(topo_file)
-
                     if options.sockets:
                         print("%-*s%d" % (maxwidth + 1, name, self.nsockets))
                     else:
                         self.nnodes += self.calculate()
                         print("%-*s%d" % (maxwidth + 1, name,
-                              inventory.nnodes))
+                                          inventory.nnodes))
 
             except IOError as err:
                 (e, strerror) = err.args
@@ -173,7 +177,7 @@ class Inventory(object):
         packagepattern = r'<\s*object\s+type="Package"'
         gpupattern = r'<\s*object\s+type="OSDev"\s+name="card\d+"\s+' \
             'osdev_type="1"'
-        nongpupattern = r'<\s*object\s+type="OSDev"\s+name="controlD\d+"\s+' \
+        renderpattern = r'<\s*object\s+type="OSDev"\s+name="renderD\d+"\s+' \
             'osdev_type="1"'
         micpattern = r'<\s*object\s+type="OSDev"\s+name="mic\d+"\s+' \
             'osdev_type="5"'
@@ -184,6 +188,7 @@ class Inventory(object):
         hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+'
 
         for line in topo_file:
+            line = line.decode('utf-8')
             if re.search(craypattern, line):
                 start_index = line.find('protocol="') + len('protocol="')
                 self.CrayVersion = line[start_index:
@@ -213,11 +218,10 @@ class Inventory(object):
                                                             line))):
                     self.nsockets += 1
                     self.ndevices += 1
-                self.gpudevices += 1 if re.search(gpupattern, line) else 0
-                if re.search(nongpupattern, line):
-                    if (self.gpudevices > 0):
-                        self.gpudevices -= 1
+                self.cardflag += 1 if re.search(gpupattern, line) else 0
+                self.renderflag += 1 if re.search(renderpattern, line) else 0
                 self.ndevices += 1 if re.search(micpattern, line) else 0
+        self.gpudevices = min(self.cardflag, self.renderflag)
 
 
 def socketXMLstart(name, attrs):
@@ -225,7 +229,6 @@ def socketXMLstart(name, attrs):
     StartElementHandler for expat parser
     """
     global inventory
-
     if name == "BasilResponse":
         inventory.CrayVersion = attrs.get("protocol")
         return
@@ -254,12 +257,15 @@ def socketXMLstart(name, attrs):
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "1" and
                 attrs.get("name").startswith("card")):
-            inventory.gpudevices += 1
-        if (name == "object" and attrs.get("type") == "OSDev" and
-            attrs.get("osdev_type") == "1" and
-                attrs.get("name").startswith("controlD")):
-            if (inventory.gpudevices > 0):
-                inventory.gpudevices -= 1
+            inventory.cardflag = True
+        elif (name == "object" and attrs.get("type") == "OSDev" and
+              attrs.get("osdev_type") == "1" and
+                attrs.get("name").startswith("renderD")):
+            if inventory.cardflag is True:
+                inventory.gpudevices += 1
+                inventory.cardflag = False
+        else:
+            inventory.cardflag = False
         if (name == "object" and attrs.get("type") == "OSDev" and
             attrs.get("osdev_type") == "5" and
                 attrs.get("name").startswith("mic")):

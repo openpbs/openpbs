@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef _PBS_IFL_H
 #define _PBS_IFL_H
 #ifdef	__cplusplus
@@ -94,10 +96,10 @@ extern "C" {
 #define ATTR_resv_duration	"reserve_duration"
 #define ATTR_resv_state		"reserve_state"
 #define ATTR_resv_substate	"reserve_substate"
+#define ATTR_resv_job		"reserve_job"
 #define ATTR_auth_u		"Authorized_Users"
 #define ATTR_auth_g		"Authorized_Groups"
 #define ATTR_auth_h		"Authorized_Hosts"
-#define ATTR_pwd		"pwd"
 #define ATTR_cred		"cred"
 #define ATTR_nodemux		"no_stdio_sockets"
 #define ATTR_umask		"umask"
@@ -194,6 +196,7 @@ extern "C" {
 #define ATTR_cred_id		"credential_id"
 #define ATTR_cred_validity	"credential_validity"
 #define ATTR_history_timestamp	"history_timestamp"
+#define ATTR_create_resv_from_job	"create_resv_from_job"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
 #define ATTR_exit_status        "Exit_status"
@@ -206,6 +209,7 @@ extern "C" {
 #define ATTR_resv_Tag	 "reservation_Tag"
 #define ATTR_resv_ID	 "reserve_ID"
 #define ATTR_resv_retry "reserve_retry"
+#define ATTR_del_idle_time "delete_idle_time"
 
 /* additional queue attributes names */
 
@@ -293,7 +297,6 @@ extern "C" {
 #define ATTR_aclResvuser        "acl_resv_users"
 #define ATTR_NodeGroupEnable	"node_group_enable"
 #define ATTR_NodeGroupKey	"node_group_key"
-#define ATTR_ssignon_enable	"single_signon_password_enable"
 #define ATTR_dfltqdelargs	"default_qdel_arguments"
 #define ATTR_dfltqsubargs       "default_qsub_arguments"
 #define ATTR_rpp_retry		"rpp_retry"
@@ -469,7 +472,7 @@ enum mgr_obj {
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
 #define PBS_MAXSVRJOBID	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
-#define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID)
+#define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID + 1)
 #define PBS_MAXQRESVNAME	(PBS_MAXQUEUENAME)
 #define PBS_MAXCLTJOBID		(PBS_MAXSVRJOBID + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* client job id size */
 #define PBS_MAXDEST		256	/* destination size */
@@ -482,15 +485,9 @@ enum mgr_obj {
 #define PBS_MNTNC_RESV_ID_CHAR   'M'   /* Character in front of a resv ID */
 #define PBS_AUTH_KEY_LEN    (129)
 
+/* the pair to this list is in module_pbs_v1.c and must be updated to reflect any changes */
 enum batch_op {	SET, UNSET, INCR, DECR,
 	EQ, NE, GE, GT, LE, LT, DFLT
-};
-
-/* PBS supported authentication methods */
-enum pbs_auth_method {
-	AUTH_RESV_PORT,      /* Reserved port authentication */
-	AUTH_MUNGE,           /* MUNGE Authentication */
-	AUTH_GSS           /* GSS Authentication */
 };
 
 /* shutdown manners externally visible */
@@ -692,6 +689,8 @@ extern int pbs_asyrunjob(int, char *, char *, char *);
 
 extern int pbs_alterjob(int, char *, struct attrl *, char *);
 
+extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
+
 extern int pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 extern int pbs_connect(char *);
@@ -774,6 +773,7 @@ extern preempt_job_info *pbs_preempt_jobs(int, char **);
 /* IFL function pointers */
 extern int (*pfn_pbs_asyrunjob)(int, char *, char *, char *);
 extern int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *);
+extern int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *);
 extern int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *);
 extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_PBS_LICENSE_H
 #define	_PBS_LICENSE_H
 #ifdef	__cplusplus
@@ -53,7 +55,6 @@ extern "C" {
 #define ND_LIC_cloud_str	"c"
 
 struct license_block {
-	int  lb_trial;		/* non_zero if trial license */
 	int  lb_glob_floating;	/* number of floating licenses avail globally */
 	int  lb_aval_floating;	/* number of floating licenses avail locally  */
 	int  lb_used_floating;	/* number of floating licenses used           */
@@ -90,43 +91,37 @@ typedef enum node_topology_type ntt_t;
 	  pbs_licensing_license_location : "null" )
 
 enum licensing_backend {
-	LIC_SERVER,	/* reachable license server (to license CPUs) */
+	LIC_SERVER,	/* used to differentiate between types of licenses */
 	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
 	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
-	LIC_TRIAL,	/* nonzero number of trial license (to license CPUs) */
-	LIC_UNKNOWN  /* used to hold the value of previous lb */
+	LIC_UNKNOWN	/* used to hold the value of previous lb */
 };
 
 extern struct license_block licenses;
 extern struct attribute *pbs_float_lic;
 extern void   init_fl_license_attrs(struct license_block *);
-extern int    check_license(struct license_block *);
 extern void   log_licenses(struct license_used *pu);
-extern void   init_licensing(void);
+extern void   init_licensing(int);
 extern int    status_licensing(void);
-extern int    checkin_licensing(void);
 extern void   close_licensing(void);
-extern int    pbs_get_licenses(int);
 extern int    count_needed_flic(int);
 extern void   relicense_nodes_floating(int);
 extern void   update_FLic_attr(void);
 extern char   *pbs_license_location(void);
 extern void   init_socket_licenses(char *);
-extern int    sockets_available(void);
-extern int    sockets_total(void);
 extern int    sockets_consume(int);
 extern void   sockets_release(int);
-extern void   sockets_reset(void);
 extern void   inspect_license_path(void);
 extern int    licstate_is_up(enum licensing_backend);
 extern void   licstate_down(void);
 extern void   licstate_unconfigured(enum licensing_backend);
-extern int	nsockets_from_topology(char *, ntt_t);
+extern int	nsockets_from_topology(char *, ntt_t, struct pbsnode *pnode);
 extern int	check_sign(void *, void *);
 extern void	process_topology_info(void *, char *, ntt_t );
 extern void	unset_signature(void *, char *);
 extern	int	release_node_lic(void *);
 extern	int	validate_sign(char *, void *);
+extern void	clear_license_info();
 
 /* Licensing-related variables */
 extern int    ext_license_server;

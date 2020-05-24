@@ -3,37 +3,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 import datetime
 import logging
@@ -60,9 +63,9 @@ from nose.util import isclass
 
 import ptl
 from ptl.lib.pbs_testlib import PBSInitServices
-from ptl.lib.pbs_testlib import PbsHardwareMonitorError
 from ptl.utils.pbs_covutils import LcovUtils
 from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_dshutils import TimeOut
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
@@ -70,14 +73,6 @@ from ptl.utils.pbs_testusers import PBS_ALL_USERS
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
-
-
-class TimeOut(Exception):
-
-    """
-    Raise this exception to mark a test as timed out.
-    """
-    pass
 
 
 class TCThresholdReached(Exception):
@@ -845,19 +840,17 @@ class PTLTestRunner(Plugin):
             if used_disk_percent is None:
                 _msg = hostname
                 _msg += ": unable to get disk info"
-                self.logger.error(_msg)
                 self.hardware_report_timer.cancel()
-                raise PbsHardwareMonitorError(msg=_msg)
+                raise SkipTest(_msg)
             elif 70 <= used_disk_percent < 95:
                 _msg = hostname + ": disk usage is at "
                 _msg += str(used_disk_percent) + "%"
                 _msg += ", disk cleanup is recommended."
                 self.logger.warning(_msg)
             elif used_disk_percent >= 95:
-                _msg = hostname + ":disk usage > 95%, stopping the test(s)"
-                self.logger.error(_msg)
+                _msg = hostname + ":disk usage > 95%, skipping the test(s)"
                 self.hardware_report_timer.cancel()
-                raise PbsHardwareMonitorError(msg=_msg)
+                raise SkipTest(_msg)
             # checks for core files
             pbs_conf = du.parse_pbs_config(hostname)
             mom_priv_path = os.path.join(pbs_conf["PBS_HOME"], "mom_priv")

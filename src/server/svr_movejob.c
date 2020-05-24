@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /*
  *
  * Included functions are:
@@ -89,7 +91,7 @@
 #include "net_connect.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-#include "rpp.h"
+#include "tpp.h"
 #include <memory.h>
 #include "server.h"
 #include "hook.h"
@@ -110,7 +112,7 @@ static void post_movejob(struct work_task *);
 static void post_routejob(struct work_task *);
 static int small_job_files(job* pjob);
 extern int should_retry_route(int err);
-extern int move_job_file(int con, job *pjob, enum job_file which, int rpp, char **msgid);
+extern int move_job_file(int con, job *pjob, enum job_file which, int prot, char **msgid);
 extern void post_sendmom(struct work_task *pwt);
 
 
@@ -477,7 +479,7 @@ post_movejob(struct work_task *pwt)
 /**
  *
  * @brief
- * 	Send execution job on connected rpp stream.
+ * 	Send execution job on connected tpp stream.
  *	Note: Job structure has been loaded with the script by now (ji_script populated)
  *
  * @param[in]	jobp - pointer to the job being sent
@@ -505,7 +507,6 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	char job_id[PBS_MAXSVRJOBID + 1];
 	struct attropl *pqjatr; /* list (single) of attropl for quejob */
 	int rc;
-	int rpp = 1;
 	char *jobid = NULL;
 	char *msgid = NULL;
 	char *dup_msgid = NULL;
@@ -516,7 +517,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	save_resc_access_perm = resc_access_perm;
 	pbs_errno = PBSE_NONE;
 
-	stream = svr_connect(hostaddr, port, NULL, ToServerDIS, rpp);
+	stream = svr_connect(hostaddr, port, NULL, ToServerDIS, PROT_TPP);
 	if (stream < 0) {
 		sprintf(log_buffer, "Could not connect to Mom, svr_connect returned %d", stream);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
@@ -554,12 +555,12 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	(void) strcpy(job_id, jobp->ji_qs.ji_jobid);
 
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
-	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, rpp, &msgid);
+	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, PROT_TPP, &msgid);
 	free_attrlist(&attrl);
 	if (jobid == NULL)
 		goto send_err;
 
-	rpp_add_close_func(stream, process_DreplyRPP); /* register a close handler */
+	tpp_add_close_func(stream, process_DreplyTPP); /* register a close handler */
 
 	/* adding msgid to deferred list, dont free msgid */
 	if ((ptask = add_mom_deferred_list(stream, pmom, post_sendmom, msgid, request, jobp)) == NULL) {
@@ -586,7 +587,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	 * and we will be hanging off one request to be answered to finally
 	 */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		if (PBSD_jscript_direct(stream, jobp->ji_script, rpp, &dup_msgid) != 0)
+		if (PBSD_jscript_direct(stream, jobp->ji_script, PROT_TPP, &dup_msgid) != 0)
 			goto send_err;
 	}
 	if (jobp->ji_script) {
@@ -595,7 +596,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	}
 
 	if (credlen > 0) {
-		rc = PBSD_jcred(stream, jobp->ji_extended.ji_ext.ji_credtype, credbuf, credlen, rpp, &dup_msgid);
+		rc = PBSD_jcred(stream, jobp->ji_extended.ji_ext.ji_credtype, credbuf, credlen, PROT_TPP, &dup_msgid);
 		if (credbuf)
 			free(credbuf);
 		if (rc != 0)
@@ -604,13 +605,13 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 
 	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN)
 		&& (hostaddr != pbs_server_addr)) {
-		if ((move_job_file(stream, jobp, StdOut, rpp, &dup_msgid) != 0) ||
-			(move_job_file(stream, jobp, StdErr, rpp, &dup_msgid) != 0) ||
-			(move_job_file(stream, jobp, Chkpt, rpp, &dup_msgid) != 0))
+		if ((move_job_file(stream, jobp, StdOut, PROT_TPP, &dup_msgid) != 0) ||
+			(move_job_file(stream, jobp, StdErr, PROT_TPP, &dup_msgid) != 0) ||
+			(move_job_file(stream, jobp, Chkpt, PROT_TPP, &dup_msgid) != 0))
 			goto send_err;
 	}
 
-	if (PBSD_commit(stream, job_id, rpp, &dup_msgid) != 0)
+	if (PBSD_commit(stream, job_id, PROT_TPP, &dup_msgid) != 0)
 		goto send_err;
 
 	free(dup_msgid); /* free this as it is not part of any work task */
@@ -685,7 +686,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	struct  hostent *hp;
 	struct in_addr   addr;
 	long		 tempval;
-	int 		rpp = 0;
 
 	/* if job has a script read it from database */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
@@ -699,7 +699,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		}
 	}
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && small_job_files(jobp)) {
+	if (move_type == MOVE_TYPE_Exec && small_job_files(jobp)) {
 		return (send_job_exec(jobp, hostaddr, port, preq));
 	}
 
@@ -758,7 +758,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	 * set up signal cather for error return
 	 */
 	DBPRT(("%s: child started, sending to port %d\n", __func__, port))
-	rpp_terminate();
+	tpp_terminate();
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
@@ -834,7 +834,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 			}
 			sleep(1<<i);
 		}
-		if ((con = svr_connect(hostaddr, port, 0, cntype, rpp)) ==
+		if ((con = svr_connect(hostaddr, port, 0, cntype, PROT_TCP)) ==
 			PBS_NET_RC_FATAL) {
 			(void)sprintf(log_buffer, "send_job failed to %lx port %d",
 				hostaddr, port);
@@ -865,20 +865,15 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 			}
 
 			pqjatr = &((svrattrl *)GET_NEXT(attrl))->al_atopl;
-			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin,
-				pqjatr, NULL, rpp, NULL) == 0) {
+			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, PROT_TCP, NULL) == 0) {
 				if (pbs_errno == PBSE_JOBEXIST &&
 					move_type == MOVE_TYPE_Exec) {
 					/* already running, mark it so */
-					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-						LOG_INFO, jobp->ji_qs.ji_jobid,
-						"Mom reports job already running");
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, "Mom reports job already running");
 					exit(SEND_JOB_OK);
 				}
-				else if ((pbs_errno == PBSE_HOOKERROR) ||
-					(pbs_errno == PBSE_HOOK_REJECT)  ||
-					(pbs_errno == PBSE_HOOK_REJECT_RERUNJOB)  ||
-					(pbs_errno == PBSE_HOOK_REJECT_DELETEJOB)) {
+				else if ((pbs_errno == PBSE_HOOKERROR) || (pbs_errno == PBSE_HOOK_REJECT)  ||
+					(pbs_errno == PBSE_HOOK_REJECT_RERUNJOB) || (pbs_errno == PBSE_HOOK_REJECT_DELETEJOB)) {
 					char		name_buf[MAXPATHLEN+1];
 					int		rfd;
 					int		len;
@@ -888,40 +883,23 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 					err = pbs_errno;
 
 					reject_msg = pbs_geterrmsg(con);
-					(void)sprintf(log_buffer,
-						"send of job to %s failed error = %d reject_msg=%s",
-						destin, err,
-						reject_msg?reject_msg:"");
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-						LOG_INFO, jobp->ji_qs.ji_jobid,
-						log_buffer);
+					(void)sprintf(log_buffer, "send of job to %s failed error = %d reject_msg=%s", destin, err, reject_msg ? reject_msg : "");
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 
 					(void)strcpy(name_buf, path_hooks_workdir);
 					(void)strcat(name_buf, jobp->ji_qs.ji_jobid);
 					(void)strcat(name_buf, HOOK_REJECT_SUFFIX);
 
-					if ((reject_msg != NULL) &&
-						(reject_msg[0] != '\0')) {
-
-						if ((rfd = open(name_buf,
-							O_RDWR|O_CREAT|O_TRUNC, 0600)) == -1) {
-							sprintf(log_buffer,
-								"open of reject file %s failed: errno %d",
-								name_buf, errno);
-							log_event(PBSEVENT_JOB,
-								PBS_EVENTCLASS_JOB,
-								LOG_INFO, jobp->ji_qs.ji_jobid,
-								log_buffer);
+					if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+						if ((rfd = open(name_buf, O_RDWR|O_CREAT|O_TRUNC, 0600)) == -1) {
+							sprintf(log_buffer, "open of reject file %s failed: errno %d", name_buf, errno);
+							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 						} else {
 							len = strlen(reject_msg)+1;
 							/* write also trailing null char */
 							if (write(rfd, reject_msg, len) != len) {
-								sprintf(log_buffer,
-									"write to file %s incomplete: errno %d", name_buf, errno);
-								log_event(PBSEVENT_JOB,
-									PBS_EVENTCLASS_JOB,
-									LOG_INFO, jobp->ji_qs.ji_jobid,
-									log_buffer);
+								sprintf(log_buffer, "write to file %s incomplete: errno %d", name_buf, errno);
+								log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 							}
 							close(rfd);
 						}
@@ -937,27 +915,21 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 						exit(SEND_JOB_HOOK_REJECT_DELETEJOB);
 				}
 				else {
-					(void)sprintf(log_buffer,
-						"send of job to %s failed error = %d",
-						destin, pbs_errno);
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-						LOG_INFO, jobp->ji_qs.ji_jobid,
-						log_buffer);
+					(void)sprintf(log_buffer, "send of job to %s failed error = %d", destin, pbs_errno);
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 					continue;
 				}
 			}
 
 			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-				if (PBSD_jscript(con, script_name, rpp, NULL) != 0)
+				if (PBSD_jscript(con, script_name, PROT_TCP, NULL) != 0)
 					continue;
 			}
 
 			if (credlen > 0) {
 				int	ret;
 
-				ret = PBSD_jcred(con,
-					jobp->ji_extended.ji_ext.ji_credtype,
-					credbuf, credlen, rpp, NULL);
+				ret = PBSD_jcred(con, jobp->ji_extended.ji_ext.ji_credtype, credbuf, credlen, PROT_TCP, NULL);
 				if ((ret == 0) || (i == (RETRY - 1)))
 					free(credbuf);	/* free credbuf if cred info is sent successfully OR */
 				/* at the end of all retry attempts */
@@ -969,19 +941,19 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 				(jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) &&
 				(hostaddr !=  pbs_server_addr)) {
 				/* send files created on prior run */
-				if ((move_job_file(con, jobp, StdOut, rpp, NULL) != 0) ||
-					(move_job_file(con, jobp, StdErr, rpp, NULL) != 0) ||
-					(move_job_file(con, jobp, Chkpt, rpp, NULL) != 0))
+				if ((move_job_file(con, jobp, StdOut, PROT_TCP, NULL) != 0) ||
+					(move_job_file(con, jobp, StdErr, PROT_TCP, NULL) != 0) ||
+					(move_job_file(con, jobp, Chkpt, PROT_TCP, NULL) != 0))
 					continue;
 			}
 
 			jobp->ji_qs.ji_substate = JOB_SUBSTATE_TRNOUTCM;
 		}
 
-		if (PBSD_rdytocmt(con, job_id, rpp, NULL) != 0)
+		if (PBSD_rdytocmt(con, job_id, PROT_TCP, NULL) != 0)
 			continue;
 
-		if (PBSD_commit(con, job_id, rpp, NULL) != 0) {
+		if (PBSD_commit(con, job_id, PROT_TCP, NULL) != 0) {
 			/* delete the temp script file */
 			unlink(script_name);
 			exit(SEND_JOB_FATAL);
@@ -1008,8 +980,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		i = SEND_JOB_RETRY;
 	}
 	(void)sprintf(log_buffer, "send_job failed with error %d", pbs_errno);
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-		jobp->ji_qs.ji_jobid, log_buffer);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobp->ji_qs.ji_jobid, log_buffer);
 
 	/* delete the temp script file */
 	unlink(script_name);
@@ -1114,7 +1085,7 @@ should_retry_route(int err)
  * @param[in]	conn	-	connection handle
  * @param[in]	pjob	-	pointer to job structure
  * @param[in]	which	-	standard file type, see libpbs.h
- * @param[in]	rpp	-	Connect over RPP or over TCP?
+ * @param[in]	prot	-	PROT_TPP or PROT_TCP
  * @param[out]	msgid	-	message id
  *
  * @return	int
@@ -1122,7 +1093,7 @@ should_retry_route(int err)
  * @retval	!=0	: error code
  */
 int
-move_job_file(int conn, job *pjob, enum job_file which, int rpp, char **msgid)
+move_job_file(int conn, job *pjob, enum job_file which, int prot, char **msgid)
 {
 	char path[MAXPATHLEN+1];
 
@@ -1144,7 +1115,7 @@ move_job_file(int conn, job *pjob, enum job_file which, int rpp, char **msgid)
 		else
 			return (errno);
 	}
-	return PBSD_jobfile(conn, PBS_BATCH_MvJobFile, path, pjob->ji_qs.ji_jobid, which, rpp, msgid);
+	return PBSD_jobfile(conn, PBS_BATCH_MvJobFile, path, pjob->ji_qs.ji_jobid, which, prot, msgid);
 }
 
 /**
@@ -1225,4 +1196,3 @@ small_job_files(job* pjob)
 
 	return 1;
 }
-

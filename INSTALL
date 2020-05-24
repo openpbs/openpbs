@@ -1,9 +1,9 @@
 
 --------------------------------------------------------------------
 
-How to install PBS Pro using the configure script.
+How to install PBS using the configure script.
 
-1. Install the prerequisite packages for building PBS Pro.
+1. Install the prerequisite packages for building PBS.
 
   For CentOS systems you should run the following command as root:
 
@@ -29,7 +29,7 @@ How to install PBS Pro using the configure script.
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
       automake
 
-2. Install the prerequisite packages for running PBS Pro. In addition
+2. Install the prerequisite packages for running PBS. In addition
   to the commands below, you should also install a text editor of
   your choosing (vim, emacs, gedit, etc.).
 
@@ -59,11 +59,11 @@ How to install PBS Pro using the configure script.
       sudo tcl tk libical3
 
 
-3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
+3. Open a terminal as a normal (non-root) user, unpack the PBS
   tarball, and cd to the package directory.
 
-    tar -xpvf pbspro-18.1.0.tar.gz
-    cd pbspro-18.1.0
+    tar -xpvf openpbs-20.0.0.tar.gz
+    cd openpbs-20.0.0
 
 4. Generate the configure script and Makefiles. (See note 1 below)
 
@@ -86,11 +86,11 @@ How to install PBS Pro using the configure script.
 
     ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
 
-  If PTL needs to be installed along with pbspro use the option 
+  If PTL needs to be installed along with PBS use the option
   "--enable-ptl" (see note 5 below)
     eg ./configure --prefix=/opt/pbs --enable-ptl
 
-7. Build PBS Pro by running "make". (See note 4 below)
+7. Build PBS by running "make". (See note 4 below)
 
     make
 
@@ -98,16 +98,16 @@ How to install PBS Pro using the configure script.
   root. Refer to the online manual pages for sudo, sudoers, and
   visudo.
 
-9. Install PBS Pro. Use sudo to run the command as root.
+9. Install PBS. Use sudo to run the command as root.
 
     sudo make install
 
-10. Configure PBS Pro by executing the post-install script.
+10. Configure PBS by executing the post-install script.
 
     sudo /opt/pbs/libexec/pbs_postinstall
 
-11. Edit /etc/pbs.conf to configure the PBS Pro services that
-  should be started. If you are installing PBS Pro on only
+11. Edit /etc/pbs.conf to configure the PBS services that
+  should be started. If you are installing PBS on only
   one system, you should change the value of PBS_START_MOM
   from zero to one. If you use vi as your editor, you would
   run:
@@ -118,13 +118,13 @@ How to install PBS Pro using the configure script.
 
     sudo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp
 
-13. Start the PBS Pro services.
+13. Start the PBS services.
 
     sudo /etc/init.d/pbs start
 
 14. All configured PBS services should now be running. Update
   your PATH and MANPATH variables by sourcing the appropriate
-  PBS Pro profile or logging out and back in.
+  PBS profile or logging out and back in.
 
   For Bourne shell (or similar) run the following:
     . /etc/profile.d/pbs.sh
@@ -132,7 +132,7 @@ How to install PBS Pro using the configure script.
   For C shell (or similar) run the following:
     source /etc/profile.d/pbs.csh
 
-15. You should now be able to run PBS Pro commands to submit
+15. You should now be able to run PBS commands to submit
   and query jobs. Some examples follow.
 
 bash$ qstat -B
@@ -153,7 +153,7 @@ host1
      resources_assigned.accelerator_memory = 0kb
      resources_assigned.mem = 0kb
      resources_assigned.naccelerators = 0
-     resources_assigned.ncpus = 0     
+     resources_assigned.ncpus = 0
      resources_assigned.vmem = 0kb
      resv_enable = True
      sharing = default_shared
@@ -206,14 +206,14 @@ Note 4: You need to use a POSIX (or nearly POSIX) make. GNU make
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
 
-Note 5: PTL gets installed in the parent directory of where PBS Professional
-  is installed. For example if you have given install prefix=/opt/pbs, then 
-  you can find PTL installation in the directory /opt/ptl . You may need to 
+Note 5: PTL gets installed in the parent directory of where PBS
+  is installed. For example if you have given install prefix=/opt/pbs, then
+  you can find PTL installation in the directory /opt/ptl . You may need to
   log out and log in from the terminal for PATH and PYTHONPATH to update.
 
 
 
-Using valgrind with PBS Professional.
+Using valgrind with PBS.
 -------------------------------------
 Here is a set of steps to detect memory errors/leaks within PBS code.
 
@@ -228,21 +228,20 @@ Here is a set of steps to detect memory errors/leaks within PBS code.
    make; make install
 
 
-3. Compile PBS Professional with the special python and in debug mode as follows:
+3. Compile PBS with the special python and in debug mode as follows:
 
    ./configure --prefix=<installdir> --with-python=<python-dir>  CFLAGS="-g -DPy_DEBUG -DDEBUG -Wall -Werror"
 
-   
+
 4. Run pbs daemons under valgrind.
-   
-   a) To detect memory errors (not leaks) run pbs daemons as follows: 
-	
+
+   a) To detect memory errors (not leaks) run pbs daemons as follows:
+
    export LD_LIBRARY_PATH=/opt/pbs/pgsql/lib:/opt/pbs/lib:$LD_LIBRARY_PATH
    valgrind --tool=memcheck --log-file=/tmp/val.out /opt/pbs/sbin/pbs_server.bin
 
 
-   b) To detect memory leaks use the supplied leaks suppression file valgrind.supp, as follows: 
-   
+   b) To detect memory leaks use the supplied leaks suppression file valgrind.supp, as follows:
+
    export LD_LIBRARY_PATH=/opt/pbs/pgsql/lib:/opt/pbs/lib:$LD_LIBRARY_PATH
    valgrind --tool=memcheck --log-file=/tmp/val.out --suppressions=./valgrind.supp --leak-check=full --track-origins=yes /opt/pbs/sbin/pbs_server.bin
-

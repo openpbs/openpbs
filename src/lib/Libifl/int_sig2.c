@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file	int_sig2.c
@@ -47,7 +49,7 @@
 #include "libpbs.h"
 #include "dis.h"
 #include "net_connect.h"
-#include "rpp.h"
+#include "tpp.h"
 
 
 
@@ -60,40 +62,37 @@
  * @param[in] signal - signal
  * @param[in] msg - msg to be sent
  * @param[in] extend - extention string for req encode
- * @param[in] rpp - indication for rpp protocol
+ * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
  *
  * @return      int
  * @retval      0               Success
  * @retval      pbs_error(!0)   error
  */
-
 int
-PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int rpp, char **msgid)
+PBSD_sig_put(int c, char *jobid, char *signal, char *extend, int prot, char **msgid)
 {
-	int sock;
 	int rc = 0;
 
-	if (!rpp) {
-		sock = connection[c].ch_socket;
-		DIS_tcp_setup(sock);
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
 	} else {
-		sock = c;
-		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
 			return rc;
 	}
 
-	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_SignalJob, pbs_current_user)) ||
-		(rc = encode_DIS_SignalJob(sock, jobid, signal)) ||
-		(rc = encode_DIS_ReqExtend(sock, extend))) {
-		if (!rpp) {
-			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
-			if (connection[c].ch_errtxt == NULL)
+	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_SignalJob, pbs_current_user)) ||
+		(rc = encode_DIS_SignalJob(c, jobid, signal)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);
+			}
 		}
 		return (pbs_errno = PBSE_PROTOCOL);
 	}
-	if (DIS_wflush(sock, rpp)) {
+
+	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
 		rc = pbs_errno;
 	}

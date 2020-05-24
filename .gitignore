@@ -43,6 +43,7 @@
 .settings/
 .autotools
 .csettings/
+.devcontainer/
 
 # Files used by ctags
 tags
@@ -144,11 +145,9 @@ src/cmds/pbs_attach
 src/cmds/pbs_demux
 src/cmds/pbs_ds_password.bin
 src/cmds/pbs_lamboot
-src/cmds/pbs_migrate_users
 src/cmds/pbs_mpihp
 src/cmds/pbs_mpilam
 src/cmds/pbs_mpirun
-src/cmds/pbs_password
 src/cmds/pbs_rdel
 src/cmds/pbs_remsh
 src/cmds/pbs_rstat
@@ -180,7 +179,6 @@ src/cmds/qstat
 src/cmds/qstop
 src/cmds/qsub
 src/cmds/qterm
-src/cmds/scripts/au-nodeupdate
 src/cmds/scripts/limits.pbs_mom
 src/cmds/scripts/limits.post_services
 src/cmds/scripts/pbs_habitat
@@ -208,9 +206,8 @@ src/tools/printjob_svr.bin
 src/tools/tracejob
 src/tools/wrap_tcl.sh
 src/tools/pbs_sleep
-src/unsupported/pbs_diag
-src/unsupported/pbs_dtj
 src/unsupported/pbs_rmget
+src/unsupported/renew-test/renew-test
 
 # Generated source files
 src/include/pbs_version.h
@@ -252,6 +249,7 @@ win_configure/projects/pbs_ifl_wrap.c
 ci/logs/
 ci/logs/prev_LOGS/
 ci/.*
+ci/packages
 
 # Generated scripts
 src/cmds/scripts/modulefile
@@ -262,7 +260,7 @@ src/cmds/scripts/pbs.service
 src/lib/Libpbs/pbs.pc
 
 # rpm spec file
-pbspro.spec
+*.spec
 
 # Other archive file types
 *.tar

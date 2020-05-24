@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 #ifndef	_SERVER_H
 #define	_SERVER_H
 #ifdef	__cplusplus
@@ -60,6 +62,10 @@ extern "C" {
 #endif
 #include "pbs_sched.h"
 #include "server_limits.h"
+
+#define SYNC_SCHED_HINT_NULL	0
+#define SYNC_SCHED_HINT_FIRST	1
+#define SYNC_SCHED_HINT_OTHER	2
 
 enum srv_atr {
 	SRV_ATR_State,
@@ -121,7 +127,6 @@ enum srv_atr {
 	SRV_ATR_ReqCred,
 	SRV_ATR_NodeGroupEnable,
 	SRV_ATR_NodeGroupKey,
-	SRV_ATR_ssignon_enable,
 	SRV_ATR_dfltqdelargs,
 	SRV_ATR_dfltqsubargs,
 	SRV_ATR_rpp_retry,
@@ -282,7 +287,7 @@ extern int			sched_save_db(pbs_sched *, int mode);
 extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);
-extern void			set_sched_default(pbs_sched *, int unset_flag, int from_scheduler);
+extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			set_attr_svr(attribute *pattr, attribute_def *pdef, char *value);
 extern int			license_sanity_check(void);
 extern void			memory_debug_log(struct work_task *ptask);

@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * @file    misc.c
@@ -856,6 +858,35 @@ count_array(void **arr)
 
 /**
  * @brief
+ *  dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
+ *
+ * @param[in]	arr	-	the array to copy
+ *
+ * @return	array of pointers
+ *
+ */
+void **
+dup_array(void *ptr)
+{
+	void **ret;
+	void **arr;
+	int len = 0;
+
+	arr = (void **)ptr;
+	if (arr == NULL)
+		return NULL;
+
+	len = count_array(arr);
+	ret = malloc((len +1) * sizeof(void *));
+	if (ret == NULL)
+		return NULL;
+	memcpy(ret, arr, len * sizeof(void *));
+	ret[len] = NULL;
+	return ret;
+}
+
+/**
+ * @brief
  *		remove_ptr_from_array - remove a pointer from a ptr list and move
  *				the rest of the pointers up to fill the hole
  *				Pointer array size will not change - an extra
@@ -869,19 +900,57 @@ count_array(void **arr)
  *
  */
 int
-remove_ptr_from_array(void **arr, void *ptr)
+remove_ptr_from_array(void *arr, void *ptr)
 {
 	int i, j;
+	void **parr;
 
 	if (arr == NULL || ptr == NULL)
 		return 0;
 
-	for (i = 0; arr[i] != NULL && arr[i] != ptr; i++)
+	parr = (void **) arr;
+
+	for (i = 0; parr[i] != NULL && parr[i] != ptr; i++)
+		;
+
+	if (parr[i] != NULL) {
+		for (j = i; parr[j] != NULL; j++)
+			parr[j] = parr[j + 1];
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief
+ *		remove_str_from_array - remove a string from a ptr list and move
+ *				the rest of the pointers up to fill the hole
+ *				Pointer array size will not change - an extra
+ *				NULL is added to the end
+ *
+ *	  arr - pointer array
+ *	  str - string  to remove from array
+ *
+ *	returns non-zero if the str was successfully removed from the array
+ *		zero if the array has not been modified
+ *
+ */
+int
+remove_str_from_array(char **arr, char *str)
+{
+	int i, j;
+
+	if (arr == NULL || str == NULL)
+		return 0;
+
+	for (i = 0; arr[i] != NULL && (strcmp(arr[i], str) != 0); i++)
 		;
 
 	if (arr[i] != NULL) {
+		free(arr[i]);
 		for (j = i; arr[j] != NULL; j++)
-			arr[j] = arr[j+1];
+			arr[j] = arr[j + 1];
 		return 1;
 	}
 
@@ -944,27 +1013,12 @@ clear_schd_error(schd_error *err)
 		return;
 
 	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
+	set_schd_error_arg(err, ARG1, NULL);
+	set_schd_error_arg(err, ARG2, NULL);
+	set_schd_error_arg(err, ARG3, NULL);
+	set_schd_error_arg(err, SPECMSG, NULL);
 	err->rdef = NULL;
-
-	if (err->arg1 != NULL) {
-		free(err->arg1);
-		err->arg1 = NULL;
-	}
-
-	if (err->arg2 != NULL) {
-		free(err->arg2);
-		err->arg2 = NULL;
-	}
-
-	if (err->arg3 != NULL) {
-		free(err->arg3);
-		err->arg3 = NULL;
-	}
-
-	if (err->specmsg != NULL) {
-		free(err->specmsg);
-		err->specmsg = NULL;
-	}
+	err->next = NULL;
 }
 
 /**
@@ -977,17 +1031,11 @@ clear_schd_error(schd_error *err)
 schd_error *
 new_schd_error() {
 	schd_error *err;
-	if ((err = malloc(sizeof(schd_error))) == NULL) {
+	if ((err = calloc(1, sizeof(schd_error))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
-	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
-	err->rdef = NULL;
-	err->arg1 = NULL;
-	err->arg2 = NULL;
-	err->arg3 = NULL;
-	err->specmsg = NULL;
-	err->next = NULL;
+	clear_schd_error(err);
 	return err;
 }
 
@@ -1010,43 +1058,12 @@ dup_schd_error(schd_error *oerr) {
 	if(nerr == NULL)
 		return NULL;
 
-	/* Do shallow copy, dup pointers later */
-	memcpy(nerr, oerr, sizeof(schd_error));
-
-	nerr->arg1 = NULL;
-	nerr->arg2 = NULL;
-	nerr->arg3 = NULL;
-	nerr->specmsg = NULL;
-	nerr->next = NULL;
-
-	if (oerr->arg1 != NULL) {
-		nerr->arg1 = string_dup(oerr->arg1);
-		if (nerr->arg1 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if (oerr->arg2 != NULL) {
-		nerr->arg2 = string_dup(oerr->arg2);
-		if (nerr->arg2 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if (oerr->arg3 != NULL) {
-		nerr->arg3 = string_dup(oerr->arg3);
-		if (nerr->arg3 == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
-	if(oerr->specmsg != NULL) {
-		nerr->specmsg = string_dup(oerr->specmsg);
-		if(nerr->specmsg == NULL) {
-			free_schd_error(nerr);
-			return NULL;
-		}
-	}
+	nerr->rdef = oerr->rdef;
+	set_schd_error_codes(nerr, oerr->status_code, oerr->error_code);
+	set_schd_error_arg(nerr, ARG1, oerr->arg1);
+	set_schd_error_arg(nerr, ARG2, oerr->arg2);
+	set_schd_error_arg(nerr, ARG3, oerr->arg3);
+	set_schd_error_arg(nerr, SPECMSG, oerr->specmsg);
 
 	return nerr;
 }
@@ -1117,25 +1134,37 @@ copy_schd_error(schd_error *err, schd_error *oerr)
  */
 void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
 
-	if(err == NULL || arg == NULL)
+	if(err == NULL)
 		return;
 
 	switch(arg_field) {
 		case ARG1:
 			free(err->arg1);
-			err->arg1 = string_dup(arg);
+			if (arg != NULL)
+				err->arg1 = string_dup(arg);
+			else
+				err->arg1 = NULL;
 			break;
 		case ARG2:
 			free(err->arg2);
-			err->arg2 = string_dup(arg);
+			if (arg != NULL)
+				err->arg2 = string_dup(arg);
+			else
+				err->arg2 = NULL;
 			break;
 		case ARG3:
 			free(err->arg3);
-			err->arg3 = string_dup(arg);
+			if (arg != NULL)
+				err->arg3 = string_dup(arg);
+			else
+				err->arg3 = NULL;
 			break;
 		case SPECMSG:
 			free(err->specmsg);
-			err->specmsg = string_dup(arg);
+			if (arg != NULL)
+				err->specmsg = string_dup(arg);
+			else
+				err->specmsg = NULL;
 			break;
 		default:
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");
@@ -1614,3 +1643,24 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	return *buf;
 }
 
+/*
+ * @brief   helper function to free an array of pointers
+ *
+ * @param[in] inp - array of pointers
+ * @return void
+ */
+void
+free_ptr_array(void *inp)
+{
+	int i;
+	void **arr;
+
+	if (inp == NULL)
+		return;
+
+	arr = (void **)inp;
+
+	for (i = 0; arr[i] != NULL; i++)
+		free(arr[i]);
+	free(arr);
+}

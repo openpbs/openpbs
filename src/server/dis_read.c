@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 /**
  * dis_read.c - contains function to read and decode the DIS
  *	encoded requests and replies.
@@ -43,10 +45,9 @@
  *
  *	decode_DIS_CopyFiles
  *	decode_DIS_CopyFiles_Cred
- *	decode_DIS_MomRestart
  *	decode_DIS_replySvr_inner
  *	decode_DIS_replySvr
- *	decode_DIS_replySvrRPP
+ *	decode_DIS_replySvrTPP
  *	dis_request_read
  *	DIS_reply_read
  */
@@ -251,41 +252,6 @@ decode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
 
 /**
  * @brief
- * 		Decode a Mom Restart request from a Mom.
- *		This request is sent from a Mom when she first starts up.
- *		Mom opens a connection to the Server, sends this request and waits for
- *		a reply.
- *		The expected data to be read and decoded into the structure are:
- *		the host name of the Mom and the port on which she listens for TCP.
- *
- * @see
- * 		dis_request_read
- *
- * @param[in] sock - socket of connection from Mom
- * @param[in] preq - pointer to the batch request structure to be filled in
- *
- * @return int
- * @retval 0 - success
- * @retval non-zero - decode failure error from a DIS routine
- */
-int
-decode_DIS_MomRestart(int sock, struct batch_request *preq)
-{
-	int rc;
-	struct rq_momrestart *pmr;
-
-	pmr = &preq->rq_ind.rq_momrestart;
-	if ((rc = disrfst(sock, PBS_MAXHOSTNAME, pmr->rq_momhost)) != 0)
-		return rc;
-	pmr->rq_port = disrui(sock, &rc);
-	if (rc)
-		return rc;
-	return 0;
-}
-
-
-/**
- * @brief
  * 		decode_DIS_replySvr_inner() - decode a Batch Protocol Reply Structure for Server
  *
  *		This routine decodes a batch reply into the form used by server.
@@ -294,7 +260,7 @@ decode_DIS_MomRestart(int sock, struct batch_request *preq)
  *		server svrattrl structures rather than a commands's attrl.
  *
  * @see
- * 		decode_DIS_replySvrRPP
+ * 		decode_DIS_replySvrTPP
  *
  * @param[in] sock - socket connection from which to read reply
  * @param[in,out] reply - batch_reply structure defined in libpbs.h, it must be allocated
@@ -454,15 +420,15 @@ decode_DIS_replySvr(int sock, struct batch_reply *reply)
 
 /**
  * @brief
- * 		decode a Batch Protocol Reply Structure for Server over RPP
+ * 	decode a Batch Protocol Reply Structure for Server over TPP stream
  *
- *  	This routine reads data over RPP by calling decode_DIS_replySvr_inner()
- * 		to read the reply to a batch request. This routine reads the protocol type
- * 		and version before calling decode_DIS_replySvr_inner() to read the rest of
- * 		the reply structure.
+ * 	This routine reads data over TPP stream by calling decode_DIS_replySvr_inner()
+ * 	to read the reply to a batch request. This routine reads the protocol type
+ * 	and version before calling decode_DIS_replySvr_inner() to read the rest of
+ * 	the reply structure.
  *
  * @see
- * 		DIS_reply_read
+ * 	DIS_reply_read
  *
  * @param[in] sock - socket connection from which to read reply
  * @param[out] reply - The reply structure to be returned
@@ -472,27 +438,26 @@ decode_DIS_replySvr(int sock, struct batch_reply *reply)
  * @retval !DIS_SUCCESS   - Failure (see dis.h)
  */
 int
-decode_DIS_replySvrRPP(int sock, struct batch_reply *reply)
+decode_DIS_replySvrTPP(int sock, struct batch_reply *reply)
 {
-	/* for rpp header has already been read */
+	/* for tpp based connection, header has already been read */
 	return (decode_DIS_replySvr_inner(sock, reply));
 }
 
 /**
  * @brief
- * 		Read in an DIS encoded request from the network
- * 		and decodes it:
- *		Read and decode the request into the request structures
+ * 	Read in an DIS encoded request from the network
+ * 	and decodes it:
+ *	Read and decode the request into the request structures
  *
  * @see
- * 		process_request and read_fo_request
+ * 	process_request and read_fo_request
  *
- * @param[in]		sfds	- the socket descriptor
- * @param[in,out]	request - will contain the decoded request
+ * @param[in] sfds	- the socket descriptor
+ * @param[in,out] request - will contain the decoded request
  *
  * @return int
- * @retval 0 	if request read ok, batch_request pointed to by request is
- *		   updated.
+ * @retval 0 	if request read ok, batch_request pointed to by request is updated.
  * @retval -1 	if EOF (no request but no error)
  * @retval >0 	if errors ( a PBSE_ number)
  */
@@ -507,8 +472,8 @@ dis_request_read(int sfds, struct batch_request *request)
 	int	 proto_ver;
 	int	 rc; 	/* return code */
 
-	if (!request->isrpp)
-		DIS_tcp_setup(sfds);	/* setup for DIS over tcp */
+	if (request->prot == PROT_TCP)
+		DIS_tcp_funcs();	/* setup for DIS over tcp */
 
 	/* Decode the Request Header, that will tell the request type */
 
@@ -552,10 +517,6 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_UserCred(sfds, request);
 			break;
 
-		case PBS_BATCH_UserMigrate:
-			rc = decode_DIS_UserMigrate(sfds, request);
-			break;
-
 		case PBS_BATCH_jobscript:
 		case PBS_BATCH_MvJobFile:
 			rc = decode_DIS_JobFile(sfds, request);
@@ -572,6 +533,7 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_ResvOccurEnd:
 		case PBS_BATCH_HoldJob:
 		case PBS_BATCH_ModifyJob:
+		case PBS_BATCH_ModifyJob_Async:
 			rc = decode_DIS_Manage(sfds, request);
 			break;
 
@@ -596,8 +558,8 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_PySpawn(sfds, request);
 			break;
 
-		case PBS_BATCH_AuthExternal:
-			rc = decode_DIS_AuthExternal(sfds, request);
+		case PBS_BATCH_Authenticate:
+			rc = decode_DIS_Authenticate(sfds, request);
 			break;
 
 #ifndef PBS_MOM
@@ -673,14 +635,6 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_Register(sfds, request);
 			break;
 
-		case PBS_BATCH_AuthenResvPort:
-			rc = decode_DIS_AuthenResvPort(sfds, request);
-			break;
-
-		case PBS_BATCH_MomRestart:
-			rc = decode_DIS_MomRestart(sfds, request);
-			break;
-
 		case PBS_BATCH_ModifyResv:
 			decode_DIS_ModifyResv(sfds, request);
 			break;
@@ -747,29 +701,29 @@ dis_request_read(int sfds, struct batch_request *request)
 
 /**
  * @brief
- * 		top level function to read and decode DIS based batch reply
+ * 	top level function to read and decode DIS based batch reply
  *
- *  	Calls decode_DIS_replySvrRPP in case of RPP and decode_DIS_replySvr
- *  	in case of TCP to read the reply
+ * 	Calls decode_DIS_replySvrTPP in case of PROT_TPP and decode_DIS_replySvr
+ * 	in case of PROT_TCP to read the reply
  *
  * @see
- *		read_reg_reply, process_Dreply and process_DreplyRPP.
+ *	read_reg_reply, process_Dreply and process_DreplyTPP.
  *
  * @param[in] sock - socket connection from which to read reply
  * @param[out] reply - The reply structure to be returned
- * @param[in] rpp - Whether to read over tcp or rpp
+ * @param[in] prot - Whether to read over tcp or tpp based connection
  *
  * @return Error code
  * @retval DIS_SUCCESS(0) - Success
  * @retval !DIS_SUCCESS   - Failure (see dis.h)
  */
 int
-DIS_reply_read(int sock, struct batch_reply *preply, int rpp)
+DIS_reply_read(int sock, struct batch_reply *preply, int prot)
 {
-	if (rpp)
-		return (decode_DIS_replySvrRPP(sock, preply));
+	if (prot == PROT_TPP)
+		return (decode_DIS_replySvrTPP(sock, preply));
 
 
-	DIS_tcp_setup(sock);
+	DIS_tcp_funcs();
 	return  (decode_DIS_replySvr(sock, preply));
 }

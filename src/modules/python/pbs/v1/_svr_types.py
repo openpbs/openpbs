@@ -4,37 +4,40 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 
 """
 
@@ -1365,3 +1368,136 @@ class pbs_iter():
                 return _pbs_v1.iter_nextfunc(self, 0, self.obj_name,
                                              self.filter1, self.filter2)
 #: C(pbs_iter)
+
+#:------------------------------------------------------------------------
+#                  SERVER ATTRIBUTE TYPE
+#:-------------------------------------------------------------------------
+class _server_attribute:
+    """
+    This represents a external form of attributes..
+    """
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+    _attributes_hook_set = {}
+    def __init__(self, name, resource, value, op, flags):
+        self.name = name
+        self.resource = resource
+        self.value = value
+        self.op = op
+        self.flags = flags
+        self.sisters = []
+    #: m(__init__)
+
+    def __str__(self):
+        return "name=%s:resource=%s:value=%s:op=%s:flags=%s:sisters=%s" % self.tup()
+    #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the server_attribute object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
+
+    def extract_flags_str(self):
+        """returns the string values from the attribute flags."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
+            if self.flags & mask:
+                lst.append(value)
+        return lst
+    #: m(extract_flags_str)
+
+    def extract_flags_int(self):
+        """returns the integer values from the attribute flags."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_ATR_VFLAGS.items():
+            if self.flags & mask:
+                lst.append(mask)
+        return lst
+    #: m(extract_flags_int)
+
+    def tup(self):
+        return self.name, self.resource, self.value, self.op, self.flags, self.sisters
+    #: m(tup)
+
+_server_attribute._connect_server = PbsAttributeDescriptor(
+    _server_attribute, '_connect_server', "", (str,))
+#: C(_server_attribute)
+
+# This exposes pbs.server_attribute() to be callable in a hook script
+server_attribute = _server_attribute
+
+#:------------------------------------------------------------------------
+#                  MANAGEMENT TYPE
+#:-------------------------------------------------------------------------
+class _management:
+    """
+    This represents a management operation.
+    """
+    attributes = PbsReadOnlyDescriptor('attributes', {})
+    _attributes_hook_set = {}
+
+    def __init__(self, cmd, objtype, objname, request_time, reply_code,
+        reply_auxcode, reply_choice, reply_text,
+        attribs, connect_server=None):
+        """__init__"""
+        self.cmd = cmd
+        self.objtype = objtype
+        self.objname = objname
+        self.request_time = request_time
+        self.reply_code = reply_code
+        self.reply_auxcode = reply_auxcode
+        self.reply_choice = reply_choice
+        self.reply_text = reply_text
+        self.attribs = attribs
+        self._readonly = True
+        self._connect_server = connect_server
+    #: m(__init__)
+
+    def __str__(self):
+        """String representation of the object"""
+        return "%s:%s:%s" % (
+            _pbs_v1.REVERSE_MGR_CMDS.get(self.cmd, self.cmd),
+            _pbs_v1.REVERSE_MGR_OBJS.get(self.objtype, self.objtype),
+            self.objname
+            )
+    #: m(__str__)
+
+    def __setattr__(self, name, value):
+        if _pbs_v1.in_python_mode():
+            raise BadAttributeValueError(
+                "'%s' attribute in the management object is readonly" % (name,))
+        super().__setattr__(name, value)
+    #: m(__setattr__)
+
+_management.cmd = PbsAttributeDescriptor(_management, 'cmd', None, (int,))
+_management.objtype = PbsAttributeDescriptor(_management, 'objtype', None, (int,))
+_management.objname = PbsAttributeDescriptor(_management, 'objname', "", (str,))
+_management._connect_server = PbsAttributeDescriptor(
+    _management, '_connect_server', "", (str,))
+#: C(_management)
+
+# This exposes pbs.management() to be callable in a hook script
+management = _management
+
+
+
+#:------------------------------------------------------------------------
+#                  Reverse Lookup for _pv1mod_insert_int_constants
+#:-------------------------------------------------------------------------
+_pbs_v1.REVERSE_MGR_CMDS = {}
+_pbs_v1.REVERSE_MGR_OBJS = {}
+_pbs_v1.REVERSE_BRP_CHOICES = {}
+_pbs_v1.REVERSE_BATCH_OPS = {}
+_pbs_v1.REVERSE_ATR_VFLAGS = {}
+for key, value in _pbs_v1.__dict__.items():
+    if key.startswith("MGR_CMD_"):
+        _pbs_v1.REVERSE_MGR_CMDS[value] = key
+    elif key.startswith("MGR_OBJ_"):
+        _pbs_v1.REVERSE_MGR_OBJS[value] = key
+    elif key.startswith("BRP_CHOICE_"):
+        _pbs_v1.REVERSE_BRP_CHOICES[value] = key
+    elif key.startswith("BATCH_OP_"):
+        _pbs_v1.REVERSE_BATCH_OPS[value] = key
+    elif key.startswith("ATR_VFLAG_"):
+        _pbs_v1.REVERSE_ATR_VFLAGS[value] = key

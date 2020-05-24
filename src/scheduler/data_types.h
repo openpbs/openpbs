@@ -2,39 +2,41 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
- * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option) any
- * later version.
+ * OpenPBS is free software. You can redistribute it and/or modify it under
+ * the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.
- * See the GNU Affero General Public License for more details.
+ * OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+ * License for more details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Commercial License Information:
  *
- * For a copy of the commercial license terms and conditions,
- * go to: (http://www.pbspro.com/UserArea/agreement.html)
- * or contact the Altair Legal Department.
+ * PBS Pro is commercially licensed software that shares a common core with
+ * the OpenPBS software.  For a copy of the commercial license terms and
+ * conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+ * Altair Legal Department.
  *
- * Altair’s dual-license business model allows companies, individuals, and
- * organizations to create proprietary derivative works of PBS Pro and
+ * Altair's dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of OpenPBS and
  * distribute them - whether embedded or bundled with other software -
  * under a commercial license agreement.
  *
- * Use of Altair’s trademarks, including but not limited to "PBS™",
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
- * trademark licensing policies.
- *
+ * Use of Altair's trademarks, including but not limited to "PBS™",
+ * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+ * subject to Altair's trademark licensing policies.
  */
+
 
 /**
  * A quick explanation of the scheduler's data model:
@@ -398,7 +400,7 @@ struct server_info
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
 	long sched_cycle_len;		/* length of cycle in seconds */
-	char **partitions;		/* partitions associated */
+	char *partition;		/* partition associated */
 	long opt_backfill_fuzzy_time;	/* time window for fuzzy backfill opt */
 	char **node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
@@ -505,7 +507,6 @@ struct queue_info
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
-	node_info **nodes_in_partition; /* array of nodes associated with the queue's partition */
 	counts *group_counts;		/* group resource and running counts */
 	counts *project_counts;		/* project resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
@@ -590,6 +591,8 @@ struct job_info
 	float formula_value;		/* evaluated job sort formula value */
 	nspec **resreleased;		/* list of resources released by the job on each node */
 	resource_req *resreq_rel;	/* list of resources released */
+	char *depend_job_str;		/* dependent jobs in a ':' separated string */
+	resource_resv **dependent_jobs; /* dependent jobs with runone depenency */
 
 #ifdef NAS
 	/* localmod 045 */
@@ -726,87 +729,85 @@ struct node_info
 
 struct resv_info
 {
-	unsigned 	 is_standing:1;			/* set to 1 for a standing reservation */
-	unsigned 	 check_alternate_nodes:1;	/* set to 1 while altering a reservation if
-							 * the request can be confirmed on nodes other
-							 * than the ones currently assigned to it.
-							 */
-	char		 *queuename;			/* the name of the queue */
-	char		 *rrule;			/* recurrence rule for standing reservations */
-	char		 *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
-	time_t		 *occr_start_arr;		/* occurrence start time */
-	char		 *timezone;			/* timezone associated to a reservation */
-	int		 resv_idx;			/* the index of standing resv occurrence */
-	int		 count;				/* the total number of occurrences */
-	time_t		 req_start;			/* user requested start time of resv */
-	time_t		 req_end;			/* user requested end tiem of resv */
-	time_t		 req_duration;			/* user requested duration of resv */
-	time_t		 retry_time;			/* time at which a reservation is to be reconfirmed */
-	int		 resv_type;			/* type of reservation i.e. job general etc */
-	enum resv_states resv_state;			/* reservation state */
-	enum resv_states resv_substate;			/* reservation substate */
-	queue_info 	 *resv_queue;			/* general resv: queue which is owned by resv */
-	node_info 	 **resv_nodes;			/* node universe for reservation */
+	unsigned is_standing:1;		/* set to 1 for a standing reservation */
+	char *queuename;		/* the name of the queue */
+	char *rrule;			/* recurrence rule for standing reservations */
+	char *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
+	time_t *occr_start_arr;		/* occurrence start time */
+	char *timezone;			/* timezone associated to a reservation */
+	int resv_idx;			/* the index of standing resv occurrence */
+	int count;			/* the total number of occurrences */
+	time_t req_start;		/* user requested start time of resv */
+	time_t req_end;			/* user requested end tiem of resv */
+	time_t req_duration;		/* user requested duration of resv */
+	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
+	int resv_type;			/* type of reservation i.e. job general etc */
+	enum resv_states resv_state;	/* reservation state */
+	enum resv_states resv_substate;	/* reservation substate */
+	queue_info *resv_queue;		/* general resv: queue which is owned by resv */
+	node_info **resv_nodes;		/* node universe for reservation */
+	char *partition;		/* name of the partition in which the reservation was confirmed */
+	selspec *select_orig;		/* original schedselect pre-alter */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
 struct resource_resv
 {
-	unsigned	can_not_run:1;		/* res resv can not run this cycle */
-	unsigned	can_never_run:1;	/* res resv can never run and will be deleted */
-	unsigned	can_not_fit:1;		/* res resv can not fit into node group */
-	unsigned	is_invalid:1;		/* res resv is invalid and will be ignored */
-	unsigned	is_peer_ob:1;		/* res resv can from a peer server */
+	unsigned can_not_run : 1;	/* res resv can not run this cycle */
+	unsigned can_never_run : 1;	/* res resv can never run and will be deleted */
+	unsigned can_not_fit : 1;	/* res resv can not fit into node group */
+	unsigned is_invalid : 1;	/* res resv is invalid and will be ignored */
+	unsigned is_peer_ob : 1;	/* res resv can from a peer server */
 
-	unsigned	is_job:1;		/* res resv is a job */
-	unsigned	is_prov_needed:1;	/* res resv requires provisioning */
-	unsigned	is_shrink_to_fit:1;	/* res resv is a shrink-to-fit job */
-	unsigned	is_resv:1;		/* res resv is an advanced reservation */
+	unsigned is_job : 1;		/* res resv is a job */
+	unsigned is_prov_needed : 1;	/* res resv requires provisioning */
+	unsigned is_shrink_to_fit : 1;	/* res resv is a shrink-to-fit job */
+	unsigned is_resv : 1;		/* res resv is an advanced reservation */
 
-	unsigned	will_use_multinode:1;	/* res resv will use multiple nodes */
+	unsigned will_use_multinode:1;	/* res resv will use multiple nodes */
 
-	char		*name;			/* name of res resv */
-	char		*user;			/* username of the owner of the res resv */
-	char		*group;			/* exec group of owner of res resv */
-	char		*project;		/* exec project of owner of res resv */
-	char		*nodepart_name;		/* name of node partition to run res resv in */
+	char *name;			/* name of res resv */
+	char *user;			/* username of the owner of the res resv */
+	char *group;			/* exec group of owner of res resv */
+	char *project;			/* exec project of owner of res resv */
+	char *nodepart_name;		/* name of node partition to run res resv in */
 
-	long		sch_priority;		/* scheduler priority of res resv */
-	int		rank;			/* unique numeric identifier for resource_resv */
-	int		ec_index;		/* Index into server's job_set array*/
+	long sch_priority;		/* scheduler priority of res resv */
+	int rank;			/* unique numeric identifier for resource_resv */
+	int ec_index;			/* Index into server's job_set array*/
 
-	time_t		qtime;			/* time res resv was submitted */
-	long		qrank;			/* time on which we might need to stabilize the sort */
-	time_t		start;			/* start time (UNDEFINED means no start time */
-	time_t		end;			/* end time (UNDEFINED means no end time */
-	time_t		duration;		/* duration of resource resv request */
-	time_t		hard_duration;		/* hard duration of resource resv request */
-	time_t		min_duration;		/* minimum duration of STF job */
+	time_t qtime;			/* time res resv was submitted */
+	long qrank;			/* time on which we might need to stabilize the sort */
+	time_t start;			/* start time (UNDEFINED means no start time */
+	time_t end;			/* end time (UNDEFINED means no end time */
+	time_t duration;		/* duration of resource resv request */
+	time_t hard_duration;		/* hard duration of resource resv request */
+	time_t min_duration;		/* minimum duration of STF job */
 
-	resource_req	*resreq;		/* list of resources requested */
-	selspec		*select;		/* select spec */
-	selspec		*execselect;		/* select spec from exec_vnode and resv_nodes */
-	place		*place_spec;		/* placement spec */
+	resource_req *resreq;		/* list of resources requested */
+	selspec *select;		/* select spec */
+	selspec *execselect;		/* select spec from exec_vnode and resv_nodes */
+	place *place_spec;		/* placement spec */
 
-	server_info	*server;		/* pointer to server which owns res resv */
-	node_info	**ninfo_arr;		/* nodes belonging to res resv */
-	nspec		**nspec_arr;		/* exec host of object in internal sched form */
+	server_info *server;		/* pointer to server which owns res resv */
+	node_info **ninfo_arr; 		/* nodes belonging to res resv */
+	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
-	job_info	*job;			/* pointer to job specific structure */
-	resv_info	*resv;			/* pointer to reservation specific structure */
+	job_info *job;			/* pointer to job specific structure */
+	resv_info *resv;		/* pointer to reservation specific structure */
 
-	char		*aoename;		/* store name of aoe if requested */
-	char		*eoename;		/* store name of eoe if requested */
-	char		**node_set_str;		/* user specified node string */
-	node_info	**node_set;		/* node array specified by node_set_str */
-#ifdef NAS /* localmod 034 */
-	enum site_j_share_type share_type;	/* How resv counts against group share */
-#endif /* localmod 034 */
-	int		resresv_ind;		/* resource_resv index in all_resresv array */
-	timed_event 	*run_event;		/* run event in calendar */
-	timed_event	*end_event;		/* end event in calendar */
+	char *aoename;			   /* store name of aoe if requested */
+	char *eoename;			   /* store name of eoe if requested */
+	char **node_set_str;		   /* user specified node string */
+	node_info **node_set;		   /* node array specified by node_set_str */
+#ifdef NAS				   /* localmod 034 */
+	enum site_j_share_type share_type; /* How resv counts against group share */
+#endif					   /* localmod 034 */
+	int resresv_ind;		   /* resource_resv index in all_resresv array */
+	timed_event *run_event;		   /* run event in calendar */
+	timed_event *end_event;		   /* end event in calendar */
 };
-
 
 struct resource_type
 {
@@ -949,7 +950,6 @@ struct resresv_set
 	char *user;			/* user of set, can be NULL */
 	char *group;			/* group of set, can be NULL */
 	char *project;			/* project of set, can be NULL */
-	char *partition;		/* partition of set, can be NULL */
 	selspec *select_spec;		/* select spec of set */
 	place *place_spec;		/* place spec of set */
 	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */
@@ -1079,6 +1079,7 @@ struct nspec
 	int sub_seq_num;		/* sub sequence number for sort stabilization */
 	node_info *ninfo;
 	resource_req *resreq;
+	chunk *chk;
 };
 
 struct nameval

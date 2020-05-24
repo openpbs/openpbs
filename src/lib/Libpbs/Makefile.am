@@ -3,42 +3,47 @@
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional ("PBS Pro") software.
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
-# PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.
-# See the GNU Affero General Public License for more details.
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
-# For a copy of the commercial license terms and conditions,
-# go to: (http://www.pbspro.com/UserArea/agreement.html)
-# or contact the Altair Legal Department.
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
 #
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
 # distribute them - whether embedded or bundled with other software -
 # under a commercial license agreement.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-# trademark licensing policies.
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
 #
 
 lib_LTLIBRARIES = libpbs.la
 
-libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
+libpbs_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@KRB5_CFLAGS@
 
 #
 # There are specific rules that must be followed when updating the library
@@ -79,7 +84,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/check_job_script.c \
 	../Libcmds/chk_Jrange.c \
 	../Libcmds/ck_job_name.c \
-	../Libcmds/cnt2mom.c \
 	../Libcmds/cnt2server.c \
 	../Libcmds/cvtdate.c \
 	../Libcmds/get_attr.c \
@@ -98,6 +102,7 @@ libpbs_la_SOURCES = \
 	../Libcmds/prt_job_err.c \
 	../Libcmds/set_attr.c \
 	../Libcmds/set_resource.c \
+	../Libdis/dis_helpers.c \
 	../Libdis/dis.c \
 	../Libdis/dis_.h \
 	../Libdis/discui_.c \
@@ -144,6 +149,8 @@ libpbs_la_SOURCES = \
 	../Libecl/ecl_verify_object_name.c \
 	../Libecl/pbs_client_thread.c \
 	../Libifl/advise.c \
+	../Libifl/auth.c \
+	../Libifl/conn_table.c \
 	../Libifl/dec_Authen.c \
 	../Libifl/dec_CopyHookFile.c \
 	../Libifl/dec_DelHookFile.c \
@@ -197,7 +204,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_PreemptJobs.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
-	../Libifl/get_hostname.c \
 	../Libifl/get_svrport.c \
 	../Libifl/grunt_parse.c \
 	../Libifl/int_hook.c \
@@ -219,8 +225,6 @@ libpbs_la_SOURCES = \
 	../Libifl/int_preempt_jobs.c \
 	../Libifl/list_link.c \
 	../Libifl/PBS_attr.c \
-	../Libifl/PBS_data.c \
-	../Libifl/pbs_authors.c \
 	../Libifl/pbs_get_attribute_errors.c \
 	../Libifl/pbs_geterrmg.c \
 	../Libifl/pbs_geterrno.c \
@@ -263,21 +267,26 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_Preempt_Jobs.c \
 	../Libifl/ifl_impl.c \
 	../Libifl/ifl_pointers.c \
-	../Libifl/rpp.c \
+	../Libifl/rm.c \
 	../Libifl/strsep.c \
-	../Libifl/tcp_dis_gss.c \
 	../Libifl/tcp_dis.c \
 	../Libifl/tm.c \
 	../Libifl/xml_encode_decode.c \
 	../Liblog/pbs_messages.c \
+	../Liblog/pbs_log.c \
+	../Liblog/log_event.c \
 	../Libsec/cs_standard.c \
+	../Libutil/avltree.c \
+	../Libutil/get_hostname.c \
 	../Libutil/misc_utils.c \
-	../Libutil/munge_supp.c \
 	../Libutil/pbs_secrets.c \
 	../Libutil/pbs_aes_encrypt.c \
-	../Libutil/krb5_util.c \
-	../Libutil/pbs_gss.c \
 	../Libnet/hnls.c \
+	../Libtpp/tpp_client.c \
+	../Libtpp/tpp_em.c \
+	../Libtpp/tpp_platform.c \
+	../Libtpp/tpp_transport.c \
+	../Libtpp/tpp_util.c \
 	ecl_job_attr_def.c \
 	ecl_svr_attr_def.c \
 	ecl_sched_attr_def.c \
@@ -336,4 +345,3 @@ ecl_resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
 	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml \
 		-s /dev/null -e $@ -a resc
-
