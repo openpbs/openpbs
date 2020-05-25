@@ -1486,9 +1486,10 @@ reassign_resc(job *pjob)
 static int
 pbsd_init_job(job *pjob, int type)
 {
-	unsigned int d;
 	int	 newstate;
 	int	 newsubstate;
+	pbs_net_t new_momaddr;
+	unsigned int new_momport;
 
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
@@ -1709,11 +1710,15 @@ pbsd_init_job(job *pjob, int type)
 			(pjob->ji_qs.ji_un.ji_exect.ji_momaddr != 0)) {
 
 			if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
-				pjob->ji_qs.ji_un.ji_exect.ji_momaddr =
+				new_momaddr =
 					get_addr_of_nodebyname(
 					pjob->ji_wattr[(int)JOB_ATR_exec_host].
-					at_val.at_str, &d);
-				pjob->ji_qs.ji_un.ji_exect.ji_momport = d;
+					at_val.at_str, &new_momport);
+
+				if (new_momaddr != 0) {
+					pjob->ji_qs.ji_un.ji_exect.ji_momaddr = new_momaddr;
+					pjob->ji_qs.ji_un.ji_exect.ji_momport = new_momport;
+				} /* else preserve previous mom addr */
 			} else {
 				pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
 				pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
