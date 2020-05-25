@@ -1488,8 +1488,6 @@ pbsd_init_job(job *pjob, int type)
 {
 	int	 newstate;
 	int	 newsubstate;
-	pbs_net_t new_momaddr;
-	unsigned int new_momport;
 
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
@@ -1710,6 +1708,9 @@ pbsd_init_job(job *pjob, int type)
 			(pjob->ji_qs.ji_un.ji_exect.ji_momaddr != 0)) {
 
 			if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+				pbs_net_t new_momaddr;
+				unsigned int new_momport;
+
 				new_momaddr =
 					get_addr_of_nodebyname(
 					pjob->ji_wattr[(int)JOB_ATR_exec_host].
@@ -1718,7 +1719,11 @@ pbsd_init_job(job *pjob, int type)
 				if (new_momaddr != 0) {
 					pjob->ji_qs.ji_un.ji_exect.ji_momaddr = new_momaddr;
 					pjob->ji_qs.ji_un.ji_exect.ji_momport = new_momport;
-				} /* else preserve previous mom addr */
+				} else {
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
+						LOG_DEBUG, pjob->ji_qs.ji_jobid,
+						"Failed to update mom address. Mom address not changed.");
+				}
 			} else {
 				pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
 				pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
