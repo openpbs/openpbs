@@ -4118,6 +4118,7 @@ wsystem(char *cmdline, HANDLE user_handle)
 	char			*temp_dir = NULL;
 	int			changed_dir = 0;
 	DWORD		stat;
+	LPVOID  user_env = NULL;
 
 	si.cb = sizeof(si);
 	si.lpDesktop = NULL;
@@ -4145,9 +4146,13 @@ wsystem(char *cmdline, HANDLE user_handle)
 			NULL, NULL, TRUE, flags,
 			NULL, NULL, &si, &pi);
 	} else {
+		flags = flags|CREATE_UNICODE_ENVIRONMENT;
+		if (!CreateEnvironmentBlock(&user_env, user_handle, FALSE)) {
+			log_err(-1, __func__, "failed in CreateEnvironmentBlock");
+		}
 		rc=CreateProcessAsUser(user_handle, NULL, cmd,
 			NULL, NULL, TRUE, flags,
-			NULL, NULL, &si, &pi);
+			user_env, NULL, &si, &pi);
 	}
 
 	run_exit = GetLastError();
@@ -4176,6 +4181,9 @@ wsystem(char *cmdline, HANDLE user_handle)
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
 	}
+
+	if (user_env)
+		DestroyEnvironmentBlock(user_env);
 
 	return (run_exit);
 }

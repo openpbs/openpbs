@@ -2834,6 +2834,7 @@ req_cpyfile(struct batch_request *preq)
 	 * the same permissions as TMPDIR
 	 */
 	(void)revert_impersonated_user();
+	SetEnvironmentVariable("USER", NULL);
 
 	if ((dir == STAGE_DIR_IN) && (stage_inout.sandbox_private)) {
 		/* Create PBS_JOBDIR */
@@ -3059,7 +3060,7 @@ req_delfile(struct batch_request *preq)
 
 	(void)revert_impersonated_user();
 	chdir(mom_home);
-
+	SetEnvironmentVariable("USER", NULL);
 }
 
 #else	/* UNIX---------------------------------------------------------------*/
