@@ -692,7 +692,7 @@ calculate_window_times(char *rrule, long *start, long *end, long *duration, char
 		 * the first item in the array of by_* rule
 		 * determines whether the item exists or not.
 		 */
-		if (rt.by_day[0] > 8) {
+		if (icalerrno != ICAL_NO_ERROR) {
 			*err_code = PBSE_BAD_RRULE_SYNTAX;
 			return 1;
 		}
@@ -702,7 +702,6 @@ calculate_window_times(char *rrule, long *start, long *end, long *duration, char
 		for (i = 1; i < 8; i++)
 			window_days[i] = '1';
 
-	*duration = ((*duration / 100) * 3600 + (*duration % 100) * 60);
 	*end = *start + *duration;
 
 	ical_start = icaltime_from_timet_with_zone(*start, 0, NULL);
