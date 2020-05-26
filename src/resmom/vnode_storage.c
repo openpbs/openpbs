@@ -160,17 +160,17 @@ int
 add_vmapent_byID(void *ctx, const char *vnid, void *data)
 {
 	AVL_IX_REC     	*pe = NULL;
-	int rc = 0;
+	int rc = 1;
 
 	if ((pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1)) != NULL) {
 		(void) strncpy(pe->key, vnid, PBS_MAXNODENAME);
 		pe->recptr = data;
 		if (avl_add_key(pe, ctx) != AVL_IX_OK) {
-			rc = 1;
+			rc = 0;
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "avl_add_key failed");
 		}
 	} else {
-		rc = 1;
+		rc = 0;
 		log_err(errno, __func__, "malloc pe failed");
 	}
 	free(pe);
