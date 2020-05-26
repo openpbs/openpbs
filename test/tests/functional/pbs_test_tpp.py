@@ -378,7 +378,12 @@ class TestTPP(TestFunctional):
 
     def common_setup(self):
         """
-        This function has common configuration which is used in some tests
+        This function sets the shortnames of moms and comms in the cluster
+        accordingly.
+        Mom objects : self.momA, self.momB, self.momC
+        Mom shortnames : self.hostA, self.hostB, self.hostC
+        comm objects : self.comm2, self.comm3
+        comm shortnames : self.hostD, self.hostE
         """
         mom_list = copy.copy(self.moms.values())
         comm_list = copy.copy(self.comms.values())
@@ -834,7 +839,6 @@ class TestTPP(TestFunctional):
                           resv_job=True)
 
     def tearDown(self):
-        TestFunctional.tearDown(self)
         os.environ['PBS_CONF_FILE'] = self.pbs_conf_path
         self.logger.info("Successfully exported PBS_CONF_FILE variable")
         conf_param = ['PBS_LEAF_ROUTERS', 'PBS_COMM_ROUTERS']
@@ -842,3 +846,4 @@ class TestTPP(TestFunctional):
             self.unset_pbs_conf(host, conf_param)
         self.node_list.clear()
         self.server.client = self.default_client
+        TestFunctional.tearDown(self)
