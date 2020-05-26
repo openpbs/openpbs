@@ -158,10 +158,8 @@ class TestTPP(TestFunctional):
                                      self.exec_path, '.*'),
                                     ('qstat', '.*')]
         if resv_job:
-            if 'ATTR_inter' in set_attr:
+            if ATTR_inter in set_attr:
                 del set_attr[ATTR_inter]
-            elif 'interactive' in set_attr:
-                del set_attr['interactive']
             resv_que = rid.split('.')[0]
             set_attr[ATTR_q] = resv_que
             j.set_attributes(set_attr)
