@@ -382,7 +382,8 @@ win_pclose(pio_handles *pio)
 					log_err(-1, __func__, "failed to terminate process");	
 				}
 			} else {
-				log_err(-1, __func__, "failed in GetExitCodeProcess");
+				if (ret == 0)
+					log_err(-1, __func__, "failed in GetExitCodeProcess");
 			}
 		}
 		close_valid_handle(&(pio->pi.hProcess));
