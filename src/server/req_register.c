@@ -1825,14 +1825,18 @@ build_depend(attribute *pattr, char *value)
 	int			type;
 
 	/*
-	 * Map first subword into dependency type.  If there is just the type
-	 * with no following job id or count, then leave an empty depend
-	 * struct;  set_depend will "remove" any of that kind.
+	 * Map first subword into dependency type. 
 	 */
 
 	if ((nxwrd = strchr(value, (int)':')) != NULL)
 		*nxwrd++ = '\0';
+	else
+		/* dependency can never be without ':<value>' */
+		return (PBSE_BADATVAL);
 
+	if (*nxwrd == '\0')
+		/* dependency can never be without a job-id or a number */
+		return (PBSE_BADATVAL);
 
 	for (pname = dependnames; pname->type != -1; pname++)
 		if (!strcmp(value, pname->name))
