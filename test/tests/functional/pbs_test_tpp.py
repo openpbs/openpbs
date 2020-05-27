@@ -383,38 +383,31 @@ class TestTPP(TestFunctional):
         comm objects : self.comm2, self.comm3
         comm shortnames : self.hostD, self.hostE
         """
-        mom_list = copy.copy(self.moms.values())
-        comm_list = copy.copy(self.comms.values())
-        _server = self.server.shortname
-        skip_test = [False if _server == mom.shortname else
-                     True for mom in self.moms.values()] and \
-                    [False if _server == comm.shortname else True for
-                     comm in self.comms.values()]
-        if skip_test[0]:
-            self.skipTest("Mom and Comm should be on server host")
-        for i, mom in enumerate(self.moms.values()):
-            if mom.shortname == self.server.shortname:
-                self.momA = mom
-                self.hostA = self.momA.shortname
-                del mom_list[i]
-                break
-        for j, comm in enumerate(self.comms.values()):
-            if comm.shortname == self.server.shortname:
-                del comm_list[j]
+        mom_list = []
+        comm_list = []
+        for mom in self.moms.values():
+            mom_list.append(mom.shortname)
+        for comm in self.comms.values():
+            comm_list.append(comm.shortname)
+        if self.server.shortname not in mom_list or \
+           self.server.shortname not in comm_list:
+            self.skipTest("Mom and comm should be on server host")
         if len(self.moms.values()) == 2 and len(self.comms.values()) == 2:
-            self.momB = mom_list[0]
+            self.hostA = self.server.shortname
+            self.momB = self.moms.values()[1]
             self.hostB = self.momB.shortname
-            self.comm2 = comm_list[0]
+            self.comm2 = self.comms.values()[1]
             self.hostC = self.comm2.shortname
             nodes = [self.hostA, self.hostB, self.hostC]
         elif len(self.moms.values()) == 3 and len(self.comms.values()) == 3:
-            self.momB = mom_list[0]
+            self.hostA = self.server.shortname
+            self.momB = self.moms.values()[1]
             self.hostB = self.momB.shortname
-            self.momC = mom_list[1]
+            self.momC = self.moms.values()[2]
             self.hostC = self.momC.shortname
-            self.comm2 = comm_list[0]
+            self.comm2 = self.comms.values()[1]
             self.hostD = self.comm2.shortname
-            self.comm3 = comm_list[1]
+            self.comm3 = self.comms.values()[2]
             self.hostE = self.comm3.shortname
             nodes = [
                 self.hostA,
