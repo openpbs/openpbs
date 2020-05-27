@@ -656,7 +656,7 @@ make_envp(void)
 	char	*envp, *cp;
 
 	if ((env_array == NULL) || (curenv == 0)) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			__func__, "The current environment has no variables");
 		return NULL;
 	}
@@ -749,8 +749,6 @@ find_wenv_slot(char *name)
 		if (strncmp(env_array[i], name, len) == 0)
 			return (i);
 	}
-	log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "Unable to find slot for environment variable");
 	return (-1);
 }
 
@@ -897,7 +895,7 @@ mktmpdir(char *jobid, char *username)
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			__func__, "Unable to change ownership of the file: %s", tmpdir);
 	return 0;
 }
@@ -956,7 +954,7 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 		username,
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			__func__, "Unable to change ownership of the file");
 
 	/* success! log a message showing the name of the staging and execution dir */
@@ -1087,24 +1085,12 @@ set_homedir_to_local_default(job *pjob, char *username)
 			return ("");
 		}
 
-		home_dir = default_local_homedir(username, pp->pw_userlogin, 0);
-		if(home_dir != NULL) {
-			strcpy(lpath, home_dir);
-			return (lpath);
-		} else {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, "Home directory was not found, job passed is NULL");
-		}
-		
+		strcpy(lpath, default_local_homedir(username,
+			pp->pw_userlogin, 0));
+		return (lpath);
 	}
-	
-	home_dir = default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0);
-	if(home_dir != NULL)
-		strcpy(lpath, home_dir);
-	else {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, "Home directory was not found for user %s and job: %s", pjob->ji_user->pw_userlogin, pjob->ji_qs.ji_jobid);
-	}
+
+	strcpy(lpath, default_local_homedir(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_user->pw_userlogin, 0));
 
 	lsize = sizeof(struct grpcache) + strlen(lpath) + 1;
 
@@ -1147,7 +1133,7 @@ check_pwd(job *pjob)
 	if (pjob) {
 		if(read_cred(pjob, &cred_buf, &cred_len) != 0) {
 			sprintf(log_buffer, "Unable to get credentials for user: %s", pjob->ji_user);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				__func__, log_buffer);
 		}
 	}
@@ -1534,10 +1520,10 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	/* This change is needed for proper parsing of nodes file by     */
 	/* applications like  MPI. */
 	if ((nhow = fopen(pbs_nodefile, "wt")) == NULL) {
-		snprintf(err_msg, err_msg_sz,
-					"cannot open %s", pbs_nodefile);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, err_msg);
+		if ((err_msg != NULL) && (err_msg_sz > 0)) {
+			snprintf(err_msg, err_msg_sz,
+						"cannot open %s", pbs_nodefile);
+		}
 		return (-1);
 	}
 
@@ -1564,7 +1550,7 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	if (secure_file2(pbs_nodefile,
 		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 		"\\Everyone", READS_MASK | READ_CONTROL) == 0 ) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				__func__, "Unable to change ownership of the file; %s", pbs_nodefile);
 	}
 
@@ -2085,6 +2071,7 @@ finish_exec(job *pjob)
 	} else {
 		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, "Failed to export job hash to the environment for job id; %s", pjob->ji_qs.ji_jobid);
+		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 	}
 
 	/*************************************************************************/
@@ -2250,12 +2237,14 @@ finish_exec(job *pjob)
 		si.dwFlags = STARTF_USESTDHANDLES;
 
 
-		if (script_in != -1)
+		if (script_in != -1) {
 			si.hStdInput = (HANDLE)_get_osfhandle(script_in);
 			if (si.hStdInput == -1) {
-				log_err(errno, __func__, "Unable to get handle for the script input file");
+				log_err(errno, __func__, 
+					"Unable to get handle for the script input file");
+				return;
 			}
-		else {
+		} else {
 			/*
 			 * A blocking process will not block on input unless it has a valid input handle.
 			 * This results in many issues like a blocking command gets blank as input
@@ -2280,12 +2269,14 @@ finish_exec(job *pjob)
 			si.hStdOutput = (HANDLE)_get_osfhandle(script_out);
 			if (si.hStdOutput == -1) {
 				log_err(errno, __func__, "Unable to get handle for the script output file");
+				return;
 			}
 		}
 		if (script_err != -1) {
 			si.hStdError = (HANDLE)_get_osfhandle(script_err);
 			if (si.hStdError == -1) {
 				log_err(errno, __func__, "Unable to get handle for the script error file");
+				return;
 			}
 		}
 		/* turn off echoing if cmd.exe */
@@ -2333,7 +2324,7 @@ finish_exec(job *pjob)
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 					"Administrators",
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 						__func__, "Unable to change ownership of the file: %s", script_bat);
 
 				sprintf(cmdline, "%s /Q /C \"%s\"", shell, script_bat);
@@ -3119,10 +3110,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		bld_wenv_variables(ENV_AUTH_KEY, hash_token);
 		free(hash_token);
 		hash_token = NULL;
-	}
-	else {
+	} else {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, "Failed to export job hash to the environment");
+		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+		return PBSE_SYSTEM;
 	}
 
 	/*
@@ -3443,8 +3435,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	fds = open(path, mode, _S_IWRITE | _S_IREAD);
 	if (fds == -1) {
 		sprintf(log_buffer, "Unable to open stdfile %s with error: %d", path, errno);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, log_buffer);
+		log_err(errno, __func__, log_buffer);
 	}
 	if (pjob->ji_user && pjob->ji_user->pw_name) {
 
@@ -3460,7 +3451,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			pjob->ji_user->pw_name,
 			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 			"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				__func__, "Unable to change ownership of the file: %s", path);
 
 		if (became_admin) {   /* go back to being user */
@@ -4406,8 +4397,6 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 	}
 
 	if (pjob->ji_grpcache == NULL) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, "The associated group cache cannot be NULL");
 		return ("");	/* needs to be non-NULL for figuring out homedir path; */
 	}
 
@@ -4452,6 +4441,9 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 		*(path + len) = '\0';
 		*keeping = 1;
 	} else {
+
+		/* put into spool directory unless NO_SPOOL_OUTPUT is defined */
+
 #ifdef NO_SPOOL_OUTPUT
 		/* sandbox=PRIVATE mode puts output in job staging and execution directory */
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags&ATR_VFLAG_SET) &&

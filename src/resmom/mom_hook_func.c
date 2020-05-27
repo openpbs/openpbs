@@ -1575,7 +1575,8 @@ run_hook_exit:
 
 	if (run_exit != 0) {
 		snprintf(log_buffer, sizeof(log_buffer), "execv of %s resulted in nonzero exit status=%d", pypath, run_exit);
-		log_err(-1, __func__, log_buffer);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_HOOK,
+			LOG_DEBUG, __func__, log_buffer);
 
 	}
 
