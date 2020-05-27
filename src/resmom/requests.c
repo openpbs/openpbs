@@ -277,7 +277,6 @@ fork_to_user(struct batch_request *preq)
 		(void)chdir(lpath);
 	}
 
-	setenv("USER", rqcpf->rq_user, 1);
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	return (pwdp->pw_userlogin);
@@ -350,7 +349,6 @@ fork_to_user(struct batch_request *preq)
 	else
 		rqcpf = &preq->rq_ind.rq_cpyfile;
 
-	setenv("USER", rqcpf->rq_user, 1);
 	/* create a PBS_EXEC env entry */
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
@@ -2834,7 +2832,6 @@ req_cpyfile(struct batch_request *preq)
 	 * the same permissions as TMPDIR
 	 */
 	(void)revert_impersonated_user();
-	SetEnvironmentVariable("USER", NULL);
 
 	if ((dir == STAGE_DIR_IN) && (stage_inout.sandbox_private)) {
 		/* Create PBS_JOBDIR */
@@ -3060,7 +3057,6 @@ req_delfile(struct batch_request *preq)
 
 	(void)revert_impersonated_user();
 	chdir(mom_home);
-	SetEnvironmentVariable("USER", NULL);
 }
 
 #else	/* UNIX---------------------------------------------------------------*/
