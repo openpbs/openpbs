@@ -1500,7 +1500,7 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
-            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+            self.server.manager(MGR_CMD_CREATE, NODE, id=mom.shortname)
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 

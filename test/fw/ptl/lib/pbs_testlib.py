@@ -13098,10 +13098,6 @@ class MoM(PBSService):
                        access or dictionary containing
                        {'dbname':...,'user':...,'port':...}
     :type db_access: str or dictionary
-    :param revert_to_default: set to True if you like this instance of
-                              mom to be reverted to its default when
-                              revert_mom() is called.
-    :type revert_to_default: bool
     """
     dflt_attributes = {}
     conf_to_cmd_map = {'PBS_MOM_SERVICE_PORT': '-M',
@@ -13154,6 +13150,9 @@ class MoM(PBSService):
             self.dflt_config = {'$clienthost': self.server.hostname}
         self.version = None
         self._is_cpuset_mom = None
+
+        # set to True if you like this instance of mom to be reverted to its
+        # default when revert_mom() is called.
         self.revert_to_default = True
 
     def __del__(self):

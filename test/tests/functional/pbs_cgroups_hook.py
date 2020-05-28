@@ -2650,11 +2650,15 @@ if %s e.job.in_ms_mom():
                 self.assertFalse(os.path.isfile(filename))
 
     @skipOnCray
+    @skipOnCpuSet
     def test_cgroup_assign_resources_mem_only_vnode(self):
         """
         Test to verify that job requesting mem larger than any single vnode
         works properly
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
+
         vn_attrs = {ATTR_rescavail + '.ncpus': 1,
                     ATTR_rescavail + '.mem': '500mb'}
         self.load_config(self.cfg4 % (self.mem, self.swapctl))
@@ -2748,6 +2752,8 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_fences affects setting of cpuset.mems
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         # Get the grandparent directory
         cpuset_base = self.paths['cpuset']
         cpuset_mems = os.path.join(cpuset_base, 'cpuset.mems')
@@ -2810,6 +2816,8 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_hardwall affects setting of cpuset.mem_hardwall
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
@@ -2906,6 +2914,8 @@ if %s e.job.in_ms_mom():
         Confirm that mem_spread_page affects setting of
         cpuset.memory_spread_page
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
                                       'false', self.mem, self.swapctl))
         nid = self.nodes_list[0]
