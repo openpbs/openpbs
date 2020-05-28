@@ -153,7 +153,7 @@ class TestJobPerf(TestPerformance):
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -244,7 +244,7 @@ class TestJobPerf(TestPerformance):
             log_start = time.time()
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'job_history_enable': True}
@@ -336,7 +336,7 @@ class TestJobPerf(TestPerformance):
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -413,7 +413,7 @@ class TestJobPerf(TestPerformance):
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -473,7 +473,7 @@ class TestJobPerf(TestPerformance):
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -551,7 +551,7 @@ class TestJobPerf(TestPerformance):
         while j < config['No_of_tries']:
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -611,7 +611,7 @@ class TestJobPerf(TestPerformance):
         while j < self.config['No_of_tries']:
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     TST_USR, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
