@@ -785,7 +785,7 @@ class TestTPP(TestFunctional):
                           job=True, interactive=True, resv=True,
                           resv_job=True)
 
-    @requirements(num_moms=2, num_comms=2)
+    @requirements(num_moms=3, num_comms=3)
     def test_COMM_ROUTERS_with_nondefault_pbs_conf(self):
         """
         This test verifies communication between server-mom and
