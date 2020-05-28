@@ -1205,6 +1205,13 @@ find_job(char *jobid)
 	if ((AVL_jctx != NULL) && ((pkey = svr_avlkey_create(buf)) != NULL)) {
 		if (avl_find_key(pkey, AVL_jctx) == AVL_IX_OK)
 			pj = (job *) pkey->recptr;
+		if (pj && (pj->ji_qs.ji_jobid[0] == 'X')) {
+			/* found a freed job obj hanging around in the job avl tree */
+			log_errf(PBSE_INTERNAL, __func__, "%s stale job found in job avl tree, deletting it",jobid);
+			avl_delete_key(pkey, AVL_jctx);
+			pj = NULL;
+		}
+
 		free(pkey);
 		return (pj);
 	}
