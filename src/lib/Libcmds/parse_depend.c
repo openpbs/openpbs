@@ -147,6 +147,10 @@ parse_depend_item(char *depend_list, char **rtn_list, int *rtn_size)
 			if (append_string(rtn_list, deptypes[i], rtn_size))
 				return 1;
 
+			/* It's an error if there are no values after ':' */
+			if (*c == '\0')
+				return 1;
+
 		} else {
 
 			if (i < 2) {		/* for "on" and "synccount", number */

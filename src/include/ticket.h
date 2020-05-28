@@ -52,7 +52,6 @@ extern "C" {
 
 #define	PBS_CREDVER		1
 #define	PBS_CREDTYPE_NONE	0
-#define	PBS_CREDTYPE_DCE_KRB5	1 /* Deprecated */
 #define	PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
 #define PBS_CREDTYPE_AES	3
 

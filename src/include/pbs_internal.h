@@ -223,7 +223,6 @@ struct pbs_config
 	char *pbs_demux_path;			/* path to pbs demux */
 	char *pbs_environment;		/* path to pbs_environment file */
 	char *iff_path;			/* path to pbs_iff */
-	char *k5dcelogin_path;		/* path to k5dcelogin */
 	char *pbs_primary;			/* FQDN of host with primary server */
 	char *pbs_secondary;			/* FQDN of host with secondary server */
 	char *pbs_mom_home;			/* path to alternate home for Mom */
@@ -294,7 +293,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_RCP		"PBS_RCP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
-#define PBS_CONF_K5DCELOGIN	"PBS_K5DCELOGIN"       /* path to k5dcelogin */
 #define PBS_CONF_PRIMARY	"PBS_PRIMARY"  /* Primary Server in failover */
 #define PBS_CONF_SECONDARY	"PBS_SECONDARY"	/* Secondary Server failover */
 #define PBS_CONF_MOM_HOME	"PBS_MOM_HOME"  /* alt Mom home for failover */

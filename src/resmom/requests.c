@@ -277,8 +277,6 @@ fork_to_user(struct batch_request *preq)
 		(void)chdir(lpath);
 	}
 
-	/* create a USER env entry ... k5dcelogin may need it */
-	setenv("USER", rqcpf->rq_user, 1);
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	return (pwdp->pw_userlogin);
@@ -350,9 +348,6 @@ fork_to_user(struct batch_request *preq)
 		rqcpf = &preq->rq_ind.rq_cpyfile_cred.rq_copyfile;
 	else
 		rqcpf = &preq->rq_ind.rq_cpyfile;
-
-	/* create a USER env entry ... k5dcelogin may need it */
-	setenv("USER", rqcpf->rq_user, 1);
 
 	/* create a PBS_EXEC env entry */
 	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
@@ -439,12 +434,6 @@ fork_to_user(struct batch_request *preq)
 				setenv("PBS_PWPIPE", buf, 1);
 				fcntl(cred_pipe, F_SETFD, 1);	/* close on exec */
 
-				/* construct argv array */
-				sprintf(buf, "%s/sbin/pbs_dcelogin",
-					pbs_conf.pbs_exec_path);
-				shell = buf;
-				argv[argc++] = lastname(shell);
-				argv[argc++] = rqcpf->rq_user;
 				break;
 
 			default:
@@ -3068,7 +3057,6 @@ req_delfile(struct batch_request *preq)
 
 	(void)revert_impersonated_user();
 	chdir(mom_home);
-
 }
 
 #else	/* UNIX---------------------------------------------------------------*/

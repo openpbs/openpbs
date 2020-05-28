@@ -1000,8 +1000,6 @@ Python type:
 .br
 Valid values:
 .I krb5
-or
-.I dce
 .br
 Default: Unset
 

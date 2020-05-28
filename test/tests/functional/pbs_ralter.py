@@ -1523,7 +1523,6 @@ class TestPbsResvAlter(TestFunctional):
         Test that a failed ralter does not allow jobs to interfere with
         that reservation.
         """
-        self.skipTest('Skipped due to ralter reservation/job overlap bug')
         duration = 120
         offset1 = 30
         offset2 = 180
@@ -1550,7 +1549,7 @@ class TestPbsResvAlter(TestFunctional):
                            offset=t, id=rid1)
 
         self.alter_a_reservation(rid1, start1, end1, shift=300,
-                                 alter_e=True, whichMessage=3)
+                                 alter_e=True, sequence=2, whichMessage=3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
 
     @skipOnCpuSet
@@ -1685,7 +1684,8 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_duration, new_duration)
 
         time.sleep(5)
-        attr = {'reserve_duration': 5}
+        new_duration = int(time.time()) - int(t_start) - 1
+        attr = {'reserve_duration': new_duration}
         self.server.alterresv(rid, attr)
         self.server.log_match(rid + ";Reservation alter denied",
                               id=rid, interval=2)

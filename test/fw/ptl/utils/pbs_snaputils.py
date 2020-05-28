@@ -402,7 +402,7 @@ class ObfuscateSnapshot(object):
 
         shutil.move(fout, file_path)
 
-    def obfuscate_acct_logs(self, snap_dir):
+    def obfuscate_acct_logs(self, snap_dir, sudo_val):
         """
         Helper function to obfuscate accounting logs
 
@@ -418,7 +418,7 @@ class ObfuscateSnapshot(object):
         attrs_to_obf += acct_extras
 
         acct_path = os.path.join(snap_dir, "server_priv", "accounting")
-        acct_fnames = os.listdir(acct_path)
+        acct_fnames = self.du.listdir(path=acct_path, sudo=sudo_val)
         for acct_fname in acct_fnames:
             acct_fpath = os.path.join(acct_path, acct_fname)
             self._obfuscate_acct_file(attrs_to_obf, acct_fpath)
@@ -499,7 +499,7 @@ class ObfuscateSnapshot(object):
         # Note: We can't rely on sed to do this because there might be logs
         # From long back which have usernames & hostnames that didn't get
         # captured in the qstat/pbs_rstat/pbsnodes outputs
-        self.obfuscate_acct_logs(snap_dir)
+        self.obfuscate_acct_logs(snap_dir, sudo_val)
 
         # Until we can support obfuscating daemon logs, delete them
         svr_logs = os.path.join(snap_dir, SVR_LOGS_PATH)
@@ -507,7 +507,7 @@ class ObfuscateSnapshot(object):
         comm_logs = os.path.join(snap_dir, COMM_LOGS_PATH)
         db_logs = os.path.join(snap_dir, PG_LOGS_PATH)
         sched_logs = []
-        for dirname in os.listdir(snap_dir):
+        for dirname in self.du.listdir(path=snap_dir, sudo=sudo_val):
             if dirname.startswith(DFLT_SCHED_LOGS_PATH):
                 dirpath = os.path.join(snap_dir, str(dirname))
                 sched_logs.append(dirpath)
@@ -523,21 +523,23 @@ class ObfuscateSnapshot(object):
                               "simply be deleted")
         jobspath = os.path.join(snap_dir, MOM_PRIV_PATH, "jobs")
         jbcontent = {}
-        for name in os.listdir(jobspath):
-            if name.endswith(".JB"):
-                ret = None
-                fpath = os.path.join(jobspath, name)
-                if printjob is not None:
-                    cmd = [printjob, fpath]
-                    ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
-                                          as_script=True)
-                self.du.rm(path=fpath)
-                if ret is not None and ret["out"] is not None:
-                    jbcontent[name] = "\n".join(ret["out"])
-            # Also delete any other files/directories inside mom_priv/jobs
-            else:
-                path = os.path.join(jobspath, name)
-                self.du.rm(path=path, recursive=True, force=True)
+        jbfilelist = self.du.listdir(path=jobspath, sudo=sudo_val)
+        if jbfilelist is not None:
+            for name in jbfilelist:
+                if name.endswith(".JB"):
+                    ret = None
+                    fpath = os.path.join(jobspath, name)
+                    if printjob is not None:
+                        cmd = [printjob, fpath]
+                        ret = self.du.run_cmd(cmd=cmd, sudo=sudo_val,
+                                              as_script=True)
+                    self.du.rm(path=fpath)
+                    if ret is not None and ret["out"] is not None:
+                        jbcontent[name] = "\n".join(ret["out"])
+                # Also delete any other files/directories inside mom_priv/jobs
+                else:
+                    path = os.path.join(jobspath, name)
+                    self.du.rm(path=path, recursive=True, force=True)
         for name, content in jbcontent.items():
             # Save the printjob outputs, these will be obfuscated later
             fpath = os.path.join(jobspath, name + "_printjob")

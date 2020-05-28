@@ -734,6 +734,11 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 					if (b2 != b1+1)
 						return PBSE_IVALREQ;
 				}
+				if (strcmp(pparent->dc_child, pjob->ji_qs.ji_jobid) == 0) {
+					/* parent and child job ids are the same */
+					return PBSE_IVALREQ;
+				}
+
 				if (type == JOB_DEPEND_TYPE_RUNONE) {
 					job *djob = find_job(pparent->dc_child);
 					if (djob == NULL)
@@ -1087,9 +1092,13 @@ depend_on_term(job *pjob)
 				break;
 		}
 		if (op != -1) {
-			/* Check if the job is being deleted. If so, delete the dependency chain */
-			if (pjob->ji_terminated == 1)
-				op = JOB_DEPEND_OP_DELETE;
+			/* Check if the job is being deleted. If so, delete the dependency chain only for beforeok dependency */
+			if (pjob->ji_terminated == 1) {
+				if (type == JOB_DEPEND_TYPE_BEFORENOTOK || type == JOB_DEPEND_TYPE_BEFOREANY)
+					op = JOB_DEPEND_OP_RELEASE;
+				else
+					op = JOB_DEPEND_OP_DELETE;
+			}
 			/* This function is also called from job_abt when the job is in held state and abort substate.
 			 * In case of a held job, release the dependency chain.
 			 */
@@ -1398,29 +1407,32 @@ send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int sch
 		return (PBSE_SYSTEM);
 	}
 
+	if (pjob->ji_wattr[JOB_ATR_job_owner].at_val.at_str == NULL)
+		return PBSE_INTERNAL;
+
 	for (i=0; i<PBS_MAXUSER; ++i) {
 		preq->rq_ind.rq_register.rq_owner[i] = pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str[i];
 		if (preq->rq_ind.rq_register.rq_owner[i] == '@')
 			break;
 	}
 	preq->rq_ind.rq_register.rq_owner[i] = '\0';
-	(void)strcpy(preq->rq_ind.rq_register.rq_parent, pparent->dc_child);
-	(void)strcpy(preq->rq_ind.rq_register.rq_child, pjob->ji_qs.ji_jobid);
+	strcpy(preq->rq_ind.rq_register.rq_parent, pparent->dc_child);
+	strcpy(preq->rq_ind.rq_register.rq_child, pjob->ji_qs.ji_jobid);
 	/* Append "@<server_name>" since server's name may not match host name */
-	(void)strcat(preq->rq_ind.rq_register.rq_child, "@");
-	(void)strcat(preq->rq_ind.rq_register.rq_child, pbs_server_name);
+	strcat(preq->rq_ind.rq_register.rq_child, "@");
+	strcat(preq->rq_ind.rq_register.rq_child, pbs_server_name);
 	/* kludge for server:port follows */
 	if ((pc = strchr(server_name, (int)':')) != NULL) {
 		strcat(preq->rq_ind.rq_register.rq_child, pc);
 	}
 	preq->rq_ind.rq_register.rq_dependtype = type;
 	preq->rq_ind.rq_register.rq_op = op;
-	(void)strcpy(preq->rq_host, pparent->dc_svr);  /* for issue_to_svr() */
+	strcpy(preq->rq_host, pparent->dc_svr);  /* for issue_to_svr() */
 
 	preq->rq_ind.rq_register.rq_cost = 0;
 
 	if (issue_to_svr(pparent->dc_svr, preq, postfunc) == -1) {
-		(void)sprintf(log_buffer, "Unable to perform dependency with job %s", pparent->dc_child);
+		sprintf(log_buffer, "Unable to perform dependency with job %s", pparent->dc_child);
 		return (PBSE_BADHOST);
 	}
 	return (0);
@@ -1813,14 +1825,18 @@ build_depend(attribute *pattr, char *value)
 	int			type;
 
 	/*
-	 * Map first subword into dependency type.  If there is just the type
-	 * with no following job id or count, then leave an empty depend
-	 * struct;  set_depend will "remove" any of that kind.
+	 * Map first subword into dependency type. 
 	 */
 
 	if ((nxwrd = strchr(value, (int)':')) != NULL)
 		*nxwrd++ = '\0';
+	else
+		/* dependency can never be without ':<value>' */
+		return (PBSE_BADATVAL);
 
+	if (*nxwrd == '\0')
+		/* dependency can never be without a job-id or a number */
+		return (PBSE_BADATVAL);
 
 	for (pname = dependnames; pname->type != -1; pname++)
 		if (!strcmp(value, pname->name))

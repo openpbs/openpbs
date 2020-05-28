@@ -524,8 +524,9 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		case 0:
 			break;
 		case COPY_FILE_BAD_INPUT:
-			log_err(errno, __func__,
-				"copy_file_internal: bad input parameter");
+			log_errf(errno, __func__,
+				"copy_file_internal: bad input parameter src_file: %s; dest_file: %s",
+				src_file, dest_file);
 			return -1;
 		case COPY_FILE_BAD_SOURCE:
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -549,8 +550,8 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		default:
 			snprintf(log_buffer,
 				sizeof(log_buffer),
-				"Unknown copy_file_internal return %d",
-				st);
+				"Unknown copy_file_internal return %d; src_file: %s; dest_file: %s",
+				st, src_file, dest_file);
 			log_err(errno, __func__, log_buffer);
 			return -1;
 	}
@@ -572,7 +573,10 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		log_err(errno, __func__, log_buffer);
+		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s", 
+			pjob->ji_user->pw_name, dest_file);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 		(void)unlink(dest_file);
 		return -1;
 	}
@@ -1058,7 +1062,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the script file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, script_file);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -1100,7 +1107,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the hook input file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, hook_inputfile);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 
 		}
@@ -1122,7 +1132,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			log_err(errno, __func__, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the log file for user: %s, file: %s", 
+				pjob->ji_user->pw_name, log_file);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 			goto run_hook_exit;
 		}
 #endif
@@ -1175,8 +1188,11 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		}
 
 #ifdef	WIN32
-		secure_file(hook_inputfile, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+		if(secure_file(hook_inputfile, "Administrators",
+			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
+			snprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", hook_inputfile);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+				__func__, log_buffer);
 #endif
 		/* Still need to chdir() here. A periodic hook may be */
 		/* running the hook periodically and may no longer in the */
@@ -1438,7 +1454,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 #ifdef WIN32
 		/* since under Windows, this is still main mom (not forked), */
 		/* need to unset the hook config environment variable. */
-		setenv(PBS_HOOK_CONFIG_FILE, NULL, 1);
+		if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
+			log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
 #endif /* WIN32 */
 	} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
@@ -1512,8 +1529,13 @@ run_hook_exit:
 				event_type == HOOK_EVENT_EXECJOB_PRETERM) {
 			int ret = 0;
 			ret = hook_env_setup(pjob, phook);
-			if ( ret != 0 )
+			if ( ret != 0 ) {
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+					pjob->ji_qs.ji_jobid);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, log_buffer);
 				goto run_hook_exit;
+			}
 		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
 		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
@@ -1533,7 +1555,7 @@ run_hook_exit:
 		} else if ((GetExitCodeProcess(pio.pi.hProcess,
 			&run_exit) == 0) ||
 			(run_exit == STILL_ACTIVE)) {
-			log_err(-1, __func__, "GetExitCodeProcess");
+			log_err(-1, __func__, "GetExitCodeProcess failed");
 			run_exit = 255;
 		}
 		win_pclose(&pio);
@@ -1702,8 +1724,11 @@ run_hook_exit:
 	}
 
 #ifdef WIN32
-	secure_file(file_out, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
+	if(secure_file(file_out, "Administrators",
+		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) 
+		sprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", file_out);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, log_buffer);
 #endif
 
 
@@ -1728,6 +1753,9 @@ python_script_free(struct python_script *py_script)
 			free(py_script->path);
 		}
 	}
+	else
+		log_err(PBSE_HOOKERROR, __func__, "Python Script is NULL");
+	
 }
 
 /**
@@ -1817,7 +1845,7 @@ run_periodic_hook_bg(hook *phook)
 	mom_hook_input_t hook_input;
 
 	if (phook == NULL) {
-		log_err(-1, "run_periodic_hook_bg", "bad input parameter");
+		log_err(-1, __func__, "bad input parameter");
 		return;
 	}
 
@@ -2861,8 +2889,8 @@ do_reboot(char *reboot_cmd)
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"reboot failed exit code=%d", rcode);
-		log_event(PBSEVENT_DEBUG2, 0,
-			LOG_ERR, "do_reboot", log_buffer);
+		log_event(PBSEVENT_ERROR, 0,
+			LOG_ERR, __func__, log_buffer);
 	}
 }
 
@@ -2885,11 +2913,14 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 {
 	struct hook_job_action *phja;
 
-	if (pjob == NULL)
+	if (pjob == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Job received is NULL");
 		return;
+	}
 	phja = malloc(sizeof(struct hook_job_action));
 	if (phja == NULL) {
-		log_err(PBSE_SYSTEM, "new_job_action_req", msg_err_malloc);
+		log_err(PBSE_SYSTEM, __func__, msg_err_malloc);
 		return;
 	}
 	CLEAR_LINK(phja->hja_link);
@@ -3055,6 +3086,8 @@ void send_hook_fail_action(hook *phook)
 	int	vret = -1;
 
 	if ((phook == NULL) || (phook->hook_name == NULL)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook received is NULL");
 		return;
 	}
 
@@ -3144,7 +3177,15 @@ record_job_last_hook_executed(unsigned int hook_event,
 	char chr_save = '\0';
 	char *p_dir = NULL;
 
-	if ((hook_name == NULL) || (pjob == NULL)) {
+	if (pjob == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Job not received");
+		return;
+	} 
+
+	if (hook_name == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook not received");
 		return;
 	}
 	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
@@ -3159,6 +3200,9 @@ record_job_last_hook_executed(unsigned int hook_event,
 			*p = '\0';
 			p_dir = filepath;
 		}
+	} else {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "Hook not received");
 	}
 
 	snprintf(hook_job_outfile, MAXPATHLEN,
@@ -3221,17 +3265,20 @@ post_run_hook(struct work_task *ptask)
 	mom_process_hooks_params_t *php = NULL;
 
 	if (ptask == NULL) {
-		log_err(-1, __func__, "missing ptask argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing ptask argument to event");
 		return -1;
 	}
 
 	if ((phook = (hook *)ptask->wt_parm1) == NULL) {
-		log_err(-1, __func__, "missing hook phook argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing hook phook argument to event");
 		return -1;
 	}
 
 	if ((php = (mom_process_hooks_params_t *) ptask->wt_parm2) == NULL) {
-		log_err(-1, __func__, "missing hook params argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing hook params argument to event");
 		return -1;
 	}
 
@@ -3242,7 +3289,8 @@ post_run_hook(struct work_task *ptask)
 	}
 
 	if ((hook_input = (mom_hook_input_t *) php->hook_input) == NULL) {
-		log_err(-1, __func__, "missing input argument to event");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			  LOG_ERR, __func__, "missing input argument to event");
 		return -1;
 	}
 
@@ -4263,8 +4311,10 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 void
 mom_hook_input_init(mom_hook_input_t *hook_input)
 {
-	if (hook_input == NULL)
+	if (hook_input == NULL) {
+		log_err(PBSE_HOOKERROR, __func__, "Hook input is NULL");
 		return;
+	}
 
 	hook_input->pjob = NULL;
 	hook_input->progname = NULL;
@@ -4288,8 +4338,10 @@ mom_hook_input_init(mom_hook_input_t *hook_input)
 void
 mom_hook_output_init(mom_hook_output_t *hook_output)
 {
-	if (hook_output == NULL)
+	if (hook_output == NULL) {
+		log_err(PBSE_HOOKERROR, __func__, "Hook output is NULL");
 		return;
+	}
 
 	hook_output->reject_errcode = NULL;
 	hook_output->last_phook = NULL;
