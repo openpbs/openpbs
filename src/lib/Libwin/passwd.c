@@ -4148,7 +4148,9 @@ wsystem(char *cmdline, HANDLE user_handle)
 	} else {
 		flags = flags|CREATE_UNICODE_ENVIRONMENT;
 		if (!CreateEnvironmentBlock(&user_env, user_handle, FALSE)) {
+			run_exit = GetLastError();
 			log_err(-1, __func__, "failed in CreateEnvironmentBlock");
+			goto end;
 		}
 		rc=CreateProcessAsUser(user_handle, NULL, cmd,
 			NULL, NULL, TRUE, flags,
@@ -4185,6 +4187,7 @@ wsystem(char *cmdline, HANDLE user_handle)
 	if (user_env)
 		DestroyEnvironmentBlock(user_env);
 
+end:
 	return (run_exit);
 }
 
