@@ -383,12 +383,8 @@ class TestTPP(TestFunctional):
         comm objects : self.comm2, self.comm3
         comm shortnames : self.hostD, self.hostE
         """
-        mom_list = []
-        comm_list = []
-        for mom in self.moms.values():
-            mom_list.append(mom.shortname)
-        for comm in self.comms.values():
-            comm_list.append(comm.shortname)
+        mom_list = [x.shortname for x in self.moms.values()]
+        comm_list = [y.shortname for y in self.comms.values()]
         if self.server.shortname not in mom_list or \
            self.server.shortname not in comm_list:
             self.skipTest("Mom and comm should be on server host")
