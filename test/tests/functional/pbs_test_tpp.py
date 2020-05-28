@@ -370,9 +370,9 @@ class TestTPP(TestFunctional):
                           self.server.status(NODE)[2]['id']]
         else:
             vnode_list = ["vn[0]", "vn[1]"]
+        a = {'state': (MATCH_RE, "down")}
         for vnode in vnode_list:
-            self.server.expect(VNODE, {
-                'state': 'state-unknown,down'}, id=vnode)
+            self.server.expect(VNODE, a, id=vnode)
 
     def common_setup(self):
         """
