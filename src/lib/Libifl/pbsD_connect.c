@@ -460,7 +460,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	reply = PBSD_rdrpy(sock);
 	PBSD_FreeReply(reply);
 
-	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+	if (engage_client_auth(sock, server, server_port, errbuf, sizeof(errbuf)) != 0) {
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
@@ -852,7 +852,7 @@ err:
 	reply = PBSD_rdrpy(sock);
 	PBSD_FreeReply(reply);
 
-	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+	if (engage_client_auth(sock, server, server_port, errbuf, sizeof(errbuf)) != 0) {
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);

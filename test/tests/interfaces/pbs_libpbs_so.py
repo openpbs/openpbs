@@ -34,6 +34,8 @@
 # under a commercial license agreement.
 #
 # Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
 
 
 from tests.interfaces import *

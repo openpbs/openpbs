@@ -1015,34 +1015,6 @@ e.accept()
                            extend='x', attrop=PTL_AND, id=jid)
 
     @skipOnCpuSet
-    def test_resv_job_soft_hard2(self):
-        """
-        Test that a job with soft and hard walltime will not conflict with
-        reservtion if hard walltime is less that reservation start time.
-        """
-        a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
-
-        now = int(time.time())
-
-        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 65,
-             'reserve_end': now + 240}
-        R = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(R)
-        self.server.expect(RESV,
-                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
-                           id=rid)
-
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        a = {'Resource_List.ncpus': 4,
-             'Resource_List.walltime': 60}
-        J = Job(TEST_USER, attrs=a)
-        jid = self.server.submit(J)
-        self.server.alterjob(jid, {'Resource_List.soft_walltime': 60})
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-
-    @skipOnCpuSet
     def test_soft_job_array(self):
         """
         Test that soft walltime works similar way with subjobs as

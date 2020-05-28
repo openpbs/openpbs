@@ -129,8 +129,10 @@ mock_run_end_job_task(struct work_task *ptask)
 {
 	job *pjob;
 
-	if (ptask == NULL)
+	if (ptask == NULL) {
+		log_err(PBSE_UNKJOBID, __func__, "Task not received");
 		return;
+	}
 
 	pjob = ptask->wt_parm1;
 
@@ -174,8 +176,10 @@ mock_run_mom_set_use(job *pjob)
 
 	if (rd == NULL) {
 		rd = malloc(5 * sizeof(resource_def *));
-		if (rd  == NULL)
+		if (rd  == NULL) {
+			log_err(errno, __func__, "Unable to allocate memory");
 			return PBSE_SYSTEM;
+		}
 
 		rd[0] = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
 		rd[1] = find_resc_def(svr_resc_def, "mem", svr_resc_size);

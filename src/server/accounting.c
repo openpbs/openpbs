@@ -619,15 +619,17 @@ acct_job(job *pjob, int type, char *buf, int len)
 		CLEAR_HEAD(phead);
 		job_attr_def[(int)JOB_ATR_depend].at_encode(&pjob->ji_wattr[(int)JOB_ATR_depend],
 			&phead, job_attr_def[(int)JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
-		nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
-		if (nd > len)
-			if (grow_acct_buf(&pb, &len, nd) == -1)
-				return (pb);
-		(void)snprintf(pb, len, DEPEND_FMT, svrattrl_list->al_value);
-		i = strlen(pb);
-		pb += i;
-		len -= i;
-		free_svrattrl(svrattrl_list);
+		if (svrattrl_list != NULL) {
+			nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
+			if (nd > len)
+				if (grow_acct_buf(&pb, &len, nd) == -1)
+					return (pb);
+			(void)snprintf(pb, len, DEPEND_FMT, svrattrl_list->al_value);
+			i = strlen(pb);
+			pb += i;
+			len -= i;
+			free_svrattrl(svrattrl_list);
+		}
 	}
 
 	if (pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_flags & ATR_VFLAG_SET && ((pjob->ji_qs.ji_state == JOB_STATE_BEGUN) || type == PBS_ACCT_QUEUE)) {

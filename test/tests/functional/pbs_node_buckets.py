@@ -667,6 +667,43 @@ class TestNodeBuckets(TestFunctional):
                              'Jobs will share nodes: ' + node)
 
     @skipOnCpuSet
+    def test_psets_calendaring_resv(self):
+        """
+        Test that jobs do not run into a reservation and will correctly
+        be added to the calendar on the correct vnodes with placement sets
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': True})
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'shape',
+                                                  'node_group_enable': True})
+
+        now = int(time.time())
+        a = {'Resource_List.select': '10010:ncpus=1',
+             'Resource_List.place': 'scatter:excl',
+             'reserve_start': now + 600, 'reserve_end': now + 3600}
+        r = Reservation(attrs=a)
+        rid = self.server.submit(r)
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
+
+        a = {'Resource_List.select': '1430:ncpus=1',
+             'Resource_List.place': 'scatter:excl',
+             'Resource_List.walltime': '1:00:00'}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, 'estimated.exec_vnode', id=jid, op=SET)
+
+        n = self.server.status(NODE, 'resources_available.shape')
+        st = self.server.status(JOB, 'estimated.exec_vnode', id=jid)[0]
+        nodes = j.get_vnodes(st['estimated.exec_vnode'])
+
+        s = [x['resources_available.shape']
+             for x in n if x['id'] in nodes]
+        self.assertEqual(len(set(s)), 1,
+                         "Job will run in more than one placement set")
+
+    @skipOnCpuSet
     def test_place_group(self):
         """
         Test node buckets with place=group
