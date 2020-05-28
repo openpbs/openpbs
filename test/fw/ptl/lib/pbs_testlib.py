@@ -8581,7 +8581,7 @@ class Server(PBSService):
         jobs. Specifying an extend parameter could override
         this behavior.
         """
-        delete_xt = 'nomailforce'
+        delete_xt = 'force'
         select_xt = None
         if self.is_history_enabled():
             delete_xt += 'deletehist'
