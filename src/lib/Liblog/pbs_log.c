@@ -728,7 +728,7 @@ log_err(int errnum, const char *routine, const char *text)
 		DWORD	err = GetLastError();
 		int		len;
 
-		snprintf(buf, LOG_BUF_SIZE, "Err(%lu): ", err);
+		snprintf(buf, LOG_BUF_SIZE, "errno(%lu):", err);
 		FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_FROM_SYSTEM |
@@ -738,13 +738,15 @@ log_err(int errnum, const char *routine, const char *text)
 			(LPTSTR)&lpMsgBuf, 0, NULL);
 		strncat(buf, lpMsgBuf, LOG_BUF_SIZE - (int)strlen(buf) - 1);
 		LocalFree(lpMsgBuf);
-		buf[sizeof(buf)-1] = '\0';
+		buf[sizeof(buf) - 1] = '\0';
 		len = strlen(buf);
-		if (buf[len-1] == '\n')
+		if (buf[len - 1] == '\n')
 			len--;
-		if (buf[len-1] == '.')
+		if (buf[len - 1] == '\r')
 			len--;
-		buf[len-1] = '\0';
+		if (buf[len - 1] == '.')
+			len--;
+		buf[len] = '\0';
 #else
 		buf[0] = '\0';
 #endif
@@ -752,9 +754,8 @@ log_err(int errnum, const char *routine, const char *text)
 		if (((errmsg = pbse_to_txt(errnum)) == NULL) &&
 			((errmsg = strerror(errnum)) == NULL))
 				errmsg = "";
-		(void)snprintf(buf, LOG_BUF_SIZE, "%s (%d) in ", errmsg, errnum);
+		(void)snprintf(buf, LOG_BUF_SIZE, "errno(%d):%s", errnum, errmsg);
 	}
-	(void)strcat(buf, routine);
 	(void)strcat(buf, ", ");
 	i = LOG_BUF_SIZE - (int)strlen(buf) - 2;
 	(void)strncat(buf, text, i);
@@ -763,11 +764,17 @@ log_err(int errnum, const char *routine, const char *text)
 	if (log_opened == 0)
 		(void)log_open("/dev/console", log_directory);
 
-	if (isatty(2))
-		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
+	if (isatty(2)) {
+		if (msg_daemonname == NULL) {
+			(void)fprintf(stderr, "%s\n", buf);
+		} else {
+			(void)fprintf(stderr, "%s;%s\n", msg_daemonname, buf);
+		}
+	}
 
+	snprintf(log_buffer, sizeof(log_buffer), "%s;%s", routine, buf);
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-		LOG_ERR, msg_daemonname, buf);
+		LOG_ERR, msg_daemonname, log_buffer);
 }
 
 /**
