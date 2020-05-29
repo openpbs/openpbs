@@ -46,14 +46,14 @@ from tests.functional import *
 class TestPbsCpuset(TestFunctional):
 
     """
-    This tests the Reliable Job Startup Feature with cpuset mom.
+    This tests the Reliable Job Startup Feature with cgroup cpuset system.
     A job can be started with extra nodes with node failures tolerated
     during job start. Released cpuset resources can be reused by another job.
     """
 
     def setUp(self):
         if not self.mom.is_cpuset_mom():
-            self.skipTest("Test suite only meant to run with cpuset mom.")
+            self.skipTest("Tests meant to run only on cgroup cpuset system.")
         TestFunctional.setUp(self)
 
         # launch hook
