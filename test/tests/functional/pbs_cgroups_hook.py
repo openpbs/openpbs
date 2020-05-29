@@ -2650,7 +2650,6 @@ if %s e.job.in_ms_mom():
                 self.assertFalse(os.path.isfile(filename))
 
     @skipOnCray
-    @skipOnCpuSet
     def test_cgroup_assign_resources_mem_only_vnode(self):
         """
         Test to verify that job requesting mem larger than any single vnode
