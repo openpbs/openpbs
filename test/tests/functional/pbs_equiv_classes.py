@@ -1699,9 +1699,6 @@ else:
              'enabled': 't', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
-        a = {'preempt_sort': 'min_time_since_start'}
-        self.server.manager(MGR_CMD_SET, SCHED, a)
-
         (jid1,) = self.submit_jobs(1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -1759,9 +1756,6 @@ else:
         a = {'queue_type': 'execution', 'started': 'true',
              'enabled': 'true', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
-
-        a = {'preempt_sort': 'min_time_since_start'}
-        self.server.manager(MGR_CMD_SET, SCHED, a)
 
         # Submit 3 jobs with delay of 1 sec
         # Delay of 1 sec will preempt jid3 and then jid2.

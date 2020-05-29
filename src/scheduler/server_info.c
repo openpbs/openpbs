@@ -982,10 +982,7 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				free_string_array(list);
 			}
 		} else if (!strcmp(attrp->name, ATTR_sched_preempt_sort)) {
-			if (strcasecmp(attrp->value, "min_time_since_start") == 0)
-				conf.preempt_min_wt_used = 1;
-			else
-				conf.preempt_min_wt_used = 0;
+			conf.preempt_min_wt_used = 1;
 		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
 			if (sinfo->job_formula != NULL)
 				free(sinfo->job_formula);
