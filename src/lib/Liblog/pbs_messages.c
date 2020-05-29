@@ -249,7 +249,6 @@ char *msg_resvToolate	= "too late for reservation";
 char *msg_resvsyserr	= "internal reservation-system error";
 
 char *msg_Resv_Cancel   = "Attempting to cancel reservation";
-char *msg_unknownResvtype = "unknown reservation type";
 char *msg_unkresvID	= "Unknown Reservation Id";
 char *msg_resvExist	= "Reservation with requested ID already exists";
 char *msg_resvfromresvjob	= "Reservation may not be created from a job already within a reservation";
@@ -492,7 +491,6 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{ PBSE_JOBNOTRESV, &msg_jobNotresv },
 	{ PBSE_TOOLATE, &msg_resvToolate },
 	{ PBSE_IRESVE, &msg_resvsyserr },
-	{ PBSE_UNKRESVTYPE, &msg_unknownResvtype },
 	{ PBSE_RESVEXIST, &msg_resvExist },
 	{ PBSE_RESV_FROM_RESVJOB, &msg_resvfromresvjob },
 	{ PBSE_RESV_FROM_ARRJOB, &msg_resvfromarrjob },

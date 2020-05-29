@@ -122,23 +122,6 @@
 	</member_verify_function>
 	</attributes>
    <attributes>
-   /*RESV_ATR_resv_type*/
-	<member_name><both>ATTR_resv_type</both></member_name>		<!-- "reserve_type" (reservation or "reservation job") -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes>
    /*RESV_ATR_state*/
 	<member_name><both>ATTR_resv_state</both></member_name>	<!--  "reserve_state" -->
 	<member_at_decode>decode_l</member_at_decode>

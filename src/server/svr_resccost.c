@@ -190,7 +190,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 int
-encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	struct resource_cost *pcost;

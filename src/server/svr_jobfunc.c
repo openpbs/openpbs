@@ -403,11 +403,9 @@ svr_enquejob(job *pjob)
 	pjob->ji_wattr[(int)JOB_ATR_queuetype].at_flags |=
 		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_qtime].at_flags &
-		ATR_VFLAG_SET) == 0) {
-		pjob->ji_wattr[(int)JOB_ATR_qtime].at_val.at_long = time_now;
-		pjob->ji_wattr[(int)JOB_ATR_qtime].at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	if ((pjob->ji_wattr[JOB_ATR_qtime].at_flags & ATR_VFLAG_SET) == 0) {
+		pjob->ji_wattr[JOB_ATR_qtime].at_val.at_long = time_now;
+		pjob->ji_wattr[JOB_ATR_qtime].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 	}
 
 	/*
@@ -564,7 +562,7 @@ svr_dequejob(job *pjob)
 	}
 
 #ifndef NDEBUG
-	(void)sprintf(log_buffer, "dequeuing from %s, state %x",
+	sprintf(log_buffer, "dequeuing from %s, state %x",
 		pque ? pque->qu_qs.qu_name : "", pjob->ji_qs.ji_state);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
@@ -572,10 +570,9 @@ svr_dequejob(job *pjob)
 		correct_ct(pque);
 #endif	/* NDEBUG */
 
-	pjob->ji_wattr[(int)JOB_ATR_qtime].at_flags &= ~ATR_VFLAG_SET;
+	pjob->ji_wattr[JOB_ATR_qtime].at_flags &= ~ATR_VFLAG_SET;
 
-	/* clear any default resource values.		*/
-
+	/* clear any default resource values */
 	clear_default_resc(pjob);
 }
 
@@ -684,7 +681,6 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODCACHE;
 
 	set_statechar(pjob);
-	Update_Resvstate_if_resv(pjob);
 
 	/* eligible_time_enable */
 	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
@@ -735,8 +731,6 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 void
 svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
 {
-	int	resvstate;
-
 	/*
 	 * A value MUST be assigned to newstate and newsub because
 	 * they may have been passed in uninitialized. We MUST put
@@ -779,47 +773,6 @@ svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
 		*newstate = JOB_STATE_WAITING;
 		*newsub   = JOB_SUBSTATE_WAITING;
 
-	} else if (pjob->ji_resvp &&
-		pjob->ji_resvp->ri_qs.ri_type == RESV_JOB_OBJECT) {
-
-		resvstate = pjob->ji_resvp->ri_qs.ri_state;
-		if (resvstate == RESV_UNCONFIRMED) {
-			*newstate = JOB_STATE_HELD;
-			*newsub   = JOB_SUBSTATE_HELD;
-		} else if (pjob->ji_resvp->ri_qs.ri_stime > time_now) {
-			*newstate = JOB_STATE_WAITING;
-			*newsub   = JOB_SUBSTATE_WAITING;
-		} else if (pjob->ji_resvp->ri_qs.ri_etime > time_now) {
-			if (resvstate == RESV_RUNNING ||
-				resvstate == RESV_TIME_TO_RUN) {
-				*newstate = JOB_STATE_QUEUED;
-				if (pjob->ji_wattr[(int)JOB_ATR_stagein]
-					.at_flags & ATR_VFLAG_SET) {
-					if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_StagedIn) {
-						*newsub = JOB_SUBSTATE_STAGECMP;
-					} else {
-						*newsub = JOB_SUBSTATE_PRESTAGEIN;
-					}
-				} else
-					*newsub = JOB_SUBSTATE_QUEUED;
-			} else {
-				*newstate = pjob->ji_qs.ji_state;
-				*newsub   = pjob->ji_qs.ji_substate;
-			}
-		} else {
-			/*
-			 * Just keep current job state and substate.
-			 * Note, reservation state should be one of:
-			 * RESV_BEING_DELETED, RESV_DELETED,
-			 * RESV_FINISHED, RESV_DELETING_JOBS and,
-			 * job state should be JOB_STATE_EXITING with
-			 * substate one of the "job exit processing"
-			 * steps.
-			 */
-			*newstate = pjob->ji_qs.ji_state;
-			*newsub   = pjob->ji_qs.ji_substate;
-		}
-
 	} else if (pjob->ji_wattr[(int)JOB_ATR_stagein].at_flags & ATR_VFLAG_SET) {
 
 		*newstate = JOB_STATE_QUEUED;
@@ -858,70 +811,6 @@ svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
 
 	}
 }
-
-
-/**
- * @brief
- * 		cmp_resvStateRelated_attrs - for the object in question,
- * 		compute and set those attributes whose value or existence
- * 		and value can depend on the state of the reservation or
- * 		whether the object belongs to a reservation - e.g. one
- * 		such attribute is the JOB_ATR_exectime on a job
- *
- * @param[in]	pobj	-	pointer to the object based on the type
- * @param[out]	objtype	-	type of the object - job/reservation.
- *
- * @return	None
- */
-void
-cmp_resvStateRelated_attrs(void *pobj, int objtype)
-{
-	job	   *pjob;
-	resc_resv  *presv;
-	attribute  *pats;	/*"ptr to attribute to set"*/
-	attribute  *patu;	/*"ptr to attribute to use"*/
-	attribute  hold;	/*a temporary*/
-
-	int	  (*pf)(attribute *, attribute *, enum batch_op);
-
-
-	if (pobj == NULL)
-		return;
-
-	if (objtype == JOB_OBJECT) {
-		pjob = (job *)pobj;
-		presv = pjob->ji_resvp;
-		if (presv) {
-			pats = &pjob->ji_wattr[JOB_ATR_exectime];
-			patu = &presv->ri_wattr[RESV_ATR_start];
-			pf = resv_attr_def[RESV_ATR_start].at_set;
-			(void)pf(pats, patu, SET);
-		}
-
-	} else if (objtype == RESV_JOB_OBJECT) {
-		presv = (resc_resv *)pobj;
-		pjob = presv->ri_jbp;
-		if (pjob) {
-			pats = &pjob->ji_wattr[JOB_ATR_exectime];
-			patu = &presv->ri_wattr[RESV_ATR_start];
-			pf = resv_attr_def[RESV_ATR_start].at_set;
-			(void)pf(pats, patu, SET);
-
-			hold.at_flags = ATR_VFLAG_SET;
-			hold.at_val.at_long = HOLD_s;
-			pats = &pjob->ji_wattr[JOB_ATR_hold];
-			patu = &hold;
-			pf = job_attr_def[JOB_ATR_hold].at_set;
-			if (presv->ri_qs.ri_state == RESV_UNCONFIRMED)
-				(void)pf(pats, patu, INCR);
-			else if (presv->ri_qs.ri_state == RESV_CONFIRMED)
-				(void)pf(pats, patu, DECR);
-		}
-	} else if (objtype == RESC_RESV_OBJECT) {
-		return;
-	}
-}
-
 
 /**
  * @brief
@@ -2446,16 +2335,6 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 			psched = &presv->ri_wattr[(int)RESV_ATR_SchedSelect];
 			break;
 
-		case	RESV_JOB_OBJECT:
-			presv = (resc_resv *)pobj;
-			assert(presv != NULL);
-			pjob = presv->ri_jbp;
-			assert(pjob != NULL);
-			pque = pjob->ji_qhdr;
-			assert(pque != NULL);
-			pdest = &presv->ri_wattr[(int)RESV_ATR_resource];
-			break;
-
 		default:
 			break;
 	}
@@ -2664,152 +2543,6 @@ correct_ct(pbs_queue *pqj)
 }
 #endif 	/* NDEBUG */
 
-
-
-/**
- * @brief
- * 		Update_Resvstate_if_resv - function checks if the job is
- * 		a reservation-job and, if so, the reservation "state"
- *		is computed based on:
- *		current "job state", "job substate", "reservation state"
- *		and, the "reserve_start"/"reserve_end" times vs current time.
- * @par
- *		The assumption that's made is that "reserve_start",
- *		and "reserve_end" have been computed prior to the calling
- *		of this function -  typically by making a call to function
- *		"start_end_dur_wall ()".
- *
- * @param[in]	pjob	-	job which needs to be checked
- */
-
-void
-Update_Resvstate_if_resv(job *pjob)
-{
-	attribute *ap;
-	resc_resv *presv;
-	int	  beyondStart = 0;
-
-	if (pjob == NULL)
-		return;
-
-	/* Is this job a reservation job ? */
-	if ((presv = pjob->ji_resvp) == NULL)
-		return;
-
-	ap = &pjob->ji_wattr[JOB_ATR_reserve_state];
-
-	/* This is a reservation job, compute reservation state */
-	/* Remark: one thing that might be worth considering is */
-	/* other ways to treat a reservation job if a user has  */
-	/* placed a hold on the reservation and the time window */
-	/* for the reservation has passed.  Maybe we would want */
-	/* the reservation job to transition to an ordinary job */
-	/* and remain in the system				*/
-	/* OR, what if it is decided to ignore the reservation  */
-	/* and qrun the reservation job, ignoring any reservation*/
-	/* window.  Should the job in that setting cease to be  */
-	/* marked as a reservation job?				*/
-
-	if (presv->ri_wattr[RESV_ATR_end]
-		.at_val.at_long > 0) {
-		if (presv->ri_wattr[RESV_ATR_end]
-			.at_val.at_long <= time_now) {
-
-			if (ap->at_val.at_long != RESV_FINISHED) {
-				ap->at_val.at_long = RESV_FINISHED;
-				ap->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				pjob->ji_modified = 1;
-			}
-			return;
-		}
-	}
-
-	if (presv->ri_wattr[RESV_ATR_start]
-		.at_val.at_long <= time_now)
-		beyondStart = 1;
-
-	switch (pjob->ji_qs.ji_state) {
-		case JOB_STATE_TRANSIT:
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSIN) {
-				ap->at_val.at_long = RESV_UNCONFIRMED;
-				ap->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY
-					| ATR_VFLAG_MODCACHE;
-				pjob->ji_modified = 1;
-			}
-			break;
-		case JOB_STATE_HELD:
-			if (ap->at_val.at_long != presv->ri_qs.ri_state) {
-				ap->at_val.at_long = presv->ri_qs.ri_state;
-				ap->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				pjob->ji_modified = 1;
-			}
-			if (beyondStart) {
-				if (presv->ri_qs.ri_state == RESV_CONFIRMED) {
-					if (ap->at_val.at_long != RESV_TIME_TO_RUN) {
-						ap->at_val.at_long = RESV_TIME_TO_RUN;
-						ap->at_flags |= ATR_VFLAG_SET |
-							ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-						pjob->ji_modified = 1;
-					}
-				}
-			}
-			break;
-		case JOB_STATE_WAITING:
-			if (beyondStart) {
-				if (ap->at_val.at_long != RESV_TIME_TO_RUN) {
-					ap->at_val.at_long = RESV_TIME_TO_RUN;
-					ap->at_flags |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					pjob->ji_modified = 1;
-				}
-			} else if (ap->at_val.at_long != RESV_CONFIRMED) {
-				ap->at_val.at_long = RESV_CONFIRMED;
-				ap->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				pjob->ji_modified = 1;
-			}
-			break;
-		case JOB_STATE_QUEUED:
-			if (beyondStart) {
-				if (ap->at_val.at_long != RESV_TIME_TO_RUN) {
-					ap->at_val.at_long = RESV_TIME_TO_RUN;
-					ap->at_flags |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					pjob->ji_modified = 1;
-				}
-			} else {
-				if (ap->at_val.at_long != RESV_CONFIRMED) {
-					ap->at_val.at_long = RESV_CONFIRMED;
-					ap->at_flags |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					pjob->ji_modified = 1;
-				}
-			}
-
-			break;
-		case JOB_STATE_RUNNING:
-			if (beyondStart) {
-				/*operator didn't run the job early*/
-				if (ap->at_val.at_long != RESV_RUNNING) {
-					ap->at_val.at_long = RESV_RUNNING;
-					ap->at_flags |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					pjob->ji_modified = 1;
-				}
-			}
-			break;
-		case JOB_STATE_EXITING:
-			if (ap->at_val.at_long != RESV_BEING_DELETED) {
-				ap->at_val.at_long = RESV_BEING_DELETED;
-				ap->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY |
-					ATR_VFLAG_MODCACHE;
-				pjob->ji_modified = 1;
-			}
-			break;
-	}
-}
 
 /**
  * @brief
@@ -3037,8 +2770,6 @@ Time4resv(struct work_task *ptask)
 
 	pbs_ecode = change_enableORstart(presv, Q_CHNG_START, "True");
 	if (!pbs_ecode) {
-		job *pjob;
-
 		/*
 		 *this is really the line we want once the scheduler
 		 *has the capability to say "begin this reservation"
@@ -3046,14 +2777,6 @@ Time4resv(struct work_task *ptask)
 
 		eval_resvState(presv, RESVSTATE_Time4resv, 0, &state, &sub);
 		resv_setResvState(presv, state, sub);
-		cmp_resvStateRelated_attrs((void *)presv,
-			presv->ri_qs.ri_type);
-		if (presv->ri_qs.ri_type == RESV_JOB_OBJECT &&
-			(pjob = presv->ri_jbp)) {
-
-			svr_evaljobstate(pjob, &state, &sub, 0);
-			(void)svr_setjobstate(pjob, state, sub);
-		}
 
 		/*ok, time for the reservation to be running so adjust
 		 *server's/queue's resource accounting to reflect that
@@ -4208,13 +3931,6 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 	char			*at_name;
 	int			index;
 
-	/*General Remark: shouldn't do any queue "enable/start"
-	 *changing for reservation jobs since they don't have
-	 *a queue especially created for them
-	 */
-	if (presv->ri_qs.ri_type != RESC_RESV_OBJECT)
-		return (0);
-
 	if (which == Q_CHNG_START && strcmp(value, ATR_TRUE) == 0 &&
 		! presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET)
 		return (0);
@@ -4479,9 +4195,7 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
 
 /**
  * @brief
- *		start_end_dur_wall - This function handles both "resc_resv"
- *		objects or "job" objects.  If it is passed a reservation
- *		of some type, it considers the information specified for
+ *		start_end_dur_wall - This function considers the information specified for
  *		start_time, end_time, duration and walltime.  Using what was
  *		specified, it computes those unspecified values that are
  *		possible to compute. If the initially supplied information
@@ -4495,8 +4209,7 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
  *		"ri_qs.ri_etime", and "ri_qs.ri_duration" fields are subject
  *		to modification.
  *
- * @param[in,out]	pobj	-	it can be "resc_resv" objects or "job" objects.
- * @param[in]	objtype	-	determines the type of object - job/resc_resv.
+ * @param[in,out]	presv	-	the "resc_resv" object
  *
  * @return	int
  * @retval	0	: Success
@@ -4506,10 +4219,8 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
  * 					resource entry if it doesn't exist
  */
 int
-start_end_dur_wall(void *pobj, int objtype)
+start_end_dur_wall(resc_resv *presv)
 {
-	job		*pjob = NULL;
-	resc_resv	*presv = NULL;
 	resource_def	*rscdef = NULL;
 	resource	*prsc = NULL;
 	attribute	*pstime = NULL;
@@ -4524,58 +4235,22 @@ start_end_dur_wall(void *pobj, int objtype)
 	int	rc = 0;		/*return code, assume success*/
 	short	check_start = 1;
 
-	if (pobj == 0)
+	if (presv == 0)
 		return (-1);
 
 	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
 
-	if (objtype == JOB_OBJECT) {
-		pjob = (job *)pobj;
-		if ((pjob->ji_wattr[JOB_ATR_reserve_start]
-			.at_flags & ATR_VFLAG_SET) == 0)
-			return (0);
-		else {
-			pjob = (job *)pobj;
-			pstime = &pjob->ji_wattr[JOB_ATR_reserve_start];
+	pstime = &presv->ri_wattr[RESV_ATR_start];
+	pstate = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 
-			petime = &pjob->ji_wattr[JOB_ATR_reserve_end];
+	petime = &presv->ri_wattr[RESV_ATR_end];
 
-			pddef = &job_attr_def[JOB_ATR_reserve_duration];
-			pduration = &pjob->ji_wattr[JOB_ATR_reserve_duration];
+	pddef = &resv_attr_def[RESV_ATR_duration];
+	pduration = &presv->ri_wattr[RESV_ATR_duration];
 
-			pattr = &pjob->ji_wattr[JOB_ATR_resource];
-			prsc = find_resc_entry(&pjob->ji_wattr[JOB_ATR_resource],
-				rscdef);
-		}
-	} else if (objtype == RESC_RESV_OBJECT) {
-		presv = (resc_resv *)pobj;
-		pstime = &presv->ri_wattr[RESV_ATR_start];
-		pstate = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
-
-		petime = &presv->ri_wattr[RESV_ATR_end];
-
-		pddef = &resv_attr_def[RESV_ATR_duration];
-		pduration = &presv->ri_wattr[RESV_ATR_duration];
-
-		pattr = &presv->ri_wattr[RESV_ATR_resource];
-		prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource],
-			rscdef);
-		check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
-	} else if (objtype == RESV_JOB_OBJECT) {
-		pjob = (job *)pobj;
-		presv = pjob->ji_resvp;
-		pstime = &pjob->ji_wattr[JOB_ATR_reserve_start];
-
-		petime = &pjob->ji_wattr[JOB_ATR_reserve_end];
-
-		pddef = &job_attr_def[JOB_ATR_reserve_duration];
-		pduration = &pjob->ji_wattr[JOB_ATR_reserve_duration];
-
-		pattr = &pjob->ji_wattr[JOB_ATR_resource];
-		prsc = find_resc_entry(&pjob->ji_wattr[JOB_ATR_resource],
-			rscdef);
-	} else
-		return (-1);
+	pattr = &presv->ri_wattr[RESV_ATR_resource];
+	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
+	check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
 
 	if (pstate != RESV_BEING_ALTERED) {
 		if (pstime->at_flags & ATR_VFLAG_SET)
@@ -4730,12 +4405,10 @@ start_end_dur_wall(void *pobj, int objtype)
 		petime->at_val.at_long += server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
 	}
 
-	if (!rc && (objtype == RESC_RESV_OBJECT ||
-		objtype == RESV_JOB_OBJECT)) {
-		presv->ri_qs.ri_stime = pstime->at_val.at_long;
-		presv->ri_qs.ri_etime = petime->at_val.at_long;
-		presv->ri_qs.ri_duration = pduration->at_val.at_long;
-	}
+	presv->ri_qs.ri_stime = pstime->at_val.at_long;
+	presv->ri_qs.ri_etime = petime->at_val.at_long;
+	presv->ri_qs.ri_duration = pduration->at_val.at_long;
+
 	return (rc);
 }
 

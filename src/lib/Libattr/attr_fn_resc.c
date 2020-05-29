@@ -202,7 +202,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
  *
  */
 int
-encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_resc(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	int	    dflt;
 	resource   *prsc;
@@ -536,7 +536,7 @@ is_builtin(resource_def *rscdef)
  */
 
 resource *
-find_resc_entry(attribute *pattr, resource_def *rscdf)
+find_resc_entry(const attribute *pattr, resource_def *rscdf)
 {
 	resource *pr;
 

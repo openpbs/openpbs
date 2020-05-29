@@ -205,7 +205,6 @@ extern "C" {
 
 #define ATTR_resv_name	 "Reserve_Name"
 #define ATTR_resv_owner	 "Reserve_Owner"
-#define ATTR_resv_type	 "reserve_type"
 #define ATTR_resv_Tag	 "reservation_Tag"
 #define ATTR_resv_ID	 "reserve_ID"
 #define ATTR_resv_retry "reserve_retry"

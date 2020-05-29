@@ -277,7 +277,7 @@ decode_arst(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_arst(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_arst(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	char	 *end;
 	int	  i;
@@ -945,7 +945,7 @@ decode_arst_bs(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_arst_bs(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	char	 *end;
 	int	  i;

@@ -142,7 +142,7 @@ extern "C" {
 #define PBSE_JOBNOTRESV 15076		/* not a reservation job       */
 #define PBSE_TOOLATE	15077		/* too late for job reservation*/
 #define PBSE_IRESVE	15078		/* internal reservation-system error */
-#define PBSE_UNKRESVTYPE 15079		/* unknown reservation type */
+/* 15079 unused */
 #define PBSE_RESVEXIST	15080		/* reservation already exists */
 #define PBSE_resvFail	15081		/* reservation failed */
 #define PBSE_genBatchReq 15082		/* batch request generation failed */

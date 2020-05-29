@@ -193,7 +193,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 24
 
 int
-encode_time(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_time(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t ct;
 	unsigned long n;

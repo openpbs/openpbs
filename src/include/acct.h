@@ -86,23 +86,22 @@ extern "C" {
 
 extern int  acct_open(char *filename);
 extern void acct_close(void);
-extern void account_record(int acctype, job *pjob, char *text);
-extern void write_account_record(int acctype, char *jobid, char *text);
+extern void account_record(int acctype, const job *pjob, char *text);
+extern void write_account_record(int acctype, const char *jobid, char *text);
 
 #ifdef	_RESERVATION_H
 extern void account_recordResv(int acctype, resc_resv *presv, char *text);
 extern void account_resvstart(resc_resv *presv);
 #endif
 
-extern void account_jobstr(job *pjob);
-extern void account_jobstr2(job *pjob, int type);
+extern void account_jobstr(const job *pjob, int type);
 extern void account_job_update(job *pjob, int type);
 extern void account_jobend(job *pjob, char * used, int type);
 extern void log_alter_records_for_attrs(job *pjob, svrattrl *plist);
 extern void log_suspend_resume_record(job *pjob, int acct_type);
 extern void set_job_ProvAcctRcd(job *pjob, long time_se, int type);
 
-extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob);
+extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, const job *pjob);
 
 #define PROVISIONING_STARTED 1
 #define PROVISIONING_SUCCESS 2

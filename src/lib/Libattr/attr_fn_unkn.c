@@ -163,7 +163,7 @@ decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
 /*ARGSUSED*/
 
 int
-encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_unkn(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *plist;
 	svrattrl *pnew;

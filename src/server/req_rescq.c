@@ -482,8 +482,8 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 	if ((vnodes == NULL) || (*vnodes == '\0'))
 		return (PBSE_BADNODESPEC);
 
-	ret = set_nodes((void *)presv, presv->ri_qs.ri_type, vnodes,
-		&node_str, &host_str, &host_str2, 0, svr_init);
+	ret = set_nodes((void *)presv, RESC_RESV_OBJECT, vnodes,
+					&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
 		/* update resc_resv object's RESV_ATR_resv_nodes attribute */
@@ -812,10 +812,7 @@ req_confirmresv(struct batch_request *preq)
 	 * newly computed values
 	 */
 	eval_resvState(presv, RESVSTATE_gen_task_Time4resv, 0, &state, &sub);
-	(void)resv_setResvState(presv, state, sub);
-	cmp_resvStateRelated_attrs((void *)presv,
-		presv->ri_qs.ri_type);
-	Update_Resvstate_if_resv(presv->ri_jbp);
+	resv_setResvState(presv, state, sub);
 	if (strncmp(preq->rq_extend, PBS_RESV_CONFIRM_SUCCESS, strlen(PBS_RESV_CONFIRM_SUCCESS)) == 0) {
 		char *p_tmp;
 		p_tmp = strstr(preq->rq_extend, ":partition=");

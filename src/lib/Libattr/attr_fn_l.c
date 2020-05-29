@@ -143,7 +143,7 @@ decode_l(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 21
 
 int
-encode_l(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_l(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	  ct;
 	char	  cvnbuf[CVNBUFSZ];

@@ -126,7 +126,7 @@ decode_c(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_c(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_c(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 
 {
 

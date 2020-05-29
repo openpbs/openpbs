@@ -172,7 +172,7 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_b(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_b(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	  ct;
 	svrattrl *pal;

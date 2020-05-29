@@ -1977,8 +1977,7 @@ init_abt_job(job *pjob)
 /**
  * @brief
  * 		Rmv_if_resv_not_possible - If the job belongs to a reservation that
- *		is no longer possible, or it is a reservation job that is no
- *		longer possible then report back that it should not be requeued.
+ *		is no longer possible then report back that it should not be requeued.
  *
  * 		If the job is in a standing reservation queue then do not check whether it is
  * 		viable as this will be handled as part of the end event for the occurrence.
@@ -1997,43 +1996,23 @@ Rmv_if_resv_not_possible(job *pjob)
 	resc_resv   *presv;
 	pbs_queue   *pque;
 
+	if ((pque = find_queuebyname(pjob->ji_qs.ji_queue)) !=0) {
+		if ((presv = pque->qu_resvp) !=0) {
 
+			/*we are dealing with a job in a reservation*/
 
-	if (pjob->ji_wattr[JOB_ATR_reserve_state].at_flags &
-		ATR_VFLAG_SET) {
-		/*we are dealing with a reservation job.  Check
-		 *that it's still viable as a reservation, that it's
-		 *resc_resv structure exists and, if so, rejoin
-		 */
+			pjob->ji_myResv = presv;
 
-		presv = find_resv(pjob->ji_qs.ji_jobid);
-		if (presv == NULL ||
-			pjob->ji_wattr[JOB_ATR_reserve_end]
-			.at_val.at_long < time_now)
-			rc = 1;
-		else {
-			presv->ri_jbp = pjob;
-			pjob->ji_resvp = presv;
-		}
-	} else {
-		if ((pque = find_queuebyname(pjob->ji_qs.ji_queue)) !=0) {
-			if ((presv = pque->qu_resvp) !=0) {
+			/* If a standing reservation then ignore the check for end time
+				* The behavior of a standing reservation differs from that of an
+				* advance one in that only running jobs are deleted at the end of
+				*  an occurrence (be it missed or not).
+				*/
+			if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1)
+				return 0;
 
-				/*we are dealing with a job in a reservation*/
-
-				pjob->ji_myResv = presv;
-
-				/* If a standing reservation then ignore the check for end time
-				 * The behavior of a standing reservation differs from that of an
-				 * advance one in that only running jobs are deleted at the end of
-				 *  an occurrence (be it missed or not).
-				 */
-				if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1)
-					return 0;
-
-				if (presv->ri_qs.ri_etime < time_now)
-					rc = 1;
-			}
+			if (presv->ri_qs.ri_etime < time_now)
+				rc = 1;
 		}
 	}
 	return  (rc);
@@ -2055,7 +2034,7 @@ Rmv_if_resv_not_possible(job *pjob)
 static int
 attach_queue_to_reservation(resc_resv *presv)
 {
-	if (presv == NULL || presv->ri_qs.ri_type != RESC_RESV_OBJECT)
+	if (presv == NULL)
 		return (0);
 	presv->ri_qp = find_queuebyname(presv->ri_qs.ri_queue);
 

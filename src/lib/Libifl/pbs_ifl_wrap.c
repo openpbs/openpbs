@@ -8392,7 +8392,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_submit_arguments",SWIG_FromCharPtr("Submit_arguments"));
   SWIG_Python_SetConstant(d, "ATTR_resv_name",SWIG_FromCharPtr("Reserve_Name"));
   SWIG_Python_SetConstant(d, "ATTR_resv_owner",SWIG_FromCharPtr("Reserve_Owner"));
-  SWIG_Python_SetConstant(d, "ATTR_resv_type",SWIG_FromCharPtr("reserve_type"));
   SWIG_Python_SetConstant(d, "ATTR_resv_Tag",SWIG_FromCharPtr("reservation_Tag"));
   SWIG_Python_SetConstant(d, "ATTR_resv_ID",SWIG_FromCharPtr("reserve_ID"));
   SWIG_Python_SetConstant(d, "ATTR_resv_retry",SWIG_FromCharPtr("reserve_retry"));
@@ -8704,4 +8703,3 @@ SWIG_init(void) {
   return;
 #endif
 }
-

@@ -133,7 +133,6 @@ pbs_python_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/resv_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/svr_attr_def.c \
 	$(top_srcdir)/src/server/svr_attr.c \
-	$(top_srcdir)/src/server/resv_attr.c \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \

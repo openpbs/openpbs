@@ -1609,7 +1609,7 @@ dup_depend(attribute *pattr, struct depend *pd)
 /*ARGSUSED*/
 
 int
-encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	int		    ct = 0;
 	char		    cvtbuf[22];

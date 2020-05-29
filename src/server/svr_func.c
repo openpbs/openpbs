@@ -302,7 +302,7 @@ static char *svr_state_names[] = {
  */
 
 int
-encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	char *psname;
@@ -415,11 +415,11 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		sysru = &server.sv_attr[(int)SRV_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
 
-		if (pjob->ji_resvp || (pjob->ji_myResv &&
+		if (pjob->ji_myResv &&
 			(pjob->ji_myResv->ri_qs.ri_state == RESV_RUNNING ||
 			pjob->ji_myResv->ri_qs.ri_state == RESV_DELETED ||
 			pjob->ji_myResv->ri_qs.ri_state == RESV_BEING_DELETED ||
-			pjob->ji_myResv->ri_qs.ri_state == RESV_FINISHED))) {
+			pjob->ji_myResv->ri_qs.ri_state == RESV_FINISHED)) {
 
 			/*for jobs running under a reservation, server's
 			 *"resources_assigned" is updated when reservation
