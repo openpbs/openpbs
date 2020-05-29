@@ -580,6 +580,7 @@ get_full_username(char *username,
 	DWORD		domain_sz;
 	char		tryname[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
 	char		actual_name[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
+	DWORD ret = 0;
 
 	if (username == NULL)
 		return NULL;
@@ -592,8 +593,14 @@ get_full_username(char *username,
 		sprintf(tryname, "%s\\%s", get_saved_env("USERDOMAIN"),
 			username);
 		strcpy(actual_name, tryname);
-		LookupAccountName(0, tryname, sid, &sid_sz, domain,
-			&domain_sz, psid_type);
+		if (LookupAccountName(0, tryname, sid, &sid_sz, domain,
+				&domain_sz, psid_type) == 0) {
+			ret = GetLastError();
+			if (ret != ERROR_INSUFFICIENT_BUFFER) {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,
+					"failed in LookupAccountName(tryname) for %s with errno %lu", username, ret);
+			}
+		}
 	}
 
 	if (sid_sz <= 0) {
