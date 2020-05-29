@@ -558,7 +558,7 @@ extern int action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode);
 
 extern int encode_svrstate(const attribute *pattr,  pbs_list_head *phead,  char *aname,
 	char *rsname,  int mode,  svrattrl **rtnl);
-extern int encode_isrunhook(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl);
+extern int encode_isrunhook(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl);
 
 extern int decode_rcost(attribute *patr,  char *name,  char *rn,  char *val);
 extern int encode_rcost(const attribute *attr,  pbs_list_head *phead,  char *atname,

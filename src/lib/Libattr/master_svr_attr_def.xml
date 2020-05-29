@@ -1675,7 +1675,7 @@
    /* SRV_ATR_has_runjob_hook */
     <member_name><both>ATTR_has_runjob_hook</both></member_name>
     <member_at_decode>decode_b</member_at_decode>
-    <member_at_encode>encode_isrunhook</member_at_encode>
+    <member_at_encode>encode_b</member_at_encode>
     <member_at_set>set_b</member_at_set>
     <member_at_comp>comp_b</member_at_comp>
     <member_at_free>free_null</member_at_free>

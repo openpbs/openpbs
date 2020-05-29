@@ -749,7 +749,7 @@ encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char
 }
 
 int
-encode_isrunhook(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_isrunhook(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return 1;
 }

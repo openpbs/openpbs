@@ -308,6 +308,9 @@ init_server_attrs()
 	set_size(&attr_jobscript_max_size,&attrib,SET);
 
 	snprintf(dflt_log_event, sizeof(dflt_log_event), "%d", SVR_LOG_DFLT);
+
+	set_attr_svr(&(server.sv_attr[SRV_ATR_has_runjob_hook]), &svr_attr_def[SRV_ATR_has_runjob_hook], ATR_FALSE);
+
 	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_log_events]), &svr_attr_def[(int) SRV_ATR_log_events], dflt_log_event);
 
 	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_mailfrom]), &svr_attr_def[(int) SRV_ATR_mailfrom], PBS_DEFAULT_MAIL);
