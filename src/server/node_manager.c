@@ -7656,11 +7656,14 @@ free_resvNodes(resc_resv *presv)
 		pnode = pbsndlist[i];
 
 		for (prev = NULL, rinfp = pnode->nd_resvp;
-			rinfp; prev = rinfp, rinfp = rinfp->next) {
+			rinfp;) {
 
 
-			if (rinfp->resvp != presv)
+			if (rinfp->resvp != presv) {
+				prev = rinfp;
+				rinfp = rinfp->next;
 				continue;
+			}
 
 			/* garbage collect the pbsnode_list */
 			for (pnl = presv->ri_pbsnode_list, pnl_next = pnl; pnl_next; pnl = pnl_next) {
@@ -7682,12 +7685,15 @@ free_resvNodes(resc_resv *presv)
 
 			DBPRT(("Freeing resvinfo on node %s from reservation %s\n",
 				pnode->nd_name, presv->ri_qs.ri_resvID))
-			if (prev == NULL)
+			if (prev == NULL) {
 				pnode->nd_resvp = rinfp->next;
-			else
+				free(rinfp);
+				rinfp = pnode->nd_resvp;
+			} else {
 				prev->next = rinfp->next;
-			free(rinfp);
-			break;
+				free(rinfp);
+				rinfp = prev->next;
+			}
 		}
 	}
 	presv->ri_vnodect = 0;
