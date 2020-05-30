@@ -191,6 +191,11 @@ class TestCgroupsHook(TestFunctional):
             self.logger.info("Deleting the existing vnodes")
             self.mom.delete_vnode_defs()
             self.mom.restart()
+
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                mom.revert_to_default = False
+
         TestFunctional.setUp(self)
 
         # Some of the tests requires 2 or 3 nodes.
@@ -245,6 +250,9 @@ class TestCgroupsHook(TestFunctional):
         self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
         self.serverA = self.servers.values()[0].name
+        self.mem = 'true'
+        if not self.paths['memory']:
+            self.mem = 'false'
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs()
@@ -615,7 +623,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "exclude_hosts"   : [],
             "exclude_vntypes" : [],
             "soft_limit"      : false,
@@ -715,7 +723,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "96MB",
             "reserve_amount"  : "50MB",
             "exclude_hosts"   : [],
@@ -765,7 +773,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "96MB",
             "reserve_amount"  : "100MB",
             "exclude_hosts"   : [],
@@ -793,7 +801,7 @@ sleep 300
             "memory_spread_page" : %s
         },
         "memory" : {
-            "enabled" : true
+            "enabled" : %s
         },
         "memsw" : {
             "enabled" : %s
@@ -806,7 +814,7 @@ sleep 300
     "cgroup" : {
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "64MB",
             "reserve_percent" : "0",
             "reserve_amount"  : "0MB"
@@ -849,14 +857,14 @@ sleep 300
             "enabled"            : false
         },
         "memory" : {
-            "enabled"            : true,
+            "enabled"            : %s,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",
             "reserve_amount"     : "64MB"
         },
         "memsw" : {
-            "enabled"            : true,
+            "enabled"            : %s,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",
@@ -899,7 +907,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "96MB",
             "reserve_amount"  : "50MB",
             "exclude_hosts"   : [],
@@ -944,14 +952,14 @@ sleep 300
             "enabled"            : false
         },
         "memory" : {
-            "enabled"            : true,
+            "enabled"            : %s,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",
             "reserve_amount"     : "64MB"
         },
         "memsw" : {
-            "enabled"            : true,
+            "enabled"            : %s,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",
@@ -994,7 +1002,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1002,7 +1010,7 @@ sleep 300
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1049,7 +1057,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1057,7 +1065,7 @@ sleep 300
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1107,7 +1115,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1115,7 +1123,7 @@ sleep 300
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1163,7 +1171,7 @@ sleep 300
         },
         "memory":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1171,7 +1179,7 @@ sleep 300
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "64MB",
             "exclude_hosts"   : [],
@@ -1457,7 +1465,7 @@ if %s e.job.in_ms_mom():
              'content-encoding': 'default',
              'input-file': self.config_file}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        if not mom_checks:
+        if not mom_checks or self.moms_list[0].is_cpuset_mom():
             return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
@@ -1573,7 +1581,7 @@ if %s e.job.in_ms_mom():
             self.set_vntype(typestring=self.vntypename[0],
                             host=self.hosts_list[0])
         a = self.cfg1 % ('', '"' + self.vntypename[0] + '"',
-                         '', '', self.swapctl)
+                         '', '', self.mem, self.swapctl)
         self.load_config(a)
         for m in self.moms.values():
             m.restart()
@@ -1623,7 +1631,8 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP9'
         mom, log = self.get_host_names(self.hosts_list[0])
-        self.load_config(self.cfg1 % ('%s' % mom, '', '', '', self.swapctl))
+        self.load_config(self.cfg1 % ('%s' % mom, '', '', '',
+                                      self.mem, self.swapctl))
         for m in self.moms.values():
             m.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -1665,7 +1674,7 @@ if %s e.job.in_ms_mom():
             self.logger.info('Adding vntype %s to mom %s' %
                              (self.vntypename[0], self.moms_list[0]))
             self.set_vntype(typestring='no_cgroups', host=self.hosts_list[0])
-        self.load_config(self.cfg3 % ('', 'false', '',
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem,
                                       '"' + self.vntypename[0] + '"',
                                       self.swapctl,
                                       '"' + self.vntypename[0] + '"'))
@@ -1712,7 +1721,8 @@ if %s e.job.in_ms_mom():
         name = 'CGROUP13'
         conf = {'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
@@ -1806,8 +1816,11 @@ if %s e.job.in_ms_mom():
         Check to see that cpuset.cpus=0, cpuset.mems=0 and that
         memory.limit_in_bytes = 314572800
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP1'
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # This test expects the job to land on CPU 0.
         # The previous test may have qdel -Wforce its jobs, and then it takes
         # some time for MoM to run the execjob_epilogue and execjob_end
@@ -1849,8 +1862,11 @@ if %s e.job.in_ms_mom():
         memory.limit_in_bytes = 100663296
         memory.memsw.limit_in_bytes = 100663296
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP2'
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:host=%s' %
@@ -1948,7 +1964,8 @@ if %s e.job.in_ms_mom():
         # otherwise the load_config tests to see if it's all done
         # might get confused
         # occasional trouble seen on TH2
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         # Submit two jobs
@@ -2034,7 +2051,8 @@ if %s e.job.in_ms_mom():
             self.skipTest('This test requires hyperthreading to be enabled.')
 
         name = 'CGROUP18'
-        self.load_config(self.cfg8 % ('', '', '', self.swapctl, ''))
+        self.load_config(self.cfg8 % ('', '', self.mem, '', self.swapctl,
+                                      ''))
         # Make sure to restart MOM
         # HUP is not enough to get rid of earlier
         # per socket vnodes created when vnode_per_numa_node=True
@@ -2078,7 +2096,8 @@ if %s e.job.in_ms_mom():
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP5'
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -2111,7 +2130,8 @@ if %s e.job.in_ms_mom():
         if not self.is_file(fn, self.hosts_list[0]):
             self.skipTest('vmem resource not present on node')
         name = 'CGROUP6'
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         # Make sure output file is gone, otherwise wait and read
@@ -2149,7 +2169,8 @@ if %s e.job.in_ms_mom():
         if not self.is_dir(fdir, self.hosts_list[0]):
             self.skipTest('Freezer cgroup is not found')
         # Configure the hook
-        self.load_config(self.cfg3 % ('', vnpernuma, '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', vnpernuma, '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -2279,7 +2300,8 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP10'
         mom, _ = self.get_host_names(self.hosts_list[0])
-        self.load_config(self.cfg1 % ('', '', '', '%s' % mom, self.swapctl))
+        self.load_config(self.cfg1 % ('', '', '', '%s' % mom,
+                                      self.mem, self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2316,7 +2338,8 @@ if %s e.job.in_ms_mom():
         """
         name = 'CGROUP11'
         mom, log = self.get_host_names(self.hosts_list[0])
-        self.load_config(self.cfg1 % ('', '', '%s' % mom, '', self.swapctl))
+        self.load_config(self.cfg1 % ('', '', '%s' % mom, '',
+                                      self.mem, self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[1], ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2353,7 +2376,8 @@ if %s e.job.in_ms_mom():
         mem, and vmem in qstat
         """
         name = 'CGROUP14'
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job2)
@@ -2407,7 +2431,8 @@ if %s e.job.in_ms_mom():
         """
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2422,7 +2447,7 @@ if %s e.job.in_ms_mom():
                                  id=self.nodes_list[0])
         mem1 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info('Mem-1: %s' % mem1.value)
-        self.load_config(self.cfg4 % (self.swapctl))
+        self.load_config(self.cfg4 % (self.mem, self.swapctl))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2468,7 +2493,7 @@ if %s e.job.in_ms_mom():
         Test multi-node jobs with cgroups
         """
         name = 'CGROUP16'
-        self.load_config(self.cfg6 % (self.swapctl))
+        self.load_config(self.cfg6 % (self.mem, self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -2502,7 +2527,7 @@ if %s e.job.in_ms_mom():
         if not self.paths['memory']:
             self.skipTest('Test requires memory subystem mounted')
         name = 'CGROUP17'
-        self.load_config(self.cfg1 % ('', '', '', '', self.swapctl))
+        self.load_config(self.cfg1 % ('', '', '', '', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -2561,7 +2586,7 @@ if %s e.job.in_ms_mom():
         """
         Test that cgroups files are cleaned up after qdel
         """
-        self.load_config(self.cfg1 % ('', '', '', '', self.swapctl))
+        self.load_config(self.cfg1 % ('', '', '', '', self.mem, self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
@@ -2588,7 +2613,7 @@ if %s e.job.in_ms_mom():
         clean up cgroup files for a job, execjob_end hook should clean
         them up
         """
-        self.load_config(self.cfg4 % (self.swapctl))
+        self.load_config(self.cfg4 % (self.mem, self.swapctl))
         # remove epilogue and periodic from the list of events
         attr = {'enabled': 'True',
                 'event': ['execjob_begin', 'execjob_launch',
@@ -2599,7 +2624,7 @@ if %s e.job.in_ms_mom():
         j.set_sleep_time(1)
         jid = self.server.submit(j)
         # wait for job to finish
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET, max_attempts=20,
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET,
                            interval=1, offset=1)
         # verify that cgroup files for this job are gone even if
         # epilogue and periodic events are not disabled
@@ -2630,9 +2655,12 @@ if %s e.job.in_ms_mom():
         Test to verify that job requesting mem larger than any single vnode
         works properly
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
+
         vn_attrs = {ATTR_rescavail + '.ncpus': 1,
                     ATTR_rescavail + '.mem': '500mb'}
-        self.load_config(self.cfg4 % (self.swapctl))
+        self.load_config(self.cfg4 % (self.mem, self.swapctl))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.nodes_list[0])
         self.server.create_vnodes('vnode', vn_attrs, 2,
@@ -2669,7 +2697,7 @@ if %s e.job.in_ms_mom():
         """
         # Fetch the unmodified value of resources_available.ncpus
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2683,7 +2711,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Node must have at least two CPUs')
         # Now exclude CPU zero
         self.load_config(self.cfg5 % ('false', '0', 'false', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2697,7 +2725,7 @@ if %s e.job.in_ms_mom():
         # Repeat the process with vnode_per_numa_node set to true
         vnode = '%s[0]' % self.nodes_list[0]
         self.load_config(self.cfg5 % ('true', '', 'false', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2709,7 +2737,7 @@ if %s e.job.in_ms_mom():
         self.logger.info('Original value of vnode ncpus: %d' % orig_ncpus)
         # Exclude CPU zero again
         self.load_config(self.cfg5 % ('true', '0', 'false', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -2723,6 +2751,8 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_fences affects setting of cpuset.mems
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         # Get the grandparent directory
         cpuset_base = self.paths['cpuset']
         cpuset_mems = os.path.join(cpuset_base, 'cpuset.mems')
@@ -2732,7 +2762,7 @@ if %s e.job.in_ms_mom():
             self.skipTest('Test requires two NUMA nodes')
         # First try with mem_fences set to true (the default)
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         # Restart mom for cgroups hook changes to take effect
         self.mom.restart()
         # Do not use node_list -- vnode_per_numa_node is NOW off
@@ -2758,7 +2788,7 @@ if %s e.job.in_ms_mom():
         self.logger.info("value with mem_fences: %s" % value_mem_fences)
         # Now try with mem_fences set to false
         self.load_config(self.cfg5 % ('false', '', 'false', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
@@ -2785,8 +2815,10 @@ if %s e.job.in_ms_mom():
         """
         Confirm that mem_hardwall affects setting of cpuset.mem_hardwall
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
@@ -2812,7 +2844,7 @@ if %s e.job.in_ms_mom():
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
         self.load_config(self.cfg5 % ('false', '', 'true', 'true',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodes_list[0], interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
@@ -2881,8 +2913,10 @@ if %s e.job.in_ms_mom():
         Confirm that mem_spread_page affects setting of
         cpuset.memory_spread_page
         """
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
-                                      'false', self.swapctl))
+                                      'false', self.mem, self.swapctl))
         nid = self.nodes_list[0]
         self.server.expect(NODE, {'state': 'free'}, id=nid,
                            interval=3, offset=10)
@@ -2906,7 +2940,7 @@ if %s e.job.in_ms_mom():
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
         self.load_config(self.cfg5 % ('false', '', 'true', 'false',
-                                      'true', self.swapctl))
+                                      'true', self.mem, self.swapctl))
         self.server.expect(NODE, {'state': 'free'}, id=nid,
                            interval=3, offset=10)
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % hostn}
@@ -2949,7 +2983,7 @@ if %s e.job.in_ms_mom():
             cmd = ["rmdir", cpath]
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
-        self.load_config(self.cfg6 % (self.swapctl))
+        self.load_config(self.cfg6 % (self.mem, self.swapctl))
         self.moms_list[0].restart()
         # Wait for exechost_startup hook to run
         self.moms_list[0].log_match("Hook handler returned success for"
@@ -2987,7 +3021,8 @@ if %s e.job.in_ms_mom():
         """
         conf = {'freq': 5, 'order': 100}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
-        self.load_config(self.cfg3 % ('', 'false', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'false', '', self.mem, '',
+                                      self.swapctl, ''))
         # Submit a short job and let it run to completion
         a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
              self.hosts_list[0]}
@@ -3109,7 +3144,7 @@ event.accept()
         when execjob_launch hook prunes job via release_nodes(),
         tolerate_node_failures=job_start
         """
-        self.load_config(self.cfg7)
+        self.load_config(self.cfg7 % (self.mem, self.mem))
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3162,7 +3197,7 @@ event.accept()
         exec_job_resize failure in sister mom,
         tolerate_node_failures=job_start
         """
-        self.load_config(self.cfg7)
+        self.load_config(self.cfg7 % (self.mem, self.mem))
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3231,7 +3266,7 @@ event.accept()
         exec_job_resize failure in mom superior,
         tolerate_node_failures=job_start
         """
-        self.load_config(self.cfg7)
+        self.load_config(self.cfg7 % (self.mem, self.mem))
         # instantiate queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3292,7 +3327,7 @@ event.accept()
         job is using only vnodes from mother superior host,
         tolerate_node_failures=job_start
         """
-        self.load_config(self.cfg7)
+        self.load_config(self.cfg7 % (self.mem, self.mem))
         # disable queuejob hook
         hook_event = 'queuejob'
         hook_name = 'qjob'
@@ -3417,7 +3452,7 @@ event.accept()
         correct number of cpus and memory sockets.
         """
         name = 'CGROUP_BIG'
-        self.load_config(self.cfg9)
+        self.load_config(self.cfg9 % (self.mem, self.mem))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
 
@@ -3673,7 +3708,7 @@ sleep 300
                           'cgroup hook CPU quotas in this environment')
 
         name = 'CGROUP1'
-        self.load_config(self.cfg10)
+        self.load_config(self.cfg10 % (self.mem, self.mem))
         default_cfs_period_us = 100000
         default_cfs_quota_fudge_factor = 1.03
 
@@ -3775,7 +3810,8 @@ sleep 300
         name = 'CGROUP1'
         cfs_period_us = 200000
         cfs_quota_fudge_factor = 1.05
-        self.load_config(self.cfg11 % (cfs_period_us, cfs_quota_fudge_factor))
+        self.load_config(self.cfg11 % (self.mem, self.mem,
+                                       cfs_period_us, cfs_quota_fudge_factor))
         # Restart mom for changes made by cgroups hook to take effect
         self.mom.restart()
         self.server.expect(NODE, {'state': 'free'},
@@ -3871,7 +3907,7 @@ sleep 300
         name = 'CGROUP1'
         # config file 'cfg12' has 'allow_zero_cpus=true' under cpuset, to allow
         # zero-cpu jobs.
-        self.load_config(self.cfg12)
+        self.load_config(self.cfg12 % (self.mem, self.mem))
         default_cfs_period_us = 100000
         default_cfs_quota_fudge_factor = 1.03
         default_zero_shares_fraction = 0.002
@@ -3964,7 +4000,7 @@ sleep 300
         zero_cpus_quota_fraction = 0.5
         # config file 'cfg13' has 'allow_zero_cpus=true' under cpuset, to allow
         # zero-cpu jobs.
-        self.load_config(self.cfg13 % (cfs_period_us,
+        self.load_config(self.cfg13 % (self.mem, self.mem, cfs_period_us,
                                        cfs_quota_fudge_factor,
                                        zero_cpus_shares_fraction,
                                        zero_cpus_quota_fraction))
@@ -4031,7 +4067,8 @@ sleep 300
         hyperthreads_per_core = int(sibs / cores)
         name = 'CGROUP20'
         # set vnode_per_numa=true with use_hyperthreads=true
-        self.load_config(self.cfg3 % ('', 'true', '', '', self.swapctl, ''))
+        self.load_config(self.cfg3 % ('', 'true', '', self.mem, '',
+                                      self.swapctl, ''))
         # Restart mom so vnodes created by cgroups would show
         self.mom.restart()
         # Submit M*N*P jobs, where M is the number of physical processors,

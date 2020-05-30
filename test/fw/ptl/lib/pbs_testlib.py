@@ -13151,6 +13151,11 @@ class MoM(PBSService):
         self.version = None
         self._is_cpuset_mom = None
 
+        # If this is true, the mom will revert to default.
+        # This is true by default, but can be set to False if
+        # required by a test
+        self.revert_to_default = True
+
     def __del__(self):
         del self.__dict__
 

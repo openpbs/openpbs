@@ -1454,8 +1454,9 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(mom.isUp(), msg)
         mom.pbs_version()
         restart = False
-        if ((self.revert_to_defaults and self.mom_revert_to_defaults) or
-                force):
+        enabled_cpuset = False
+        if ((self.revert_to_defaults and self.mom_revert_to_defaults and
+             mom.revert_to_default) or force):
             # no need to delete vnodes as it is already deleted in
             # server revert_to_defaults
             mom.delete_pelog()
@@ -1482,16 +1483,15 @@ class PBSTestSuite(unittest.TestCase):
                 # when the natural node is created below
                 # HUP may not be enough if exechost_startup is delayed
                 restart = True
+                enabled_cpuset = True
         if restart:
             mom.restart()
         else:
             mom.signal('-HUP')
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
-        if not mom.is_cpuset_mom():
-            self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         a = {'state': 'free'}
-        if mom.is_cpuset_mom():
+        if enabled_cpuset:
             # Checking whether the CF file was copied really belongs in code
             # that changes the config file -- i.e. after enable_cgroup_cset
             # called above. We're not sure it is always called here,
@@ -1500,6 +1500,7 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
+            self.server.manager(MGR_CMD_CREATE, NODE, id=mom.shortname)
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
