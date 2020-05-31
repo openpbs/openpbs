@@ -641,8 +641,6 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 		if (!ReadFile(hPipe_remote_std, readbuf, READBUF_SIZE, &dwRead, NULL) || dwRead == 0) {
 			dwErr = GetLastError();
 			if (dwErr == ERROR_NO_DATA) {
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR,
-					__func__, "ReadFile failed with ERROR_NO_DATA (%lu)", dwErr);
 				return -1;
 			}
 		}
@@ -653,14 +651,16 @@ handle_stdoe_pipe(HANDLE hPipe_remote_std, void (*oe_handler)(char*))
 		}
 		/* When ReadFile returns with broken pipe, valid data may still be returned so break only after handling any data */
 		if (dwErr == ERROR_BROKEN_PIPE || dwErr == ERROR_PIPE_NOT_CONNECTED) {
-			log_err(-1, __func__, "ReadFile failed as pipe is broken or not connected");
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"ReadFile returned with errno %lu", dwErr);
 			return -1;
 		}
 	}
 	else if (dw_rc == 0) { /* PeekNamedPipe() fails */
 		dwErr = GetLastError();
 		if (dwErr == ERROR_NO_DATA || dwErr == ERROR_BROKEN_PIPE || dwErr == ERROR_PIPE_NOT_CONNECTED) {
-			log_err(-1, __func__, "PeekNamedPipe failed");
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"PeekNamedPipe returned with errno %lu", dwErr);
 			return -1;
 		}
 	}

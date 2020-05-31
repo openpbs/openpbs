@@ -491,7 +491,7 @@ dep_initialize()
 void
 dep_cleanup()
 {
-	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "dependent cleanup");
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, "dependent cleanup");
 
 	if (!destroy_profile(&mom_prof)) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "destroy_profile failed!");
@@ -540,13 +540,10 @@ mem_sum(job *pjob)
 	GetSystemInfo(&si);
 
 	/* Get the number of processes embedded in the job */
-	if (!(ret = QueryInformationJobObject(pjob->ji_hJob,
-			JobObjectBasicAccountingInformation,
-			&ji, sizeof(ji), NULL))) {
-		log_errf(-1, __func__, "QueryInformationJobObject for %d failed to get number of processes", pjob->ji_hJob);
-	}
-
-	if ((pjob->ji_hJob != NULL) && ret) {
+	if ((pjob->ji_hJob != NULL) &&
+		QueryInformationJobObject(pjob->ji_hJob,
+		JobObjectBasicAccountingInformation,
+		&ji, sizeof(ji), NULL)) {
 		nps = ji.TotalProcesses;
 	}
 
@@ -570,13 +567,11 @@ mem_sum(job *pjob)
 	pProcessList->NumberOfProcessIdsInList = 0;
 
 	/* Get the pid list */
-	if (pjob->ji_hJob != NULL) {
-		ret = QueryInformationJobObject(pjob->ji_hJob,
+	if (pjob->ji_hJob != NULL)
+		QueryInformationJobObject(pjob->ji_hJob,
 			JobObjectBasicProcessIdList,
 			pProcessList, pidlistsize, NULL);
-		if (!ret)
-			log_errf(-1, __func__, "QueryInformationJobObject for %d failed to get number of processes", pjob->ji_hJob);
-	}
+
 	/*
 	 * Traverse through each process and find the
 	 * memory used by that process during its execution.
@@ -589,11 +584,12 @@ mem_sum(job *pjob)
 			if (!QueryWorkingSet(hProcess, &nwspages, sizeof(nwspages)))
 				mem += nwspages * (si.dwPageSize >> 10);
 			else
-				log_errf(-1, __func__, "QueryWorkingSet failed for %d", hProcess);
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					"QueryWorkingSet failed for %d with errno %lu", hProcess, GetLastError());
 			CloseHandle(hProcess);
 		} else {
-			sprintf(log_buffer, "OpenProcess failed for pid %d", pProcessList->ProcessIdList[i]);
-			log_err(-1, __func__, log_buffer);
+			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"OpenProcess failed for pid %d with errno %lu", pProcessList->ProcessIdList[i], GetLastError());
 		}
 	}
 	free(pProcessList);
@@ -607,13 +603,16 @@ mem_sum(job *pjob)
 			(ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_errf(-1, __func__, "IsProcessInJob failed for %d job %d process", pjob->ji_hJob, ptask->ti_hProc);
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+
 			/* account for processes that are not part of the Windows job object */
 			if (is_process_in_job == FALSE) {
 				if(!QueryWorkingSet(ptask->ti_hProc, &nwspages, sizeof(nwspages)))
 					mem += nwspages * (si.dwPageSize >> 10);
 				else
-					log_errf(-1, __func__, "QueryWorkingSet failed for %d", ptask->ti_hProc);
+					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"QueryWorkingSet failed for %d with errno %lu", ptask->ti_hProc, GetLastError());
 			}
 		}
 	}
@@ -644,13 +643,11 @@ cput_sum(job *pjob)
 	BOOL                                    ret;
 
 	cputime = 0.0;
-	if (!(ret = QueryInformationJobObject(pjob->ji_hJob,
-		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL))) {
-		log_errf(-1, __func__, "QueryInformationJobObject for %d failed to get number of processes", pjob->ji_hJob);
-	}
 
-	if ((pjob->ji_hJob != NULL) && ret) {
+	if ((pjob->ji_hJob != NULL) &&
+		QueryInformationJobObject(pjob->ji_hJob,
+		JobObjectBasicAccountingInformation,
+		&ji, sizeof(ji), NULL)) {
 		cputime = (double)(ji.TotalUserTime.QuadPart +
 			ji.TotalKernelTime.QuadPart);
 		nps = ji.TotalProcesses;
@@ -661,7 +658,8 @@ cput_sum(job *pjob)
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_errf(-1, __func__, "IsProcessInJob failed for %d job %d process", pjob->ji_hJob, ptask->ti_hProc);
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
 			 * check if the processes is not part of the Windows job object due to pbs_attach
@@ -677,7 +675,8 @@ cput_sum(job *pjob)
 					cputime = cputime + *pkerneltime + *pusertime;
 				}
 				else {
-					log_errf(-1, __func__, "GetProcessTimes failed for process %d", ptask->ti_hProc);
+					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"GetProcessTimes failed for process %d with errno %lu", ptask->ti_hProc, GetLastError());
 				}
 			}
 			nps++;
@@ -1174,7 +1173,9 @@ cput_job(char *jobid)
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_errf(-1, __func__, "IsProcessInJob failed for %d job %d process", pjob->ji_hJob, ptask->ti_hProc);
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+
 			/*
 			 * check if the processes is not part of the job object due to pbs_attach,
 			 */
@@ -1188,7 +1189,8 @@ cput_job(char *jobid)
 					cputime = cputime + *pkerneltime + *pusertime;
 				}
 				else {
-					log_errf(-1, __func__, "GetProcessTimes failed for process %d", ptask->ti_hProc);
+					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+						"GetProcessTimes failed for process %d with errno %lu", ptask->ti_hProc, GetLastError());
 				}
 			}
 		}
@@ -1216,18 +1218,18 @@ cput(struct rm_attribute *attrib)
 	int			value;
 
 	if (attrib == NULL) {
-		log_err(-1, __func__, no_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if ((value = atoi(attrib->a_value)) == 0) {
 		sprintf(log_buffer, "bad param: %s", attrib->a_value);
-		log_err(-1, __func__, log_buffer);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, __func__, extra_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1255,7 +1257,7 @@ char	*
 ncpus(struct rm_attribute *attrib)
 {
 	if (attrib) {
-		log_err(-1, __func__, extra_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1294,7 +1296,7 @@ char	*
 physmem(struct rm_attribute *attrib)
 {
 	if (attrib) {
-		log_err(-1, __func__, extra_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1348,12 +1350,12 @@ size(struct rm_attribute *attrib)
 	char	*param;
 
 	if (attrib == NULL) {
-		log_err(-1, __func__, no_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, __func__, extra_parm);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
