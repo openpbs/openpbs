@@ -188,7 +188,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 	}
 
 	if (lstat(path, &sbuf) == -1) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Path %s doesn't exists", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "path %s doesn't exist", path);
 		return (0);	/* ignore non-existent files! */
 	}
 
@@ -465,7 +465,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 	}
 
 	if (lstat(path, &sbuf) == -1) {
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "path %s doesn't exists", path);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "path %s doesn't exist", path);
 		return (0);	/* ignore non-existent files! */
 	}
 
