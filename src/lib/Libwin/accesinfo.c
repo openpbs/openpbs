@@ -870,7 +870,7 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 	for (i=0; i < sizeInfo.AceCount; i++) {
 
 		if (GetAce(pdacl, i, (void **)&pace) == 0) {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed in GetAce with errno %lu", GetLstError());
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed in GetAce with errno %lu", GetLastError());
 		}
 		name = getgrpname_full((SID *)&pace->SidStart);
 		if (name == NULL)
