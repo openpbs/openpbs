@@ -9468,7 +9468,7 @@ main(int argc, char *argv[])
 	}
 
 	sprintf(log_buffer, "Created window station=%s", winsta_name);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_NOTICE, __func__, log_buffer);
 
 	SetProcessWindowStation(pbs_winsta);
 
@@ -9499,7 +9499,7 @@ main(int argc, char *argv[])
 	}
 	sprintf(log_buffer, "Created desktop %s in window station=%s",
 		desktop_name, winsta_name);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
+	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_NOTICE, __func__, log_buffer);
 
 	SetProcessWindowStation(old_winsta);
 
