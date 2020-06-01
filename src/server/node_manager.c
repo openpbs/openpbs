@@ -7655,9 +7655,7 @@ free_resvNodes(resc_resv *presv)
 	for (i = 0; i < svr_totnodes; i++) {
 		pnode = pbsndlist[i];
 
-		for (prev = NULL, rinfp = pnode->nd_resvp;
-			rinfp;) {
-
+		for (prev = NULL, rinfp = pnode->nd_resvp; rinfp;) {
 
 			if (rinfp->resvp != presv) {
 				prev = rinfp;
