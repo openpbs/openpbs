@@ -622,8 +622,8 @@ get_full_username(char *username,
 
 	if (LookupAccountName(0, actual_name, sid, &sid_sz, domain,
 		&domain_sz, psid_type) == 0) {
+		log_errf(-1, __func__,  "failed in LookupAccountName(actual_name) for %s", actual_name);
 		LocalFree(sid);
-		log_err(-1, __func__,  "failed in LookupAccountName(actual_name) for %s", actual_name);
 		return NULL;
 	}
 
@@ -1256,7 +1256,7 @@ getgrpsid(char *grpnam)
 
 			if (LookupAccountName(0, grpnam2, sid, &sid_sz,
 				domain, &domain_sz, &type) == 0) {
-				log_err(-1, __func__, "failed in LookupAccountName for %s", grpnam2);
+				log_errf(-1, __func__, "failed in LookupAccountName for %s", grpnam2);
 				LocalFree(sid);
 				return NULL;
 			}

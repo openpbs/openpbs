@@ -488,7 +488,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 
 	if (usid) {
 		if (SetSecurityDescriptorOwner(&sd, usid, FALSE) == 0) {
-			log_err(-1, __func__, "failed in SetSecurityDescriptorOwner for %s", path);
+			log_errf(-1, __func__, "failed in SetSecurityDescriptorOwner for %s", path);
 			LocalFree(usid);
 			return (0);
 		}
