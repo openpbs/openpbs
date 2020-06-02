@@ -45,9 +45,7 @@ dist_libinit_DATA = \
 	limits.pbs_mom \
 	limits.pbs_mom.compat \
 	limits.post_services \
-	limits.post_services.compat \
-	sgiICEvnode.sh \
-	sgiICEplacement.sh
+	limits.post_services.compat 
 
 libmpidir = $(libdir)/MPI
 
