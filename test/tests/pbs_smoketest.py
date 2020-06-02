@@ -1460,9 +1460,6 @@ class SmokeTest(PBSTestSuite):
         Test that if jobscript_max_size attribute is set, users can not
         submit jobs with job script size exceeding the limit.
         """
-        msg = "skipped due to issue: "
-        msg += "server attribute 'jobscript_max_size' not working properly."
-        self.skipTest(msg)
 
         scr = []
         scr += ['echo "This is a very long line, it will exceed 20 bytes"']
