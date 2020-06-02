@@ -584,11 +584,11 @@ mem_sum(job *pjob)
 			if (!QueryWorkingSet(hProcess, &nwspages, sizeof(nwspages)))
 				mem += nwspages * (si.dwPageSize >> 10);
 			else
-				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"QueryWorkingSet failed for %d with errno %lu", hProcess, GetLastError());
 			CloseHandle(hProcess);
 		} else {
-			log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				"OpenProcess failed for pid %d with errno %lu", pProcessList->ProcessIdList[i], GetLastError());
 		}
 	}
@@ -603,7 +603,7 @@ mem_sum(job *pjob)
 			(ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/* account for processes that are not part of the Windows job object */
@@ -611,7 +611,7 @@ mem_sum(job *pjob)
 				if(!QueryWorkingSet(ptask->ti_hProc, &nwspages, sizeof(nwspages)))
 					mem += nwspages * (si.dwPageSize >> 10);
 				else
-					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 						"QueryWorkingSet failed for %d with errno %lu", ptask->ti_hProc, GetLastError());
 			}
 		}
@@ -658,7 +658,7 @@ cput_sum(job *pjob)
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
@@ -675,7 +675,7 @@ cput_sum(job *pjob)
 					cputime = cputime + *pkerneltime + *pusertime;
 				}
 				else {
-					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 						"GetProcessTimes failed for process %d with errno %lu", ptask->ti_hProc, GetLastError());
 				}
 			}
@@ -1173,7 +1173,7 @@ cput_job(char *jobid)
 		if ((ptask->ti_hProc != NULL) && (ptask->ti_hProc != INVALID_HANDLE_VALUE)) {
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
-				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
@@ -1189,7 +1189,7 @@ cput_job(char *jobid)
 					cputime = cputime + *pkerneltime + *pusertime;
 				}
 				else {
-					log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 						"GetProcessTimes failed for process %d with errno %lu", ptask->ti_hProc, GetLastError());
 				}
 			}
