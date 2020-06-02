@@ -463,6 +463,8 @@ print_attribs(j)"""
         # Character escaping '()' as the log_match is regexp
         msg_4 = msg_4.replace("(", "\(")
         msg_4 = msg_4.replace(")", "\)")
+        msg_4 = msg_4.replace("[", "\[")
+        msg_4 = msg_4.replace("]", "\]")
         msg_5 = "Server@.*;Hook;%s;finished" % \
                 (self.hook_name)
         msg = [msg_1, msg_2, msg_3, msg_4, msg_5]
