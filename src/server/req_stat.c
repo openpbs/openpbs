@@ -735,10 +735,10 @@ update_isrunhook(attribute *pattr)
 void
 req_stat_svr(struct batch_request *preq)
 {
-	svrattrl	   *pal;
+	svrattrl *pal;
 	struct batch_reply *preply;
-	struct brp_status  *pstat;
-
+	struct brp_status *pstat;
+	conn_t *conn;
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 
@@ -751,8 +751,9 @@ req_stat_svr(struct batch_request *preq)
 	update_license_ct(&server.sv_attr[(int)SRV_ATR_license_count],
 		server.sv_license_ct_buf);
 
-	if (preq->rq_fromsvr) {
-		/* This is probably from the sched, update "has_runjob_hook" */
+	conn = get_conn(preq->rq_conn);
+	if (conn->cn_authen & PBS_NET_CONN_TO_SCHED) {
+		/* Request is from sched so update "has_runjob_hook" */
 		update_isrunhook(&server.sv_attr[SRV_ATR_has_runjob_hook]);
 	}
 

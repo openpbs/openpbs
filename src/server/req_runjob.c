@@ -344,7 +344,7 @@ req_runjob(struct batch_request *preq)
 	if ((psched->scheduler_sock != -1) && was_job_alteredmoved(parent)) {
 		/* Reject run request for altered/moved jobs if job_run_wait is set to "execjob_hook" */
 		if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET) ||
-				(!strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RW_EXECJOB_HOOK))) {
+				(!strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RUN_WAIT_EXECJOB_HOOK))) {
 			req_reject(PBSE_NORUNALTEREDJOB, 0, preq);
 			set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			return;

@@ -898,9 +898,9 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 			policy->job_form_threshold_set = 1;
 			policy->job_form_threshold = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_job_run_wait)) {
-			if (!strcmp(attrp->value, RW_NONE))
+			if (!strcmp(attrp->value, RUN_WAIT_NONE))
 				sinfo->runjob_mode = RJ_NOWAIT;
-			else if (!strcmp(attrp->value, RW_RUNJOB_HOOK)) {
+			else if (!strcmp(attrp->value, RUN_WAIT_RUNJOB_HOOK)) {
 				/* If no runjob hooks, then use RJ_NOWAIT */
 				if (!sinfo->has_runjob_hook) {
 					sinfo->runjob_mode = RJ_NOWAIT;

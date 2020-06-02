@@ -107,9 +107,9 @@
 #define MAX_INT_LEN 10
 
 /* Values of sched attribute 'job_run_wait' */
-#define RW_NONE "none"
-#define RW_RUNJOB_HOOK "runjob_hook"
-#define RW_EXECJOB_HOOK "execjob_hook"
+#define RUN_WAIT_NONE "none"
+#define RUN_WAIT_RUNJOB_HOOK "runjob_hook"
+#define RUN_WAIT_EXECJOB_HOOK "execjob_hook"
 
 struct preempt_ordering
 {

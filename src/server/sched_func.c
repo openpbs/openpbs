@@ -990,12 +990,12 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 	}
 	if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET)) {
 		set_attr_svr(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait],
-				RW_RUNJOB_HOOK);
+				RUN_WAIT_RUNJOB_HOOK);
 
 		psched->sch_attr[SCHED_ATR_job_run_wait].at_flags |= ATR_VFLAG_DEFLT;
 	}
 	if (!(psched->sch_attr[SCHED_ATR_throughput_mode].at_flags & ATR_VFLAG_SET) &&
-			strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RW_NONE)) {
+			strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RUN_WAIT_NONE)) {
 		set_attr_svr(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode],
 				ATR_TRUE);
 		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_VFLAG_DEFLT;
@@ -1125,11 +1125,11 @@ action_job_run_wait(attribute *pattr, void *pobj, int actmode)
 		pbs_sched *psched = NULL;
 		char *tp_val = NULL;
 
-		if (!strcasecmp(str, RW_EXECJOB_HOOK))
+		if (!strcasecmp(str, RUN_WAIT_EXECJOB_HOOK))
 			tp_val = ATR_FALSE;
-		else if (!strcasecmp(str, RW_RUNJOB_HOOK))
+		else if (!strcasecmp(str, RUN_WAIT_RUNJOB_HOOK))
 			tp_val = ATR_TRUE;
-		else if (!strcasecmp(str, RW_NONE))
+		else if (!strcasecmp(str, RUN_WAIT_NONE))
 			tp_val = NULL;
 		else
 			return PBSE_BADATVAL;
@@ -1167,9 +1167,9 @@ action_throughput_mode(attribute *pattr, void *pobj, int actmode)
 		char *jrw_val = NULL;
 
 		if (val)
-			jrw_val = RW_RUNJOB_HOOK;
+			jrw_val = RUN_WAIT_RUNJOB_HOOK;
 		else
-			jrw_val = RW_EXECJOB_HOOK;
+			jrw_val = RUN_WAIT_EXECJOB_HOOK;
 
 		set_attr_svr(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait], jrw_val);
 	}
