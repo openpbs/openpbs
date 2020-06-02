@@ -694,40 +694,33 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 /**
  * @brief
- * 	encode_isrunhook - encode ATTR_has_runjob_hook attribute
+ * 	update_isrunhook - update the value is has_runjob_hook
  *
- * @param[in] patr - ptr to attribute to decode
- * @param[in] name - attribute name
- * @param[in] rescn - resource name or null
- * @param[out] val - string holding values for attribute structure
+ * @param[in]	pattr - ptr to the server attribute object
  *
- * @retval      int
- * @retval      0       if ok
- * @retval      >0      error number1 if error,
- * @retval      *patr   members set
- *
+ * @return	void
  */
-
-/*ARGSUSED*/
-
 static void
 update_isrunhook(attribute *pattr)
 {
 	hook *phook = NULL;
-
-	pattr->at_val.at_long = 0;
+	long old_val = pattr->at_val.at_long;
+	long new_val = 0;
 
 	/* Check if there are any valid runjob hooks */
 	for (phook = (hook *) GET_NEXT(svr_runjob_hooks);
 	     phook != NULL;
 	     phook = (hook *) GET_NEXT(phook->hi_runjob_hooks)) {
 		if (phook->enabled) {
-			pattr->at_val.at_long = 1;
+			new_val = 1;
 			break;
 		}
 	}
 
-	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	if (new_val != old_val) {
+		pattr->at_val.at_long = new_val;
+		pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	}
 }
 
 /**
