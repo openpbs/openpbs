@@ -400,7 +400,7 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
-        j.set_sleep_time(5)
+        j.set_sleep_time(15)
         j_id = self.server.submit(j)
         subjid_1 = j.create_subjob_id(j_id, 1)
         subjid_2 = j.create_subjob_id(j_id, 2)
