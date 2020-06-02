@@ -60,8 +60,6 @@ class classcomp(PBSTestSuite):
         j.set_attributes({ATTR_v: "ABC=%s" % data})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.log_match("tpp_deflate called inside tpp_send routine")
-        self.mom.log_match("tpp_inflate called inside add_part_packet routine")
 
         out.close()
         os.remove(out.name)
