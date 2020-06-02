@@ -1232,8 +1232,7 @@ becomeuser(job *pjob)
 		if (!impersonate_user(pwdp->pw_userlogin)) {
 			sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser job: %s and user: %s", 
 				pjob->ji_qs.ji_jobid, pjob->ji_user);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			return -1;
 		}
 	}else{
@@ -1768,7 +1767,7 @@ finish_exec(job *pjob)
 	if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(pjob->ji_user->pw_userlogin)) {
 			sprintf(log_buffer,
-				"failed to ImpersonateLoggedOnUser on %s", mom_host);
+				"failed to ImpersonateLoggedOnUser on %s, error=%ld", mom_host, GetLastError());
 			(void)decode_str(&pjob->ji_wattr[JOB_ATR_Comment],
 				ATTR_comment, NULL, log_buffer);
 			exec_bail(pjob, JOB_EXEC_FAIL_PASSWORD, log_buffer);
@@ -3465,7 +3464,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
-				(void)impersonate_user(pjob->ji_user->pw_userlogin);
+				if (impersonate_user(pjob->ji_user->pw_userlogin) == FALSE)
+					log_joberr(-1, __func__, "impersonate_user() failed", pjob->ji_qs.ji_jobid);
 			}
 		}
 
