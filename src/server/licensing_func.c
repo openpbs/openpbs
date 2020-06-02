@@ -690,18 +690,15 @@ init_licensing(struct work_task *ptask)
 	licensing_control.licenses_total_needed = licensing_control.licenses_checkout_time = licensing_control.licenses_checked_out = 0;
 	licensing_control.expiry_warning_email_yday = -1;
 
-	for (i = 0; i < svr_totnodes; i++) {
-		clear_node_lic_attrs(pbsndlist[i], 1);
-		free(pbsndlist[i]->nd_lic_info);
-		pbsndlist[i]->nd_lic_info = NULL;
-
-		set_node_lic_info_attr(pbsndlist[i]);
-
-		add_to_unlicensed_node_list(i);
-	}
-
 	count = lic_init(pbs_licensing_location);
 	if (count < 0) {
+		for (i = 0; i < svr_totnodes; i++) {
+			clear_node_lic_attrs(pbsndlist[i], 1);
+			free(pbsndlist[i]->nd_lic_info);
+			pbsndlist[i]->nd_lic_info = NULL;
+			add_to_unlicensed_node_list(i);
+		}
+
 		switch (count) {
 			case -1:
 				sprintf(log_buffer,
@@ -722,6 +719,16 @@ init_licensing(struct work_task *ptask)
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			  LOG_NOTICE, msg_daemonname, log_buffer);
 		return;
+	}
+
+	for (i = 0; i < svr_totnodes; i++) {
+		clear_node_lic_attrs(pbsndlist[i], 1);
+		free(pbsndlist[i]->nd_lic_info);
+		pbsndlist[i]->nd_lic_info = NULL;
+
+		set_node_lic_info_attr(pbsndlist[i]);
+
+		add_to_unlicensed_node_list(i);
 	}
 
 	/* Determine how many licenses we can check out */
