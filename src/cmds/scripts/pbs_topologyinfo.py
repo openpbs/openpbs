@@ -70,7 +70,7 @@ class Inventory(object):
         """
         counting devices by parsing topo_file
         """
-        temp = topo_file.split(',')
+        temp = topo_file.read().decode('utf-8').split(',')
         for item in temp:
             if item.find('sockets:') != -1:
                 self.nsockets = int(item[8:])  # len('sockets:') = 8
@@ -137,9 +137,10 @@ class Inventory(object):
             self.reset()
             try:
                 with open(pathname, "rb") as topo_file:
-                    temp_buf = topo_file.read().decode('utf-8')
-                    if 'hwloc' not in temp_buf:
-                        self.reportsockets_win(temp_buf)
+                    temp_buf = topo_file.readline().decode('utf-8')
+                    topo_file.seek(0)
+                    if not temp_buf.startswith('<'):
+                        self.reportsockets_win(topo_file)
                     elif ExpatParser:
                         try:
                             p = xml.parsers.expat.ParserCreate()
