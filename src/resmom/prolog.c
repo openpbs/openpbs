@@ -392,12 +392,11 @@ int   pe_io_type;
 	sprintf(action_name, "pbs_pelog%d_%d", which, _getpid());
 	pelog_handle = CreateJobObject(NULL, action_name);
 
-	if (pelog_handle == INVALID_HANDLE_VALUE) {
+	if ((pelog_handle == INVALID_HANDLE_VALUE) || (pelog_handle == NULL)) {
 		run_exit = 254;
 		(void)pelog_err(pjob, pelog, run_exit, "nonzero p/e exit status");
 		return run_exit;
-	} else if (pelog_handle == NULL)
-		log_err(-1, __func__, "CreateJobObject failed");
+	}
 
 	/* temporary add PBS_JOBDIR to the current process environement */
 	if (pjob->ji_grpcache) {
