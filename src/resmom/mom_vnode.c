@@ -658,8 +658,8 @@ add_CPUlist(mom_vninfo_t *mvp, char *cpulist)
  * @param[in] data - info about vnode
  *
  * @return int
- * @retval 1 Failure
- * @retval 0 Success
+ * @retval 0 Failure
+ * @retval 1 Success
  *
  */
 static int

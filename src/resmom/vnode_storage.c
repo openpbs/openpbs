@@ -152,7 +152,7 @@ find_vmapent_byID(void *ctx, const char *vnid)
  * @param[in] data - information about vnode
  *
  * @return 	int
- * @retval 	1	Sucess
+ * @retval 	1	Success
  * @retval 	0	Failure
  *
  */

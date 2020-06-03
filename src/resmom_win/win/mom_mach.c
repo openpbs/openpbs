@@ -536,15 +536,19 @@ mem_sum(job *pjob)
 	BOOL                    is_process_in_job = FALSE;
 	BOOL			ret;
 
+
 	/* Get the system info */
 	GetSystemInfo(&si);
 
 	/* Get the number of processes embedded in the job */
-	if ((pjob->ji_hJob != NULL) &&
-		QueryInformationJobObject(pjob->ji_hJob,
-		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL)) {
-		nps = ji.TotalProcesses;
+	if (pjob->ji_hJob != NULL) {
+		if (QueryInformationJobObject(pjob->ji_hJob,
+			JobObjectBasicAccountingInformation,
+			&ji, sizeof(ji), NULL))
+			nps = ji.TotalProcesses;
+		else
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"QueryInformationJobObject for %d failed to get number of processes with error %lu", pjob->ji_hJob, GetLastError());
 	}
 
 	if (nps == 0) {
@@ -567,11 +571,13 @@ mem_sum(job *pjob)
 	pProcessList->NumberOfProcessIdsInList = 0;
 
 	/* Get the pid list */
-	if (pjob->ji_hJob != NULL)
-		QueryInformationJobObject(pjob->ji_hJob,
+	if (pjob->ji_hJob != NULL) {
+		if (!QueryInformationJobObject(pjob->ji_hJob,
 			JobObjectBasicProcessIdList,
-			pProcessList, pidlistsize, NULL);
-
+			pProcessList, pidlistsize, NULL))
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"QueryInformationJobObject for %d failed to get processe ID list with error %lu", pjob->ji_hJob, GetLastError());
+	}
 	/*
 	 * Traverse through each process and find the
 	 * memory used by that process during its execution.
@@ -644,13 +650,16 @@ cput_sum(job *pjob)
 
 	cputime = 0.0;
 
-	if ((pjob->ji_hJob != NULL) &&
-		QueryInformationJobObject(pjob->ji_hJob,
-		JobObjectBasicAccountingInformation,
-		&ji, sizeof(ji), NULL)) {
-		cputime = (double)(ji.TotalUserTime.QuadPart +
-			ji.TotalKernelTime.QuadPart);
-		nps = ji.TotalProcesses;
+	if (pjob->ji_hJob != NULL) {
+		if (QueryInformationJobObject(pjob->ji_hJob,
+			JobObjectBasicAccountingInformation,
+			&ji, sizeof(ji), NULL)) {
+			cputime = (double)(ji.TotalUserTime.QuadPart +
+				ji.TotalKernelTime.QuadPart);
+			nps = ji.TotalProcesses;
+		} else
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"QueryInformationJobObject for %d failed to get number of processes with error %lu", pjob->ji_hJob, GetLastError());
 	}
 
 	for (ptask = (task *)GET_NEXT(pjob->ji_tasks); ptask; ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
