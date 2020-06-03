@@ -4352,8 +4352,6 @@ start_exec(job *pjob)
 		}
 
 		finish_exec(pjob);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
 	}
 	return;
 }

@@ -246,6 +246,8 @@ fork_to_user(struct batch_request *preq)
 	/* path maybe hanging off it. With pbs_mom running under     */
 	/* SERVICE_ACCOUNT, we have to map drives under user session */
 	/* Only the session that mapped the drive can unmap it.      */
+
+	log_buffer[0] = '\0';
 	if ( ((pwdp == NULL) || (pwdp->pw_userlogin == INVALID_HANDLE_VALUE)) \
 		&& \
 		((pwdp = logon_pw(preq->rq_ind.rq_cpyfile.rq_user, cred_buf,
@@ -256,7 +258,7 @@ fork_to_user(struct batch_request *preq)
 	}
 
 	if (strlen(log_buffer) > 0)
-		log_err(0, __func__, log_buffer);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(pwdp->pw_userlogin)) {
