@@ -1040,7 +1040,7 @@ getusersid2(char *uname,
 
 			/* get the size of the memory buffer needed for the SID */
 			ret = GetTokenInformation(hToken, TokenUser, NULL, 0, &dwBufferSize);
-			if ((ret ==0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
+			if ((ret == 0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
 
 				pTokenUser = (PTOKEN_USER)malloc(dwBufferSize);
 				if (pTokenUser == NULL) {
@@ -5775,6 +5775,7 @@ get_processowner(DWORD processid, uid_t *puid, char *puname, size_t uname_len, c
 	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processid);
 	if ((hProcess == INVALID_HANDLE_VALUE) || (hProcess == NULL)) {
 		log_errf(-1, __func__, "failed in OpenProcess for process: %lu", processid);
+		CloseHandle(hProcess);
 		return NULL;
 	}
 
