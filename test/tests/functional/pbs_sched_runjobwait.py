@@ -386,7 +386,7 @@ e.accept()"""
 
         t1 = time.time()
         jid = self.server.submit(Job())
-        self.server.expect(JOB, {"job_state": "Q"}, id = jid)
+        self.server.expect(JOB, {"job_state": "Q"}, id=jid)
         a = {"comment": (MATCH_RE, "no walltime specified")}
         self.server.expect(JOB, a, id=jid)
         self.server.log_match("Type 96 request", starttime=t1, max_attempts=5,
