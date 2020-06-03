@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestSchedRunjobWait(TestFunctional):
+class TestSchedJobRunWait(TestFunctional):
     """
     Tests related to scheduler attribute job_run_wait
     """
@@ -88,7 +88,7 @@ class TestSchedRunjobWait(TestFunctional):
             "it is recommended to use 'job_run_wait'"
         self.server.log_match(msg, starttime=t1)
 
-    def test_runjobwait_throughput_clash(self):
+    def test_jobrunwait_throughput_clash(self):
         """
         Test that job_run_wait and throughput_mode don't clash
         """
@@ -118,9 +118,9 @@ class TestSchedRunjobWait(TestFunctional):
         self.server.expect(SCHED, {'throughput_mode': "True"},
                            id="default")
 
-    def test_runjobwait_default(self):
+    def test_jobrunwait_default(self):
         """
-        Test that runjob wait gets set to its default when unset
+        Test that job_run_wait gets set to its default when unset
         """
         # Unsetting job_run_wait should set both to default
         self.server.manager(MGR_CMD_UNSET, SCHED,
@@ -330,7 +330,7 @@ pbs.event().accept()
 
     def test_runhook_reject_comment_sched(self):
         """
-        Test that when a runjob hook rejects a job, with runjob_wait
+        Test that when a runjob hook rejects a job, with job_run_wait
         unset, that a job's comment is set correctly by sched
         """
         self.server.manager(MGR_CMD_SET, NODE,
@@ -361,16 +361,13 @@ e.accept()"""
         t1 = time.time()
         jid4 = self.server.submit(Job())
         self.server.expect(JOB, {"job_state": "Q"}, id=jid4)
-        self.server.expect(JOB, "comment", op=SET, id=jid4)
-        ret = self.server.status(JOB, id=jid4)
-        jdata = ret[0]
-        comment = jdata["comment"]
-        self.assertIn("no walltime specified", comment)
+        a = {"comment": (MATCH_RE, "no walltime specified")}
+        self.server.expect(JOB, a, id=jid4)
         self.server.log_match("Type 96 request", starttime=t1, max_attempts=5)
 
     def test_runhook_reject_comment_server(self):
         """
-        Test that when a runjob hook rejects a job, with runjob_wait
+        Test that when a runjob hook rejects a job, with job_run_wait
         set to "none", that a job's comment is set correctly by the server
         """
         self.server.manager(MGR_CMD_SET, SCHED, {"job_run_wait": "none"})
@@ -389,11 +386,8 @@ e.accept()"""
 
         t1 = time.time()
         jid = self.server.submit(Job())
-        self.server.expect(JOB, {"job_state": "Q"}, id=jid)
-        self.server.expect(JOB, "comment", op=SET, id=jid)
-        ret = self.server.status(JOB, id=jid)
-        jdata = ret[0]
-        comment = jdata["comment"]
-        self.assertIn("no walltime specified", comment)
+        self.server.expect(JOB, {"job_state": "Q"}, id = jid)
+        a = {"comment": (MATCH_RE, "no walltime specified")}
+        self.server.expect(JOB, a, id=jid)
         self.server.log_match("Type 96 request", starttime=t1, max_attempts=5,
                               existence=False)
