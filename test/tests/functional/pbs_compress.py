@@ -38,11 +38,11 @@
 # subject to Altair's trademark licensing policies.
 
 
+from tests.functional import *
 import os
-from ptl.utils.pbs_testsuite import *
 
 
-class classcomp(PBSTestSuite):
+class TestCompression(TestFunctional):
 
     def test_submit_job_comp(self):
         """
