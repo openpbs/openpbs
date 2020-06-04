@@ -899,7 +899,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	if (npc == NULL) {
 		int flags = NP_NO_ADD_NP_ARR;
 
-		if (policy->only_explicit_psets)
+		if (policy->only_explicit_psets == 0)
 			flags |= NP_CREATE_REST;
 
 		/* didn't find node partition cache, need to allocate and create */
