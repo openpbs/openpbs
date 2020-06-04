@@ -437,17 +437,6 @@ extern void print_arg_param(struct arg_param *p);
  Specify 0 for timeout_secs to reset alarm */
 extern unsigned int win_alarm(unsigned int timeout_secs, void (*func)(void));
 
-extern void get_token_info(HANDLE htok,
-	char **user,
-	char **owner,
-	char **group,
-	char **groups,
-	char **privs,
-	char **dacl,
-	char **source,
-	char **type);
-
-
 extern int wsystem(char *cmdline, HANDLE user_handle);
 
 /* Saving/restoring environment */

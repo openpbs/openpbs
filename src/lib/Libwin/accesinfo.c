@@ -85,7 +85,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 
 	rids[0] = DOMAIN_ALIAS_RID_ADMINS;
 	k = getgids(getlogin(), grp, rids);
-	
+
 	if ((k < _MAX_GROUPS) && (owner_sid != NULL)) {
 		grp[k] = sid_dup(owner_sid);
 		if (grp[k] == NULL) {
@@ -109,7 +109,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 		} else {
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed to get group and user sid for %s", user);
 		}
-	} 
+	}
 
 	cbAcl = sizeof(ACL);
 	for (i = 0 ; i < k; i++) {
@@ -409,19 +409,22 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 		if (user != NULL && mask != 0 && i == (k-2)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask | 0x00100000, grp[i]) == 0) {
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"failed in AddAccessAllowedAceEx for user: %s, mask: %s, name: %s", user, print_mask(mask | 0x00100000), name);
+					"failed in AddAccessAllowedAceEx with errno %lu, for user: %s, mask: %s, name: %s",
+					GetLastError(), user, print_mask(mask | 0x00100000), name);
 			}
 
 		} else if (user2 != NULL && mask2 != 0 && i == (k-1)) {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE, mask2 | 0x00100000, grp[i]) == 0) {
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"failed in AddAccessAllowedAceEx for user2: %s, mask: %s, name: %s", user2, print_mask(mask2 | 0x00100000), name);
+					"failed in AddAccessAllowedAceEx with errno %lu, for user2: %s, mask: %s, name: %s",
+					GetLastError(), user2, print_mask(mask2 | 0x00100000), name);
 			}
 		} else {
 			if (AddAccessAllowedAceEx(ndacl, ACL_REVISION, CONTAINER_INHERIT_ACE|OBJECT_INHERIT_ACE,
 					READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL, grp[i]) == 0) {
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"failed in AddAccessAllowedAceEx for name: %s and mask: READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL", name);
+					"failed in AddAccessAllowedAceEx with errno %lu, for name: %s and mask: READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL",
+					GetLastError(), name);
 			}
 		}
 		(void)free(name);
@@ -818,7 +821,7 @@ perm_granted_admin_and_owner(char *path, int disallow, char *owner, char *errmsg
 	int			mask;
 	char			*name;
 	SID			*esid = getusersid("Everyone");
-	DWORD ret;
+	DWORD			ret;
 
 	ret = GetNamedSecurityInfo(path, SE_FILE_OBJECT,
 		OWNER_SECURITY_INFORMATION|DACL_SECURITY_INFORMATION,
@@ -1077,8 +1080,8 @@ make_dir_files_service_account_read(char *path)
 		}
 	} else {
 		if (secure_file2(path, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
+				READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
+				username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) {
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "Unable to secure file %s for Administrators and %s", path, username);
 		}
 	}
@@ -1189,7 +1192,7 @@ secure_mom_files(void)
 			}
 		}
 		if (errno != 0 && errno != ENOENT) {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "readdir error; %s", path);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "readdir for %s failed with errno %d", path, errno);
 		}
 		(void)closedir(dir);
 	}
