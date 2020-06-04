@@ -4918,8 +4918,8 @@ determine_accruetype(job* pjob)
 		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)
 			&& (temphold & HOLD_s))
 			return JOB_INELIGIBLE;
-		else
-			return JOB_ELIGIBLE;
+
+		return JOB_ELIGIBLE;
 	}
 
 	/* scheduler suspend job ; accrue eligible time */

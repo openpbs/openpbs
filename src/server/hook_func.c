@@ -3565,8 +3565,8 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 	}
 
 	/* update the eligible time to JOB_INITIAL */
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1 &&
-		server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
+	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
+		&& server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)
 		update_eligible_time(JOB_INITIAL, pjob);
 
 	/*
