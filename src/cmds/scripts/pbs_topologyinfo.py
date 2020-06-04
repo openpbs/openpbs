@@ -139,6 +139,9 @@ class Inventory(object):
                 with open(pathname, "rb") as topo_file:
                     temp_buf = topo_file.readline().decode('utf-8')
                     topo_file.seek(0)
+                    # Windows topology file are not XML files. So if
+                    # a file does not start with '<', it is a Windows
+                    # topology file
                     if not temp_buf.startswith('<'):
                         self.reportsockets_win(topo_file)
                     elif ExpatParser:
