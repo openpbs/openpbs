@@ -70,7 +70,7 @@ class Inventory(object):
         """
         counting devices by parsing topo_file
         """
-        temp = topo_file.read().split(',')
+        temp = topo_file.read().decode('utf-8').split(',')
         for item in temp:
             if item.find('sockets:') != -1:
                 self.nsockets = int(item[8:])  # len('sockets:') = 8
@@ -137,8 +137,12 @@ class Inventory(object):
             self.reset()
             try:
                 with open(pathname, "rb") as topo_file:
-
-                    if platform.system() == "Windows":
+                    temp_buf = topo_file.readline().decode('utf-8')
+                    topo_file.seek(0)
+                    # Windows topology file are not XML files. So if
+                    # a file does not start with '<', it is a Windows
+                    # topology file
+                    if not temp_buf.startswith('<'):
                         self.reportsockets_win(topo_file)
                     elif ExpatParser:
                         try:
