@@ -4029,7 +4029,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	}
 
 	if (ncpus_res != NULL && ncpus_res->assigned < ncpus_res->avail)
-		set_node_info_state(ninfo, ND_free);
+		remove_node_state(ninfo, ND_jobbusy);
 
 	return 1;
 }
