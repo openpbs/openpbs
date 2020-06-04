@@ -1278,26 +1278,35 @@ class TestPbsResvAlter(TestFunctional):
             'resv_nodes'].split(':')[0].split('(')[1]
         resv_node2 = self.server.status(RESV, 'resv_nodes', id=rid2)[0][
             'resv_nodes'].split(':')[0].split('(')[1]
-        if resv_node1 is resv_node2:
+        mtype = 0
+        seq = 0
+        if resv_node1 == resv_node2:
             self.server.manager(MGR_CMD_SET, NODE, {
                                 'state': "offline"}, id=resv_node1)
+            mtype = 1
+            seq = 1
         else:
             self.server.manager(MGR_CMD_SET, NODE, {
                                 'state': "offline"}, id=resv_node1)
             self.server.manager(MGR_CMD_SET, NODE, {
                                 'state': "offline"}, id=resv_node2)
+            mtype = 3
+            seq = 3
+
         self.server.expect(RESV, attrs, id=rid1)
         self.server.expect(RESV, attrs, id=rid2)
         self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
-                                 alter_e=True, whichMessage=3, sequence=3)
+                                 alter_e=True, whichMessage=mtype,
+                                 sequence=seq)
         self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
-                                 alter_e=True, whichMessage=3, sequence=3)
+                                 alter_e=True, whichMessage=mtype,
+                                 sequence=seq)
         self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
-                                 alter_e=True, whichMessage=3, interactive=2,
-                                 sequence=4)
+                                 alter_e=True, whichMessage=mtype,
+                                 interactive=2, sequence=seq+1)
         self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
-                                 alter_e=True, whichMessage=3, interactive=2,
-                                 sequence=4)
+                                 alter_e=True, whichMessage=mtype,
+                                 interactive=2, sequence=seq+1)
 
     @skipOnCpuSet
     def test_alter_resv_name(self):
