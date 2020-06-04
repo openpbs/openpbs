@@ -548,7 +548,7 @@ mem_sum(job *pjob)
 			nps = ji.TotalProcesses;
 		else
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for %d failed to get number of processes with error %lu", pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %d, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 
 	if (nps == 0) {
@@ -576,7 +576,7 @@ mem_sum(job *pjob)
 			JobObjectBasicProcessIdList,
 			pProcessList, pidlistsize, NULL))
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for %d failed to get processe ID list with error %lu", pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %d, handle %d failed to get processe ID list with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 	/*
 	 * Traverse through each process and find the
@@ -659,7 +659,7 @@ cput_sum(job *pjob)
 			nps = ji.TotalProcesses;
 		} else
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for %d failed to get number of processes with error %lu", pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %d, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 
 	for (ptask = (task *)GET_NEXT(pjob->ji_tasks); ptask; ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
@@ -1165,7 +1165,7 @@ cput_job(char *jobid)
 	if (!QueryInformationJobObject(hjob,
 		JobObjectBasicAccountingInformation,
 		&ji, sizeof(ji), NULL)) {
-		log_errf(-1, __func__, "QueryInformationJobObject for %d failed to get number of processes", hjob);
+		log_errf(-1, __func__, "QueryInformationJobObject for job %d, handle %d failed to get number of processes", jobid, hjob);
 		cputime = 0.0;
 	}
 	else {
