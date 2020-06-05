@@ -610,7 +610,7 @@ mem_sum(job *pjob)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/* account for processes that are not part of the Windows job object */
 			if (is_process_in_job == FALSE) {
@@ -668,7 +668,7 @@ cput_sum(job *pjob)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
 			 * check if the processes is not part of the Windows job object due to pbs_attach
@@ -1183,7 +1183,7 @@ cput_job(char *jobid)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
 			 * check if the processes is not part of the job object due to pbs_attach,
