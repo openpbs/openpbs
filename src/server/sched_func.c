@@ -1129,7 +1129,7 @@ action_job_run_wait(attribute *pattr, void *pobj, int actmode)
 	if (str == NULL)
 		return PBSE_BADATVAL;
 
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV) {
 		pbs_sched *psched = NULL;
 		char *tp_val = NULL;
 
@@ -1171,7 +1171,7 @@ action_throughput_mode(attribute *pattr, void *pobj, int actmode)
 	pbs_sched *psched = NULL;
 
 	psched = (pbs_sched *) pobj;
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV) {
 		char *jrw_val = NULL;
 
 		if (val)

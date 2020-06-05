@@ -4542,6 +4542,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 					NULL,
 					NULL,
 					jcomment);
+				free(jcomment);
 			}
 		}
 
