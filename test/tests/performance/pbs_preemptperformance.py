@@ -197,6 +197,7 @@ class TestPreemptPerformance(TestPerformance):
         self.scheduler.add_resource('qlist')
 
         jid = self.server.submit(j)
+        time.sleep(1)
 
         a = {ATTR_l + '.select': '1:ncpus=1:qlist=list1'}
         for _ in range(3200):
@@ -366,6 +367,7 @@ class TestPreemptPerformance(TestPerformance):
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(3000)
         jid = self.server.submit(j)
+        time.sleep(1)
 
         a = {ATTR_l + '.select': '1:ncpus=1'}
         for _ in range(3200):

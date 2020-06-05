@@ -1760,7 +1760,7 @@ else:
              'enabled': 'true', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
-        a = {'preempt_sort': 'min_time_since_start'}	
+        a = {'preempt_sort': 'min_time_since_start'}
         self.server.manager(MGR_CMD_SET, SCHED, a)
 
         # Submit 3 jobs with delay of 1 sec
